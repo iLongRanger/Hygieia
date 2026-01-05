@@ -1,0 +1,132 @@
+HYGIEIA DEVELOPMENT RULES
+1. Development Philosophy
+Documentation-Driven Development (DDD)
+- ❌ No implementation without documented requirements
+- ✅ All development must follow documentation specifications
+Phased Modular Development
+- 📋 Work is divided into phases and modules
+- 🔄 Complete one module before starting the next
+- 📊 Module completion requires 100% criteria met
+2. Commit Rules (STRICT)
+Branch Naming
+- phase-{X}-module-{Y} - Main branch for phase/module
+- phase-{X}-module-{Y}-{feature} - Feature branches
+- hotfix-{description} - Critical fixes only
+Commit Message Format
+{TYPE}({scope}): {description}
+{body}
+{footer}
+Types: feat, fix, docs, style, refactor, test, chore
+Example:
+feat(auth): implement Supabase JWT verification
+- Add JWT middleware to Express API
+- Integrate with Supabase Auth service
+- Add user role verification
+- Implement tenant isolation
+Closes #123
+Related: phase-1-module-1
+3. BEFORE COMMIT Requirements
+✅ Must Pass:
+- All tests pass locally
+- Code follows style guidelines (ESLint + Prettier)
+- Documentation updated
+- No console.log statements
+- No TODO/FIXME comments
+- Security review completed
+❌ Must Not Have:
+- Hardcoded secrets
+- Type errors
+- Unhandled errors
+- Missing validation
+4. Pull Requirements
+Every PR must include:
+Required Body:
+- Clear description of changes
+- How it was tested
+- Security considerations
+- Performance impact assessment
+- Breaking changes (if any)
+Checklist:
+- [ ] Unit tests pass
+- [ ] Integration tests pass  
+- [ ] Manual testing completed
+- [ ] Security review passed
+- [ ] API docs updated
+- [ ] README updated
+- [ ] Change log updated
+5. Quality Gates
+Automated Checks:
+- Test Coverage: Minimum 90%
+- Code Quality: ESLint + Prettier passing
+- Security: SAST scan passes
+- Performance: Lighthouse score > 90
+- Type Safety: TypeScript strict mode passing
+Manual Reviews:
+- Architecture Review (Senior dev approval)
+- Security Review (Security team approval)
+- Performance Review (Performance team approval)
+6. Module Completion Rules
+A module is COMPLETE only when ALL these are ✅:
+1. Documentation - All APIs, data models, UI flows documented
+2. Implementation - Code meets all documented requirements
+3. Tests - 100% test coverage with passing tests
+4. Integration - All integrations tested and working
+5. Security - All security measures implemented and verified
+6. Performance - Meets defined performance benchmarks
+7. Environment Rules
+Development:
+- No rate limiting
+- Console logging enabled
+- Feature flags can be toggled
+- Local services allowed
+Production:
+- Rate limiting enabled
+- No console logging
+- Feature flags controlled
+- Only production services
+8. Breaking Rules = NO GO
+❌ Immediate Blockers:
+- Pushing directly to main branch
+- Skipping tests to fix build
+- Hardcoding credentials
+- Bypassing security measures
+- Missing documentation
+⚠️ Violations Result In:
+- PR rejected
+- Branch protection blocks merge
+- Required reviews mandatory
+- Access revocation for repeated violations
+9. Testing Requirements
+Required Test Types:
+- Unit Tests: Individual functions/components
+- Integration Tests: API endpoints + database
+- E2E Tests: Critical user journeys
+- Security Tests: Vulnerability scanning
+- Performance Tests: Load and stress testing
+TDD Cycle:
+1. RED: Write failing test
+2. GREEN: Write minimal code to pass  
+3. REFACTOR: Clean up, tests stay green
+4. REPEAT: Next test case
+10. Enforcement
+Git Hooks:
+- Pre-commit: Linting + formatting
+- Pre-push: Test validation
+- Commit-msg: Commit format validation
+CI/CD Gates:
+- All tests must pass
+- Code quality checks must pass
+- Security scanning must pass
+- Performance benchmarks must be met
+- Documentation must be updated
+---
+🎯 DEVELOPMENT WORKFLOW SUMMARY
+1. 📋 Pick Module - From current phase/module assignment
+2. 📖 Read Docs - Complete specifications for that module  
+3. 🧪 TDD - Write tests first
+4. 💻 Implement - Following all rules above
+5. 🧪 Test - All test types passing
+6. 👀 Review - All quality gates passed
+7. 📝 Document - Update all documentation
+8. ✅ Complete - Mark module complete, move to next
+THESE RULES ARE MANDATORY. NO EXCEPTIONS WITHOUT ARCHITECTURAL APPROVAL.

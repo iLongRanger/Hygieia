@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "paths": {
+      "@hygieia/api": ["./apps/api/src"],
+      "@hygieia/web": ["./apps/web/src"],
+      "@hygieia/database": ["./packages/database/src"],
+      "@hygieia/types": ["./packages/types/src"],
+      "@hygieia/utils": ["./packages/utils/src"],
+      "@hygieia/ui": ["./packages/ui/src"],
+      "@hygieia/shared": ["./packages/shared/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".next", "coverage"]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@hygieia/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hygieia Shared - Common Code and Configs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hygieia/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

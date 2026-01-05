@@ -1,0 +1,26 @@
+{
+  "name": "@hygieia/database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hygieia Database - Prisma ORM",
+  "type": "module",
+  "scripts": {
+    "dev": "prisma studio",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset",
+    "generate": "prisma generate",
+    "seed": "tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "format": "prisma format",
+    "clean": "rm -rf node_modules prisma/migrations/*_*.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.7.1",
+    "tsx": "^4.6.2",
+    "@types/node": "^20.10.0"
+  }
+}
