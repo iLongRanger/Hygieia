@@ -1,0 +1,457 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Plus,
+  Search,
+  Filter,
+  Building2,
+  MapPin,
+  Archive,
+  RotateCcw,
+} from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Table } from '../../components/ui/Table';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { Modal } from '../../components/ui/Modal';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
+import {
+  listFacilities,
+  createFacility,
+  archiveFacility,
+  restoreFacility,
+  listAccounts,
+} from '../../lib/facilities';
+import type {
+  Facility,
+  Account,
+  CreateFacilityInput,
+} from '../../types/facility';
+
+const BUILDING_TYPES = [
+  { value: 'office', label: 'Office' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'warehouse', label: 'Warehouse' },
+  { value: 'educational', label: 'Educational' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'mixed', label: 'Mixed Use' },
+  { value: 'other', label: 'Other' },
+];
+
+const FacilitiesList = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [search, setSearch] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    total: 0,
+    totalPages: 0,
+  });
+
+  const [formData, setFormData] = useState<CreateFacilityInput>({
+    accountId: '',
+    name: '',
+    address: {},
+    buildingType: null,
+    squareFeet: null,
+    notes: null,
+  });
+
+  const fetchFacilities = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await listFacilities({
+        search: search || undefined,
+        page: pagination.page,
+      });
+      setFacilities(response.data);
+      setPagination(response.pagination);
+    } catch (error) {
+      console.error('Failed to fetch facilities:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, pagination.page]);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await listAccounts({ limit: 100 });
+      setAccounts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFacilities();
+  }, [fetchFacilities]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  const handleCreate = async () => {
+    if (!formData.accountId || !formData.name) return;
+
+    try {
+      setCreating(true);
+      await createFacility(formData);
+      setShowCreateModal(false);
+      setFormData({
+        accountId: '',
+        name: '',
+        address: {},
+        buildingType: null,
+        squareFeet: null,
+        notes: null,
+      });
+      fetchFacilities();
+    } catch (error) {
+      console.error('Failed to create facility:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveFacility(id);
+      fetchFacilities();
+    } catch (error) {
+      console.error('Failed to archive facility:', error);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreFacility(id);
+      fetchFacilities();
+    } catch (error) {
+      console.error('Failed to restore facility:', error);
+    }
+  };
+
+  const formatAddress = (address: Facility['address']) => {
+    const parts = [address.city, address.state].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'No address';
+  };
+
+  const columns = [
+    {
+      header: 'Facility',
+      cell: (item: Facility) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald/10">
+            <Building2 className="h-5 w-5 text-emerald" />
+          </div>
+          <div>
+            <div className="font-medium text-white">{item.name}</div>
+            <div className="text-sm text-gray-400">{item.account.name}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: 'Location',
+      cell: (item: Facility) => (
+        <div className="flex items-center gap-2 text-gray-300">
+          <MapPin className="h-4 w-4 text-gray-500" />
+          {formatAddress(item.address)}
+        </div>
+      ),
+    },
+    {
+      header: 'Type',
+      cell: (item: Facility) => (
+        <span className="capitalize text-gray-300">
+          {item.buildingType || '-'}
+        </span>
+      ),
+    },
+    {
+      header: 'Size',
+      cell: (item: Facility) => (
+        <span className="text-gray-300">
+          {item.squareFeet
+            ? `${Number(item.squareFeet).toLocaleString()} sq ft`
+            : '-'}
+        </span>
+      ),
+    },
+    {
+      header: 'Areas',
+      cell: (item: Facility) => (
+        <span className="text-gray-300">{item._count.areas}</span>
+      ),
+    },
+    {
+      header: 'Status',
+      cell: (item: Facility) => (
+        <Badge
+          variant={
+            item.archivedAt
+              ? 'error'
+              : item.status === 'active'
+                ? 'success'
+                : item.status === 'pending'
+                  ? 'warning'
+                  : 'default'
+          }
+        >
+          {item.archivedAt ? 'Archived' : item.status}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Actions',
+      cell: (item: Facility) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/facilities/${item.id}`);
+            }}
+          >
+            View
+          </Button>
+          {item.archivedAt ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRestore(item.id);
+              }}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleArchive(item.id);
+              }}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-white">Facilities</h1>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Facility
+        </Button>
+      </div>
+
+      <Card noPadding className="overflow-hidden">
+        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+          <div className="flex gap-4">
+            <div className="w-full max-w-sm">
+              <Input
+                placeholder="Search facilities..."
+                icon={<Search className="h-4 w-4" />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button variant="secondary" className="px-3">
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <Table
+          data={facilities}
+          columns={columns}
+          isLoading={loading}
+          onRowClick={(item) => navigate(`/facilities/${item.id}`)}
+        />
+
+        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <span>
+              Showing {facilities.length} of {pagination.total} facilities
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pagination.page <= 1}
+                onClick={() =>
+                  setPagination((p) => ({ ...p, page: p.page - 1 }))
+                }
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() =>
+                  setPagination((p) => ({ ...p, page: p.page + 1 }))
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Add New Facility"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Account"
+            placeholder="Select an account"
+            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+            value={formData.accountId}
+            onChange={(value) => setFormData({ ...formData, accountId: value })}
+          />
+
+          <Input
+            label="Facility Name"
+            placeholder="Enter facility name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Street Address"
+              placeholder="123 Main St"
+              value={formData.address.street || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, street: e.target.value },
+                })
+              }
+            />
+            <Input
+              label="City"
+              placeholder="Vancouver"
+              value={formData.address.city || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, city: e.target.value },
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Input
+              label="State/Province"
+              placeholder="BC"
+              value={formData.address.state || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, state: e.target.value },
+                })
+              }
+            />
+            <Input
+              label="Postal Code"
+              placeholder="V6B 1A1"
+              value={formData.address.postalCode || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, postalCode: e.target.value },
+                })
+              }
+            />
+            <Input
+              label="Country"
+              placeholder="Canada"
+              value={formData.address.country || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  address: { ...formData.address, country: e.target.value },
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Building Type"
+              placeholder="Select type"
+              options={BUILDING_TYPES}
+              value={formData.buildingType || ''}
+              onChange={(value) =>
+                setFormData({ ...formData, buildingType: value || null })
+              }
+            />
+            <Input
+              label="Square Feet"
+              type="number"
+              placeholder="5000"
+              value={formData.squareFeet || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  squareFeet: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </div>
+
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes about this facility..."
+            value={formData.notes || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value || null })
+            }
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              isLoading={creating}
+              disabled={!formData.accountId || !formData.name}
+            >
+              Create Facility
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+export default FacilitiesList;

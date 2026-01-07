@@ -10,6 +10,8 @@ import LeadsList from './pages/leads/LeadsList';
 import AccountsList from './pages/accounts/AccountsList';
 import ContactsList from './pages/contacts/ContactsList';
 import UsersList from './pages/users/UsersList';
+import FacilitiesList from './pages/facilities/FacilitiesList';
+import FacilityDetail from './pages/facilities/FacilityDetail';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
           <Route path="/leads" element={<LeadsList />} />
           <Route path="/accounts" element={<AccountsList />} />
           <Route path="/contacts" element={<ContactsList />} />
+          <Route path="/facilities" element={<FacilitiesList />} />
+          <Route path="/facilities/:id" element={<FacilityDetail />} />
           <Route path="/users" element={<UsersList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

@@ -1,6 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Building2, Contact, UserCog, LogOut } from 'lucide-react';
+import {
+  Home,
+  Users,
+  Building2,
+  Contact,
+  UserCog,
+  LogOut,
+  Warehouse,
+} from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { clsx } from 'clsx';
 
@@ -12,6 +20,7 @@ const Sidebar = () => {
     { to: '/leads', icon: Users, label: 'Leads' },
     { to: '/accounts', icon: Building2, label: 'Accounts' },
     { to: '/contacts', icon: Contact, label: 'Contacts' },
+    { to: '/facilities', icon: Warehouse, label: 'Facilities' },
     { to: '/users', icon: UserCog, label: 'Users', adminOnly: true },
   ];
 
