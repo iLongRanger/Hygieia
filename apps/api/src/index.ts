@@ -9,6 +9,10 @@ import {
 } from './middleware';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
+import leadSourcesRoutes from './routes/leadSources';
+import leadsRoutes from './routes/leads';
+import accountsRoutes from './routes/accounts';
+import contactsRoutes from './routes/contacts';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +35,10 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', usersRoutes);
+app.use('/api/v1/lead-sources', leadSourcesRoutes);
+app.use('/api/v1/leads', leadsRoutes);
+app.use('/api/v1/accounts', accountsRoutes);
+app.use('/api/v1/contacts', contactsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
