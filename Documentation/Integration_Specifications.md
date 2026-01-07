@@ -4,6 +4,8 @@
 
 This specification defines integration requirements, error handling strategies, and implementation patterns for all external services integrated with Hygieia Platform.
 
+**Important Note:** Hygieia is a single-tenant application. The QuickBooks integration code examples below include `tenantId` parameters that would need to be simplified or removed for single-tenant architecture. In a single-tenant system, the application connects to a single QuickBooks account for the entire organization.
+
 ## Integration Architecture
 
 ### Service Integration Patterns
@@ -27,6 +29,8 @@ Hygieia API
 5. **Error Bubbling:** Integration errors surface with context
 
 ## QuickBooks Online Integration
+
+**Note:** Hygieia is a single-tenant application. This integration connects the application to a single QuickBooks Online account for the entire organization. All tenant-specific parameters have been removed.
 
 ### Configuration
 
@@ -56,7 +60,7 @@ export const quickBooksConfig = {
 };
 ```
 
-### OAuth2 Implementation
+### OAuth2 Implementation (Single-Tenant)
 
 ```typescript
 // apps/api/src/services/quickbooks/auth.ts
@@ -72,9 +76,9 @@ export class QuickBooksAuthService {
     this.config = config;
   }
 
-  async getAuthUrl(tenantId: string): Promise<string> {
-    const state = this.generateState(tenantId);
-    await this.redis.setex(`qb_state:${state}`, 600, JSON.stringify({ tenantId }));
+  async getAuthUrl(): Promise<string> {
+    const state = this.generateState();
+    await this.redis.setex(`qb_state:${state}`, 600, JSON.stringify({ timestamp: Date.now() }));
 
     const params = new URLSearchParams({
       client_id: this.config.clientId,
@@ -99,9 +103,8 @@ export class QuickBooksAuthService {
 
       // Exchange authorization code
       const response = await this.makeTokenRequest(code);
-      
+
       await SecurityLogger.logSecurityEvent('QUICKBOOKS_AUTH_SUCCESS', {
-        tenantId: JSON.parse(storedState).tenantId,
         realmId: response.realmId
       });
 
@@ -115,18 +118,18 @@ export class QuickBooksAuthService {
     }
   }
 
-  async refreshToken(tenantId: string): Promise<string> {
+  async refreshToken(): Promise<string> {
     try {
-      const tokenData = await this.getStoredTokenData(tenantId);
-      
+      const tokenData = await this.getStoredTokenData();
+
       if (!tokenData) {
         throw new QuickBooksError('TOKEN_NOT_FOUND', 'No refresh token available');
       }
 
       const response = await this.makeRefreshRequest(tokenData.refreshToken);
-      
+
       // Update stored tokens
-      await this.updateTokenData(tenantId, {
+      await this.updateTokenData({
         ...tokenData,
         accessToken: response.accessToken,
         refreshToken: response.refreshToken || tokenData.refreshToken,
@@ -136,12 +139,11 @@ export class QuickBooksAuthService {
       return response.accessToken;
     } catch (error) {
       await SecurityLogger.logSecurityEvent('QUICKBOOKS_TOKEN_REFRESH_FAILED', {
-        tenantId,
         error: error.message
       });
-      
+
       // Invalidate stored tokens on refresh failure
-      await this.invalidateTokens(tenantId);
+      await this.invalidateTokens();
       throw new QuickBooksError('TOKEN_REFRESH_FAILED', 'Failed to refresh access token');
     }
   }
@@ -176,7 +178,7 @@ export class QuickBooksAuthService {
 }
 ```
 
-### Customer Synchronization
+### Customer Synchronization (Single-Tenant)
 
 ```typescript
 // apps/api/src/services/quickbooks/customers.ts
@@ -194,14 +196,14 @@ export class QuickBooksCustomerService {
     });
   }
 
-  async createCustomer(tenantId: string, accountData: AccountCreateInput): Promise<QuickBooksCustomer> {
+  async createCustomer(accountData: AccountCreateInput): Promise<QuickBooksCustomer> {
     return this.retryPolicy.execute(async () => {
       try {
-        const accessToken = await this.auth.getValidToken(tenantId);
-        const realmId = await this.auth.getRealmId(tenantId);
+        const accessToken = await this.auth.getValidToken();
+        const realmId = await this.auth.getRealmId();
 
         const qbCustomer = this.mapAccountToQuickBooks(accountData);
-        
+
         const response = await fetch(
           `${this.config.baseUrl}/v3/company/${realmId}/customer?minorversion=${this.config.minorVersion}`,
           {
@@ -227,7 +229,6 @@ export class QuickBooksCustomerService {
         await this.updateAccountQboId(accountData.id, customer.Id);
 
         await SecurityLogger.logSecurityEvent('QUICKBOOKS_CUSTOMER_CREATED', {
-          tenantId,
           customerId: customer.Id,
           accountId: accountData.id
         });
@@ -237,7 +238,7 @@ export class QuickBooksCustomerService {
         if (error instanceof QuickBooksError) {
           throw error;
         }
-        
+
         throw new QuickBooksError(
           'CUSTOMER_CREATE_FAILED',
           'Failed to create customer in QuickBooks',
@@ -247,11 +248,11 @@ export class QuickBooksCustomerService {
     });
   }
 
-  async getCustomer(tenantId: string, qboCustomerId: string): Promise<QuickBooksCustomer> {
+  async getCustomer(qboCustomerId: string): Promise<QuickBooksCustomer> {
     return this.retryPolicy.execute(async () => {
       try {
-        const accessToken = await this.auth.getValidToken(tenantId);
-        const realmId = await this.auth.getRealmId(tenantId);
+        const accessToken = await this.auth.getValidToken();
+        const realmId = await this.auth.getRealmId();
 
         const response = await fetch(
           `${this.config.baseUrl}/v3/company/${realmId}/customer/${qboCustomerId}?minorversion=${this.config.minorVersion}`,
@@ -278,7 +279,7 @@ export class QuickBooksCustomerService {
         if (error instanceof QuickBooksError) {
           throw error;
         }
-        
+
         throw new QuickBooksError(
           'CUSTOMER_GET_FAILED',
           'Failed to retrieve customer from QuickBooks',
@@ -295,21 +296,21 @@ export class QuickBooksCustomerService {
     switch (errorCode) {
       case '3100': // Token expired
         return new QuickBooksError('TOKEN_EXPIRED', 'Access token has expired');
-      
+
       case '3200': // Authentication failed
         return new QuickBooksError('AUTHENTICATION_FAILED', 'QuickBooks authentication failed');
-      
+
       case '6100': // Rate limit exceeded
         return new QuickBooksError('RATE_LIMIT_EXCEEDED', 'QuickBooks API rate limit exceeded');
-      
+
       case '6240': // Customer not found
         return new QuickBooksError('CUSTOMER_NOT_FOUND', 'Customer not found');
-      
+
       case '6245': // Validation error
         return new QuickBooksError('VALIDATION_ERROR', 'Customer data validation failed', {
           details: errorMessage
         });
-      
+
       default:
         return new QuickBooksError(
           'UNKNOWN_QUICKBOOKS_ERROR',
@@ -317,6 +318,78 @@ export class QuickBooksCustomerService {
           { errorCode, errorMessage }
         );
     }
+  }
+}
+```
+
+### Invoice Synchronization (Single-Tenant)
+
+```typescript
+// apps/api/src/services/quickbooks/invoices.ts
+export class QuickBooksInvoiceService {
+  private auth: QuickBooksAuthService;
+  private retryPolicy: RetryPolicy;
+
+  constructor(auth: QuickBooksAuthService) {
+    this.auth = auth;
+    this.retryPolicy = new RetryPolicy({
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 10000,
+      backoffMultiplier: 2
+    });
+  }
+
+  async createInvoice(invoiceData: InvoiceCreateInput): Promise<QuickBooksInvoice> {
+    return this.retryPolicy.execute(async () => {
+      try {
+        const accessToken = await this.auth.getValidToken();
+        const realmId = await this.auth.getRealmId();
+
+        const qbInvoice = this.mapInvoiceToQuickBooks(invoiceData);
+
+        const response = await fetch(
+          `${this.config.baseUrl}/v3/company/${realmId}/invoice?minorversion=${this.config.minorVersion}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(qbInvoice)
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw this.handleQuickBooksError(error, 'create_invoice');
+        }
+
+        const result = await response.json();
+        const invoice = result.Invoice;
+
+        // Store QuickBooks invoice ID in our database
+        await this.updateProposalQboId(invoiceData.proposalId, invoice.Id);
+
+        await SecurityLogger.logSecurityEvent('QUICKBOOKS_INVOICE_CREATED', {
+          invoiceId: invoice.Id,
+          proposalId: invoiceData.proposalId
+        });
+
+        return invoice;
+      } catch (error) {
+        if (error instanceof QuickBooksError) {
+          throw error;
+        }
+
+        throw new QuickBooksError(
+          'INVOICE_CREATE_FAILED',
+          'Failed to create invoice in QuickBooks',
+          { originalError: error.message }
+        );
+      }
+    });
   }
 }
 ```
