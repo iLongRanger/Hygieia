@@ -145,7 +145,7 @@ router.post(
         );
       }
 
-      const { email, fullName, role } = req.body;
+      const { email, fullName, password, role } = req.body;
 
       if (!email || typeof email !== 'string') {
         throw new ValidationError('Email is required', { field: 'email' });
@@ -157,6 +157,18 @@ router.post(
         });
       }
 
+      if (!password || typeof password !== 'string') {
+        throw new ValidationError('Password is required', {
+          field: 'password',
+        });
+      }
+
+      if (password.length < 6) {
+        throw new ValidationError('Password must be at least 6 characters', {
+          field: 'password',
+        });
+      }
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new ValidationError('Invalid email format', { field: 'email' });
@@ -164,7 +176,7 @@ router.post(
 
       const userRole: UserRole = role && isValidRole(role) ? role : 'owner';
 
-      const result = await createDevUser(email, fullName, userRole);
+      const result = await createDevUser(email, fullName, password, userRole);
 
       res.status(201).json({
         data: {

@@ -2,7 +2,7 @@ import { UserRole } from './roles';
 
 export interface AuthenticatedUser {
   id: string;
-  supabaseUserId: string;
+  supabaseUserId: string | null;
   email: string;
   fullName: string;
   role: UserRole;

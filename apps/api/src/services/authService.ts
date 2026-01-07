@@ -96,7 +96,16 @@ export async function login(
     },
   });
 
-  if (!user) {
+  if (!user || !user.passwordHash) {
+    return null;
+  }
+
+  const isValidPassword = await verifyPassword(
+    credentials.password,
+    user.passwordHash
+  );
+
+  if (!isValidPassword) {
     return null;
   }
 
@@ -199,6 +208,7 @@ export async function getUserById(id: string): Promise<UserInfo | null> {
 export async function createDevUser(
   email: string,
   fullName: string,
+  password: string,
   role: UserRole = 'owner'
 ): Promise<{ user: UserInfo; tokens: AuthTokens }> {
   let roleRecord = await prisma.role.findUnique({
@@ -217,10 +227,12 @@ export async function createDevUser(
     });
   }
 
+  const hashedPassword = await hashPassword(password);
+
   const user = await prisma.user.create({
     data: {
-      supabaseUserId: uuidv4(),
       email: email.toLowerCase(),
+      passwordHash: hashedPassword,
       fullName,
       status: 'active',
       roles: {
