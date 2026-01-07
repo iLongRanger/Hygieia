@@ -15,32 +15,33 @@ datasource db {
 // ============================================================
 
 model User {
-  id               String   @id @default(uuid()) @db.Uuid
-  supabaseUserId   String   @unique @map("supabase_user_id") @db.Uuid
-  email            String   @unique @db.VarChar(255)
-  fullName         String   @map("full_name") @db.VarChar(255)
-  phone            String?  @db.VarChar(20)
-  avatarUrl        String?  @map("avatar_url") @db.Text
-  status           String   @default("active") @VarChar(20)
-  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(6)
-  preferences      Json     @default("{}") @db.JsonB
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String    @id @default(uuid()) @db.Uuid
+  supabaseUserId String    @unique @map("supabase_user_id") @db.Uuid
+  email          String    @unique @db.VarChar(255)
+  fullName       String    @map("full_name") @db.VarChar(255)
+  phone          String?   @db.VarChar(20)
+  avatarUrl      String?   @map("avatar_url") @db.Text
+  status         String    @default("active") @db.VarChar(20)
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
+  preferences    Json      @default("{}") @db.JsonB
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  roles            UserRole[]    @relation("UserRoles")
-  createdLeads     Lead[]        @relation("CreatedLeads")
-  createdAccounts  Account[]     @relation("CreatedAccounts")
-  createdContacts  Contact[]     @relation("CreatedContacts")
-  createdOpportunities Opportunity[] @relation("CreatedOpportunities")
-  createdFacilities Facility[]   @relation("CreatedFacilities")
-  createdAreas     Area[]        @relation("CreatedAreas")
-  createdTasks     FacilityTask[] @relation("CreatedTasks")
-  assignedToLeads  Lead[]
-  assignedToOpportunities Opportunity[] @relation("AssignedToOpportunities")
-  facilities       Facility[]    @relation("FacilityManager")
-  createdTaskTemplates TaskTemplate[] @relation("CreatedTaskTemplates")
-  createdPricingRules PricingRule[] @relation("CreatedPricingRules")
-  pricingOverrides PricingOverride[] @relation("CreatedPricingOverrides")
+  roles                    UserRole[]        @relation("UserRoles")
+  createdLeads             Lead[]            @relation("CreatedLeads")
+  createdAccounts          Account[]         @relation("CreatedAccounts")
+  createdContacts          Contact[]         @relation("CreatedContacts")
+  createdOpportunities     Opportunity[]     @relation("CreatedOpportunities")
+  createdFacilities        Facility[]        @relation("CreatedFacilities")
+  createdAreas             Area[]            @relation("CreatedAreas")
+  createdTasks             FacilityTask[]    @relation("CreatedTasks")
+  assignedToLeads          Lead[]            @relation("AssignedToLeads")
+  assignedToOpportunities  Opportunity[]     @relation("AssignedToOpportunities")
+  managedAccounts          Account[]         @relation("AccountManager")
+  facilities               Facility[]        @relation("FacilityManager")
+  createdTaskTemplates     TaskTemplate[]    @relation("CreatedTaskTemplates")
+  createdPricingRules      PricingRule[]     @relation("CreatedPricingRules")
+  pricingOverrides         PricingOverride[] @relation("CreatedPricingOverrides")
   approvedPricingOverrides PricingOverride[] @relation("ApprovedPricingOverrides")
 
   @@index([email])
@@ -49,14 +50,14 @@ model User {
 }
 
 model Role {
-  id          String   @id @default(uuid()) @db.Uuid
-  key         String   @unique @db.VarChar(50)
-  label       String   @db.VarChar(100)
-  description String?  @db.Text
-  permissions Json     @default("{}") @db.JsonB
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique @db.VarChar(50)
+  label        String   @db.VarChar(100)
+  description  String?  @db.Text
+  permissions  Json     @default("{}") @db.JsonB
   isSystemRole Boolean  @default(false) @map("is_system_role")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   userRoles UserRole[]
 
@@ -64,16 +65,16 @@ model Role {
 }
 
 model UserRole {
-  id                String    @id @default(uuid()) @db.Uuid
-  userId            String    @map("user_id") @db.Uuid
-  roleId            String    @map("role_id") @db.Uuid
-  assignedByUserId  String?   @map("assigned_by_user_id") @db.Uuid
-  assignedAt        DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
-  expiresAt         DateTime? @map("expires_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  roleId           String    @map("role_id") @db.Uuid
+  assignedByUserId String?   @map("assigned_by_user_id") @db.Uuid
+  assignedAt       DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user        User   @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
-  role        Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@index([userId])
@@ -94,38 +95,38 @@ model LeadSource {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  leads  Lead[]
+  leads Lead[]
 
   @@index([isActive])
   @@map("lead_sources")
 }
 
 model Lead {
-  id                 String    @id @default(uuid()) @db.Uuid
-  leadSourceId       String?   @map("lead_source_id") @db.Uuid
-  status             String    @default("lead") @db.VarChar(30)
-  companyName        String?   @map("company_name") @db.VarChar(255)
-  contactName        String    @map("contact_name") @db.VarChar(255)
-  primaryEmail       String?   @map("primary_email") @db.VarChar(255)
-  primaryPhone       String?   @map("primary_phone") @db.VarChar(20)
-  secondaryEmail     String?   @map("secondary_email") @db.VarChar(255)
-  secondaryPhone     String?   @map("secondary_phone") @db.VarChar(20)
-  address            Json?     @db.JsonB
-  estimatedValue     Decimal?  @map("estimated_value") @db.Decimal(12, 2)
-  probability        Int?      @default(0)
-  expectedCloseDate   DateTime? @map("expected_close_date") @db.Date
-  notes              String?   @db.Text
-  lostReason         String?   @map("lost_reason") @db.Text
-  assignedToUserId   String?   @map("assigned_to_user_id") @db.Uuid
-  createdByUserId     String    @map("created_by_user_id") @db.Uuid
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid()) @db.Uuid
+  leadSourceId      String?   @map("lead_source_id") @db.Uuid
+  status            String    @default("lead") @db.VarChar(30)
+  companyName       String?   @map("company_name") @db.VarChar(255)
+  contactName       String    @map("contact_name") @db.VarChar(255)
+  primaryEmail      String?   @map("primary_email") @db.VarChar(255)
+  primaryPhone      String?   @map("primary_phone") @db.VarChar(20)
+  secondaryEmail    String?   @map("secondary_email") @db.VarChar(255)
+  secondaryPhone    String?   @map("secondary_phone") @db.VarChar(20)
+  address           Json?     @db.JsonB
+  estimatedValue    Decimal?  @map("estimated_value") @db.Decimal(12, 2)
+  probability       Int?      @default(0)
+  expectedCloseDate DateTime? @map("expected_close_date") @db.Date
+  notes             String?   @db.Text
+  lostReason        String?   @map("lost_reason") @db.Text
+  assignedToUserId  String?   @map("assigned_to_user_id") @db.Uuid
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  leadSource    LeadSource? @relation(fields: [leadSourceId], references: [id])
+  leadSource     LeadSource?   @relation(fields: [leadSourceId], references: [id])
   opportunities  Opportunity[]
-  assignedToUser User?    @relation("AssignedToLeads", fields: [assignedToUserId], references: [id])
-  createdByUser  User      @relation("CreatedLeads", fields: [createdByUserId], references: [id])
+  assignedToUser User?         @relation("AssignedToLeads", fields: [assignedToUserId], references: [id])
+  createdByUser  User          @relation("CreatedLeads", fields: [createdByUserId], references: [id])
 
   @@index([status])
   @@index([leadSourceId])
@@ -137,30 +138,30 @@ model Lead {
 }
 
 model Account {
-  id                String    @id @default(uuid()) @db.Uuid
-  name              String    @unique @db.VarChar(255)
-  type              String    @db.VarChar(20)
-  industry          String?   @db.VarChar(100)
-  website           String?   @db.VarChar(500)
-  billingEmail      String?   @map("billing_email") @db.VarChar(255)
-  billingPhone      String?   @map("billing_phone") @db.VarChar(20)
-  billingAddress    Json?     @map("billing_address") @db.JsonB
-  qboCustomerId     String?   @map("qbo_customer_id") @db.VarChar(50)
-  taxId             String?   @map("tax_id") @db.VarChar(50)
-  paymentTerms      String    @default("NET30") @map("payment_terms") @db.VarChar(50)
-  creditLimit       Decimal?   @map("credit_limit") @db.Decimal(12, 2)
-  accountManagerId  String?   @map("account_manager_id") @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String    @unique @db.VarChar(255)
+  type             String    @db.VarChar(20)
+  industry         String?   @db.VarChar(100)
+  website          String?   @db.VarChar(500)
+  billingEmail     String?   @map("billing_email") @db.VarChar(255)
+  billingPhone     String?   @map("billing_phone") @db.VarChar(20)
+  billingAddress   Json?     @map("billing_address") @db.JsonB
+  qboCustomerId    String?   @map("qbo_customer_id") @db.VarChar(50)
+  taxId            String?   @map("tax_id") @db.VarChar(50)
+  paymentTerms     String    @default("NET30") @map("payment_terms") @db.VarChar(50)
+  creditLimit      Decimal?  @map("credit_limit") @db.Decimal(12, 2)
+  accountManagerId String?   @map("account_manager_id") @db.Uuid
   notes            String?   @db.Text
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdByUserId  String    @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt       DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  contacts        Contact[]
-  facilities      Facility[]
-  opportunities   Opportunity[]
-  accountManager  User?      @relation(fields: [accountManagerId], references: [id])
-  createdByUser   User       @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
+  contacts       Contact[]
+  facilities     Facility[]
+  opportunities  Opportunity[]
+  accountManager User?         @relation("AccountManager", fields: [accountManagerId], references: [id])
+  createdByUser  User          @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
 
   @@index([type])
   @@index([accountManagerId])
@@ -169,55 +170,55 @@ model Account {
 }
 
 model Contact {
-  id             String    @id @default(uuid()) @db.Uuid
-  accountId      String?   @map("account_id") @db.Uuid
-  name           String    @db.VarChar(255)
-  email          String?   @db.VarChar(255)
-  phone          String?   @db.VarChar(20)
-  mobile         String?   @db.VarChar(20)
-  title          String?   @db.VarChar(100)
-  department     String?   @db.VarChar(100)
-  isPrimary      Boolean   @default(false) @map("is_primary")
-  isBilling      Boolean   @default(false) @map("is_billing")
-  notes          String?   @db.Text
+  id              String    @id @default(uuid()) @db.Uuid
+  accountId       String?   @map("account_id") @db.Uuid
+  name            String    @db.VarChar(255)
+  email           String?   @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  mobile          String?   @db.VarChar(20)
+  title           String?   @db.VarChar(100)
+  department      String?   @db.VarChar(100)
+  isPrimary       Boolean   @default(false) @map("is_primary")
+  isBilling       Boolean   @default(false) @map("is_billing")
+  notes           String?   @db.Text
   createdByUserId String    @map("created_by_user_id") @db.Uuid
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  account     Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
   createdByUser User     @relation("CreatedContacts", fields: [createdByUserId], references: [id])
 
+  @@unique([accountId, isPrimary])
   @@index([accountId])
   @@index([email])
   @@index([isPrimary])
   @@index([isBilling])
-  @@unique([accountId, isPrimary])
   @@map("contacts")
 }
 
 model Opportunity {
-  id               String    @id @default(uuid()) @db.Uuid
-  leadId           String?   @map("lead_id") @db.Uuid
-  accountId        String?   @map("account_id") @db.Uuid
-  name             String    @db.VarChar(255)
-  status           String    @default("prospecting") @db.VarChar(30)
-  probability      Int?
-  expectedValue    Decimal?   @map("expected_value") @db.Decimal(12, 2)
-  actualValue      Decimal?   @map("actual_value") @db.Decimal(12, 2)
+  id                String    @id @default(uuid()) @db.Uuid
+  leadId            String?   @map("lead_id") @db.Uuid
+  accountId         String?   @map("account_id") @db.Uuid
+  name              String    @db.VarChar(255)
+  status            String    @default("prospecting") @db.VarChar(30)
+  probability       Int?
+  expectedValue     Decimal?  @map("expected_value") @db.Decimal(12, 2)
+  actualValue       Decimal?  @map("actual_value") @db.Decimal(12, 2)
   expectedCloseDate DateTime? @map("expected_close_date") @db.Date
-  actualCloseDate  DateTime? @map("actual_close_date") @db.Date
-  description      String?   @db.Text
-  assignedToUserId String?   @map("assigned_to_user_id") @db.Uuid
+  actualCloseDate   DateTime? @map("actual_close_date") @db.Date
+  description       String?   @db.Text
+  assignedToUserId  String?   @map("assigned_to_user_id") @db.Uuid
   createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt       DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  lead          Lead?    @relation(fields: [leadId], references: [id])
-  account       Account? @relation(fields: [accountId], references: [id])
-  assignedToUser User?     @relation("AssignedToOpportunities", fields: [assignedToUserId], references: [id])
-  createdByUser  User      @relation("CreatedOpportunities", fields: [createdByUserId], references: [id])
+  lead           Lead?    @relation(fields: [leadId], references: [id])
+  account        Account? @relation(fields: [accountId], references: [id])
+  assignedToUser User?    @relation("AssignedToOpportunities", fields: [assignedToUserId], references: [id])
+  createdByUser  User     @relation("CreatedOpportunities", fields: [createdByUserId], references: [id])
 
   @@index([leadId])
   @@index([accountId])
@@ -232,44 +233,47 @@ model Opportunity {
 // ============================================================
 
 model AreaType {
-  id                   String    @id @default(uuid()) @db.Uuid
-  name                 String    @unique @db.VarChar(100)
-  description          String?   @db.Text
-  defaultSquareFeet    Decimal?  @map("default_square_feet") @db.Decimal(10, 2)
-  baseCleaningTimeMinutes Int?    @map("base_cleaning_time_minutes")
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      String   @id @default(uuid()) @db.Uuid
+  name                    String   @unique @db.VarChar(100)
+  description             String?  @db.Text
+  defaultSquareFeet       Decimal? @map("default_square_feet") @db.Decimal(10, 2)
+  baseCleaningTimeMinutes Int?     @map("base_cleaning_time_minutes")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  areas          Area[]
-  taskTemplates  TaskTemplate[]
-  pricingRules   PricingRule[]
+  areas         Area[]
+  taskTemplates TaskTemplate[]
+  pricingRules  PricingRule[]
 
   @@index([name])
   @@map("area_types")
 }
 
 model Facility {
-  id                String    @id @default(uuid()) @db.Uuid
-  accountId         String    @map("account_id") @db.Uuid
-  name              String    @db.VarChar(255)
-  address           Json      @db.JsonB
-  squareFeet        Decimal?  @map("square_feet") @db.Decimal(10, 2)
-  buildingType      String?   @map("building_type") @db.VarChar(50)
-  accessInstructions String?   @map("access_instructions") @db.Text
-  parkingInfo       String?   @map("parking_info") @db.Text
-  specialRequirements String?  @map("special_requirements") @db.Text
-  facilityManagerId String?   @map("facility_manager_id") @db.Uuid
-  status            String    @default("active") @db.VarChar(20)
-  notes             String?   @db.Text
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                  String    @id @default(uuid()) @db.Uuid
+  accountId           String    @map("account_id") @db.Uuid
+  name                String    @db.VarChar(255)
+  address             Json      @db.JsonB
+  squareFeet          Decimal?  @map("square_feet") @db.Decimal(10, 2)
+  buildingType        String?   @map("building_type") @db.VarChar(50)
+  accessInstructions  String?   @map("access_instructions") @db.Text
+  parkingInfo         String?   @map("parking_info") @db.Text
+  specialRequirements String?   @map("special_requirements") @db.Text
+  facilityManagerId   String?   @map("facility_manager_id") @db.Uuid
+  status              String    @default("active") @db.VarChar(20)
+  notes               String?   @db.Text
+  createdByUserId     String    @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  account          Account  @relation(fields: [accountId], references: [id])
+  account          Account           @relation(fields: [accountId], references: [id])
   areas            Area[]
-  facilityManager   User?    @relation("FacilityManager", fields: [facilityManagerId], references: [id])
-  createdByUser    User     @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
+  taskTemplates    TaskTemplate[]    @relation("FacilityTaskTemplates")
+  facilityTasks    FacilityTask[]    @relation("FacilityTasks")
+  pricingOverrides PricingOverride[] @relation("FacilityPricingOverrides")
+  facilityManager  User?             @relation("FacilityManager", fields: [facilityManagerId], references: [id])
+  createdByUser    User              @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
 
   @@unique([accountId, name])
   @@index([accountId])
@@ -279,23 +283,23 @@ model Facility {
 }
 
 model Area {
-  id                String    @id @default(uuid()) @db.Uuid
-  facilityId        String    @map("facility_id") @db.Uuid
-  areaTypeId        String    @map("area_type_id") @db.Uuid
-  name              String?   @db.VarChar(255)
-  quantity          Int       @default(1)
-  squareFeet        Decimal?  @map("square_feet") @db.Decimal(10, 2)
-  conditionLevel    String    @default("good") @map("condition_level") @db.VarChar(20)
-  notes             String?   @db.Text
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  facilityId      String    @map("facility_id") @db.Uuid
+  areaTypeId      String    @map("area_type_id") @db.Uuid
+  name            String?   @db.VarChar(255)
+  quantity        Int       @default(1)
+  squareFeet      Decimal?  @map("square_feet") @db.Decimal(10, 2)
+  conditionLevel  String    @default("good") @map("condition_level") @db.VarChar(20)
+  notes           String?   @db.Text
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  facility      Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  areaType      AreaType  @relation(fields: [areaTypeId], references: [id])
+  facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  areaType      AreaType       @relation(fields: [areaTypeId], references: [id])
   facilityTasks FacilityTask[]
-  createdByUser  User      @relation("CreatedAreas", fields: [createdByUserId], references: [id])
+  createdByUser User           @relation("CreatedAreas", fields: [createdByUserId], references: [id])
 
   @@unique([facilityId, name])
   @@index([facilityId])
@@ -309,29 +313,29 @@ model Area {
 // ============================================================
 
 model TaskTemplate {
-  id                   String    @id @default(uuid()) @db.Uuid
-  name                 String    @db.VarChar(255)
-  description          String?   @db.Text
-  cleaningType         String    @map("cleaning_type") @db.VarChar(50)
-  areaTypeId           String?   @map("area_type_id") @db.Uuid
-  estimatedMinutes     Int       @map("estimated_minutes")
-  difficultyLevel      Int       @default(3) @map("difficulty_level")
-  requiredEquipment    Json      @default("[]") @map("required_equipment") @db.JsonB
-  requiredSupplies     Json      @default("[]") @map("required_supplies") @db.JsonB
-  instructions         String?   @db.Text
-  isGlobal             Boolean   @default(false) @map("is_global")
-  facilityId          String?   @map("facility_id") @db.Uuid
-  version              Int       @default(1)
-  isActive             Boolean   @default(true) @map("is_active")
-  createdByUserId      String    @map("created_by_user_id") @db.Uuid
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid()) @db.Uuid
+  name              String    @db.VarChar(255)
+  description       String?   @db.Text
+  cleaningType      String    @map("cleaning_type") @db.VarChar(50)
+  areaTypeId        String?   @map("area_type_id") @db.Uuid
+  estimatedMinutes  Int       @map("estimated_minutes")
+  difficultyLevel   Int       @default(3) @map("difficulty_level")
+  requiredEquipment Json      @default("[]") @map("required_equipment") @db.JsonB
+  requiredSupplies  Json      @default("[]") @map("required_supplies") @db.JsonB
+  instructions      String?   @db.Text
+  isGlobal          Boolean   @default(false) @map("is_global")
+  facilityId        String?   @map("facility_id") @db.Uuid
+  version           Int       @default(1)
+  isActive          Boolean   @default(true) @map("is_active")
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  areaType      AreaType? @relation(fields: [areaTypeId], references: [id])
-  facility      Facility? @relation(fields: [facilityId], references: [id])
+  areaType      AreaType?      @relation(fields: [areaTypeId], references: [id])
+  facility      Facility?      @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
   facilityTasks FacilityTask[]
-  createdByUser  User     @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
+  createdByUser User           @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
 
   @@index([cleaningType])
   @@index([areaTypeId])
@@ -342,26 +346,26 @@ model TaskTemplate {
 }
 
 model FacilityTask {
-  id                String    @id @default(uuid()) @db.Uuid
-  facilityId        String    @map("facility_id") @db.Uuid
-  areaId            String?   @map("area_id") @db.Uuid
-  taskTemplateId    String?   @map("task_template_id") @db.Uuid
-  customName        String?   @map("custom_name") @db.VarChar(255)
-  customInstructions String?   @map("custom_instructions") @db.Text
-  estimatedMinutes   Int?      @map("estimated_minutes")
-  isRequired        Boolean   @default(true) @map("is_required")
-  cleaningFrequency String    @default("daily") @map("cleaning_frequency") @db.VarChar(20)
+  id                  String    @id @default(uuid()) @db.Uuid
+  facilityId          String    @map("facility_id") @db.Uuid
+  areaId              String?   @map("area_id") @db.Uuid
+  taskTemplateId      String?   @map("task_template_id") @db.Uuid
+  customName          String?   @map("custom_name") @db.VarChar(255)
+  customInstructions  String?   @map("custom_instructions") @db.Text
+  estimatedMinutes    Int?      @map("estimated_minutes")
+  isRequired          Boolean   @default(true) @map("is_required")
+  cleaningFrequency   String    @default("daily") @map("cleaning_frequency") @db.VarChar(20)
   conditionMultiplier Decimal   @default(1.0) @map("condition_multiplier") @db.Decimal(3, 2)
-  priority          Int       @default(3)
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+  priority            Int       @default(3)
+  createdByUserId     String    @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  facility       Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  area           Area?        @relation(fields: [areaId], references: [id])
-  taskTemplate   TaskTemplate? @relation(fields: [taskTemplateId], references: [id])
-  createdByUser  User         @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  facility      Facility      @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
+  area          Area?         @relation(fields: [areaId], references: [id])
+  taskTemplate  TaskTemplate? @relation(fields: [taskTemplateId], references: [id])
+  createdByUser User          @relation("CreatedTasks", fields: [createdByUserId], references: [id])
 
   @@index([facilityId])
   @@index([areaId])
@@ -376,14 +380,14 @@ model FacilityTask {
 // ============================================================
 
 model PricingRule {
-  id                    String    @id @default(uuid()) @db.Uuid
-  name                  String    @db.VarChar(255)
-  description           String?   @db.Text
-  pricingType           String    @map("pricing_type") @db.VarChar(20)
-  baseRate              Decimal   @map("base_rate") @db.Decimal(10, 2)
-  minimumCharge         Decimal?  @map("minimum_charge") @db.Decimal(10, 2)
-  squareFootRate        Decimal?  @map("square_foot_rate") @db.Decimal(8, 4)
-  difficultyMultiplier   Decimal   @default(1.0) @map("difficulty_multiplier") @db.Decimal(4, 3)
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String    @db.VarChar(255)
+  description          String?   @db.Text
+  pricingType          String    @map("pricing_type") @db.VarChar(20)
+  baseRate             Decimal   @map("base_rate") @db.Decimal(10, 2)
+  minimumCharge        Decimal?  @map("minimum_charge") @db.Decimal(10, 2)
+  squareFootRate       Decimal?  @map("square_foot_rate") @db.Decimal(8, 4)
+  difficultyMultiplier Decimal   @default(1.0) @map("difficulty_multiplier") @db.Decimal(4, 3)
   conditionMultipliers Json      @default("{\"excellent\": 0.8, \"good\": 1.0, \"fair\": 1.3, \"poor\": 1.6}") @map("condition_multipliers") @db.JsonB
   cleaningType         String?   @map("cleaning_type") @db.VarChar(50)
   areaTypeId           String?   @map("area_type_id") @db.Uuid
@@ -393,9 +397,9 @@ model PricingRule {
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  areaType      AreaType? @relation(fields: [areaTypeId], references: [id])
+  areaType         AreaType?         @relation(fields: [areaTypeId], references: [id])
   pricingOverrides PricingOverride[]
-  createdByUser  User     @relation("CreatedPricingRules", fields: [createdByUserId], references: [id])
+  createdByUser    User              @relation("CreatedPricingRules", fields: [createdByUserId], references: [id])
 
   @@index([pricingType])
   @@index([cleaningType])
@@ -405,22 +409,22 @@ model PricingRule {
 }
 
 model PricingOverride {
-  id                String    @id @default(uuid()) @db.Uuid
-  facilityId        String    @map("facility_id") @db.Uuid
-  pricingRuleId     String    @map("pricing_rule_id") @db.Uuid
-  overrideRate      Decimal   @map("override_rate") @db.Decimal(10, 2)
-  overrideReason    String    @map("override_reason") @db.Text
-  effectiveDate     DateTime  @default(now()) @map("effective_date") @db.Date
-  expiryDate        DateTime? @map("expiry_date") @db.Date
+  id               String    @id @default(uuid()) @db.Uuid
+  facilityId       String    @map("facility_id") @db.Uuid
+  pricingRuleId    String    @map("pricing_rule_id") @db.Uuid
+  overrideRate     Decimal   @map("override_rate") @db.Decimal(10, 2)
+  overrideReason   String    @map("override_reason") @db.Text
+  effectiveDate    DateTime  @default(now()) @map("effective_date") @db.Date
+  expiryDate       DateTime? @map("expiry_date") @db.Date
   approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdByUserId  String    @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  facility        Facility     @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  pricingRule     PricingRule  @relation(fields: [pricingRuleId], references: [id])
-  approvedByUser  User?        @relation("ApprovedPricingOverrides", fields: [approvedByUserId], references: [id])
-  createdByUser   User         @relation("CreatedPricingOverrides", fields: [createdByUserId], references: [id])
+  facility       Facility    @relation("FacilityPricingOverrides", fields: [facilityId], references: [id], onDelete: Cascade)
+  pricingRule    PricingRule @relation(fields: [pricingRuleId], references: [id])
+  approvedByUser User?       @relation("ApprovedPricingOverrides", fields: [approvedByUserId], references: [id])
+  createdByUser  User        @relation("CreatedPricingOverrides", fields: [createdByUserId], references: [id])
 
   @@index([facilityId])
   @@index([effectiveDate])
