@@ -22,6 +22,15 @@ out/
 .env.production.local
 .env.*.local
 
+# Credentials & Secrets (CRITICAL: Never commit these!)
+*.pem
+*.key
+*.crt
+*KEYS*.txt
+*Connection KEYS*.txt
+supabase*.txt
+Supabase*
+
 # Testing
 coverage/
 .nyc_output/

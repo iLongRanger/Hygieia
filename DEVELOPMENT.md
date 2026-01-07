@@ -8,10 +8,10 @@
    ```
 
 2. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   cp apps/web/.env.example apps/web/.env
-   ```
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
 
 3. **Start development servers**
    ```bash

@@ -65,8 +65,7 @@ class AuthMiddleware {
       req.user = {
         id: user.id,
         email: user.email,
-        role: user.user_metadata.role,
-        tenant_id: user.user_metadata.tenant_id
+        role: user.user_metadata.role
       };
 
       next();
@@ -122,16 +121,14 @@ class RBACMiddleware {
     return async (req, res, next) => {
       const userRole = req.user.role;
       const userId = req.user.id;
-      const tenantId = req.user.tenant_id;
 
       // Check resource ownership for cleaners
       if (userRole === 'cleaner' && action === 'read') {
         const resourceId = req.params.id;
         const hasAccess = await this.checkCleanerResourceAccess(
-          userId, 
-          resourceId, 
-          resourceType, 
-          tenantId
+          userId,
+          resourceId,
+          resourceType
         );
 
         if (!hasAccess) {
@@ -145,31 +142,29 @@ class RBACMiddleware {
         }
       }
 
-      // Set tenant context for database queries
-      req.tenantId = tenantId;
       next();
     };
   }
 
-  static async checkCleanerResourceAccess(userId, resourceId, resourceType, tenantId) {
+  static async checkCleanerResourceAccess(userId, resourceId, resourceType) {
     // Check if resource is assigned to this cleaner
     switch (resourceType) {
       case 'work_order':
         const workOrder = await db.query(
-          'SELECT id FROM work_orders WHERE id = $1 AND assigned_cleaner_id = $2 AND tenant_id = $3',
-          [resourceId, userId, tenantId]
+          'SELECT id FROM work_orders WHERE id = $1 AND assigned_cleaner_id = $2',
+          [resourceId, userId]
         );
         return workOrder.rows.length > 0;
-      
+
       case 'facility_task':
         const facilityTask = await db.query(
           `SELECT ft.id FROM facility_tasks ft
            JOIN work_orders wo ON ft.work_order_id = wo.id
-           WHERE ft.id = $1 AND wo.assigned_cleaner_id = $2 AND wo.tenant_id = $3`,
-          [resourceId, userId, tenantId]
+           WHERE ft.id = $1 AND wo.assigned_cleaner_id = $2`,
+          [resourceId, userId]
         );
         return facilityTask.rows.length > 0;
-      
+
       default:
         return false;
     }
@@ -445,10 +440,10 @@ class DatabaseService {
   }
 
   // Example safe query method
-  static async getLeadsByTenant(tenantId, filters = {}) {
-    const whereClauses = ['tenant_id = $1'];
-    const queryParams = [tenantId];
-    let paramIndex = 2;
+  static async getLeads(filters = {}) {
+    const whereClauses = [];
+    const queryParams = [];
+    let paramIndex = 1;
 
     if (filters.status) {
       whereClauses.push(`status = $${paramIndex++}`);
@@ -457,8 +452,8 @@ class DatabaseService {
 
     if (filters.search) {
       whereClauses.push(`(
-        company_name ILIKE $${paramIndex++} OR 
-        contact_name ILIKE $${paramIndex++} OR 
+        company_name ILIKE $${paramIndex++} OR
+        contact_name ILIKE $${paramIndex++} OR
         primary_email ILIKE $${paramIndex++}
       )`);
       const searchTerm = `%${filters.search}%`;
@@ -468,7 +463,7 @@ class DatabaseService {
     const sql = `
       SELECT id, company_name, contact_name, primary_email, status, created_at
       FROM leads
-      WHERE ${whereClauses.join(' AND ')}
+      ${whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : ''}
       ORDER BY created_at DESC
     `;
 
@@ -624,7 +619,6 @@ class SecurityLogger {
       ip_address: req?.ip,
       user_agent: req?.get('User-Agent'),
       user_id: req?.user?.id,
-      tenant_id: req?.user?.tenant_id,
       session_id: req?.sessionID,
       request_id: req?.id
     };
@@ -635,12 +629,12 @@ class SecurityLogger {
     // Store in security events table
     await db.query(`
       INSERT INTO security_events (
-        event_type, details, ip_address, user_agent, 
-        user_id, tenant_id, session_id, request_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        event_type, details, ip_address, user_agent,
+        user_id, session_id, request_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [
       eventType, JSON.stringify(details), logEntry.ip_address,
-      logEntry.user_agent, logEntry.user_id, logEntry.tenant_id,
+      logEntry.user_agent, logEntry.user_id,
       logEntry.session_id, logEntry.request_id
     ]);
 
@@ -682,7 +676,7 @@ const SECURITY_EVENTS = {
   DATA_MODIFICATION: 'DATA_MODIFICATION',
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
   SUSPICIOUS_IP: 'SUSPICIOUS_IP_DETECTED',
-  BRUTE_FORCE: 'BRUTE_FORCE_ATTACK',
+  BRUTE_FORCE_ATTACK: 'BRUTE_FORCE_ATTACK',
   SQL_INJECTION_ATTEMPT: 'SQL_INJECTION_ATTEMPT',
   XSS_ATTEMPT: 'XSS_ATTEMPT'
 };

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redis for caching
 - TypeScript strict mode enabled
 - TDD workflow with Jest
+- Single-tenant architecture
 
 ---
 

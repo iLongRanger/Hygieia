@@ -100,10 +100,10 @@ Hygieia is a modern web application designed specifically for commercial cleanin
    ```
 
 3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your configuration
-   ```
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
 
 4. **Set up the database**
    ```bash
@@ -167,14 +167,15 @@ npm run deploy            # Deploy to production
 
 ## Documentation
 
-- [📚 Getting Started Guide](./docs/GETTING_STARTED.md)
-- [🏗️ Architecture Overview](./docs/ARCHITECTURE.md)
-- [📊 Data Model](./docs/DATA_MODEL.md)
-- [🔐 Authentication](./docs/AUTHENTICATION.md)
-- [🧪 Testing Guide](./docs/TESTING.md)
-- [🚀 Deployment Guide](./docs/DEPLOYMENT.md)
-- [📋 API Documentation](./docs/API.md)
-- [🎨 UI Components](./docs/UI_COMPONENTS.md)
+- [🏗️ Architecture Overview](./ARCHITECTURE.md)
+- [📊 Data Model](./Complete_Data_Model.md)
+- [🔐 Authentication Guide](./AUTHENTICATION.md)
+- [🧪 Testing Strategy](./Testing_Strategy.md)
+- [🔌 Security Implementation](./Security_Implementation_Guide.md)
+- [📋 API Error Handling](./API_Error_Handling.md)
+- [🔌 Integration Specifications](./Integration_Specifications.md)
+- [🚀 Deployment Configuration](./Deployment_Configuration.md)
+- [🤝 Contributing Guide](./CONTRIBUTING.md)
 
 ## Project Roadmap
 

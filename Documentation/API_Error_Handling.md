@@ -399,9 +399,8 @@ Track the following metrics:
    - P95 error response time
 
 3. **Error Distribution**
-   - Top error codes by frequency
-   - Error rate by user role
-   - Error rate by tenant
+    - Top error codes by frequency
+    - Error rate by user role
 
 4. **External Service Errors**
    - QuickBooks error rate
