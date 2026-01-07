@@ -51,7 +51,7 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-white">
-          Welcome back, {user?.firstName || 'Admin'}
+          Welcome back, {user?.fullName?.split(' ')[0] || 'Admin'}
         </h1>
         <p className="mt-2 text-gray-400">
           Here's what's happening with your cleaning operations today.

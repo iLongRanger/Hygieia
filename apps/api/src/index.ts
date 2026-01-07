@@ -13,6 +13,9 @@ import leadSourcesRoutes from './routes/leadSources';
 import leadsRoutes from './routes/leads';
 import accountsRoutes from './routes/accounts';
 import contactsRoutes from './routes/contacts';
+import facilitiesRoutes from './routes/facilities';
+import areaTypesRoutes from './routes/areaTypes';
+import areasRoutes from './routes/areas';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -39,6 +42,9 @@ app.use('/api/v1/lead-sources', leadSourcesRoutes);
 app.use('/api/v1/leads', leadsRoutes);
 app.use('/api/v1/accounts', accountsRoutes);
 app.use('/api/v1/contacts', contactsRoutes);
+app.use('/api/v1/facilities', facilitiesRoutes);
+app.use('/api/v1/area-types', areaTypesRoutes);
+app.use('/api/v1/areas', areasRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

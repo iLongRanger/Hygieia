@@ -17,9 +17,7 @@ const Header = () => {
 
         <div className="flex items-center gap-3 border-l border-white/10 pl-6">
           <div className="text-right">
-            <p className="text-sm font-medium text-white">
-              {user?.firstName} {user?.lastName}
-            </p>
+            <p className="text-sm font-medium text-white">{user?.fullName}</p>
             <p className="text-xs text-gray-400">{user?.role || 'Admin'}</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 border border-white/10 text-gold">

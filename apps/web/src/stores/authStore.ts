@@ -5,8 +5,7 @@ import api from '../lib/api';
 interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   role: string;
 }
 
@@ -28,12 +27,11 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: async (email, password) => {
         const response = await api.post('/auth/login', { email, password });
-        const { user, token } = response.data;
-        set({ user, token, isAuthenticated: true });
+        const { user, tokens } = response.data.data;
+        set({ user, token: tokens.accessToken, isAuthenticated: true });
       },
       logout: () => {
         set({ user: null, token: null, isAuthenticated: false });
-        localStorage.removeItem('auth-storage');
       },
       setUser: (user) => set({ user }),
       setToken: (token) => set({ token, isAuthenticated: !!token }),
