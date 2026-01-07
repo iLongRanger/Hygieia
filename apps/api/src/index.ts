@@ -1,12 +1,40 @@
-import express from 'express'
+import express, { Application } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import {
+  requestIdMiddleware,
+  errorHandler,
+  notFoundHandler,
+} from './middleware';
+import authRoutes from './routes/auth';
 
-const app = express()
-const PORT = process.env.PORT || 3001
+const app: Application = express();
+const PORT = process.env.PORT || 3001;
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
-})
+app.use(helmet());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true,
+  })
+);
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(requestIdMiddleware);
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.use('/api/v1/auth', authRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`API server running on port ${PORT}`)
-})
+  console.log(`API server running on port ${PORT}`);
+});
+
+export default app;
