@@ -8,6 +8,7 @@ import {
   notFoundHandler,
 } from './middleware';
 import authRoutes from './routes/auth';
+import usersRoutes from './routes/users';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', usersRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
