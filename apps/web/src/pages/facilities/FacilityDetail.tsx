@@ -89,20 +89,23 @@ const FacilityDetail = () => {
     try {
       setLoading(true);
       const data = await getFacility(id);
-      setFacility(data);
-      setFacilityForm({
-        name: data.name,
-        address: data.address,
-        buildingType: data.buildingType,
-        squareFeet: data.squareFeet ? Number(data.squareFeet) : null,
-        status: data.status,
-        notes: data.notes,
-        accessInstructions: data.accessInstructions,
-        parkingInfo: data.parkingInfo,
-        specialRequirements: data.specialRequirements,
-      });
+      if (data) {
+        setFacility(data);
+        setFacilityForm({
+          name: data.name,
+          address: data.address,
+          buildingType: data.buildingType,
+          squareFeet: data.squareFeet ? Number(data.squareFeet) : null,
+          status: data.status,
+          notes: data.notes,
+          accessInstructions: data.accessInstructions,
+          parkingInfo: data.parkingInfo,
+          specialRequirements: data.specialRequirements,
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch facility:', error);
+      setFacility(null);
     } finally {
       setLoading(false);
     }
@@ -115,18 +118,20 @@ const FacilityDetail = () => {
         facilityId: id,
         includeArchived: true,
       });
-      setAreas(response.data);
+      setAreas(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch areas:', error);
+      setAreas([]);
     }
   }, [id]);
 
   const fetchAreaTypes = useCallback(async () => {
     try {
       const response = await listAreaTypes({ limit: 100 });
-      setAreaTypes(response.data);
+      setAreaTypes(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch area types:', error);
+      setAreaTypes([]);
     }
   }, []);
 

@@ -50,11 +50,9 @@ const FacilitiesList = () => {
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    total: 0,
-    totalPages: 0,
-  });
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [formData, setFormData] = useState<CreateFacilityInput>({
     accountId: '',
@@ -65,34 +63,41 @@ const FacilitiesList = () => {
     notes: null,
   });
 
-  const fetchFacilities = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await listFacilities({
-        search: search || undefined,
-        page: pagination.page,
-      });
-      setFacilities(response.data);
-      setPagination(response.pagination);
-    } catch (error) {
-      console.error('Failed to fetch facilities:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, pagination.page]);
+  const fetchFacilities = useCallback(
+    async (currentPage: number, currentSearch: string) => {
+      try {
+        setLoading(true);
+        const response = await listFacilities({
+          search: currentSearch || undefined,
+          page: currentPage,
+        });
+        setFacilities(response?.data || []);
+        if (response?.pagination) {
+          setTotal(response.pagination.total);
+          setTotalPages(response.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch facilities:', error);
+        setFacilities([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const fetchAccounts = useCallback(async () => {
     try {
       const response = await listAccounts({ limit: 100 });
-      setAccounts(response.data);
+      setAccounts(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchFacilities();
-  }, [fetchFacilities]);
+    fetchFacilities(page, search);
+  }, [fetchFacilities, page, search]);
 
   useEffect(() => {
     fetchAccounts();
@@ -113,7 +118,7 @@ const FacilitiesList = () => {
         squareFeet: null,
         notes: null,
       });
-      fetchFacilities();
+      fetchFacilities(page, search);
     } catch (error) {
       console.error('Failed to create facility:', error);
     } finally {
@@ -124,7 +129,7 @@ const FacilitiesList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveFacility(id);
-      fetchFacilities();
+      fetchFacilities(page, search);
     } catch (error) {
       console.error('Failed to archive facility:', error);
     }
@@ -133,13 +138,14 @@ const FacilitiesList = () => {
   const handleRestore = async (id: string) => {
     try {
       await restoreFacility(id);
-      fetchFacilities();
+      fetchFacilities(page, search);
     } catch (error) {
       console.error('Failed to restore facility:', error);
     }
   };
 
   const formatAddress = (address: Facility['address']) => {
+    if (!address) return 'No address';
     const parts = [address.city, address.state].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : 'No address';
   };
@@ -154,7 +160,9 @@ const FacilitiesList = () => {
           </div>
           <div>
             <div className="font-medium text-white">{item.name}</div>
-            <div className="text-sm text-gray-400">{item.account.name}</div>
+            <div className="text-sm text-gray-400">
+              {item.account?.name || '-'}
+            </div>
           </div>
         </div>
       ),
@@ -189,7 +197,7 @@ const FacilitiesList = () => {
     {
       header: 'Areas',
       cell: (item: Facility) => (
-        <span className="text-gray-300">{item._count.areas}</span>
+        <span className="text-gray-300">{item._count?.areas ?? 0}</span>
       ),
     },
     {
@@ -270,7 +278,10 @@ const FacilitiesList = () => {
                 placeholder="Search facilities..."
                 icon={<Search className="h-4 w-4" />}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
               />
             </div>
             <Button variant="secondary" className="px-3">
@@ -289,26 +300,22 @@ const FacilitiesList = () => {
         <div className="border-t border-white/10 bg-navy-dark/30 p-4">
           <div className="flex items-center justify-between text-sm text-gray-400">
             <span>
-              Showing {facilities.length} of {pagination.total} facilities
+              Showing {facilities.length} of {total} facilities
             </span>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={pagination.page <= 1}
-                onClick={() =>
-                  setPagination((p) => ({ ...p, page: p.page - 1 }))
-                }
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
               >
                 Previous
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() =>
-                  setPagination((p) => ({ ...p, page: p.page + 1 }))
-                }
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
               >
                 Next
               </Button>
