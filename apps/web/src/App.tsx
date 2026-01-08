@@ -12,6 +12,7 @@ import ContactsList from './pages/contacts/ContactsList';
 import UsersList from './pages/users/UsersList';
 import FacilitiesList from './pages/facilities/FacilitiesList';
 import FacilityDetail from './pages/facilities/FacilityDetail';
+import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/contacts" element={<ContactsList />} />
           <Route path="/facilities" element={<FacilitiesList />} />
           <Route path="/facilities/:id" element={<FacilityDetail />} />
+          <Route path="/tasks" element={<TaskTemplatesList />} />
           <Route path="/users" element={<UsersList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
