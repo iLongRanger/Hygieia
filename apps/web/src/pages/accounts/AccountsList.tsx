@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -7,6 +8,7 @@ import {
   Archive,
   RotateCcw,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
@@ -26,9 +28,8 @@ import type { Account, CreateAccountInput } from '../../types/crm';
 import type { User } from '../../types/user';
 
 const ACCOUNT_TYPES = [
-  { value: 'prospect', label: 'Prospect' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'former', label: 'Former Customer' },
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'Residential' },
 ];
 
 const INDUSTRIES = [
@@ -51,6 +52,7 @@ const PAYMENT_TERMS = [
 ];
 
 const AccountsList = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -63,7 +65,7 @@ const AccountsList = () => {
 
   const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
-    type: 'prospect',
+    type: 'commercial',
     industry: null,
     website: null,
     billingEmail: null,
@@ -89,8 +91,9 @@ const AccountsList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch accounts:', error);
+        toast.error('Failed to load accounts');
         setAccounts([]);
-      } finally {
+      } finally{
         setLoading(false);
       }
     },
@@ -115,16 +118,21 @@ const AccountsList = () => {
   }, [fetchUsers]);
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.type) return;
+    if (!formData.name || !formData.type) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     try {
       setCreating(true);
       await createAccount(formData);
+      toast.success('Account created successfully');
       setShowCreateModal(false);
       resetForm();
       fetchAccounts(page, search);
     } catch (error) {
       console.error('Failed to create account:', error);
+      toast.error('Failed to create account. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -133,7 +141,7 @@ const AccountsList = () => {
   const resetForm = () => {
     setFormData({
       name: '',
-      type: 'prospect',
+      type: 'commercial',
       industry: null,
       website: null,
       billingEmail: null,
@@ -148,18 +156,22 @@ const AccountsList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveAccount(id);
+      toast.success('Account archived successfully');
       fetchAccounts(page, search);
     } catch (error) {
       console.error('Failed to archive account:', error);
+      toast.error('Failed to archive account');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreAccount(id);
+      toast.success('Account restored successfully');
       fetchAccounts(page, search);
     } catch (error) {
       console.error('Failed to restore account:', error);
+      toast.error('Failed to restore account');
     }
   };
 
@@ -233,7 +245,11 @@ const AccountsList = () => {
       header: 'Actions',
       cell: (item: Account) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/accounts/${item.id}`)}
+          >
             Manage
           </Button>
           {item.archivedAt ? (

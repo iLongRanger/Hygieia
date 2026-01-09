@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client'
+import * as bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('Starting database seed...')
 
+  // Create system roles
   const roles = await prisma.role.createMany({
     data: [
       {
@@ -40,6 +42,53 @@ async function main() {
   })
 
   console.log(`Created ${roles.count} system roles`)
+
+  // Create default super admin user
+  const defaultPassword = 'Admin@123'
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10)
+
+  // Check if admin user already exists
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: 'admin@company' }
+  })
+
+  if (!existingAdmin) {
+    // Create the admin user
+    const adminUser = await prisma.user.create({
+      data: {
+        email: 'admin@company',
+        passwordHash: hashedPassword,
+        fullName: 'System Administrator',
+        status: 'active'
+      }
+    })
+
+    // Get the owner role
+    const ownerRole = await prisma.role.findUnique({
+      where: { key: 'owner' }
+    })
+
+    if (ownerRole) {
+      // Assign owner role to admin user
+      await prisma.userRole.create({
+        data: {
+          userId: adminUser.id,
+          roleId: ownerRole.id
+        }
+      })
+
+      console.log('\n=================================================')
+      console.log('✅ Default Super Admin Created Successfully!')
+      console.log('=================================================')
+      console.log('Email:    admin@company')
+      console.log('Password:', defaultPassword)
+      console.log('=================================================')
+      console.log('⚠️  IMPORTANT: Change this password after first login!')
+      console.log('=================================================\n')
+    }
+  } else {
+    console.log('ℹ️  Default admin user already exists')
+  }
 
   console.log('Database seed completed successfully')
 }

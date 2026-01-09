@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Shield, Mail, Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
@@ -53,6 +54,7 @@ const UsersList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch users:', error);
+        toast.error('Failed to load users');
         setUsers([]);
       } finally {
         setLoading(false);
@@ -79,16 +81,21 @@ const UsersList = () => {
   }, [fetchRoles]);
 
   const handleCreate = async () => {
-    if (!formData.email || !formData.password || !formData.fullName) return;
+    if (!formData.email || !formData.password || !formData.fullName) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     try {
       setCreating(true);
       await createUser(formData);
+      toast.success('User created successfully');
       setShowCreateModal(false);
       resetForm();
       fetchUsers(page, search);
     } catch (error) {
       console.error('Failed to create user:', error);
+      toast.error('Failed to create user. Please try again.');
     } finally {
       setCreating(false);
     }

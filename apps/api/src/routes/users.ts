@@ -229,4 +229,52 @@ router.delete(
   }
 );
 
+router.patch(
+  '/:id/password',
+  authenticate,
+  requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+
+      if (!password || password.length < 8) {
+        throw new ValidationError('Password must be at least 8 characters long');
+      }
+
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      const user = await prisma.user.update({
+        where: { id },
+        data: { passwordHash: hashedPassword },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          avatarUrl: true,
+          status: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      await prisma.$disconnect();
+
+      if (!user) {
+        throw new NotFoundError('User');
+      }
+
+      res.json({ data: user, message: 'Password updated successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;

@@ -13,6 +13,7 @@ import {
   Calendar,
   Clock,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
@@ -26,6 +27,7 @@ import {
   listRoles,
   assignRole,
   removeRole,
+  changePassword,
 } from '../../lib/users';
 import type { User, Role, UpdateUserInput } from '../../types/user';
 
@@ -46,11 +48,14 @@ const UserDetail = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState<UpdateUserInput>({});
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const fetchUser = useCallback(async () => {
     if (!id) return;
@@ -67,6 +72,7 @@ const UserDetail = () => {
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
+      toast.error('Failed to load user details');
       setUser(null);
     } finally {
       setLoading(false);
@@ -92,10 +98,12 @@ const UserDetail = () => {
     try {
       setSaving(true);
       await updateUser(id, formData);
+      toast.success('User updated successfully');
       setShowEditModal(false);
       fetchUser();
     } catch (error) {
       console.error('Failed to update user:', error);
+      toast.error('Failed to update user. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -106,24 +114,31 @@ const UserDetail = () => {
     try {
       setDeleting(true);
       await deleteUser(id);
+      toast.success('User deleted successfully');
       navigate('/users');
     } catch (error) {
       console.error('Failed to delete user:', error);
+      toast.error('Failed to delete user. Please try again.');
     } finally {
       setDeleting(false);
     }
   };
 
   const handleAssignRole = async () => {
-    if (!id || !selectedRole) return;
+    if (!id || !selectedRole) {
+      toast.error('Please select a role');
+      return;
+    }
     try {
       setSaving(true);
       await assignRole(id, selectedRole);
+      toast.success('Role assigned successfully');
       setShowAddRoleModal(false);
       setSelectedRole('');
       fetchUser();
     } catch (error) {
       console.error('Failed to assign role:', error);
+      toast.error('Failed to assign role. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -133,9 +148,39 @@ const UserDetail = () => {
     if (!id) return;
     try {
       await removeRole(id, roleKey);
+      toast.success('Role removed successfully');
       fetchUser();
     } catch (error) {
       console.error('Failed to remove role:', error);
+      toast.error('Failed to remove role. Please try again.');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!id) return;
+
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await changePassword(id, newPassword);
+      toast.success('Password changed successfully');
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      toast.error('Failed to change password. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,6 +238,10 @@ const UserDetail = () => {
           <Button variant="secondary" onClick={() => setShowEditModal(true)}>
             <Edit2 className="mr-2 h-4 w-4" />
             Edit User
+          </Button>
+          <Button variant="secondary" onClick={() => setShowPasswordModal(true)}>
+            <Shield className="mr-2 h-4 w-4" />
+            Reset Password
           </Button>
           <Button
             variant="secondary"
@@ -436,6 +485,65 @@ const UserDetail = () => {
               disabled={!selectedRole}
             >
               Assign Role
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        isOpen={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false);
+          setNewPassword('');
+          setConfirmPassword('');
+        }}
+        title="Reset Password"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300">
+            Set a new password for <strong className="text-white">{user.fullName}</strong>.
+          </p>
+
+          <Input
+            label="New Password"
+            type="password"
+            placeholder="Enter new password (min 8 characters)"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+
+          <Input
+            label="Confirm Password"
+            type="password"
+            placeholder="Confirm new password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3">
+            <p className="text-sm text-gray-300">
+              The user will be able to login with this new password immediately.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowPasswordModal(false);
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordChange}
+              isLoading={saving}
+              disabled={!newPassword || !confirmPassword || newPassword.length < 8}
+            >
+              Reset Password
             </Button>
           </div>
         </div>
