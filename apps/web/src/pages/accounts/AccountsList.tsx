@@ -1,63 +1,265 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Plus,
+  Search,
+  Filter,
+  Building,
+  Archive,
+  RotateCcw,
+} from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
+import { Modal } from '../../components/ui/Modal';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
+import {
+  listAccounts,
+  createAccount,
+  archiveAccount,
+  restoreAccount,
+} from '../../lib/accounts';
+import { listUsers } from '../../lib/users';
+import type { Account, CreateAccountInput } from '../../types/crm';
+import type { User } from '../../types/user';
+
+const ACCOUNT_TYPES = [
+  { value: 'prospect', label: 'Prospect' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'former', label: 'Former Customer' },
+];
+
+const INDUSTRIES = [
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'office', label: 'Office' },
+  { value: 'education', label: 'Education' },
+  { value: 'hospitality', label: 'Hospitality' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'government', label: 'Government' },
+  { value: 'other', label: 'Other' },
+];
+
+const PAYMENT_TERMS = [
+  { value: 'NET15', label: 'Net 15' },
+  { value: 'NET30', label: 'Net 30' },
+  { value: 'NET45', label: 'Net 45' },
+  { value: 'NET60', label: 'Net 60' },
+  { value: 'DUE_ON_RECEIPT', label: 'Due on Receipt' },
+];
 
 const AccountsList = () => {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [search, setSearch] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData([
-        {
-          id: 1,
-          name: 'Grand Plaza Hotel',
-          type: 'Hospitality',
-          status: 'Active',
-          location: 'Downtown',
-        },
-        {
-          id: 2,
-          name: 'City Center Mall',
-          type: 'Retail',
-          status: 'Active',
-          location: 'North Side',
-        },
-        {
-          id: 3,
-          name: 'Tech Park One',
-          type: 'Office',
-          status: 'On Hold',
-          location: 'Business District',
-        },
-      ]);
-      setLoading(false);
-    }, 1000);
+  const [formData, setFormData] = useState<CreateAccountInput>({
+    name: '',
+    type: 'prospect',
+    industry: null,
+    website: null,
+    billingEmail: null,
+    billingPhone: null,
+    paymentTerms: 'NET30',
+    creditLimit: null,
+    accountManagerId: null,
+    notes: null,
+  });
+
+  const fetchAccounts = useCallback(
+    async (currentPage: number, currentSearch: string) => {
+      try {
+        setLoading(true);
+        const response = await listAccounts({
+          search: currentSearch || undefined,
+          page: currentPage,
+        });
+        setAccounts(response?.data || []);
+        if (response?.pagination) {
+          setTotal(response.pagination.total);
+          setTotalPages(response.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch accounts:', error);
+        setAccounts([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await listUsers({ limit: 100 });
+      setUsers(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchAccounts(page, search);
+  }, [fetchAccounts, page, search]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleCreate = async () => {
+    if (!formData.name || !formData.type) return;
+
+    try {
+      setCreating(true);
+      await createAccount(formData);
+      setShowCreateModal(false);
+      resetForm();
+      fetchAccounts(page, search);
+    } catch (error) {
+      console.error('Failed to create account:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      type: 'prospect',
+      industry: null,
+      website: null,
+      billingEmail: null,
+      billingPhone: null,
+      paymentTerms: 'NET30',
+      creditLimit: null,
+      accountManagerId: null,
+      notes: null,
+    });
+  };
+
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveAccount(id);
+      fetchAccounts(page, search);
+    } catch (error) {
+      console.error('Failed to archive account:', error);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreAccount(id);
+      fetchAccounts(page, search);
+    } catch (error) {
+      console.error('Failed to restore account:', error);
+    }
+  };
+
+  const getTypeVariant = (type: string) => {
+    switch (type) {
+      case 'customer':
+        return 'success';
+      case 'prospect':
+        return 'info';
+      case 'former':
+        return 'warning';
+      default:
+        return 'default';
+    }
+  };
+
   const columns = [
-    { header: 'Account Name', accessorKey: 'name' as const },
-    { header: 'Type', accessorKey: 'type' as const },
-    { header: 'Location', accessorKey: 'location' as const },
+    {
+      header: 'Account',
+      cell: (item: Account) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
+            <Building className="h-5 w-5 text-gold" />
+          </div>
+          <div>
+            <div className="font-medium text-white">{item.name}</div>
+            <div className="text-sm text-gray-400">
+              {item.industry || 'No industry'}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: 'Type',
+      cell: (item: Account) => (
+        <Badge variant={getTypeVariant(item.type)}>
+          {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Account Manager',
+      cell: (item: Account) => (
+        <span className="text-gray-300">
+          {item.accountManager?.fullName || 'Unassigned'}
+        </span>
+      ),
+    },
+    {
+      header: 'Facilities',
+      cell: (item: Account) => (
+        <span className="text-gray-300">{item._count?.facilities ?? 0}</span>
+      ),
+    },
+    {
+      header: 'Contacts',
+      cell: (item: Account) => (
+        <span className="text-gray-300">{item._count?.contacts ?? 0}</span>
+      ),
+    },
     {
       header: 'Status',
-      cell: (item: any) => (
-        <Badge variant={item.status === 'Active' ? 'success' : 'warning'}>
-          {item.status}
+      cell: (item: Account) => (
+        <Badge variant={item.archivedAt ? 'error' : 'success'}>
+          {item.archivedAt ? 'Archived' : 'Active'}
         </Badge>
       ),
     },
     {
       header: 'Actions',
-      cell: () => (
-        <Button variant="ghost" size="sm">
-          Manage
-        </Button>
+      cell: (item: Account) => (
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm">
+            Manage
+          </Button>
+          {item.archivedAt ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRestore(item.id);
+              }}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleArchive(item.id);
+              }}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -66,7 +268,7 @@ const AccountsList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Accounts</h1>
-        <Button>
+        <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add New Account
         </Button>
@@ -79,6 +281,11 @@ const AccountsList = () => {
               <Input
                 placeholder="Search accounts..."
                 icon={<Search className="h-4 w-4" />}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
               />
             </div>
             <Button variant="secondary" className="px-3">
@@ -87,22 +294,165 @@ const AccountsList = () => {
           </div>
         </div>
 
-        <Table data={data} columns={columns} isLoading={loading} />
+        <Table data={accounts} columns={columns} isLoading={loading} />
 
         <div className="border-t border-white/10 bg-navy-dark/30 p-4">
           <div className="flex items-center justify-between text-sm text-gray-400">
-            <span>Showing 1-3 of 3 accounts</span>
+            <span>
+              Showing {accounts.length} of {total} accounts
+            </span>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="secondary" size="sm" disabled>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>
           </div>
         </div>
       </Card>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Add New Account"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Account Name"
+            placeholder="Acme Corporation"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Account Type"
+              options={ACCOUNT_TYPES}
+              value={formData.type}
+              onChange={(value) => setFormData({ ...formData, type: value })}
+            />
+            <Select
+              label="Industry"
+              placeholder="Select industry"
+              options={INDUSTRIES}
+              value={formData.industry || ''}
+              onChange={(value) =>
+                setFormData({ ...formData, industry: value || null })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Website"
+              placeholder="https://example.com"
+              value={formData.website || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, website: e.target.value || null })
+              }
+            />
+            <Select
+              label="Account Manager"
+              placeholder="Select manager"
+              options={users.map((u) => ({
+                value: u.id,
+                label: u.fullName,
+              }))}
+              value={formData.accountManagerId || ''}
+              onChange={(value) =>
+                setFormData({ ...formData, accountManagerId: value || null })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Billing Email"
+              type="email"
+              placeholder="billing@example.com"
+              value={formData.billingEmail || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  billingEmail: e.target.value || null,
+                })
+              }
+            />
+            <Input
+              label="Billing Phone"
+              placeholder="(555) 123-4567"
+              value={formData.billingPhone || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  billingPhone: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Payment Terms"
+              options={PAYMENT_TERMS}
+              value={formData.paymentTerms || 'NET30'}
+              onChange={(value) =>
+                setFormData({ ...formData, paymentTerms: value })
+              }
+            />
+            <Input
+              label="Credit Limit"
+              type="number"
+              placeholder="10000"
+              value={formData.creditLimit || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  creditLimit: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </div>
+
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes about this account..."
+            value={formData.notes || ''}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value || null })
+            }
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              isLoading={creating}
+              disabled={!formData.name || !formData.type}
+            >
+              Create Account
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
