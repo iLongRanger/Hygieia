@@ -87,6 +87,14 @@ function formatUser(user: UserWithRoles) {
     role: primaryRole
       ? { id: primaryRole.id, key: primaryRole.key, label: primaryRole.label }
       : null,
+    roles: user.roles.map(ur => ({
+      id: ur.id,
+      role: {
+        id: ur.role.id,
+        key: ur.role.key,
+        label: ur.role.label,
+      },
+    })),
   };
 }
 

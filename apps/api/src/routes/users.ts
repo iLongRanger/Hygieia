@@ -242,7 +242,7 @@ router.patch(
         throw new ValidationError('Password must be at least 8 characters long');
       }
 
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const { PrismaClient } = require('@prisma/client');
