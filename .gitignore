@@ -41,6 +41,7 @@ test-results/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *~
