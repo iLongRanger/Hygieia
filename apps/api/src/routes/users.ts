@@ -16,6 +16,7 @@ import {
   removeRole,
   listRoles,
   getUserByEmail,
+  changePassword,
 } from '../services/userService';
 import {
   createUserSchema,
@@ -242,33 +243,12 @@ router.patch(
         throw new ValidationError('Password must be at least 8 characters long');
       }
 
-      const bcrypt = require('bcryptjs');
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
-
-      const user = await prisma.user.update({
-        where: { id },
-        data: { passwordHash: hashedPassword },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phone: true,
-          avatarUrl: true,
-          status: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      await prisma.$disconnect();
-
-      if (!user) {
-        throw new NotFoundError('User');
+      const existingUser = await getUserById(id);
+      if (!existingUser) {
+        throw new NotFoundError('User not found', { userId: id });
       }
+
+      const user = await changePassword(id, password);
 
       res.json({ data: user, message: 'Password updated successfully' });
     } catch (error) {
