@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -9,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
@@ -48,6 +50,7 @@ const DIFFICULTY_LEVELS = [
 ];
 
 const TaskTemplatesList = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
@@ -87,6 +90,7 @@ const TaskTemplatesList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch task templates:', error);
+        toast.error('Failed to load task templates');
         setTemplates([]);
       } finally {
         setLoading(false);
@@ -113,16 +117,21 @@ const TaskTemplatesList = () => {
   }, [fetchAreaTypes]);
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.cleaningType) return;
+    if (!formData.name || !formData.cleaningType) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     try {
       setCreating(true);
       await createTaskTemplate(formData);
+      toast.success('Task template created successfully');
       setShowCreateModal(false);
       resetForm();
       fetchTemplates(page, search);
     } catch (error) {
       console.error('Failed to create task template:', error);
+      toast.error('Failed to create task template. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -147,18 +156,22 @@ const TaskTemplatesList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveTaskTemplate(id);
+      toast.success('Task template archived successfully');
       fetchTemplates(page, search);
     } catch (error) {
       console.error('Failed to archive template:', error);
+      toast.error('Failed to archive task template');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreTaskTemplate(id);
+      toast.success('Task template restored successfully');
       fetchTemplates(page, search);
     } catch (error) {
       console.error('Failed to restore template:', error);
+      toast.error('Failed to restore task template');
     }
   };
 
@@ -239,6 +252,13 @@ const TaskTemplatesList = () => {
       header: 'Actions',
       cell: (item: TaskTemplate) => (
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/tasks/${item.id}`)}
+          >
+            View
+          </Button>
           {item.archivedAt ? (
             <Button
               variant="ghost"

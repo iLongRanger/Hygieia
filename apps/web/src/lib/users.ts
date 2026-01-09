@@ -60,3 +60,11 @@ export async function listRoles(): Promise<{ data: Role[] }> {
   const response = await api.get('/users/roles');
   return response.data;
 }
+
+export async function changePassword(
+  userId: string,
+  password: string
+): Promise<User> {
+  const response = await api.patch(`/users/${userId}/password`, { password });
+  return response.data.data;
+}

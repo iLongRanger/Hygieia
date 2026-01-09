@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -10,6 +11,7 @@ import {
   Star,
   CreditCard,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
@@ -28,6 +30,7 @@ import { listAccounts } from '../../lib/accounts';
 import type { Contact, CreateContactInput, Account } from '../../types/crm';
 
 const ContactsList = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -66,6 +69,7 @@ const ContactsList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch contacts:', error);
+        toast.error('Failed to load contacts');
         setContacts([]);
       } finally {
         setLoading(false);
@@ -92,16 +96,21 @@ const ContactsList = () => {
   }, [fetchAccounts]);
 
   const handleCreate = async () => {
-    if (!formData.name) return;
+    if (!formData.name) {
+      toast.error('Please enter a contact name');
+      return;
+    }
 
     try {
       setCreating(true);
       await createContact(formData);
+      toast.success('Contact created successfully');
       setShowCreateModal(false);
       resetForm();
       fetchContacts(page, search);
     } catch (error) {
       console.error('Failed to create contact:', error);
+      toast.error('Failed to create contact. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -125,18 +134,22 @@ const ContactsList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveContact(id);
+      toast.success('Contact archived successfully');
       fetchContacts(page, search);
     } catch (error) {
       console.error('Failed to archive contact:', error);
+      toast.error('Failed to archive contact');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreContact(id);
+      toast.success('Contact restored successfully');
       fetchContacts(page, search);
     } catch (error) {
       console.error('Failed to restore contact:', error);
+      toast.error('Failed to restore contact');
     }
   };
 
@@ -204,7 +217,11 @@ const ContactsList = () => {
       header: 'Actions',
       cell: (item: Contact) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/contacts/${item.id}`)}
+          >
             Edit
           </Button>
           {item.archivedAt ? (
