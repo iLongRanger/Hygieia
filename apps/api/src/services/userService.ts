@@ -316,6 +316,22 @@ export async function removeRole(userId: string, roleKey: UserRole) {
   return getUserById(userId);
 }
 
+export async function changePassword(userId: string, password: string) {
+  if (!password || password.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: hashedPassword },
+    select: userSelect,
+  });
+
+  return formatUser(user);
+}
+
 export async function listRoles() {
   return prisma.role.findMany({
     select: {
