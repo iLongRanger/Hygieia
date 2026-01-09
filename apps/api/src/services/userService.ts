@@ -1,6 +1,9 @@
 import { prisma } from '../lib/prisma';
 import { UserRole, isValidRole } from '../types/roles';
 import { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 10;
 
 export interface UserListParams {
   page?: number;
@@ -14,6 +17,7 @@ export interface UserListParams {
 
 export interface UserCreateInput {
   email: string;
+  password: string;
   fullName: string;
   phone?: string | null;
   avatarUrl?: string | null;
@@ -182,6 +186,7 @@ export async function getUserByEmail(email: string) {
 export async function createUser(input: UserCreateInput) {
   const {
     email,
+    password,
     fullName,
     phone,
     avatarUrl,
@@ -205,10 +210,12 @@ export async function createUser(input: UserCreateInput) {
     });
   }
 
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
   const user = await prisma.user.create({
     data: {
-      supabaseUserId: crypto.randomUUID(),
       email: email.toLowerCase(),
+      passwordHash,
       fullName,
       phone,
       avatarUrl,
