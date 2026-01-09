@@ -10,6 +10,7 @@ import LeadsList from './pages/leads/LeadsList';
 import AccountsList from './pages/accounts/AccountsList';
 import ContactsList from './pages/contacts/ContactsList';
 import UsersList from './pages/users/UsersList';
+import UserDetail from './pages/users/UserDetail';
 import FacilitiesList from './pages/facilities/FacilitiesList';
 import FacilityDetail from './pages/facilities/FacilityDetail';
 import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
@@ -30,6 +31,7 @@ function App() {
           <Route path="/facilities/:id" element={<FacilityDetail />} />
           <Route path="/tasks" element={<TaskTemplatesList />} />
           <Route path="/users" element={<UsersList />} />
+          <Route path="/users/:id" element={<UserDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

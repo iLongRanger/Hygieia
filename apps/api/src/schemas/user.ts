@@ -11,6 +11,7 @@ export const userRoleSchema = z.enum(['owner', 'admin', 'manager', 'cleaner']);
 
 export const createUserSchema = z.object({
   email: emailSchema,
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128),
   fullName: z.string().min(1, 'Full name is required').max(255),
   phone: phoneSchema,
   avatarUrl: z.string().url().optional().nullable(),

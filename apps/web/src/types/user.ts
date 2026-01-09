@@ -40,7 +40,7 @@ export interface CreateUserInput {
   fullName: string;
   phone?: string | null;
   status?: string;
-  roles?: string[];
+  role?: string;
 }
 
 export interface UpdateUserInput {

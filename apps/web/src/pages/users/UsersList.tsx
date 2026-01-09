@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Shield, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Shield, Mail, Eye } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
@@ -17,6 +18,7 @@ const USER_STATUSES = [
 ];
 
 const UsersList = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -33,7 +35,7 @@ const UsersList = () => {
     fullName: '',
     phone: null,
     status: 'active',
-    roles: [],
+    role: 'cleaner',
   });
 
   const fetchUsers = useCallback(
@@ -99,7 +101,7 @@ const UsersList = () => {
       fullName: '',
       phone: null,
       status: 'active',
-      roles: [],
+      role: 'cleaner',
     });
   };
 
@@ -172,9 +174,17 @@ const UsersList = () => {
     },
     {
       header: 'Actions',
-      cell: () => (
-        <Button variant="ghost" size="sm">
-          Edit
+      cell: (item: User) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/users/${item.id}`);
+          }}
+        >
+          <Eye className="mr-1 h-4 w-4" />
+          View
         </Button>
       ),
     },
@@ -291,15 +301,15 @@ const UsersList = () => {
           </div>
 
           <Select
-            label="Roles"
-            placeholder="Select roles"
+            label="Role"
+            placeholder="Select role"
             options={roles.map((r) => ({
               value: r.key,
               label: r.label,
             }))}
-            value={formData.roles?.[0] || ''}
+            value={formData.role || 'cleaner'}
             onChange={(value) =>
-              setFormData({ ...formData, roles: value ? [value] : [] })
+              setFormData({ ...formData, role: value || 'cleaner' })
             }
           />
 
