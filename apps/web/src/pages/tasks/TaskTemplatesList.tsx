@@ -9,6 +9,7 @@ import {
   RotateCcw,
   CheckCircle,
   XCircle,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -56,10 +57,18 @@ const TaskTemplatesList = () => {
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Filter states
+  const [cleaningTypeFilter, setCleaningTypeFilter] = useState<string>('');
+  const [areaTypeFilter, setAreaTypeFilter] = useState<string>('');
+  const [isGlobalFilter, setIsGlobalFilter] = useState<string>('');
+  const [isActiveFilter, setIsActiveFilter] = useState<string>('');
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [formData, setFormData] = useState<CreateTaskTemplateInput>({
     name: '',
@@ -76,12 +85,23 @@ const TaskTemplatesList = () => {
   });
 
   const fetchTemplates = useCallback(
-    async (currentPage: number, currentSearch: string) => {
+    async (currentPage: number, currentSearch: string, filters?: {
+      cleaningType?: string;
+      areaTypeId?: string;
+      isGlobal?: boolean;
+      isActive?: boolean;
+      includeArchived?: boolean;
+    }) => {
       try {
         setLoading(true);
         const response = await listTaskTemplates({
           search: currentSearch || undefined,
           page: currentPage,
+          cleaningType: filters?.cleaningType || undefined,
+          areaTypeId: filters?.areaTypeId || undefined,
+          isGlobal: filters?.isGlobal,
+          isActive: filters?.isActive,
+          includeArchived: filters?.includeArchived,
         });
         setTemplates(response?.data || []);
         if (response?.pagination) {
@@ -109,8 +129,14 @@ const TaskTemplatesList = () => {
   }, []);
 
   useEffect(() => {
-    fetchTemplates(page, search);
-  }, [fetchTemplates, page, search]);
+    fetchTemplates(page, search, {
+      cleaningType: cleaningTypeFilter,
+      areaTypeId: areaTypeFilter,
+      isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
+      isActive: isActiveFilter ? isActiveFilter === 'true' : undefined,
+      includeArchived,
+    });
+  }, [fetchTemplates, page, search, cleaningTypeFilter, areaTypeFilter, isGlobalFilter, isActiveFilter, includeArchived]);
 
   useEffect(() => {
     fetchAreaTypes();
@@ -128,7 +154,13 @@ const TaskTemplatesList = () => {
       toast.success('Task template created successfully');
       setShowCreateModal(false);
       resetForm();
-      fetchTemplates(page, search);
+      fetchTemplates(page, search, {
+        cleaningType: cleaningTypeFilter,
+        areaTypeId: areaTypeFilter,
+        isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
+        isActive: isActiveFilter ? isActiveFilter === 'true' : undefined,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to create task template:', error);
       toast.error('Failed to create task template. Please try again.');
@@ -153,11 +185,28 @@ const TaskTemplatesList = () => {
     });
   };
 
+  const clearFilters = () => {
+    setCleaningTypeFilter('');
+    setAreaTypeFilter('');
+    setIsGlobalFilter('');
+    setIsActiveFilter('');
+    setIncludeArchived(false);
+    setPage(1);
+  };
+
+  const hasActiveFilters = cleaningTypeFilter || areaTypeFilter || isGlobalFilter || isActiveFilter || includeArchived;
+
   const handleArchive = async (id: string) => {
     try {
       await archiveTaskTemplate(id);
       toast.success('Task template archived successfully');
-      fetchTemplates(page, search);
+      fetchTemplates(page, search, {
+        cleaningType: cleaningTypeFilter,
+        areaTypeId: areaTypeFilter,
+        isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
+        isActive: isActiveFilter ? isActiveFilter === 'true' : undefined,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to archive template:', error);
       toast.error('Failed to archive task template');
@@ -168,7 +217,13 @@ const TaskTemplatesList = () => {
     try {
       await restoreTaskTemplate(id);
       toast.success('Task template restored successfully');
-      fetchTemplates(page, search);
+      fetchTemplates(page, search, {
+        cleaningType: cleaningTypeFilter,
+        areaTypeId: areaTypeFilter,
+        isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
+        isActive: isActiveFilter ? isActiveFilter === 'true' : undefined,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to restore template:', error);
       toast.error('Failed to restore task template');
@@ -311,10 +366,79 @@ const TaskTemplatesList = () => {
                 }}
               />
             </div>
-            <Button variant="secondary" className="px-3">
+            <Button
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+            >
               <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">•</span>}
             </Button>
           </div>
+
+          {showFilterPanel && (
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Select
+                label="Cleaning Type"
+                placeholder="All Types"
+                options={CLEANING_TYPES}
+                value={cleaningTypeFilter}
+                onChange={setCleaningTypeFilter}
+              />
+              <Select
+                label="Area Type"
+                placeholder="All Area Types"
+                options={areaTypes.map((at) => ({
+                  value: at.id,
+                  label: at.name,
+                }))}
+                value={areaTypeFilter}
+                onChange={setAreaTypeFilter}
+              />
+              <Select
+                label="Scope"
+                placeholder="All Scopes"
+                options={[
+                  { value: 'true', label: 'Global' },
+                  { value: 'false', label: 'Facility' },
+                ]}
+                value={isGlobalFilter}
+                onChange={setIsGlobalFilter}
+              />
+              <Select
+                label="Active Status"
+                placeholder="All Statuses"
+                options={[
+                  { value: 'true', label: 'Active' },
+                  { value: 'false', label: 'Inactive' },
+                ]}
+                value={isActiveFilter}
+                onChange={setIsActiveFilter}
+              />
+              <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Include Archived
+                </label>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <Table data={templates} columns={columns} isLoading={loading} />

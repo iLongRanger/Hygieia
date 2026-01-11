@@ -8,6 +8,7 @@ import {
   MapPin,
   Archive,
   RotateCcw,
+  X,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -42,6 +43,11 @@ const BUILDING_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
 const FacilitiesList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -49,10 +55,17 @@ const FacilitiesList = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Filter states
+  const [accountFilter, setAccountFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [buildingTypeFilter, setBuildingTypeFilter] = useState<string>('');
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [formData, setFormData] = useState<CreateFacilityInput>({
     accountId: '',
@@ -64,12 +77,21 @@ const FacilitiesList = () => {
   });
 
   const fetchFacilities = useCallback(
-    async (currentPage: number, currentSearch: string) => {
+    async (currentPage: number, currentSearch: string, filters?: {
+      accountId?: string;
+      status?: string;
+      buildingType?: string;
+      includeArchived?: boolean;
+    }) => {
       try {
         setLoading(true);
         const response = await listFacilities({
           search: currentSearch || undefined,
           page: currentPage,
+          accountId: filters?.accountId || undefined,
+          status: filters?.status || undefined,
+          buildingType: filters?.buildingType || undefined,
+          includeArchived: filters?.includeArchived,
         });
         setFacilities(response?.data || []);
         if (response?.pagination) {
@@ -96,8 +118,13 @@ const FacilitiesList = () => {
   }, []);
 
   useEffect(() => {
-    fetchFacilities(page, search);
-  }, [fetchFacilities, page, search]);
+    fetchFacilities(page, search, {
+      accountId: accountFilter,
+      status: statusFilter,
+      buildingType: buildingTypeFilter,
+      includeArchived,
+    });
+  }, [fetchFacilities, page, search, accountFilter, statusFilter, buildingTypeFilter, includeArchived]);
 
   useEffect(() => {
     fetchAccounts();
@@ -118,7 +145,12 @@ const FacilitiesList = () => {
         squareFeet: null,
         notes: null,
       });
-      fetchFacilities(page, search);
+      fetchFacilities(page, search, {
+        accountId: accountFilter,
+        status: statusFilter,
+        buildingType: buildingTypeFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to create facility:', error);
     } finally {
@@ -126,10 +158,25 @@ const FacilitiesList = () => {
     }
   };
 
+  const clearFilters = () => {
+    setAccountFilter('');
+    setStatusFilter('');
+    setBuildingTypeFilter('');
+    setIncludeArchived(false);
+    setPage(1);
+  };
+
+  const hasActiveFilters = accountFilter || statusFilter || buildingTypeFilter || includeArchived;
+
   const handleArchive = async (id: string) => {
     try {
       await archiveFacility(id);
-      fetchFacilities(page, search);
+      fetchFacilities(page, search, {
+        accountId: accountFilter,
+        status: statusFilter,
+        buildingType: buildingTypeFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to archive facility:', error);
     }
@@ -138,7 +185,12 @@ const FacilitiesList = () => {
   const handleRestore = async (id: string) => {
     try {
       await restoreFacility(id);
-      fetchFacilities(page, search);
+      fetchFacilities(page, search, {
+        accountId: accountFilter,
+        status: statusFilter,
+        buildingType: buildingTypeFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to restore facility:', error);
     }
@@ -284,10 +336,66 @@ const FacilitiesList = () => {
                 }}
               />
             </div>
-            <Button variant="secondary" className="px-3">
+            <Button
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+            >
               <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">•</span>}
             </Button>
           </div>
+
+          {showFilterPanel && (
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Select
+                label="Account"
+                placeholder="All Accounts"
+                options={accounts.map((a) => ({
+                  value: a.id,
+                  label: a.name,
+                }))}
+                value={accountFilter}
+                onChange={setAccountFilter}
+              />
+              <Select
+                label="Status"
+                placeholder="All Statuses"
+                options={STATUS_OPTIONS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              <Select
+                label="Building Type"
+                placeholder="All Types"
+                options={BUILDING_TYPES}
+                value={buildingTypeFilter}
+                onChange={setBuildingTypeFilter}
+              />
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Include Archived
+                </label>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <Table

@@ -7,6 +7,7 @@ import {
   Building,
   Archive,
   RotateCcw,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -58,10 +59,16 @@ const AccountsList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Filter states
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [accountManagerFilter, setAccountManagerFilter] = useState<string>('');
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
@@ -77,12 +84,19 @@ const AccountsList = () => {
   });
 
   const fetchAccounts = useCallback(
-    async (currentPage: number, currentSearch: string) => {
+    async (currentPage: number, currentSearch: string, filters?: {
+      type?: string;
+      accountManagerId?: string;
+      includeArchived?: boolean;
+    }) => {
       try {
         setLoading(true);
         const response = await listAccounts({
           search: currentSearch || undefined,
           page: currentPage,
+          type: filters?.type || undefined,
+          accountManagerId: filters?.accountManagerId || undefined,
+          includeArchived: filters?.includeArchived,
         });
         setAccounts(response?.data || []);
         if (response?.pagination) {
@@ -110,8 +124,12 @@ const AccountsList = () => {
   }, []);
 
   useEffect(() => {
-    fetchAccounts(page, search);
-  }, [fetchAccounts, page, search]);
+    fetchAccounts(page, search, {
+      type: typeFilter,
+      accountManagerId: accountManagerFilter,
+      includeArchived,
+    });
+  }, [fetchAccounts, page, search, typeFilter, accountManagerFilter, includeArchived]);
 
   useEffect(() => {
     fetchUsers();
@@ -129,7 +147,11 @@ const AccountsList = () => {
       toast.success('Account created successfully');
       setShowCreateModal(false);
       resetForm();
-      fetchAccounts(page, search);
+      fetchAccounts(page, search, {
+        type: typeFilter,
+        accountManagerId: accountManagerFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to create account:', error);
       toast.error('Failed to create account. Please try again.');
@@ -153,11 +175,24 @@ const AccountsList = () => {
     });
   };
 
+  const clearFilters = () => {
+    setTypeFilter('');
+    setAccountManagerFilter('');
+    setIncludeArchived(false);
+    setPage(1);
+  };
+
+  const hasActiveFilters = typeFilter || accountManagerFilter || includeArchived;
+
   const handleArchive = async (id: string) => {
     try {
       await archiveAccount(id);
       toast.success('Account archived successfully');
-      fetchAccounts(page, search);
+      fetchAccounts(page, search, {
+        type: typeFilter,
+        accountManagerId: accountManagerFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to archive account:', error);
       toast.error('Failed to archive account');
@@ -168,7 +203,11 @@ const AccountsList = () => {
     try {
       await restoreAccount(id);
       toast.success('Account restored successfully');
-      fetchAccounts(page, search);
+      fetchAccounts(page, search, {
+        type: typeFilter,
+        accountManagerId: accountManagerFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to restore account:', error);
       toast.error('Failed to restore account');
@@ -304,10 +343,59 @@ const AccountsList = () => {
                 }}
               />
             </div>
-            <Button variant="secondary" className="px-3">
+            <Button
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+            >
               <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">•</span>}
             </Button>
           </div>
+
+          {showFilterPanel && (
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Select
+                label="Type"
+                placeholder="All Types"
+                options={ACCOUNT_TYPES}
+                value={typeFilter}
+                onChange={setTypeFilter}
+              />
+              <Select
+                label="Account Manager"
+                placeholder="All Managers"
+                options={users.map((u) => ({
+                  value: u.id,
+                  label: u.fullName,
+                }))}
+                value={accountManagerFilter}
+                onChange={setAccountManagerFilter}
+              />
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Include Archived
+                </label>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <Table data={accounts} columns={columns} isLoading={loading} />
