@@ -6,6 +6,7 @@ import {
   Archive,
   RotateCcw,
   DollarSign,
+  X,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -43,10 +44,17 @@ const LeadsList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [leadSourceFilter, setLeadSourceFilter] = useState<string>('');
+  const [assignedToFilter, setAssignedToFilter] = useState<string>('');
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [formData, setFormData] = useState<CreateLeadInput>({
     contactName: '',
@@ -63,12 +71,21 @@ const LeadsList = () => {
   });
 
   const fetchLeads = useCallback(
-    async (currentPage: number, currentSearch: string) => {
+    async (currentPage: number, currentSearch: string, filters?: {
+      status?: string;
+      leadSourceId?: string;
+      assignedToUserId?: string;
+      includeArchived?: boolean;
+    }) => {
       try {
         setLoading(true);
         const response = await listLeads({
           search: currentSearch || undefined,
           page: currentPage,
+          status: filters?.status || undefined,
+          leadSourceId: filters?.leadSourceId || undefined,
+          assignedToUserId: filters?.assignedToUserId || undefined,
+          includeArchived: filters?.includeArchived,
         });
         setLeads(response?.data || []);
         if (response?.pagination) {
@@ -104,8 +121,13 @@ const LeadsList = () => {
   }, []);
 
   useEffect(() => {
-    fetchLeads(page, search);
-  }, [fetchLeads, page, search]);
+    fetchLeads(page, search, {
+      status: statusFilter,
+      leadSourceId: leadSourceFilter,
+      assignedToUserId: assignedToFilter,
+      includeArchived,
+    });
+  }, [fetchLeads, page, search, statusFilter, leadSourceFilter, assignedToFilter, includeArchived]);
 
   useEffect(() => {
     fetchLeadSources();
@@ -120,7 +142,12 @@ const LeadsList = () => {
       await createLead(formData);
       setShowCreateModal(false);
       resetForm();
-      fetchLeads(page, search);
+      fetchLeads(page, search, {
+        status: statusFilter,
+        leadSourceId: leadSourceFilter,
+        assignedToUserId: assignedToFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to create lead:', error);
     } finally {
@@ -144,10 +171,25 @@ const LeadsList = () => {
     });
   };
 
+  const clearFilters = () => {
+    setStatusFilter('');
+    setLeadSourceFilter('');
+    setAssignedToFilter('');
+    setIncludeArchived(false);
+    setPage(1);
+  };
+
+  const hasActiveFilters = statusFilter || leadSourceFilter || assignedToFilter || includeArchived;
+
   const handleArchive = async (id: string) => {
     try {
       await archiveLead(id);
-      fetchLeads(page, search);
+      fetchLeads(page, search, {
+        status: statusFilter,
+        leadSourceId: leadSourceFilter,
+        assignedToUserId: assignedToFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to archive lead:', error);
     }
@@ -156,7 +198,12 @@ const LeadsList = () => {
   const handleRestore = async (id: string) => {
     try {
       await restoreLead(id);
-      fetchLeads(page, search);
+      fetchLeads(page, search, {
+        status: statusFilter,
+        leadSourceId: leadSourceFilter,
+        assignedToUserId: assignedToFilter,
+        includeArchived,
+      });
     } catch (error) {
       console.error('Failed to restore lead:', error);
     }
@@ -306,10 +353,69 @@ const LeadsList = () => {
                 }}
               />
             </div>
-            <Button variant="secondary" className="px-3">
+            <Button
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+            >
               <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">•</span>}
             </Button>
           </div>
+
+          {showFilterPanel && (
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Select
+                label="Status"
+                placeholder="All Statuses"
+                options={LEAD_STATUSES}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              <Select
+                label="Lead Source"
+                placeholder="All Sources"
+                options={leadSources.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                }))}
+                value={leadSourceFilter}
+                onChange={setLeadSourceFilter}
+              />
+              <Select
+                label="Assigned To"
+                placeholder="All Users"
+                options={users.map((u) => ({
+                  value: u.id,
+                  label: u.fullName,
+                }))}
+                value={assignedToFilter}
+                onChange={setAssignedToFilter}
+              />
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Include Archived
+                </label>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <Table data={leads} columns={columns} isLoading={loading} />
