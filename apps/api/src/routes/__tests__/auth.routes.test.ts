@@ -1,0 +1,156 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import request from 'supertest';
+import { Application } from 'express';
+import * as authService from '../../services/authService';
+import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
+
+jest.mock('../../services/authService');
+
+describe('Auth Routes', () => {
+  let app: Application;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    app = createTestApp();
+    const authRoutes = (await import('../auth')).default;
+    setupTestRoutes(app, authRoutes, '/api/v1/auth');
+  });
+
+  describe('POST /login', () => {
+    it('should login successfully', async () => {
+      const mockResult = {
+        user: { id: 'user-1', email: 'test@example.com', fullName: 'Test', role: 'owner' as const },
+        tokens: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 },
+      };
+
+      (authService.login as jest.Mock).mockResolvedValue(mockResult);
+
+      const response = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'test@example.com', password: 'password123' })
+        .expect(200);
+
+      expect(response.body.data.user).toEqual(mockResult.user);
+      expect(response.body.data.tokens.tokenType).toBe('Bearer');
+    });
+
+    it('should return 401 for invalid credentials', async () => {
+      (authService.login as jest.Mock).mockResolvedValue(null);
+
+      await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'wrong@example.com', password: 'wrong' })
+        .expect(401);
+    });
+
+    it('should return 422 for missing email', async () => {
+      await request(app)
+        .post('/api/v1/auth/login')
+        .send({ password: 'password123' })
+        .expect(422);
+    });
+
+    it('should return 422 for missing password', async () => {
+      await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'test@example.com' })
+        .expect(422);
+    });
+
+    it('should return 422 for invalid email format', async () => {
+      await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'invalid-email', password: 'password123' })
+        .expect(422);
+    });
+  });
+
+  describe('POST /refresh', () => {
+    it('should refresh token successfully', async () => {
+      const mockTokens = {
+        accessToken: 'new-token',
+        refreshToken: 'new-refresh',
+        expiresIn: 900,
+      };
+
+      (authService.refreshAccessToken as jest.Mock).mockResolvedValue(mockTokens);
+
+      const response = await request(app)
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: 'valid-refresh-token' })
+        .expect(200);
+
+      expect(response.body.data.tokens.accessToken).toBe('new-token');
+    });
+
+    it('should return 401 for invalid refresh token', async () => {
+      (authService.refreshAccessToken as jest.Mock).mockResolvedValue(null);
+
+      await request(app)
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: 'invalid-token' })
+        .expect(401);
+    });
+
+    it('should return 422 for missing refresh token', async () => {
+      await request(app)
+        .post('/api/v1/auth/refresh')
+        .send({})
+        .expect(422);
+    });
+  });
+
+  describe('POST /dev/create-user', () => {
+    it('should create dev user successfully', async () => {
+      const mockResult = {
+        user: { id: 'user-1', email: 'new@example.com', fullName: 'New User', role: 'owner' as const },
+        tokens: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 },
+      };
+
+      (authService.createDevUser as jest.Mock).mockResolvedValue(mockResult);
+
+      const response = await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ email: 'new@example.com', password: 'password123', fullName: 'New User', role: 'owner' })
+        .expect(201);
+
+      expect(response.body.data.user.email).toBe('new@example.com');
+    });
+
+    it('should return 422 for missing email', async () => {
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ password: 'password123', fullName: 'Test' })
+        .expect(422);
+    });
+
+    it('should return 422 for missing fullName', async () => {
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ email: 'test@example.com', password: 'password123' })
+        .expect(422);
+    });
+
+    it('should return 422 for missing password', async () => {
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ email: 'test@example.com', fullName: 'Test' })
+        .expect(422);
+    });
+
+    it('should return 422 for short password', async () => {
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ email: 'test@example.com', password: '12345', fullName: 'Test' })
+        .expect(422);
+    });
+  });
+
+  describe('GET /me', () => {
+    it('should return 401 without authentication', async () => {
+      await request(app)
+        .get('/api/v1/auth/me')
+        .expect(401);
+    });
+  });
+});

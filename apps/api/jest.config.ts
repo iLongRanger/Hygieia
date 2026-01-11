@@ -12,8 +12,7 @@ const config: Config = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
-    '/build/',
-    '/__tests_integration__/'
+    '/build/'
   ],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   collectCoverageFrom: [
@@ -22,7 +21,7 @@ const config: Config = {
     '!src/test/**',
     '!src/index.ts',
     '!src/types/**',
-    '!src/**/__tests_integration__/**'
+    '!src/**/__tests__/**'
   ],
   coverageThreshold: {
     global: {
