@@ -86,15 +86,14 @@ describe('authService', () => {
 });
 ```
 
-### 2. Integration Tests (API Routes)
+### 2. Route Integration Tests
 
-Integration tests verify that routes, middleware, and services work together correctly.
+Route integration tests verify that routes, middleware, and services work together correctly.
 
-**Location**: `apps/api/src/routes/__tests__/*.integration.test.ts`
+**Location**: `apps/api/src/routes/__tests__/*.routes.test.ts`
 
 **Current Coverage**:
-- ✅ auth.ts - Partial coverage (login, refresh, register)
-- ✅ leads.ts - Partial coverage (CRUD operations)
+- ✅ auth.routes.test.ts - 14 tests (login, refresh, dev user creation, validation)
 
 **Example**:
 ```typescript
@@ -223,12 +222,13 @@ coverageThreshold: {
 ## Current Status
 
 ### API Tests Summary (Latest)
-- **Total Test Suites**: 11 ✅
-- **Total Tests**: 185 ✅
-- **Passing Tests**: 185 ✅
+- **Total Test Suites**: 12 ✅
+- **Total Tests**: 199 ✅
+- **Passing Tests**: 199 ✅
 - **Failed Tests**: 0 ✅
-- **Overall Coverage**: 33.37% statements (baseline for full codebase)
+- **Overall Coverage**: ~35% statements (baseline for full codebase)
 - **Service Layer Coverage**: 90.68% statements, 73.83% branches, 100% functions ✅
+- **Route Tests**: 14 tests for auth routes ✅
 
 ### Service Coverage Details
 | Service | Statements | Branches | Functions | Lines | Tests |
