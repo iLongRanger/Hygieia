@@ -20,6 +20,8 @@ import FacilitiesList from './pages/facilities/FacilitiesList';
 import FacilityDetail from './pages/facilities/FacilityDetail';
 import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
+import PricingRulesList from './pages/pricing/PricingRulesList';
+import PricingRuleDetail from './pages/pricing/PricingRuleDetail';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
@@ -66,6 +68,8 @@ function App() {
             <Route path="/facilities/:id" element={<FacilityDetail />} />
             <Route path="/tasks" element={<TaskTemplatesList />} />
             <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
+            <Route path="/pricing" element={<PricingRulesList />} />
+            <Route path="/pricing/:id" element={<PricingRuleDetail />} />
             <Route path="/users" element={<UsersList />} />
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />
