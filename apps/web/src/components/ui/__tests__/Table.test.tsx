@@ -54,7 +54,8 @@ describe('Table', () => {
       render(<Table data={sampleData} columns={basicColumns} />);
       expect(screen.getByText('john@example.com')).toBeInTheDocument();
       expect(screen.getByText('jane@example.com')).toBeInTheDocument();
-      expect(screen.getByText('active')).toBeInTheDocument();
+      const activeElements = screen.getAllByText('active');
+      expect(activeElements.length).toBeGreaterThan(0);
     });
   });
 
