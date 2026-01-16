@@ -5,6 +5,7 @@ import {
   Users,
   Building2,
   Contact,
+  Target,
   UserCog,
   LogOut,
   Warehouse,
@@ -19,6 +20,7 @@ const Sidebar = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
     { to: '/leads', icon: Users, label: 'Leads' },
+    { to: '/opportunities', icon: Target, label: 'Opportunities' },
     { to: '/accounts', icon: Building2, label: 'Accounts' },
     { to: '/contacts', icon: Contact, label: 'Contacts' },
     { to: '/facilities', icon: Warehouse, label: 'Facilities' },
