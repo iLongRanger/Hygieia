@@ -72,15 +72,17 @@ describe('ConfirmDialog', () => {
   describe('Variants', () => {
     it('should render danger variant by default', () => {
       const { container } = render(<ConfirmDialog {...defaultProps} />);
-      const icon = container.querySelector('svg');
-      expect(icon?.parentElement).toHaveClass('bg-red-500/10');
+      const iconContainer = container.querySelector('.rounded-full.p-3');
+      expect(iconContainer).toHaveClass('bg-red-500/10');
+      const icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-red-400');
     });
 
     it('should render danger variant styles', () => {
       const { container } = render(<ConfirmDialog {...defaultProps} variant="danger" />);
-      const icon = container.querySelector('svg');
-      expect(icon?.parentElement).toHaveClass('bg-red-500/10');
+      const iconContainer = container.querySelector('.rounded-full.p-3');
+      expect(iconContainer).toHaveClass('bg-red-500/10');
+      const icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-red-400');
 
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
@@ -89,8 +91,9 @@ describe('ConfirmDialog', () => {
 
     it('should render warning variant styles', () => {
       const { container } = render(<ConfirmDialog {...defaultProps} variant="warning" />);
-      const icon = container.querySelector('svg');
-      expect(icon?.parentElement).toHaveClass('bg-yellow-500/10');
+      const iconContainer = container.querySelector('.rounded-full.p-3');
+      expect(iconContainer).toHaveClass('bg-yellow-500/10');
+      const icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-yellow-400');
 
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
@@ -99,8 +102,9 @@ describe('ConfirmDialog', () => {
 
     it('should render info variant styles', () => {
       const { container } = render(<ConfirmDialog {...defaultProps} variant="info" />);
-      const icon = container.querySelector('svg');
-      expect(icon?.parentElement).toHaveClass('bg-blue-500/10');
+      const iconContainer = container.querySelector('.rounded-full.p-3');
+      expect(iconContainer).toHaveClass('bg-blue-500/10');
+      const icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-blue-400');
 
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
@@ -349,15 +353,18 @@ describe('ConfirmDialog', () => {
       const { rerender, container } = render(
         <ConfirmDialog {...defaultProps} variant="danger" />
       );
-      let icon = container.querySelector('svg');
+      let iconContainer = container.querySelector('.rounded-full.p-3');
+      let icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-red-400');
 
       rerender(<ConfirmDialog {...defaultProps} variant="warning" />);
-      icon = container.querySelector('svg');
+      iconContainer = container.querySelector('.rounded-full.p-3');
+      icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-yellow-400');
 
       rerender(<ConfirmDialog {...defaultProps} variant="info" />);
-      icon = container.querySelector('svg');
+      iconContainer = container.querySelector('.rounded-full.p-3');
+      icon = iconContainer?.querySelector('svg');
       expect(icon).toHaveClass('text-blue-400');
     });
 
