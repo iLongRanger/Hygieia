@@ -28,6 +28,8 @@ import areaTypesRoutes from './routes/areaTypes';
 import areasRoutes from './routes/areas';
 import taskTemplatesRoutes from './routes/taskTemplates';
 import facilityTasksRoutes from './routes/facilityTasks';
+import pricingRulesRoutes from './routes/pricingRules';
+import pricingOverridesRoutes from './routes/pricingOverrides';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -60,6 +62,8 @@ app.use('/api/v1/area-types', areaTypesRoutes);
 app.use('/api/v1/areas', areasRoutes);
 app.use('/api/v1/task-templates', taskTemplatesRoutes);
 app.use('/api/v1/facility-tasks', facilityTasksRoutes);
+app.use('/api/v1/pricing-rules', pricingRulesRoutes);
+app.use('/api/v1/pricing-overrides', pricingOverridesRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
