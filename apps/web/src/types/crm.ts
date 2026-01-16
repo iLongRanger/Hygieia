@@ -207,6 +207,66 @@ export interface UpdateContactInput {
   notes?: string | null;
 }
 
+export interface Opportunity {
+  id: string;
+  name: string;
+  status: string;
+  probability: number | null;
+  expectedValue: string | null;
+  actualValue: string | null;
+  expectedCloseDate: string | null;
+  actualCloseDate: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  lead: {
+    id: string;
+    contactName: string;
+    companyName: string | null;
+  } | null;
+  account: {
+    id: string;
+    name: string;
+    type: string;
+  } | null;
+  assignedToUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+  createdByUser: {
+    id: string;
+    fullName: string;
+  };
+}
+
+export interface CreateOpportunityInput {
+  leadId?: string | null;
+  accountId?: string | null;
+  name: string;
+  status?: string;
+  probability?: number | null;
+  expectedValue?: number | null;
+  expectedCloseDate?: string | null;
+  description?: string | null;
+  assignedToUserId?: string | null;
+}
+
+export interface UpdateOpportunityInput {
+  leadId?: string | null;
+  accountId?: string | null;
+  name?: string;
+  status?: string;
+  probability?: number | null;
+  expectedValue?: number | null;
+  actualValue?: number | null;
+  expectedCloseDate?: string | null;
+  actualCloseDate?: string | null;
+  description?: string | null;
+  assignedToUserId?: string | null;
+}
+
 export interface Pagination {
   page: number;
   limit: number;
