@@ -181,9 +181,10 @@ describe('Badge', () => {
     });
 
     it('should handle whitespace-only content', () => {
-      render(<Badge>   </Badge>);
-      const badge = screen.getByText(/^\s+$/);
+      const { container } = render(<Badge>   </Badge>);
+      const badge = container.querySelector('span');
       expect(badge).toBeInTheDocument();
+      expect(badge?.textContent).toBe('   ');
     });
 
     it('should handle variant switching', () => {
