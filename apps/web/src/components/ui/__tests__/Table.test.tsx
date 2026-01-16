@@ -70,8 +70,9 @@ describe('Table', () => {
     });
 
     it('should render empty state with proper styling', () => {
-      render(<Table data={[]} columns={basicColumns} />);
-      const emptyState = screen.getByText('No data available').parentElement;
+      const { container } = render(<Table data={[]} columns={basicColumns} />);
+      const emptyState = container.querySelector('.flex.h-40.w-full');
+      expect(emptyState).toBeInTheDocument();
       expect(emptyState).toHaveClass(
         'flex',
         'h-40',
@@ -82,7 +83,10 @@ describe('Table', () => {
         'rounded-lg',
         'border',
         'border-dashed',
-        'border-white/10'
+        'border-white/10',
+        'p-8',
+        'text-center',
+        'text-gray-400'
       );
     });
   });
