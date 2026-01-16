@@ -248,8 +248,9 @@ describe('Card', () => {
   describe('Edge Cases', () => {
     it('should handle very long content', () => {
       const longText = 'Lorem ipsum '.repeat(100);
-      render(<Card>{longText}</Card>);
-      expect(screen.getByText(longText)).toBeInTheDocument();
+      const { container } = render(<Card>{longText}</Card>);
+      const card = container.firstChild as HTMLElement;
+      expect(card.textContent).toBe(longText);
     });
 
     it('should handle rapid prop changes', () => {
