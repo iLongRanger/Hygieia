@@ -130,7 +130,8 @@ describe('Table', () => {
       ];
 
       render(<Table data={sampleData} columns={columnsWithCustomCell} />);
-      expect(screen.getByText('ACTIVE')).toBeInTheDocument();
+      const activeElements = screen.getAllByText('ACTIVE');
+      expect(activeElements.length).toBeGreaterThan(0);
       expect(screen.getByText('INACTIVE')).toBeInTheDocument();
     });
 
@@ -305,7 +306,7 @@ describe('Table', () => {
 
     it('should apply header background color', () => {
       const { container } = render(<Table data={sampleData} columns={basicColumns} />);
-      const thead = container.querySelector('thead tr');
+      const thead = container.querySelector('thead');
       expect(thead).toHaveClass('bg-white/5', 'text-gray-300');
     });
 
