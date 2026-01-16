@@ -10,6 +10,7 @@ import {
   LogOut,
   Warehouse,
   ClipboardList,
+  Calculator,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { clsx } from 'clsx';
@@ -25,6 +26,7 @@ const Sidebar = () => {
     { to: '/contacts', icon: Contact, label: 'Contacts' },
     { to: '/facilities', icon: Warehouse, label: 'Facilities' },
     { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
+    { to: '/pricing', icon: Calculator, label: 'Pricing' },
     { to: '/users', icon: UserCog, label: 'Users', adminOnly: true },
   ];
 
