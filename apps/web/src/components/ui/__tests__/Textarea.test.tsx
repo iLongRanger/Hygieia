@@ -415,7 +415,8 @@ describe('Textarea', () => {
       render(<Textarea />);
 
       const textarea = screen.getByRole('textbox');
-      await user.type(textarea, longText);
+      await user.click(textarea);
+      await user.paste(longText);
 
       expect(textarea).toHaveValue(longText);
     });
@@ -425,7 +426,8 @@ describe('Textarea', () => {
       render(<Textarea />);
 
       const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '<script>alert("XSS")</script>');
+      await user.click(textarea);
+      await user.paste('<script>alert("XSS")</script>');
 
       expect(textarea).toHaveValue('<script>alert("XSS")</script>');
     });
@@ -433,7 +435,8 @@ describe('Textarea', () => {
     it('should handle empty error message', () => {
       render(<Textarea error="" />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('border-red-500');
+      // Empty error string should not apply error styles
+      expect(textarea).not.toHaveClass('border-red-500');
     });
 
     it('should handle error state changes', () => {

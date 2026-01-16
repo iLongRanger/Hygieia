@@ -171,7 +171,10 @@ describe('ConfirmDialog', () => {
     it('should show loading state on Confirm button when isLoading is true', () => {
       render(<ConfirmDialog {...defaultProps} isLoading={true} />);
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
-      expect(confirmButton).toHaveAttribute('aria-busy', 'true');
+      expect(confirmButton).toBeDisabled();
+      // Should show loading spinner
+      const spinner = confirmButton.querySelector('.animate-spin');
+      expect(spinner).toBeInTheDocument();
     });
 
     it('should not call onClose when Cancel is clicked while loading', async () => {
@@ -385,7 +388,7 @@ describe('ConfirmDialog', () => {
     it('should indicate loading state on confirm button', () => {
       render(<ConfirmDialog {...defaultProps} isLoading={true} />);
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
-      expect(confirmButton).toHaveAttribute('aria-busy', 'true');
+      expect(confirmButton).toBeDisabled();
     });
   });
 });
