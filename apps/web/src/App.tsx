@@ -24,6 +24,7 @@ import PricingRulesList from './pages/pricing/PricingRulesList';
 import PricingRuleDetail from './pages/pricing/PricingRuleDetail';
 import ProposalsList from './pages/proposals/ProposalsList';
 import ProposalDetail from './pages/proposals/ProposalDetail';
+import ProposalForm from './pages/proposals/ProposalForm';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
@@ -73,7 +74,9 @@ function App() {
             <Route path="/pricing" element={<PricingRulesList />} />
             <Route path="/pricing/:id" element={<PricingRuleDetail />} />
             <Route path="/proposals" element={<ProposalsList />} />
+            <Route path="/proposals/new" element={<ProposalForm />} />
             <Route path="/proposals/:id" element={<ProposalDetail />} />
+            <Route path="/proposals/:id/edit" element={<ProposalForm />} />
             <Route path="/users" element={<UsersList />} />
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />
