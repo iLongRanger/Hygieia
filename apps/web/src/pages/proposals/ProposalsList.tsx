@@ -365,7 +365,7 @@ const ProposalsList = () => {
               placeholder="Search proposals..."
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              icon={Search}
+              icon={<Search className="w-5 h-5" />}
             />
           </div>
           <Button
