@@ -11,6 +11,7 @@ import {
   Warehouse,
   ClipboardList,
   Calculator,
+  FileText,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { clsx } from 'clsx';
@@ -22,6 +23,7 @@ const Sidebar = () => {
     { to: '/', icon: Home, label: 'Dashboard' },
     { to: '/leads', icon: Users, label: 'Leads' },
     { to: '/opportunities', icon: Target, label: 'Opportunities' },
+    { to: '/proposals', icon: FileText, label: 'Proposals' },
     { to: '/accounts', icon: Building2, label: 'Accounts' },
     { to: '/contacts', icon: Contact, label: 'Contacts' },
     { to: '/facilities', icon: Warehouse, label: 'Facilities' },
