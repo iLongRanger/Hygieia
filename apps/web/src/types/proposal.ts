@@ -1,0 +1,151 @@
+export type ProposalStatus =
+  | 'draft'
+  | 'sent'
+  | 'viewed'
+  | 'accepted'
+  | 'rejected'
+  | 'expired';
+
+export type ProposalItemType =
+  | 'labor'
+  | 'materials'
+  | 'equipment'
+  | 'supplies'
+  | 'other';
+
+export type ServiceType =
+  | 'daily'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  | 'quarterly'
+  | 'one_time';
+
+export type ServiceFrequency =
+  | 'daily'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  | 'quarterly'
+  | 'annually';
+
+export interface ProposalItem {
+  id?: string;
+  itemType: ProposalItemType;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  sortOrder?: number;
+}
+
+export interface ProposalService {
+  id?: string;
+  serviceName: string;
+  serviceType: ServiceType;
+  frequency: ServiceFrequency;
+  estimatedHours?: number | null;
+  hourlyRate?: number | null;
+  monthlyPrice: number;
+  description?: string | null;
+  includedTasks?: string[];
+  sortOrder?: number;
+}
+
+export interface Proposal {
+  id: string;
+  proposalNumber: string;
+  title: string;
+  status: ProposalStatus;
+  description?: string | null;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  validUntil?: string | null;
+  sentAt?: string | null;
+  viewedAt?: string | null;
+  acceptedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectionReason?: string | null;
+  notes?: string | null;
+  termsAndConditions?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt?: string | null;
+  opportunity?: {
+    id: string;
+    name: string;
+    status: string;
+  } | null;
+  account: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  facility?: {
+    id: string;
+    name: string;
+    address: any;
+  } | null;
+  createdByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  proposalItems: ProposalItem[];
+  proposalServices: ProposalService[];
+}
+
+export interface CreateProposalInput {
+  opportunityId?: string | null;
+  accountId: string;
+  facilityId?: string | null;
+  title: string;
+  description?: string | null;
+  validUntil?: string | null;
+  taxRate?: number;
+  notes?: string | null;
+  termsAndConditions?: string | null;
+  proposalItems?: ProposalItem[];
+  proposalServices?: ProposalService[];
+}
+
+export interface UpdateProposalInput {
+  opportunityId?: string | null;
+  accountId?: string;
+  facilityId?: string | null;
+  title?: string;
+  status?: ProposalStatus;
+  description?: string | null;
+  validUntil?: string | null;
+  taxRate?: number;
+  notes?: string | null;
+  termsAndConditions?: string | null;
+  proposalItems?: ProposalItem[];
+  proposalServices?: ProposalService[];
+}
+
+export interface ListProposalsParams {
+  page?: number;
+  limit?: number;
+  status?: ProposalStatus;
+  opportunityId?: string;
+  accountId?: string;
+  facilityId?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  includeArchived?: boolean;
+}
+
+export interface SendProposalInput {
+  emailTo?: string;
+  emailCc?: string[];
+  emailSubject?: string;
+  emailBody?: string;
+}
+
+export interface RejectProposalInput {
+  rejectionReason: string;
+}
