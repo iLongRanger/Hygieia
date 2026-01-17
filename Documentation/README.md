@@ -199,9 +199,11 @@ npm run deploy            # Deploy to production
 - [ ] Task completion verification
 
 ### Phase 4: Estimating & Proposals (Months 8-9)
-- [ ] Automated quote generation
-- [ ] Proposal template system
-- [ ] Digital proposal delivery
+- [x] Proposal creation and management
+- [x] Line items and services management
+- [x] Real-time pricing calculations
+- [x] Proposal status workflow (draft, sent, viewed, accepted, rejected)
+- [ ] Digital proposal delivery (email integration)
 - [ ] E-signature integration
 
 ### Phase 5: Advanced Features (Months 10-12)

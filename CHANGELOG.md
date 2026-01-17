@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Proposals Module - Create/Edit Forms**: Complete CRUD functionality for proposals
+  - ProposalForm component with full create/edit support
+  - Account, Facility, and Opportunity selector dropdowns (filtered by account)
+  - Dynamic line items management (add/remove/edit with auto-calculation)
+  - Dynamic services management (add/remove/edit)
+  - Real-time financial summary calculation (subtotal, tax, total)
+  - Tax rate configuration
+  - Terms & conditions and internal notes fields
+  - Form validation and error handling
+  - Routes: `/proposals/new` and `/proposals/:id/edit`
+
+### Fixed
+- Fixed 422 error on proposals list page caused by empty status filter string
+- Fixed Prisma client not recognizing Proposal model (regenerate required)
+
+### Technical
 - Initial project scaffolding
 - Monorepo structure with Turbo
 - API application (Express.js with TypeScript)
