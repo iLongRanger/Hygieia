@@ -44,6 +44,7 @@ model User {
   createdPricingRules      PricingRule[]     @relation("CreatedPricingRules")
   pricingOverrides         PricingOverride[] @relation("CreatedPricingOverrides")
   approvedPricingOverrides PricingOverride[] @relation("ApprovedPricingOverrides")
+  createdProposals         Proposal[]        @relation("CreatedProposals")
 
   @@index([email])
   @@index([status])
@@ -161,6 +162,7 @@ model Account {
   contacts       Contact[]
   facilities     Facility[]
   opportunities  Opportunity[]
+  proposals      Proposal[]
   accountManager User?         @relation("AccountManager", fields: [accountManagerId], references: [id])
   createdByUser  User          @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
 
@@ -216,10 +218,11 @@ model Opportunity {
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  lead           Lead?    @relation(fields: [leadId], references: [id])
-  account        Account? @relation(fields: [accountId], references: [id])
-  assignedToUser User?    @relation("AssignedToOpportunities", fields: [assignedToUserId], references: [id])
-  createdByUser  User     @relation("CreatedOpportunities", fields: [createdByUserId], references: [id])
+  lead           Lead?      @relation(fields: [leadId], references: [id])
+  account        Account?   @relation(fields: [accountId], references: [id])
+  proposals      Proposal[]
+  assignedToUser User?      @relation("AssignedToOpportunities", fields: [assignedToUserId], references: [id])
+  createdByUser  User       @relation("CreatedOpportunities", fields: [createdByUserId], references: [id])
 
   @@index([leadId])
   @@index([accountId])
@@ -273,6 +276,7 @@ model Facility {
   taskTemplates    TaskTemplate[]    @relation("FacilityTaskTemplates")
   facilityTasks    FacilityTask[]    @relation("FacilityTasks")
   pricingOverrides PricingOverride[] @relation("FacilityPricingOverrides")
+  proposals        Proposal[]
   facilityManager  User?             @relation("FacilityManager", fields: [facilityManagerId], references: [id])
   createdByUser    User              @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
 
@@ -431,4 +435,92 @@ model PricingOverride {
   @@index([effectiveDate])
   @@index([expiryDate])
   @@map("pricing_overrides")
+}
+
+// ============================================================
+// PROPOSAL & ESTIMATE TABLES
+// ============================================================
+
+model Proposal {
+  id                String    @id @default(uuid()) @db.Uuid
+  opportunityId     String?   @map("opportunity_id") @db.Uuid
+  accountId         String    @map("account_id") @db.Uuid
+  facilityId        String?   @map("facility_id") @db.Uuid
+  proposalNumber    String    @unique @map("proposal_number") @db.VarChar(50)
+  title             String    @db.VarChar(255)
+  status            String    @default("draft") @db.VarChar(20)
+  description       String?   @db.Text
+  subtotal          Decimal   @default(0) @map("subtotal") @db.Decimal(12, 2)
+  taxRate           Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  taxAmount         Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount       Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  validUntil        DateTime? @map("valid_until") @db.Date
+  sentAt            DateTime? @map("sent_at") @db.Timestamptz(6)
+  viewedAt          DateTime? @map("viewed_at") @db.Timestamptz(6)
+  acceptedAt        DateTime? @map("accepted_at") @db.Timestamptz(6)
+  rejectedAt        DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectionReason   String?   @map("rejection_reason") @db.Text
+  notes             String?   @db.Text
+  termsAndConditions String? @map("terms_and_conditions") @db.Text
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  opportunity     Opportunity?      @relation(fields: [opportunityId], references: [id])
+  account         Account           @relation(fields: [accountId], references: [id])
+  facility        Facility?         @relation(fields: [facilityId], references: [id])
+  createdByUser   User              @relation("CreatedProposals", fields: [createdByUserId], references: [id])
+  proposalItems   ProposalItem[]
+  proposalServices ProposalService[]
+
+  @@index([opportunityId])
+  @@index([accountId])
+  @@index([facilityId])
+  @@index([status])
+  @@index([proposalNumber])
+  @@index([validUntil])
+  @@index([sentAt])
+  @@map("proposals")
+}
+
+model ProposalItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  proposalId  String   @map("proposal_id") @db.Uuid
+  itemType    String   @map("item_type") @db.VarChar(50)
+  description String   @db.Text
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice  Decimal  @map("total_price") @db.Decimal(12, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([itemType])
+  @@map("proposal_items")
+}
+
+model ProposalService {
+  id               String   @id @default(uuid()) @db.Uuid
+  proposalId       String   @map("proposal_id") @db.Uuid
+  serviceName      String   @map("service_name") @db.VarChar(255)
+  serviceType      String   @map("service_type") @db.VarChar(50)
+  frequency        String   @db.VarChar(20)
+  estimatedHours   Decimal? @map("estimated_hours") @db.Decimal(10, 2)
+  hourlyRate       Decimal? @map("hourly_rate") @db.Decimal(10, 2)
+  monthlyPrice     Decimal  @map("monthly_price") @db.Decimal(12, 2)
+  description      String?  @db.Text
+  includedTasks    Json     @default("[]") @map("included_tasks") @db.JsonB
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([serviceType])
+  @@map("proposal_services")
 }

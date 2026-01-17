@@ -30,6 +30,7 @@ import taskTemplatesRoutes from './routes/taskTemplates';
 import facilityTasksRoutes from './routes/facilityTasks';
 import pricingRulesRoutes from './routes/pricingRules';
 import pricingOverridesRoutes from './routes/pricingOverrides';
+import proposalsRoutes from './routes/proposals';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,7 @@ app.use('/api/v1/task-templates', taskTemplatesRoutes);
 app.use('/api/v1/facility-tasks', facilityTasksRoutes);
 app.use('/api/v1/pricing-rules', pricingRulesRoutes);
 app.use('/api/v1/pricing-overrides', pricingOverridesRoutes);
+app.use('/api/v1/proposals', proposalsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
