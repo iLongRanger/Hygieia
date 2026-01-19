@@ -84,7 +84,3 @@ ALTER TABLE "contracts" ADD CONSTRAINT "contracts_approved_by_user_id_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "contracts" ADD CONSTRAINT "contracts_created_by_user_id_fkey" FOREIGN KEY ("created_by_user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- Create trigger for updated_at
-CREATE TRIGGER update_contracts_updated_at BEFORE UPDATE ON contracts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
