@@ -52,10 +52,22 @@ export const updateFacilitySchema = z.object({
 export const listFacilitiesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
-  accountId: z.string().uuid().optional(),
-  status: facilityStatusSchema.optional(),
-  buildingType: buildingTypeSchema.optional(),
-  facilityManagerId: z.string().uuid().optional(),
+  accountId: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.string().uuid().optional()
+  ),
+  status: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    facilityStatusSchema.optional()
+  ),
+  buildingType: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    buildingTypeSchema.optional()
+  ),
+  facilityManagerId: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.string().uuid().optional()
+  ),
   search: z.string().max(100).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'name', 'squareFeet']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

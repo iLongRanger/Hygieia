@@ -64,8 +64,14 @@ export const updateAccountSchema = z.object({
 export const listAccountsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
-  type: accountTypeSchema.optional(),
-  accountManagerId: z.string().uuid().optional(),
+  type: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    accountTypeSchema.optional()
+  ),
+  accountManagerId: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.string().uuid().optional()
+  ),
   search: z.string().max(100).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'name']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
