@@ -507,6 +507,85 @@ CREATE INDEX idx_pricing_overrides_effective_date ON pricing_overrides(effective
 CREATE INDEX idx_pricing_overrides_expiry_date ON pricing_overrides(expiry_date);
 ```
 
+## Contracts & Agreements Tables
+
+### contracts
+```sql
+CREATE TABLE contracts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    contract_number VARCHAR(50) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'draft' CHECK (status IN (
+        'draft', 'pending_signature', 'active', 'expired', 'terminated', 'renewed'
+    )),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+    facility_id UUID REFERENCES facilities(id) ON DELETE RESTRICT,
+    proposal_id UUID REFERENCES proposals(id),
+
+    -- Service Terms
+    start_date DATE NOT NULL,
+    end_date DATE,
+    service_frequency VARCHAR(30) CHECK (service_frequency IN (
+        'daily', 'weekly', 'bi_weekly', 'monthly', 'quarterly', 'custom'
+    )),
+    service_schedule JSONB, -- {days: ['monday', 'wednesday'], time: '18:00', customDetails: '...'}
+    auto_renew BOOLEAN DEFAULT false,
+    renewal_notice_days INTEGER DEFAULT 30,
+
+    -- Financial Terms
+    monthly_value DECIMAL(12,2) NOT NULL,
+    total_value DECIMAL(12,2),
+    billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly' CHECK (billing_cycle IN (
+        'monthly', 'quarterly', 'semi_annual', 'annual'
+    )),
+    payment_terms VARCHAR(50) DEFAULT 'Net 30',
+
+    -- Contract Details
+    terms_and_conditions TEXT,
+    special_instructions TEXT,
+
+    -- Document Management
+    signed_document_url TEXT,
+    signed_date DATE,
+    signed_by_name VARCHAR(255),
+    signed_by_email VARCHAR(255),
+
+    -- Workflow
+    approved_by_user_id UUID REFERENCES users(id),
+    approved_at TIMESTAMPTZ,
+    termination_reason TEXT,
+    terminated_at TIMESTAMPTZ,
+
+    -- Audit
+    created_by_user_id UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    archived_at TIMESTAMPTZ,
+
+    CONSTRAINT contracts_dates_valid CHECK (end_date IS NULL OR end_date > start_date),
+    CONSTRAINT contracts_monthly_value_positive CHECK (monthly_value > 0),
+    CONSTRAINT contracts_total_value_positive CHECK (total_value IS NULL OR total_value >= 0),
+    CONSTRAINT contracts_renewal_notice_positive CHECK (renewal_notice_days IS NULL OR renewal_notice_days > 0),
+    CONSTRAINT contracts_signed_complete CHECK (
+        (signed_date IS NULL AND signed_by_name IS NULL AND signed_by_email IS NULL) OR
+        (signed_date IS NOT NULL AND signed_by_name IS NOT NULL)
+    )
+);
+
+-- Indexes
+CREATE UNIQUE INDEX idx_contracts_contract_number ON contracts(contract_number);
+CREATE INDEX idx_contracts_status ON contracts(status);
+CREATE INDEX idx_contracts_account_id ON contracts(account_id);
+CREATE INDEX idx_contracts_facility_id ON contracts(facility_id);
+CREATE INDEX idx_contracts_proposal_id ON contracts(proposal_id);
+CREATE INDEX idx_contracts_start_date ON contracts(start_date);
+CREATE INDEX idx_contracts_end_date ON contracts(end_date);
+CREATE INDEX idx_contracts_created_at ON contracts(created_at);
+
+-- GIN index for service_schedule JSONB
+CREATE INDEX idx_contracts_service_schedule ON contracts USING GIN(service_schedule);
+```
+
 ## Triggers for Automatic Timestamps
 
 ```sql
@@ -551,6 +630,9 @@ CREATE TRIGGER update_pricing_rules_updated_at BEFORE UPDATE ON pricing_rules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_pricing_overrides_updated_at BEFORE UPDATE ON pricing_overrides
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_contracts_updated_at BEFORE UPDATE ON contracts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 

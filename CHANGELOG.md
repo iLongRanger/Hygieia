@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Contracts Module - Backend Implementation (Phase 14)**: Service agreements and contract management
+  - Complete Contract data model with Prisma schema
+  - Contract service layer with business logic
+    - Auto-generate contract numbers (format: CONT-YYYYMM-XXXX)
+    - Create contracts manually or from accepted proposals
+    - Status workflow: draft → pending_signature → active → expired/terminated
+    - Sign, terminate, archive, and restore operations
+  - RESTful API endpoints for all contract operations
+    - List contracts with pagination and filtering
+    - CRUD operations with validation
+    - Special endpoints for signing and terminating contracts
+    - Create contract from proposal conversion
+  - Comprehensive Zod validation schemas
+  - Database migration for contracts table
+  - Routes: `/api/v1/contracts/*`
+
 - **Proposals Module - Create/Edit Forms**: Complete CRUD functionality for proposals
   - ProposalForm component with full create/edit support
   - Account, Facility, and Opportunity selector dropdowns (filtered by account)

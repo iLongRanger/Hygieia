@@ -45,6 +45,8 @@ model User {
   pricingOverrides         PricingOverride[] @relation("CreatedPricingOverrides")
   approvedPricingOverrides PricingOverride[] @relation("ApprovedPricingOverrides")
   createdProposals         Proposal[]        @relation("CreatedProposals")
+  createdContracts         Contract[]        @relation("CreatedContracts")
+  approvedContracts        Contract[]        @relation("ApprovedContracts")
 
   @@index([email])
   @@index([status])
@@ -163,6 +165,7 @@ model Account {
   facilities     Facility[]
   opportunities  Opportunity[]
   proposals      Proposal[]
+  contracts      Contract[]
   accountManager User?         @relation("AccountManager", fields: [accountManagerId], references: [id])
   createdByUser  User          @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
 
@@ -277,6 +280,7 @@ model Facility {
   facilityTasks    FacilityTask[]    @relation("FacilityTasks")
   pricingOverrides PricingOverride[] @relation("FacilityPricingOverrides")
   proposals        Proposal[]
+  contracts        Contract[]
   facilityManager  User?             @relation("FacilityManager", fields: [facilityManagerId], references: [id])
   createdByUser    User              @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
 
@@ -473,6 +477,7 @@ model Proposal {
   createdByUser   User              @relation("CreatedProposals", fields: [createdByUserId], references: [id])
   proposalItems   ProposalItem[]
   proposalServices ProposalService[]
+  contracts       Contract[]
 
   @@index([opportunityId])
   @@index([accountId])
@@ -523,4 +528,71 @@ model ProposalService {
   @@index([proposalId])
   @@index([serviceType])
   @@map("proposal_services")
+}
+
+// ============================================================
+// CONTRACTS & AGREEMENTS TABLES
+// ============================================================
+
+model Contract {
+  id                 String    @id @default(uuid()) @db.Uuid
+  contractNumber     String    @unique @map("contract_number") @db.VarChar(50)
+  title              String    @db.VarChar(255)
+  status             String    @default("draft") @db.VarChar(30)
+  accountId          String    @map("account_id") @db.Uuid
+  facilityId         String?   @map("facility_id") @db.Uuid
+  proposalId         String?   @map("proposal_id") @db.Uuid
+
+  // Service Terms
+  startDate          DateTime  @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  serviceFrequency   String?   @map("service_frequency") @db.VarChar(30)
+  serviceSchedule    Json?     @map("service_schedule") @db.JsonB
+  autoRenew          Boolean   @default(false) @map("auto_renew")
+  renewalNoticeDays  Int?      @default(30) @map("renewal_notice_days")
+
+  // Financial Terms
+  monthlyValue       Decimal   @map("monthly_value") @db.Decimal(12, 2)
+  totalValue         Decimal?  @map("total_value") @db.Decimal(12, 2)
+  billingCycle       String    @default("monthly") @map("billing_cycle") @db.VarChar(20)
+  paymentTerms       String    @default("Net 30") @map("payment_terms") @db.VarChar(50)
+
+  // Contract Details
+  termsAndConditions String?   @map("terms_and_conditions") @db.Text
+  specialInstructions String?  @map("special_instructions") @db.Text
+
+  // Document Management
+  signedDocumentUrl  String?   @map("signed_document_url") @db.Text
+  signedDate         DateTime? @map("signed_date") @db.Date
+  signedByName       String?   @map("signed_by_name") @db.VarChar(255)
+  signedByEmail      String?   @map("signed_by_email") @db.VarChar(255)
+
+  // Workflow
+  approvedByUserId   String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt         DateTime? @map("approved_at") @db.Timestamptz(6)
+  terminationReason  String?   @map("termination_reason") @db.Text
+  terminatedAt       DateTime? @map("terminated_at") @db.Timestamptz(6)
+
+  // Audit
+  createdByUserId    String    @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  // Relations
+  account            Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  facility           Facility? @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  proposal           Proposal? @relation(fields: [proposalId], references: [id])
+  approvedByUser     User?     @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
+  createdByUser      User      @relation("CreatedContracts", fields: [createdByUserId], references: [id])
+
+  @@index([contractNumber])
+  @@index([status])
+  @@index([accountId])
+  @@index([facilityId])
+  @@index([proposalId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdAt])
+  @@map("contracts")
 }
