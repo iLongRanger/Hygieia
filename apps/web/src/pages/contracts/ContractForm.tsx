@@ -391,7 +391,7 @@ const ContractForm = () => {
                 <Select
                   value={formData.serviceFrequency || ''}
                   onChange={(value) =>
-                    handleChange('serviceFrequency', value || null)
+                    handleChange('serviceFrequency', (value || null) as ServiceFrequency | null)
                   }
                   options={SERVICE_FREQUENCIES}
                   placeholder="Not specified"
@@ -485,7 +485,7 @@ const ContractForm = () => {
                 </label>
                 <Select
                   value={formData.billingCycle}
-                  onChange={(value) => handleChange('billingCycle', value)}
+                  onChange={(value) => handleChange('billingCycle', value as BillingCycle)}
                   options={BILLING_CYCLES}
                   className="bg-gray-700 border-gray-600 text-gray-100"
                 />
