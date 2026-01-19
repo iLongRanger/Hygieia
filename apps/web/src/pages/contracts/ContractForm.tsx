@@ -307,18 +307,16 @@ const ContractForm = () => {
                 </label>
                 <Select
                   value={formData.accountId}
-                  onChange={(e) => handleChange('accountId', e.target.value)}
+                  onChange={(value) => handleChange('accountId', value)}
+                  options={accounts.map((account) => ({
+                    value: account.id,
+                    label: account.name,
+                  }))}
+                  placeholder="Select an account"
                   className={`bg-gray-700 border-gray-600 text-gray-100 ${
                     errors.accountId ? 'border-red-500' : ''
                   }`}
-                >
-                  <option value="">Select an account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </Select>
+                />
                 {errors.accountId && (
                   <p className="text-red-400 text-sm mt-1">{errors.accountId}</p>
                 )}
@@ -330,19 +328,17 @@ const ContractForm = () => {
                 </label>
                 <Select
                   value={formData.facilityId || ''}
-                  onChange={(e) =>
-                    handleChange('facilityId', e.target.value || null)
+                  onChange={(value) =>
+                    handleChange('facilityId', value || null)
                   }
+                  options={filteredFacilities.map((facility) => ({
+                    value: facility.id,
+                    label: facility.name,
+                  }))}
+                  placeholder="No specific facility"
                   disabled={!formData.accountId}
                   className="bg-gray-700 border-gray-600 text-gray-100 disabled:opacity-50"
-                >
-                  <option value="">No specific facility</option>
-                  {filteredFacilities.map((facility) => (
-                    <option key={facility.id} value={facility.id}>
-                      {facility.name}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
             </div>
           </Card>
@@ -394,18 +390,13 @@ const ContractForm = () => {
                 </label>
                 <Select
                   value={formData.serviceFrequency || ''}
-                  onChange={(e) =>
-                    handleChange('serviceFrequency', e.target.value || null)
+                  onChange={(value) =>
+                    handleChange('serviceFrequency', value || null)
                   }
+                  options={SERVICE_FREQUENCIES}
+                  placeholder="Not specified"
                   className="bg-gray-700 border-gray-600 text-gray-100"
-                >
-                  <option value="">Not specified</option>
-                  {SERVICE_FREQUENCIES.map((freq) => (
-                    <option key={freq.value} value={freq.value}>
-                      {freq.label}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
 
               <div>
@@ -494,15 +485,10 @@ const ContractForm = () => {
                 </label>
                 <Select
                   value={formData.billingCycle}
-                  onChange={(e) => handleChange('billingCycle', e.target.value)}
+                  onChange={(value) => handleChange('billingCycle', value)}
+                  options={BILLING_CYCLES}
                   className="bg-gray-700 border-gray-600 text-gray-100"
-                >
-                  {BILLING_CYCLES.map((cycle) => (
-                    <option key={cycle.value} value={cycle.value}>
-                      {cycle.label}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
 
               <div>
