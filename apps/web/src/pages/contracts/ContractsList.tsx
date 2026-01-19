@@ -104,7 +104,7 @@ const ContractsList = () => {
           page: currentPage,
           limit: 20,
           search: currentSearch || undefined,
-          status: filters?.status as ContractStatus | undefined,
+          status: (filters?.status && filters.status !== '' ? filters.status : undefined) as ContractStatus | undefined,
           includeArchived: filters?.includeArchived,
         });
         setContracts(result.data);
