@@ -28,11 +28,10 @@ import {
   terminateContract,
   archiveContract,
   restoreContract,
-  createContractFromProposal,
 } from '../../lib/contracts';
 import type { Contract, ContractStatus } from '../../types/contract';
 
-const getStatusVariant = (status: ContractStatus) => {
+const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
     pending_signature: 'warning',
@@ -175,306 +174,273 @@ const ContractDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 p-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-gray-400">Loading contract...</div>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
       </div>
     );
   }
 
   if (!contract) {
-    return null;
+    return <div className="text-center text-gray-400">Contract not found</div>;
   }
 
   const StatusIcon = getStatusIcon(contract.status);
 
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/contracts')}
-            className="mb-4 text-gray-400 hover:text-gray-300"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Contracts
-          </Button>
-
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-100 mb-2">
-                {contract.contractNumber}
-              </h1>
-              <p className="text-xl text-gray-400">{contract.title}</p>
-            </div>
-            <Badge variant={getStatusVariant(contract.status)} className="text-lg px-4 py-2">
-              <StatusIcon className="w-5 h-5 mr-2" />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" onClick={() => navigate('/contracts')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">{contract.contractNumber}</h1>
+            <Badge variant={getStatusVariant(contract.status)}>
+              <StatusIcon className="mr-1 h-3 w-3" />
               {contract.status.replace('_', ' ').toUpperCase()}
             </Badge>
           </div>
+          <p className="text-gray-400">{contract.title}</p>
         </div>
+        <div className="flex gap-2">
+          {contract.status === 'draft' && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+              >
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              <Button onClick={handleActivate}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Activate
+              </Button>
+            </>
+          )}
+          {contract.status === 'pending_signature' && (
+            <Button onClick={handleSign}>
+              <FileSignature className="mr-2 h-4 w-4" />
+              Sign Contract
+            </Button>
+          )}
+          {contract.status === 'active' && (
+            <Button
+              variant="secondary"
+              onClick={handleTerminate}
+              className="text-red-400 hover:text-red-300"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Terminate
+            </Button>
+          )}
+          {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && (
+            <Button
+              variant="secondary"
+              onClick={handleArchive}
+              className="text-orange-400 hover:text-orange-300"
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              Archive
+            </Button>
+          )}
+          {contract.archivedAt && (
+            <Button variant="secondary" onClick={handleRestore}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Restore
+            </Button>
+          )}
+        </div>
+      </div>
 
-        {/* Actions */}
-        <Card className="mb-6 bg-gray-800 border-gray-700">
-          <div className="flex flex-wrap gap-3">
-            {contract.status === 'draft' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/contracts/${contract.id}/edit`)}
-                  className="border-gray-600 text-gray-300"
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Account & Facility Information */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Building2 className="h-5 w-5 text-indigo-400" />
+            <h2 className="text-lg font-semibold text-white">Account & Facility</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-gray-400">Account</div>
+              <div className="text-white font-medium">{contract.account.name}</div>
+              <div className="text-sm text-gray-400 capitalize">{contract.account.type}</div>
+            </div>
+            {contract.facility && (
+              <div>
+                <div className="text-sm text-gray-400">Facility</div>
+                <div className="text-white font-medium">{contract.facility.name}</div>
+                {contract.facility.address && (
+                  <div className="flex items-start gap-1 text-sm text-gray-400">
+                    <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      {typeof contract.facility.address === 'string'
+                        ? contract.facility.address
+                        : JSON.stringify(contract.facility.address)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            {contract.proposal && (
+              <div>
+                <div className="text-sm text-gray-400">Source Proposal</div>
+                <button
+                  onClick={() => navigate(`/proposals/${contract.proposal?.id}`)}
+                  className="text-gold hover:underline"
                 >
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit Contract
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleActivate}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <PlayCircle className="w-4 h-4 mr-2" />
-                  Activate Contract
-                </Button>
-              </>
-            )}
-            {contract.status === 'pending_signature' && (
-              <Button
-                variant="primary"
-                onClick={handleSign}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                <FileSignature className="w-4 h-4 mr-2" />
-                Sign Contract
-              </Button>
-            )}
-            {contract.status === 'active' && (
-              <Button
-                variant="outline"
-                onClick={handleTerminate}
-                className="border-red-600 text-red-400 hover:bg-red-900/20"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                Terminate Contract
-              </Button>
-            )}
-            {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && (
-              <Button
-                variant="outline"
-                onClick={handleArchive}
-                className="border-gray-600 text-gray-400"
-              >
-                <Archive className="w-4 h-4 mr-2" />
-                Archive
-              </Button>
-            )}
-            {contract.archivedAt && (
-              <Button
-                variant="outline"
-                onClick={handleRestore}
-                className="border-gray-600 text-gray-300"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Restore
-              </Button>
+                  {contract.proposal.proposalNumber} - {contract.proposal.title}
+                </button>
+              </div>
             )}
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Account & Facility Information */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <Building2 className="w-5 h-5 mr-2 text-indigo-400" />
-              Account & Facility
-            </h2>
-            <div className="space-y-4">
+        {/* Financial Terms */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="h-5 w-5 text-green-400" />
+            <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-gray-400">Monthly Value</div>
+              <div className="text-2xl font-bold text-green-400">
+                {formatCurrency(Number(contract.monthlyValue))}
+              </div>
+            </div>
+            {contract.totalValue && (
               <div>
-                <label className="text-sm text-gray-400">Account</label>
-                <p className="text-gray-100 font-medium">{contract.account.name}</p>
-                <p className="text-sm text-gray-400 capitalize">{contract.account.type}</p>
+                <div className="text-sm text-gray-400">Total Contract Value</div>
+                <div className="text-xl font-semibold text-white">
+                  {formatCurrency(Number(contract.totalValue))}
+                </div>
               </div>
-              {contract.facility && (
-                <div>
-                  <label className="text-sm text-gray-400">Facility</label>
-                  <p className="text-gray-100 font-medium">{contract.facility.name}</p>
-                  {contract.facility.address && (
-                    <p className="text-sm text-gray-400 flex items-start">
-                      <MapPin className="w-4 h-4 mr-1 mt-0.5" />
-                      {typeof contract.facility.address === 'string'
-                        ? contract.facility.address
-                        : JSON.stringify(contract.facility.address)}
-                    </p>
-                  )}
-                </div>
-              )}
-              {contract.proposal && (
-                <div>
-                  <label className="text-sm text-gray-400">Source Proposal</label>
-                  <p className="text-gray-100 font-medium">
-                    <button
-                      onClick={() => navigate(`/proposals/${contract.proposal?.id}`)}
-                      className="text-indigo-400 hover:text-indigo-300 underline"
-                    >
-                      {contract.proposal.proposalNumber} - {contract.proposal.title}
-                    </button>
-                  </p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Financial Terms */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2 text-green-400" />
-              Financial Terms
-            </h2>
-            <div className="space-y-4">
+            )}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-400">Monthly Value</label>
-                <p className="text-2xl font-bold text-green-400">
-                  {formatCurrency(Number(contract.monthlyValue))}
-                </p>
-              </div>
-              {contract.totalValue && (
-                <div>
-                  <label className="text-sm text-gray-400">Total Contract Value</label>
-                  <p className="text-xl font-semibold text-gray-100">
-                    {formatCurrency(Number(contract.totalValue))}
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-400">Billing Cycle</label>
-                  <p className="text-gray-100 capitalize">
-                    {contract.billingCycle.replace('_', ' ')}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400">Payment Terms</label>
-                  <p className="text-gray-100">{contract.paymentTerms}</p>
+                <div className="text-sm text-gray-400">Billing Cycle</div>
+                <div className="text-white capitalize">
+                  {contract.billingCycle.replace('_', ' ')}
                 </div>
               </div>
-            </div>
-          </Card>
-
-          {/* Service Terms */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-400" />
-              Service Terms
-            </h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-400">Start Date</label>
-                  <p className="text-gray-100">{formatDate(contract.startDate)}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400">End Date</label>
-                  <p className="text-gray-100">{formatDate(contract.endDate)}</p>
-                </div>
-              </div>
-              {contract.serviceFrequency && (
-                <div>
-                  <label className="text-sm text-gray-400">Service Frequency</label>
-                  <p className="text-gray-100 capitalize">
-                    {contract.serviceFrequency.replace('_', ' ')}
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-gray-400">Auto-Renew</label>
-                  <p className="text-gray-100">{contract.autoRenew ? 'Yes' : 'No'}</p>
-                </div>
-                {contract.renewalNoticeDays && (
-                  <div>
-                    <label className="text-sm text-gray-400">Renewal Notice</label>
-                    <p className="text-gray-100">{contract.renewalNoticeDays} days</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Workflow & Signatures */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <FileSignature className="w-5 h-5 mr-2 text-purple-400" />
-              Workflow & Signatures
-            </h2>
-            <div className="space-y-4">
-              {contract.signedByName && (
-                <div>
-                  <label className="text-sm text-gray-400">Signed By</label>
-                  <p className="text-gray-100">{contract.signedByName}</p>
-                  <p className="text-sm text-gray-400">{contract.signedByEmail}</p>
-                  <p className="text-sm text-gray-400">
-                    Signed on: {formatDate(contract.signedDate)}
-                  </p>
-                </div>
-              )}
-              {contract.approvedByUser && (
-                <div>
-                  <label className="text-sm text-gray-400">Approved By</label>
-                  <p className="text-gray-100">{contract.approvedByUser.fullName}</p>
-                  <p className="text-sm text-gray-400">
-                    Approved on: {formatDate(contract.approvedAt)}
-                  </p>
-                </div>
-              )}
-              {contract.terminationReason && (
-                <div>
-                  <label className="text-sm text-gray-400">Termination Reason</label>
-                  <p className="text-gray-100">{contract.terminationReason}</p>
-                  <p className="text-sm text-gray-400">
-                    Terminated on: {formatDate(contract.terminatedAt)}
-                  </p>
-                </div>
-              )}
               <div>
-                <label className="text-sm text-gray-400">Created By</label>
-                <p className="text-gray-100 flex items-center">
-                  <User className="w-4 h-4 mr-1" />
-                  {contract.createdByUser.fullName}
-                </p>
-                <p className="text-sm text-gray-400">
-                  {formatDate(contract.createdAt)}
-                </p>
+                <div className="text-sm text-gray-400">Payment Terms</div>
+                <div className="text-white">{contract.paymentTerms}</div>
               </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
 
-        {/* Terms & Conditions */}
-        {contract.termsAndConditions && (
-          <Card className="mt-6 bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Terms & Conditions
-            </h2>
-            <div className="text-gray-300 whitespace-pre-wrap">
-              {contract.termsAndConditions}
+        {/* Service Terms */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="h-5 w-5 text-blue-400" />
+            <h2 className="text-lg font-semibold text-white">Service Terms</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-400">Start Date</div>
+                <div className="text-white">{formatDate(contract.startDate)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-400">End Date</div>
+                <div className="text-white">{formatDate(contract.endDate)}</div>
+              </div>
             </div>
-          </Card>
-        )}
+            {contract.serviceFrequency && (
+              <div>
+                <div className="text-sm text-gray-400">Service Frequency</div>
+                <div className="text-white capitalize">
+                  {contract.serviceFrequency.replace('_', ' ')}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-400">Auto-Renew</div>
+                <div className="text-white">{contract.autoRenew ? 'Yes' : 'No'}</div>
+              </div>
+              {contract.renewalNoticeDays && (
+                <div>
+                  <div className="text-sm text-gray-400">Renewal Notice</div>
+                  <div className="text-white">{contract.renewalNoticeDays} days</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
 
-        {/* Special Instructions */}
-        {contract.specialInstructions && (
-          <Card className="mt-6 bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Special Instructions
-            </h2>
-            <div className="text-gray-300 whitespace-pre-wrap">
-              {contract.specialInstructions}
+        {/* Workflow & Signatures */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <FileSignature className="h-5 w-5 text-purple-400" />
+            <h2 className="text-lg font-semibold text-white">Workflow & Signatures</h2>
+          </div>
+          <div className="space-y-4">
+            {contract.signedByName && (
+              <div>
+                <div className="text-sm text-gray-400">Signed By</div>
+                <div className="text-white">{contract.signedByName}</div>
+                <div className="text-sm text-gray-400">{contract.signedByEmail}</div>
+                <div className="text-sm text-gray-400">
+                  Signed on: {formatDate(contract.signedDate)}
+                </div>
+              </div>
+            )}
+            {contract.approvedByUser && (
+              <div>
+                <div className="text-sm text-gray-400">Approved By</div>
+                <div className="text-white">{contract.approvedByUser.fullName}</div>
+                <div className="text-sm text-gray-400">
+                  Approved on: {formatDate(contract.approvedAt)}
+                </div>
+              </div>
+            )}
+            {contract.terminationReason && (
+              <div>
+                <div className="text-sm text-gray-400">Termination Reason</div>
+                <div className="text-white">{contract.terminationReason}</div>
+                <div className="text-sm text-gray-400">
+                  Terminated on: {formatDate(contract.terminatedAt)}
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="text-sm text-gray-400">Created By</div>
+              <div className="flex items-center gap-1 text-white">
+                <User className="h-4 w-4" />
+                {contract.createdByUser.fullName}
+              </div>
+              <div className="text-sm text-gray-400">
+                {formatDate(contract.createdAt)}
+              </div>
             </div>
-          </Card>
-        )}
+          </div>
+        </Card>
       </div>
+
+      {/* Terms & Conditions */}
+      {contract.termsAndConditions && (
+        <Card>
+          <h2 className="text-lg font-semibold text-white mb-4">Terms & Conditions</h2>
+          <div className="text-gray-300 whitespace-pre-wrap">
+            {contract.termsAndConditions}
+          </div>
+        </Card>
+      )}
+
+      {/* Special Instructions */}
+      {contract.specialInstructions && (
+        <Card>
+          <h2 className="text-lg font-semibold text-white mb-4">Special Instructions</h2>
+          <div className="text-gray-300 whitespace-pre-wrap">
+            {contract.specialInstructions}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
