@@ -30,7 +30,7 @@ import {
 } from '../../lib/contracts';
 import type { Contract, ContractStatus } from '../../types/contract';
 
-const CONTRACT_STATUSES: { value: ContractStatus; label: string }[] = [
+const CONTRACT_STATUSES = [
   { value: 'draft', label: 'Draft' },
   { value: 'pending_signature', label: 'Pending Signature' },
   { value: 'active', label: 'Active' },
@@ -39,7 +39,7 @@ const CONTRACT_STATUSES: { value: ContractStatus; label: string }[] = [
   { value: 'renewed', label: 'Renewed' },
 ];
 
-const getStatusVariant = (status: ContractStatus) => {
+const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
     pending_signature: 'warning',
@@ -171,32 +171,42 @@ const ContractsList = () => {
     }
   };
 
+  const clearFilters = () => {
+    setStatusFilter('');
+    setIncludeArchived(false);
+    setPage(1);
+  };
+
+  const hasActiveFilters = statusFilter || includeArchived;
+
   const columns = [
     {
-      header: 'Contract #',
-      accessor: 'contractNumber' as keyof Contract,
-      render: (contract: Contract) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-gray-100">{contract.contractNumber}</span>
-          <span className="text-sm text-gray-400">{contract.title}</span>
+      header: 'Contract',
+      cell: (contract: Contract) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10">
+            <FileText className="h-5 w-5 text-indigo-400" />
+          </div>
+          <div>
+            <div className="font-medium text-white">{contract.contractNumber}</div>
+            <div className="text-sm text-gray-400">{contract.title}</div>
+          </div>
         </div>
       ),
     },
     {
       header: 'Account',
-      accessor: 'account' as keyof Contract,
-      render: (contract: Contract) => (
-        <span className="text-gray-100">{contract.account.name}</span>
+      cell: (contract: Contract) => (
+        <span className="text-gray-300">{contract.account.name}</span>
       ),
     },
     {
       header: 'Status',
-      accessor: 'status' as keyof Contract,
-      render: (contract: Contract) => {
+      cell: (contract: Contract) => {
         const StatusIcon = getStatusIcon(contract.status);
         return (
           <Badge variant={getStatusVariant(contract.status)}>
-            <StatusIcon className="w-3 h-3 mr-1" />
+            <StatusIcon className="mr-1 h-3 w-3" />
             {contract.status.replace('_', ' ').toUpperCase()}
           </Badge>
         );
@@ -204,37 +214,36 @@ const ContractsList = () => {
     },
     {
       header: 'Start Date',
-      accessor: 'startDate' as keyof Contract,
-      render: (contract: Contract) => (
+      cell: (contract: Contract) => (
         <span className="text-gray-300">{formatDate(contract.startDate)}</span>
       ),
     },
     {
       header: 'End Date',
-      accessor: 'endDate' as keyof Contract,
-      render: (contract: Contract) => (
+      cell: (contract: Contract) => (
         <span className="text-gray-300">{formatDate(contract.endDate)}</span>
       ),
     },
     {
       header: 'Monthly Value',
-      accessor: 'monthlyValue' as keyof Contract,
-      render: (contract: Contract) => (
-        <div className="flex items-center text-gray-100">
-          <DollarSign className="w-4 h-4 mr-1 text-green-400" />
+      cell: (contract: Contract) => (
+        <div className="flex items-center text-gray-300">
+          <DollarSign className="mr-1 h-4 w-4 text-green-400" />
           {formatCurrency(Number(contract.monthlyValue))}
         </div>
       ),
     },
     {
       header: 'Actions',
-      accessor: 'id' as keyof Contract,
-      render: (contract: Contract) => (
-        <div className="flex items-center space-x-2">
+      cell: (contract: Contract) => (
+        <div className="flex gap-2">
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigate(`/contracts/${contract.id}`)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/contracts/${contract.id}`);
+            }}
           >
             View
           </Button>
@@ -242,15 +251,21 @@ const ContractsList = () => {
             <>
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/contracts/${contract.id}/edit`);
+                }}
               >
                 Edit
               </Button>
               <Button
                 size="sm"
                 variant="primary"
-                onClick={() => handleActivate(contract.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleActivate(contract.id);
+                }}
               >
                 Activate
               </Button>
@@ -260,18 +275,24 @@ const ContractsList = () => {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => handleArchive(contract.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleArchive(contract.id);
+              }}
             >
-              <Archive className="w-4 h-4" />
+              <Archive className="h-4 w-4" />
             </Button>
           )}
           {contract.archivedAt && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => handleRestore(contract.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRestore(contract.id);
+              }}
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -280,138 +301,99 @@ const ContractsList = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-100 mb-2">Contracts</h1>
-          <p className="text-gray-400">Manage service contracts and agreements</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-white">Contracts</h1>
+        <Button onClick={() => navigate('/contracts/new')}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Contract
+        </Button>
+      </div>
 
-        {/* Toolbar */}
-        <Card className="mb-6 bg-gray-800 border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1 flex items-center space-x-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  type="text"
-                  placeholder="Search contracts..."
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilterPanel(!showFilterPanel)}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Filters
-              </Button>
+      <Card noPadding className="overflow-hidden">
+        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+          <div className="flex gap-4">
+            <div className="w-full max-w-sm">
+              <Input
+                placeholder="Search contracts..."
+                icon={<Search className="h-4 w-4" />}
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
             </div>
             <Button
-              variant="primary"
-              onClick={() => navigate('/contracts/new')}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
             >
-              <Plus className="w-4 h-4 mr-2" />
-              New Contract
+              <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">*</span>}
             </Button>
           </div>
 
-          {/* Filter Panel */}
           {showFilterPanel && (
-            <div className="mt-4 pt-4 border-t border-gray-700">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Status
-                  </label>
-                  <Select
-                    value={statusFilter}
-                    onChange={(e) => handleStatusFilter(e.target.value)}
-                    className="bg-gray-700 border-gray-600 text-gray-100"
-                  >
-                    <option value="">All Statuses</option>
-                    {CONTRACT_STATUSES.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <label className="flex items-center space-x-2 text-sm text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={includeArchived}
-                      onChange={(e) => setIncludeArchived(e.target.checked)}
-                      className="rounded border-gray-600 bg-gray-700"
-                    />
-                    <span>Include archived</span>
-                  </label>
-                </div>
-                <div className="flex items-end justify-end">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Select
+                label="Status"
+                placeholder="All Statuses"
+                options={CONTRACT_STATUSES}
+                value={statusFilter}
+                onChange={handleStatusFilter}
+              />
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Include Archived
+                </label>
+                {hasActiveFilters && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setStatusFilter('');
-                      setIncludeArchived(false);
-                      setShowFilterPanel(false);
-                    }}
-                    className="text-gray-400 hover:text-gray-300"
+                    onClick={clearFilters}
+                    className="ml-auto"
                   >
-                    <X className="w-4 h-4 mr-2" />
-                    Clear Filters
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
                   </Button>
-                </div>
+                )}
               </div>
             </div>
           )}
-        </Card>
+        </div>
 
-        {/* Table */}
-        <Card className="bg-gray-800 border-gray-700">
-          <Table
-            columns={columns}
-            data={contracts}
-            loading={loading}
-            emptyMessage="No contracts found"
-          />
+        <Table data={contracts} columns={columns} isLoading={loading} />
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-gray-700 pt-4">
-              <div className="text-sm text-gray-400">
-                Showing page {page} of {totalPages} ({total} total contracts)
-              </div>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="border-gray-600 text-gray-300 disabled:opacity-50"
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="border-gray-600 text-gray-300 disabled:opacity-50"
-                >
-                  Next
-                </Button>
-              </div>
+        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <span>
+              Showing {contracts.length} of {total} contracts
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
             </div>
-          )}
-        </Card>
-      </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
