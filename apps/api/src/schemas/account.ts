@@ -63,7 +63,7 @@ export const updateAccountSchema = z.object({
 
 export const listAccountsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(20),
   type: z.preprocess(
     (val) => (val === '' ? undefined : val),
     accountTypeSchema.optional()
