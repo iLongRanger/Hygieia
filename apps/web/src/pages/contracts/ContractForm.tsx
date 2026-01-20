@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Save,
-  Building2,
-  MapPin,
   Calendar,
   DollarSign,
   FileText,
@@ -23,7 +21,6 @@ import {
 import { listAccounts } from '../../lib/accounts';
 import { listFacilities } from '../../lib/facilities';
 import type {
-  Contract,
   CreateContractInput,
   UpdateContractInput,
   ServiceFrequency,
@@ -32,7 +29,7 @@ import type {
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 
-const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
+const SERVICE_FREQUENCIES = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'bi_weekly', label: 'Bi-Weekly' },
@@ -41,7 +38,7 @@ const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
+const BILLING_CYCLES = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'semi_annual', label: 'Semi-Annual' },
@@ -166,10 +163,7 @@ const ContractForm = () => {
     }
   };
 
-  const handleChange = (
-    field: keyof CreateContractInput,
-    value: any
-  ) => {
+  const handleChange = (field: keyof CreateContractInput, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
@@ -243,330 +237,217 @@ const ContractForm = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-gray-400">Loading contract...</div>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/contracts')}
-            className="mb-4 text-gray-400 hover:text-gray-300"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Contracts
-          </Button>
-
-          <h1 className="text-3xl font-bold text-gray-100 mb-2">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" onClick={() => navigate('/contracts')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-white">
             {isEditMode ? 'Edit Contract' : 'New Contract'}
           </h1>
           <p className="text-gray-400">
-            {isEditMode
-              ? 'Update contract details'
-              : 'Create a new service contract'}
+            {isEditMode ? 'Update contract details' : 'Create a new service contract'}
           </p>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-indigo-400" />
-              Basic Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Contract Title *
-                </label>
-                <Input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  placeholder="e.g., Office Cleaning Services Agreement"
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.title ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.title && (
-                  <p className="text-red-400 text-sm mt-1">{errors.title}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Account *
-                </label>
-                <Select
-                  value={formData.accountId}
-                  onChange={(value) => handleChange('accountId', value)}
-                  options={accounts.map((account) => ({
-                    value: account.id,
-                    label: account.name,
-                  }))}
-                  placeholder="Select an account"
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.accountId ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.accountId && (
-                  <p className="text-red-400 text-sm mt-1">{errors.accountId}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Facility (Optional)
-                </label>
-                <Select
-                  value={formData.facilityId || ''}
-                  onChange={(value) =>
-                    handleChange('facilityId', value || null)
-                  }
-                  options={filteredFacilities.map((facility) => ({
-                    value: facility.id,
-                    label: facility.name,
-                  }))}
-                  placeholder="No specific facility"
-                  disabled={!formData.accountId}
-                  className="bg-gray-700 border-gray-600 text-gray-100 disabled:opacity-50"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Service Terms */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-400" />
-              Service Terms
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Start Date *
-                </label>
-                <Input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => handleChange('startDate', e.target.value)}
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.startDate ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.startDate && (
-                  <p className="text-red-400 text-sm mt-1">{errors.startDate}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  End Date (Optional)
-                </label>
-                <Input
-                  type="date"
-                  value={formData.endDate || ''}
-                  onChange={(e) => handleChange('endDate', e.target.value || null)}
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.endDate ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.endDate && (
-                  <p className="text-red-400 text-sm mt-1">{errors.endDate}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Service Frequency
-                </label>
-                <Select
-                  value={formData.serviceFrequency || ''}
-                  onChange={(value) =>
-                    handleChange('serviceFrequency', (value || null) as ServiceFrequency | null)
-                  }
-                  options={SERVICE_FREQUENCIES}
-                  placeholder="Not specified"
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Renewal Notice (Days)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.renewalNoticeDays || ''}
-                  onChange={(e) =>
-                    handleChange('renewalNoticeDays', e.target.value ? parseInt(e.target.value) : null)
-                  }
-                  min="0"
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="flex items-center space-x-2 text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={formData.autoRenew}
-                    onChange={(e) => handleChange('autoRenew', e.target.checked)}
-                    className="rounded border-gray-600 bg-gray-700 text-indigo-600"
-                  />
-                  <span>Auto-renew contract</span>
-                </label>
-              </div>
-            </div>
-          </Card>
-
-          {/* Financial Terms */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2 text-green-400" />
-              Financial Terms
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Monthly Value *
-                </label>
-                <Input
-                  type="number"
-                  value={formData.monthlyValue}
-                  onChange={(e) =>
-                    handleChange('monthlyValue', parseFloat(e.target.value) || 0)
-                  }
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.monthlyValue ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.monthlyValue && (
-                  <p className="text-red-400 text-sm mt-1">{errors.monthlyValue}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Total Contract Value (Optional)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.totalValue || ''}
-                  onChange={(e) =>
-                    handleChange('totalValue', e.target.value ? parseFloat(e.target.value) : null)
-                  }
-                  min="0"
-                  step="0.01"
-                  placeholder="Leave empty for ongoing"
-                  className={`bg-gray-700 border-gray-600 text-gray-100 ${
-                    errors.totalValue ? 'border-red-500' : ''
-                  }`}
-                />
-                {errors.totalValue && (
-                  <p className="text-red-400 text-sm mt-1">{errors.totalValue}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Billing Cycle
-                </label>
-                <Select
-                  value={formData.billingCycle}
-                  onChange={(value) => handleChange('billingCycle', value as BillingCycle)}
-                  options={BILLING_CYCLES}
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Payment Terms
-                </label>
-                <Input
-                  type="text"
-                  value={formData.paymentTerms}
-                  onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                  placeholder="e.g., Net 30"
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Additional Details */}
-          <Card className="bg-gray-800 border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Additional Details
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Terms & Conditions
-                </label>
-                <Textarea
-                  value={formData.termsAndConditions || ''}
-                  onChange={(e) =>
-                    handleChange('termsAndConditions', e.target.value || null)
-                  }
-                  rows={6}
-                  placeholder="Enter contract terms and conditions..."
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Special Instructions
-                </label>
-                <Textarea
-                  value={formData.specialInstructions || ''}
-                  onChange={(e) =>
-                    handleChange('specialInstructions', e.target.value || null)
-                  }
-                  rows={4}
-                  placeholder="Enter any special instructions or notes..."
-                  className="bg-gray-700 border-gray-600 text-gray-100"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/contracts')}
-              disabled={saving}
-              className="border-gray-600 text-gray-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={saving}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : isEditMode ? 'Update Contract' : 'Create Contract'}
-            </Button>
-          </div>
-        </form>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="h-5 w-5 text-indigo-400" />
+            <h2 className="text-lg font-semibold text-white">Basic Information</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Input
+                label="Contract Title *"
+                value={formData.title}
+                onChange={(e) => handleChange('title', e.target.value)}
+                placeholder="e.g., Office Cleaning Services Agreement"
+                error={errors.title}
+              />
+            </div>
+
+            <Select
+              label="Account *"
+              value={formData.accountId}
+              onChange={(value) => handleChange('accountId', value)}
+              options={accounts.map((account) => ({
+                value: account.id,
+                label: account.name,
+              }))}
+              placeholder="Select an account"
+            />
+            {errors.accountId && (
+              <p className="text-red-400 text-sm mt-1">{errors.accountId}</p>
+            )}
+
+            <Select
+              label="Facility (Optional)"
+              value={formData.facilityId || ''}
+              onChange={(value) => handleChange('facilityId', value || null)}
+              options={filteredFacilities.map((facility) => ({
+                value: facility.id,
+                label: facility.name,
+              }))}
+              placeholder="No specific facility"
+              disabled={!formData.accountId}
+            />
+          </div>
+        </Card>
+
+        {/* Service Terms */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="h-5 w-5 text-blue-400" />
+            <h2 className="text-lg font-semibold text-white">Service Terms</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Input
+              label="Start Date *"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => handleChange('startDate', e.target.value)}
+              error={errors.startDate}
+            />
+
+            <Input
+              label="End Date (Optional)"
+              type="date"
+              value={formData.endDate || ''}
+              onChange={(e) => handleChange('endDate', e.target.value || null)}
+              error={errors.endDate}
+            />
+
+            <Select
+              label="Service Frequency"
+              value={formData.serviceFrequency || ''}
+              onChange={(value) =>
+                handleChange('serviceFrequency', (value || null) as ServiceFrequency | null)
+              }
+              options={SERVICE_FREQUENCIES}
+              placeholder="Not specified"
+            />
+
+            <Input
+              label="Renewal Notice (Days)"
+              type="number"
+              value={formData.renewalNoticeDays || ''}
+              onChange={(e) =>
+                handleChange('renewalNoticeDays', e.target.value ? parseInt(e.target.value) : null)
+              }
+              min={0}
+            />
+
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={formData.autoRenew}
+                  onChange={(e) => handleChange('autoRenew', e.target.checked)}
+                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                />
+                Auto-renew contract
+              </label>
+            </div>
+          </div>
+        </Card>
+
+        {/* Financial Terms */}
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="h-5 w-5 text-green-400" />
+            <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Input
+              label="Monthly Value *"
+              type="number"
+              value={formData.monthlyValue}
+              onChange={(e) => handleChange('monthlyValue', parseFloat(e.target.value) || 0)}
+              min={0}
+              step={0.01}
+              placeholder="0.00"
+              error={errors.monthlyValue}
+            />
+
+            <Input
+              label="Total Contract Value (Optional)"
+              type="number"
+              value={formData.totalValue || ''}
+              onChange={(e) =>
+                handleChange('totalValue', e.target.value ? parseFloat(e.target.value) : null)
+              }
+              min={0}
+              step={0.01}
+              placeholder="Leave empty for ongoing"
+              error={errors.totalValue}
+            />
+
+            <Select
+              label="Billing Cycle"
+              value={formData.billingCycle}
+              onChange={(value) => handleChange('billingCycle', value as BillingCycle)}
+              options={BILLING_CYCLES}
+            />
+
+            <Input
+              label="Payment Terms"
+              value={formData.paymentTerms}
+              onChange={(e) => handleChange('paymentTerms', e.target.value)}
+              placeholder="e.g., Net 30"
+            />
+          </div>
+        </Card>
+
+        {/* Additional Details */}
+        <Card>
+          <h2 className="text-lg font-semibold text-white mb-4">Additional Details</h2>
+          <div className="space-y-4">
+            <Textarea
+              label="Terms & Conditions"
+              value={formData.termsAndConditions || ''}
+              onChange={(e) => handleChange('termsAndConditions', e.target.value || null)}
+              rows={6}
+              placeholder="Enter contract terms and conditions..."
+            />
+
+            <Textarea
+              label="Special Instructions"
+              value={formData.specialInstructions || ''}
+              onChange={(e) => handleChange('specialInstructions', e.target.value || null)}
+              rows={4}
+              placeholder="Enter any special instructions or notes..."
+            />
+          </div>
+        </Card>
+
+        {/* Form Actions */}
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/contracts')}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving} isLoading={saving}>
+            <Save className="mr-2 h-4 w-4" />
+            {isEditMode ? 'Update Contract' : 'Create Contract'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };
