@@ -135,26 +135,6 @@ export const createTestTaskTemplate = (overrides?: Partial<any>) => ({
   ...overrides,
 });
 
-export const createTestOpportunity = (overrides?: Partial<any>) => ({
-  id: 'test-opportunity-id',
-  name: 'Test Opportunity',
-  status: 'prospecting',
-  probability: 50,
-  expectedValue: 10000,
-  actualValue: null,
-  expectedCloseDate: new Date('2024-12-31'),
-  actualCloseDate: null,
-  description: 'Test opportunity description',
-  leadId: null,
-  accountId: null,
-  assignedToUserId: null,
-  createdByUserId: 'test-user-id',
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-  archivedAt: null,
-  ...overrides,
-});
-
 export const createTestPricingRule = (overrides?: Partial<any>) => ({
   id: 'test-pricing-rule-id',
   name: 'Standard Hourly Rate',

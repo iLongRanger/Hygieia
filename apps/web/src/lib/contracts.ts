@@ -3,9 +3,12 @@ import type {
   Contract,
   CreateContractInput,
   CreateContractFromProposalInput,
+  CreateStandaloneContractInput,
   UpdateContractInput,
   SignContractInput,
   TerminateContractInput,
+  RenewContractInput,
+  CanRenewContractResult,
   ListContractsParams,
 } from '../types/contract';
 
@@ -83,5 +86,29 @@ export async function archiveContract(id: string): Promise<Contract> {
 
 export async function restoreContract(id: string): Promise<Contract> {
   const response = await api.post(`/contracts/${id}/restore`);
+  return response.data.data;
+}
+
+// Contract Renewal
+
+export async function canRenewContract(id: string): Promise<CanRenewContractResult> {
+  const response = await api.get(`/contracts/${id}/can-renew`);
+  return response.data.data;
+}
+
+export async function renewContract(
+  id: string,
+  data: RenewContractInput
+): Promise<Contract> {
+  const response = await api.post(`/contracts/${id}/renew`, data);
+  return response.data.data;
+}
+
+// Standalone Contract Creation (imported/legacy)
+
+export async function createStandaloneContract(
+  data: CreateStandaloneContractInput
+): Promise<Contract> {
+  const response = await api.post('/contracts/standalone', data);
   return response.data.data;
 }

@@ -16,11 +16,18 @@ import {
   RotateCcw,
   PlayCircle,
   AlertTriangle,
+  RefreshCw,
+  ArrowRight,
+  Link as LinkIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
 import {
   getContract,
   updateContractStatus,
@@ -28,8 +35,10 @@ import {
   terminateContract,
   archiveContract,
   restoreContract,
+  canRenewContract,
+  renewContract,
 } from '../../lib/contracts';
-import type { Contract, ContractStatus } from '../../types/contract';
+import type { Contract, ContractStatus, RenewContractInput } from '../../types/contract';
 
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -71,11 +80,43 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const SERVICE_FREQUENCIES = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'bi_weekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const BILLING_CYCLES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'semi_annual', label: 'Semi-Annual' },
+  { value: 'annual', label: 'Annual' },
+];
+
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [contract, setContract] = useState<Contract | null>(null);
+
+  // Renewal modal state
+  const [showRenewModal, setShowRenewModal] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  const [renewalFormData, setRenewalFormData] = useState<RenewContractInput>({
+    startDate: '',
+    endDate: null,
+    monthlyValue: undefined,
+    serviceFrequency: null,
+    autoRenew: false,
+    renewalNoticeDays: 30,
+    billingCycle: 'monthly',
+    paymentTerms: 'Net 30',
+    termsAndConditions: null,
+    specialInstructions: null,
+  });
 
   useEffect(() => {
     if (id) {
@@ -172,6 +213,62 @@ const ContractDetail = () => {
     }
   };
 
+  const openRenewModal = async () => {
+    if (!contract) return;
+
+    try {
+      const result = await canRenewContract(contract.id);
+      if (!result.canRenew) {
+        toast.error(result.reason || 'This contract cannot be renewed');
+        return;
+      }
+    } catch (error) {
+      toast.error('Failed to check renewal eligibility');
+      return;
+    }
+
+    // Pre-fill form with contract data
+    const startDate = contract.endDate
+      ? new Date(new Date(contract.endDate).getTime() + 86400000).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+
+    setRenewalFormData({
+      startDate,
+      endDate: null,
+      monthlyValue: Number(contract.monthlyValue),
+      serviceFrequency: contract.serviceFrequency || null,
+      autoRenew: contract.autoRenew,
+      renewalNoticeDays: contract.renewalNoticeDays || 30,
+      billingCycle: contract.billingCycle,
+      paymentTerms: contract.paymentTerms,
+      termsAndConditions: contract.termsAndConditions || null,
+      specialInstructions: contract.specialInstructions || null,
+    });
+    setShowRenewModal(true);
+  };
+
+  const handleRenew = async () => {
+    if (!contract) return;
+
+    if (!renewalFormData.startDate) {
+      toast.error('Start date is required');
+      return;
+    }
+
+    try {
+      setRenewing(true);
+      const renewedContract = await renewContract(contract.id, renewalFormData);
+      toast.success('Contract renewed successfully');
+      setShowRenewModal(false);
+      // Navigate to the new contract
+      navigate(`/contracts/${renewedContract.id}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to renew contract');
+    } finally {
+      setRenewing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -223,6 +320,12 @@ const ContractDetail = () => {
             <Button onClick={handleSign}>
               <FileSignature className="mr-2 h-4 w-4" />
               Sign Contract
+            </Button>
+          )}
+          {(contract.status === 'active' || contract.status === 'expired') && !contract.renewedToContract && (
+            <Button onClick={openRenewModal}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Renew
             </Button>
           )}
           {contract.status === 'active' && (
@@ -292,6 +395,53 @@ const ContractDetail = () => {
                 >
                   {contract.proposal.proposalNumber} - {contract.proposal.title}
                 </button>
+              </div>
+            )}
+            {/* Contract Source */}
+            <div>
+              <div className="text-sm text-gray-400">Contract Source</div>
+              <Badge variant="default" className="capitalize">
+                {contract.contractSource}
+              </Badge>
+              {contract.renewalNumber > 0 && (
+                <span className="ml-2 text-sm text-gray-400">
+                  (Renewal #{contract.renewalNumber})
+                </span>
+              )}
+            </div>
+            {/* Renewal Chain */}
+            {(contract.renewedFromContract || contract.renewedToContract) && (
+              <div>
+                <div className="text-sm text-gray-400 mb-2">
+                  <LinkIcon className="inline h-4 w-4 mr-1" />
+                  Renewal Chain
+                </div>
+                <div className="space-y-2">
+                  {contract.renewedFromContract && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <ArrowRight className="h-4 w-4 text-gray-500 rotate-180" />
+                      <span className="text-gray-400">Previous:</span>
+                      <button
+                        onClick={() => navigate(`/contracts/${contract.renewedFromContract?.id}`)}
+                        className="text-gold hover:underline"
+                      >
+                        {contract.renewedFromContract.contractNumber}
+                      </button>
+                    </div>
+                  )}
+                  {contract.renewedToContract && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <ArrowRight className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-400">Renewed to:</span>
+                      <button
+                        onClick={() => navigate(`/contracts/${contract.renewedToContract?.id}`)}
+                        className="text-gold hover:underline"
+                      >
+                        {contract.renewedToContract.contractNumber}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -441,6 +591,159 @@ const ContractDetail = () => {
           </div>
         </Card>
       )}
+
+      {/* Renewal Modal */}
+      <Modal
+        isOpen={showRenewModal}
+        onClose={() => setShowRenewModal(false)}
+        title="Renew Contract"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
+            <h4 className="text-sm font-medium text-gray-400">Renewing Contract</h4>
+            <p className="mt-1 text-white">{contract.contractNumber}</p>
+            <p className="text-sm text-gray-400">{contract.title}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start Date *"
+              type="date"
+              value={renewalFormData.startDate}
+              onChange={(e) =>
+                setRenewalFormData({ ...renewalFormData, startDate: e.target.value })
+              }
+            />
+            <Input
+              label="End Date"
+              type="date"
+              value={renewalFormData.endDate || ''}
+              onChange={(e) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  endDate: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Monthly Value"
+              type="number"
+              step="0.01"
+              value={renewalFormData.monthlyValue || ''}
+              onChange={(e) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  monthlyValue: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            />
+            <Select
+              label="Billing Cycle"
+              options={BILLING_CYCLES}
+              value={renewalFormData.billingCycle || 'monthly'}
+              onChange={(value) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  billingCycle: value as any,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Service Frequency"
+              placeholder="Select frequency"
+              options={SERVICE_FREQUENCIES}
+              value={renewalFormData.serviceFrequency || ''}
+              onChange={(value) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  serviceFrequency: (value || null) as any,
+                })
+              }
+            />
+            <Input
+              label="Payment Terms"
+              value={renewalFormData.paymentTerms || ''}
+              onChange={(e) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  paymentTerms: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-end gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={renewalFormData.autoRenew || false}
+                  onChange={(e) =>
+                    setRenewalFormData({
+                      ...renewalFormData,
+                      autoRenew: e.target.checked,
+                    })
+                  }
+                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                />
+                Auto-Renew
+              </label>
+            </div>
+            <Input
+              label="Renewal Notice Days"
+              type="number"
+              value={renewalFormData.renewalNoticeDays || ''}
+              onChange={(e) =>
+                setRenewalFormData({
+                  ...renewalFormData,
+                  renewalNoticeDays: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </div>
+
+          <Textarea
+            label="Terms & Conditions"
+            rows={3}
+            value={renewalFormData.termsAndConditions || ''}
+            onChange={(e) =>
+              setRenewalFormData({
+                ...renewalFormData,
+                termsAndConditions: e.target.value || null,
+              })
+            }
+          />
+
+          <Textarea
+            label="Special Instructions"
+            rows={2}
+            value={renewalFormData.specialInstructions || ''}
+            onChange={(e) =>
+              setRenewalFormData({
+                ...renewalFormData,
+                specialInstructions: e.target.value || null,
+              })
+            }
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowRenewModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenew} isLoading={renewing}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Create Renewal Contract
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

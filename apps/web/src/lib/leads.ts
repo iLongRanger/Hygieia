@@ -90,3 +90,63 @@ export async function updateLeadSource(
 export async function deleteLeadSource(id: string): Promise<void> {
   await api.delete(`/lead-sources/${id}`);
 }
+
+// Lead Conversion
+
+export interface ConvertLeadInput {
+  createNewAccount: boolean;
+  existingAccountId?: string | null;
+  accountData?: {
+    name: string;
+    type: 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit';
+    industry?: string | null;
+    website?: string | null;
+    billingEmail?: string | null;
+    billingPhone?: string | null;
+    paymentTerms?: string;
+    notes?: string | null;
+  };
+  createFacility: boolean;
+  facilityData?: {
+    name: string;
+    buildingType?: string | null;
+    squareFeet?: number | null;
+    accessInstructions?: string | null;
+    notes?: string | null;
+  };
+}
+
+export interface ConvertLeadResult {
+  lead: Lead;
+  account: {
+    id: string;
+    name: string;
+  };
+  contact: {
+    id: string;
+    name: string;
+    email: string | null;
+  };
+  facility?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface CanConvertLeadResult {
+  canConvert: boolean;
+  reason?: string;
+}
+
+export async function canConvertLead(id: string): Promise<CanConvertLeadResult> {
+  const response = await api.get(`/leads/${id}/can-convert`);
+  return response.data.data;
+}
+
+export async function convertLead(
+  id: string,
+  data: ConvertLeadInput
+): Promise<ConvertLeadResult> {
+  const response = await api.post(`/leads/${id}/convert`, data);
+  return response.data.data;
+}

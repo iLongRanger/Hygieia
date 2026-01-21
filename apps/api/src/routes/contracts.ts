@@ -7,22 +7,28 @@ import {
   getContractById,
   createContract,
   createContractFromProposal,
+  createStandaloneContract,
   updateContract,
   updateContractStatus,
   signContract,
   terminateContract,
   archiveContract,
   restoreContract,
+  renewContract,
+  canRenewContract,
 } from '../services/contractService';
 import {
   createContractSchema,
   createContractFromProposalSchema,
+  createStandaloneContractSchema,
   updateContractSchema,
   updateContractStatusSchema,
   signContractSchema,
   terminateContractSchema,
+  renewContractSchema,
   listContractsQuerySchema,
 } from '../schemas/contract';
+import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 
 const router: Router = Router();
@@ -263,6 +269,92 @@ router.post(
     try {
       const contract = await restoreContract(req.params.id);
       res.json({ data: contract, message: 'Contract restored successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Contract Renewal Routes
+// ============================================================
+
+/** Check if a contract can be renewed */
+router.get(
+  '/:id/can-renew',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await canRenewContract(req.params.id);
+      res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/** Renew a contract */
+router.post(
+  '/:id/renew',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = renewContractSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      // Check if contract can be renewed
+      const canRenew = await canRenewContract(req.params.id);
+      if (!canRenew.canRenew) {
+        throw new BadRequestError(canRenew.reason || 'Contract cannot be renewed');
+      }
+
+      const contract = await renewContract(
+        req.params.id,
+        parsed.data,
+        req.user.id
+      );
+
+      res.status(201).json({ data: contract });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Standalone Contract Creation (imported/legacy)
+// ============================================================
+
+/** Create a standalone contract (imported or legacy, without proposal) */
+router.post(
+  '/standalone',
+  authenticate,
+  requireRole('owner', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = createStandaloneContractSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const contract = await createStandaloneContract({
+        ...parsed.data,
+        createdByUserId: req.user.id,
+      });
+
+      res.status(201).json({ data: contract });
     } catch (error) {
       next(error);
     }

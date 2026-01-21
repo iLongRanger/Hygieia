@@ -367,7 +367,7 @@ const AccountDetail = () => {
               <h3 className="mb-4 text-lg font-semibold text-white">
                 Related Records
               </h3>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Card noPadding className="p-4">
                   <div className="text-2xl font-bold text-gold">
                     {account._count?.facilities ?? 0}
@@ -379,12 +379,6 @@ const AccountDetail = () => {
                     {account._count?.contacts ?? 0}
                   </div>
                   <div className="text-sm text-gray-400">Contacts</div>
-                </Card>
-                <Card noPadding className="p-4">
-                  <div className="text-2xl font-bold text-gold">
-                    {account._count?.opportunities ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-400">Opportunities</div>
                 </Card>
               </div>
             </div>

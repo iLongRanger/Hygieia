@@ -25,7 +25,6 @@ import {
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
 import { listFacilities } from '../../lib/facilities';
-import { listOpportunities } from '../../lib/opportunities';
 import type {
   Proposal,
   CreateProposalInput,
@@ -38,7 +37,6 @@ import type {
 } from '../../types/proposal';
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
-import type { Opportunity } from '../../types/crm';
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -110,14 +108,12 @@ const ProposalForm = () => {
   // Reference data
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 
   // Form data
   const [formData, setFormData] = useState<CreateProposalInput>({
     accountId: '',
     title: '',
     description: null,
-    opportunityId: null,
     facilityId: null,
     validUntil: null,
     taxRate: 0,
@@ -163,14 +159,12 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, opportunitiesRes] = await Promise.all([
+      const [accountsRes, facilitiesRes] = await Promise.all([
         listAccounts({ limit: 100 }),
         listFacilities({ limit: 100 }),
-        listOpportunities({ limit: 100 }),
       ]);
       setAccounts(accountsRes?.data || []);
       setFacilities(facilitiesRes?.data || []);
-      setOpportunities(opportunitiesRes?.data || []);
     } catch (error) {
       console.error('Failed to fetch reference data:', error);
       toast.error('Failed to load reference data');
@@ -185,7 +179,6 @@ const ProposalForm = () => {
         accountId: proposal.account.id,
         title: proposal.title,
         description: proposal.description || null,
-        opportunityId: proposal.opportunity?.id || null,
         facilityId: proposal.facility?.id || null,
         validUntil: proposal.validUntil
           ? proposal.validUntil.split('T')[0]
@@ -216,23 +209,18 @@ const ProposalForm = () => {
     loadData();
   }, [fetchReferenceData, fetchProposal, isEditMode, id]);
 
-  // Filter facilities and opportunities by selected account
+  // Filter facilities by selected account
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
     : facilities;
-
-  const filteredOpportunities = formData.accountId
-    ? opportunities.filter((o) => o.account?.id === formData.accountId)
-    : opportunities;
 
   // Handle form field changes
   const handleChange = (field: keyof CreateProposalInput, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Clear facility and opportunity when account changes
+      // Clear facility when account changes
       if (field === 'accountId') {
         updated.facilityId = null;
-        updated.opportunityId = null;
       }
       return updated;
     });
@@ -392,19 +380,6 @@ const ProposalForm = () => {
                 value={formData.accountId}
                 onChange={(value) => handleChange('accountId', value)}
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-              />
-              <Select
-                label="Opportunity"
-                placeholder="Select an opportunity (optional)"
-                value={formData.opportunityId || ''}
-                onChange={(value) => handleChange('opportunityId', value || null)}
-                options={[
-                  { value: '', label: 'None' },
-                  ...filteredOpportunities.map((o) => ({
-                    value: o.id,
-                    label: o.name,
-                  })),
-                ]}
               />
               <Select
                 label="Facility"

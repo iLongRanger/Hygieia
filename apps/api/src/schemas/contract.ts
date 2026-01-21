@@ -9,6 +9,13 @@ export const contractStatusSchema = z.enum([
   'renewed',
 ]);
 
+export const contractSourceSchema = z.enum([
+  'proposal',
+  'imported',
+  'legacy',
+  'renewal',
+]);
+
 export const serviceFrequencySchema = z.enum([
   'daily',
   'weekly',
@@ -123,11 +130,63 @@ export const terminateContractSchema = z.object({
   terminationReason: z.string().min(1, 'Termination reason is required').max(5000),
 });
 
+// Renew Contract Schema
+export const renewContractSchema = z
+  .object({
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date().optional().nullable(),
+    monthlyValue: z.coerce.number().positive().optional(),
+    serviceFrequency: serviceFrequencySchema.optional().nullable(),
+    serviceSchedule: z.any().optional().nullable(),
+    autoRenew: z.boolean().optional(),
+    renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
+    billingCycle: billingCycleSchema.optional(),
+    paymentTerms: z.string().max(50).optional(),
+    termsAndConditions: z.string().max(50000).optional().nullable(),
+    specialInstructions: z.string().max(10000).optional().nullable(),
+  })
+  .refine(
+    (data) => !data.endDate || data.endDate > data.startDate,
+    {
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    }
+  );
+
+// Create Standalone Contract Schema (for imported/legacy contracts)
+export const createStandaloneContractSchema = z
+  .object({
+    title: z.string().min(1, 'Contract title is required').max(255),
+    contractSource: z.enum(['imported', 'legacy']),
+    accountId: z.string().uuid(),
+    facilityId: z.string().uuid().optional().nullable(),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date().optional().nullable(),
+    serviceFrequency: serviceFrequencySchema.optional().nullable(),
+    serviceSchedule: z.any().optional().nullable(),
+    autoRenew: z.boolean().optional().default(false),
+    renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
+    monthlyValue: z.coerce.number().positive('Monthly value must be positive'),
+    totalValue: z.coerce.number().nonnegative().optional().nullable(),
+    billingCycle: billingCycleSchema.optional().default('monthly'),
+    paymentTerms: z.string().max(50).optional().default('Net 30'),
+    termsAndConditions: z.string().max(50000).optional().nullable(),
+    specialInstructions: z.string().max(10000).optional().nullable(),
+  })
+  .refine(
+    (data) => !data.endDate || data.endDate > data.startDate,
+    {
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    }
+  );
+
 // List Contracts Query Schema
 export const listContractsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   status: contractStatusSchema.optional(),
+  contractSource: contractSourceSchema.optional(),
   accountId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   proposalId: z.string().uuid().optional(),
@@ -153,8 +212,10 @@ export const listContractsQuerySchema = z.object({
 // Export types
 export type CreateContractInput = z.infer<typeof createContractSchema>;
 export type CreateContractFromProposalInput = z.infer<typeof createContractFromProposalSchema>;
+export type CreateStandaloneContractInput = z.infer<typeof createStandaloneContractSchema>;
 export type UpdateContractInput = z.infer<typeof updateContractSchema>;
 export type UpdateContractStatusInput = z.infer<typeof updateContractStatusSchema>;
 export type SignContractInput = z.infer<typeof signContractSchema>;
 export type TerminateContractInput = z.infer<typeof terminateContractSchema>;
+export type RenewContractInput = z.infer<typeof renewContractSchema>;
 export type ListContractsQuery = z.infer<typeof listContractsQuerySchema>;

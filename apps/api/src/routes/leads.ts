@@ -10,12 +10,16 @@ import {
   archiveLead,
   restoreLead,
   deleteLead,
+  convertLead,
+  canConvertLead,
 } from '../services/leadService';
 import {
   createLeadSchema,
   updateLeadSchema,
   listLeadsQuerySchema,
+  convertLeadSchema,
 } from '../schemas/lead';
+import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 
 const router: Router = Router();
@@ -169,6 +173,59 @@ router.delete(
 
       await deleteLead(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Lead Conversion Routes
+// ============================================================
+
+/** Check if a lead can be converted */
+router.get(
+  '/:id/can-convert',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await canConvertLead(req.params.id);
+      res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/** Convert a lead to an account */
+router.post(
+  '/:id/convert',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = convertLeadSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      // Check if lead can be converted
+      const canConvert = await canConvertLead(req.params.id);
+      if (!canConvert.canConvert) {
+        throw new BadRequestError(canConvert.reason || 'Lead cannot be converted');
+      }
+
+      const result = await convertLead(req.params.id, {
+        ...parsed.data,
+        userId: req.user.id,
+      });
+
+      res.status(201).json({ data: result });
     } catch (error) {
       next(error);
     }

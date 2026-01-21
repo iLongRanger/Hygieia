@@ -90,8 +90,64 @@ export const listLeadsQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  converted: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
+
+// Convert Lead to Account Schema
+export const convertLeadSchema = z.object({
+  // Account creation options
+  createNewAccount: z.boolean().default(true),
+  existingAccountId: z.string().uuid().optional().nullable(),
+
+  // Account data (used when createNewAccount is true)
+  accountData: z
+    .object({
+      name: z.string().min(1, 'Account name is required').max(255),
+      type: z.enum(['commercial', 'residential', 'industrial', 'government', 'non_profit']),
+      industry: z.string().max(100).optional().nullable(),
+      website: z.string().url().max(500).optional().nullable(),
+      billingEmail: z.string().email().max(255).optional().nullable(),
+      billingPhone: z.string().max(20).optional().nullable(),
+      paymentTerms: z.string().max(50).optional().default('NET30'),
+      notes: z.string().max(10000).optional().nullable(),
+    })
+    .optional(),
+
+  // Facility creation options
+  createFacility: z.boolean().default(false),
+  facilityData: z
+    .object({
+      name: z.string().min(1, 'Facility name is required').max(255),
+      buildingType: z.string().max(50).optional().nullable(),
+      squareFeet: z.coerce.number().positive().optional().nullable(),
+      accessInstructions: z.string().max(5000).optional().nullable(),
+      notes: z.string().max(10000).optional().nullable(),
+    })
+    .optional(),
+}).refine(
+  (data) => data.createNewAccount || data.existingAccountId,
+  {
+    message: 'Either createNewAccount must be true or existingAccountId must be provided',
+    path: ['existingAccountId'],
+  }
+).refine(
+  (data) => !data.createNewAccount || data.accountData,
+  {
+    message: 'accountData is required when createNewAccount is true',
+    path: ['accountData'],
+  }
+).refine(
+  (data) => !data.createFacility || data.facilityData,
+  {
+    message: 'facilityData is required when createFacility is true',
+    path: ['facilityData'],
+  }
+);
 
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type ListLeadsQuery = z.infer<typeof listLeadsQuerySchema>;
+export type ConvertLeadInput = z.infer<typeof convertLeadSchema>;

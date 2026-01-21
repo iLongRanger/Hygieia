@@ -73,11 +73,6 @@ export interface Proposal {
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
-  opportunity?: {
-    id: string;
-    name: string;
-    status: string;
-  } | null;
   account: {
     id: string;
     name: string;
@@ -98,7 +93,6 @@ export interface Proposal {
 }
 
 export interface CreateProposalInput {
-  opportunityId?: string | null;
   accountId: string;
   facilityId?: string | null;
   title: string;
@@ -112,7 +106,6 @@ export interface CreateProposalInput {
 }
 
 export interface UpdateProposalInput {
-  opportunityId?: string | null;
   accountId?: string;
   facilityId?: string | null;
   title?: string;
@@ -130,7 +123,6 @@ export interface ListProposalsParams {
   page?: number;
   limit?: number;
   status?: ProposalStatus;
-  opportunityId?: string;
   accountId?: string;
   facilityId?: string;
   search?: string;

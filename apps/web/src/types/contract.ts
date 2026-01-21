@@ -6,6 +6,8 @@ export type ContractStatus =
   | 'terminated'
   | 'renewed';
 
+export type ContractSource = 'proposal' | 'imported' | 'legacy' | 'renewal';
+
 export type ServiceFrequency =
   | 'daily'
   | 'weekly'
@@ -31,6 +33,9 @@ export interface Contract {
   contractNumber: string;
   title: string;
   status: ContractStatus;
+  contractSource: ContractSource;
+  renewedFromContractId?: string | null;
+  renewalNumber: number;
   startDate: string;
   endDate?: string | null;
   serviceFrequency?: ServiceFrequency | null;
@@ -66,6 +71,16 @@ export interface Contract {
   proposal?: {
     id: string;
     proposalNumber: string;
+    title: string;
+  } | null;
+  renewedFromContract?: {
+    id: string;
+    contractNumber: string;
+    title: string;
+  } | null;
+  renewedToContract?: {
+    id: string;
+    contractNumber: string;
     title: string;
   } | null;
   approvedByUser?: {
@@ -148,6 +163,7 @@ export interface ListContractsParams {
   page?: number;
   limit?: number;
   status?: ContractStatus;
+  contractSource?: ContractSource;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -155,4 +171,44 @@ export interface ListContractsParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
+}
+
+// Renewal types
+export interface RenewContractInput {
+  startDate: string;
+  endDate?: string | null;
+  monthlyValue?: number;
+  serviceFrequency?: ServiceFrequency | null;
+  serviceSchedule?: ServiceSchedule | null;
+  autoRenew?: boolean;
+  renewalNoticeDays?: number | null;
+  billingCycle?: BillingCycle;
+  paymentTerms?: string;
+  termsAndConditions?: string | null;
+  specialInstructions?: string | null;
+}
+
+export interface CanRenewContractResult {
+  canRenew: boolean;
+  reason?: string;
+}
+
+// Standalone contract creation (imported/legacy)
+export interface CreateStandaloneContractInput {
+  title: string;
+  contractSource: 'imported' | 'legacy';
+  accountId: string;
+  facilityId?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  serviceFrequency?: ServiceFrequency | null;
+  serviceSchedule?: ServiceSchedule | null;
+  autoRenew?: boolean;
+  renewalNoticeDays?: number | null;
+  monthlyValue: number;
+  totalValue?: number | null;
+  billingCycle?: BillingCycle;
+  paymentTerms?: string;
+  termsAndConditions?: string | null;
+  specialInstructions?: string | null;
 }

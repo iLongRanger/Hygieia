@@ -4,7 +4,6 @@ export type {
   Lead,
   Account,
   Contact,
-  Opportunity,
   User,
   Role,
   UserRole,
@@ -16,4 +15,8 @@ export type {
   FacilityTask,
   PricingRule,
   PricingOverride,
+  Proposal,
+  ProposalItem,
+  ProposalService,
+  Contract,
 } from '@prisma/client';

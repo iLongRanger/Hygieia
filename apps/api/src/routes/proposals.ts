@@ -114,7 +114,6 @@ router.post(
       const proposal = await createProposal({
         accountId: parsed.data.accountId,
         title: parsed.data.title,
-        opportunityId: parsed.data.opportunityId,
         facilityId: parsed.data.facilityId,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
@@ -158,7 +157,6 @@ router.patch(
       }
 
       const updateData: any = {
-        opportunityId: parsed.data.opportunityId,
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
         title: parsed.data.title,
@@ -263,7 +261,6 @@ router.post(
       const accepted = await acceptProposal(req.params.id);
 
       // TODO: Create contract from accepted proposal
-      // TODO: Update opportunity status to closed-won
 
       res.json({ data: accepted, message: 'Proposal accepted successfully' });
     } catch (error) {
@@ -294,8 +291,6 @@ router.post(
       }
 
       const rejected = await rejectProposal(req.params.id, parsed.data.rejectionReason);
-
-      // TODO: Update opportunity status if needed
 
       res.json({ data: rejected, message: 'Proposal rejected' });
     } catch (error) {
