@@ -68,7 +68,6 @@ export const proposalServiceUpdateSchema = proposalServiceSchema.extend({
 
 // Create Proposal Schema
 export const createProposalSchema = z.object({
-  opportunityId: z.string().uuid().optional().nullable(),
   accountId: z.string().uuid(),
   facilityId: z.string().uuid().optional().nullable(),
   title: z.string().min(1, 'Proposal title is required').max(255),
@@ -83,7 +82,6 @@ export const createProposalSchema = z.object({
 
 // Update Proposal Schema
 export const updateProposalSchema = z.object({
-  opportunityId: z.string().uuid().optional().nullable(),
   accountId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional().nullable(),
   title: z.string().min(1).max(255).optional(),
@@ -102,7 +100,6 @@ export const listProposalsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   status: proposalStatusSchema.optional(),
-  opportunityId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   search: z.string().max(100).optional(),

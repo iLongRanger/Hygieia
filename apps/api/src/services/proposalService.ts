@@ -5,7 +5,6 @@ export interface ProposalListParams {
   page?: number;
   limit?: number;
   status?: string;
-  opportunityId?: string;
   accountId?: string;
   facilityId?: string;
   search?: string;
@@ -36,7 +35,6 @@ export interface ProposalServiceInput {
 }
 
 export interface ProposalCreateInput {
-  opportunityId?: string | null;
   accountId: string;
   facilityId?: string | null;
   title: string;
@@ -51,7 +49,6 @@ export interface ProposalCreateInput {
 }
 
 export interface ProposalUpdateInput {
-  opportunityId?: string | null;
   accountId?: string;
   facilityId?: string | null;
   title?: string;
@@ -96,13 +93,6 @@ const proposalSelect = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
-  opportunity: {
-    select: {
-      id: true,
-      name: true,
-      status: true,
-    },
-  },
   account: {
     select: {
       id: true,
@@ -217,7 +207,6 @@ export async function listProposals(
     page = 1,
     limit = 20,
     status,
-    opportunityId,
     accountId,
     facilityId,
     search,
@@ -236,10 +225,6 @@ export async function listProposals(
     where.status = status;
   }
 
-  if (opportunityId) {
-    where.opportunityId = opportunityId;
-  }
-
   if (accountId) {
     where.accountId = accountId;
   }
@@ -254,7 +239,6 @@ export async function listProposals(
       { title: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
       { account: { name: { contains: search, mode: 'insensitive' } } },
-      { opportunity: { name: { contains: search, mode: 'insensitive' } } },
     ];
   }
 
@@ -326,7 +310,6 @@ export async function createProposal(input: ProposalCreateInput) {
       validUntil: input.validUntil,
       notes: input.notes,
       termsAndConditions: input.termsAndConditions,
-      opportunityId: input.opportunityId,
       accountId: input.accountId,
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
@@ -361,11 +344,6 @@ export async function createProposal(input: ProposalCreateInput) {
 export async function updateProposal(id: string, input: ProposalUpdateInput) {
   const updateData: Prisma.ProposalUpdateInput = {};
 
-  if (input.opportunityId !== undefined) {
-    updateData.opportunity = input.opportunityId
-      ? { connect: { id: input.opportunityId } }
-      : { disconnect: true };
-  }
   if (input.accountId !== undefined) {
     updateData.account = { connect: { id: input.accountId } };
   }

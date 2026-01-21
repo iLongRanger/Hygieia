@@ -11,6 +11,7 @@ export interface LeadListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
+  converted?: boolean;
 }
 
 export interface LeadCreateInput {
@@ -76,6 +77,9 @@ const leadSelect = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
+  // Conversion tracking
+  convertedToAccountId: true,
+  convertedAt: true,
   leadSource: {
     select: {
       id: true,
@@ -91,6 +95,18 @@ const leadSelect = {
     },
   },
   createdByUser: {
+    select: {
+      id: true,
+      fullName: true,
+    },
+  },
+  convertedToAccount: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  convertedByUser: {
     select: {
       id: true,
       fullName: true,
@@ -113,6 +129,7 @@ export async function listLeads(
     sortBy = 'createdAt',
     sortOrder = 'desc',
     includeArchived = false,
+    converted,
   } = params;
 
   const where: Prisma.LeadWhereInput = {};
@@ -131,6 +148,15 @@ export async function listLeads(
 
   if (assignedToUserId) {
     where.assignedToUserId = assignedToUserId;
+  }
+
+  // Filter by conversion status
+  if (converted !== undefined) {
+    if (converted) {
+      where.convertedToAccountId = { not: null };
+    } else {
+      where.convertedToAccountId = null;
+    }
   }
 
   if (search) {
@@ -267,4 +293,224 @@ export async function deleteLead(id: string) {
     where: { id },
     select: { id: true },
   });
+}
+
+// ============================================================
+// Lead Conversion
+// ============================================================
+
+export interface ConvertLeadInput {
+  createNewAccount: boolean;
+  existingAccountId?: string | null;
+  accountData?: {
+    name: string;
+    type: string;
+    industry?: string | null;
+    website?: string | null;
+    billingEmail?: string | null;
+    billingPhone?: string | null;
+    paymentTerms?: string;
+    notes?: string | null;
+  };
+  createFacility: boolean;
+  facilityData?: {
+    name: string;
+    buildingType?: string | null;
+    squareFeet?: number | null;
+    accessInstructions?: string | null;
+    notes?: string | null;
+  };
+  userId: string;
+}
+
+export interface ConvertLeadResult {
+  lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>;
+  account: {
+    id: string;
+    name: string;
+  };
+  contact: {
+    id: string;
+    name: string;
+    email: string | null;
+  };
+  facility?: {
+    id: string;
+    name: string;
+  };
+}
+
+/** Convert a lead to an account with optional facility creation */
+export async function convertLead(
+  leadId: string,
+  input: ConvertLeadInput
+): Promise<ConvertLeadResult> {
+  // Get the lead first
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      companyName: true,
+      contactName: true,
+      primaryEmail: true,
+      primaryPhone: true,
+      address: true,
+      notes: true,
+      convertedToAccountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!lead) {
+    throw new Error('Lead not found');
+  }
+
+  if (lead.convertedToAccountId) {
+    throw new Error('Lead has already been converted to an account');
+  }
+
+  if (lead.archivedAt) {
+    throw new Error('Cannot convert an archived lead');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let accountId: string;
+    let accountName: string;
+
+    if (input.createNewAccount) {
+      if (!input.accountData) {
+        throw new Error('Account data is required when creating a new account');
+      }
+
+      // Create new account
+      const account = await tx.account.create({
+        data: {
+          name: input.accountData.name,
+          type: input.accountData.type,
+          industry: input.accountData.industry,
+          website: input.accountData.website,
+          billingEmail: input.accountData.billingEmail || lead.primaryEmail,
+          billingPhone: input.accountData.billingPhone || lead.primaryPhone,
+          billingAddress: lead.address as Prisma.InputJsonValue,
+          paymentTerms: input.accountData.paymentTerms || 'NET30',
+          notes: input.accountData.notes,
+          createdByUserId: input.userId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      accountId = account.id;
+      accountName = account.name;
+    } else {
+      if (!input.existingAccountId) {
+        throw new Error('Existing account ID is required when not creating a new account');
+      }
+
+      // Verify existing account exists
+      const existingAccount = await tx.account.findUnique({
+        where: { id: input.existingAccountId },
+        select: { id: true, name: true },
+      });
+
+      if (!existingAccount) {
+        throw new Error('Existing account not found');
+      }
+
+      accountId = existingAccount.id;
+      accountName = existingAccount.name;
+    }
+
+    // Create primary contact from lead data
+    const contact = await tx.contact.create({
+      data: {
+        accountId,
+        name: lead.contactName,
+        email: lead.primaryEmail,
+        phone: lead.primaryPhone,
+        isPrimary: true,
+        createdByUserId: input.userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    // Optionally create facility from lead address
+    let facility: { id: string; name: string } | undefined;
+    if (input.createFacility && input.facilityData) {
+      const createdFacility = await tx.facility.create({
+        data: {
+          accountId,
+          name: input.facilityData.name,
+          address: (lead.address || {}) as Prisma.InputJsonValue,
+          buildingType: input.facilityData.buildingType,
+          squareFeet: input.facilityData.squareFeet,
+          accessInstructions: input.facilityData.accessInstructions,
+          notes: input.facilityData.notes,
+          createdByUserId: input.userId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      facility = createdFacility;
+    }
+
+    // Update lead with conversion tracking
+    const updatedLead = await tx.lead.update({
+      where: { id: leadId },
+      data: {
+        convertedToAccountId: accountId,
+        convertedAt: new Date(),
+        convertedByUserId: input.userId,
+      },
+      select: leadSelect,
+    });
+
+    return {
+      lead: updatedLead,
+      account: {
+        id: accountId,
+        name: accountName,
+      },
+      contact,
+      facility,
+    };
+  });
+}
+
+/** Check if a lead can be converted */
+export async function canConvertLead(leadId: string): Promise<{
+  canConvert: boolean;
+  reason?: string;
+}> {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      convertedToAccountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!lead) {
+    return { canConvert: false, reason: 'Lead not found' };
+  }
+
+  if (lead.convertedToAccountId) {
+    return { canConvert: false, reason: 'Lead has already been converted' };
+  }
+
+  if (lead.archivedAt) {
+    return { canConvert: false, reason: 'Lead is archived' };
+  }
+
+  return { canConvert: true };
 }

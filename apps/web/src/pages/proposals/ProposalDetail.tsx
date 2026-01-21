@@ -461,16 +461,6 @@ const ProposalDetail = () => {
                 </div>
               </div>
 
-              {proposal.opportunity && (
-                <div className="flex items-start gap-3">
-                  <FileText className="mt-1 h-4 w-4 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-400">Opportunity</div>
-                    <div className="text-white">{proposal.opportunity.name}</div>
-                  </div>
-                </div>
-              )}
-
               {proposal.facility && (
                 <div className="flex items-start gap-3">
                   <Building2 className="mt-1 h-4 w-4 text-gray-400" />

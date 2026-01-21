@@ -12,8 +12,6 @@ import AccountsList from './pages/accounts/AccountsList';
 import AccountDetail from './pages/accounts/AccountDetail';
 import ContactsList from './pages/contacts/ContactsList';
 import ContactDetail from './pages/contacts/ContactDetail';
-import OpportunitiesList from './pages/opportunities/OpportunitiesList';
-import OpportunityDetail from './pages/opportunities/OpportunityDetail';
 import UsersList from './pages/users/UsersList';
 import UserDetail from './pages/users/UserDetail';
 import FacilitiesList from './pages/facilities/FacilitiesList';
@@ -68,8 +66,6 @@ function App() {
             <Route path="/accounts/:id" element={<AccountDetail />} />
             <Route path="/contacts" element={<ContactsList />} />
             <Route path="/contacts/:id" element={<ContactDetail />} />
-            <Route path="/opportunities" element={<OpportunitiesList />} />
-            <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/facilities" element={<FacilitiesList />} />
             <Route path="/facilities/:id" element={<FacilityDetail />} />
             <Route path="/tasks" element={<TaskTemplatesList />} />

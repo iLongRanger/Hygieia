@@ -34,18 +34,12 @@ const createTestProposal = (overrides = {}) => ({
   rejectionReason: null,
   notes: null,
   termsAndConditions: null,
-  opportunityId: 'opportunity-1',
   accountId: 'account-1',
   facilityId: 'facility-1',
   createdByUserId: 'user-1',
   createdAt: new Date(),
   updatedAt: new Date(),
   archivedAt: null,
-  opportunity: {
-    id: 'opportunity-1',
-    name: 'Test Opportunity',
-    status: 'qualification',
-  },
   account: {
     id: 'account-1',
     name: 'Test Account',
@@ -117,23 +111,6 @@ describe('proposalService', () => {
       );
     });
 
-    it('should filter by opportunityId', async () => {
-      const mockProposals = [createTestProposal({ opportunityId: 'opportunity-123' })];
-
-      (prisma.proposal.findMany as jest.Mock).mockResolvedValue(mockProposals);
-      (prisma.proposal.count as jest.Mock).mockResolvedValue(1);
-
-      await proposalService.listProposals({ opportunityId: 'opportunity-123' });
-
-      expect(prisma.proposal.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            opportunityId: 'opportunity-123',
-          }),
-        })
-      );
-    });
-
     it('should filter by accountId', async () => {
       const mockProposals = [createTestProposal({ accountId: 'account-123' })];
 
@@ -168,7 +145,7 @@ describe('proposalService', () => {
       );
     });
 
-    it('should search by proposal number, title, description, account, and opportunity', async () => {
+    it('should search by proposal number, title, description, and account', async () => {
       const mockProposals = [createTestProposal()];
 
       (prisma.proposal.findMany as jest.Mock).mockResolvedValue(mockProposals);
@@ -184,7 +161,6 @@ describe('proposalService', () => {
               { title: { contains: 'test', mode: 'insensitive' } },
               { description: { contains: 'test', mode: 'insensitive' } },
               { account: { name: { contains: 'test', mode: 'insensitive' } } },
-              { opportunity: { name: { contains: 'test', mode: 'insensitive' } } },
             ],
           }),
         })

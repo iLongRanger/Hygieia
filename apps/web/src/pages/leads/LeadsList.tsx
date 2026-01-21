@@ -7,6 +7,9 @@ import {
   RotateCcw,
   DollarSign,
   X,
+  ArrowRightCircle,
+  Building2,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -22,9 +25,14 @@ import {
   archiveLead,
   restoreLead,
   listLeadSources,
+  canConvertLead,
+  convertLead,
+  type ConvertLeadInput,
+  type ConvertLeadResult,
 } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
-import type { Lead, CreateLeadInput, LeadSource } from '../../types/crm';
+import { listAccounts } from '../../lib/accounts';
+import type { Lead, CreateLeadInput, LeadSource, Account } from '../../types/crm';
 import type { User } from '../../types/user';
 
 const LEAD_STATUSES = [
@@ -35,6 +43,14 @@ const LEAD_STATUSES = [
   { value: 'negotiation', label: 'Negotiation' },
   { value: 'won', label: 'Won' },
   { value: 'lost', label: 'Lost' },
+];
+
+const ACCOUNT_TYPES = [
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'government', label: 'Government' },
+  { value: 'non_profit', label: 'Non-Profit' },
 ];
 
 const LeadsList = () => {
@@ -55,6 +71,35 @@ const LeadsList = () => {
   const [leadSourceFilter, setLeadSourceFilter] = useState<string>('');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+
+  // Conversion states
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [converting, setConverting] = useState(false);
+  const [conversionResult, setConversionResult] = useState<ConvertLeadResult | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [conversionFormData, setConversionFormData] = useState<ConvertLeadInput>({
+    createNewAccount: true,
+    existingAccountId: null,
+    accountData: {
+      name: '',
+      type: 'commercial',
+      industry: null,
+      website: null,
+      billingEmail: null,
+      billingPhone: null,
+      paymentTerms: 'Net 30',
+      notes: null,
+    },
+    createFacility: false,
+    facilityData: {
+      name: '',
+      buildingType: null,
+      squareFeet: null,
+      accessInstructions: null,
+      notes: null,
+    },
+  });
 
   const [formData, setFormData] = useState<CreateLeadInput>({
     contactName: '',
@@ -120,6 +165,15 @@ const LeadsList = () => {
     }
   }, []);
 
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await listAccounts({ limit: 1000 });
+      setAccounts(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeads(page, search, {
       status: statusFilter,
@@ -132,7 +186,8 @@ const LeadsList = () => {
   useEffect(() => {
     fetchLeadSources();
     fetchUsers();
-  }, [fetchLeadSources, fetchUsers]);
+    fetchAccounts();
+  }, [fetchLeadSources, fetchUsers, fetchAccounts]);
 
   const handleCreate = async () => {
     if (!formData.contactName) return;
@@ -207,6 +262,93 @@ const LeadsList = () => {
     } catch (error) {
       console.error('Failed to restore lead:', error);
     }
+  };
+
+  const openConvertModal = async (lead: Lead) => {
+    // Check if lead can be converted
+    try {
+      const result = await canConvertLead(lead.id);
+      if (!result.canConvert) {
+        alert(result.reason || 'This lead cannot be converted');
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to check conversion eligibility:', error);
+      return;
+    }
+
+    setSelectedLead(lead);
+    setConversionResult(null);
+    // Pre-fill form with lead data
+    setConversionFormData({
+      createNewAccount: true,
+      existingAccountId: null,
+      accountData: {
+        name: lead.companyName || lead.contactName,
+        type: 'commercial',
+        industry: null,
+        website: null,
+        billingEmail: lead.primaryEmail || null,
+        billingPhone: lead.primaryPhone || null,
+        paymentTerms: 'Net 30',
+        notes: null,
+      },
+      createFacility: false,
+      facilityData: {
+        name: lead.companyName || lead.contactName,
+        buildingType: null,
+        squareFeet: null,
+        accessInstructions: null,
+        notes: null,
+      },
+    });
+    setShowConvertModal(true);
+  };
+
+  const handleConvert = async () => {
+    if (!selectedLead) return;
+
+    // Validate form
+    if (conversionFormData.createNewAccount) {
+      if (!conversionFormData.accountData?.name || !conversionFormData.accountData?.type) {
+        alert('Please fill in required account fields');
+        return;
+      }
+    } else {
+      if (!conversionFormData.existingAccountId) {
+        alert('Please select an existing account');
+        return;
+      }
+    }
+
+    if (conversionFormData.createFacility && !conversionFormData.facilityData?.name) {
+      alert('Please enter a facility name');
+      return;
+    }
+
+    try {
+      setConverting(true);
+      const result = await convertLead(selectedLead.id, conversionFormData);
+      setConversionResult(result);
+      // Refresh leads list
+      fetchLeads(page, search, {
+        status: statusFilter,
+        leadSourceId: leadSourceFilter,
+        assignedToUserId: assignedToFilter,
+        includeArchived,
+      });
+    } catch (error) {
+      console.error('Failed to convert lead:', error);
+      alert('Failed to convert lead. Please try again.');
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  const closeConvertModal = () => {
+    setShowConvertModal(false);
+    setSelectedLead(null);
+    setConversionResult(null);
   };
 
   const formatCurrency = (value: string | null) => {
@@ -301,6 +443,27 @@ const LeadsList = () => {
           <Button variant="ghost" size="sm">
             Edit
           </Button>
+          {/* Show Convert button only for non-archived, non-converted leads */}
+          {!item.archivedAt && !item.convertedAt && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                openConvertModal(item);
+              }}
+              title="Convert to Account"
+            >
+              <ArrowRightCircle className="h-4 w-4" />
+            </Button>
+          )}
+          {/* Show converted badge if already converted */}
+          {item.convertedAt && (
+            <Badge variant="success" className="text-xs">
+              <CheckCircle className="mr-1 h-3 w-3" />
+              Converted
+            </Badge>
+          )}
           {item.archivedAt ? (
             <Button
               variant="ghost"
@@ -603,6 +766,304 @@ const LeadsList = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Conversion Modal */}
+      <Modal
+        isOpen={showConvertModal}
+        onClose={closeConvertModal}
+        title={conversionResult ? 'Conversion Successful' : 'Convert Lead to Account'}
+        size="lg"
+      >
+        {conversionResult ? (
+          <div className="space-y-6">
+            <div className="rounded-lg bg-green-500/10 p-4 text-center">
+              <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+              <h3 className="mt-2 text-lg font-medium text-white">
+                Lead Converted Successfully!
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
+                <h4 className="text-sm font-medium text-gray-400">Account Created</h4>
+                <p className="mt-1 text-white">{conversionResult.account.name}</p>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
+                <h4 className="text-sm font-medium text-gray-400">Contact Created</h4>
+                <p className="mt-1 text-white">{conversionResult.contact.name}</p>
+                {conversionResult.contact.email && (
+                  <p className="text-sm text-gray-400">{conversionResult.contact.email}</p>
+                )}
+              </div>
+
+              {conversionResult.facility && (
+                <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
+                  <h4 className="text-sm font-medium text-gray-400">Facility Created</h4>
+                  <p className="mt-1 text-white">{conversionResult.facility.name}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={closeConvertModal}>Close</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {selectedLead && (
+              <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
+                <h4 className="text-sm font-medium text-gray-400">Converting Lead</h4>
+                <p className="mt-1 text-white">{selectedLead.contactName}</p>
+                {selectedLead.companyName && (
+                  <p className="text-sm text-gray-400">{selectedLead.companyName}</p>
+                )}
+              </div>
+            )}
+
+            {/* Account Selection */}
+            <div className="space-y-4">
+              <h4 className="flex items-center gap-2 font-medium text-white">
+                <Building2 className="h-5 w-5" />
+                Account
+              </h4>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="radio"
+                    checked={conversionFormData.createNewAccount}
+                    onChange={() =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        createNewAccount: true,
+                        existingAccountId: null,
+                      })
+                    }
+                    className="text-primary-500 focus:ring-primary-500"
+                  />
+                  Create New Account
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="radio"
+                    checked={!conversionFormData.createNewAccount}
+                    onChange={() =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        createNewAccount: false,
+                      })
+                    }
+                    className="text-primary-500 focus:ring-primary-500"
+                  />
+                  Use Existing Account
+                </label>
+              </div>
+
+              {conversionFormData.createNewAccount ? (
+                <div className="space-y-4 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Account Name"
+                      required
+                      value={conversionFormData.accountData?.name || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            name: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                    <Select
+                      label="Account Type"
+                      required
+                      options={ACCOUNT_TYPES}
+                      value={conversionFormData.accountData?.type || 'commercial'}
+                      onChange={(value) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            type: value as 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit',
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Industry"
+                      value={conversionFormData.accountData?.industry || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            industry: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                    <Input
+                      label="Website"
+                      value={conversionFormData.accountData?.website || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            website: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Billing Email"
+                      type="email"
+                      value={conversionFormData.accountData?.billingEmail || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            billingEmail: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                    <Input
+                      label="Billing Phone"
+                      value={conversionFormData.accountData?.billingPhone || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          accountData: {
+                            ...conversionFormData.accountData!,
+                            billingPhone: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  label="Select Account"
+                  placeholder="Choose an existing account"
+                  options={accounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                  }))}
+                  value={conversionFormData.existingAccountId || ''}
+                  onChange={(value) =>
+                    setConversionFormData({
+                      ...conversionFormData,
+                      existingAccountId: value || null,
+                    })
+                  }
+                />
+              )}
+            </div>
+
+            {/* Facility Option */}
+            <div className="space-y-4">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={conversionFormData.createFacility}
+                  onChange={(e) =>
+                    setConversionFormData({
+                      ...conversionFormData,
+                      createFacility: e.target.checked,
+                    })
+                  }
+                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                />
+                Also create a Facility
+              </label>
+
+              {conversionFormData.createFacility && (
+                <div className="space-y-4 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Facility Name"
+                      required
+                      value={conversionFormData.facilityData?.name || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          facilityData: {
+                            ...conversionFormData.facilityData!,
+                            name: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                    <Input
+                      label="Building Type"
+                      placeholder="e.g., Office, Warehouse"
+                      value={conversionFormData.facilityData?.buildingType || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          facilityData: {
+                            ...conversionFormData.facilityData!,
+                            buildingType: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Square Feet"
+                      type="number"
+                      value={conversionFormData.facilityData?.squareFeet || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          facilityData: {
+                            ...conversionFormData.facilityData!,
+                            squareFeet: e.target.value ? Number(e.target.value) : null,
+                          },
+                        })
+                      }
+                    />
+                    <Input
+                      label="Access Instructions"
+                      value={conversionFormData.facilityData?.accessInstructions || ''}
+                      onChange={(e) =>
+                        setConversionFormData({
+                          ...conversionFormData,
+                          facilityData: {
+                            ...conversionFormData.facilityData!,
+                            accessInstructions: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="secondary" onClick={closeConvertModal}>
+                Cancel
+              </Button>
+              <Button onClick={handleConvert} isLoading={converting}>
+                <ArrowRightCircle className="mr-2 h-4 w-4" />
+                Convert Lead
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
