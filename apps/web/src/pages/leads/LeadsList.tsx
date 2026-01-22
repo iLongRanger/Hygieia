@@ -22,6 +22,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import {
   listLeads,
   createLead,
+  updateLead,
   archiveLead,
   restoreLead,
   listLeadSources,
@@ -32,7 +33,7 @@ import {
 } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listAccounts } from '../../lib/accounts';
-import type { Lead, CreateLeadInput, LeadSource, Account } from '../../types/crm';
+import type { Lead, CreateLeadInput, UpdateLeadInput, LeadSource, Account } from '../../types/crm';
 import type { User } from '../../types/user';
 
 const LEAD_STATUSES = [
@@ -114,6 +115,12 @@ const LeadsList = () => {
     assignedToUserId: null,
     notes: null,
   });
+
+  // Edit modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState<UpdateLeadInput>({});
 
   const fetchLeads = useCallback(
     async (currentPage: number, currentSearch: string, filters?: {
@@ -351,6 +358,53 @@ const LeadsList = () => {
     setConversionResult(null);
   };
 
+  const openEditModal = (lead: Lead) => {
+    setEditingLead(lead);
+    setEditFormData({
+      contactName: lead.contactName,
+      companyName: lead.companyName,
+      primaryEmail: lead.primaryEmail,
+      primaryPhone: lead.primaryPhone,
+      secondaryEmail: lead.secondaryEmail,
+      secondaryPhone: lead.secondaryPhone,
+      leadSourceId: lead.leadSource?.id || null,
+      status: lead.status,
+      estimatedValue: lead.estimatedValue ? Number(lead.estimatedValue) : null,
+      probability: lead.probability ?? null,
+      expectedCloseDate: lead.expectedCloseDate || null,
+      assignedToUserId: lead.assignedToUser?.id || null,
+      notes: lead.notes,
+      lostReason: lead.lostReason,
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingLead(null);
+    setEditFormData({});
+  };
+
+  const handleUpdate = async () => {
+    if (!editingLead || !editFormData.contactName) return;
+
+    try {
+      setUpdating(true);
+      await updateLead(editingLead.id, editFormData);
+      closeEditModal();
+      fetchLeads(page, search, {
+        status: statusFilter,
+        leadSourceId: leadSourceFilter,
+        assignedToUserId: assignedToFilter,
+        includeArchived,
+      });
+    } catch (error) {
+      console.error('Failed to update lead:', error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const formatCurrency = (value: string | null) => {
     if (!value) return '-';
     return new Intl.NumberFormat('en-US', {
@@ -440,7 +494,14 @@ const LeadsList = () => {
       header: 'Actions',
       cell: (item: Lead) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditModal(item);
+            }}
+          >
             Edit
           </Button>
           {/* Show Convert button only for non-archived, non-converted leads */}
@@ -1064,6 +1125,202 @@ const LeadsList = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Edit Lead Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={closeEditModal}
+        title="Edit Lead"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Contact Name"
+              placeholder="John Smith"
+              value={editFormData.contactName || ''}
+              onChange={(e) =>
+                setEditFormData({ ...editFormData, contactName: e.target.value })
+              }
+            />
+            <Input
+              label="Company Name"
+              placeholder="Acme Corp"
+              value={editFormData.companyName || ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  companyName: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Primary Email"
+              type="email"
+              placeholder="john@example.com"
+              value={editFormData.primaryEmail || ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  primaryEmail: e.target.value || null,
+                })
+              }
+            />
+            <Input
+              label="Primary Phone"
+              placeholder="(555) 123-4567"
+              value={editFormData.primaryPhone || ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  primaryPhone: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Secondary Email"
+              type="email"
+              placeholder="alt@example.com"
+              value={editFormData.secondaryEmail || ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  secondaryEmail: e.target.value || null,
+                })
+              }
+            />
+            <Input
+              label="Secondary Phone"
+              placeholder="(555) 987-6543"
+              value={editFormData.secondaryPhone || ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  secondaryPhone: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Lead Source"
+              placeholder="Select source"
+              options={leadSources.map((s) => ({
+                value: s.id,
+                label: s.name,
+              }))}
+              value={editFormData.leadSourceId || ''}
+              onChange={(value) =>
+                setEditFormData({ ...editFormData, leadSourceId: value || null })
+              }
+            />
+            <Select
+              label="Status"
+              options={LEAD_STATUSES}
+              value={editFormData.status || 'lead'}
+              onChange={(value) => setEditFormData({ ...editFormData, status: value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Estimated Value"
+              type="number"
+              placeholder="10000"
+              value={editFormData.estimatedValue ?? ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  estimatedValue: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <Select
+              label="Assigned To"
+              placeholder="Select user"
+              options={users.map((u) => ({
+                value: u.id,
+                label: u.fullName,
+              }))}
+              value={editFormData.assignedToUserId || ''}
+              onChange={(value) =>
+                setEditFormData({ ...editFormData, assignedToUserId: value || null })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Probability (%)"
+              type="number"
+              min={0}
+              max={100}
+              placeholder="50"
+              value={editFormData.probability ?? ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  probability: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <Input
+              label="Expected Close Date"
+              type="date"
+              value={editFormData.expectedCloseDate ? editFormData.expectedCloseDate.split('T')[0] : ''}
+              onChange={(e) =>
+                setEditFormData({
+                  ...editFormData,
+                  expectedCloseDate: e.target.value || null,
+                })
+              }
+            />
+          </div>
+
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes about this lead..."
+            value={editFormData.notes || ''}
+            onChange={(e) =>
+              setEditFormData({ ...editFormData, notes: e.target.value || null })
+            }
+          />
+
+          {editFormData.status === 'lost' && (
+            <Textarea
+              label="Lost Reason"
+              placeholder="Why was this lead lost?"
+              value={editFormData.lostReason || ''}
+              onChange={(e) =>
+                setEditFormData({ ...editFormData, lostReason: e.target.value || null })
+              }
+            />
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={closeEditModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              isLoading={updating}
+              disabled={!editFormData.contactName}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
