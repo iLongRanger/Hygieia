@@ -33,7 +33,9 @@ import {
 } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listAccounts } from '../../lib/accounts';
+import { listFacilities } from '../../lib/facilities';
 import type { Lead, CreateLeadInput, UpdateLeadInput, LeadSource, Account } from '../../types/crm';
+import type { Facility } from '../../types/facility';
 import type { User } from '../../types/user';
 
 const LEAD_STATUSES = [
@@ -79,6 +81,7 @@ const LeadsList = () => {
   const [converting, setConverting] = useState(false);
   const [conversionResult, setConversionResult] = useState<ConvertLeadResult | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
   const [conversionFormData, setConversionFormData] = useState<ConvertLeadInput>({
     createNewAccount: true,
     existingAccountId: null,
@@ -92,7 +95,8 @@ const LeadsList = () => {
       paymentTerms: 'Net 30',
       notes: null,
     },
-    createFacility: false,
+    facilityOption: 'none',
+    existingFacilityId: null,
     facilityData: {
       name: '',
       buildingType: null,
@@ -181,6 +185,15 @@ const LeadsList = () => {
     }
   }, []);
 
+  const fetchFacilities = useCallback(async () => {
+    try {
+      const response = await listFacilities({ limit: 1000 });
+      setFacilities(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch facilities:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeads(page, search, {
       status: statusFilter,
@@ -194,7 +207,8 @@ const LeadsList = () => {
     fetchLeadSources();
     fetchUsers();
     fetchAccounts();
-  }, [fetchLeadSources, fetchUsers, fetchAccounts]);
+    fetchFacilities();
+  }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities]);
 
   const handleCreate = async () => {
     if (!formData.contactName) return;
@@ -300,7 +314,8 @@ const LeadsList = () => {
         paymentTerms: 'Net 30',
         notes: null,
       },
-      createFacility: false,
+      facilityOption: 'none',
+      existingFacilityId: null,
       facilityData: {
         name: lead.companyName || lead.contactName,
         buildingType: null,
@@ -328,8 +343,13 @@ const LeadsList = () => {
       }
     }
 
-    if (conversionFormData.createFacility && !conversionFormData.facilityData?.name) {
+    if (conversionFormData.facilityOption === 'new' && !conversionFormData.facilityData?.name) {
       alert('Please enter a facility name');
+      return;
+    }
+
+    if (conversionFormData.facilityOption === 'existing' && !conversionFormData.existingFacilityId) {
+      alert('Please select an existing facility');
       return;
     }
 
@@ -1034,22 +1054,55 @@ const LeadsList = () => {
 
             {/* Facility Option */}
             <div className="space-y-4">
-              <label className="flex items-center gap-2 text-sm text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={conversionFormData.createFacility}
-                  onChange={(e) =>
-                    setConversionFormData({
-                      ...conversionFormData,
-                      createFacility: e.target.checked,
-                    })
-                  }
-                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
-                />
-                Also create a Facility
-              </label>
+              <h4 className="font-medium text-white">Facility</h4>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="radio"
+                    checked={conversionFormData.facilityOption === 'none'}
+                    onChange={() =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        facilityOption: 'none',
+                        existingFacilityId: null,
+                      })
+                    }
+                    className="text-primary-500 focus:ring-primary-500"
+                  />
+                  No Facility
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="radio"
+                    checked={conversionFormData.facilityOption === 'new'}
+                    onChange={() =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        facilityOption: 'new',
+                        existingFacilityId: null,
+                      })
+                    }
+                    className="text-primary-500 focus:ring-primary-500"
+                  />
+                  Create New Facility
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="radio"
+                    checked={conversionFormData.facilityOption === 'existing'}
+                    onChange={() =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        facilityOption: 'existing',
+                      })
+                    }
+                    className="text-primary-500 focus:ring-primary-500"
+                  />
+                  Use Existing Facility
+                </label>
+              </div>
 
-              {conversionFormData.createFacility && (
+              {conversionFormData.facilityOption === 'new' && (
                 <div className="space-y-4 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
                   <div className="grid grid-cols-2 gap-4">
                     <Input
@@ -1111,6 +1164,33 @@ const LeadsList = () => {
                     />
                   </div>
                 </div>
+              )}
+
+              {conversionFormData.facilityOption === 'existing' && (
+                <Select
+                  label="Select Facility"
+                  placeholder="Choose an existing facility"
+                  options={
+                    conversionFormData.createNewAccount
+                      ? facilities.map((f) => ({
+                          value: f.id,
+                          label: `${f.name}${f.account ? ` (${f.account.name})` : ''}`,
+                        }))
+                      : facilities
+                          .filter((f) => f.account?.id === conversionFormData.existingAccountId)
+                          .map((f) => ({
+                            value: f.id,
+                            label: f.name,
+                          }))
+                  }
+                  value={conversionFormData.existingFacilityId || ''}
+                  onChange={(value) =>
+                    setConversionFormData({
+                      ...conversionFormData,
+                      existingFacilityId: value || null,
+                    })
+                  }
+                />
               )}
             </div>
 
