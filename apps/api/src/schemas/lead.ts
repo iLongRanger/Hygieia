@@ -116,8 +116,9 @@ export const convertLeadSchema = z.object({
     })
     .optional(),
 
-  // Facility creation options
-  createFacility: z.boolean().default(false),
+  // Facility options: 'none', 'new', or 'existing'
+  facilityOption: z.enum(['none', 'new', 'existing']).default('none'),
+  existingFacilityId: z.string().uuid().optional().nullable(),
   facilityData: z
     .object({
       name: z.string().min(1, 'Facility name is required').max(255),
@@ -140,10 +141,16 @@ export const convertLeadSchema = z.object({
     path: ['accountData'],
   }
 ).refine(
-  (data) => !data.createFacility || data.facilityData,
+  (data) => data.facilityOption !== 'new' || data.facilityData,
   {
-    message: 'facilityData is required when createFacility is true',
+    message: 'facilityData is required when facilityOption is "new"',
     path: ['facilityData'],
+  }
+).refine(
+  (data) => data.facilityOption !== 'existing' || data.existingFacilityId,
+  {
+    message: 'existingFacilityId is required when facilityOption is "existing"',
+    path: ['existingFacilityId'],
   }
 );
 
