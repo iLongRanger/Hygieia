@@ -312,7 +312,8 @@ export interface ConvertLeadInput {
     paymentTerms?: string;
     notes?: string | null;
   };
-  createFacility: boolean;
+  facilityOption: 'none' | 'new' | 'existing';
+  existingFacilityId?: string | null;
   facilityData?: {
     name: string;
     buildingType?: string | null;
@@ -440,9 +441,10 @@ export async function convertLead(
       },
     });
 
-    // Optionally create facility from lead address
+    // Handle facility based on facilityOption
     let facility: { id: string; name: string } | undefined;
-    if (input.createFacility && input.facilityData) {
+    if (input.facilityOption === 'new' && input.facilityData) {
+      // Create new facility
       const createdFacility = await tx.facility.create({
         data: {
           accountId,
@@ -461,6 +463,31 @@ export async function convertLead(
       });
 
       facility = createdFacility;
+    } else if (input.facilityOption === 'existing' && input.existingFacilityId) {
+      // Use existing facility - verify it exists and belongs to the account
+      const existingFacility = await tx.facility.findUnique({
+        where: { id: input.existingFacilityId },
+        select: { id: true, name: true, accountId: true },
+      });
+
+      if (!existingFacility) {
+        throw new Error('Existing facility not found');
+      }
+
+      // If using existing account, verify facility belongs to that account
+      if (!input.createNewAccount && existingFacility.accountId !== accountId) {
+        throw new Error('Selected facility does not belong to the selected account');
+      }
+
+      // If creating new account, update facility to belong to new account
+      if (input.createNewAccount) {
+        await tx.facility.update({
+          where: { id: input.existingFacilityId },
+          data: { accountId },
+        });
+      }
+
+      facility = { id: existingFacility.id, name: existingFacility.name };
     }
 
     // Update lead with conversion tracking
