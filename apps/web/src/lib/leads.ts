@@ -106,7 +106,8 @@ export interface ConvertLeadInput {
     paymentTerms?: string;
     notes?: string | null;
   };
-  createFacility: boolean;
+  facilityOption: 'none' | 'new' | 'existing';
+  existingFacilityId?: string | null;
   facilityData?: {
     name: string;
     buildingType?: string | null;
