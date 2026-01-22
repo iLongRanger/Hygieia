@@ -5,18 +5,21 @@ const emailSchema = z
   .email('Invalid email format')
   .max(255)
   .optional()
-  .nullable();
+  .nullable()
+  .or(z.literal(''))
+  .transform((val) => (val === '' ? null : val));
 const phoneSchema = z
   .string()
-  .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format')
+  .max(20)
   .optional()
-  .nullable();
+  .nullable()
+  .transform((val) => (val === '' ? null : val));
 const websiteSchema = z
   .string()
-  .regex(/^https?:\/\/.+/, 'Website must start with http:// or https://')
   .max(500)
   .optional()
-  .nullable();
+  .nullable()
+  .transform((val) => (val === '' ? null : val));
 
 export const accountTypeSchema = z.enum(['commercial', 'residential']);
 
