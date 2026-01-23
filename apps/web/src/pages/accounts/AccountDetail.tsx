@@ -12,6 +12,8 @@ import {
   CreditCard,
   Calendar,
   User as UserIcon,
+  MapPin,
+  Plus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -27,8 +29,10 @@ import {
   archiveAccount,
   restoreAccount,
 } from '../../lib/accounts';
+import { listFacilities, createFacility } from '../../lib/facilities';
 import { listUsers } from '../../lib/users';
 import type { Account, UpdateAccountInput } from '../../types/crm';
+import type { Facility, CreateFacilityInput } from '../../types/facility';
 import type { User } from '../../types/user';
 
 const ACCOUNT_TYPES = [
@@ -55,14 +59,34 @@ const PAYMENT_TERMS = [
   { value: 'DUE_ON_RECEIPT', label: 'Due on Receipt' },
 ];
 
+const BUILDING_TYPES = [
+  { value: 'office', label: 'Office' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'warehouse', label: 'Warehouse' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'educational', label: 'Educational' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'other', label: 'Other' },
+];
+
+const FACILITY_STATUSES = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'pending', label: 'Pending' },
+];
+
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<Account | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showFacilityModal, setShowFacilityModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creatingFacility, setCreatingFacility] = useState(false);
 
   const [formData, setFormData] = useState<UpdateAccountInput>({
     name: '',
@@ -74,6 +98,18 @@ const AccountDetail = () => {
     paymentTerms: 'NET30',
     creditLimit: null,
     accountManagerId: null,
+    notes: null,
+  });
+
+  const [facilityFormData, setFacilityFormData] = useState<Omit<CreateFacilityInput, 'accountId'>>({
+    name: '',
+    address: {},
+    squareFeet: null,
+    buildingType: null,
+    accessInstructions: null,
+    parkingInfo: null,
+    specialRequirements: null,
+    status: 'active',
     notes: null,
   });
 
@@ -92,8 +128,8 @@ const AccountDetail = () => {
           billingEmail: data.billingEmail,
           billingPhone: data.billingPhone,
           paymentTerms: data.paymentTerms,
-          creditLimit: data.creditLimit,
-          accountManagerId: data.accountManagerId,
+          creditLimit: data.creditLimit ? Number(data.creditLimit) : null,
+          accountManagerId: data.accountManager?.id || null,
           notes: data.notes,
         });
       }
@@ -115,10 +151,21 @@ const AccountDetail = () => {
     }
   }, []);
 
+  const fetchFacilities = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await listFacilities({ accountId: id, limit: 100 });
+      setFacilities(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch facilities:', error);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchAccount();
     fetchUsers();
-  }, [fetchAccount, fetchUsers]);
+    fetchFacilities();
+  }, [fetchAccount, fetchUsers, fetchFacilities]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -157,6 +204,34 @@ const AccountDetail = () => {
     } catch (error) {
       console.error('Failed to restore account:', error);
       toast.error('Failed to restore account');
+    }
+  };
+
+  const handleCreateFacility = async () => {
+    if (!id || !facilityFormData.name) return;
+    try {
+      setCreatingFacility(true);
+      await createFacility({ ...facilityFormData, accountId: id });
+      toast.success('Facility created successfully');
+      setShowFacilityModal(false);
+      setFacilityFormData({
+        name: '',
+        address: {},
+        squareFeet: null,
+        buildingType: null,
+        accessInstructions: null,
+        parkingInfo: null,
+        specialRequirements: null,
+        status: 'active',
+        notes: null,
+      });
+      fetchFacilities();
+      fetchAccount(); // Refresh to update facility count
+    } catch (error) {
+      console.error('Failed to create facility:', error);
+      toast.error('Failed to create facility');
+    } finally {
+      setCreatingFacility(false);
     }
   };
 
@@ -386,6 +461,74 @@ const AccountDetail = () => {
         </Card>
       </div>
 
+      {/* Facilities Section */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-gold" />
+            <h3 className="text-lg font-semibold text-white">Facilities</h3>
+          </div>
+          <Button size="sm" onClick={() => setShowFacilityModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Facility
+          </Button>
+        </div>
+
+        {facilities.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <MapPin className="mx-auto h-12 w-12 mb-2 opacity-50" />
+            <p>No facilities yet</p>
+            <p className="text-sm">Add a facility to start managing locations for this account</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {facilities.map((facility) => (
+              <div
+                key={facility.id}
+                onClick={() => navigate(`/facilities/${facility.id}`)}
+                className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
+                    <Building className="h-5 w-5 text-gold" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-white">{facility.name}</div>
+                    <div className="text-sm text-gray-400">
+                      {[
+                        facility.address?.street,
+                        facility.address?.city,
+                        facility.address?.state,
+                      ]
+                        .filter(Boolean)
+                        .join(', ') || 'No address'}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  {facility.buildingType && (
+                    <span className="text-sm text-gray-400 capitalize">
+                      {facility.buildingType}
+                    </span>
+                  )}
+                  <Badge
+                    variant={
+                      facility.status === 'active'
+                        ? 'success'
+                        : facility.status === 'pending'
+                        ? 'warning'
+                        : 'default'
+                    }
+                  >
+                    {facility.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -508,6 +651,181 @@ const AccountDetail = () => {
               disabled={!formData.name}
             >
               Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Facility Modal */}
+      <Modal
+        isOpen={showFacilityModal}
+        onClose={() => setShowFacilityModal(false)}
+        title="Add Facility"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Facility Name"
+            required
+            placeholder="Main Office Building"
+            value={facilityFormData.name}
+            onChange={(e) =>
+              setFacilityFormData({ ...facilityFormData, name: e.target.value })
+            }
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Building Type"
+              placeholder="Select type"
+              options={BUILDING_TYPES}
+              value={facilityFormData.buildingType || ''}
+              onChange={(value) =>
+                setFacilityFormData({
+                  ...facilityFormData,
+                  buildingType: value || null,
+                })
+              }
+            />
+            <Select
+              label="Status"
+              options={FACILITY_STATUSES}
+              value={facilityFormData.status || 'active'}
+              onChange={(value) =>
+                setFacilityFormData({
+                  ...facilityFormData,
+                  status: value as 'active' | 'inactive' | 'pending',
+                })
+              }
+            />
+          </div>
+
+          <Input
+            label="Square Feet"
+            type="number"
+            placeholder="50000"
+            value={facilityFormData.squareFeet || ''}
+            onChange={(e) =>
+              setFacilityFormData({
+                ...facilityFormData,
+                squareFeet: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          />
+
+          <div className="border-t border-white/10 pt-4">
+            <h4 className="text-sm font-medium text-white mb-3">Address</h4>
+            <div className="space-y-4">
+              <Input
+                label="Street Address"
+                placeholder="123 Main St"
+                value={facilityFormData.address?.street || ''}
+                onChange={(e) =>
+                  setFacilityFormData({
+                    ...facilityFormData,
+                    address: {
+                      ...facilityFormData.address,
+                      street: e.target.value || undefined,
+                    },
+                  })
+                }
+              />
+              <div className="grid grid-cols-3 gap-4">
+                <Input
+                  label="City"
+                  placeholder="New York"
+                  value={facilityFormData.address?.city || ''}
+                  onChange={(e) =>
+                    setFacilityFormData({
+                      ...facilityFormData,
+                      address: {
+                        ...facilityFormData.address,
+                        city: e.target.value || undefined,
+                      },
+                    })
+                  }
+                />
+                <Input
+                  label="State"
+                  placeholder="NY"
+                  value={facilityFormData.address?.state || ''}
+                  onChange={(e) =>
+                    setFacilityFormData({
+                      ...facilityFormData,
+                      address: {
+                        ...facilityFormData.address,
+                        state: e.target.value || undefined,
+                      },
+                    })
+                  }
+                />
+                <Input
+                  label="Postal Code"
+                  placeholder="10001"
+                  value={facilityFormData.address?.postalCode || ''}
+                  onChange={(e) =>
+                    setFacilityFormData({
+                      ...facilityFormData,
+                      address: {
+                        ...facilityFormData.address,
+                        postalCode: e.target.value || undefined,
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <Textarea
+            label="Access Instructions"
+            placeholder="Enter through the loading dock on the west side..."
+            value={facilityFormData.accessInstructions || ''}
+            onChange={(e) =>
+              setFacilityFormData({
+                ...facilityFormData,
+                accessInstructions: e.target.value || null,
+              })
+            }
+          />
+
+          <Textarea
+            label="Parking Info"
+            placeholder="Visitor parking available in lot B..."
+            value={facilityFormData.parkingInfo || ''}
+            onChange={(e) =>
+              setFacilityFormData({
+                ...facilityFormData,
+                parkingInfo: e.target.value || null,
+              })
+            }
+          />
+
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes about this facility..."
+            value={facilityFormData.notes || ''}
+            onChange={(e) =>
+              setFacilityFormData({
+                ...facilityFormData,
+                notes: e.target.value || null,
+              })
+            }
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowFacilityModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateFacility}
+              isLoading={creatingFacility}
+              disabled={!facilityFormData.name}
+            >
+              Create Facility
             </Button>
           </div>
         </div>
