@@ -443,13 +443,21 @@ const AccountDetail = () => {
                 Related Records
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Card noPadding className="p-4">
+                <Card
+                  noPadding
+                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
+                  onClick={() => navigate(`/facilities?accountId=${account.id}`)}
+                >
                   <div className="text-2xl font-bold text-gold">
                     {account._count?.facilities ?? 0}
                   </div>
                   <div className="text-sm text-gray-400">Facilities</div>
                 </Card>
-                <Card noPadding className="p-4">
+                <Card
+                  noPadding
+                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
+                  onClick={() => navigate(`/contacts?accountId=${account.id}`)}
+                >
                   <div className="text-2xl font-bold text-gold">
                     {account._count?.contacts ?? 0}
                   </div>
