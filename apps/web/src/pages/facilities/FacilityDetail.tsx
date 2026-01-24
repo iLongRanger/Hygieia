@@ -305,12 +305,27 @@ const FacilityDetail = () => {
     if (!id) return;
     try {
       setSaving(true);
+
+      // Convert empty strings to null for proper validation
+      const cleanedTaskForm = {
+        ...taskForm,
+        customName: taskForm.customName?.trim() || null,
+        taskTemplateId: taskForm.taskTemplateId || null,
+      };
+
+      // Validate that either customName or taskTemplateId is provided
+      if (!cleanedTaskForm.customName && !cleanedTaskForm.taskTemplateId) {
+        toast.error('Please enter a custom name or select a task template');
+        setSaving(false);
+        return;
+      }
+
       if (editingTask) {
-        await updateFacilityTask(editingTask.id, taskForm as UpdateFacilityTaskInput);
+        await updateFacilityTask(editingTask.id, cleanedTaskForm as UpdateFacilityTaskInput);
         toast.success('Task updated');
       } else {
         await createFacilityTask({
-          ...taskForm,
+          ...cleanedTaskForm,
           facilityId: id,
           areaId: selectedAreaForTask?.id || null,
         } as CreateFacilityTaskInput);

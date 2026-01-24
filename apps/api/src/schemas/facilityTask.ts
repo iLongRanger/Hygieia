@@ -10,23 +10,33 @@ export const cleaningFrequencySchema = z.enum([
   'as_needed',
 ]);
 
-export const createFacilityTaskSchema = z.object({
-  facilityId: z.string().uuid('Invalid facility ID'),
-  areaId: z.string().uuid().optional().nullable(),
-  taskTemplateId: z.string().uuid().optional().nullable(),
-  customName: z.string().max(255).optional().nullable(),
-  customInstructions: z.string().max(50000).optional().nullable(),
-  estimatedMinutes: z.coerce.number().int().min(1).optional().nullable(),
-  isRequired: z.boolean().optional().default(true),
-  cleaningFrequency: cleaningFrequencySchema.optional().default('daily'),
-  conditionMultiplier: z.coerce
-    .number()
-    .min(0.1)
-    .max(5)
-    .optional()
-    .default(1.0),
-  priority: z.coerce.number().int().min(1).max(5).optional().default(3),
-});
+export const createFacilityTaskSchema = z
+  .object({
+    facilityId: z.string().uuid('Invalid facility ID'),
+    areaId: z.string().uuid().optional().nullable(),
+    taskTemplateId: z.string().uuid().optional().nullable(),
+    customName: z
+      .string()
+      .max(255)
+      .optional()
+      .nullable()
+      .transform((val) => (val?.trim() === '' ? null : val)),
+    customInstructions: z.string().max(50000).optional().nullable(),
+    estimatedMinutes: z.coerce.number().int().min(1).optional().nullable(),
+    isRequired: z.boolean().optional().default(true),
+    cleaningFrequency: cleaningFrequencySchema.optional().default('daily'),
+    conditionMultiplier: z.coerce
+      .number()
+      .min(0.1)
+      .max(5)
+      .optional()
+      .default(1.0),
+    priority: z.coerce.number().int().min(1).max(5).optional().default(3),
+  })
+  .refine((data) => data.customName || data.taskTemplateId, {
+    message: 'Either customName or taskTemplateId must be provided',
+    path: ['customName'],
+  });
 
 export const updateFacilityTaskSchema = z.object({
   areaId: z.string().uuid().optional().nullable(),
