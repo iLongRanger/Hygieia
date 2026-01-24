@@ -12,6 +12,12 @@ import {
   deleteFacility,
 } from '../services/facilityService';
 import {
+  calculateFacilityPricing,
+  calculateFacilityPricingComparison,
+  isFacilityReadyForPricing,
+  generateProposalServicesFromFacility,
+} from '../services/pricingCalculatorService';
+import {
   createFacilitySchema,
   updateFacilitySchema,
   listFacilitiesQuerySchema,
@@ -150,6 +156,124 @@ router.post(
 
       const facility = await restoreFacility(req.params.id);
       res.json({ data: facility });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Check if facility is ready for pricing/proposal
+router.get(
+  '/:id/pricing-readiness',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await isFacilityReadyForPricing(req.params.id);
+      res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Calculate pricing for a specific frequency
+router.get(
+  '/:id/pricing',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getFacilityById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Facility not found');
+      }
+
+      const frequency = (req.query.frequency as string) || '5x_week';
+      const taskComplexity = (req.query.taskComplexity as string) || 'standard';
+
+      const pricing = await calculateFacilityPricing({
+        facilityId: req.params.id,
+        serviceFrequency: frequency,
+        taskComplexity,
+      });
+
+      res.json({ data: pricing });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get pricing comparison across multiple frequencies
+router.get(
+  '/:id/pricing-comparison',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getFacilityById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Facility not found');
+      }
+
+      const frequenciesParam = req.query.frequencies as string;
+      const frequencies = frequenciesParam
+        ? frequenciesParam.split(',')
+        : ['1x_week', '2x_week', '3x_week', '5x_week'];
+
+      const comparison = await calculateFacilityPricingComparison(
+        req.params.id,
+        frequencies
+      );
+
+      res.json({ data: comparison });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Generate proposal template from facility
+router.get(
+  '/:id/proposal-template',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getFacilityById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Facility not found');
+      }
+
+      const frequency = (req.query.frequency as string) || '5x_week';
+
+      // Check if facility is ready
+      const readiness = await isFacilityReadyForPricing(req.params.id);
+      if (!readiness.isReady) {
+        throw new ValidationError(readiness.reason || 'Facility is not ready for proposal');
+      }
+
+      // Get pricing calculation
+      const pricing = await calculateFacilityPricing({
+        facilityId: req.params.id,
+        serviceFrequency: frequency,
+      });
+
+      // Generate suggested services
+      const suggestedServices = await generateProposalServicesFromFacility(
+        req.params.id,
+        frequency
+      );
+
+      res.json({
+        data: {
+          facility: existing,
+          pricing,
+          suggestedServices,
+          suggestedItems: [], // Can add suggested one-time items later
+        },
+      });
     } catch (error) {
       next(error);
     }

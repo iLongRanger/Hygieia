@@ -97,6 +97,9 @@ const contractSelect = {
   approvedAt: true,
   terminationReason: true,
   terminatedAt: true,
+  includesInitialClean: true,
+  initialCleanCompleted: true,
+  initialCleanCompletedAt: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -275,8 +278,42 @@ export async function getContractById(id: string) {
 
 /**
  * Create a new contract
+ * Note: For new contracts, use createContractFromProposal() which requires an accepted proposal.
+ * This function is now primarily used internally or for standalone/legacy contracts.
  */
 export async function createContract(data: ContractCreateInput) {
+  // Enforce that contracts require a proposal unless explicitly marked as imported/legacy
+  // This validation ensures all new contracts come from accepted proposals
+  if (!data.proposalId) {
+    throw new Error(
+      'Contract creation requires a proposal. Use createContractFromProposal() for new contracts, ' +
+      'or createStandaloneContract() for imported/legacy contracts.'
+    );
+  }
+
+  // If proposalId is provided, validate the proposal
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: data.proposalId },
+    select: { status: true },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (proposal.status !== 'accepted') {
+    throw new Error('Only accepted proposals can be converted to contracts');
+  }
+
+  // Check if contract already exists for this proposal
+  const existingContract = await prisma.contract.findFirst({
+    where: { proposalId: data.proposalId },
+  });
+
+  if (existingContract) {
+    throw new Error('A contract already exists for this proposal');
+  }
+
   const contractNumber = await generateContractNumber();
 
   const contract = await prisma.contract.create({
@@ -284,6 +321,8 @@ export async function createContract(data: ContractCreateInput) {
       contractNumber,
       ...data,
       status: 'draft',
+      contractSource: 'proposal',
+      includesInitialClean: true,
     },
     select: contractSelect,
   });
@@ -350,6 +389,7 @@ export async function createContractFromProposal(
     paymentTerms: overrides?.paymentTerms || proposal.account.paymentTerms || 'Net 30',
     termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions,
     specialInstructions: overrides?.specialInstructions || proposal.notes,
+    includesInitialClean: true,
     createdByUser: { connect: { id: createdByUserId } },
   };
 
@@ -662,4 +702,44 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
   });
 
   return contract;
+}
+
+// ============================================================
+// Initial Clean Tracking
+// ============================================================
+
+/**
+ * Mark initial clean as completed for a contract
+ */
+export async function completeInitialClean(contractId: string, completedByUserId: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      includesInitialClean: true,
+      initialCleanCompleted: true,
+    },
+  });
+
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  if (!contract.includesInitialClean) {
+    throw new Error('This contract does not include initial clean');
+  }
+
+  if (contract.initialCleanCompleted) {
+    throw new Error('Initial clean has already been completed');
+  }
+
+  return prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      initialCleanCompleted: true,
+      initialCleanCompletedAt: new Date(),
+      initialCleanCompletedByUserId: completedByUserId,
+    },
+    select: contractSelect,
+  });
 }

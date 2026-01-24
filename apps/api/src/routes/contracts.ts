@@ -16,6 +16,7 @@ import {
   restoreContract,
   renewContract,
   canRenewContract,
+  completeInitialClean,
 } from '../services/contractService';
 import {
   createContractSchema,
@@ -355,6 +356,29 @@ router.post(
       });
 
       res.status(201).json({ data: contract });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Initial Clean Tracking
+// ============================================================
+
+/** Mark initial clean as completed */
+router.post(
+  '/:id/complete-initial-clean',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const contract = await completeInitialClean(req.params.id, req.user.id);
+      res.json({ data: contract, message: 'Initial clean marked as completed' });
     } catch (error) {
       next(error);
     }

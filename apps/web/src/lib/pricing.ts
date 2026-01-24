@@ -9,6 +9,195 @@ import type {
   PaginatedResponse,
 } from '../types/crm';
 
+// ============================================================
+// Pricing Settings API
+// ============================================================
+
+export interface PricingSettings {
+  id: string;
+  name: string;
+  baseRatePerSqFt: string;
+  minimumMonthlyCharge: string;
+  floorTypeMultipliers: Record<string, number>;
+  frequencyMultipliers: Record<string, number>;
+  conditionMultipliers: Record<string, number>;
+  buildingTypeMultipliers: Record<string, number>;
+  taskComplexityAddOns: Record<string, number>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface CreatePricingSettingsInput {
+  name: string;
+  baseRatePerSqFt?: number;
+  minimumMonthlyCharge?: number;
+  floorTypeMultipliers?: Record<string, number>;
+  frequencyMultipliers?: Record<string, number>;
+  conditionMultipliers?: Record<string, number>;
+  buildingTypeMultipliers?: Record<string, number>;
+  taskComplexityAddOns?: Record<string, number>;
+  isActive?: boolean;
+}
+
+export interface UpdatePricingSettingsInput {
+  name?: string;
+  baseRatePerSqFt?: number;
+  minimumMonthlyCharge?: number;
+  floorTypeMultipliers?: Record<string, number>;
+  frequencyMultipliers?: Record<string, number>;
+  conditionMultipliers?: Record<string, number>;
+  buildingTypeMultipliers?: Record<string, number>;
+  taskComplexityAddOns?: Record<string, number>;
+  isActive?: boolean;
+}
+
+export async function listPricingSettings(params?: {
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+  search?: string;
+  includeArchived?: boolean;
+}): Promise<PaginatedResponse<PricingSettings>> {
+  const response = await api.get('/pricing-settings', { params });
+  return response.data;
+}
+
+export async function getActivePricingSettings(): Promise<PricingSettings> {
+  const response = await api.get('/pricing-settings/active');
+  return response.data.data;
+}
+
+export async function getPricingSettings(id: string): Promise<PricingSettings> {
+  const response = await api.get(`/pricing-settings/${id}`);
+  return response.data.data;
+}
+
+export async function createPricingSettings(data: CreatePricingSettingsInput): Promise<PricingSettings> {
+  const response = await api.post('/pricing-settings', data);
+  return response.data.data;
+}
+
+export async function updatePricingSettings(
+  id: string,
+  data: UpdatePricingSettingsInput
+): Promise<PricingSettings> {
+  const response = await api.patch(`/pricing-settings/${id}`, data);
+  return response.data.data;
+}
+
+export async function setActivePricingSettings(id: string): Promise<PricingSettings> {
+  const response = await api.post(`/pricing-settings/${id}/set-active`);
+  return response.data.data;
+}
+
+export async function archivePricingSettings(id: string): Promise<PricingSettings> {
+  const response = await api.post(`/pricing-settings/${id}/archive`);
+  return response.data.data;
+}
+
+export async function restorePricingSettings(id: string): Promise<PricingSettings> {
+  const response = await api.post(`/pricing-settings/${id}/restore`);
+  return response.data.data;
+}
+
+// ============================================================
+// Facility Pricing API
+// ============================================================
+
+export interface AreaPricingBreakdown {
+  areaId: string;
+  areaName: string;
+  areaTypeName: string;
+  squareFeet: number;
+  floorType: string;
+  conditionLevel: string;
+  quantity: number;
+  basePrice: number;
+  floorMultiplier: number;
+  conditionMultiplier: number;
+  frequencyMultiplier: number;
+  taskComplexityAddOn: number;
+  priceBeforeFrequency: number;
+  areaTotal: number;
+}
+
+export interface FacilityPricingResult {
+  facilityId: string;
+  facilityName: string;
+  buildingType: string;
+  buildingMultiplier: number;
+  serviceFrequency: string;
+  totalSquareFeet: number;
+  areas: AreaPricingBreakdown[];
+  subtotal: number;
+  buildingAdjustment: number;
+  monthlyTotal: number;
+  minimumApplied: boolean;
+  pricingSettingsId: string;
+  pricingSettingsName: string;
+}
+
+export interface FacilityPricingReadiness {
+  isReady: boolean;
+  reason?: string;
+  areaCount: number;
+  totalSquareFeet: number;
+}
+
+export async function getFacilityPricingReadiness(facilityId: string): Promise<FacilityPricingReadiness> {
+  const response = await api.get(`/facilities/${facilityId}/pricing-readiness`);
+  return response.data.data;
+}
+
+export async function getFacilityPricing(
+  facilityId: string,
+  frequency: string = '5x_week',
+  taskComplexity: string = 'standard'
+): Promise<FacilityPricingResult> {
+  const response = await api.get(`/facilities/${facilityId}/pricing`, {
+    params: { frequency, taskComplexity },
+  });
+  return response.data.data;
+}
+
+export async function getFacilityPricingComparison(
+  facilityId: string,
+  frequencies?: string[]
+): Promise<{ frequency: string; monthlyTotal: number }[]> {
+  const response = await api.get(`/facilities/${facilityId}/pricing-comparison`, {
+    params: { frequencies: frequencies?.join(',') },
+  });
+  return response.data.data;
+}
+
+export interface SuggestedProposalService {
+  serviceName: string;
+  serviceType: string;
+  frequency: string;
+  monthlyPrice: number;
+  description: string;
+  includedTasks: string[];
+}
+
+export interface FacilityProposalTemplate {
+  facility: any;
+  pricing: FacilityPricingResult;
+  suggestedServices: SuggestedProposalService[];
+  suggestedItems: any[];
+}
+
+export async function getFacilityProposalTemplate(
+  facilityId: string,
+  frequency: string = '5x_week'
+): Promise<FacilityProposalTemplate> {
+  const response = await api.get(`/facilities/${facilityId}/proposal-template`, {
+    params: { frequency },
+  });
+  return response.data.data;
+}
+
 // Pricing Rules API
 
 export async function listPricingRules(params?: {

@@ -9,6 +9,7 @@ import {
   RotateCcw,
   X,
   Calculator,
+  Settings,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -344,10 +345,16 @@ const PricingRulesList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Pricing Rules</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Pricing Rule
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate('/pricing/settings')}>
+            <Settings className="mr-2 h-4 w-4" />
+            Pricing Settings
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Pricing Rule
+          </Button>
+        </div>
       </div>
 
       <Card noPadding className="overflow-hidden">

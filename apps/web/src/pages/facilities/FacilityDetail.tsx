@@ -53,10 +53,18 @@ const BUILDING_TYPES = [
 ];
 
 const CONDITION_LEVELS = [
-  { value: 'excellent', label: 'Excellent' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'poor', label: 'Poor' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'medium', label: 'Medium Difficulty' },
+  { value: 'hard', label: 'Hard/Heavy Traffic' },
+];
+
+const FLOOR_TYPES = [
+  { value: 'vct', label: 'VCT (Vinyl Composition Tile)' },
+  { value: 'carpet', label: 'Carpet' },
+  { value: 'hardwood', label: 'Hardwood' },
+  { value: 'tile', label: 'Ceramic/Porcelain Tile' },
+  { value: 'concrete', label: 'Concrete' },
+  { value: 'epoxy', label: 'Epoxy' },
 ];
 
 const FacilityDetail = () => {
@@ -80,7 +88,8 @@ const FacilityDetail = () => {
     name: '',
     quantity: 1,
     squareFeet: null,
-    conditionLevel: 'good',
+    floorType: 'vct',
+    conditionLevel: 'standard',
     notes: null,
   });
 
@@ -211,7 +220,8 @@ const FacilityDetail = () => {
       name: '',
       quantity: 1,
       squareFeet: null,
-      conditionLevel: 'good',
+      floorType: 'vct',
+      conditionLevel: 'standard',
       notes: null,
     });
   };
@@ -223,7 +233,8 @@ const FacilityDetail = () => {
       name: area.name,
       quantity: area.quantity,
       squareFeet: area.squareFeet ? Number(area.squareFeet) : null,
-      conditionLevel: area.conditionLevel,
+      floorType: area.floorType || 'vct',
+      conditionLevel: area.conditionLevel || 'standard',
       notes: area.notes,
     });
     setShowAreaModal(true);
@@ -277,20 +288,26 @@ const FacilityDetail = () => {
       ),
     },
     {
+      header: 'Floor Type',
+      cell: (item: Area) => {
+        const floorType = item.floorType || 'vct';
+        const floorLabel = FLOOR_TYPES.find((f) => f.value === floorType)?.label || floorType;
+        return <span className="text-gray-300 capitalize">{floorLabel}</span>;
+      },
+    },
+    {
       header: 'Condition',
       cell: (item: Area) => (
         <Badge
           variant={
-            item.conditionLevel === 'excellent'
+            item.conditionLevel === 'standard'
               ? 'success'
-              : item.conditionLevel === 'good'
-                ? 'info'
-                : item.conditionLevel === 'fair'
-                  ? 'warning'
-                  : 'error'
+              : item.conditionLevel === 'medium'
+                ? 'warning'
+                : 'error'
           }
         >
-          {item.conditionLevel}
+          {CONDITION_LEVELS.find((c) => c.value === item.conditionLevel)?.label || item.conditionLevel}
         </Badge>
       ),
     },
@@ -717,17 +734,30 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <Select
-            label="Condition Level"
-            options={CONDITION_LEVELS}
-            value={areaForm.conditionLevel || 'good'}
-            onChange={(value) =>
-              setAreaForm({
-                ...areaForm,
-                conditionLevel: value as 'excellent' | 'good' | 'fair' | 'poor',
-              })
-            }
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Floor Type"
+              options={FLOOR_TYPES}
+              value={areaForm.floorType || 'vct'}
+              onChange={(value) =>
+                setAreaForm({
+                  ...areaForm,
+                  floorType: value as any,
+                })
+              }
+            />
+            <Select
+              label="Condition Level"
+              options={CONDITION_LEVELS}
+              value={areaForm.conditionLevel || 'standard'}
+              onChange={(value) =>
+                setAreaForm({
+                  ...areaForm,
+                  conditionLevel: value as 'standard' | 'medium' | 'hard',
+                })
+              }
+            />
+          </div>
 
           <Textarea
             label="Notes"
