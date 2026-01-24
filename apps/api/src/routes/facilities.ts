@@ -16,6 +16,7 @@ import {
   calculateFacilityPricingComparison,
   isFacilityReadyForPricing,
   generateProposalServicesFromFacility,
+  getFacilityTasksGrouped,
 } from '../services/pricingCalculatorService';
 import {
   createFacilitySchema,
@@ -272,6 +273,43 @@ router.get(
           pricing,
           suggestedServices,
           suggestedItems: [], // Can add suggested one-time items later
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get tasks for a facility grouped by area and frequency
+router.get(
+  '/:id/tasks-grouped',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getFacilityById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Facility not found');
+      }
+
+      const { byArea, byFrequency } = await getFacilityTasksGrouped(req.params.id);
+
+      // Convert Maps to plain objects for JSON serialization
+      const areasObj: Record<string, { areaName: string; tasks: { name: string; frequency: string }[] }> = {};
+      byArea.forEach((value, key) => {
+        areasObj[key] = value;
+      });
+
+      const frequencyObj: Record<string, { name: string; areaName: string }[]> = {};
+      byFrequency.forEach((value, key) => {
+        frequencyObj[key] = value;
+      });
+
+      res.json({
+        data: {
+          byArea: areasObj,
+          byFrequency: frequencyObj,
         },
       });
     } catch (error) {
