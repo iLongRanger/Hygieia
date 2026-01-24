@@ -11,6 +11,13 @@ import type {
   UpdateAreaInput,
   PaginatedResponse,
   Account,
+  FacilityTask,
+  CreateFacilityTaskInput,
+  UpdateFacilityTaskInput,
+  TaskTemplate,
+  TasksGroupedByArea,
+  TasksGroupedByFrequency,
+  CleaningFrequency,
 } from '../types/facility';
 
 export async function listFacilities(params?: {
@@ -145,4 +152,96 @@ export async function listAccounts(params?: {
 }): Promise<PaginatedResponse<Account>> {
   const response = await api.get('/accounts', { params });
   return response.data;
+}
+
+// Facility Tasks
+export async function listFacilityTasks(params?: {
+  page?: number;
+  limit?: number;
+  facilityId?: string;
+  areaId?: string;
+  taskTemplateId?: string;
+  cleaningFrequency?: CleaningFrequency;
+  isRequired?: boolean;
+  priority?: number;
+  search?: string;
+  includeArchived?: boolean;
+}): Promise<PaginatedResponse<FacilityTask>> {
+  const response = await api.get('/facility-tasks', { params });
+  return response.data;
+}
+
+export async function getFacilityTask(id: string): Promise<FacilityTask> {
+  const response = await api.get(`/facility-tasks/${id}`);
+  return response.data.data;
+}
+
+export async function createFacilityTask(
+  data: CreateFacilityTaskInput
+): Promise<FacilityTask> {
+  const response = await api.post('/facility-tasks', data);
+  return response.data.data;
+}
+
+export async function updateFacilityTask(
+  id: string,
+  data: UpdateFacilityTaskInput
+): Promise<FacilityTask> {
+  const response = await api.patch(`/facility-tasks/${id}`, data);
+  return response.data.data;
+}
+
+export async function archiveFacilityTask(id: string): Promise<FacilityTask> {
+  const response = await api.post(`/facility-tasks/${id}/archive`);
+  return response.data.data;
+}
+
+export async function restoreFacilityTask(id: string): Promise<FacilityTask> {
+  const response = await api.post(`/facility-tasks/${id}/restore`);
+  return response.data.data;
+}
+
+export async function deleteFacilityTask(id: string): Promise<void> {
+  await api.delete(`/facility-tasks/${id}`);
+}
+
+export async function bulkCreateFacilityTasks(
+  facilityId: string,
+  taskTemplateIds: string[]
+): Promise<{ count: number }> {
+  const response = await api.post('/facility-tasks/bulk', {
+    facilityId,
+    taskTemplateIds,
+  });
+  return response.data.data;
+}
+
+// Get tasks grouped by area and frequency for a facility
+export async function getFacilityTasksGrouped(facilityId: string): Promise<{
+  byArea: TasksGroupedByArea;
+  byFrequency: TasksGroupedByFrequency;
+}> {
+  const response = await api.get(`/facilities/${facilityId}/tasks-grouped`);
+  return response.data.data;
+}
+
+// Task Templates
+export async function listTaskTemplates(params?: {
+  page?: number;
+  limit?: number;
+  cleaningType?: string;
+  areaTypeId?: string;
+  facilityId?: string;
+  isGlobal?: boolean;
+  isActive?: boolean;
+  search?: string;
+  includeArchived?: boolean;
+}): Promise<PaginatedResponse<TaskTemplate>> {
+  const response = await api.get('/task-templates', { params });
+  return response.data;
+}
+
+export async function getTaskTemplate(id: string): Promise<TaskTemplate> {
+  const response = await api.get(`/task-templates/${id}`);
+  return response.data.data;
 }

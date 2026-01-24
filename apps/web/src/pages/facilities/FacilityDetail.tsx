@@ -11,7 +11,11 @@ import {
   Trash2,
   Ruler,
   Clock,
+  ClipboardList,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
@@ -30,6 +34,11 @@ import {
   restoreArea,
   deleteArea,
   listAreaTypes,
+  listFacilityTasks,
+  createFacilityTask,
+  updateFacilityTask,
+  deleteFacilityTask,
+  listTaskTemplates,
 } from '../../lib/facilities';
 import type {
   Facility,
@@ -38,6 +47,11 @@ import type {
   UpdateFacilityInput,
   CreateAreaInput,
   UpdateAreaInput,
+  FacilityTask,
+  CreateFacilityTaskInput,
+  UpdateFacilityTaskInput,
+  TaskTemplate,
+  CleaningFrequency,
 } from '../../types/facility';
 
 const BUILDING_TYPES = [
@@ -67,6 +81,16 @@ const FLOOR_TYPES = [
   { value: 'epoxy', label: 'Epoxy' },
 ];
 
+const CLEANING_FREQUENCIES = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annual', label: 'Yearly' },
+  { value: 'as_needed', label: 'As Needed' },
+];
+
 const FacilityDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -75,10 +99,16 @@ const FacilityDetail = () => {
   const [facility, setFacility] = useState<Facility | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
+  const [tasks, setTasks] = useState<FacilityTask[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
+  const [editingTask, setEditingTask] = useState<FacilityTask | null>(null);
+  const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(null);
+  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
   const [facilityForm, setFacilityForm] = useState<UpdateFacilityInput>({});
@@ -91,6 +121,14 @@ const FacilityDetail = () => {
     floorType: 'vct',
     conditionLevel: 'standard',
     notes: null,
+  });
+  const [taskForm, setTaskForm] = useState<CreateFacilityTaskInput | UpdateFacilityTaskInput>({
+    facilityId: id || '',
+    areaId: null,
+    taskTemplateId: null,
+    customName: '',
+    cleaningFrequency: 'daily',
+    priority: 3,
   });
 
   const fetchFacility = useCallback(async () => {
@@ -144,11 +182,37 @@ const FacilityDetail = () => {
     }
   }, []);
 
+  const fetchTasks = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await listFacilityTasks({
+        facilityId: id,
+        limit: 200,
+      });
+      setTasks(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      setTasks([]);
+    }
+  }, [id]);
+
+  const fetchTaskTemplates = useCallback(async () => {
+    try {
+      const response = await listTaskTemplates({ isActive: true, limit: 100 });
+      setTaskTemplates(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch task templates:', error);
+      setTaskTemplates([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFacility();
     fetchAreas();
     fetchAreaTypes();
-  }, [fetchFacility, fetchAreas, fetchAreaTypes]);
+    fetchTasks();
+    fetchTaskTemplates();
+  }, [fetchFacility, fetchAreas, fetchAreaTypes, fetchTasks, fetchTaskTemplates]);
 
   const handleUpdateFacility = async () => {
     if (!id) return;
@@ -224,6 +288,113 @@ const FacilityDetail = () => {
       conditionLevel: 'standard',
       notes: null,
     });
+  };
+
+  const resetTaskForm = () => {
+    setTaskForm({
+      facilityId: id || '',
+      areaId: null,
+      taskTemplateId: null,
+      customName: '',
+      cleaningFrequency: 'daily',
+      priority: 3,
+    });
+  };
+
+  const handleSaveTask = async () => {
+    if (!id) return;
+    try {
+      setSaving(true);
+      if (editingTask) {
+        await updateFacilityTask(editingTask.id, taskForm as UpdateFacilityTaskInput);
+        toast.success('Task updated');
+      } else {
+        await createFacilityTask({
+          ...taskForm,
+          facilityId: id,
+          areaId: selectedAreaForTask?.id || null,
+        } as CreateFacilityTaskInput);
+        toast.success('Task added');
+      }
+      setShowTaskModal(false);
+      setEditingTask(null);
+      setSelectedAreaForTask(null);
+      resetTaskForm();
+      fetchTasks();
+    } catch (error) {
+      console.error('Failed to save task:', error);
+      toast.error('Failed to save task');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await deleteFacilityTask(taskId);
+      toast.success('Task deleted');
+      fetchTasks();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const openAddTaskForArea = (area: Area) => {
+    setSelectedAreaForTask(area);
+    setEditingTask(null);
+    resetTaskForm();
+    setTaskForm((prev) => ({
+      ...prev,
+      areaId: area.id,
+    }));
+    setShowTaskModal(true);
+  };
+
+  const openEditTask = (task: FacilityTask) => {
+    setEditingTask(task);
+    setSelectedAreaForTask(task.area ? areas.find((a) => a.id === task.area?.id) || null : null);
+    setTaskForm({
+      areaId: task.area?.id || null,
+      taskTemplateId: task.taskTemplate?.id || null,
+      customName: task.customName || '',
+      customInstructions: task.customInstructions || '',
+      estimatedMinutes: task.estimatedMinutes,
+      cleaningFrequency: task.cleaningFrequency,
+      priority: task.priority,
+    });
+    setShowTaskModal(true);
+  };
+
+  const toggleAreaExpanded = (areaId: string) => {
+    setExpandedAreas((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(areaId)) {
+        newSet.delete(areaId);
+      } else {
+        newSet.add(areaId);
+      }
+      return newSet;
+    });
+  };
+
+  // Group tasks by area
+  const getTasksForArea = (areaId: string) => {
+    return tasks.filter((t) => t.area?.id === areaId && !t.archivedAt);
+  };
+
+  // Group tasks by frequency for display
+  const groupTasksByFrequency = (areaTasks: FacilityTask[]) => {
+    const grouped: Record<string, FacilityTask[]> = {};
+    for (const task of areaTasks) {
+      const freq = task.cleaningFrequency;
+      if (!grouped[freq]) {
+        grouped[freq] = [];
+      }
+      grouped[freq].push(task);
+    }
+    return grouped;
   };
 
   const openEditArea = (area: Area) => {
@@ -524,6 +695,139 @@ const FacilityDetail = () => {
         </Card>
       </div>
 
+      {/* Tasks Section - Grouped by Area */}
+      <Card noPadding className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/10 bg-navy-dark/30 p-4">
+          <div className="flex items-center gap-3">
+            <ClipboardList className="h-5 w-5 text-emerald" />
+            <h2 className="text-lg font-semibold text-white">
+              Tasks by Area ({tasks.filter((t) => !t.archivedAt).length})
+            </h2>
+          </div>
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {areas.filter((a) => !a.archivedAt).length === 0 ? (
+            <div className="p-8 text-center text-gray-400">
+              Add areas to start managing tasks
+            </div>
+          ) : (
+            areas
+              .filter((a) => !a.archivedAt)
+              .map((area) => {
+                const areaTasks = getTasksForArea(area.id);
+                const tasksByFreq = groupTasksByFrequency(areaTasks);
+                const isExpanded = expandedAreas.has(area.id);
+
+                return (
+                  <div key={area.id} className="bg-navy-dark/20">
+                    {/* Area Header */}
+                    <div
+                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+                      onClick={() => toggleAreaExpanded(area.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        )}
+                        <div>
+                          <div className="font-medium text-white">
+                            {area.name || area.areaType.name}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
+                            {area.squareFeet && ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddTaskForArea(area);
+                        }}
+                      >
+                        <Plus className="mr-1 h-4 w-4" />
+                        Add Task
+                      </Button>
+                    </div>
+
+                    {/* Expanded Tasks List */}
+                    {isExpanded && (
+                      <div className="border-t border-white/5 bg-navy-darker/50 px-4 pb-4">
+                        {areaTasks.length === 0 ? (
+                          <div className="py-6 text-center text-gray-500">
+                            No tasks assigned to this area yet
+                          </div>
+                        ) : (
+                          <div className="space-y-4 pt-4">
+                            {CLEANING_FREQUENCIES.map(({ value: freq, label: freqLabel }) => {
+                              const freqTasks = tasksByFreq[freq] || [];
+                              if (freqTasks.length === 0) return null;
+
+                              return (
+                                <div key={freq}>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="default" className="text-xs">
+                                      {freqLabel}
+                                    </Badge>
+                                    <span className="text-xs text-gray-500">
+                                      ({freqTasks.length})
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {freqTasks.map((task) => (
+                                      <div
+                                        key={task.id}
+                                        className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 group"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-white">
+                                            {task.customName || task.taskTemplate?.name || 'Unnamed Task'}
+                                          </span>
+                                          {task.estimatedMinutes && (
+                                            <span className="text-xs text-gray-500">
+                                              ({task.estimatedMinutes} min)
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openEditTask(task)}
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeleteTask(task.id)}
+                                            className="text-red-400 hover:text-red-300"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+          )}
+        </div>
+      </Card>
+
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -784,6 +1088,156 @@ const FacilityDetail = () => {
               disabled={!(areaForm as CreateAreaInput).areaTypeId}
             >
               {editingArea ? 'Save Changes' : 'Add Area'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Task Modal */}
+      <Modal
+        isOpen={showTaskModal}
+        onClose={() => {
+          setShowTaskModal(false);
+          setEditingTask(null);
+          setSelectedAreaForTask(null);
+          resetTaskForm();
+        }}
+        title={editingTask ? 'Edit Task' : `Add Task${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
+      >
+        <div className="space-y-4">
+          {/* Task Template or Custom */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-200">
+              Task Source
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  !taskForm.taskTemplateId
+                    ? 'border-emerald bg-emerald/10 text-white'
+                    : 'border-white/10 text-gray-400 hover:border-white/20'
+                }`}
+                onClick={() =>
+                  setTaskForm({ ...taskForm, taskTemplateId: null })
+                }
+              >
+                <div className="font-medium">Custom Task</div>
+                <div className="text-xs text-gray-500">Enter task name manually</div>
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  taskForm.taskTemplateId
+                    ? 'border-emerald bg-emerald/10 text-white'
+                    : 'border-white/10 text-gray-400 hover:border-white/20'
+                }`}
+                onClick={() =>
+                  setTaskForm({ ...taskForm, taskTemplateId: taskTemplates[0]?.id || null, customName: '' })
+                }
+              >
+                <div className="font-medium">From Template</div>
+                <div className="text-xs text-gray-500">Select predefined task</div>
+              </button>
+            </div>
+          </div>
+
+          {taskForm.taskTemplateId ? (
+            <Select
+              label="Task Template"
+              placeholder="Select a task template"
+              options={taskTemplates.map((tt) => ({
+                value: tt.id,
+                label: `${tt.name} (${tt.cleaningType})`,
+              }))}
+              value={taskForm.taskTemplateId || ''}
+              onChange={(value) =>
+                setTaskForm({ ...taskForm, taskTemplateId: value || null })
+              }
+            />
+          ) : (
+            <Input
+              label="Task Name"
+              placeholder="e.g., Vacuum floors, Empty trash"
+              value={taskForm.customName || ''}
+              onChange={(e) =>
+                setTaskForm({ ...taskForm, customName: e.target.value })
+              }
+            />
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Frequency"
+              options={CLEANING_FREQUENCIES}
+              value={taskForm.cleaningFrequency || 'daily'}
+              onChange={(value) =>
+                setTaskForm({
+                  ...taskForm,
+                  cleaningFrequency: value as CleaningFrequency,
+                })
+              }
+            />
+            <Input
+              label="Est. Minutes"
+              type="number"
+              placeholder="Optional"
+              value={taskForm.estimatedMinutes || ''}
+              onChange={(e) =>
+                setTaskForm({
+                  ...taskForm,
+                  estimatedMinutes: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </div>
+
+          <Select
+            label="Priority"
+            options={[
+              { value: '1', label: '1 - Highest' },
+              { value: '2', label: '2 - High' },
+              { value: '3', label: '3 - Normal' },
+              { value: '4', label: '4 - Low' },
+              { value: '5', label: '5 - Lowest' },
+            ]}
+            value={String(taskForm.priority || 3)}
+            onChange={(value) =>
+              setTaskForm({ ...taskForm, priority: Number(value) })
+            }
+          />
+
+          <Textarea
+            label="Instructions (optional)"
+            placeholder="Special instructions for this task..."
+            value={(taskForm as UpdateFacilityTaskInput).customInstructions || ''}
+            onChange={(e) =>
+              setTaskForm({
+                ...taskForm,
+                customInstructions: e.target.value || null,
+              } as UpdateFacilityTaskInput)
+            }
+            rows={2}
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowTaskModal(false);
+                setEditingTask(null);
+                setSelectedAreaForTask(null);
+                resetTaskForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveTask}
+              isLoading={saving}
+              disabled={!taskForm.taskTemplateId && !taskForm.customName}
+            >
+              {editingTask ? 'Save Changes' : 'Add Task'}
             </Button>
           </div>
         </div>

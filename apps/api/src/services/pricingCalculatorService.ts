@@ -238,7 +238,7 @@ export async function isFacilityReadyForPricing(facilityId: string): Promise<{
     };
   }
 
-  const totalSquareFeet = facility.areas.reduce((sum, area) => {
+  const totalSquareFeet = facility.areas.reduce((sum: number, area: { squareFeet: any; quantity: number | null }) => {
     const sqFt = Number(area.squareFeet) || 0;
     const qty = area.quantity || 1;
     return sum + (sqFt * qty);
@@ -261,7 +261,69 @@ export async function isFacilityReadyForPricing(facilityId: string): Promise<{
 }
 
 /**
+ * Get facility tasks grouped by area and frequency
+ */
+export async function getFacilityTasksGrouped(facilityId: string): Promise<{
+  byArea: Map<string, { areaName: string; tasks: { name: string; frequency: string }[] }>;
+  byFrequency: Map<string, { name: string; areaName: string }[]>;
+}> {
+  const facilityTasks = await prisma.facilityTask.findMany({
+    where: {
+      facilityId,
+      archivedAt: null,
+    },
+    include: {
+      taskTemplate: {
+        select: {
+          name: true,
+        },
+      },
+      area: {
+        select: {
+          id: true,
+          name: true,
+          areaType: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { cleaningFrequency: 'asc' },
+      { priority: 'asc' },
+    ],
+  });
+
+  const byArea = new Map<string, { areaName: string; tasks: { name: string; frequency: string }[] }>();
+  const byFrequency = new Map<string, { name: string; areaName: string }[]>();
+
+  for (const task of facilityTasks) {
+    const taskName = task.customName || task.taskTemplate?.name || 'Unnamed Task';
+    const areaId = task.area?.id || 'facility-wide';
+    const areaName = task.area?.name || task.area?.areaType?.name || 'Facility-Wide';
+    const frequency = task.cleaningFrequency;
+
+    // Group by area
+    if (!byArea.has(areaId)) {
+      byArea.set(areaId, { areaName, tasks: [] });
+    }
+    byArea.get(areaId)!.tasks.push({ name: taskName, frequency });
+
+    // Group by frequency
+    if (!byFrequency.has(frequency)) {
+      byFrequency.set(frequency, []);
+    }
+    byFrequency.get(frequency)!.push({ name: taskName, areaName });
+  }
+
+  return { byArea, byFrequency };
+}
+
+/**
  * Generate proposal services from facility pricing
+ * Creates one service line per area with tasks listed in description
  */
 export async function generateProposalServicesFromFacility(
   facilityId: string,
@@ -279,30 +341,94 @@ export async function generateProposalServicesFromFacility(
     serviceFrequency,
   });
 
-  // Group areas into a single service for now
-  // In the future, could group by frequency (daily, weekly, monthly tasks)
-  const areaDescriptions = pricing.areas.map(
-    (area) => `${area.areaName} (${area.squareFeet} sq ft)`
-  );
+  // Get facility tasks grouped by area
+  const { byArea, byFrequency } = await getFacilityTasksGrouped(facilityId);
 
   const frequencyLabel = getFrequencyLabel(serviceFrequency);
+  const services: {
+    serviceName: string;
+    serviceType: string;
+    frequency: string;
+    monthlyPrice: number;
+    description: string;
+    includedTasks: string[];
+  }[] = [];
 
-  return [
-    {
-      serviceName: `${frequencyLabel} Cleaning Service`,
+  // If no tasks defined, fall back to default behavior
+  if (byArea.size === 0) {
+    const areaDescriptions = pricing.areas.map(
+      (area) => `${area.areaName} (${area.squareFeet} sq ft)`
+    );
+
+    return [
+      {
+        serviceName: `${frequencyLabel} Cleaning Service`,
+        serviceType: mapFrequencyToServiceType(serviceFrequency),
+        frequency: mapFrequencyToProposalFrequency(serviceFrequency),
+        monthlyPrice: pricing.monthlyTotal,
+        description: `Includes: ${areaDescriptions.join(', ')}`,
+        includedTasks: [
+          'Vacuum/mop all floors',
+          'Empty trash receptacles',
+          'Clean and sanitize restrooms',
+          'Dust surfaces',
+          'Wipe down high-touch areas',
+        ],
+      },
+    ];
+  }
+
+  // Create one service line per area with tasks in description
+  for (const areaPricing of pricing.areas) {
+    const areaTasks = byArea.get(areaPricing.areaId);
+
+    // Build task list grouped by frequency for this area
+    const tasksByFreq: Record<string, string[]> = {};
+    if (areaTasks) {
+      for (const task of areaTasks.tasks) {
+        if (!tasksByFreq[task.frequency]) {
+          tasksByFreq[task.frequency] = [];
+        }
+        tasksByFreq[task.frequency].push(task.name);
+      }
+    }
+
+    // Build description with tasks grouped by frequency
+    const descriptionParts: string[] = [
+      `${areaPricing.squareFeet} sq ft ${areaPricing.floorType} flooring`,
+    ];
+
+    const frequencyOrder = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annual'];
+    const frequencyLabels: Record<string, string> = {
+      daily: 'Daily',
+      weekly: 'Weekly',
+      biweekly: 'Bi-Weekly',
+      monthly: 'Monthly',
+      quarterly: 'Quarterly',
+      annual: 'Yearly',
+      as_needed: 'As Needed',
+    };
+
+    for (const freq of frequencyOrder) {
+      if (tasksByFreq[freq] && tasksByFreq[freq].length > 0) {
+        descriptionParts.push(`${frequencyLabels[freq] || freq}: ${tasksByFreq[freq].join(', ')}`);
+      }
+    }
+
+    // Collect all task names for includedTasks array
+    const allTasks = areaTasks?.tasks.map(t => t.name) || [];
+
+    services.push({
+      serviceName: areaPricing.areaName,
       serviceType: mapFrequencyToServiceType(serviceFrequency),
       frequency: mapFrequencyToProposalFrequency(serviceFrequency),
-      monthlyPrice: pricing.monthlyTotal,
-      description: `Includes: ${areaDescriptions.join(', ')}`,
-      includedTasks: [
-        'Vacuum/mop all floors',
-        'Empty trash receptacles',
-        'Clean and sanitize restrooms',
-        'Dust surfaces',
-        'Wipe down high-touch areas',
-      ],
-    },
-  ];
+      monthlyPrice: areaPricing.areaTotal,
+      description: descriptionParts.join('\n'),
+      includedTasks: allTasks,
+    });
+  }
+
+  return services;
 }
 
 // Helper functions

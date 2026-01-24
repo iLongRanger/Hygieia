@@ -166,3 +166,114 @@ export interface Account {
   name: string;
   type: string;
 }
+
+// Task-related types
+export type CleaningFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annual' | 'as_needed';
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  cleaningType: string;
+  estimatedMinutes: number | null;
+  difficultyLevel: number;
+  requiredEquipment: string[];
+  requiredSupplies: string[];
+  instructions: string | null;
+  isGlobal: boolean;
+  version: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  areaType: {
+    id: string;
+    name: string;
+  } | null;
+  facility: {
+    id: string;
+    name: string;
+    accountId: string;
+  } | null;
+  createdByUser: {
+    id: string;
+    fullName: string;
+  };
+  _count: {
+    facilityTasks: number;
+  };
+}
+
+export interface FacilityTask {
+  id: string;
+  customName: string | null;
+  customInstructions: string | null;
+  estimatedMinutes: number | null;
+  isRequired: boolean;
+  cleaningFrequency: CleaningFrequency;
+  conditionMultiplier: number;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  facility: {
+    id: string;
+    name: string;
+    accountId: string;
+  };
+  area: {
+    id: string;
+    name: string | null;
+    areaType: {
+      id: string;
+      name: string;
+    };
+  } | null;
+  taskTemplate: {
+    id: string;
+    name: string;
+    cleaningType: string;
+    estimatedMinutes: number | null;
+    difficultyLevel: number;
+  } | null;
+  createdByUser: {
+    id: string;
+    fullName: string;
+  };
+}
+
+export interface CreateFacilityTaskInput {
+  facilityId: string;
+  areaId?: string | null;
+  taskTemplateId?: string | null;
+  customName?: string | null;
+  customInstructions?: string | null;
+  estimatedMinutes?: number | null;
+  isRequired?: boolean;
+  cleaningFrequency?: CleaningFrequency;
+  conditionMultiplier?: number;
+  priority?: number;
+}
+
+export interface UpdateFacilityTaskInput {
+  areaId?: string | null;
+  taskTemplateId?: string | null;
+  customName?: string | null;
+  customInstructions?: string | null;
+  estimatedMinutes?: number | null;
+  isRequired?: boolean;
+  cleaningFrequency?: CleaningFrequency;
+  conditionMultiplier?: number;
+  priority?: number;
+}
+
+export interface TasksGroupedByArea {
+  [areaId: string]: {
+    areaName: string;
+    tasks: { name: string; frequency: string }[];
+  };
+}
+
+export interface TasksGroupedByFrequency {
+  [frequency: string]: { name: string; areaName: string }[];
+}
