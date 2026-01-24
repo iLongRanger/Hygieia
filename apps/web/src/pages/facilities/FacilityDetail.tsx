@@ -187,7 +187,7 @@ const FacilityDetail = () => {
     try {
       const response = await listFacilityTasks({
         facilityId: id,
-        limit: 200,
+        limit: 100,
       });
       setTasks(response?.data || []);
     } catch (error) {
