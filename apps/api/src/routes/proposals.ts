@@ -15,6 +15,7 @@ import {
   archiveProposal,
   restoreProposal,
   deleteProposal,
+  getProposalsAvailableForContract,
 } from '../services/proposalService';
 import {
   createProposalSchema,
@@ -53,6 +54,22 @@ router.get(
 
       const result = await listProposals(parsed.data);
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get accepted proposals available for contract creation (no existing contract)
+router.get(
+  '/available-for-contract',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const accountId = req.query.accountId as string | undefined;
+      const proposals = await getProposalsAvailableForContract(accountId);
+      res.json({ data: proposals });
     } catch (error) {
       next(error);
     }

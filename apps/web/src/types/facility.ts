@@ -94,12 +94,16 @@ export interface UpdateAreaTypeInput {
   baseCleaningTimeMinutes?: number | null;
 }
 
+export type FloorType = 'vct' | 'carpet' | 'hardwood' | 'tile' | 'concrete' | 'epoxy';
+export type ConditionLevel = 'standard' | 'medium' | 'hard';
+
 export interface Area {
   id: string;
   name: string | null;
   quantity: number;
   squareFeet: string | null;
-  conditionLevel: 'excellent' | 'good' | 'fair' | 'poor';
+  floorType: FloorType;
+  conditionLevel: ConditionLevel;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -130,7 +134,8 @@ export interface CreateAreaInput {
   name?: string | null;
   quantity?: number;
   squareFeet?: number | null;
-  conditionLevel?: 'excellent' | 'good' | 'fair' | 'poor';
+  floorType?: FloorType;
+  conditionLevel?: ConditionLevel;
   notes?: string | null;
 }
 
@@ -139,7 +144,8 @@ export interface UpdateAreaInput {
   name?: string | null;
   quantity?: number;
   squareFeet?: number | null;
-  conditionLevel?: 'excellent' | 'good' | 'fair' | 'poor';
+  floorType?: FloorType;
+  conditionLevel?: ConditionLevel;
   notes?: string | null;
 }
 

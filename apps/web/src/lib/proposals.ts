@@ -87,3 +87,29 @@ export async function restoreProposal(id: string): Promise<Proposal> {
 export async function deleteProposal(id: string): Promise<void> {
   await api.delete(`/proposals/${id}`);
 }
+
+// Proposals available for contract creation (accepted proposals without existing contracts)
+export interface ProposalForContract {
+  id: string;
+  proposalNumber: string;
+  title: string;
+  totalAmount: string;
+  acceptedAt: string;
+  account: {
+    id: string;
+    name: string;
+  };
+  facility: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export async function getProposalsAvailableForContract(
+  accountId?: string
+): Promise<ProposalForContract[]> {
+  const response = await api.get('/proposals/available-for-contract', {
+    params: { accountId },
+  });
+  return response.data.data;
+}

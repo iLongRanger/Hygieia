@@ -20,6 +20,7 @@ import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
 import PricingRulesList from './pages/pricing/PricingRulesList';
 import PricingRuleDetail from './pages/pricing/PricingRuleDetail';
+import PricingSettingsPage from './pages/pricing/PricingSettingsPage';
 import ProposalsList from './pages/proposals/ProposalsList';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import ProposalForm from './pages/proposals/ProposalForm';
@@ -71,6 +72,7 @@ function App() {
             <Route path="/tasks" element={<TaskTemplatesList />} />
             <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
             <Route path="/pricing" element={<PricingRulesList />} />
+            <Route path="/pricing/settings" element={<PricingSettingsPage />} />
             <Route path="/pricing/:id" element={<PricingRuleDetail />} />
             <Route path="/proposals" element={<ProposalsList />} />
             <Route path="/proposals/new" element={<ProposalForm />} />

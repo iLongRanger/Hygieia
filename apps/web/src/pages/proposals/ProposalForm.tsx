@@ -11,6 +11,9 @@ import {
   DollarSign,
   Calendar,
   GripVertical,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -25,6 +28,12 @@ import {
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
 import { listFacilities } from '../../lib/facilities';
+import {
+  getFacilityPricingReadiness,
+  getFacilityProposalTemplate,
+  type FacilityPricingReadiness,
+  type FacilityProposalTemplate,
+} from '../../lib/pricing';
 import type {
   Proposal,
   CreateProposalInput,
@@ -132,6 +141,22 @@ const ProposalForm = () => {
     totalAmount: 0,
   });
 
+  // Facility pricing states
+  const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+  const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
+
+  // Frequency options for auto-population
+  const PRICING_FREQUENCIES = [
+    { value: '1x_week', label: '1x per Week' },
+    { value: '2x_week', label: '2x per Week' },
+    { value: '3x_week', label: '3x per Week' },
+    { value: '4x_week', label: '4x per Week' },
+    { value: '5x_week', label: '5x per Week' },
+    { value: 'daily', label: 'Daily (7x)' },
+    { value: 'monthly', label: 'Monthly' },
+  ];
+
   // Calculate totals whenever items, services, or tax rate change
   useEffect(() => {
     const itemsTotal = (formData.proposalItems || []).reduce(
@@ -213,6 +238,76 @@ const ProposalForm = () => {
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
     : facilities;
+
+  // Check pricing readiness when facility changes
+  useEffect(() => {
+    const checkPricingReadiness = async () => {
+      if (formData.facilityId) {
+        try {
+          const readiness = await getFacilityPricingReadiness(formData.facilityId);
+          setPricingReadiness(readiness);
+        } catch (error) {
+          console.error('Failed to check pricing readiness:', error);
+          setPricingReadiness(null);
+        }
+      } else {
+        setPricingReadiness(null);
+      }
+    };
+    checkPricingReadiness();
+  }, [formData.facilityId]);
+
+  // Auto-populate services from facility pricing
+  const handleAutoPopulateFromFacility = async () => {
+    if (!formData.facilityId) {
+      toast.error('Please select a facility first');
+      return;
+    }
+
+    try {
+      setLoadingPricing(true);
+      const template = await getFacilityProposalTemplate(formData.facilityId, selectedFrequency);
+
+      // Convert suggested services to proposal services
+      const newServices: ProposalService[] = template.suggestedServices.map((svc, index) => ({
+        serviceName: svc.serviceName,
+        serviceType: svc.serviceType as ServiceType,
+        frequency: svc.frequency as ServiceFrequency,
+        estimatedHours: null,
+        hourlyRate: null,
+        monthlyPrice: svc.monthlyPrice,
+        description: svc.description,
+        includedTasks: svc.includedTasks || [],
+        sortOrder: index,
+      }));
+
+      // Convert suggested items to proposal items
+      const newItems: ProposalItem[] = template.suggestedItems.map((item: any, index: number) => ({
+        itemType: (item.itemType as ProposalItemType) || 'other',
+        description: item.description,
+        quantity: item.quantity || 1,
+        unitPrice: item.unitPrice || 0,
+        totalPrice: item.totalPrice || 0,
+        sortOrder: index,
+      }));
+
+      // Update form with auto-populated data
+      setFormData((prev) => ({
+        ...prev,
+        proposalServices: newServices,
+        proposalItems: newItems.length > 0 ? newItems : prev.proposalItems,
+        // Auto-set title if empty
+        title: prev.title || `Cleaning Services - ${template.facility.name}`,
+      }));
+
+      toast.success(`Auto-populated ${newServices.length} service(s) from facility pricing`);
+    } catch (error: any) {
+      console.error('Failed to auto-populate from facility:', error);
+      toast.error(error.response?.data?.message || 'Failed to calculate pricing from facility');
+    } finally {
+      setLoadingPricing(false);
+    }
+  };
 
   // Handle form field changes
   const handleChange = (field: keyof CreateProposalInput, value: any) => {
@@ -400,6 +495,61 @@ const ProposalForm = () => {
                 value={formData.validUntil || ''}
                 onChange={(e) => handleChange('validUntil', e.target.value || null)}
               />
+
+              {/* Auto-populate from facility */}
+              {formData.facilityId && (
+                <div className="md:col-span-2 mt-2">
+                  <div className="bg-navy-dark/50 rounded-xl border border-white/10 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-gold" />
+                        <span className="font-medium text-white">Auto-Populate from Facility</span>
+                      </div>
+                      {pricingReadiness && (
+                        <div className="flex items-center gap-2">
+                          {pricingReadiness.isReady ? (
+                            <span className="flex items-center gap-1 text-sm text-emerald">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Ready ({pricingReadiness.areaCount} areas, {pricingReadiness.totalSquareFeet.toLocaleString()} sq ft)
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-sm text-amber-400">
+                              <AlertCircle className="w-4 h-4" />
+                              {pricingReadiness.reason}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {pricingReadiness?.isReady ? (
+                      <div className="flex items-center gap-3">
+                        <Select
+                          placeholder="Service Frequency"
+                          value={selectedFrequency}
+                          onChange={(value) => setSelectedFrequency(value)}
+                          options={PRICING_FREQUENCIES}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAutoPopulateFromFacility}
+                          isLoading={loadingPricing}
+                          className="whitespace-nowrap"
+                        >
+                          <Calculator className="w-4 h-4 mr-2" />
+                          Calculate & Populate
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">
+                        Complete the facility's area setup to enable automatic pricing calculation.
+                        Areas need square footage and floor type information.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="md:col-span-2">
                 <Textarea
                   label="Description"

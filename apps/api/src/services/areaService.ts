@@ -6,6 +6,7 @@ export interface AreaListParams {
   limit?: number;
   facilityId?: string;
   areaTypeId?: string;
+  floorType?: string;
   conditionLevel?: string;
   search?: string;
   sortBy?: string;
@@ -19,6 +20,7 @@ export interface AreaCreateInput {
   name?: string | null;
   quantity?: number;
   squareFeet?: number | null;
+  floorType?: string;
   conditionLevel?: string;
   notes?: string | null;
   createdByUserId: string;
@@ -29,6 +31,7 @@ export interface AreaUpdateInput {
   name?: string | null;
   quantity?: number;
   squareFeet?: number | null;
+  floorType?: string;
   conditionLevel?: string;
   notes?: string | null;
 }
@@ -48,6 +51,7 @@ const areaSelect = {
   name: true,
   quantity: true,
   squareFeet: true,
+  floorType: true,
   conditionLevel: true,
   notes: true,
   createdAt: true,
@@ -91,6 +95,7 @@ export async function listAreas(
     limit = 50,
     facilityId,
     areaTypeId,
+    floorType,
     conditionLevel,
     search,
     sortBy = 'createdAt',
@@ -112,6 +117,10 @@ export async function listAreas(
     where.areaTypeId = areaTypeId;
   }
 
+  if (floorType) {
+    where.floorType = floorType;
+  }
+
   if (conditionLevel) {
     where.conditionLevel = conditionLevel;
   }
@@ -123,7 +132,7 @@ export async function listAreas(
     ];
   }
 
-  const validSortFields = ['createdAt', 'name', 'squareFeet'];
+  const validSortFields = ['createdAt', 'name', 'squareFeet', 'floorType'];
   const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
 
   const [areas, total] = await Promise.all([
@@ -163,7 +172,8 @@ export async function createArea(input: AreaCreateInput) {
       name: input.name,
       quantity: input.quantity ?? 1,
       squareFeet: input.squareFeet,
-      conditionLevel: input.conditionLevel ?? 'good',
+      floorType: input.floorType ?? 'vct',
+      conditionLevel: input.conditionLevel ?? 'standard',
       notes: input.notes,
       createdByUserId: input.createdByUserId,
     },
@@ -180,6 +190,7 @@ export async function updateArea(id: string, input: AreaUpdateInput) {
   if (input.name !== undefined) updateData.name = input.name;
   if (input.quantity !== undefined) updateData.quantity = input.quantity;
   if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
+  if (input.floorType !== undefined) updateData.floorType = input.floorType;
   if (input.conditionLevel !== undefined)
     updateData.conditionLevel = input.conditionLevel;
   if (input.notes !== undefined) updateData.notes = input.notes;

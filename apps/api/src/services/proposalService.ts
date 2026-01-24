@@ -524,3 +524,46 @@ export async function deleteProposal(id: string) {
     select: { id: true },
   });
 }
+
+/**
+ * Get accepted proposals that don't have a contract yet
+ * Used for contract creation - only accepted proposals without existing contracts are available
+ */
+export async function getProposalsAvailableForContract(accountId?: string) {
+  const where: Prisma.ProposalWhereInput = {
+    status: 'accepted',
+    archivedAt: null,
+    // Exclude proposals that already have contracts
+    contracts: {
+      none: {},
+    },
+  };
+
+  if (accountId) {
+    where.accountId = accountId;
+  }
+
+  return prisma.proposal.findMany({
+    where,
+    select: {
+      id: true,
+      proposalNumber: true,
+      title: true,
+      totalAmount: true,
+      acceptedAt: true,
+      account: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      facility: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: { acceptedAt: 'desc' },
+  });
+}
