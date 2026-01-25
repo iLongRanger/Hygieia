@@ -6,6 +6,11 @@
  * per facility, account, or proposal.
  */
 
+import type {
+  AreaPricingBreakdown as BaseAreaPricingBreakdown,
+  FacilityPricingResult,
+} from '../pricingCalculatorService';
+
 /**
  * Context provided to pricing strategies for calculation
  */
@@ -18,46 +23,9 @@ export interface PricingContext {
 }
 
 /**
- * Breakdown of pricing for a single area
+ * Re-export AreaPricingBreakdown from the pricing calculator
  */
-export interface AreaPricingBreakdown {
-  areaId: string;
-  areaName: string;
-  areaTypeName: string;
-  squareFeet: number;
-  floorType: string;
-  conditionLevel: string;
-  quantity: number;
-  basePrice: number;
-  floorMultiplier: number;
-  conditionMultiplier: number;
-  frequencyMultiplier: number;
-  taskComplexityAddOn: number;
-  priceBeforeFrequency: number;
-  areaTotal: number;
-}
-
-/**
- * Complete pricing result returned by a strategy
- */
-export interface PricingBreakdown {
-  facilityId: string;
-  facilityName: string;
-  buildingType: string;
-  buildingMultiplier: number;
-  serviceFrequency: string;
-  totalSquareFeet: number;
-  areas: AreaPricingBreakdown[];
-  subtotal: number;
-  buildingAdjustment: number;
-  monthlyTotal: number;
-  minimumApplied: boolean;
-  // Strategy metadata
-  strategyKey: string;
-  strategyVersion: string;
-  // Snapshot of settings used (for audit/reproducibility)
-  settingsSnapshot: PricingSettingsSnapshot;
-}
+export type AreaPricingBreakdown = BaseAreaPricingBreakdown;
 
 /**
  * Snapshot of pricing settings at time of calculation
@@ -74,6 +42,18 @@ export interface PricingSettingsSnapshot {
   buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string; // ISO timestamp
+}
+
+/**
+ * Complete pricing result returned by a strategy
+ * Extends FacilityPricingResult with strategy metadata and settings snapshot
+ */
+export interface PricingBreakdown extends FacilityPricingResult {
+  // Strategy metadata
+  strategyKey: string;
+  strategyVersion: string;
+  // Snapshot of settings used (for audit/reproducibility)
+  settingsSnapshot: PricingSettingsSnapshot;
 }
 
 /**
