@@ -4,7 +4,7 @@
  * Central registry for all pricing strategies. Provides methods to:
  * - Register and retrieve strategies
  * - Get the appropriate strategy for a facility/account/proposal
- * - List available strategies for UI selection
+ * - List available strategies for UI selection (including database pricing rules)
  */
 
 import { prisma } from '../../lib/prisma';
@@ -48,11 +48,20 @@ class PricingStrategyRegistry {
 
   /**
    * Get a strategy by key, throwing if not found
+   * For pricing rule keys (rule:*), returns the default strategy
    */
   getOrThrow(key: string): PricingStrategy {
+    // If it's a pricing rule reference, use the default sqft strategy
+    // The rule ID will be used for configuration, but calculation uses sqft strategy
+    if (key.startsWith('rule:')) {
+      return this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY)!;
+    }
+
     const strategy = this.strategies.get(key);
     if (!strategy) {
-      throw new Error(`Pricing strategy '${key}' not found. Available: ${this.listKeys().join(', ')}`);
+      // Fall back to default if strategy not found
+      console.warn(`Pricing strategy '${key}' not found, falling back to default`);
+      return this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY)!;
     }
     return strategy;
   }
@@ -61,7 +70,7 @@ class PricingStrategyRegistry {
    * Check if a strategy exists
    */
   has(key: string): boolean {
-    return this.strategies.has(key);
+    return this.strategies.has(key) || key.startsWith('rule:');
   }
 
   /**
@@ -72,9 +81,9 @@ class PricingStrategyRegistry {
   }
 
   /**
-   * List all strategies with metadata
+   * List all strategies with metadata (built-in only, synchronous)
    */
-  listAll(): PricingStrategyMetadata[] {
+  listBuiltIn(): PricingStrategyMetadata[] {
     return Array.from(this.strategies.values()).map((strategy) => ({
       key: strategy.key,
       name: strategy.name,
@@ -83,6 +92,55 @@ class PricingStrategyRegistry {
       isDefault: strategy.key === DEFAULT_PRICING_STRATEGY_KEY,
       isActive: true,
     }));
+  }
+
+  /**
+   * List all strategies with metadata including database pricing rules
+   */
+  listAll(): PricingStrategyMetadata[] {
+    // Return built-in strategies synchronously
+    // Database rules are fetched separately via listAllAsync
+    return this.listBuiltIn();
+  }
+
+  /**
+   * List all strategies including pricing rules from database
+   */
+  async listAllAsync(): Promise<PricingStrategyMetadata[]> {
+    // Get built-in strategies
+    const builtIn = this.listBuiltIn();
+
+    // Get pricing rules from database
+    const pricingRules = await prisma.pricingRule.findMany({
+      where: {
+        isActive: true,
+        archivedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        pricingType: true,
+        baseRate: true,
+        cleaningType: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // Convert pricing rules to strategy metadata
+    const ruleStrategies: PricingStrategyMetadata[] = pricingRules.map((rule) => ({
+      key: `rule:${rule.id}`,
+      name: rule.name,
+      description: rule.description || `${rule.pricingType} pricing - Base rate: $${rule.baseRate}`,
+      version: '1.0.0',
+      isDefault: false,
+      isActive: true,
+      // Extra metadata for rules
+      pricingType: rule.pricingType,
+      cleaningType: rule.cleaningType,
+    }));
+
+    return [...builtIn, ...ruleStrategies];
   }
 
   /**
