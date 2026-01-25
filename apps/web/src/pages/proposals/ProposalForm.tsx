@@ -14,6 +14,8 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  Lock,
+  Settings,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -31,8 +33,10 @@ import { listFacilities } from '../../lib/facilities';
 import {
   getFacilityPricingReadiness,
   getFacilityProposalTemplate,
+  listPricingStrategies,
   type FacilityPricingReadiness,
   type FacilityProposalTemplate,
+  type PricingStrategyMetadata,
 } from '../../lib/pricing';
 import type {
   Proposal,
@@ -146,6 +150,10 @@ const ProposalForm = () => {
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
 
+  // Pricing strategy states
+  const [pricingStrategies, setPricingStrategies] = useState<PricingStrategyMetadata[]>([]);
+  const [selectedPricingStrategy, setSelectedPricingStrategy] = useState<string>('sqft_settings_v1');
+
   // Frequency options for auto-population
   const PRICING_FREQUENCIES = [
     { value: '1x_week', label: '1x per Week' },
@@ -184,12 +192,19 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes] = await Promise.all([
+      const [accountsRes, facilitiesRes, strategiesRes] = await Promise.all([
         listAccounts({ limit: 100 }),
         listFacilities({ limit: 100 }),
+        listPricingStrategies(),
       ]);
       setAccounts(accountsRes?.data || []);
       setFacilities(facilitiesRes?.data || []);
+      setPricingStrategies(strategiesRes || []);
+      // Set default strategy if available
+      const defaultStrategy = strategiesRes?.find(s => s.isDefault);
+      if (defaultStrategy) {
+        setSelectedPricingStrategy(defaultStrategy.key);
+      }
     } catch (error) {
       console.error('Failed to fetch reference data:', error);
       toast.error('Failed to load reference data');
@@ -213,7 +228,12 @@ const ProposalForm = () => {
         termsAndConditions: proposal.termsAndConditions || null,
         proposalItems: proposal.proposalItems || [],
         proposalServices: proposal.proposalServices || [],
+        pricingStrategyKey: proposal.pricingStrategyKey || null,
       });
+      // Set pricing strategy from proposal
+      if (proposal.pricingStrategyKey) {
+        setSelectedPricingStrategy(proposal.pricingStrategyKey);
+      }
     } catch (error) {
       console.error('Failed to fetch proposal:', error);
       toast.error('Failed to load proposal');
@@ -489,6 +509,26 @@ const ProposalForm = () => {
                   })),
                 ]}
               />
+              <div className="flex flex-col gap-1">
+                <Select
+                  label="Pricing Strategy"
+                  placeholder="Select pricing strategy"
+                  value={selectedPricingStrategy}
+                  onChange={(value) => {
+                    setSelectedPricingStrategy(value);
+                    handleChange('pricingStrategyKey', value);
+                  }}
+                  options={pricingStrategies.map((s) => ({
+                    value: s.key,
+                    label: `${s.name}${s.isDefault ? ' (Default)' : ''}`,
+                  }))}
+                />
+                {pricingStrategies.find(s => s.key === selectedPricingStrategy)?.description && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {pricingStrategies.find(s => s.key === selectedPricingStrategy)?.description}
+                  </p>
+                )}
+              </div>
               <Input
                 label="Valid Until"
                 type="date"

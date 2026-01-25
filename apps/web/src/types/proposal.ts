@@ -73,15 +73,23 @@ export interface Proposal {
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
+  // Pricing strategy fields
+  pricingStrategyKey?: string | null;
+  pricingStrategyVersion?: string | null;
+  pricingSnapshot?: any | null;
+  pricingLocked?: boolean;
+  pricingLockedAt?: string | null;
   account: {
     id: string;
     name: string;
     type: string;
+    defaultPricingStrategyKey?: string | null;
   };
   facility?: {
     id: string;
     name: string;
     address: any;
+    defaultPricingStrategyKey?: string | null;
   } | null;
   createdByUser: {
     id: string;
@@ -103,6 +111,8 @@ export interface CreateProposalInput {
   termsAndConditions?: string | null;
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];
+  // Pricing strategy (optional - will use defaults if not provided)
+  pricingStrategyKey?: string | null;
 }
 
 export interface UpdateProposalInput {
@@ -117,6 +127,8 @@ export interface UpdateProposalInput {
   termsAndConditions?: string | null;
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];
+  // Pricing strategy
+  pricingStrategyKey?: string | null;
 }
 
 export interface ListProposalsParams {
