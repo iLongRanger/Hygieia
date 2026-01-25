@@ -85,6 +85,21 @@ router.get(
   }
 );
 
+// Get available pricing strategies (must be before /:id route)
+router.get(
+  '/pricing-strategies',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const strategies = pricingStrategyRegistry.listAll();
+      res.json({ data: strategies });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Get proposal by ID
 router.get(
   '/:id',
@@ -388,21 +403,6 @@ router.delete(
 // ============================================================
 // PRICING STRATEGY ROUTES
 // ============================================================
-
-// Get available pricing strategies
-router.get(
-  '/pricing-strategies',
-  authenticate,
-  requireRole('owner', 'admin', 'manager'),
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const strategies = pricingStrategyRegistry.listAll();
-      res.json({ data: strategies });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
 
 // Lock proposal pricing
 router.post(
