@@ -1,5 +1,12 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import {
+  resolvePricingStrategyKey,
+  getStrategy,
+  DEFAULT_PRICING_STRATEGY_KEY,
+  type PricingBreakdown,
+  type PricingSettingsSnapshot,
+} from './pricing';
 
 export interface ProposalListParams {
   page?: number;
@@ -46,6 +53,9 @@ export interface ProposalCreateInput {
   createdByUserId: string;
   proposalItems?: ProposalItemInput[];
   proposalServices?: ProposalServiceInput[];
+  // Pricing strategy fields
+  pricingStrategyKey?: string | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
 export interface ProposalUpdateInput {
@@ -60,6 +70,9 @@ export interface ProposalUpdateInput {
   termsAndConditions?: string | null;
   proposalItems?: (ProposalItemInput & { id?: string })[];
   proposalServices?: (ProposalServiceInput & { id?: string })[];
+  // Pricing strategy fields
+  pricingStrategyKey?: string | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
 export interface PaginatedResult<T> {
@@ -93,11 +106,18 @@ const proposalSelect = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
+  // Pricing strategy fields
+  pricingStrategyKey: true,
+  pricingStrategyVersion: true,
+  pricingSnapshot: true,
+  pricingLocked: true,
+  pricingLockedAt: true,
   account: {
     select: {
       id: true,
       name: true,
       type: true,
+      defaultPricingStrategyKey: true,
     },
   },
   facility: {
@@ -105,6 +125,7 @@ const proposalSelect = {
       id: true,
       name: true,
       address: true,
+      defaultPricingStrategyKey: true,
     },
   },
   createdByUser: {
@@ -297,6 +318,18 @@ export async function createProposal(input: ProposalCreateInput) {
   const services = input.proposalServices ?? [];
   const totals = calculateTotals(items, services, taxRate);
 
+  // Resolve pricing strategy - use provided key, or resolve from facility/account
+  const pricingStrategyKey =
+    input.pricingStrategyKey ??
+    (await resolvePricingStrategyKey({
+      facilityId: input.facilityId ?? undefined,
+      accountId: input.accountId,
+    }));
+
+  // Get strategy version
+  const strategy = await getStrategy({ strategyKey: pricingStrategyKey });
+  const pricingStrategyVersion = strategy.version;
+
   return prisma.proposal.create({
     data: {
       proposalNumber,
@@ -313,6 +346,11 @@ export async function createProposal(input: ProposalCreateInput) {
       accountId: input.accountId,
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
+      // Pricing strategy fields
+      pricingStrategyKey,
+      pricingStrategyVersion,
+      pricingSnapshot: input.pricingSnapshot ?? Prisma.JsonNull,
+      pricingLocked: false,
       proposalItems: {
         create: items.map((item, index) => ({
           itemType: item.itemType,
@@ -565,5 +603,262 @@ export async function getProposalsAvailableForContract(accountId?: string) {
       },
     },
     orderBy: { acceptedAt: 'desc' },
+  });
+}
+
+// ============================================================
+// PRICING STRATEGY FUNCTIONS
+// ============================================================
+
+/**
+ * Lock the pricing for a proposal
+ * Once locked, the pricing won't automatically change when facility settings change
+ */
+export async function lockProposalPricing(proposalId: string) {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      pricingLocked: true,
+      pricingStrategyKey: true,
+      pricingSnapshot: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (proposal.pricingLocked) {
+    throw new Error('Proposal pricing is already locked');
+  }
+
+  return prisma.proposal.update({
+    where: { id: proposalId },
+    data: {
+      pricingLocked: true,
+      pricingLockedAt: new Date(),
+    },
+    select: proposalSelect,
+  });
+}
+
+/**
+ * Unlock the pricing for a proposal
+ * Allows automatic recalculation when facility settings change
+ */
+export async function unlockProposalPricing(proposalId: string) {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      pricingLocked: true,
+      status: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (!proposal.pricingLocked) {
+    throw new Error('Proposal pricing is not locked');
+  }
+
+  // Only allow unlocking draft proposals
+  if (proposal.status !== 'draft') {
+    throw new Error('Can only unlock pricing for draft proposals');
+  }
+
+  return prisma.proposal.update({
+    where: { id: proposalId },
+    data: {
+      pricingLocked: false,
+      pricingLockedAt: null,
+    },
+    select: proposalSelect,
+  });
+}
+
+/**
+ * Change the pricing strategy for a proposal
+ * Requires the proposal to be in draft status and pricing to be unlocked
+ */
+export async function changeProposalPricingStrategy(
+  proposalId: string,
+  newStrategyKey: string
+) {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      status: true,
+      pricingLocked: true,
+      pricingStrategyKey: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (proposal.status !== 'draft') {
+    throw new Error('Can only change pricing strategy for draft proposals');
+  }
+
+  if (proposal.pricingLocked) {
+    throw new Error('Cannot change pricing strategy while pricing is locked');
+  }
+
+  // Verify the strategy exists
+  const strategy = await getStrategy({ strategyKey: newStrategyKey });
+
+  return prisma.proposal.update({
+    where: { id: proposalId },
+    data: {
+      pricingStrategyKey: newStrategyKey,
+      pricingStrategyVersion: strategy.version,
+      // Clear snapshot since strategy changed
+      pricingSnapshot: Prisma.JsonNull,
+    },
+    select: proposalSelect,
+  });
+}
+
+/**
+ * Recalculate pricing for a proposal using the stored strategy
+ * Updates the proposal services and totals based on current facility data
+ */
+export async function recalculateProposalPricing(
+  proposalId: string,
+  serviceFrequency: string,
+  options?: {
+    lockAfterRecalculation?: boolean;
+  }
+) {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      status: true,
+      facilityId: true,
+      accountId: true,
+      pricingLocked: true,
+      pricingStrategyKey: true,
+      taxRate: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (proposal.status !== 'draft') {
+    throw new Error('Can only recalculate pricing for draft proposals');
+  }
+
+  if (proposal.pricingLocked) {
+    throw new Error('Cannot recalculate pricing while pricing is locked. Unlock first.');
+  }
+
+  if (!proposal.facilityId) {
+    throw new Error('Proposal must have a facility to recalculate pricing');
+  }
+
+  // Get the strategy
+  const strategyKey = proposal.pricingStrategyKey ?? DEFAULT_PRICING_STRATEGY_KEY;
+  const strategy = await getStrategy({ strategyKey });
+
+  // Calculate new pricing
+  const pricing = await strategy.quote({
+    facilityId: proposal.facilityId,
+    serviceFrequency,
+  });
+
+  // Generate new services
+  const newServices = await strategy.generateProposalServices({
+    facilityId: proposal.facilityId,
+    serviceFrequency,
+  });
+
+  // Calculate new totals
+  const servicesTotal = newServices.reduce((sum, service) => sum + service.monthlyPrice, 0);
+  const taxRate = Number(proposal.taxRate);
+  const taxAmount = servicesTotal * taxRate;
+  const totalAmount = servicesTotal + taxAmount;
+
+  // Update the proposal
+  return prisma.proposal.update({
+    where: { id: proposalId },
+    data: {
+      subtotal: Number(servicesTotal.toFixed(2)),
+      taxAmount: Number(taxAmount.toFixed(2)),
+      totalAmount: Number(totalAmount.toFixed(2)),
+      pricingStrategyKey: strategy.key,
+      pricingStrategyVersion: strategy.version,
+      pricingSnapshot: pricing.settingsSnapshot,
+      pricingLocked: options?.lockAfterRecalculation ?? false,
+      pricingLockedAt: options?.lockAfterRecalculation ? new Date() : null,
+      // Replace all services with new calculated ones
+      proposalServices: {
+        deleteMany: {},
+        create: newServices.map((service, index) => ({
+          serviceName: service.serviceName,
+          serviceType: service.serviceType,
+          frequency: service.frequency,
+          monthlyPrice: service.monthlyPrice,
+          description: service.description,
+          includedTasks: service.includedTasks,
+          sortOrder: index,
+        })),
+      },
+    },
+    select: proposalSelect,
+  });
+}
+
+/**
+ * Get pricing preview for a proposal without saving
+ * Useful for showing what the pricing would be before committing
+ */
+export async function getProposalPricingPreview(
+  proposalId: string,
+  serviceFrequency: string,
+  options?: {
+    strategyKey?: string;
+  }
+): Promise<PricingBreakdown> {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      facilityId: true,
+      accountId: true,
+      pricingStrategyKey: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  if (!proposal.facilityId) {
+    throw new Error('Proposal must have a facility for pricing preview');
+  }
+
+  // Use provided strategy key, or fall back to proposal's strategy, or resolve from context
+  const strategyKey =
+    options?.strategyKey ??
+    proposal.pricingStrategyKey ??
+    (await resolvePricingStrategyKey({
+      facilityId: proposal.facilityId,
+      accountId: proposal.accountId,
+    }));
+
+  const strategy = await getStrategy({ strategyKey });
+
+  return strategy.quote({
+    facilityId: proposal.facilityId,
+    serviceFrequency,
   });
 }
