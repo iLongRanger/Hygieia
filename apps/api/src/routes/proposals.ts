@@ -16,6 +16,11 @@ import {
   restoreProposal,
   deleteProposal,
   getProposalsAvailableForContract,
+  lockProposalPricing,
+  unlockProposalPricing,
+  changeProposalPricingStrategy,
+  recalculateProposalPricing,
+  getProposalPricingPreview,
 } from '../services/proposalService';
 import {
   createProposalSchema,
@@ -24,8 +29,12 @@ import {
   sendProposalSchema,
   acceptProposalSchema,
   rejectProposalSchema,
+  changePricingStrategySchema,
+  recalculatePricingSchema,
+  pricingPreviewQuerySchema,
 } from '../schemas/proposal';
 import { ZodError } from 'zod';
+import { pricingStrategyRegistry } from '../services/pricing';
 
 const router: Router = Router();
 
@@ -370,6 +379,151 @@ router.delete(
 
       await deleteProposal(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// PRICING STRATEGY ROUTES
+// ============================================================
+
+// Get available pricing strategies
+router.get(
+  '/pricing-strategies',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const strategies = pricingStrategyRegistry.listAll();
+      res.json({ data: strategies });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Lock proposal pricing
+router.post(
+  '/:id/pricing/lock',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const locked = await lockProposalPricing(req.params.id);
+      res.json({ data: locked, message: 'Proposal pricing locked successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Unlock proposal pricing
+router.post(
+  '/:id/pricing/unlock',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const unlocked = await unlockProposalPricing(req.params.id);
+      res.json({ data: unlocked, message: 'Proposal pricing unlocked successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Change pricing strategy for a proposal
+router.post(
+  '/:id/pricing/strategy',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = changePricingStrategySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const updated = await changeProposalPricingStrategy(
+        req.params.id,
+        parsed.data.strategyKey
+      );
+      res.json({ data: updated, message: 'Pricing strategy changed successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Recalculate proposal pricing
+router.post(
+  '/:id/pricing/recalculate',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = recalculatePricingSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const recalculated = await recalculateProposalPricing(
+        req.params.id,
+        parsed.data.serviceFrequency,
+        { lockAfterRecalculation: parsed.data.lockAfterRecalculation }
+      );
+      res.json({ data: recalculated, message: 'Pricing recalculated successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get pricing preview for a proposal
+router.get(
+  '/:id/pricing/preview',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = pricingPreviewQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const preview = await getProposalPricingPreview(
+        req.params.id,
+        parsed.data.serviceFrequency,
+        { strategyKey: parsed.data.strategyKey }
+      );
+      res.json({ data: preview });
     } catch (error) {
       next(error);
     }

@@ -168,6 +168,9 @@ model Account {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt       DateTime? @map("archived_at") @db.Timestamptz(6)
 
+  // Pricing strategy default for this account
+  defaultPricingStrategyKey String? @default("sqft_settings_v1") @map("default_pricing_strategy_key") @db.VarChar(100)
+
   contacts       Contact[]
   facilities     Facility[]
   proposals      Proposal[]
@@ -179,6 +182,7 @@ model Account {
   @@index([type])
   @@index([accountManagerId])
   @@index([qboCustomerId])
+  @@index([defaultPricingStrategyKey])
   @@map("accounts")
 }
 
@@ -249,6 +253,9 @@ model Facility {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
+  // Pricing strategy default for this facility (overrides account default)
+  defaultPricingStrategyKey String? @default("sqft_settings_v1") @map("default_pricing_strategy_key") @db.VarChar(100)
+
   account          Account           @relation(fields: [accountId], references: [id])
   areas            Area[]
   taskTemplates    TaskTemplate[]    @relation("FacilityTaskTemplates")
@@ -263,6 +270,7 @@ model Facility {
   @@index([accountId])
   @@index([status])
   @@index([facilityManagerId])
+  @@index([defaultPricingStrategyKey])
   @@map("facilities")
 }
 
@@ -471,6 +479,13 @@ model Proposal {
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
 
+  // Pricing strategy fields
+  pricingStrategyKey     String?   @map("pricing_strategy_key") @db.VarChar(100)
+  pricingStrategyVersion String?   @map("pricing_strategy_version") @db.VarChar(50)
+  pricingSnapshot        Json?     @map("pricing_snapshot") @db.JsonB
+  pricingLocked          Boolean   @default(false) @map("pricing_locked")
+  pricingLockedAt        DateTime? @map("pricing_locked_at") @db.Timestamptz(6)
+
   account          Account           @relation(fields: [accountId], references: [id])
   facility         Facility?         @relation(fields: [facilityId], references: [id])
   createdByUser    User              @relation("CreatedProposals", fields: [createdByUserId], references: [id])
@@ -484,6 +499,8 @@ model Proposal {
   @@index([proposalNumber])
   @@index([validUntil])
   @@index([sentAt])
+  @@index([pricingStrategyKey])
+  @@index([pricingLocked])
   @@map("proposals")
 }
 

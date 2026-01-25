@@ -123,6 +123,19 @@ export interface AreaPricingBreakdown {
   areaTotal: number;
 }
 
+export interface PricingSettingsSnapshot {
+  pricingSettingsId: string;
+  pricingSettingsName: string;
+  baseRatePerSqFt: number;
+  minimumMonthlyCharge: number;
+  floorTypeMultipliers: Record<string, number>;
+  frequencyMultipliers: Record<string, number>;
+  conditionMultipliers: Record<string, number>;
+  buildingTypeMultipliers: Record<string, number>;
+  taskComplexityAddOns: Record<string, number>;
+  capturedAt: string;
+}
+
 export interface FacilityPricingResult {
   facilityId: string;
   facilityName: string;
@@ -137,6 +150,13 @@ export interface FacilityPricingResult {
   minimumApplied: boolean;
   pricingSettingsId: string;
   pricingSettingsName: string;
+}
+
+// Extended pricing breakdown that includes strategy info
+export interface PricingBreakdown extends FacilityPricingResult {
+  strategyKey: string;
+  strategyVersion: string;
+  settingsSnapshot: PricingSettingsSnapshot;
 }
 
 export interface FacilityPricingReadiness {
@@ -286,4 +306,65 @@ export async function approvePricingOverride(id: string): Promise<PricingOverrid
 
 export async function deletePricingOverride(id: string): Promise<void> {
   await api.delete(`/pricing-overrides/${id}`);
+}
+
+// ============================================================
+// Pricing Strategy API
+// ============================================================
+
+export interface PricingStrategyMetadata {
+  key: string;
+  name: string;
+  description: string;
+  version: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+}
+
+export async function listPricingStrategies(): Promise<PricingStrategyMetadata[]> {
+  const response = await api.get('/proposals/pricing-strategies');
+  return response.data.data;
+}
+
+export async function lockProposalPricing(proposalId: string): Promise<any> {
+  const response = await api.post(`/proposals/${proposalId}/pricing/lock`);
+  return response.data.data;
+}
+
+export async function unlockProposalPricing(proposalId: string): Promise<any> {
+  const response = await api.post(`/proposals/${proposalId}/pricing/unlock`);
+  return response.data.data;
+}
+
+export async function changeProposalPricingStrategy(
+  proposalId: string,
+  strategyKey: string
+): Promise<any> {
+  const response = await api.post(`/proposals/${proposalId}/pricing/strategy`, {
+    strategyKey,
+  });
+  return response.data.data;
+}
+
+export async function recalculateProposalPricing(
+  proposalId: string,
+  serviceFrequency: string,
+  lockAfterRecalculation: boolean = false
+): Promise<any> {
+  const response = await api.post(`/proposals/${proposalId}/pricing/recalculate`, {
+    serviceFrequency,
+    lockAfterRecalculation,
+  });
+  return response.data.data;
+}
+
+export async function getProposalPricingPreview(
+  proposalId: string,
+  serviceFrequency: string,
+  strategyKey?: string
+): Promise<PricingBreakdown> {
+  const response = await api.get(`/proposals/${proposalId}/pricing/preview`, {
+    params: { serviceFrequency, strategyKey },
+  });
+  return response.data.data;
 }

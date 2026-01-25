@@ -139,6 +139,41 @@ export const rejectProposalSchema = z.object({
   rejectionReason: z.string().min(1, 'Rejection reason is required').max(5000),
 });
 
+// ============================================================
+// PRICING STRATEGY SCHEMAS
+// ============================================================
+
+// Extended frequency schema for pricing calculations
+export const pricingFrequencySchema = z.enum([
+  '1x_week',
+  '2x_week',
+  '3x_week',
+  '4x_week',
+  '5x_week',
+  'daily',
+  'weekly',
+  'biweekly',
+  'monthly',
+  'quarterly',
+]);
+
+// Change pricing strategy
+export const changePricingStrategySchema = z.object({
+  strategyKey: z.string().min(1, 'Strategy key is required').max(100),
+});
+
+// Recalculate pricing
+export const recalculatePricingSchema = z.object({
+  serviceFrequency: pricingFrequencySchema,
+  lockAfterRecalculation: z.boolean().optional().default(false),
+});
+
+// Pricing preview query
+export const pricingPreviewQuerySchema = z.object({
+  serviceFrequency: pricingFrequencySchema,
+  strategyKey: z.string().max(100).optional(),
+});
+
 // Export types
 export type CreateProposalInput = z.infer<typeof createProposalSchema>;
 export type UpdateProposalInput = z.infer<typeof updateProposalSchema>;
@@ -148,3 +183,6 @@ export type AcceptProposalInput = z.infer<typeof acceptProposalSchema>;
 export type RejectProposalInput = z.infer<typeof rejectProposalSchema>;
 export type ProposalItemInput = z.infer<typeof proposalItemSchema>;
 export type ProposalServiceInput = z.infer<typeof proposalServiceSchema>;
+export type ChangePricingStrategyInput = z.infer<typeof changePricingStrategySchema>;
+export type RecalculatePricingInput = z.infer<typeof recalculatePricingSchema>;
+export type PricingPreviewQuery = z.infer<typeof pricingPreviewQuerySchema>;
