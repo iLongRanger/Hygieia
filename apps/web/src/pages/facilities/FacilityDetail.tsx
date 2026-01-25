@@ -107,7 +107,9 @@ const FacilityDetail = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingTask, setEditingTask] = useState<FacilityTask | null>(null);
-  const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(null);
+  const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(
+    null
+  );
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -122,7 +124,9 @@ const FacilityDetail = () => {
     conditionLevel: 'standard',
     notes: null,
   });
-  const [taskForm, setTaskForm] = useState<CreateFacilityTaskInput | UpdateFacilityTaskInput>({
+  const [taskForm, setTaskForm] = useState<
+    CreateFacilityTaskInput | UpdateFacilityTaskInput
+  >({
     facilityId: id || '',
     areaId: null,
     taskTemplateId: null,
@@ -212,7 +216,13 @@ const FacilityDetail = () => {
     fetchAreaTypes();
     fetchTasks();
     fetchTaskTemplates();
-  }, [fetchFacility, fetchAreas, fetchAreaTypes, fetchTasks, fetchTaskTemplates]);
+  }, [
+    fetchFacility,
+    fetchAreas,
+    fetchAreaTypes,
+    fetchTasks,
+    fetchTaskTemplates,
+  ]);
 
   const handleUpdateFacility = async () => {
     if (!id) return;
@@ -305,27 +315,15 @@ const FacilityDetail = () => {
     if (!id) return;
     try {
       setSaving(true);
-
-      // Convert empty strings to null for proper validation
-      const cleanedTaskForm = {
-        ...taskForm,
-        customName: taskForm.customName?.trim() || null,
-        taskTemplateId: taskForm.taskTemplateId || null,
-      };
-
-      // Validate that either customName or taskTemplateId is provided
-      if (!cleanedTaskForm.customName && !cleanedTaskForm.taskTemplateId) {
-        toast.error('Please enter a custom name or select a task template');
-        setSaving(false);
-        return;
-      }
-
       if (editingTask) {
-        await updateFacilityTask(editingTask.id, cleanedTaskForm as UpdateFacilityTaskInput);
+        await updateFacilityTask(
+          editingTask.id,
+          taskForm as UpdateFacilityTaskInput
+        );
         toast.success('Task updated');
       } else {
         await createFacilityTask({
-          ...cleanedTaskForm,
+          ...taskForm,
           facilityId: id,
           areaId: selectedAreaForTask?.id || null,
         } as CreateFacilityTaskInput);
@@ -369,7 +367,9 @@ const FacilityDetail = () => {
 
   const openEditTask = (task: FacilityTask) => {
     setEditingTask(task);
-    setSelectedAreaForTask(task.area ? areas.find((a) => a.id === task.area?.id) || null : null);
+    setSelectedAreaForTask(
+      task.area ? areas.find((a) => a.id === task.area?.id) || null : null
+    );
     setTaskForm({
       areaId: task.area?.id || null,
       taskTemplateId: task.taskTemplate?.id || null,
@@ -477,7 +477,8 @@ const FacilityDetail = () => {
       header: 'Floor Type',
       cell: (item: Area) => {
         const floorType = item.floorType || 'vct';
-        const floorLabel = FLOOR_TYPES.find((f) => f.value === floorType)?.label || floorType;
+        const floorLabel =
+          FLOOR_TYPES.find((f) => f.value === floorType)?.label || floorType;
         return <span className="text-gray-300 capitalize">{floorLabel}</span>;
       },
     },
@@ -493,7 +494,8 @@ const FacilityDetail = () => {
                 : 'error'
           }
         >
-          {CONDITION_LEVELS.find((c) => c.value === item.conditionLevel)?.label || item.conditionLevel}
+          {CONDITION_LEVELS.find((c) => c.value === item.conditionLevel)
+            ?.label || item.conditionLevel}
         </Badge>
       ),
     },
@@ -752,8 +754,10 @@ const FacilityDetail = () => {
                             {area.name || area.areaType.name}
                           </div>
                           <div className="text-sm text-gray-400">
-                            {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
-                            {area.squareFeet && ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
+                            {areaTasks.length} task
+                            {areaTasks.length !== 1 ? 's' : ''}
+                            {area.squareFeet &&
+                              ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
                           </div>
                         </div>
                       </div>
@@ -779,59 +783,68 @@ const FacilityDetail = () => {
                           </div>
                         ) : (
                           <div className="space-y-4 pt-4">
-                            {CLEANING_FREQUENCIES.map(({ value: freq, label: freqLabel }) => {
-                              const freqTasks = tasksByFreq[freq] || [];
-                              if (freqTasks.length === 0) return null;
+                            {CLEANING_FREQUENCIES.map(
+                              ({ value: freq, label: freqLabel }) => {
+                                const freqTasks = tasksByFreq[freq] || [];
+                                if (freqTasks.length === 0) return null;
 
-                              return (
-                                <div key={freq}>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="default" className="text-xs">
-                                      {freqLabel}
-                                    </Badge>
-                                    <span className="text-xs text-gray-500">
-                                      ({freqTasks.length})
-                                    </span>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {freqTasks.map((task) => (
-                                      <div
-                                        key={task.id}
-                                        className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 group"
+                                return (
+                                  <div key={freq}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge
+                                        variant="default"
+                                        className="text-xs"
                                       >
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-white">
-                                            {task.customName || task.taskTemplate?.name || 'Unnamed Task'}
-                                          </span>
-                                          {task.estimatedMinutes && (
-                                            <span className="text-xs text-gray-500">
-                                              ({task.estimatedMinutes} min)
+                                        {freqLabel}
+                                      </Badge>
+                                      <span className="text-xs text-gray-500">
+                                        ({freqTasks.length})
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {freqTasks.map((task) => (
+                                        <div
+                                          key={task.id}
+                                          className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 group"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-white">
+                                              {task.customName ||
+                                                task.taskTemplate?.name ||
+                                                'Unnamed Task'}
                                             </span>
-                                          )}
+                                            {task.estimatedMinutes && (
+                                              <span className="text-xs text-gray-500">
+                                                ({task.estimatedMinutes} min)
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => openEditTask(task)}
+                                            >
+                                              <Edit2 className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                handleDeleteTask(task.id)
+                                              }
+                                              className="text-red-400 hover:text-red-300"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
                                         </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => openEditTask(task)}
-                                          >
-                                            <Edit2 className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteTask(task.id)}
-                                            className="text-red-400 hover:text-red-300"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              }
+                            )}
                           </div>
                         )}
                       </div>
@@ -1117,7 +1130,11 @@ const FacilityDetail = () => {
           setSelectedAreaForTask(null);
           resetTaskForm();
         }}
-        title={editingTask ? 'Edit Task' : `Add Task${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
+        title={
+          editingTask
+            ? 'Edit Task'
+            : `Add Task${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`
+        }
       >
         <div className="space-y-4">
           {/* Task Template or Custom */}
@@ -1138,7 +1155,9 @@ const FacilityDetail = () => {
                 }
               >
                 <div className="font-medium">Custom Task</div>
-                <div className="text-xs text-gray-500">Enter task name manually</div>
+                <div className="text-xs text-gray-500">
+                  Enter task name manually
+                </div>
               </button>
               <button
                 type="button"
@@ -1148,11 +1167,17 @@ const FacilityDetail = () => {
                     : 'border-white/10 text-gray-400 hover:border-white/20'
                 }`}
                 onClick={() =>
-                  setTaskForm({ ...taskForm, taskTemplateId: taskTemplates[0]?.id || null, customName: '' })
+                  setTaskForm({
+                    ...taskForm,
+                    taskTemplateId: taskTemplates[0]?.id || null,
+                    customName: '',
+                  })
                 }
               >
                 <div className="font-medium">From Template</div>
-                <div className="text-xs text-gray-500">Select predefined task</div>
+                <div className="text-xs text-gray-500">
+                  Select predefined task
+                </div>
               </button>
             </div>
           </div>
@@ -1201,7 +1226,9 @@ const FacilityDetail = () => {
               onChange={(e) =>
                 setTaskForm({
                   ...taskForm,
-                  estimatedMinutes: e.target.value ? Number(e.target.value) : null,
+                  estimatedMinutes: e.target.value
+                    ? Number(e.target.value)
+                    : null,
                 })
               }
             />
@@ -1225,7 +1252,9 @@ const FacilityDetail = () => {
           <Textarea
             label="Instructions (optional)"
             placeholder="Special instructions for this task..."
-            value={(taskForm as UpdateFacilityTaskInput).customInstructions || ''}
+            value={
+              (taskForm as UpdateFacilityTaskInput).customInstructions || ''
+            }
             onChange={(e) =>
               setTaskForm({
                 ...taskForm,
