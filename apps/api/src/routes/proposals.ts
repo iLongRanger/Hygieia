@@ -86,13 +86,14 @@ router.get(
 );
 
 // Get available pricing strategies (must be before /:id route)
+// Includes both built-in strategies and pricing rules from database
 router.get(
   '/pricing-strategies',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const strategies = pricingStrategyRegistry.listAll();
+      const strategies = await pricingStrategyRegistry.listAllAsync();
       res.json({ data: strategies });
     } catch (error) {
       next(error);
