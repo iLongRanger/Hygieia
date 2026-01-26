@@ -515,29 +515,18 @@ const FacilitiesList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Building Type"
-              placeholder="Select type"
-              options={BUILDING_TYPES}
-              value={formData.buildingType || ''}
-              onChange={(value) =>
-                setFormData({ ...formData, buildingType: value || null })
-              }
-            />
-            <Input
-              label="Square Feet"
-              type="number"
-              placeholder="5000"
-              value={formData.squareFeet || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  squareFeet: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </div>
+          <Select
+            label="Building Type"
+            placeholder="Select type"
+            options={BUILDING_TYPES}
+            value={formData.buildingType || ''}
+            onChange={(value) =>
+              setFormData({ ...formData, buildingType: value || null })
+            }
+          />
+          <p className="text-xs text-gray-400 -mt-2">
+            Total square feet will be auto-calculated from areas you add to this facility.
+          </p>
 
           <Textarea
             label="Notes"
