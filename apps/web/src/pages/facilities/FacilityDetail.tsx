@@ -214,6 +214,15 @@ const FacilityDetail = () => {
     fetchTaskTemplates();
   }, [fetchFacility, fetchAreas, fetchAreaTypes, fetchTasks, fetchTaskTemplates]);
 
+  // Calculate total square feet from all active areas
+  const totalSquareFeetFromAreas = areas
+    .filter((area) => !area.archivedAt)
+    .reduce((sum, area) => {
+      const sqFt = Number(area.squareFeet) || 0;
+      const qty = area.quantity || 1;
+      return sum + sqFt * qty;
+    }, 0);
+
   const handleUpdateFacility = async () => {
     if (!id) return;
     try {
@@ -603,11 +612,14 @@ const FacilityDetail = () => {
             <div className="border-t border-white/10 pt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-gray-400">Square Feet</div>
+                  <div className="text-sm text-gray-400">Total Square Feet</div>
                   <div className="font-medium text-white">
-                    {facility.squareFeet
-                      ? Number(facility.squareFeet).toLocaleString()
+                    {totalSquareFeetFromAreas > 0
+                      ? totalSquareFeetFromAreas.toLocaleString()
                       : '-'}
+                    {totalSquareFeetFromAreas > 0 && (
+                      <span className="text-xs text-gray-500 ml-1">(from {areas.filter(a => !a.archivedAt).length} areas)</span>
+                    )}
                   </div>
                 </div>
                 <div>
