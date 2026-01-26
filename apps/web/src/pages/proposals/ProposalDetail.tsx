@@ -380,7 +380,7 @@ const ProposalDetail = () => {
                       </div>
                     </div>
                     {service.description && (
-                      <p className="text-sm text-gray-400 mt-2">{service.description}</p>
+                      <p className="text-sm text-gray-400 mt-2 whitespace-pre-wrap">{service.description}</p>
                     )}
                     {service.includedTasks && service.includedTasks.length > 0 && (
                       <div className="mt-3">

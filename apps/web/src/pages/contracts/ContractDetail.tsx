@@ -40,6 +40,21 @@ import {
 } from '../../lib/contracts';
 import type { Contract, ContractStatus, RenewContractInput } from '../../types/contract';
 
+// Format address object into readable string
+const formatAddress = (address: any): string => {
+  if (!address) return '';
+  if (typeof address === 'string') return address;
+
+  const lines: string[] = [];
+  if (address.street) lines.push(address.street);
+  const cityLine = [address.city, address.state, address.postalCode]
+    .filter(Boolean)
+    .join(', ');
+  if (cityLine) lines.push(cityLine);
+  if (address.country) lines.push(address.country);
+  return lines.length > 0 ? lines.join(', ') : '';
+};
+
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
@@ -377,11 +392,7 @@ const ContractDetail = () => {
                 {contract.facility.address && (
                   <div className="flex items-start gap-1 text-sm text-gray-400">
                     <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>
-                      {typeof contract.facility.address === 'string'
-                        ? contract.facility.address
-                        : JSON.stringify(contract.facility.address)}
-                    </span>
+                    <span>{formatAddress(contract.facility.address)}</span>
                   </div>
                 )}
               </div>

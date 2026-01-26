@@ -17,7 +17,7 @@ export const createTaskTemplateSchema = z.object({
   description: z.string().max(10000).optional().nullable(),
   cleaningType: cleaningTypeSchema,
   areaTypeId: z.string().uuid().optional().nullable(),
-  estimatedMinutes: z.coerce.number().int().min(1),
+  estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(), // Optional for sqft-based pricing
   difficultyLevel: z.coerce.number().int().min(1).max(5).optional().default(3),
   requiredEquipment: z.array(z.string()).optional().default([]),
   requiredSupplies: z.array(z.string()).optional().default([]),
