@@ -24,3 +24,4 @@ export {
 
 // Individual strategies (for direct access if needed)
 export { sqftSettingsV1Strategy } from './strategies/sqftSettingsV1Strategy';
+export { perHourV1Strategy } from './strategies/perHourV1Strategy';

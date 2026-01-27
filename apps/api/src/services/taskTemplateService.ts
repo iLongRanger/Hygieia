@@ -20,7 +20,11 @@ export interface TaskTemplateCreateInput {
   description?: string | null;
   cleaningType: string;
   areaTypeId?: string | null;
-  estimatedMinutes: number;
+  estimatedMinutes?: number | null;
+  baseMinutes?: number;
+  perSqftMinutes?: number;
+  perUnitMinutes?: number;
+  perRoomMinutes?: number;
   difficultyLevel?: number;
   requiredEquipment?: string[];
   requiredSupplies?: string[];
@@ -28,6 +32,7 @@ export interface TaskTemplateCreateInput {
   isGlobal?: boolean;
   facilityId?: string | null;
   isActive?: boolean;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
   createdByUserId: string;
 }
 
@@ -37,6 +42,10 @@ export interface TaskTemplateUpdateInput {
   cleaningType?: string;
   areaTypeId?: string | null;
   estimatedMinutes?: number;
+  baseMinutes?: number;
+  perSqftMinutes?: number;
+  perUnitMinutes?: number;
+  perRoomMinutes?: number;
   difficultyLevel?: number;
   requiredEquipment?: string[];
   requiredSupplies?: string[];
@@ -44,6 +53,7 @@ export interface TaskTemplateUpdateInput {
   isGlobal?: boolean;
   facilityId?: string | null;
   isActive?: boolean;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
 }
 
 export interface PaginatedResult<T> {
@@ -62,6 +72,10 @@ const taskTemplateSelect = {
   description: true,
   cleaningType: true,
   estimatedMinutes: true,
+  baseMinutes: true,
+  perSqftMinutes: true,
+  perUnitMinutes: true,
+  perRoomMinutes: true,
   difficultyLevel: true,
   requiredEquipment: true,
   requiredSupplies: true,
@@ -89,6 +103,18 @@ const taskTemplateSelect = {
     select: {
       id: true,
       fullName: true,
+    },
+  },
+  fixtureMinutes: {
+    select: {
+      id: true,
+      minutesPerFixture: true,
+      fixtureType: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
   _count: {
@@ -191,7 +217,11 @@ export async function createTaskTemplate(input: TaskTemplateCreateInput) {
       description: input.description,
       cleaningType: input.cleaningType,
       areaTypeId: input.areaTypeId,
-      estimatedMinutes: input.estimatedMinutes,
+      estimatedMinutes: input.estimatedMinutes ?? 0,
+      baseMinutes: input.baseMinutes ?? 0,
+      perSqftMinutes: input.perSqftMinutes ?? 0,
+      perUnitMinutes: input.perUnitMinutes ?? 0,
+      perRoomMinutes: input.perRoomMinutes ?? 0,
       difficultyLevel: input.difficultyLevel ?? 3,
       requiredEquipment: input.requiredEquipment ?? [],
       requiredSupplies: input.requiredSupplies ?? [],
@@ -200,6 +230,12 @@ export async function createTaskTemplate(input: TaskTemplateCreateInput) {
       facilityId: input.facilityId,
       isActive: input.isActive ?? true,
       createdByUserId: input.createdByUserId,
+      fixtureMinutes: input.fixtureMinutes && input.fixtureMinutes.length > 0 ? {
+        create: input.fixtureMinutes.map((fixture) => ({
+          fixtureTypeId: fixture.fixtureTypeId,
+          minutesPerFixture: fixture.minutesPerFixture,
+        })),
+      } : undefined,
     },
     select: taskTemplateSelect,
   });
@@ -223,6 +259,10 @@ export async function updateTaskTemplate(
   }
   if (input.estimatedMinutes !== undefined)
     updateData.estimatedMinutes = input.estimatedMinutes;
+  if (input.baseMinutes !== undefined) updateData.baseMinutes = input.baseMinutes;
+  if (input.perSqftMinutes !== undefined) updateData.perSqftMinutes = input.perSqftMinutes;
+  if (input.perUnitMinutes !== undefined) updateData.perUnitMinutes = input.perUnitMinutes;
+  if (input.perRoomMinutes !== undefined) updateData.perRoomMinutes = input.perRoomMinutes;
   if (input.difficultyLevel !== undefined)
     updateData.difficultyLevel = input.difficultyLevel;
   if (input.requiredEquipment !== undefined)
@@ -238,6 +278,15 @@ export async function updateTaskTemplate(
       : { disconnect: true };
   }
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
+  if (input.fixtureMinutes !== undefined) {
+    updateData.fixtureMinutes = {
+      deleteMany: {},
+      create: input.fixtureMinutes.map((fixture) => ({
+        fixtureTypeId: fixture.fixtureTypeId,
+        minutesPerFixture: fixture.minutesPerFixture,
+      })),
+    };
+  }
 
   return prisma.taskTemplate.update({
     where: { id },

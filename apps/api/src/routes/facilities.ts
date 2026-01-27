@@ -19,6 +19,11 @@ import {
   getFacilityTasksGrouped,
 } from '../services/pricingCalculatorService';
 import {
+  calculatePricing,
+  generateProposalServices,
+  resolvePricingStrategyKey,
+} from '../services/pricing';
+import {
   createFacilitySchema,
   updateFacilitySchema,
   listFacilitiesQuerySchema,
@@ -248,6 +253,8 @@ router.get(
       }
 
       const frequency = (req.query.frequency as string) || '5x_week';
+      const strategyKey = (req.query.strategyKey as string) || undefined;
+      const workerCount = req.query.workerCount ? Number(req.query.workerCount) : undefined;
 
       // Check if facility is ready
       const readiness = await isFacilityReadyForPricing(req.params.id);
@@ -255,16 +262,29 @@ router.get(
         throw new ValidationError(readiness.reason || 'Facility is not ready for proposal');
       }
 
-      // Get pricing calculation
-      const pricing = await calculateFacilityPricing({
+      const resolvedStrategyKey = strategyKey || await resolvePricingStrategyKey({
         facilityId: req.params.id,
-        serviceFrequency: frequency,
+        accountId: existing.accountId,
       });
 
+      // Get pricing calculation using selected strategy
+      const pricing = await calculatePricing(
+        {
+          facilityId: req.params.id,
+          serviceFrequency: frequency,
+          workerCount,
+        },
+        { strategyKey: resolvedStrategyKey }
+      );
+
       // Generate suggested services
-      const suggestedServices = await generateProposalServicesFromFacility(
-        req.params.id,
-        frequency
+      const suggestedServices = await generateProposalServices(
+        {
+          facilityId: req.params.id,
+          serviceFrequency: frequency,
+          workerCount,
+        },
+        { strategyKey: resolvedStrategyKey }
       );
 
       res.json({

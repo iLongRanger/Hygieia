@@ -76,6 +76,17 @@ export const buildingTypeMultipliersSchema = z.object({
   other: 1.0,
 });
 
+// Traffic multipliers schema
+export const trafficMultipliersSchema = z.object({
+  low: z.number().min(0).max(5).default(0.9),
+  medium: z.number().min(0).max(5).default(1.0),
+  high: z.number().min(0).max(5).default(1.15),
+}).default({
+  low: 0.9,
+  medium: 1.0,
+  high: 1.15,
+});
+
 // Task complexity add-ons schema (percentage add-ons)
 export const taskComplexityAddOnsSchema = z.object({
   standard: z.number().min(0).max(2).default(0),
@@ -94,9 +105,30 @@ export const createPricingSettingsSchema = z.object({
   name: z.string().min(1, 'Pricing settings name is required').max(100),
   baseRatePerSqFt: z.coerce.number().min(0, 'Base rate must be non-negative').default(0.10),
   minimumMonthlyCharge: z.coerce.number().min(0, 'Minimum charge must be non-negative').default(250),
+  hourlyRate: z.coerce.number().min(0).default(35.00),
+
+  // Labor Cost Settings
+  laborCostPerHour: z.coerce.number().min(0).default(18.00), // Average hourly wage
+  laborBurdenPercentage: z.coerce.number().min(0).max(1).default(0.25), // Payroll taxes, benefits (25%)
+  sqftPerLaborHour: z.coerce.number().min(100).default(2500), // Productivity rate
+
+  // Overhead Cost Settings
+  insurancePercentage: z.coerce.number().min(0).max(1).default(0.08), // Liability + workers comp
+  adminOverheadPercentage: z.coerce.number().min(0).max(1).default(0.12), // Admin costs
+  travelCostPerVisit: z.coerce.number().min(0).default(15.00), // Flat travel cost per visit
+  equipmentPercentage: z.coerce.number().min(0).max(1).default(0.05), // Equipment depreciation
+
+  // Supply Cost Settings
+  supplyCostPercentage: z.coerce.number().min(0).max(1).default(0.04), // Supplies as % of labor+overhead
+  supplyCostPerSqFt: z.coerce.number().min(0).optional().nullable(), // Alternative: flat rate per sq ft
+
+  // Profit Settings
+  targetProfitMargin: z.coerce.number().min(0).max(1).default(0.25), // Target profit margin
+
   floorTypeMultipliers: floorTypeMultipliersSchema.optional(),
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
   conditionMultipliers: conditionMultipliersSchema.optional(),
+  trafficMultipliers: trafficMultipliersSchema.optional(),
   buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional().default(true),
@@ -107,9 +139,30 @@ export const updatePricingSettingsSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   baseRatePerSqFt: z.coerce.number().min(0).optional(),
   minimumMonthlyCharge: z.coerce.number().min(0).optional(),
+  hourlyRate: z.coerce.number().min(0).optional(),
+
+  // Labor Cost Settings
+  laborCostPerHour: z.coerce.number().min(0).optional(),
+  laborBurdenPercentage: z.coerce.number().min(0).max(1).optional(),
+  sqftPerLaborHour: z.coerce.number().min(100).optional(),
+
+  // Overhead Cost Settings
+  insurancePercentage: z.coerce.number().min(0).max(1).optional(),
+  adminOverheadPercentage: z.coerce.number().min(0).max(1).optional(),
+  travelCostPerVisit: z.coerce.number().min(0).optional(),
+  equipmentPercentage: z.coerce.number().min(0).max(1).optional(),
+
+  // Supply Cost Settings
+  supplyCostPercentage: z.coerce.number().min(0).max(1).optional(),
+  supplyCostPerSqFt: z.coerce.number().min(0).optional().nullable(),
+
+  // Profit Settings
+  targetProfitMargin: z.coerce.number().min(0).max(1).optional(),
+
   floorTypeMultipliers: floorTypeMultipliersSchema.optional(),
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
   conditionMultipliers: conditionMultipliersSchema.optional(),
+  trafficMultipliers: trafficMultipliersSchema.optional(),
   buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional(),
@@ -143,4 +196,5 @@ export type FloorTypeMultipliers = z.infer<typeof floorTypeMultipliersSchema>;
 export type FrequencyMultipliers = z.infer<typeof frequencyMultipliersSchema>;
 export type ConditionMultipliers = z.infer<typeof conditionMultipliersSchema>;
 export type BuildingTypeMultipliers = z.infer<typeof buildingTypeMultipliersSchema>;
+export type TrafficMultipliers = z.infer<typeof trafficMultipliersSchema>;
 export type TaskComplexityAddOns = z.infer<typeof taskComplexityAddOnsSchema>;

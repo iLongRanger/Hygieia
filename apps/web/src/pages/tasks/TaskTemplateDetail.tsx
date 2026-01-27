@@ -23,9 +23,9 @@ import {
   archiveTaskTemplate,
   restoreTaskTemplate,
 } from '../../lib/tasks';
-import { listAreaTypes } from '../../lib/facilities';
+import { listAreaTypes, listFixtureTypes } from '../../lib/facilities';
 import type { TaskTemplate, UpdateTaskTemplateInput } from '../../types/task';
-import type { AreaType } from '../../types/facility';
+import type { AreaType, FixtureType } from '../../types/facility';
 
 const CLEANING_TYPES = [
   { value: 'daily', label: 'Daily' },
@@ -53,6 +53,7 @@ const TaskTemplateDetail = () => {
   const [loading, setLoading] = useState(true);
   const [template, setTemplate] = useState<TaskTemplate | null>(null);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -62,12 +63,17 @@ const TaskTemplateDetail = () => {
     cleaningType: 'daily',
     areaTypeId: null,
     estimatedMinutes: 30,
+    baseMinutes: 0,
+    perSqftMinutes: 0,
+    perUnitMinutes: 0,
+    perRoomMinutes: 0,
     difficultyLevel: 3,
     requiredEquipment: [],
     requiredSupplies: [],
     instructions: null,
     isGlobal: true,
     isActive: true,
+    fixtureMinutes: [],
   });
 
   const fetchTemplate = useCallback(async () => {
@@ -83,12 +89,20 @@ const TaskTemplateDetail = () => {
           cleaningType: data.cleaningType,
           areaTypeId: data.areaTypeId,
           estimatedMinutes: data.estimatedMinutes,
+          baseMinutes: data.baseMinutes ? Number(data.baseMinutes) : 0,
+          perSqftMinutes: data.perSqftMinutes ? Number(data.perSqftMinutes) : 0,
+          perUnitMinutes: data.perUnitMinutes ? Number(data.perUnitMinutes) : 0,
+          perRoomMinutes: data.perRoomMinutes ? Number(data.perRoomMinutes) : 0,
           difficultyLevel: data.difficultyLevel,
           requiredEquipment: data.requiredEquipment,
           requiredSupplies: data.requiredSupplies,
           instructions: data.instructions,
           isGlobal: data.isGlobal,
           isActive: data.isActive,
+          fixtureMinutes: data.fixtureMinutes?.map((fixture) => ({
+            fixtureTypeId: fixture.fixtureType.id,
+            minutesPerFixture: Number(fixture.minutesPerFixture) || 0,
+          })) || [],
         });
       }
     } catch (error) {
@@ -109,10 +123,20 @@ const TaskTemplateDetail = () => {
     }
   }, []);
 
+  const fetchFixtureTypes = useCallback(async () => {
+    try {
+      const response = await listFixtureTypes({ limit: 100, isActive: true });
+      setFixtureTypes(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch fixture types:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTemplate();
     fetchAreaTypes();
-  }, [fetchTemplate, fetchAreaTypes]);
+    fetchFixtureTypes();
+  }, [fetchTemplate, fetchAreaTypes, fetchFixtureTypes]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -160,6 +184,25 @@ const TaskTemplateDetail = () => {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    });
+  };
+
+  const getFixtureMinutes = (fixtureTypeId: string) => {
+    return formData.fixtureMinutes?.find((fixture) => fixture.fixtureTypeId === fixtureTypeId)
+      ?.minutesPerFixture || 0;
+  };
+
+  const updateFixtureMinutes = (fixtureTypeId: string, minutesPerFixture: number) => {
+    setFormData((prev) => {
+      const current = prev.fixtureMinutes || [];
+      const index = current.findIndex((fixture) => fixture.fixtureTypeId === fixtureTypeId);
+      const updated = [...current];
+      if (index >= 0) {
+        updated[index] = { fixtureTypeId, minutesPerFixture };
+      } else {
+        updated.push({ fixtureTypeId, minutesPerFixture });
+      }
+      return { ...prev, fixtureMinutes: updated };
     });
   };
 
@@ -239,6 +282,25 @@ const TaskTemplateDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
+                <Clock className="mt-1 h-4 w-4 text-gray-400" />
+                <div>
+                  <div className="text-sm text-gray-400">Per-Hour Inputs</div>
+                  <div className="text-white text-sm">
+                    Base: {Number(template.baseMinutes || 0)} min
+                  </div>
+                  <div className="text-white text-sm">
+                    Per Sq Ft: {Number(template.perSqftMinutes || 0)} min
+                  </div>
+                  <div className="text-white text-sm">
+                    Per Unit: {Number(template.perUnitMinutes || 0)} min
+                  </div>
+                  <div className="text-white text-sm">
+                    Per Room: {Number(template.perRoomMinutes || 0)} min
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
                 <CheckCircle className="mt-1 h-4 w-4 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-400">Difficulty Level</div>
@@ -312,6 +374,20 @@ const TaskTemplateDetail = () => {
                 </div>
               </div>
             )}
+
+            {template.fixtureMinutes && template.fixtureMinutes.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-lg font-semibold text-white">Fixture Minutes</h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {template.fixtureMinutes.map((fixture) => (
+                    <div key={fixture.id} className="rounded-lg bg-navy-darker/50 p-3">
+                      <div className="text-sm text-gray-400">{fixture.fixtureType.name}</div>
+                      <div className="text-white">{Number(fixture.minutesPerFixture)} min</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -381,6 +457,87 @@ const TaskTemplateDetail = () => {
                 setFormData({ ...formData, difficultyLevel: Number(value) })
               }
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Base Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.baseMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  baseMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Sq Ft Minutes"
+              type="number"
+              min={0}
+              step="0.0001"
+              value={formData.perSqftMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perSqftMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Unit Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.perUnitMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perUnitMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Room Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.perRoomMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perRoomMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-200">Fixture Minutes</div>
+            {fixtureTypes.length === 0 ? (
+              <div className="text-sm text-gray-500">No fixture types available.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fixtureTypes.map((fixtureType) => (
+                  <Input
+                    key={fixtureType.id}
+                    label={fixtureType.name}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={getFixtureMinutes(fixtureType.id)}
+                    onChange={(e) =>
+                      updateFixtureMinutes(
+                        fixtureType.id,
+                        Math.max(0, Number(e.target.value) || 0)
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <Textarea

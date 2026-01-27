@@ -283,6 +283,9 @@ model Area {
   squareFeet      Decimal?  @map("square_feet") @db.Decimal(10, 2)
   floorType       String    @default("vct") @map("floor_type") @db.VarChar(20)
   conditionLevel  String    @default("standard") @map("condition_level") @db.VarChar(20)
+  roomCount       Int       @default(0) @map("room_count")
+  unitCount       Int       @default(0) @map("unit_count")
+  trafficLevel    String    @default("medium") @map("traffic_level") @db.VarChar(20)
   notes           String?   @db.Text
   createdByUserId String    @map("created_by_user_id") @db.Uuid
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -292,6 +295,7 @@ model Area {
   facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   areaType      AreaType       @relation(fields: [areaTypeId], references: [id])
   facilityTasks FacilityTask[]
+  fixtures      AreaFixture[]
   createdByUser User           @relation("CreatedAreas", fields: [createdByUserId], references: [id])
 
   @@unique([facilityId, name])
@@ -299,6 +303,7 @@ model Area {
   @@index([areaTypeId])
   @@index([conditionLevel])
   @@index([floorType])
+  @@index([trafficLevel])
   @@map("areas")
 }
 
@@ -313,6 +318,10 @@ model TaskTemplate {
   cleaningType      String    @map("cleaning_type") @db.VarChar(50)
   areaTypeId        String?   @map("area_type_id") @db.Uuid
   estimatedMinutes  Int       @map("estimated_minutes")
+  baseMinutes       Decimal   @default(0) @map("base_minutes") @db.Decimal(10, 4)
+  perSqftMinutes    Decimal   @default(0) @map("per_sqft_minutes") @db.Decimal(10, 4)
+  perUnitMinutes    Decimal   @default(0) @map("per_unit_minutes") @db.Decimal(10, 4)
+  perRoomMinutes    Decimal   @default(0) @map("per_room_minutes") @db.Decimal(10, 4)
   difficultyLevel   Int       @default(3) @map("difficulty_level")
   requiredEquipment Json      @default("[]") @map("required_equipment") @db.JsonB
   requiredSupplies  Json      @default("[]") @map("required_supplies") @db.JsonB
@@ -326,10 +335,11 @@ model TaskTemplate {
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  areaType      AreaType?      @relation(fields: [areaTypeId], references: [id])
-  facility      Facility?      @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
-  facilityTasks FacilityTask[]
-  createdByUser User           @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
+  areaType             AreaType?            @relation(fields: [areaTypeId], references: [id])
+  facility             Facility?            @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
+  facilityTasks        FacilityTask[]
+  fixtureMinutes       TaskFixtureMinutes[]
+  createdByUser        User                 @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
 
   @@index([cleaningType])
   @@index([areaTypeId])
@@ -347,6 +357,10 @@ model FacilityTask {
   customName          String?   @map("custom_name") @db.VarChar(255)
   customInstructions  String?   @map("custom_instructions") @db.Text
   estimatedMinutes    Int?      @map("estimated_minutes")
+  baseMinutesOverride    Decimal? @map("base_minutes_override") @db.Decimal(10, 4)
+  perSqftMinutesOverride Decimal? @map("per_sqft_minutes_override") @db.Decimal(10, 4)
+  perUnitMinutesOverride Decimal? @map("per_unit_minutes_override") @db.Decimal(10, 4)
+  perRoomMinutesOverride Decimal? @map("per_room_minutes_override") @db.Decimal(10, 4)
   isRequired          Boolean   @default(true) @map("is_required")
   cleaningFrequency   String    @default("daily") @map("cleaning_frequency") @db.VarChar(20)
   conditionMultiplier Decimal   @default(1.0) @map("condition_multiplier") @db.Decimal(3, 2)
@@ -356,10 +370,11 @@ model FacilityTask {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  facility      Facility      @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
-  area          Area?         @relation(fields: [areaId], references: [id])
-  taskTemplate  TaskTemplate? @relation(fields: [taskTemplateId], references: [id])
-  createdByUser User          @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  facility            Facility                   @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
+  area                Area?                      @relation(fields: [areaId], references: [id])
+  taskTemplate        TaskTemplate?              @relation(fields: [taskTemplateId], references: [id])
+  fixtureMinutes      FacilityTaskFixtureMinutes[]
+  createdByUser       User                       @relation("CreatedTasks", fields: [createdByUserId], references: [id])
 
   @@index([facilityId])
   @@index([areaId])
@@ -380,11 +395,31 @@ model PricingSettings {
   // Base Rate
   baseRatePerSqFt      Decimal @default(0.10) @map("base_rate_per_sq_ft") @db.Decimal(8, 4)
   minimumMonthlyCharge Decimal @default(250) @map("minimum_monthly_charge") @db.Decimal(10, 2)
+  hourlyRate           Decimal @default(35.00) @map("hourly_rate") @db.Decimal(8, 2)
+
+  // Labor Cost Settings
+  laborCostPerHour       Decimal @default(18.00) @map("labor_cost_per_hour") @db.Decimal(8, 2) // Average hourly wage
+  laborBurdenPercentage  Decimal @default(0.25) @map("labor_burden_percentage") @db.Decimal(5, 4) // Payroll taxes, benefits (25%)
+  sqftPerLaborHour       Decimal @default(2500) @map("sqft_per_labor_hour") @db.Decimal(10, 2) // Productivity rate: sq ft cleaned per hour
+
+  // Overhead Cost Settings (as percentages of labor cost)
+  insurancePercentage     Decimal @default(0.08) @map("insurance_percentage") @db.Decimal(5, 4) // Liability + workers comp (8%)
+  adminOverheadPercentage Decimal @default(0.12) @map("admin_overhead_percentage") @db.Decimal(5, 4) // Admin costs (12%)
+  travelCostPerVisit      Decimal @default(15.00) @map("travel_cost_per_visit") @db.Decimal(8, 2) // Flat travel cost per visit
+  equipmentPercentage     Decimal @default(0.05) @map("equipment_percentage") @db.Decimal(5, 4) // Equipment depreciation (5%)
+
+  // Supply Cost Settings
+  supplyCostPercentage Decimal @default(0.04) @map("supply_cost_percentage") @db.Decimal(5, 4) // Supplies as % of labor+overhead (4%)
+  supplyCostPerSqFt    Decimal? @map("supply_cost_per_sq_ft") @db.Decimal(8, 4) // Alternative: flat rate per sq ft
+
+  // Profit Settings
+  targetProfitMargin Decimal @default(0.25) @map("target_profit_margin") @db.Decimal(5, 4) // Target profit margin (25%)
 
   // Multipliers stored as JSON
   floorTypeMultipliers    Json @default("{\"vct\": 1.0, \"carpet\": 1.15, \"tile\": 1.1, \"hardwood\": 1.2, \"concrete\": 0.9, \"other\": 1.0}") @map("floor_type_multipliers") @db.JsonB
   frequencyMultipliers    Json @default("{\"1x_week\": 1.0, \"2x_week\": 1.8, \"3x_week\": 2.5, \"4x_week\": 3.2, \"5x_week\": 4.0, \"daily\": 4.33, \"weekly\": 1.0, \"biweekly\": 0.5, \"monthly\": 0.25, \"quarterly\": 0.083}") @map("frequency_multipliers") @db.JsonB
   conditionMultipliers    Json @default("{\"standard\": 1.0, \"medium\": 1.25, \"hard\": 1.33}") @map("condition_multipliers") @db.JsonB
+  trafficMultipliers      Json @default("{\"low\": 0.9, \"medium\": 1.0, \"high\": 1.15}") @map("traffic_multipliers") @db.JsonB
   buildingTypeMultipliers Json @default("{\"office\": 1.0, \"medical\": 1.3, \"industrial\": 1.15, \"retail\": 1.05, \"educational\": 1.1, \"warehouse\": 0.9, \"residential\": 1.0, \"mixed\": 1.05, \"other\": 1.0}") @map("building_type_multipliers") @db.JsonB
   taskComplexityAddOns    Json @default("{\"standard\": 0, \"sanitization\": 0.15, \"biohazard\": 0.5, \"high_security\": 0.2}") @map("task_complexity_add_ons") @db.JsonB
 
@@ -395,6 +430,73 @@ model PricingSettings {
 
   @@index([isActive])
   @@map("pricing_settings")
+}
+
+model FixtureType {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  areaFixtures              AreaFixture[]
+  taskFixtureMinutes        TaskFixtureMinutes[]
+  facilityTaskFixtureMinutes FacilityTaskFixtureMinutes[]
+
+  @@index([isActive])
+  @@map("fixture_types")
+}
+
+model AreaFixture {
+  id            String    @id @default(uuid()) @db.Uuid
+  areaId        String    @map("area_id") @db.Uuid
+  fixtureTypeId String    @map("fixture_type_id") @db.Uuid
+  count         Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  area        Area        @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  fixtureType FixtureType @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([areaId, fixtureTypeId])
+  @@index([areaId])
+  @@index([fixtureTypeId])
+  @@map("area_fixtures")
+}
+
+model TaskFixtureMinutes {
+  id                String    @id @default(uuid()) @db.Uuid
+  taskTemplateId    String    @map("task_template_id") @db.Uuid
+  fixtureTypeId     String    @map("fixture_type_id") @db.Uuid
+  minutesPerFixture Decimal   @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  taskTemplate TaskTemplate @relation(fields: [taskTemplateId], references: [id], onDelete: Cascade)
+  fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([taskTemplateId, fixtureTypeId])
+  @@index([taskTemplateId])
+  @@index([fixtureTypeId])
+  @@map("task_fixture_minutes")
+}
+
+model FacilityTaskFixtureMinutes {
+  id                String    @id @default(uuid()) @db.Uuid
+  facilityTaskId    String    @map("facility_task_id") @db.Uuid
+  fixtureTypeId     String    @map("fixture_type_id") @db.Uuid
+  minutesPerFixture Decimal   @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  facilityTask FacilityTask @relation(fields: [facilityTaskId], references: [id], onDelete: Cascade)
+  fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityTaskId, fixtureTypeId])
+  @@index([facilityTaskId])
+  @@index([fixtureTypeId])
+  @@map("facility_task_fixture_minutes")
 }
 
 model PricingRule {

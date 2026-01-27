@@ -78,6 +78,7 @@ export const createProposalSchema = z.object({
   termsAndConditions: z.string().max(20000).optional().nullable(),
   proposalItems: z.array(proposalItemSchema).optional().default([]),
   proposalServices: z.array(proposalServiceSchema).optional().default([]),
+  pricingStrategyKey: z.string().max(100).optional().nullable(),
 });
 
 // Update Proposal Schema
@@ -93,6 +94,7 @@ export const updateProposalSchema = z.object({
   termsAndConditions: z.string().max(20000).optional().nullable(),
   proposalItems: z.array(proposalItemUpdateSchema).optional(),
   proposalServices: z.array(proposalServiceUpdateSchema).optional(),
+  pricingStrategyKey: z.string().max(100).optional().nullable(),
 });
 
 // List Proposals Query Schema
@@ -166,12 +168,14 @@ export const changePricingStrategySchema = z.object({
 export const recalculatePricingSchema = z.object({
   serviceFrequency: pricingFrequencySchema,
   lockAfterRecalculation: z.boolean().optional().default(false),
+  workerCount: z.coerce.number().int().min(1).optional(),
 });
 
 // Pricing preview query
 export const pricingPreviewQuerySchema = z.object({
   serviceFrequency: pricingFrequencySchema,
   strategyKey: z.string().max(100).optional(),
+  workerCount: z.coerce.number().int().min(1).optional(),
 });
 
 // Export types

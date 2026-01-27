@@ -18,6 +18,10 @@ export const createTaskTemplateSchema = z.object({
   cleaningType: cleaningTypeSchema,
   areaTypeId: z.string().uuid().optional().nullable(),
   estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(), // Optional for sqft-based pricing
+  baseMinutes: z.coerce.number().min(0).optional().default(0),
+  perSqftMinutes: z.coerce.number().min(0).optional().default(0),
+  perUnitMinutes: z.coerce.number().min(0).optional().default(0),
+  perRoomMinutes: z.coerce.number().min(0).optional().default(0),
   difficultyLevel: z.coerce.number().int().min(1).max(5).optional().default(3),
   requiredEquipment: z.array(z.string()).optional().default([]),
   requiredSupplies: z.array(z.string()).optional().default([]),
@@ -25,6 +29,12 @@ export const createTaskTemplateSchema = z.object({
   isGlobal: z.boolean().optional().default(false),
   facilityId: z.string().uuid().optional().nullable(),
   isActive: z.boolean().optional().default(true),
+  fixtureMinutes: z.array(
+    z.object({
+      fixtureTypeId: z.string().uuid(),
+      minutesPerFixture: z.coerce.number().min(0),
+    })
+  ).optional().default([]),
 });
 
 export const updateTaskTemplateSchema = z.object({
@@ -32,7 +42,11 @@ export const updateTaskTemplateSchema = z.object({
   description: z.string().max(10000).optional().nullable(),
   cleaningType: cleaningTypeSchema.optional(),
   areaTypeId: z.string().uuid().optional().nullable(),
-  estimatedMinutes: z.coerce.number().int().min(1).optional(),
+  estimatedMinutes: z.coerce.number().int().min(0).optional(),
+  baseMinutes: z.coerce.number().min(0).optional(),
+  perSqftMinutes: z.coerce.number().min(0).optional(),
+  perUnitMinutes: z.coerce.number().min(0).optional(),
+  perRoomMinutes: z.coerce.number().min(0).optional(),
   difficultyLevel: z.coerce.number().int().min(1).max(5).optional(),
   requiredEquipment: z.array(z.string()).optional(),
   requiredSupplies: z.array(z.string()).optional(),
@@ -40,6 +54,12 @@ export const updateTaskTemplateSchema = z.object({
   isGlobal: z.boolean().optional(),
   facilityId: z.string().uuid().optional().nullable(),
   isActive: z.boolean().optional(),
+  fixtureMinutes: z.array(
+    z.object({
+      fixtureTypeId: z.string().uuid(),
+      minutesPerFixture: z.coerce.number().min(0),
+    })
+  ).optional(),
 });
 
 export const listTaskTemplatesQuerySchema = z.object({

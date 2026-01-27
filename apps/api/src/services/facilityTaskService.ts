@@ -23,10 +23,15 @@ export interface FacilityTaskCreateInput {
   customName?: string | null;
   customInstructions?: string | null;
   estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: string;
   conditionMultiplier?: number;
   priority?: number;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
   createdByUserId: string;
 }
 
@@ -36,10 +41,15 @@ export interface FacilityTaskUpdateInput {
   customName?: string | null;
   customInstructions?: string | null;
   estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: string;
   conditionMultiplier?: number;
   priority?: number;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
 }
 
 export interface PaginatedResult<T> {
@@ -57,6 +67,10 @@ const facilityTaskSelect = {
   customName: true,
   customInstructions: true,
   estimatedMinutes: true,
+  baseMinutesOverride: true,
+  perSqftMinutesOverride: true,
+  perUnitMinutesOverride: true,
+  perRoomMinutesOverride: true,
   isRequired: true,
   cleaningFrequency: true,
   conditionMultiplier: true,
@@ -89,7 +103,23 @@ const facilityTaskSelect = {
       name: true,
       cleaningType: true,
       estimatedMinutes: true,
+      baseMinutes: true,
+      perSqftMinutes: true,
+      perUnitMinutes: true,
+      perRoomMinutes: true,
       difficultyLevel: true,
+    },
+  },
+  fixtureMinutes: {
+    select: {
+      id: true,
+      minutesPerFixture: true,
+      fixtureType: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
   createdByUser: {
@@ -205,11 +235,21 @@ export async function createFacilityTask(input: FacilityTaskCreateInput) {
       customName: input.customName,
       customInstructions: input.customInstructions,
       estimatedMinutes: input.estimatedMinutes,
+      baseMinutesOverride: input.baseMinutesOverride,
+      perSqftMinutesOverride: input.perSqftMinutesOverride,
+      perUnitMinutesOverride: input.perUnitMinutesOverride,
+      perRoomMinutesOverride: input.perRoomMinutesOverride,
       isRequired: input.isRequired ?? true,
       cleaningFrequency: input.cleaningFrequency ?? 'daily',
       conditionMultiplier: input.conditionMultiplier ?? 1.0,
       priority: input.priority ?? 3,
       createdByUserId: input.createdByUserId,
+      fixtureMinutes: input.fixtureMinutes && input.fixtureMinutes.length > 0 ? {
+        create: input.fixtureMinutes.map((fixture) => ({
+          fixtureTypeId: fixture.fixtureTypeId,
+          minutesPerFixture: fixture.minutesPerFixture,
+        })),
+      } : undefined,
     },
     select: facilityTaskSelect,
   });
@@ -236,12 +276,29 @@ export async function updateFacilityTask(
     updateData.customInstructions = input.customInstructions;
   if (input.estimatedMinutes !== undefined)
     updateData.estimatedMinutes = input.estimatedMinutes;
+  if (input.baseMinutesOverride !== undefined)
+    updateData.baseMinutesOverride = input.baseMinutesOverride;
+  if (input.perSqftMinutesOverride !== undefined)
+    updateData.perSqftMinutesOverride = input.perSqftMinutesOverride;
+  if (input.perUnitMinutesOverride !== undefined)
+    updateData.perUnitMinutesOverride = input.perUnitMinutesOverride;
+  if (input.perRoomMinutesOverride !== undefined)
+    updateData.perRoomMinutesOverride = input.perRoomMinutesOverride;
   if (input.isRequired !== undefined) updateData.isRequired = input.isRequired;
   if (input.cleaningFrequency !== undefined)
     updateData.cleaningFrequency = input.cleaningFrequency;
   if (input.conditionMultiplier !== undefined)
     updateData.conditionMultiplier = input.conditionMultiplier;
   if (input.priority !== undefined) updateData.priority = input.priority;
+  if (input.fixtureMinutes !== undefined) {
+    updateData.fixtureMinutes = {
+      deleteMany: {},
+      create: input.fixtureMinutes.map((fixture) => ({
+        fixtureTypeId: fixture.fixtureTypeId,
+        minutesPerFixture: fixture.minutesPerFixture,
+      })),
+    };
+  }
 
   return prisma.facilityTask.update({
     where: { id },
@@ -276,24 +333,46 @@ export async function deleteFacilityTask(id: string) {
 export async function bulkCreateFacilityTasks(
   facilityId: string,
   taskTemplateIds: string[],
-  createdByUserId: string
+  createdByUserId: string,
+  areaId?: string,
+  cleaningFrequency?: string
 ) {
   const templates = await prisma.taskTemplate.findMany({
     where: { id: { in: taskTemplateIds } },
     select: {
       id: true,
       estimatedMinutes: true,
+      cleaningType: true,
     },
   });
 
   const tasks = templates.map((template) => ({
     facilityId,
+    areaId: areaId || null,
     taskTemplateId: template.id,
     estimatedMinutes: template.estimatedMinutes,
+    // Use provided frequency, or map cleaningType to frequency, or default to daily
+    cleaningFrequency: cleaningFrequency || mapCleaningTypeToFrequency(template.cleaningType),
     createdByUserId,
   }));
 
   return prisma.facilityTask.createMany({
     data: tasks,
   });
+}
+
+// Helper to map task template cleaning type to frequency
+function mapCleaningTypeToFrequency(cleaningType: string): string {
+  const mapping: Record<string, string> = {
+    daily: 'daily',
+    weekly: 'weekly',
+    biweekly: 'biweekly',
+    monthly: 'monthly',
+    quarterly: 'quarterly',
+    annual: 'annual',
+    deep_clean: 'monthly',
+    move_out: 'as_needed',
+    post_construction: 'as_needed',
+  };
+  return mapping[cleaningType] || 'daily';
 }

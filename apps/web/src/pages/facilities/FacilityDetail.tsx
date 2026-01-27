@@ -14,6 +14,9 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronRight,
+  CheckSquare,
+  Square,
+  ListPlus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -34,11 +37,13 @@ import {
   restoreArea,
   deleteArea,
   listAreaTypes,
+  listFixtureTypes,
   listFacilityTasks,
   createFacilityTask,
   updateFacilityTask,
   deleteFacilityTask,
   listTaskTemplates,
+  bulkCreateFacilityTasks,
 } from '../../lib/facilities';
 import type {
   Facility,
@@ -52,6 +57,8 @@ import type {
   UpdateFacilityTaskInput,
   TaskTemplate,
   CleaningFrequency,
+  FixtureType,
+  TrafficLevel,
 } from '../../types/facility';
 
 const BUILDING_TYPES = [
@@ -70,6 +77,12 @@ const CONDITION_LEVELS = [
   { value: 'standard', label: 'Standard' },
   { value: 'medium', label: 'Medium Difficulty' },
   { value: 'hard', label: 'Hard/Heavy Traffic' },
+];
+
+const TRAFFIC_LEVELS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
 ];
 
 const FLOOR_TYPES = [
@@ -101,15 +114,19 @@ const FacilityDetail = () => {
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
   const [tasks, setTasks] = useState<FacilityTask[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingTask, setEditingTask] = useState<FacilityTask | null>(null);
   const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(
     null
   );
+  const [selectedTaskTemplateIds, setSelectedTaskTemplateIds] = useState<Set<string>>(new Set());
+  const [bulkFrequency, setBulkFrequency] = useState<string>('daily');
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -122,7 +139,11 @@ const FacilityDetail = () => {
     squareFeet: null,
     floorType: 'vct',
     conditionLevel: 'standard',
+    roomCount: 0,
+    unitCount: 0,
+    trafficLevel: 'medium',
     notes: null,
+    fixtures: [],
   });
   const [taskForm, setTaskForm] = useState<
     CreateFacilityTaskInput | UpdateFacilityTaskInput
@@ -133,6 +154,11 @@ const FacilityDetail = () => {
     customName: '',
     cleaningFrequency: 'daily',
     priority: 3,
+    baseMinutesOverride: null,
+    perSqftMinutesOverride: null,
+    perUnitMinutesOverride: null,
+    perRoomMinutesOverride: null,
+    fixtureMinutes: [],
   });
 
   const fetchFacility = useCallback(async () => {
@@ -210,18 +236,30 @@ const FacilityDetail = () => {
     }
   }, []);
 
+  const fetchFixtureTypes = useCallback(async () => {
+    try {
+      const response = await listFixtureTypes({ isActive: true, limit: 100 });
+      setFixtureTypes(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch fixture types:', error);
+      setFixtureTypes([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFacility();
     fetchAreas();
     fetchAreaTypes();
     fetchTasks();
     fetchTaskTemplates();
+    fetchFixtureTypes();
   }, [
     fetchFacility,
     fetchAreas,
     fetchAreaTypes,
     fetchTasks,
     fetchTaskTemplates,
+    fetchFixtureTypes,
   ]);
 
   // Calculate total square feet from all active areas
@@ -305,7 +343,11 @@ const FacilityDetail = () => {
       squareFeet: null,
       floorType: 'vct',
       conditionLevel: 'standard',
+      roomCount: 0,
+      unitCount: 0,
+      trafficLevel: 'medium',
       notes: null,
+      fixtures: [],
     });
   };
 
@@ -317,6 +359,11 @@ const FacilityDetail = () => {
       customName: '',
       cleaningFrequency: 'daily',
       priority: 3,
+      baseMinutesOverride: null,
+      perSqftMinutesOverride: null,
+      perUnitMinutesOverride: null,
+      perRoomMinutesOverride: null,
+      fixtureMinutes: [],
     });
   };
 
@@ -363,6 +410,57 @@ const FacilityDetail = () => {
     }
   };
 
+  const handleBulkAddTasks = async () => {
+    if (!id || selectedTaskTemplateIds.size === 0) return;
+    try {
+      setSaving(true);
+      const result = await bulkCreateFacilityTasks(
+        id,
+        Array.from(selectedTaskTemplateIds),
+        selectedAreaForTask?.id || null,
+        bulkFrequency
+      );
+      toast.success(`Added ${result.count} tasks`);
+      setShowBulkTaskModal(false);
+      setSelectedTaskTemplateIds(new Set());
+      setSelectedAreaForTask(null);
+      setBulkFrequency('daily');
+      fetchTasks();
+    } catch (error) {
+      console.error('Failed to add tasks:', error);
+      toast.error('Failed to add tasks');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleTaskTemplateSelection = (templateId: string) => {
+    setSelectedTaskTemplateIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(templateId)) {
+        newSet.delete(templateId);
+      } else {
+        newSet.add(templateId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllTaskTemplates = () => {
+    setSelectedTaskTemplateIds(new Set(taskTemplates.map((t) => t.id)));
+  };
+
+  const clearAllTaskTemplates = () => {
+    setSelectedTaskTemplateIds(new Set());
+  };
+
+  const openBulkTaskForArea = (area: Area) => {
+    setSelectedAreaForTask(area);
+    setSelectedTaskTemplateIds(new Set());
+    setBulkFrequency('daily');
+    setShowBulkTaskModal(true);
+  };
+
   const openAddTaskForArea = (area: Area) => {
     setSelectedAreaForTask(area);
     setEditingTask(null);
@@ -385,10 +483,37 @@ const FacilityDetail = () => {
       customName: task.customName || '',
       customInstructions: task.customInstructions || '',
       estimatedMinutes: task.estimatedMinutes,
+      baseMinutesOverride: task.baseMinutesOverride ? Number(task.baseMinutesOverride) : null,
+      perSqftMinutesOverride: task.perSqftMinutesOverride ? Number(task.perSqftMinutesOverride) : null,
+      perUnitMinutesOverride: task.perUnitMinutesOverride ? Number(task.perUnitMinutesOverride) : null,
+      perRoomMinutesOverride: task.perRoomMinutesOverride ? Number(task.perRoomMinutesOverride) : null,
       cleaningFrequency: task.cleaningFrequency,
       priority: task.priority,
+      fixtureMinutes: task.fixtureMinutes?.map((fixture) => ({
+        fixtureTypeId: fixture.fixtureType.id,
+        minutesPerFixture: Number(fixture.minutesPerFixture) || 0,
+      })) || [],
     });
     setShowTaskModal(true);
+  };
+
+  const getTaskFixtureMinutes = (fixtureTypeId: string) => {
+    const fixtures = (taskForm as CreateFacilityTaskInput).fixtureMinutes || [];
+    return fixtures.find((fixture) => fixture.fixtureTypeId === fixtureTypeId)?.minutesPerFixture || 0;
+  };
+
+  const updateTaskFixtureMinutes = (fixtureTypeId: string, minutesPerFixture: number) => {
+    setTaskForm((prev) => {
+      const current = (prev as CreateFacilityTaskInput).fixtureMinutes || [];
+      const index = current.findIndex((fixture) => fixture.fixtureTypeId === fixtureTypeId);
+      const updated = [...current];
+      if (index >= 0) {
+        updated[index] = { fixtureTypeId, minutesPerFixture };
+      } else {
+        updated.push({ fixtureTypeId, minutesPerFixture });
+      }
+      return { ...prev, fixtureMinutes: updated };
+    });
   };
 
   const toggleAreaExpanded = (areaId: string) => {
@@ -430,9 +555,42 @@ const FacilityDetail = () => {
       squareFeet: area.squareFeet ? Number(area.squareFeet) : null,
       floorType: area.floorType || 'vct',
       conditionLevel: area.conditionLevel || 'standard',
+      roomCount: area.roomCount || 0,
+      unitCount: area.unitCount || 0,
+      trafficLevel: area.trafficLevel || 'medium',
       notes: area.notes,
+      fixtures: area.fixtures?.map((fixture) => ({
+        fixtureTypeId: fixture.fixtureType.id,
+        count: fixture.count,
+      })) || [],
     });
     setShowAreaModal(true);
+  };
+
+  const getFixtureCount = (fixtureTypeId: string) => {
+    const fixtures = (areaForm as CreateAreaInput).fixtures || [];
+    return fixtures.find((fixture) => fixture.fixtureTypeId === fixtureTypeId)?.count || 0;
+  };
+
+  const updateFixtureCount = (fixtureTypeId: string, count: number) => {
+    setAreaForm((prev) => {
+      const currentFixtures = (prev as CreateAreaInput).fixtures || [];
+      const existingIndex = currentFixtures.findIndex(
+        (fixture) => fixture.fixtureTypeId === fixtureTypeId
+      );
+
+      let updatedFixtures = [...currentFixtures];
+      if (existingIndex >= 0) {
+        updatedFixtures[existingIndex] = { fixtureTypeId, count };
+      } else {
+        updatedFixtures.push({ fixtureTypeId, count });
+      }
+
+      return {
+        ...prev,
+        fixtures: updatedFixtures,
+      };
+    });
   };
 
   const formatAddress = (address: Facility['address']) => {
@@ -505,6 +663,22 @@ const FacilityDetail = () => {
         >
           {CONDITION_LEVELS.find((c) => c.value === item.conditionLevel)
             ?.label || item.conditionLevel}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Traffic',
+      cell: (item: Area) => (
+        <Badge
+          variant={
+            item.trafficLevel === 'low'
+              ? 'success'
+              : item.trafficLevel === 'medium'
+                ? 'warning'
+                : 'error'
+          }
+        >
+          {TRAFFIC_LEVELS.find((t) => t.value === item.trafficLevel)?.label || item.trafficLevel}
         </Badge>
       ),
     },
@@ -773,17 +947,31 @@ const FacilityDetail = () => {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAddTaskForArea(area);
-                        }}
-                      >
-                        <Plus className="mr-1 h-4 w-4" />
-                        Add Task
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openBulkTaskForArea(area);
+                          }}
+                          title="Add multiple tasks from templates"
+                        >
+                          <ListPlus className="mr-1 h-4 w-4" />
+                          Add Tasks
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAddTaskForArea(area);
+                          }}
+                          title="Add single custom task"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Expanded Tasks List */}
@@ -1103,6 +1291,45 @@ const FacilityDetail = () => {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Room Count"
+              type="number"
+              min={0}
+              value={(areaForm as CreateAreaInput).roomCount ?? 0}
+              onChange={(e) =>
+                setAreaForm({
+                  ...areaForm,
+                  roomCount: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Unit Count"
+              type="number"
+              min={0}
+              value={(areaForm as CreateAreaInput).unitCount ?? 0}
+              onChange={(e) =>
+                setAreaForm({
+                  ...areaForm,
+                  unitCount: Number(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+
+          <Select
+            label="Traffic Level"
+            options={TRAFFIC_LEVELS}
+            value={(areaForm as CreateAreaInput).trafficLevel || 'medium'}
+            onChange={(value) =>
+              setAreaForm({
+                ...areaForm,
+                trafficLevel: value as TrafficLevel,
+              })
+            }
+          />
+
           <Textarea
             label="Notes"
             value={areaForm.notes || ''}
@@ -1110,6 +1337,31 @@ const FacilityDetail = () => {
               setAreaForm({ ...areaForm, notes: e.target.value || null })
             }
           />
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-200">Fixtures</div>
+            {fixtureTypes.length === 0 ? (
+              <div className="text-sm text-gray-500">No fixture types available.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fixtureTypes.map((fixtureType) => (
+                  <Input
+                    key={fixtureType.id}
+                    label={fixtureType.name}
+                    type="number"
+                    min={0}
+                    value={getFixtureCount(fixtureType.id)}
+                    onChange={(e) =>
+                      updateFixtureCount(
+                        fixtureType.id,
+                        Math.max(0, Number(e.target.value) || 0)
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
@@ -1246,6 +1498,87 @@ const FacilityDetail = () => {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Base Minutes Override"
+              type="number"
+              min={0}
+              step="0.01"
+              value={(taskForm as CreateFacilityTaskInput).baseMinutesOverride ?? ''}
+              onChange={(e) =>
+                setTaskForm({
+                  ...taskForm,
+                  baseMinutesOverride: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <Input
+              label="Per Sq Ft Minutes Override"
+              type="number"
+              min={0}
+              step="0.0001"
+              value={(taskForm as CreateFacilityTaskInput).perSqftMinutesOverride ?? ''}
+              onChange={(e) =>
+                setTaskForm({
+                  ...taskForm,
+                  perSqftMinutesOverride: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <Input
+              label="Per Unit Minutes Override"
+              type="number"
+              min={0}
+              step="0.01"
+              value={(taskForm as CreateFacilityTaskInput).perUnitMinutesOverride ?? ''}
+              onChange={(e) =>
+                setTaskForm({
+                  ...taskForm,
+                  perUnitMinutesOverride: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <Input
+              label="Per Room Minutes Override"
+              type="number"
+              min={0}
+              step="0.01"
+              value={(taskForm as CreateFacilityTaskInput).perRoomMinutesOverride ?? ''}
+              onChange={(e) =>
+                setTaskForm({
+                  ...taskForm,
+                  perRoomMinutesOverride: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-200">Fixture Minutes Overrides</div>
+            {fixtureTypes.length === 0 ? (
+              <div className="text-sm text-gray-500">No fixture types available.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fixtureTypes.map((fixtureType) => (
+                  <Input
+                    key={fixtureType.id}
+                    label={fixtureType.name}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={getTaskFixtureMinutes(fixtureType.id)}
+                    onChange={(e) =>
+                      updateTaskFixtureMinutes(
+                        fixtureType.id,
+                        Math.max(0, Number(e.target.value) || 0)
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
           <Select
             label="Priority"
             options={[
@@ -1294,6 +1627,119 @@ const FacilityDetail = () => {
               disabled={!taskForm.taskTemplateId && !taskForm.customName}
             >
               {editingTask ? 'Save Changes' : 'Add Task'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Task Selection Modal */}
+      <Modal
+        isOpen={showBulkTaskModal}
+        onClose={() => {
+          setShowBulkTaskModal(false);
+          setSelectedTaskTemplateIds(new Set());
+          setSelectedAreaForTask(null);
+          setBulkFrequency('daily');
+        }}
+        title={`Add Tasks${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Frequency Selection */}
+          <Select
+            label="Cleaning Frequency"
+            options={CLEANING_FREQUENCIES}
+            value={bulkFrequency}
+            onChange={(value) => setBulkFrequency(value)}
+          />
+
+          {/* Selection Controls */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-400">
+              {selectedTaskTemplateIds.size} of {taskTemplates.length} selected
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={selectAllTaskTemplates}
+              >
+                Select All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllTaskTemplates}
+              >
+                Clear All
+              </Button>
+            </div>
+          </div>
+
+          {/* Task Templates List */}
+          <div className="max-h-80 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
+            {taskTemplates.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                No task templates available. Create some task templates first.
+              </div>
+            ) : (
+              taskTemplates.map((template) => {
+                const isSelected = selectedTaskTemplateIds.has(template.id);
+                return (
+                  <div
+                    key={template.id}
+                    className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/5 ${
+                      isSelected ? 'bg-emerald/10' : ''
+                    }`}
+                    onClick={() => toggleTaskTemplateSelection(template.id)}
+                  >
+                    <div className="flex-shrink-0">
+                      {isSelected ? (
+                        <CheckSquare className="h-5 w-5 text-emerald" />
+                      ) : (
+                        <Square className="h-5 w-5 text-gray-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-white truncate">
+                        {template.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Badge variant="default" className="text-xs">
+                          {template.cleaningType}
+                        </Badge>
+                        {template.estimatedMinutes && (
+                          <span>{template.estimatedMinutes} min</span>
+                        )}
+                        {template.difficultyLevel && (
+                          <span>Level {template.difficultyLevel}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowBulkTaskModal(false);
+                setSelectedTaskTemplateIds(new Set());
+                setSelectedAreaForTask(null);
+                setBulkFrequency('daily');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkAddTasks}
+              isLoading={saving}
+              disabled={selectedTaskTemplateIds.size === 0}
+            >
+              Add {selectedTaskTemplateIds.size} Task{selectedTaskTemplateIds.size !== 1 ? 's' : ''}
             </Button>
           </div>
         </div>
