@@ -43,6 +43,10 @@ describe('Pricing Strategy System', () => {
       expect(PRICING_STRATEGY_KEYS.SQFT_SETTINGS_V1).toBe('sqft_settings_v1');
     });
 
+    it('should have per_hour_v1 as a valid key', () => {
+      expect(PRICING_STRATEGY_KEYS.PER_HOUR_V1).toBe('per_hour_v1');
+    });
+
     it('should have sqft_settings_v1 as default', () => {
       expect(DEFAULT_PRICING_STRATEGY_KEY).toBe('sqft_settings_v1');
     });
@@ -51,6 +55,10 @@ describe('Pricing Strategy System', () => {
   describe('PricingStrategyRegistry', () => {
     it('should have sqft_settings_v1 registered by default', () => {
       expect(pricingStrategyRegistry.has('sqft_settings_v1')).toBe(true);
+    });
+
+    it('should have per_hour_v1 registered by default', () => {
+      expect(pricingStrategyRegistry.has('per_hour_v1')).toBe(true);
     });
 
     it('should return strategy by key', () => {
@@ -68,6 +76,7 @@ describe('Pricing Strategy System', () => {
     it('should list all registered keys', () => {
       const keys = pricingStrategyRegistry.listKeys();
       expect(keys).toContain('sqft_settings_v1');
+      expect(keys).toContain('per_hour_v1');
     });
 
     it('should list all strategies with metadata', () => {
@@ -79,6 +88,11 @@ describe('Pricing Strategy System', () => {
       expect(sqftStrategy?.name).toBe('Square Footage (Settings V1)');
       expect(sqftStrategy?.isDefault).toBe(true);
       expect(sqftStrategy?.isActive).toBe(true);
+
+      const perHourStrategy = strategies.find((s) => s.key === 'per_hour_v1');
+      expect(perHourStrategy).toBeDefined();
+      expect(perHourStrategy?.name).toBe('Per Hour (Task Minutes V1)');
+      expect(perHourStrategy?.isActive).toBe(true);
     });
 
     it('should return default strategy', () => {

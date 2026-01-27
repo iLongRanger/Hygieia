@@ -19,7 +19,8 @@ type PricingRuleConditionMultipliers = {
   [key: string]: number | undefined;
 };
 
-export interface AreaPricingBreakdown {
+// Detailed cost breakdown for an area
+export interface AreaCostBreakdown {
   areaId: string;
   areaName: string;
   areaTypeName: string;
@@ -27,27 +28,77 @@ export interface AreaPricingBreakdown {
   floorType: string;
   conditionLevel: string;
   quantity: number;
-  basePrice: number;
+
+  // Labor breakdown
+  laborHours: number;
+  laborCostBase: number; // Raw hourly wage * hours
+  laborBurden: number; // Payroll taxes, benefits
+  totalLaborCost: number;
+
+  // Overhead breakdown
+  insuranceCost: number;
+  adminOverheadCost: number;
+  equipmentCost: number;
+
+  // Supply cost
+  supplyCost: number;
+
+  // Cost totals (before profit)
+  totalCostPerVisit: number;
+
+  // Multipliers applied
   floorMultiplier: number;
   conditionMultiplier: number;
-  frequencyMultiplier: number;
-  taskComplexityAddOn: number;
-  priceBeforeFrequency: number;
-  areaTotal: number;
+
+  // Final pricing
+  pricePerVisit: number; // With multipliers, before frequency
+  monthlyVisits: number;
+  monthlyPrice: number; // Final price with profit margin
 }
 
+// Comprehensive facility pricing result
 export interface FacilityPricingResult {
   facilityId: string;
   facilityName: string;
   buildingType: string;
-  buildingMultiplier: number;
   serviceFrequency: string;
   totalSquareFeet: number;
-  areas: AreaPricingBreakdown[];
-  subtotal: number;
+
+  // Per-area breakdowns
+  areas: AreaCostBreakdown[];
+
+  // Aggregate cost breakdown (per visit)
+  costBreakdown: {
+    totalLaborCost: number;
+    totalLaborHours: number;
+    totalInsuranceCost: number;
+    totalAdminOverheadCost: number;
+    totalEquipmentCost: number;
+    totalTravelCost: number;
+    totalSupplyCost: number;
+    totalCostPerVisit: number;
+  };
+
+  // Monthly totals
+  monthlyVisits: number;
+  monthlyCostBeforeProfit: number;
+  profitAmount: number;
+  profitMarginApplied: number;
+
+  // Building adjustment
+  buildingMultiplier: number;
   buildingAdjustment: number;
+
+  // Task complexity
+  taskComplexityAddOn: number;
+  taskComplexityAmount: number;
+
+  // Final monthly price
+  subtotal: number;
   monthlyTotal: number;
   minimumApplied: boolean;
+
+  // Pricing source
   pricingSettingsId: string;
   pricingSettingsName: string;
 }
@@ -60,15 +111,14 @@ export interface CalculatePricingOptions {
 }
 
 /**
- * Calculate pricing for a facility based on its areas and the active pricing settings
- * or a specific pricing rule if provided
+ * Calculate comprehensive pricing for a facility including labor, overhead, supplies, and profit
  */
 export async function calculateFacilityPricing(
   options: CalculatePricingOptions
 ): Promise<FacilityPricingResult> {
   const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingRuleId } = options;
 
-  // Get the active pricing settings (always needed for multipliers not in pricing rules)
+  // Get the active pricing settings
   const pricingSettings = await getActivePricingSettings();
   if (!pricingSettings) {
     throw new Error('No active pricing settings found. Please configure pricing settings first.');
@@ -100,26 +150,30 @@ export async function calculateFacilityPricing(
     throw new Error('Facility not found');
   }
 
-  // Extract multipliers - use pricing rule values when available, fall back to settings
-  const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
-  const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
-  const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
-  const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
-
-  // Use pricing rule's condition multipliers if available, otherwise use settings
-  const conditionMultipliers = (pricingRule?.conditionMultipliers as PricingRuleConditionMultipliers)
-    || (pricingSettings.conditionMultipliers as ConditionMultipliers);
-
-  // Use pricing rule's base rate if available, otherwise use settings
-  const baseRatePerSqFt = pricingRule?.squareFootRate
-    ? Number(pricingRule.squareFootRate)
-    : (pricingRule?.baseRate ? Number(pricingRule.baseRate) : Number(pricingSettings.baseRatePerSqFt));
-
+  // Extract pricing settings values
+  const laborCostPerHour = Number(pricingSettings.laborCostPerHour);
+  const laborBurdenPct = Number(pricingSettings.laborBurdenPercentage);
+  const sqftPerLaborHour = Number(pricingSettings.sqftPerLaborHour);
+  const insurancePct = Number(pricingSettings.insurancePercentage);
+  const adminOverheadPct = Number(pricingSettings.adminOverheadPercentage);
+  const travelCostPerVisit = Number(pricingSettings.travelCostPerVisit);
+  const equipmentPct = Number(pricingSettings.equipmentPercentage);
+  const supplyCostPct = Number(pricingSettings.supplyCostPercentage);
+  const supplyCostPerSqFt = pricingSettings.supplyCostPerSqFt ? Number(pricingSettings.supplyCostPerSqFt) : null;
+  const targetProfitMargin = Number(pricingSettings.targetProfitMargin);
   const minimumMonthlyCharge = pricingRule?.minimumCharge
     ? Number(pricingRule.minimumCharge)
     : Number(pricingSettings.minimumMonthlyCharge);
 
-  // Difficulty multiplier from pricing rule (default 1.0)
+  // Extract multipliers
+  const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
+  const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
+  const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
+  const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
+  const conditionMultipliers = (pricingRule?.conditionMultipliers as PricingRuleConditionMultipliers)
+    || (pricingSettings.conditionMultipliers as ConditionMultipliers);
+
+  // Difficulty multiplier from pricing rule
   const difficultyMultiplier = pricingRule?.difficultyMultiplier
     ? Number(pricingRule.difficultyMultiplier)
     : 1.0;
@@ -128,16 +182,26 @@ export async function calculateFacilityPricing(
   const buildingType = facility.buildingType || 'other';
   const buildingMultiplier = buildingTypeMultipliers[buildingType as keyof BuildingTypeMultipliers] ?? 1.0;
 
-  // Get frequency multiplier
+  // Get frequency multiplier (used to calculate monthly visits)
   const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
+
+  // Calculate monthly visits based on frequency
+  const monthlyVisits = getMonthlyVisits(serviceFrequency);
 
   // Get task complexity add-on
   const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
 
   // Calculate pricing for each area
-  const areaPricingBreakdowns: AreaPricingBreakdown[] = [];
+  const areaBreakdowns: AreaCostBreakdown[] = [];
   let totalSquareFeet = 0;
-  let subtotal = 0;
+
+  // Aggregate cost totals (per visit)
+  let totalLaborCost = 0;
+  let totalLaborHours = 0;
+  let totalInsuranceCost = 0;
+  let totalAdminOverheadCost = 0;
+  let totalEquipmentCost = 0;
+  let totalSupplyCost = 0;
 
   for (const area of facility.areas) {
     const squareFeet = Number(area.squareFeet) || 0;
@@ -145,24 +209,50 @@ export async function calculateFacilityPricing(
     const totalAreaSqFt = squareFeet * quantity;
     totalSquareFeet += totalAreaSqFt;
 
-    // Get floor type multiplier
+    // Get multipliers for this area
     const floorType = area.floorType || 'vct';
     const floorMultiplier = floorTypeMultipliers[floorType as keyof FloorTypeMultipliers] ?? 1.0;
-
-    // Get condition multiplier
     const conditionLevel = area.conditionLevel || 'standard';
     const conditionMultiplier = conditionMultipliers[conditionLevel as keyof ConditionMultipliers] ?? 1.0;
 
-    // Calculate base price (per service visit)
-    const basePrice = totalAreaSqFt * baseRatePerSqFt;
+    // Calculate labor hours based on square footage and productivity rate
+    // Apply floor and condition multipliers to adjust labor time
+    const baseLabortHours = totalAreaSqFt / sqftPerLaborHour;
+    const adjustedLaborHours = baseLabortHours * floorMultiplier * conditionMultiplier;
 
-    // Price with floor and condition multipliers (per service)
-    const priceBeforeFrequency = basePrice * floorMultiplier * conditionMultiplier;
+    // Calculate labor costs
+    const laborCostBase = adjustedLaborHours * laborCostPerHour;
+    const laborBurden = laborCostBase * laborBurdenPct;
+    const areaLaborCost = laborCostBase + laborBurden;
 
-    // Monthly price with frequency, task complexity, and difficulty multiplier (from pricing rule)
-    const monthlyPrice = priceBeforeFrequency * frequencyMultiplier * (1 + taskAddOn) * difficultyMultiplier;
+    // Calculate overhead costs (based on labor cost)
+    const insuranceCost = areaLaborCost * insurancePct;
+    const adminOverheadCost = areaLaborCost * adminOverheadPct;
+    const equipmentCost = areaLaborCost * equipmentPct;
 
-    areaPricingBreakdowns.push({
+    // Calculate supply cost
+    let supplyCost: number;
+    if (supplyCostPerSqFt !== null) {
+      // Use flat rate per sq ft if specified
+      supplyCost = totalAreaSqFt * supplyCostPerSqFt;
+    } else {
+      // Use percentage of labor + overhead
+      const laborPlusOverhead = areaLaborCost + insuranceCost + adminOverheadCost + equipmentCost;
+      supplyCost = laborPlusOverhead * supplyCostPct;
+    }
+
+    // Total cost per visit for this area (before profit)
+    const totalCostPerVisit = areaLaborCost + insuranceCost + adminOverheadCost + equipmentCost + supplyCost;
+
+    // Apply difficulty multiplier from pricing rule
+    const adjustedCostPerVisit = totalCostPerVisit * difficultyMultiplier;
+
+    // Calculate monthly price with profit margin
+    // Formula: Monthly Price = (Cost per Visit * Monthly Visits) / (1 - Profit Margin)
+    const monthlyCost = adjustedCostPerVisit * monthlyVisits;
+    const monthlyPriceWithProfit = monthlyCost / (1 - targetProfitMargin);
+
+    areaBreakdowns.push({
       areaId: area.id,
       areaName: area.name || area.areaType.name,
       areaTypeName: area.areaType.name,
@@ -170,21 +260,49 @@ export async function calculateFacilityPricing(
       floorType,
       conditionLevel,
       quantity,
-      basePrice: roundToTwo(basePrice),
+      laborHours: roundToTwo(adjustedLaborHours),
+      laborCostBase: roundToTwo(laborCostBase),
+      laborBurden: roundToTwo(laborBurden),
+      totalLaborCost: roundToTwo(areaLaborCost),
+      insuranceCost: roundToTwo(insuranceCost),
+      adminOverheadCost: roundToTwo(adminOverheadCost),
+      equipmentCost: roundToTwo(equipmentCost),
+      supplyCost: roundToTwo(supplyCost),
+      totalCostPerVisit: roundToTwo(adjustedCostPerVisit),
       floorMultiplier,
       conditionMultiplier,
-      frequencyMultiplier,
-      taskComplexityAddOn: taskAddOn,
-      priceBeforeFrequency: roundToTwo(priceBeforeFrequency),
-      areaTotal: roundToTwo(monthlyPrice),
+      pricePerVisit: roundToTwo(adjustedCostPerVisit / (1 - targetProfitMargin)),
+      monthlyVisits,
+      monthlyPrice: roundToTwo(monthlyPriceWithProfit),
     });
 
-    subtotal += monthlyPrice;
+    // Accumulate totals
+    totalLaborCost += areaLaborCost;
+    totalLaborHours += adjustedLaborHours;
+    totalInsuranceCost += insuranceCost;
+    totalAdminOverheadCost += adminOverheadCost;
+    totalEquipmentCost += equipmentCost;
+    totalSupplyCost += supplyCost;
   }
 
-  // Apply building type multiplier to subtotal
+  // Add travel cost (flat per visit, not per area)
+  const totalCostPerVisit = totalLaborCost + totalInsuranceCost + totalAdminOverheadCost +
+    totalEquipmentCost + totalSupplyCost + travelCostPerVisit;
+
+  // Calculate monthly totals
+  const monthlyCostBeforeProfit = totalCostPerVisit * monthlyVisits * difficultyMultiplier;
+
+  // Apply profit margin: Final Price = Cost / (1 - Margin)
+  let subtotal = monthlyCostBeforeProfit / (1 - targetProfitMargin);
+  const profitAmount = subtotal - monthlyCostBeforeProfit;
+
+  // Apply building type multiplier
   const buildingAdjustment = subtotal * (buildingMultiplier - 1);
-  let monthlyTotal = subtotal + buildingAdjustment;
+  subtotal += buildingAdjustment;
+
+  // Apply task complexity add-on
+  const taskComplexityAmount = subtotal * taskAddOn;
+  let monthlyTotal = subtotal + taskComplexityAmount;
 
   // Apply minimum charge if needed
   const minimumApplied = monthlyTotal < minimumMonthlyCharge;
@@ -196,16 +314,33 @@ export async function calculateFacilityPricing(
     facilityId: facility.id,
     facilityName: facility.name,
     buildingType,
-    buildingMultiplier,
     serviceFrequency,
     totalSquareFeet,
-    areas: areaPricingBreakdowns,
-    subtotal: roundToTwo(subtotal),
+    areas: areaBreakdowns,
+    costBreakdown: {
+      totalLaborCost: roundToTwo(totalLaborCost),
+      totalLaborHours: roundToTwo(totalLaborHours),
+      totalInsuranceCost: roundToTwo(totalInsuranceCost),
+      totalAdminOverheadCost: roundToTwo(totalAdminOverheadCost),
+      totalEquipmentCost: roundToTwo(totalEquipmentCost),
+      totalTravelCost: roundToTwo(travelCostPerVisit),
+      totalSupplyCost: roundToTwo(totalSupplyCost),
+      totalCostPerVisit: roundToTwo(totalCostPerVisit),
+    },
+    monthlyVisits,
+    monthlyCostBeforeProfit: roundToTwo(monthlyCostBeforeProfit),
+    profitAmount: roundToTwo(profitAmount),
+    profitMarginApplied: targetProfitMargin,
+    buildingMultiplier,
     buildingAdjustment: roundToTwo(buildingAdjustment),
+    taskComplexityAddOn: taskAddOn,
+    taskComplexityAmount: roundToTwo(taskComplexityAmount),
+    subtotal: roundToTwo(subtotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
-    // Include pricing rule info if used, otherwise show settings info
-    pricingSettingsId: pricingRule ? `rule:${pricingRule.id}` : pricingSettings.id,
+    pricingSettingsId: pricingRule
+      ? `rule:${pricingRule.pricingType}:${pricingRule.id}`
+      : pricingSettings.id,
     pricingSettingsName: pricingRule ? pricingRule.name : pricingSettings.name,
   };
 }
@@ -216,7 +351,7 @@ export async function calculateFacilityPricing(
 export async function calculateFacilityPricingComparison(
   facilityId: string,
   frequencies: string[] = ['1x_week', '2x_week', '3x_week', '5x_week']
-): Promise<{ frequency: string; monthlyTotal: number }[]> {
+): Promise<{ frequency: string; monthlyTotal: number; monthlyVisits: number }[]> {
   const results = await Promise.all(
     frequencies.map(async (frequency) => {
       const pricing = await calculateFacilityPricing({
@@ -226,6 +361,7 @@ export async function calculateFacilityPricingComparison(
       return {
         frequency,
         monthlyTotal: pricing.monthlyTotal,
+        monthlyVisits: pricing.monthlyVisits,
       };
     })
   );
@@ -381,7 +517,7 @@ export async function generateProposalServicesFromFacility(
   });
 
   // Get facility tasks grouped by area
-  const { byArea, byFrequency } = await getFacilityTasksGrouped(facilityId);
+  const { byArea } = await getFacilityTasksGrouped(facilityId);
 
   const frequencyLabel = getFrequencyLabel(serviceFrequency);
   const services: {
@@ -461,7 +597,7 @@ export async function generateProposalServicesFromFacility(
       serviceName: areaPricing.areaName,
       serviceType: mapFrequencyToServiceType(serviceFrequency),
       frequency: mapFrequencyToProposalFrequency(serviceFrequency),
-      monthlyPrice: areaPricing.areaTotal,
+      monthlyPrice: areaPricing.monthlyPrice,
       description: descriptionParts.join('\n'),
       includedTasks: allTasks,
     });
@@ -473,6 +609,25 @@ export async function generateProposalServicesFromFacility(
 // Helper functions
 function roundToTwo(num: number): number {
   return Math.round(num * 100) / 100;
+}
+
+/**
+ * Get number of visits per month based on service frequency
+ */
+function getMonthlyVisits(frequency: string): number {
+  const visitsMap: Record<string, number> = {
+    '1x_week': 4.33,
+    '2x_week': 8.67,
+    '3x_week': 13,
+    '4x_week': 17.33,
+    '5x_week': 21.67,
+    daily: 30,
+    weekly: 4.33,
+    biweekly: 2.17,
+    monthly: 1,
+    quarterly: 0.33,
+  };
+  return visitsMap[frequency] || 4.33;
 }
 
 function getFrequencyLabel(frequency: string): string {

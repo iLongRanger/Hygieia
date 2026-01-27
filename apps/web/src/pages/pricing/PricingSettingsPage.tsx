@@ -12,6 +12,10 @@ import {
   Trash2,
   Archive,
   RotateCcw,
+  Users,
+  Building,
+  Package,
+  TrendingUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -38,6 +42,7 @@ import {
 const DEFAULT_FLOOR_TYPES = ['vct', 'carpet', 'hardwood', 'tile', 'concrete', 'epoxy'];
 const DEFAULT_FREQUENCIES = ['1x_week', '2x_week', '3x_week', '4x_week', '5x_week', 'daily', 'monthly'];
 const DEFAULT_CONDITIONS = ['standard', 'medium', 'hard'];
+const DEFAULT_TRAFFIC_LEVELS = ['low', 'medium', 'high'];
 const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'education', 'warehouse'];
 const DEFAULT_TASK_COMPLEXITIES = ['standard', 'sanitization', 'floor_care', 'window_cleaning'];
 
@@ -66,6 +71,11 @@ const CONDITION_LABELS: Record<string, string> = {
   hard: 'Hard/Heavy Traffic',
 };
 
+const TRAFFIC_LABELS: Record<string, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+};
 const BUILDING_TYPE_LABELS: Record<string, string> = {
   office: 'Office',
   medical: 'Medical/Healthcare',
@@ -99,6 +109,20 @@ const PricingSettingsPage = () => {
     name: '',
     baseRatePerSqFt: 0.10,
     minimumMonthlyCharge: 250,
+    hourlyRate: 35,
+    // Labor Cost Settings (defaults)
+    laborCostPerHour: 18,
+    laborBurdenPercentage: 0.25,
+    sqftPerLaborHour: 2500,
+    // Overhead Cost Settings (defaults)
+    insurancePercentage: 0.08,
+    adminOverheadPercentage: 0.12,
+    travelCostPerVisit: 15,
+    equipmentPercentage: 0.05,
+    // Supply Cost Settings (defaults)
+    supplyCostPercentage: 0.04,
+    // Profit Settings (defaults)
+    targetProfitMargin: 0.25,
   });
 
   const fetchSettingsList = useCallback(async () => {
@@ -132,9 +156,26 @@ const PricingSettingsPage = () => {
         name: data.name,
         baseRatePerSqFt: Number(data.baseRatePerSqFt),
         minimumMonthlyCharge: Number(data.minimumMonthlyCharge),
+        hourlyRate: Number(data.hourlyRate || 35),
+        // Labor Cost Settings
+        laborCostPerHour: Number(data.laborCostPerHour || 18),
+        laborBurdenPercentage: Number(data.laborBurdenPercentage || 0.25),
+        sqftPerLaborHour: Number(data.sqftPerLaborHour || 2500),
+        // Overhead Cost Settings
+        insurancePercentage: Number(data.insurancePercentage || 0.08),
+        adminOverheadPercentage: Number(data.adminOverheadPercentage || 0.12),
+        travelCostPerVisit: Number(data.travelCostPerVisit || 15),
+        equipmentPercentage: Number(data.equipmentPercentage || 0.05),
+        // Supply Cost Settings
+        supplyCostPercentage: Number(data.supplyCostPercentage || 0.04),
+        supplyCostPerSqFt: data.supplyCostPerSqFt ? Number(data.supplyCostPerSqFt) : undefined,
+        // Profit Settings
+        targetProfitMargin: Number(data.targetProfitMargin || 0.25),
+        // Multipliers
         floorTypeMultipliers: data.floorTypeMultipliers,
         frequencyMultipliers: data.frequencyMultipliers,
         conditionMultipliers: data.conditionMultipliers,
+        trafficMultipliers: data.trafficMultipliers,
         buildingTypeMultipliers: data.buildingTypeMultipliers,
         taskComplexityAddOns: data.taskComplexityAddOns,
         isActive: data.isActive,
@@ -175,7 +216,21 @@ const PricingSettingsPage = () => {
       const created = await createPricingSettings(createFormData);
       toast.success('Pricing settings created successfully');
       setShowCreateModal(false);
-      setCreateFormData({ name: '', baseRatePerSqFt: 0.10, minimumMonthlyCharge: 250 });
+      setCreateFormData({
+        name: '',
+        baseRatePerSqFt: 0.10,
+        minimumMonthlyCharge: 250,
+        hourlyRate: 35,
+        laborCostPerHour: 18,
+        laborBurdenPercentage: 0.25,
+        sqftPerLaborHour: 2500,
+        insurancePercentage: 0.08,
+        adminOverheadPercentage: 0.12,
+        travelCostPerVisit: 15,
+        equipmentPercentage: 0.05,
+        supplyCostPercentage: 0.04,
+        targetProfitMargin: 0.25,
+      });
       await fetchSettingsList();
       await loadSettings(created.id);
     } catch (error) {
@@ -224,7 +279,7 @@ const PricingSettingsPage = () => {
   };
 
   const updateMultiplier = (
-    category: 'floorTypeMultipliers' | 'frequencyMultipliers' | 'conditionMultipliers' | 'buildingTypeMultipliers' | 'taskComplexityAddOns',
+    category: 'floorTypeMultipliers' | 'frequencyMultipliers' | 'conditionMultipliers' | 'trafficMultipliers' | 'buildingTypeMultipliers' | 'taskComplexityAddOns',
     key: string,
     value: number
   ) => {
@@ -242,6 +297,17 @@ const PricingSettingsPage = () => {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
+    }).format(Number(value));
+  };
+
+  const formatPercent = (value: string | number) => {
+    return `${(Number(value) * 100).toFixed(1)}%`;
+  };
+
+  const formatNumber = (value: string | number, decimals = 0) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(Number(value));
   };
 
@@ -454,7 +520,7 @@ const PricingSettingsPage = () => {
                 <DollarSign className="h-5 w-5 text-emerald" />
                 Base Rates
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {isEditing ? (
                   <>
                     <Input
@@ -477,6 +543,16 @@ const PricingSettingsPage = () => {
                         setFormData({ ...formData, minimumMonthlyCharge: Number(e.target.value) })
                       }
                     />
+                    <Input
+                      label="Hourly Rate ($)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={formData.hourlyRate ?? 35}
+                      onChange={(e) =>
+                        setFormData({ ...formData, hourlyRate: Number(e.target.value) })
+                      }
+                    />
                   </>
                 ) : (
                   <>
@@ -492,7 +568,270 @@ const PricingSettingsPage = () => {
                         {formatCurrency(selectedSettings.minimumMonthlyCharge)}
                       </p>
                     </div>
+                    <div>
+                      <span className="text-sm text-gray-400">Hourly Rate</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatCurrency(selectedSettings.hourlyRate || 35)}
+                      </p>
+                    </div>
                   </>
+                )}
+              </div>
+            </Card>
+
+            {/* Labor Cost Settings */}
+            <Card>
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <Users className="h-5 w-5 text-blue-400" />
+                Labor Cost Settings
+              </h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Configure labor rates, burden (taxes/benefits), and productivity rates.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {isEditing ? (
+                  <>
+                    <Input
+                      label="Labor Cost per Hour ($)"
+                      type="number"
+                      step="0.50"
+                      min={0}
+                      value={formData.laborCostPerHour ?? 18}
+                      onChange={(e) =>
+                        setFormData({ ...formData, laborCostPerHour: Number(e.target.value) })
+                      }
+                      hint="Average hourly wage"
+                    />
+                    <Input
+                      label="Labor Burden (%)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={formData.laborBurdenPercentage ?? 0.25}
+                      onChange={(e) =>
+                        setFormData({ ...formData, laborBurdenPercentage: Number(e.target.value) })
+                      }
+                      hint="Payroll taxes, benefits (e.g., 0.25 = 25%)"
+                    />
+                    <Input
+                      label="Sq Ft per Labor Hour"
+                      type="number"
+                      step="100"
+                      min={100}
+                      value={formData.sqftPerLaborHour ?? 2500}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sqftPerLaborHour: Number(e.target.value) })
+                      }
+                      hint="Productivity rate"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Labor Cost per Hour</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatCurrency(selectedSettings.laborCostPerHour || 18)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Labor Burden</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatPercent(selectedSettings.laborBurdenPercentage || 0.25)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Sq Ft per Labor Hour</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatNumber(selectedSettings.sqftPerLaborHour || 2500)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            {/* Overhead Cost Settings */}
+            <Card>
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <Building className="h-5 w-5 text-purple-400" />
+                Overhead Cost Settings
+              </h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Configure overhead costs as percentages of labor cost, plus flat travel costs.
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {isEditing ? (
+                  <>
+                    <Input
+                      label="Insurance (%)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={formData.insurancePercentage ?? 0.08}
+                      onChange={(e) =>
+                        setFormData({ ...formData, insurancePercentage: Number(e.target.value) })
+                      }
+                      hint="Liability + workers comp"
+                    />
+                    <Input
+                      label="Admin Overhead (%)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={formData.adminOverheadPercentage ?? 0.12}
+                      onChange={(e) =>
+                        setFormData({ ...formData, adminOverheadPercentage: Number(e.target.value) })
+                      }
+                      hint="Administrative costs"
+                    />
+                    <Input
+                      label="Equipment (%)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={formData.equipmentPercentage ?? 0.05}
+                      onChange={(e) =>
+                        setFormData({ ...formData, equipmentPercentage: Number(e.target.value) })
+                      }
+                      hint="Equipment depreciation"
+                    />
+                    <Input
+                      label="Travel Cost per Visit ($)"
+                      type="number"
+                      step="1"
+                      min={0}
+                      value={formData.travelCostPerVisit ?? 15}
+                      onChange={(e) =>
+                        setFormData({ ...formData, travelCostPerVisit: Number(e.target.value) })
+                      }
+                      hint="Flat per-visit cost"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Insurance</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatPercent(selectedSettings.insurancePercentage || 0.08)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Admin Overhead</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatPercent(selectedSettings.adminOverheadPercentage || 0.12)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Equipment</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatPercent(selectedSettings.equipmentPercentage || 0.05)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Travel per Visit</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatCurrency(selectedSettings.travelCostPerVisit || 15)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            {/* Supply Cost Settings */}
+            <Card>
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <Package className="h-5 w-5 text-orange-400" />
+                Supply Cost Settings
+              </h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Configure supply costs as a percentage of labor+overhead, or as a flat per-sqft rate.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {isEditing ? (
+                  <>
+                    <Input
+                      label="Supply Cost (%)"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={formData.supplyCostPercentage ?? 0.04}
+                      onChange={(e) =>
+                        setFormData({ ...formData, supplyCostPercentage: Number(e.target.value) })
+                      }
+                      hint="As % of labor+overhead (e.g., 0.04 = 4%)"
+                    />
+                    <Input
+                      label="Supply Cost per Sq Ft ($) - Optional"
+                      type="number"
+                      step="0.001"
+                      min={0}
+                      value={formData.supplyCostPerSqFt ?? ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          supplyCostPerSqFt: e.target.value ? Number(e.target.value) : undefined
+                        })
+                      }
+                      hint="Alternative flat rate (overrides percentage if set)"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Supply Cost Percentage</span>
+                      <p className="text-xl font-semibold text-white">
+                        {formatPercent(selectedSettings.supplyCostPercentage || 0.04)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-navy-darker/50 p-3">
+                      <span className="text-sm text-gray-400">Supply Cost per Sq Ft</span>
+                      <p className="text-xl font-semibold text-white">
+                        {selectedSettings.supplyCostPerSqFt
+                          ? formatCurrency(selectedSettings.supplyCostPerSqFt)
+                          : 'Not set (using %)'}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            {/* Profit Settings */}
+            <Card>
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <TrendingUp className="h-5 w-5 text-emerald" />
+                Profit Settings
+              </h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Target profit margin applied using: Final Price = Total Cost ÷ (1 - Margin)
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {isEditing ? (
+                  <Input
+                    label="Target Profit Margin (%)"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={0.99}
+                    value={formData.targetProfitMargin ?? 0.25}
+                    onChange={(e) =>
+                      setFormData({ ...formData, targetProfitMargin: Number(e.target.value) })
+                    }
+                    hint="e.g., 0.25 = 25% profit margin"
+                  />
+                ) : (
+                  <div className="rounded-lg bg-navy-darker/50 p-3">
+                    <span className="text-sm text-gray-400">Target Profit Margin</span>
+                    <p className="text-xl font-semibold text-white">
+                      {formatPercent(selectedSettings.targetProfitMargin || 0.25)}
+                    </p>
+                  </div>
                 )}
               </div>
             </Card>
@@ -588,6 +927,39 @@ const PricingSettingsPage = () => {
                         <span className="text-sm text-gray-400">{CONDITION_LABELS[key] || key}</span>
                         <p className="text-lg font-semibold text-white">
                           {(selectedSettings.conditionMultipliers?.[key] ?? 1.0).toFixed(2)}x
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Traffic Multipliers */}
+            <Card>
+              <h3 className="mb-4 text-lg font-semibold text-white">Traffic Multipliers</h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Adjust pricing based on traffic level. Higher traffic = higher price.
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                {DEFAULT_TRAFFIC_LEVELS.map((key) => (
+                  <div key={key}>
+                    {isEditing ? (
+                      <Input
+                        label={TRAFFIC_LABELS[key] || key}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={formData.trafficMultipliers?.[key] ?? 1.0}
+                        onChange={(e) =>
+                          updateMultiplier('trafficMultipliers', key, Number(e.target.value))
+                        }
+                      />
+                    ) : (
+                      <div className="rounded-lg bg-navy-darker/50 p-3">
+                        <span className="text-sm text-gray-400">{TRAFFIC_LABELS[key] || key}</span>
+                        <p className="text-lg font-semibold text-white">
+                          {(selectedSettings.trafficMultipliers?.[key] ?? 1.0).toFixed(2)}x
                         </p>
                       </div>
                     )}
@@ -713,6 +1085,16 @@ const PricingSettingsPage = () => {
             value={createFormData.minimumMonthlyCharge || ''}
             onChange={(e) =>
               setCreateFormData({ ...createFormData, minimumMonthlyCharge: Number(e.target.value) })
+            }
+          />
+          <Input
+            label="Hourly Rate ($)"
+            type="number"
+            step="0.01"
+            min={0}
+            value={createFormData.hourlyRate ?? 35}
+            onChange={(e) =>
+              setCreateFormData({ ...createFormData, hourlyRate: Number(e.target.value) })
             }
           />
           <p className="text-sm text-gray-400">

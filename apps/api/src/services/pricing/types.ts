@@ -18,6 +18,8 @@ export interface PricingContext {
   facilityId: string;
   serviceFrequency: string;
   taskComplexity?: string;
+  workerCount?: number;
+  pricingRuleId?: string;
   // Optional overrides for specific calculations
   pricingSettingsId?: string;
 }
@@ -36,12 +38,15 @@ export interface PricingSettingsSnapshot {
   pricingSettingsName: string;
   baseRatePerSqFt: number;
   minimumMonthlyCharge: number;
+  hourlyRate?: number;
   floorTypeMultipliers: Record<string, number>;
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
+  trafficMultipliers?: Record<string, number>;
   buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string; // ISO timestamp
+  workerCount?: number;
 }
 
 /**
@@ -135,6 +140,7 @@ export interface PricingStrategyMetadata {
  */
 export const PRICING_STRATEGY_KEYS = {
   SQFT_SETTINGS_V1: 'sqft_settings_v1',
+  PER_HOUR_V1: 'per_hour_v1',
 } as const;
 
 export type PricingStrategyKey = (typeof PRICING_STRATEGY_KEYS)[keyof typeof PRICING_STRATEGY_KEYS];

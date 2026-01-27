@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { DEFAULT_PRICING_STRATEGY_KEY, PRICING_STRATEGY_KEYS } from './types';
 import { sqftSettingsV1Strategy } from './strategies/sqftSettingsV1Strategy';
+import { perHourV1Strategy } from './strategies/perHourV1Strategy';
 
 /**
  * Registry that holds all available pricing strategies
@@ -27,6 +28,7 @@ class PricingStrategyRegistry {
   constructor() {
     // Register built-in strategies
     this.register(sqftSettingsV1Strategy);
+    this.register(perHourV1Strategy);
   }
 
   /**
@@ -54,6 +56,11 @@ class PricingStrategyRegistry {
     // If it's a pricing rule reference, use the default sqft strategy
     // The rule ID will be used for configuration, but calculation uses sqft strategy
     if (key.startsWith('rule:')) {
+      const parts = key.split(':');
+      const pricingType = parts.length >= 3 ? parts[1] : 'square_foot';
+      if (pricingType === 'hourly') {
+        return this.strategies.get(PRICING_STRATEGY_KEYS.PER_HOUR_V1)!;
+      }
       return this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY)!;
     }
 
@@ -129,7 +136,7 @@ class PricingStrategyRegistry {
 
     // Convert pricing rules to strategy metadata
     const ruleStrategies: PricingStrategyMetadata[] = pricingRules.map((rule) => ({
-      key: `rule:${rule.id}`,
+      key: `rule:${rule.pricingType}:${rule.id}`,
       name: rule.name,
       description: rule.description || `${rule.pricingType} pricing - Base rate: $${rule.baseRate}`,
       version: '1.0.0',
@@ -259,13 +266,14 @@ export async function calculatePricing(
     proposalId?: string;
   }
 ): Promise<PricingBreakdown> {
+  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
   const strategy = await getStrategy({
-    strategyKey: options?.strategyKey,
+    strategyKey,
     proposalId: options?.proposalId,
     facilityId: context.facilityId,
   });
 
-  return strategy.quote(context);
+  return strategy.quote({ ...context, pricingRuleId });
 }
 
 /**
@@ -278,13 +286,14 @@ export async function generateProposalServices(
     proposalId?: string;
   }
 ): Promise<ProposalServiceLine[]> {
+  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
   const strategy = await getStrategy({
-    strategyKey: options?.strategyKey,
+    strategyKey,
     proposalId: options?.proposalId,
     facilityId: context.facilityId,
   });
 
-  return strategy.generateProposalServices(context);
+  return strategy.generateProposalServices({ ...context, pricingRuleId });
 }
 
 /**
@@ -297,10 +306,15 @@ export async function comparePricingFrequencies(
     strategyKey?: string;
   }
 ): Promise<{ frequency: string; monthlyTotal: number }[]> {
+  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
   const strategy = await getStrategy({
-    strategyKey: options?.strategyKey,
+    strategyKey,
     facilityId,
   });
+
+  if (pricingRuleId) {
+    return strategy.compareFrequencies(facilityId, frequencies);
+  }
 
   return strategy.compareFrequencies(facilityId, frequencies);
 }
@@ -308,3 +322,28 @@ export async function comparePricingFrequencies(
 // Re-export types and constants
 export { PRICING_STRATEGY_KEYS, DEFAULT_PRICING_STRATEGY_KEY };
 export type { PricingStrategy, PricingStrategyMetadata };
+
+function parseStrategyKey(
+  rawKey?: string
+): { strategyKey?: string; pricingRuleId?: string } {
+  if (!rawKey) {
+    return {};
+  }
+
+  if (!rawKey.startsWith('rule:')) {
+    return { strategyKey: rawKey };
+  }
+
+  const parts = rawKey.split(':');
+  if (parts.length >= 3) {
+    const pricingType = parts[1];
+    const pricingRuleId = parts.slice(2).join(':');
+    if (pricingType === 'hourly') {
+      return { strategyKey: PRICING_STRATEGY_KEYS.PER_HOUR_V1, pricingRuleId };
+    }
+    return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
+  }
+
+  const pricingRuleId = parts[1];
+  return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
+}

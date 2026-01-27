@@ -34,7 +34,7 @@ import {
   pricingPreviewQuerySchema,
 } from '../schemas/proposal';
 import { ZodError } from 'zod';
-import { pricingStrategyRegistry } from '../services/pricing';
+import { pricingStrategyRegistry, DEFAULT_PRICING_STRATEGY_KEY } from '../services/pricing';
 
 const router: Router = Router();
 
@@ -164,6 +164,7 @@ router.post(
         termsAndConditions: parsed.data.termsAndConditions,
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
+        pricingStrategyKey: parsed.data.pricingStrategyKey,
         createdByUserId: req.user.id,
       });
 
@@ -216,6 +217,16 @@ router.patch(
 
       if (parsed.data.proposalServices !== undefined) {
         updateData.proposalServices = parsed.data.proposalServices;
+      }
+
+      if (
+        parsed.data.pricingStrategyKey !== undefined
+        && parsed.data.pricingStrategyKey !== proposal.pricingStrategyKey
+      ) {
+        await changeProposalPricingStrategy(
+          req.params.id,
+          parsed.data.pricingStrategyKey || DEFAULT_PRICING_STRATEGY_KEY
+        );
       }
 
       const updated = await updateProposal(req.params.id, updateData);
@@ -493,7 +504,10 @@ router.post(
       const recalculated = await recalculateProposalPricing(
         req.params.id,
         parsed.data.serviceFrequency,
-        { lockAfterRecalculation: parsed.data.lockAfterRecalculation }
+        {
+          lockAfterRecalculation: parsed.data.lockAfterRecalculation,
+          workerCount: parsed.data.workerCount,
+        }
       );
       res.json({ data: recalculated, message: 'Pricing recalculated successfully' });
     } catch (error) {
@@ -522,7 +536,7 @@ router.get(
       const preview = await getProposalPricingPreview(
         req.params.id,
         parsed.data.serviceFrequency,
-        { strategyKey: parsed.data.strategyKey }
+        { strategyKey: parsed.data.strategyKey, workerCount: parsed.data.workerCount }
       );
       res.json({ data: preview });
     } catch (error) {

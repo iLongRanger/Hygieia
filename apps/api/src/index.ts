@@ -30,6 +30,7 @@ import facilityTasksRoutes from './routes/facilityTasks';
 import pricingRulesRoutes from './routes/pricingRules';
 import pricingOverridesRoutes from './routes/pricingOverrides';
 import pricingSettingsRoutes from './routes/pricingSettings';
+import fixtureTypesRoutes from './routes/fixtureTypes';
 import proposalsRoutes from './routes/proposals';
 import contractsRoutes from './routes/contracts';
 
@@ -66,6 +67,7 @@ app.use('/api/v1/facility-tasks', facilityTasksRoutes);
 app.use('/api/v1/pricing-rules', pricingRulesRoutes);
 app.use('/api/v1/pricing-overrides', pricingOverridesRoutes);
 app.use('/api/v1/pricing-settings', pricingSettingsRoutes);
+app.use('/api/v1/fixture-types', fixtureTypesRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
 

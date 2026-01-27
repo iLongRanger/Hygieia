@@ -734,6 +734,7 @@ export async function recalculateProposalPricing(
   serviceFrequency: string,
   options?: {
     lockAfterRecalculation?: boolean;
+    workerCount?: number;
   }
 ) {
   const proposal = await prisma.proposal.findUnique({
@@ -766,19 +767,23 @@ export async function recalculateProposalPricing(
   }
 
   // Get the strategy
-  const strategyKey = proposal.pricingStrategyKey ?? DEFAULT_PRICING_STRATEGY_KEY;
+  const { strategyKey, pricingRuleId } = resolveStrategyKey(proposal.pricingStrategyKey ?? DEFAULT_PRICING_STRATEGY_KEY);
   const strategy = await getStrategy({ strategyKey });
 
   // Calculate new pricing
   const pricing = await strategy.quote({
     facilityId: proposal.facilityId,
     serviceFrequency,
+    workerCount: options?.workerCount,
+    pricingRuleId,
   });
 
   // Generate new services
   const newServices = await strategy.generateProposalServices({
     facilityId: proposal.facilityId,
     serviceFrequency,
+    workerCount: options?.workerCount,
+    pricingRuleId,
   });
 
   // Calculate new totals
@@ -826,6 +831,7 @@ export async function getProposalPricingPreview(
   serviceFrequency: string,
   options?: {
     strategyKey?: string;
+    workerCount?: number;
   }
 ): Promise<PricingBreakdown> {
   const proposal = await prisma.proposal.findUnique({
@@ -847,7 +853,7 @@ export async function getProposalPricingPreview(
   }
 
   // Use provided strategy key, or fall back to proposal's strategy, or resolve from context
-  const strategyKey =
+  const rawStrategyKey =
     options?.strategyKey ??
     proposal.pricingStrategyKey ??
     (await resolvePricingStrategyKey({
@@ -855,10 +861,31 @@ export async function getProposalPricingPreview(
       accountId: proposal.accountId,
     }));
 
+  const { strategyKey, pricingRuleId } = resolveStrategyKey(rawStrategyKey);
   const strategy = await getStrategy({ strategyKey });
 
   return strategy.quote({
     facilityId: proposal.facilityId,
     serviceFrequency,
+    workerCount: options?.workerCount,
+    pricingRuleId,
   });
+}
+
+function resolveStrategyKey(rawKey: string) {
+  if (!rawKey.startsWith('rule:')) {
+    return { strategyKey: rawKey, pricingRuleId: undefined };
+  }
+
+  const parts = rawKey.split(':');
+  if (parts.length >= 3) {
+    const pricingType = parts[1];
+    const pricingRuleId = parts.slice(2).join(':');
+    if (pricingType === 'hourly') {
+      return { strategyKey: 'per_hour_v1', pricingRuleId };
+    }
+    return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
+  }
+
+  return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId: parts[1] };
 }

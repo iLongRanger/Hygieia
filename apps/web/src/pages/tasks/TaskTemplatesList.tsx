@@ -26,9 +26,9 @@ import {
   archiveTaskTemplate,
   restoreTaskTemplate,
 } from '../../lib/tasks';
-import { listAreaTypes } from '../../lib/facilities';
+import { listAreaTypes, listFixtureTypes } from '../../lib/facilities';
 import type { TaskTemplate, CreateTaskTemplateInput } from '../../types/task';
-import type { AreaType } from '../../types/facility';
+import type { AreaType, FixtureType } from '../../types/facility';
 
 const CLEANING_TYPES = [
   { value: 'daily', label: 'Daily' },
@@ -55,6 +55,7 @@ const TaskTemplatesList = () => {
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -76,12 +77,17 @@ const TaskTemplatesList = () => {
     cleaningType: 'daily',
     areaTypeId: null,
     estimatedMinutes: 30,
+    baseMinutes: 0,
+    perSqftMinutes: 0,
+    perUnitMinutes: 0,
+    perRoomMinutes: 0,
     difficultyLevel: 3,
     requiredEquipment: [],
     requiredSupplies: [],
     instructions: null,
     isGlobal: true,
     isActive: true,
+    fixtureMinutes: [],
   });
 
   const fetchTemplates = useCallback(
@@ -128,6 +134,15 @@ const TaskTemplatesList = () => {
     }
   }, []);
 
+  const fetchFixtureTypes = useCallback(async () => {
+    try {
+      const response = await listFixtureTypes({ limit: 100, isActive: true });
+      setFixtureTypes(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch fixture types:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTemplates(page, search, {
       cleaningType: cleaningTypeFilter,
@@ -140,7 +155,8 @@ const TaskTemplatesList = () => {
 
   useEffect(() => {
     fetchAreaTypes();
-  }, [fetchAreaTypes]);
+    fetchFixtureTypes();
+  }, [fetchAreaTypes, fetchFixtureTypes]);
 
   const handleCreate = async () => {
     if (!formData.name || !formData.cleaningType) {
@@ -176,12 +192,36 @@ const TaskTemplatesList = () => {
       cleaningType: 'daily',
       areaTypeId: null,
       estimatedMinutes: 30,
+      baseMinutes: 0,
+      perSqftMinutes: 0,
+      perUnitMinutes: 0,
+      perRoomMinutes: 0,
       difficultyLevel: 3,
       requiredEquipment: [],
       requiredSupplies: [],
       instructions: null,
       isGlobal: true,
       isActive: true,
+      fixtureMinutes: [],
+    });
+  };
+
+  const getFixtureMinutes = (fixtureTypeId: string) => {
+    return formData.fixtureMinutes?.find((fixture) => fixture.fixtureTypeId === fixtureTypeId)
+      ?.minutesPerFixture || 0;
+  };
+
+  const updateFixtureMinutes = (fixtureTypeId: string, minutesPerFixture: number) => {
+    setFormData((prev) => {
+      const current = prev.fixtureMinutes || [];
+      const index = current.findIndex((fixture) => fixture.fixtureTypeId === fixtureTypeId);
+      const updated = [...current];
+      if (index >= 0) {
+        updated[index] = { fixtureTypeId, minutesPerFixture };
+      } else {
+        updated.push({ fixtureTypeId, minutesPerFixture });
+      }
+      return { ...prev, fixtureMinutes: updated };
     });
   };
 
@@ -540,6 +580,87 @@ const TaskTemplatesList = () => {
                 })
               }
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Base Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.baseMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  baseMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Sq Ft Minutes"
+              type="number"
+              min={0}
+              step="0.0001"
+              value={formData.perSqftMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perSqftMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Unit Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.perUnitMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perUnitMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              label="Per Room Minutes"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.perRoomMinutes ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  perRoomMinutes: Number(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-200">Fixture Minutes</div>
+            {fixtureTypes.length === 0 ? (
+              <div className="text-sm text-gray-500">No fixture types available.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fixtureTypes.map((fixtureType) => (
+                  <Input
+                    key={fixtureType.id}
+                    label={fixtureType.name}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={getFixtureMinutes(fixtureType.id)}
+                    onChange={(e) =>
+                      updateFixtureMinutes(
+                        fixtureType.id,
+                        Math.max(0, Number(e.target.value) || 0)
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <Textarea

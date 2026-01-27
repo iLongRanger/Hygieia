@@ -6,6 +6,12 @@ export const conditionLevelSchema = z.enum([
   'hard',
 ]);
 
+export const trafficLevelSchema = z.enum([
+  'low',
+  'medium',
+  'high',
+]);
+
 export const floorTypeSchema = z.enum([
   'vct',
   'carpet',
@@ -15,6 +21,11 @@ export const floorTypeSchema = z.enum([
   'other',
 ]);
 
+const fixtureInputSchema = z.object({
+  fixtureTypeId: z.string().uuid('Invalid fixture type ID'),
+  count: z.coerce.number().int().min(0),
+});
+
 export const createAreaSchema = z.object({
   facilityId: z.string().uuid('Invalid facility ID'),
   areaTypeId: z.string().uuid('Invalid area type ID'),
@@ -23,7 +34,11 @@ export const createAreaSchema = z.object({
   squareFeet: z.coerce.number().min(0).optional().nullable(),
   floorType: floorTypeSchema.optional().default('vct'),
   conditionLevel: conditionLevelSchema.optional().default('standard'),
+  roomCount: z.coerce.number().int().min(0).optional().default(0),
+  unitCount: z.coerce.number().int().min(0).optional().default(0),
+  trafficLevel: trafficLevelSchema.optional().default('medium'),
   notes: z.string().max(10000).optional().nullable(),
+  fixtures: z.array(fixtureInputSchema).optional().default([]),
 });
 
 export const updateAreaSchema = z.object({
@@ -33,7 +48,11 @@ export const updateAreaSchema = z.object({
   squareFeet: z.coerce.number().min(0).optional().nullable(),
   floorType: floorTypeSchema.optional(),
   conditionLevel: conditionLevelSchema.optional(),
+  roomCount: z.coerce.number().int().min(0).optional(),
+  unitCount: z.coerce.number().int().min(0).optional(),
+  trafficLevel: trafficLevelSchema.optional(),
   notes: z.string().max(10000).optional().nullable(),
+  fixtures: z.array(fixtureInputSchema).optional(),
 });
 
 export const listAreasQuerySchema = z.object({
@@ -43,6 +62,7 @@ export const listAreasQuerySchema = z.object({
   areaTypeId: z.string().uuid().optional(),
   floorType: floorTypeSchema.optional(),
   conditionLevel: conditionLevelSchema.optional(),
+  trafficLevel: trafficLevelSchema.optional(),
   search: z.string().max(100).optional(),
   sortBy: z.enum(['createdAt', 'name', 'squareFeet', 'floorType']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

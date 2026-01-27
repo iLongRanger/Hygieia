@@ -86,6 +86,10 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+const isPerHourStrategy = (key: string) => {
+  return key === 'per_hour_v1' || key.startsWith('rule:hourly:');
+};
+
 // Empty item template
 const createEmptyItem = (sortOrder: number): ProposalItem => ({
   itemType: 'labor',
@@ -153,6 +157,7 @@ const ProposalForm = () => {
   // Pricing strategy states
   const [pricingStrategies, setPricingStrategies] = useState<PricingStrategyMetadata[]>([]);
   const [selectedPricingStrategy, setSelectedPricingStrategy] = useState<string>('sqft_settings_v1');
+  const [workerCount, setWorkerCount] = useState<number>(1);
 
   // Frequency options for auto-population
   const PRICING_FREQUENCIES = [
@@ -204,6 +209,10 @@ const ProposalForm = () => {
       const defaultStrategy = strategiesRes?.find(s => s.isDefault);
       if (defaultStrategy) {
         setSelectedPricingStrategy(defaultStrategy.key);
+        setFormData((prev) => ({
+          ...prev,
+          pricingStrategyKey: defaultStrategy.key,
+        }));
       }
     } catch (error) {
       console.error('Failed to fetch reference data:', error);
@@ -286,7 +295,12 @@ const ProposalForm = () => {
 
     try {
       setLoadingPricing(true);
-      const template = await getFacilityProposalTemplate(formData.facilityId, selectedFrequency);
+      const template = await getFacilityProposalTemplate(
+        formData.facilityId,
+        selectedFrequency,
+        selectedPricingStrategy,
+        isPerHourStrategy(selectedPricingStrategy) ? workerCount : undefined
+      );
 
       // Convert suggested services to proposal services
       const newServices: ProposalService[] = template.suggestedServices.map((svc, index) => ({
@@ -529,6 +543,16 @@ const ProposalForm = () => {
                   </p>
                 )}
               </div>
+              {isPerHourStrategy(selectedPricingStrategy) && (
+                <Input
+                  label="Worker Count"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={workerCount}
+                  onChange={(e) => setWorkerCount(Math.max(1, Number(e.target.value) || 1))}
+                />
+              )}
               <Input
                 label="Valid Until"
                 type="date"

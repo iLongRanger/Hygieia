@@ -18,9 +18,30 @@ export interface PricingSettings {
   name: string;
   baseRatePerSqFt: string;
   minimumMonthlyCharge: string;
+  hourlyRate: string;
+
+  // Labor Cost Settings
+  laborCostPerHour: string;
+  laborBurdenPercentage: string;
+  sqftPerLaborHour: string;
+
+  // Overhead Cost Settings
+  insurancePercentage: string;
+  adminOverheadPercentage: string;
+  travelCostPerVisit: string;
+  equipmentPercentage: string;
+
+  // Supply Cost Settings
+  supplyCostPercentage: string;
+  supplyCostPerSqFt: string | null;
+
+  // Profit Settings
+  targetProfitMargin: string;
+
   floorTypeMultipliers: Record<string, number>;
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
+  trafficMultipliers: Record<string, number>;
   buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   isActive: boolean;
@@ -33,9 +54,21 @@ export interface CreatePricingSettingsInput {
   name: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
+  hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  sqftPerLaborHour?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  travelCostPerVisit?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  supplyCostPerSqFt?: number | null;
+  targetProfitMargin?: number;
   floorTypeMultipliers?: Record<string, number>;
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
+  trafficMultipliers?: Record<string, number>;
   buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
@@ -45,9 +78,21 @@ export interface UpdatePricingSettingsInput {
   name?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
+  hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  sqftPerLaborHour?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  travelCostPerVisit?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  supplyCostPerSqFt?: number | null;
+  targetProfitMargin?: number;
   floorTypeMultipliers?: Record<string, number>;
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
+  trafficMultipliers?: Record<string, number>;
   buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
@@ -106,7 +151,8 @@ export async function restorePricingSettings(id: string): Promise<PricingSetting
 // Facility Pricing API
 // ============================================================
 
-export interface AreaPricingBreakdown {
+// Detailed cost breakdown for an area
+export interface AreaCostBreakdown {
   areaId: string;
   areaName: string;
   areaTypeName: string;
@@ -114,13 +160,41 @@ export interface AreaPricingBreakdown {
   floorType: string;
   conditionLevel: string;
   quantity: number;
-  basePrice: number;
+
+  // Labor breakdown
+  laborHours: number;
+  laborCostBase: number;
+  laborBurden: number;
+  totalLaborCost: number;
+
+  // Overhead breakdown
+  insuranceCost: number;
+  adminOverheadCost: number;
+  equipmentCost: number;
+
+  // Supply cost
+  supplyCost: number;
+
+  // Cost totals
+  totalCostPerVisit: number;
+
+  // Multipliers applied
   floorMultiplier: number;
   conditionMultiplier: number;
-  frequencyMultiplier: number;
-  taskComplexityAddOn: number;
-  priceBeforeFrequency: number;
-  areaTotal: number;
+
+  // Final pricing
+  pricePerVisit: number;
+  monthlyVisits: number;
+  monthlyPrice: number;
+}
+
+// Legacy interface for backwards compatibility
+export interface AreaPricingBreakdown extends AreaCostBreakdown {
+  basePrice?: number;
+  frequencyMultiplier?: number;
+  taskComplexityAddOn?: number;
+  priceBeforeFrequency?: number;
+  areaTotal?: number;
 }
 
 export interface PricingSettingsSnapshot {
@@ -128,26 +202,71 @@ export interface PricingSettingsSnapshot {
   pricingSettingsName: string;
   baseRatePerSqFt: number;
   minimumMonthlyCharge: number;
+  hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  sqftPerLaborHour?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  travelCostPerVisit?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  targetProfitMargin?: number;
   floorTypeMultipliers: Record<string, number>;
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
+  trafficMultipliers?: Record<string, number>;
   buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string;
+  workerCount?: number;
+}
+
+// Aggregate cost breakdown per visit
+export interface CostBreakdown {
+  totalLaborCost: number;
+  totalLaborHours: number;
+  totalInsuranceCost: number;
+  totalAdminOverheadCost: number;
+  totalEquipmentCost: number;
+  totalTravelCost: number;
+  totalSupplyCost: number;
+  totalCostPerVisit: number;
 }
 
 export interface FacilityPricingResult {
   facilityId: string;
   facilityName: string;
   buildingType: string;
-  buildingMultiplier: number;
   serviceFrequency: string;
   totalSquareFeet: number;
-  areas: AreaPricingBreakdown[];
-  subtotal: number;
+
+  // Per-area breakdowns
+  areas: AreaCostBreakdown[];
+
+  // Aggregate cost breakdown (per visit)
+  costBreakdown: CostBreakdown;
+
+  // Monthly totals
+  monthlyVisits: number;
+  monthlyCostBeforeProfit: number;
+  profitAmount: number;
+  profitMarginApplied: number;
+
+  // Building adjustment
+  buildingMultiplier: number;
   buildingAdjustment: number;
+
+  // Task complexity
+  taskComplexityAddOn: number;
+  taskComplexityAmount: number;
+
+  // Final monthly price
+  subtotal: number;
   monthlyTotal: number;
   minimumApplied: boolean;
+
+  // Pricing source
   pricingSettingsId: string;
   pricingSettingsName: string;
 }
@@ -210,10 +329,12 @@ export interface FacilityProposalTemplate {
 
 export async function getFacilityProposalTemplate(
   facilityId: string,
-  frequency: string = '5x_week'
+  frequency: string = '5x_week',
+  strategyKey?: string,
+  workerCount?: number
 ): Promise<FacilityProposalTemplate> {
   const response = await api.get(`/facilities/${facilityId}/proposal-template`, {
-    params: { frequency },
+    params: { frequency, strategyKey, workerCount },
   });
   return response.data.data;
 }
@@ -349,11 +470,13 @@ export async function changeProposalPricingStrategy(
 export async function recalculateProposalPricing(
   proposalId: string,
   serviceFrequency: string,
-  lockAfterRecalculation: boolean = false
+  lockAfterRecalculation: boolean = false,
+  workerCount?: number
 ): Promise<any> {
   const response = await api.post(`/proposals/${proposalId}/pricing/recalculate`, {
     serviceFrequency,
     lockAfterRecalculation,
+    workerCount,
   });
   return response.data.data;
 }
@@ -361,10 +484,11 @@ export async function recalculateProposalPricing(
 export async function getProposalPricingPreview(
   proposalId: string,
   serviceFrequency: string,
-  strategyKey?: string
+  strategyKey?: string,
+  workerCount?: number
 ): Promise<PricingBreakdown> {
   const response = await api.get(`/proposals/${proposalId}/pricing/preview`, {
-    params: { serviceFrequency, strategyKey },
+    params: { serviceFrequency, strategyKey, workerCount },
   });
   return response.data.data;
 }

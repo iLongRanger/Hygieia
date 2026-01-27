@@ -15,9 +15,11 @@ export interface PricingSettingsCreateInput {
   name: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
+  hourlyRate?: number;
   floorTypeMultipliers?: object;
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
+  trafficMultipliers?: object;
   buildingTypeMultipliers?: object;
   taskComplexityAddOns?: object;
   isActive?: boolean;
@@ -27,9 +29,11 @@ export interface PricingSettingsUpdateInput {
   name?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
+  hourlyRate?: number;
   floorTypeMultipliers?: object;
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
+  trafficMultipliers?: object;
   buildingTypeMultipliers?: object;
   taskComplexityAddOns?: object;
   isActive?: boolean;
@@ -50,9 +54,11 @@ const pricingSettingsSelect = {
   name: true,
   baseRatePerSqFt: true,
   minimumMonthlyCharge: true,
+  hourlyRate: true,
   floorTypeMultipliers: true,
   frequencyMultipliers: true,
   conditionMultipliers: true,
+  trafficMultipliers: true,
   buildingTypeMultipliers: true,
   taskComplexityAddOns: true,
   isActive: true,
@@ -170,6 +176,12 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
     hard: 1.33,
   };
 
+  const defaultTrafficMultipliers = {
+    low: 0.9,
+    medium: 1.0,
+    high: 1.15,
+  };
+
   const defaultBuildingTypeMultipliers = {
     office: 1.0,
     medical: 1.3,
@@ -194,9 +206,11 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
       name: input.name,
       baseRatePerSqFt: input.baseRatePerSqFt ?? 0.10,
       minimumMonthlyCharge: input.minimumMonthlyCharge ?? 250,
+      hourlyRate: input.hourlyRate ?? 35.00,
       floorTypeMultipliers: input.floorTypeMultipliers ?? defaultFloorTypeMultipliers,
       frequencyMultipliers: input.frequencyMultipliers ?? defaultFrequencyMultipliers,
       conditionMultipliers: input.conditionMultipliers ?? defaultConditionMultipliers,
+      trafficMultipliers: input.trafficMultipliers ?? defaultTrafficMultipliers,
       buildingTypeMultipliers: input.buildingTypeMultipliers ?? defaultBuildingTypeMultipliers,
       taskComplexityAddOns: input.taskComplexityAddOns ?? defaultTaskComplexityAddOns,
       isActive: input.isActive ?? true,
@@ -211,9 +225,11 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
   if (input.name !== undefined) updateData.name = input.name;
   if (input.baseRatePerSqFt !== undefined) updateData.baseRatePerSqFt = input.baseRatePerSqFt;
   if (input.minimumMonthlyCharge !== undefined) updateData.minimumMonthlyCharge = input.minimumMonthlyCharge;
+  if (input.hourlyRate !== undefined) updateData.hourlyRate = input.hourlyRate;
   if (input.floorTypeMultipliers !== undefined) updateData.floorTypeMultipliers = input.floorTypeMultipliers;
   if (input.frequencyMultipliers !== undefined) updateData.frequencyMultipliers = input.frequencyMultipliers;
   if (input.conditionMultipliers !== undefined) updateData.conditionMultipliers = input.conditionMultipliers;
+  if (input.trafficMultipliers !== undefined) updateData.trafficMultipliers = input.trafficMultipliers;
   if (input.buildingTypeMultipliers !== undefined) updateData.buildingTypeMultipliers = input.buildingTypeMultipliers;
   if (input.taskComplexityAddOns !== undefined) updateData.taskComplexityAddOns = input.taskComplexityAddOns;
   if (input.isActive !== undefined) updateData.isActive = input.isActive;

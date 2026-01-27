@@ -18,6 +18,7 @@ import type {
   TasksGroupedByArea,
   TasksGroupedByFrequency,
   CleaningFrequency,
+  FixtureType,
 } from '../types/facility';
 
 export async function listFacilities(params?: {
@@ -74,6 +75,42 @@ export async function listAreaTypes(params?: {
 }): Promise<PaginatedResponse<AreaType>> {
   const response = await api.get('/area-types', { params });
   return response.data;
+}
+
+// Fixture Types
+export async function listFixtureTypes(params?: {
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+  search?: string;
+}): Promise<PaginatedResponse<FixtureType>> {
+  const response = await api.get('/fixture-types', { params });
+  return response.data;
+}
+
+export async function createFixtureType(data: {
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}): Promise<FixtureType> {
+  const response = await api.post('/fixture-types', data);
+  return response.data.data;
+}
+
+export async function updateFixtureType(
+  id: string,
+  data: {
+    name?: string;
+    description?: string | null;
+    isActive?: boolean;
+  }
+): Promise<FixtureType> {
+  const response = await api.patch(`/fixture-types/${id}`, data);
+  return response.data.data;
+}
+
+export async function deleteFixtureType(id: string): Promise<void> {
+  await api.delete(`/fixture-types/${id}`);
 }
 
 export async function getAreaType(id: string): Promise<AreaType> {
@@ -207,11 +244,15 @@ export async function deleteFacilityTask(id: string): Promise<void> {
 
 export async function bulkCreateFacilityTasks(
   facilityId: string,
-  taskTemplateIds: string[]
+  taskTemplateIds: string[],
+  areaId?: string | null,
+  cleaningFrequency?: string
 ): Promise<{ count: number }> {
   const response = await api.post('/facility-tasks/bulk', {
     facilityId,
     taskTemplateIds,
+    areaId,
+    cleaningFrequency,
   });
   return response.data.data;
 }

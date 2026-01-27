@@ -8,6 +8,7 @@ export interface AreaListParams {
   areaTypeId?: string;
   floorType?: string;
   conditionLevel?: string;
+  trafficLevel?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -22,7 +23,11 @@ export interface AreaCreateInput {
   squareFeet?: number | null;
   floorType?: string;
   conditionLevel?: string;
+  roomCount?: number;
+  unitCount?: number;
+  trafficLevel?: string;
   notes?: string | null;
+  fixtures?: { fixtureTypeId: string; count: number }[];
   createdByUserId: string;
 }
 
@@ -33,7 +38,11 @@ export interface AreaUpdateInput {
   squareFeet?: number | null;
   floorType?: string;
   conditionLevel?: string;
+  roomCount?: number;
+  unitCount?: number;
+  trafficLevel?: string;
   notes?: string | null;
+  fixtures?: { fixtureTypeId: string; count: number }[];
 }
 
 export interface PaginatedResult<T> {
@@ -53,6 +62,9 @@ const areaSelect = {
   squareFeet: true,
   floorType: true,
   conditionLevel: true,
+  roomCount: true,
+  unitCount: true,
+  trafficLevel: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
@@ -78,6 +90,18 @@ const areaSelect = {
       fullName: true,
     },
   },
+  fixtures: {
+    select: {
+      id: true,
+      count: true,
+      fixtureType: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
   _count: {
     select: {
       facilityTasks: true,
@@ -97,6 +121,7 @@ export async function listAreas(
     areaTypeId,
     floorType,
     conditionLevel,
+    trafficLevel,
     search,
     sortBy = 'createdAt',
     sortOrder = 'desc',
@@ -123,6 +148,10 @@ export async function listAreas(
 
   if (conditionLevel) {
     where.conditionLevel = conditionLevel;
+  }
+
+  if (trafficLevel) {
+    where.trafficLevel = trafficLevel;
   }
 
   if (search) {
@@ -174,8 +203,17 @@ export async function createArea(input: AreaCreateInput) {
       squareFeet: input.squareFeet,
       floorType: input.floorType ?? 'vct',
       conditionLevel: input.conditionLevel ?? 'standard',
+      roomCount: input.roomCount ?? 0,
+      unitCount: input.unitCount ?? 0,
+      trafficLevel: input.trafficLevel ?? 'medium',
       notes: input.notes,
       createdByUserId: input.createdByUserId,
+      fixtures: input.fixtures && input.fixtures.length > 0 ? {
+        create: input.fixtures.map((fixture) => ({
+          fixtureTypeId: fixture.fixtureTypeId,
+          count: fixture.count,
+        })),
+      } : undefined,
     },
     select: areaSelect,
   });
@@ -193,7 +231,19 @@ export async function updateArea(id: string, input: AreaUpdateInput) {
   if (input.floorType !== undefined) updateData.floorType = input.floorType;
   if (input.conditionLevel !== undefined)
     updateData.conditionLevel = input.conditionLevel;
+  if (input.roomCount !== undefined) updateData.roomCount = input.roomCount;
+  if (input.unitCount !== undefined) updateData.unitCount = input.unitCount;
+  if (input.trafficLevel !== undefined) updateData.trafficLevel = input.trafficLevel;
   if (input.notes !== undefined) updateData.notes = input.notes;
+  if (input.fixtures !== undefined) {
+    updateData.fixtures = {
+      deleteMany: {},
+      create: input.fixtures.map((fixture) => ({
+        fixtureTypeId: fixture.fixtureTypeId,
+        count: fixture.count,
+      })),
+    };
+  }
 
   return prisma.area.update({
     where: { id },

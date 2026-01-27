@@ -22,7 +22,11 @@ export const createFacilityTaskSchema = z
       .nullable()
       .transform((val) => (val?.trim() === '' ? null : val)),
     customInstructions: z.string().max(50000).optional().nullable(),
-    estimatedMinutes: z.coerce.number().int().min(1).optional().nullable(),
+    estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
+    baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+    perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+    perUnitMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+    perRoomMinutesOverride: z.coerce.number().min(0).optional().nullable(),
     isRequired: z.boolean().optional().default(true),
     cleaningFrequency: cleaningFrequencySchema.optional().default('daily'),
     conditionMultiplier: z.coerce
@@ -32,6 +36,12 @@ export const createFacilityTaskSchema = z
       .optional()
       .default(1.0),
     priority: z.coerce.number().int().min(1).max(5).optional().default(3),
+    fixtureMinutes: z.array(
+      z.object({
+        fixtureTypeId: z.string().uuid(),
+        minutesPerFixture: z.coerce.number().min(0),
+      })
+    ).optional().default([]),
   })
   .refine((data) => data.customName || data.taskTemplateId, {
     message: 'Either customName or taskTemplateId must be provided',
@@ -43,11 +53,21 @@ export const updateFacilityTaskSchema = z.object({
   taskTemplateId: z.string().uuid().optional().nullable(),
   customName: z.string().max(255).optional().nullable(),
   customInstructions: z.string().max(50000).optional().nullable(),
-  estimatedMinutes: z.coerce.number().int().min(1).optional().nullable(),
+  estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
+  baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+  perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+  perUnitMinutesOverride: z.coerce.number().min(0).optional().nullable(),
+  perRoomMinutesOverride: z.coerce.number().min(0).optional().nullable(),
   isRequired: z.boolean().optional(),
   cleaningFrequency: cleaningFrequencySchema.optional(),
   conditionMultiplier: z.coerce.number().min(0.1).max(5).optional(),
   priority: z.coerce.number().int().min(1).max(5).optional(),
+  fixtureMinutes: z.array(
+    z.object({
+      fixtureTypeId: z.string().uuid(),
+      minutesPerFixture: z.coerce.number().min(0),
+    })
+  ).optional(),
 });
 
 export const listFacilityTasksQuerySchema = z.object({

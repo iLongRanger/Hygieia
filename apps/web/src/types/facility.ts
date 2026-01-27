@@ -96,6 +96,25 @@ export interface UpdateAreaTypeInput {
 
 export type FloorType = 'vct' | 'carpet' | 'hardwood' | 'tile' | 'concrete' | 'epoxy';
 export type ConditionLevel = 'standard' | 'medium' | 'hard';
+export type TrafficLevel = 'low' | 'medium' | 'high';
+
+export interface FixtureType {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AreaFixture {
+  id: string;
+  count: number;
+  fixtureType: {
+    id: string;
+    name: string;
+  };
+}
 
 export interface Area {
   id: string;
@@ -104,6 +123,9 @@ export interface Area {
   squareFeet: string | null;
   floorType: FloorType;
   conditionLevel: ConditionLevel;
+  roomCount: number;
+  unitCount: number;
+  trafficLevel: TrafficLevel;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -123,6 +145,7 @@ export interface Area {
     id: string;
     fullName: string;
   };
+  fixtures: AreaFixture[];
   _count: {
     facilityTasks: number;
   };
@@ -136,7 +159,11 @@ export interface CreateAreaInput {
   squareFeet?: number | null;
   floorType?: FloorType;
   conditionLevel?: ConditionLevel;
+  roomCount?: number;
+  unitCount?: number;
+  trafficLevel?: TrafficLevel;
   notes?: string | null;
+  fixtures?: { fixtureTypeId: string; count: number }[];
 }
 
 export interface UpdateAreaInput {
@@ -146,7 +173,11 @@ export interface UpdateAreaInput {
   squareFeet?: number | null;
   floorType?: FloorType;
   conditionLevel?: ConditionLevel;
+  roomCount?: number;
+  unitCount?: number;
+  trafficLevel?: TrafficLevel;
   notes?: string | null;
+  fixtures?: { fixtureTypeId: string; count: number }[];
 }
 
 export interface Pagination {
@@ -176,6 +207,10 @@ export interface TaskTemplate {
   description: string | null;
   cleaningType: string;
   estimatedMinutes: number | null;
+  baseMinutes: string;
+  perSqftMinutes: string;
+  perUnitMinutes: string;
+  perRoomMinutes: string;
   difficultyLevel: number;
   requiredEquipment: string[];
   requiredSupplies: string[];
@@ -199,6 +234,14 @@ export interface TaskTemplate {
     id: string;
     fullName: string;
   };
+  fixtureMinutes: {
+    id: string;
+    minutesPerFixture: string;
+    fixtureType: {
+      id: string;
+      name: string;
+    };
+  }[];
   _count: {
     facilityTasks: number;
   };
@@ -209,6 +252,10 @@ export interface FacilityTask {
   customName: string | null;
   customInstructions: string | null;
   estimatedMinutes: number | null;
+  baseMinutesOverride: string | null;
+  perSqftMinutesOverride: string | null;
+  perUnitMinutesOverride: string | null;
+  perRoomMinutesOverride: string | null;
   isRequired: boolean;
   cleaningFrequency: CleaningFrequency;
   conditionMultiplier: number;
@@ -234,12 +281,24 @@ export interface FacilityTask {
     name: string;
     cleaningType: string;
     estimatedMinutes: number | null;
+    baseMinutes: string;
+    perSqftMinutes: string;
+    perUnitMinutes: string;
+    perRoomMinutes: string;
     difficultyLevel: number;
   } | null;
   createdByUser: {
     id: string;
     fullName: string;
   };
+  fixtureMinutes: {
+    id: string;
+    minutesPerFixture: string;
+    fixtureType: {
+      id: string;
+      name: string;
+    };
+  }[];
 }
 
 export interface CreateFacilityTaskInput {
@@ -249,10 +308,15 @@ export interface CreateFacilityTaskInput {
   customName?: string | null;
   customInstructions?: string | null;
   estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: CleaningFrequency;
   conditionMultiplier?: number;
   priority?: number;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
 }
 
 export interface UpdateFacilityTaskInput {
@@ -261,10 +325,15 @@ export interface UpdateFacilityTaskInput {
   customName?: string | null;
   customInstructions?: string | null;
   estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: CleaningFrequency;
   conditionMultiplier?: number;
   priority?: number;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
 }
 
 export interface TasksGroupedByArea {
