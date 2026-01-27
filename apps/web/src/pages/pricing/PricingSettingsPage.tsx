@@ -25,6 +25,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Table } from '../../components/ui/Table';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Textarea } from '../../components/ui/Textarea';
 import {
   listPricingSettings,
   getPricingSettings,
@@ -37,6 +38,13 @@ import {
   type CreatePricingSettingsInput,
   type UpdatePricingSettingsInput,
 } from '../../lib/pricing';
+import {
+  listFixtureTypes,
+  createFixtureType,
+  updateFixtureType,
+  deleteFixtureType,
+} from '../../lib/facilities';
+import type { FixtureType } from '../../types/facility';
 
 // Default multiplier keys
 const DEFAULT_FLOOR_TYPES = ['vct', 'carpet', 'hardwood', 'tile', 'concrete', 'epoxy'];
@@ -103,6 +111,18 @@ const PricingSettingsPage = () => {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
+  const [fixtureLoading, setFixtureLoading] = useState(false);
+  const [showFixtureModal, setShowFixtureModal] = useState(false);
+  const [fixtureForm, setFixtureForm] = useState({
+    id: '',
+    name: '',
+    description: '',
+    isActive: true,
+  });
+  const [fixtureSaving, setFixtureSaving] = useState(false);
+  const [fixtureDeleteId, setFixtureDeleteId] = useState<string | null>(null);
+  const [includeInactiveFixtures, setIncludeInactiveFixtures] = useState(false);
 
   const [formData, setFormData] = useState<UpdatePricingSettingsInput>({});
   const [createFormData, setCreateFormData] = useState<CreatePricingSettingsInput>({
@@ -148,6 +168,23 @@ const PricingSettingsPage = () => {
     }
   }, [includeArchived]);
 
+  const fetchFixtureTypes = useCallback(async () => {
+    try {
+      setFixtureLoading(true);
+      const response = await listFixtureTypes({
+        limit: 100,
+        isActive: includeInactiveFixtures ? undefined : true,
+      });
+      setFixtureTypes(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch fixture types:', error);
+      toast.error('Failed to load fixture types');
+      setFixtureTypes([]);
+    } finally {
+      setFixtureLoading(false);
+    }
+  }, [includeInactiveFixtures]);
+
   const loadSettings = async (id: string) => {
     try {
       const data = await getPricingSettings(id);
@@ -189,6 +226,10 @@ const PricingSettingsPage = () => {
   useEffect(() => {
     fetchSettingsList();
   }, [fetchSettingsList]);
+
+  useEffect(() => {
+    fetchFixtureTypes();
+  }, [fetchFixtureTypes]);
 
   const handleSave = async () => {
     if (!selectedSettings) return;
@@ -277,6 +318,140 @@ const PricingSettingsPage = () => {
       toast.error('Failed to restore pricing settings');
     }
   };
+
+  const openCreateFixtureModal = () => {
+    setFixtureForm({
+      id: '',
+      name: '',
+      description: '',
+      isActive: true,
+    });
+    setShowFixtureModal(true);
+  };
+
+  const openEditFixtureModal = (fixture: FixtureType) => {
+    setFixtureForm({
+      id: fixture.id,
+      name: fixture.name,
+      description: fixture.description || '',
+      isActive: fixture.isActive,
+    });
+    setShowFixtureModal(true);
+  };
+
+  const handleSaveFixture = async () => {
+    if (!fixtureForm.name.trim()) {
+      toast.error('Please enter a fixture type name');
+      return;
+    }
+
+    try {
+      setFixtureSaving(true);
+      if (fixtureForm.id) {
+        await updateFixtureType(fixtureForm.id, {
+          name: fixtureForm.name.trim(),
+          description: fixtureForm.description || null,
+          isActive: fixtureForm.isActive,
+        });
+        toast.success('Fixture type updated');
+      } else {
+        await createFixtureType({
+          name: fixtureForm.name.trim(),
+          description: fixtureForm.description || null,
+          isActive: fixtureForm.isActive,
+        });
+        toast.success('Fixture type created');
+      }
+      setShowFixtureModal(false);
+      await fetchFixtureTypes();
+    } catch (error) {
+      console.error('Failed to save fixture type:', error);
+      toast.error('Failed to save fixture type');
+    } finally {
+      setFixtureSaving(false);
+    }
+  };
+
+  const handleDeleteFixture = async () => {
+    if (!fixtureDeleteId) return;
+    try {
+      await deleteFixtureType(fixtureDeleteId);
+      toast.success('Fixture type deleted');
+      setFixtureDeleteId(null);
+      await fetchFixtureTypes();
+    } catch (error) {
+      console.error('Failed to delete fixture type:', error);
+      toast.error('Failed to delete fixture type');
+    }
+  };
+
+  const fixtureColumns = [
+    {
+      header: 'Fixture Type',
+      cell: (item: FixtureType) => (
+        <div>
+          <div className="font-medium text-white">{item.name}</div>
+          {item.description ? (
+            <div className="text-sm text-gray-400">{item.description}</div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      header: 'Status',
+      cell: (item: FixtureType) => (
+        <Badge variant={item.isActive ? 'success' : 'default'}>
+          {item.isActive ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Actions',
+      cell: (item: FixtureType) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditFixtureModal(item);
+            }}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await updateFixtureType(item.id, { isActive: !item.isActive });
+                toast.success(item.isActive ? 'Fixture type deactivated' : 'Fixture type activated');
+                fetchFixtureTypes();
+              } catch (error) {
+                console.error('Failed to toggle fixture type:', error);
+                toast.error('Failed to update fixture type');
+              }
+            }}
+            title={item.isActive ? 'Deactivate' : 'Activate'}
+          >
+            {item.isActive ? <Archive className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFixtureDeleteId(item.id);
+            }}
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   const updateMultiplier = (
     category: 'floorTypeMultipliers' | 'frequencyMultipliers' | 'conditionMultipliers' | 'trafficMultipliers' | 'buildingTypeMultipliers' | 'taskComplexityAddOns',
@@ -742,6 +917,38 @@ const PricingSettingsPage = () => {
               </div>
             </Card>
 
+            {/* Fixture Types */}
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Fixture Types</h3>
+                  <p className="text-sm text-gray-400">
+                    Manage fixture types used in area fixtures and task minutes.
+                  </p>
+                </div>
+                <Button onClick={openCreateFixtureModal}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Fixture Type
+                </Button>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={includeInactiveFixtures}
+                  onChange={(e) => setIncludeInactiveFixtures(e.target.checked)}
+                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                />
+                <span>Include inactive</span>
+              </div>
+              <div className="mt-4">
+                <Table
+                  data={fixtureTypes}
+                  columns={fixtureColumns}
+                  isLoading={fixtureLoading}
+                />
+              </div>
+            </Card>
+
             {/* Supply Cost Settings */}
             <Card>
               <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
@@ -1111,6 +1318,46 @@ const PricingSettingsPage = () => {
         </div>
       </Modal>
 
+      {/* Fixture Type Modal */}
+      <Modal
+        isOpen={showFixtureModal}
+        onClose={() => setShowFixtureModal(false)}
+        title={fixtureForm.id ? 'Edit Fixture Type' : 'Create Fixture Type'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Name"
+            placeholder="e.g., Toilet"
+            value={fixtureForm.name}
+            onChange={(e) => setFixtureForm({ ...fixtureForm, name: e.target.value })}
+          />
+          <Textarea
+            label="Description"
+            placeholder="Optional notes about this fixture type"
+            value={fixtureForm.description}
+            onChange={(e) => setFixtureForm({ ...fixtureForm, description: e.target.value })}
+          />
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={fixtureForm.isActive}
+              onChange={(e) => setFixtureForm({ ...fixtureForm, isActive: e.target.checked })}
+              className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+            />
+            Active
+          </label>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowFixtureModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveFixture} isLoading={fixtureSaving}>
+              Save Fixture Type
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Archive Confirm */}
       <ConfirmDialog
         isOpen={showArchiveConfirm}
@@ -1119,6 +1366,15 @@ const PricingSettingsPage = () => {
         title="Archive Pricing Settings"
         message={`Are you sure you want to archive "${selectedSettings?.name}"? You can restore it later if needed.`}
         variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(fixtureDeleteId)}
+        onClose={() => setFixtureDeleteId(null)}
+        onConfirm={handleDeleteFixture}
+        title="Delete Fixture Type"
+        message="Are you sure you want to delete this fixture type? This cannot be undone."
+        variant="danger"
       />
     </div>
   );
