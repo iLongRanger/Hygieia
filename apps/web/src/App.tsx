@@ -18,6 +18,7 @@ import FacilitiesList from './pages/facilities/FacilitiesList';
 import FacilityDetail from './pages/facilities/FacilityDetail';
 import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
+import AreaTemplatesPage from './pages/areas/AreaTemplatesPage';
 import PricingRulesList from './pages/pricing/PricingRulesList';
 import PricingRuleDetail from './pages/pricing/PricingRuleDetail';
 import PricingSettingsPage from './pages/pricing/PricingSettingsPage';
@@ -71,6 +72,7 @@ function App() {
             <Route path="/facilities/:id" element={<FacilityDetail />} />
             <Route path="/tasks" element={<TaskTemplatesList />} />
             <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
+            <Route path="/area-templates" element={<AreaTemplatesPage />} />
             <Route path="/pricing" element={<PricingRulesList />} />
             <Route path="/pricing/settings" element={<PricingSettingsPage />} />
             <Route path="/pricing/:id" element={<PricingRuleDetail />} />

@@ -54,6 +54,7 @@ const TaskTemplateDetail = () => {
   const [template, setTemplate] = useState<TaskTemplate | null>(null);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
+  const taskFixtureTypes = fixtureTypes.filter((type) => type.category === 'fixture');
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -516,11 +517,11 @@ const TaskTemplateDetail = () => {
 
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-200">Fixture Minutes</div>
-            {fixtureTypes.length === 0 ? (
+            {taskFixtureTypes.length === 0 ? (
               <div className="text-sm text-gray-500">No fixture types available.</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {fixtureTypes.map((fixtureType) => (
+                {taskFixtureTypes.map((fixtureType) => (
                   <Input
                     key={fixtureType.id}
                     label={fixtureType.name}

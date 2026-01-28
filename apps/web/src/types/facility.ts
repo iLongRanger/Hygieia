@@ -102,6 +102,8 @@ export interface FixtureType {
   id: string;
   name: string;
   description: string | null;
+  category: 'fixture' | 'furniture';
+  defaultMinutesPerItem: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -110,9 +112,11 @@ export interface FixtureType {
 export interface AreaFixture {
   id: string;
   count: number;
+  minutesPerItem: string;
   fixtureType: {
     id: string;
     name: string;
+    category: 'fixture' | 'furniture';
   };
 }
 
@@ -163,7 +167,7 @@ export interface CreateAreaInput {
   unitCount?: number;
   trafficLevel?: TrafficLevel;
   notes?: string | null;
-  fixtures?: { fixtureTypeId: string; count: number }[];
+  fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
 }
 
 export interface UpdateAreaInput {
@@ -177,7 +181,70 @@ export interface UpdateAreaInput {
   unitCount?: number;
   trafficLevel?: TrafficLevel;
   notes?: string | null;
-  fixtures?: { fixtureTypeId: string; count: number }[];
+  fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
+}
+
+export interface AreaTemplate {
+  id: string;
+  name: string | null;
+  defaultSquareFeet: string | null;
+  createdAt: string;
+  updatedAt: string;
+  areaType: {
+    id: string;
+    name: string;
+    defaultSquareFeet: string | null;
+  };
+  items: {
+    id: string;
+    defaultCount: number;
+    minutesPerItem: string;
+    sortOrder: number;
+    fixtureType: FixtureType;
+  }[];
+  tasks: {
+    id: string;
+    name: string;
+    baseMinutes: string;
+    perSqftMinutes: string;
+    perUnitMinutes: string;
+    perRoomMinutes: string;
+    sortOrder: number;
+  }[];
+  createdByUser: {
+    id: string;
+    fullName: string;
+  };
+}
+
+export interface CreateAreaTemplateInput {
+  areaTypeId: string;
+  name?: string | null;
+  defaultSquareFeet?: number | null;
+  items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
+  tasks?: {
+    name: string;
+    baseMinutes?: number;
+    perSqftMinutes?: number;
+    perUnitMinutes?: number;
+    perRoomMinutes?: number;
+    sortOrder?: number;
+  }[];
+}
+
+export interface UpdateAreaTemplateInput {
+  areaTypeId?: string;
+  name?: string | null;
+  defaultSquareFeet?: number | null;
+  items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
+  tasks?: {
+    name: string;
+    baseMinutes?: number;
+    perSqftMinutes?: number;
+    perUnitMinutes?: number;
+    perRoomMinutes?: number;
+    sortOrder?: number;
+  }[];
 }
 
 export interface Pagination {

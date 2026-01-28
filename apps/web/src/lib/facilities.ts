@@ -19,6 +19,9 @@ import type {
   TasksGroupedByFrequency,
   CleaningFrequency,
   FixtureType,
+  AreaTemplate,
+  CreateAreaTemplateInput,
+  UpdateAreaTemplateInput,
 } from '../types/facility';
 
 export async function listFacilities(params?: {
@@ -91,6 +94,8 @@ export async function listFixtureTypes(params?: {
 export async function createFixtureType(data: {
   name: string;
   description?: string | null;
+  category?: 'fixture' | 'furniture';
+  defaultMinutesPerItem?: number;
   isActive?: boolean;
 }): Promise<FixtureType> {
   const response = await api.post('/fixture-types', data);
@@ -102,6 +107,8 @@ export async function updateFixtureType(
   data: {
     name?: string;
     description?: string | null;
+    category?: 'fixture' | 'furniture';
+    defaultMinutesPerItem?: number;
     isActive?: boolean;
   }
 ): Promise<FixtureType> {
@@ -111,6 +118,36 @@ export async function updateFixtureType(
 
 export async function deleteFixtureType(id: string): Promise<void> {
   await api.delete(`/fixture-types/${id}`);
+}
+
+// Area Templates
+export async function listAreaTemplates(params?: {
+  page?: number;
+  limit?: number;
+  areaTypeId?: string;
+  search?: string;
+}): Promise<PaginatedResponse<AreaTemplate>> {
+  const response = await api.get('/area-templates', { params });
+  return response.data;
+}
+
+export async function getAreaTemplateByAreaType(areaTypeId: string): Promise<AreaTemplate> {
+  const response = await api.get(`/area-templates/area-type/${areaTypeId}`);
+  return response.data.data;
+}
+
+export async function createAreaTemplate(data: CreateAreaTemplateInput): Promise<AreaTemplate> {
+  const response = await api.post('/area-templates', data);
+  return response.data.data;
+}
+
+export async function updateAreaTemplate(id: string, data: UpdateAreaTemplateInput): Promise<AreaTemplate> {
+  const response = await api.patch(`/area-templates/${id}`, data);
+  return response.data.data;
+}
+
+export async function deleteAreaTemplate(id: string): Promise<void> {
+  await api.delete(`/area-templates/${id}`);
 }
 
 export async function getAreaType(id: string): Promise<AreaType> {

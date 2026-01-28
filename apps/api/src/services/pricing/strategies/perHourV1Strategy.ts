@@ -139,7 +139,7 @@ export class PerHourV1Strategy implements PricingStrategy {
         const fixtureSummary = fixtures
           .map((fixture) => `${fixture.name} x${fixture.count}`)
           .join(', ');
-        descriptionParts.push(`Fixtures: ${fixtureSummary}`);
+        descriptionParts.push(`Items: ${fixtureSummary}`);
       }
 
       const frequencyOrder = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'annual'];

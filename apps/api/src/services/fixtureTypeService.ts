@@ -13,12 +13,16 @@ export interface FixtureTypeListParams {
 export interface FixtureTypeCreateInput {
   name: string;
   description?: string | null;
+  category?: 'fixture' | 'furniture';
+  defaultMinutesPerItem?: number;
   isActive?: boolean;
 }
 
 export interface FixtureTypeUpdateInput {
   name?: string;
   description?: string | null;
+  category?: 'fixture' | 'furniture';
+  defaultMinutesPerItem?: number;
   isActive?: boolean;
 }
 
@@ -36,6 +40,8 @@ const fixtureTypeSelect = {
   id: true,
   name: true,
   description: true,
+  category: true,
+  defaultMinutesPerItem: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -102,6 +108,8 @@ export async function createFixtureType(input: FixtureTypeCreateInput) {
     data: {
       name: input.name,
       description: input.description,
+      category: input.category ?? 'fixture',
+      defaultMinutesPerItem: input.defaultMinutesPerItem ?? 0,
       isActive: input.isActive ?? true,
     },
     select: fixtureTypeSelect,
@@ -113,6 +121,10 @@ export async function updateFixtureType(id: string, input: FixtureTypeUpdateInpu
 
   if (input.name !== undefined) updateData.name = input.name;
   if (input.description !== undefined) updateData.description = input.description;
+  if (input.category !== undefined) updateData.category = input.category;
+  if (input.defaultMinutesPerItem !== undefined) {
+    updateData.defaultMinutesPerItem = input.defaultMinutesPerItem;
+  }
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
   return prisma.fixtureType.update({

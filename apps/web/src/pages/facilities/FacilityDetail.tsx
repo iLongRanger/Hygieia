@@ -38,6 +38,7 @@ import {
   deleteArea,
   listAreaTypes,
   listFixtureTypes,
+  getAreaTemplateByAreaType,
   listFacilityTasks,
   createFacilityTask,
   updateFacilityTask,
@@ -104,6 +105,18 @@ const CLEANING_FREQUENCIES = [
   { value: 'as_needed', label: 'As Needed' },
 ];
 
+type AreaTemplateTaskSelection = {
+  id: string;
+  name: string;
+  baseMinutes: number;
+  perSqftMinutes: number;
+  perUnitMinutes: number;
+  perRoomMinutes: number;
+  include: boolean;
+};
+
+type AreaItemInput = NonNullable<CreateAreaInput['fixtures']>[0];
+
 const FacilityDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -115,6 +128,8 @@ const FacilityDetail = () => {
   const [tasks, setTasks] = useState<FacilityTask[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
+  const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
+  const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
@@ -246,6 +261,51 @@ const FacilityDetail = () => {
     }
   }, []);
 
+  const applyAreaTemplate = useCallback(async (areaTypeId: string) => {
+    if (!areaTypeId || editingArea) {
+      setAreaTemplateTasks([]);
+      return;
+    }
+    try {
+      setAreaTemplateLoading(true);
+      const template = await getAreaTemplateByAreaType(areaTypeId);
+      const templateItems = template.items?.map((item) => ({
+        fixtureTypeId: item.fixtureType.id,
+        count: item.defaultCount,
+        minutesPerItem: Number(item.minutesPerItem) || 0,
+      })) || [];
+      const templateTasks = template.tasks?.map((task) => ({
+        id: task.id,
+        name: task.name,
+        baseMinutes: Number(task.baseMinutes) || 0,
+        perSqftMinutes: Number(task.perSqftMinutes) || 0,
+        perUnitMinutes: Number(task.perUnitMinutes) || 0,
+        perRoomMinutes: Number(task.perRoomMinutes) || 0,
+        include: true,
+      })) || [];
+
+      setAreaTemplateTasks(templateTasks);
+      setAreaForm((prev) => {
+        const areaType = areaTypes.find((type) => type.id === areaTypeId);
+        const defaultSquareFeet = template.defaultSquareFeet
+          ? Number(template.defaultSquareFeet)
+          : areaType?.defaultSquareFeet
+            ? Number(areaType.defaultSquareFeet)
+            : null;
+        return {
+          ...prev,
+          squareFeet: prev.squareFeet ?? defaultSquareFeet,
+          fixtures: templateItems,
+        };
+      });
+    } catch (error) {
+      console.error('Failed to load area template:', error);
+      setAreaTemplateTasks([]);
+    } finally {
+      setAreaTemplateLoading(false);
+    }
+  }, [areaTypes, editingArea]);
+
   useEffect(() => {
     fetchFacility();
     fetchAreas();
@@ -292,12 +352,32 @@ const FacilityDetail = () => {
       if (editingArea) {
         await updateArea(editingArea.id, areaForm as UpdateAreaInput);
       } else {
-        await createArea({ ...areaForm, facilityId: id } as CreateAreaInput);
+        const createdArea = await createArea({ ...areaForm, facilityId: id } as CreateAreaInput);
+        const selectedTemplateTasks = areaTemplateTasks.filter((task) => task.include);
+        if (selectedTemplateTasks.length > 0) {
+          await Promise.all(
+            selectedTemplateTasks.map((task) =>
+              createFacilityTask({
+                facilityId: id,
+                areaId: createdArea.id,
+                taskTemplateId: null,
+                customName: task.name,
+                baseMinutesOverride: task.baseMinutes,
+                perSqftMinutesOverride: task.perSqftMinutes,
+                perUnitMinutesOverride: task.perUnitMinutes,
+                perRoomMinutesOverride: task.perRoomMinutes,
+                cleaningFrequency: 'daily',
+                priority: 3,
+              } as CreateFacilityTaskInput)
+            )
+          );
+        }
       }
       setShowAreaModal(false);
       setEditingArea(null);
       resetAreaForm();
       fetchAreas();
+      fetchTasks();
     } catch (error) {
       console.error('Failed to save area:', error);
     } finally {
@@ -349,6 +429,7 @@ const FacilityDetail = () => {
       notes: null,
       fixtures: [],
     });
+    setAreaTemplateTasks([]);
   };
 
   const resetTaskForm = () => {
@@ -562,34 +643,47 @@ const FacilityDetail = () => {
       fixtures: area.fixtures?.map((fixture) => ({
         fixtureTypeId: fixture.fixtureType.id,
         count: fixture.count,
+        minutesPerItem: fixture.minutesPerItem ? Number(fixture.minutesPerItem) : 0,
       })) || [],
     });
     setShowAreaModal(true);
   };
 
-  const getFixtureCount = (fixtureTypeId: string) => {
-    const fixtures = (areaForm as CreateAreaInput).fixtures || [];
-    return fixtures.find((fixture) => fixture.fixtureTypeId === fixtureTypeId)?.count || 0;
-  };
-
-  const updateFixtureCount = (fixtureTypeId: string, count: number) => {
+  const addItemToArea = () => {
+    const availableType = fixtureTypes[0];
+    if (!availableType) {
+      toast.error('No item types available');
+      return;
+    }
     setAreaForm((prev) => {
-      const currentFixtures = (prev as CreateAreaInput).fixtures || [];
-      const existingIndex = currentFixtures.findIndex(
-        (fixture) => fixture.fixtureTypeId === fixtureTypeId
-      );
-
-      let updatedFixtures = [...currentFixtures];
-      if (existingIndex >= 0) {
-        updatedFixtures[existingIndex] = { fixtureTypeId, count };
-      } else {
-        updatedFixtures.push({ fixtureTypeId, count });
-      }
-
+      const fixtures = (prev as CreateAreaInput).fixtures || [];
       return {
         ...prev,
-        fixtures: updatedFixtures,
+        fixtures: [
+          ...fixtures,
+          {
+            fixtureTypeId: availableType.id,
+            count: 1,
+            minutesPerItem: Number(availableType.defaultMinutesPerItem) || 0,
+          },
+        ],
       };
+    });
+  };
+
+  const updateAreaItem = (index: number, patch: Partial<AreaItemInput>) => {
+    setAreaForm((prev) => {
+      const fixtures = [...((prev as CreateAreaInput).fixtures || [])];
+      fixtures[index] = { ...fixtures[index], ...patch };
+      return { ...prev, fixtures };
+    });
+  };
+
+  const removeAreaItem = (index: number) => {
+    setAreaForm((prev) => {
+      const fixtures = [...((prev as CreateAreaInput).fixtures || [])];
+      fixtures.splice(index, 1);
+      return { ...prev, fixtures };
     });
   };
 
@@ -603,6 +697,8 @@ const FacilityDetail = () => {
     if (address.country) lines.push(address.country);
     return lines.length > 0 ? lines.join('\n') : 'No address';
   };
+
+  const taskFixtureTypes = fixtureTypes.filter((type) => type.category === 'fixture');
 
   const areaColumns = [
     {
@@ -1225,9 +1321,10 @@ const FacilityDetail = () => {
             placeholder="Select area type"
             options={areaTypes.map((at) => ({ value: at.id, label: at.name }))}
             value={(areaForm as CreateAreaInput).areaTypeId || ''}
-            onChange={(value) =>
-              setAreaForm({ ...areaForm, areaTypeId: value })
-            }
+            onChange={(value) => {
+              setAreaForm({ ...areaForm, areaTypeId: value });
+              applyAreaTemplate(value);
+            }}
           />
 
           <Input
@@ -1339,29 +1436,111 @@ const FacilityDetail = () => {
           />
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-200">Fixtures</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-gray-200">Items</div>
+              <Button variant="ghost" size="sm" onClick={addItemToArea}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
             {fixtureTypes.length === 0 ? (
-              <div className="text-sm text-gray-500">No fixture types available.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {fixtureTypes.map((fixtureType) => (
-                  <Input
-                    key={fixtureType.id}
-                    label={fixtureType.name}
-                    type="number"
-                    min={0}
-                    value={getFixtureCount(fixtureType.id)}
-                    onChange={(e) =>
-                      updateFixtureCount(
-                        fixtureType.id,
-                        Math.max(0, Number(e.target.value) || 0)
-                      )
-                    }
-                  />
+              <div className="text-sm text-gray-500">No item types available.</div>
+            ) : (areaForm as CreateAreaInput).fixtures?.length ? (
+              <div className="space-y-3">
+                {(areaForm as CreateAreaInput).fixtures?.map((item, index) => (
+                  <div
+                    key={`${item.fixtureTypeId}-${index}`}
+                    className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-3 sm:grid-cols-4"
+                  >
+                    <Select
+                      label="Item Type"
+                      options={fixtureTypes.map((type) => ({
+                        value: type.id,
+                        label: `${type.name} (${type.category})`,
+                      }))}
+                      value={item.fixtureTypeId}
+                      onChange={(value) => {
+                        const selected = fixtureTypes.find((type) => type.id === value);
+                        updateAreaItem(index, {
+                          fixtureTypeId: value,
+                          minutesPerItem: selected ? Number(selected.defaultMinutesPerItem) || 0 : item.minutesPerItem,
+                        });
+                      }}
+                    />
+                    <Input
+                      label="Count"
+                      type="number"
+                      min={0}
+                      value={item.count}
+                      onChange={(e) =>
+                        updateAreaItem(index, { count: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                    />
+                    <Input
+                      label="Minutes/Item"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={item.minutesPerItem ?? 0}
+                      disabled
+                    />
+                    <div className="flex items-end">
+                      <Button variant="ghost" size="sm" onClick={() => removeAreaItem(index)}>
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
+            ) : (
+              <div className="text-sm text-gray-500">No items added.</div>
             )}
           </div>
+
+          {!editingArea && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-200">Default Tasks</div>
+              {areaTemplateLoading ? (
+                <div className="text-sm text-gray-500">Loading template tasks...</div>
+              ) : areaTemplateTasks.length === 0 ? (
+                <div className="text-sm text-gray-500">No template tasks found.</div>
+              ) : (
+                <div className="space-y-2">
+                  {areaTemplateTasks.map((task, index) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
+                    >
+                      <div>
+                        <div className="font-medium text-white">{task.name}</div>
+                        <div className="text-xs text-gray-500">
+                          Base {task.baseMinutes}m · SqFt {task.perSqftMinutes}m · Unit {task.perUnitMinutes}m · Room {task.perRoomMinutes}m
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={task.include}
+                          onChange={(e) =>
+                            setAreaTemplateTasks((prev) => {
+                              const updated = [...prev];
+                              updated[index] = { ...updated[index], include: e.target.checked };
+                              return updated;
+                            })
+                          }
+                          className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                        />
+                        Include
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="text-xs text-gray-500">
+                Add more tasks after creating the area.
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
@@ -1555,11 +1734,11 @@ const FacilityDetail = () => {
 
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-200">Fixture Minutes Overrides</div>
-            {fixtureTypes.length === 0 ? (
+            {taskFixtureTypes.length === 0 ? (
               <div className="text-sm text-gray-500">No fixture types available.</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {fixtureTypes.map((fixtureType) => (
+                {taskFixtureTypes.map((fixtureType) => (
                   <Input
                     key={fixtureType.id}
                     label={fixtureType.name}

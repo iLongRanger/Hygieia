@@ -3,12 +3,16 @@ import { z } from 'zod';
 export const createFixtureTypeSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(10000).optional().nullable(),
+  category: z.enum(['fixture', 'furniture']).optional().default('fixture'),
+  defaultMinutesPerItem: z.coerce.number().min(0).optional().default(0),
   isActive: z.boolean().optional().default(true),
 });
 
 export const updateFixtureTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(10000).optional().nullable(),
+  category: z.enum(['fixture', 'furniture']).optional(),
+  defaultMinutesPerItem: z.coerce.number().min(0).optional(),
   isActive: z.boolean().optional(),
 });
 

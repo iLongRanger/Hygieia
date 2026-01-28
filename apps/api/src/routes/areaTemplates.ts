@@ -3,17 +3,18 @@ import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
-  listFixtureTypes,
-  getFixtureTypeById,
-  createFixtureType,
-  updateFixtureType,
-  deleteFixtureType,
-} from '../services/fixtureTypeService';
+  listAreaTemplates,
+  getAreaTemplateById,
+  getAreaTemplateByAreaType,
+  createAreaTemplate,
+  updateAreaTemplate,
+  deleteAreaTemplate,
+} from '../services/areaTemplateService';
 import {
-  createFixtureTypeSchema,
-  updateFixtureTypeSchema,
-  listFixtureTypesQuerySchema,
-} from '../schemas/fixtureType';
+  createAreaTemplateSchema,
+  updateAreaTemplateSchema,
+  listAreaTemplatesQuerySchema,
+} from '../schemas/areaTemplate';
 import { ZodError } from 'zod';
 
 const router: Router = Router();
@@ -32,16 +33,33 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requireRole('owner', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = listFixtureTypesQuerySchema.safeParse(req.query);
+      const parsed = listAreaTemplatesQuerySchema.safeParse(req.query);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
 
-      const result = await listFixtureTypes(parsed.data);
+      const result = await listAreaTemplates(parsed.data);
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/area-type/:areaTypeId',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const template = await getAreaTemplateByAreaType(req.params.areaTypeId);
+      if (!template) {
+        throw new NotFoundError('Area template not found');
+      }
+      res.json({ data: template });
     } catch (error) {
       next(error);
     }
@@ -51,14 +69,14 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requireRole('owner', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const fixtureType = await getFixtureTypeById(req.params.id);
-      if (!fixtureType) {
-        throw new NotFoundError('Fixture type not found');
+      const template = await getAreaTemplateById(req.params.id);
+      if (!template) {
+        throw new NotFoundError('Area template not found');
       }
-      res.json({ data: fixtureType });
+      res.json({ data: template });
     } catch (error) {
       next(error);
     }
@@ -71,13 +89,16 @@ router.post(
   requireRole('owner', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = createFixtureTypeSchema.safeParse(req.body);
+      const parsed = createAreaTemplateSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
 
-      const fixtureType = await createFixtureType(parsed.data);
-      res.status(201).json({ data: fixtureType });
+      const template = await createAreaTemplate({
+        ...parsed.data,
+        createdByUserId: req.user!.id,
+      });
+      res.status(201).json({ data: template });
     } catch (error) {
       next(error);
     }
@@ -90,17 +111,17 @@ router.patch(
   requireRole('owner', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await getFixtureTypeById(req.params.id);
+      const existing = await getAreaTemplateById(req.params.id);
       if (!existing) {
-        throw new NotFoundError('Fixture type not found');
+        throw new NotFoundError('Area template not found');
       }
 
-      const parsed = updateFixtureTypeSchema.safeParse(req.body);
+      const parsed = updateAreaTemplateSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
 
-      const updated = await updateFixtureType(req.params.id, parsed.data);
+      const updated = await updateAreaTemplate(req.params.id, parsed.data);
       res.json({ data: updated });
     } catch (error) {
       next(error);
@@ -114,12 +135,12 @@ router.delete(
   requireRole('owner', 'admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await getFixtureTypeById(req.params.id);
+      const existing = await getAreaTemplateById(req.params.id);
       if (!existing) {
-        throw new NotFoundError('Fixture type not found');
+        throw new NotFoundError('Area template not found');
       }
 
-      await deleteFixtureType(req.params.id);
+      await deleteAreaTemplate(req.params.id);
       res.status(204).send();
     } catch (error) {
       next(error);

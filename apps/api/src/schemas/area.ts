@@ -24,6 +24,7 @@ export const floorTypeSchema = z.enum([
 const fixtureInputSchema = z.object({
   fixtureTypeId: z.string().uuid('Invalid fixture type ID'),
   count: z.coerce.number().int().min(0),
+  minutesPerItem: z.coerce.number().min(0).optional(),
 });
 
 export const createAreaSchema = z.object({
