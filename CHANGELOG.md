@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Terms & conditions and internal notes fields
   - Form validation and error handling
   - Routes: `/proposals/new` and `/proposals/:id/edit`
+- **Area Templates & Items**: Default area tasks and items (fixtures/furniture) with per-hour minutes
+  - Area Templates module (owner/admin) to configure default tasks, items, and sqft per area type
+  - Item types include category + default minutes per item
+  - Facility area creation auto-applies template defaults with editable counts and task inclusion
+  - Area Types configurator available under Area Templates
 
 ### Fixed
 - Fixed 422 error on proposals list page caused by empty status filter string

@@ -73,7 +73,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createAreaTypeSchema.safeParse(req.body);
@@ -97,7 +97,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAreaTypeById(req.params.id);
@@ -128,7 +128,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAreaTypeById(req.params.id);

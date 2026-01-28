@@ -40,6 +40,7 @@ model User {
   managedAccounts          Account[]         @relation("AccountManager")
   facilities               Facility[]        @relation("FacilityManager")
   createdTaskTemplates     TaskTemplate[]    @relation("CreatedTaskTemplates")
+  createdAreaTemplates     AreaTemplate[]    @relation("CreatedAreaTemplates")
   createdPricingRules      PricingRule[]     @relation("CreatedPricingRules")
   pricingOverrides         PricingOverride[] @relation("CreatedPricingOverrides")
   approvedPricingOverrides PricingOverride[] @relation("ApprovedPricingOverrides")
@@ -230,6 +231,7 @@ model AreaType {
   areas         Area[]
   taskTemplates TaskTemplate[]
   pricingRules  PricingRule[]
+  areaTemplate  AreaTemplate?
 
   @@index([name])
   @@map("area_types")
@@ -436,6 +438,8 @@ model FixtureType {
   id          String   @id @default(uuid()) @db.Uuid
   name        String   @unique @db.VarChar(100)
   description String?  @db.Text
+  category    String   @default("fixture") @db.VarChar(20)
+  defaultMinutesPerItem Decimal @default(0) @map("default_minutes_per_item") @db.Decimal(10, 4)
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -443,6 +447,7 @@ model FixtureType {
   areaFixtures              AreaFixture[]
   taskFixtureMinutes        TaskFixtureMinutes[]
   facilityTaskFixtureMinutes FacilityTaskFixtureMinutes[]
+  areaTemplateItems         AreaTemplateItem[]
 
   @@index([isActive])
   @@map("fixture_types")
@@ -453,6 +458,7 @@ model AreaFixture {
   areaId        String    @map("area_id") @db.Uuid
   fixtureTypeId String    @map("fixture_type_id") @db.Uuid
   count         Int       @default(0)
+  minutesPerItem Decimal  @default(0) @map("minutes_per_item") @db.Decimal(10, 4)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -463,6 +469,61 @@ model AreaFixture {
   @@index([areaId])
   @@index([fixtureTypeId])
   @@map("area_fixtures")
+}
+
+model AreaTemplate {
+  id                String    @id @default(uuid()) @db.Uuid
+  areaTypeId        String    @unique @map("area_type_id") @db.Uuid
+  name              String?   @db.VarChar(255)
+  defaultSquareFeet Decimal?  @map("default_square_feet") @db.Decimal(10, 2)
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  areaType    AreaType          @relation(fields: [areaTypeId], references: [id])
+  items       AreaTemplateItem[]
+  tasks       AreaTemplateTask[]
+  createdByUser User            @relation("CreatedAreaTemplates", fields: [createdByUserId], references: [id])
+
+  @@index([areaTypeId])
+  @@map("area_templates")
+}
+
+model AreaTemplateItem {
+  id             String    @id @default(uuid()) @db.Uuid
+  areaTemplateId String    @map("area_template_id") @db.Uuid
+  fixtureTypeId  String    @map("fixture_type_id") @db.Uuid
+  defaultCount   Int       @default(0) @map("default_count")
+  minutesPerItem Decimal   @default(0) @map("minutes_per_item") @db.Decimal(10, 4)
+  sortOrder      Int       @default(0) @map("sort_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  areaTemplate AreaTemplate @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
+  fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([areaTemplateId, fixtureTypeId])
+  @@index([areaTemplateId])
+  @@index([fixtureTypeId])
+  @@map("area_template_items")
+}
+
+model AreaTemplateTask {
+  id             String    @id @default(uuid()) @db.Uuid
+  areaTemplateId String    @map("area_template_id") @db.Uuid
+  name           String    @db.VarChar(255)
+  baseMinutes    Decimal   @default(0) @map("base_minutes") @db.Decimal(10, 4)
+  perSqftMinutes Decimal   @default(0) @map("per_sqft_minutes") @db.Decimal(10, 4)
+  perUnitMinutes Decimal   @default(0) @map("per_unit_minutes") @db.Decimal(10, 4)
+  perRoomMinutes Decimal   @default(0) @map("per_room_minutes") @db.Decimal(10, 4)
+  sortOrder      Int       @default(0) @map("sort_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  areaTemplate AreaTemplate @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([areaTemplateId])
+  @@map("area_template_tasks")
 }
 
 model TaskFixtureMinutes {

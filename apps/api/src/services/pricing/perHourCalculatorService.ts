@@ -39,7 +39,7 @@ export interface PerHourAreaContext {
   trafficLevel: string;
   roomCount: number;
   unitCount: number;
-  fixtures: { fixtureTypeId: string; count: number }[];
+  fixtures: { fixtureTypeId: string; count: number; minutesPerItem: number }[];
   tasks: PerHourTaskContext[];
 }
 
@@ -150,6 +150,7 @@ export async function calculatePerHourPricing(
     const fixtures = area.fixtures.map((fixture) => ({
       fixtureTypeId: fixture.fixtureTypeId,
       count: fixture.count,
+      minutesPerItem: Number(fixture.minutesPerItem) || 0,
     }));
     const tasks = buildPerHourTasks(tasksByArea.get(area.id) ?? []);
     return {
@@ -220,6 +221,11 @@ export async function calculatePerHourPricing(
 
       totalMinutes += taskMinutes;
     }
+
+    const itemMinutes = area.fixtures.reduce((sum, fixture) => {
+      return sum + fixture.minutesPerItem * (fixture.count * area.quantity);
+    }, 0);
+    totalMinutes += itemMinutes;
 
     const areaHours = totalMinutes / 60;
     const laborCostBase = areaHours * hourlyRate;

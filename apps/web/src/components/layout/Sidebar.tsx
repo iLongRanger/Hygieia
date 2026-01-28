@@ -12,12 +12,14 @@ import {
   Calculator,
   FileText,
   FileSignature,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { clsx } from 'clsx';
 
 const Sidebar = () => {
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
 
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
@@ -28,9 +30,21 @@ const Sidebar = () => {
     { to: '/proposals', icon: FileText, label: 'Proposals' },
     { to: '/contracts', icon: FileSignature, label: 'Contracts' },
     { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
+    {
+      to: '/area-templates',
+      icon: LayoutTemplate,
+      label: 'Area Templates',
+      roles: ['owner', 'admin', 'manager'],
+    },
     { to: '/pricing', icon: Calculator, label: 'Pricing' },
-    { to: '/users', icon: UserCog, label: 'Users', adminOnly: true },
+    { to: '/users', icon: UserCog, label: 'Users', roles: ['owner', 'admin'] },
   ];
+
+  const userRole = user?.role;
+  const visibleNavItems = navItems.filter((item) => {
+    if (!item.roles) return true;
+    return userRole ? item.roles.includes(userRole) : false;
+  });
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 border-r border-white/10 bg-navy-dark/95 backdrop-blur-xl">
@@ -42,7 +56,7 @@ const Sidebar = () => {
 
       <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-4 py-6">
         <ul className="space-y-1">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}

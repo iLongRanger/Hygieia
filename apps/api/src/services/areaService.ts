@@ -27,7 +27,7 @@ export interface AreaCreateInput {
   unitCount?: number;
   trafficLevel?: string;
   notes?: string | null;
-  fixtures?: { fixtureTypeId: string; count: number }[];
+  fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
   createdByUserId: string;
 }
 
@@ -42,7 +42,7 @@ export interface AreaUpdateInput {
   unitCount?: number;
   trafficLevel?: string;
   notes?: string | null;
-  fixtures?: { fixtureTypeId: string; count: number }[];
+  fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
 }
 
 export interface PaginatedResult<T> {
@@ -98,8 +98,10 @@ const areaSelect = {
         select: {
           id: true,
           name: true,
+          category: true,
         },
       },
+      minutesPerItem: true,
     },
   },
   _count: {
@@ -212,6 +214,7 @@ export async function createArea(input: AreaCreateInput) {
         create: input.fixtures.map((fixture) => ({
           fixtureTypeId: fixture.fixtureTypeId,
           count: fixture.count,
+          minutesPerItem: fixture.minutesPerItem ?? 0,
         })),
       } : undefined,
     },
@@ -241,6 +244,7 @@ export async function updateArea(id: string, input: AreaUpdateInput) {
       create: input.fixtures.map((fixture) => ({
         fixtureTypeId: fixture.fixtureTypeId,
         count: fixture.count,
+        minutesPerItem: fixture.minutesPerItem ?? 0,
       })),
     };
   }
