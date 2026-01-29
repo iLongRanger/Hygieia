@@ -45,6 +45,17 @@ describe('Pricing Lock System - Regression Tests', () => {
     name: 'Default Settings',
     baseRatePerSqFt: 0.1,
     minimumMonthlyCharge: 250,
+    laborCostPerHour: 20,
+    laborBurdenPercentage: 0,
+    sqftPerLaborHour: 1000,
+    insurancePercentage: 0,
+    adminOverheadPercentage: 0,
+    equipmentPercentage: 0,
+    supplyCostPercentage: 0,
+    supplyCostPerSqFt: null,
+    travelCostPerVisit: 0,
+    targetProfitMargin: 0,
+    hourlyRate: 35,
     floorTypeMultipliers: {
       vct: 1.0,
       carpet: 1.15,
@@ -97,10 +108,17 @@ describe('Pricing Lock System - Regression Tests', () => {
     pricingStrategyKey: 'sqft_settings_v1',
     pricingStrategyVersion: '1.0.0',
     pricingSnapshot: {
-      settingsSnapshot: {
-        pricingSettingsId: 'settings-1',
-        baseRatePerSqFt: 0.1,
-      },
+      pricingSettingsId: 'settings-1',
+      pricingSettingsName: 'Default Settings',
+      baseRatePerSqFt: 0.1,
+      minimumMonthlyCharge: 250,
+      hourlyRate: 0,
+      floorTypeMultipliers: {},
+      frequencyMultipliers: {},
+      conditionMultipliers: {},
+      buildingTypeMultipliers: {},
+      taskComplexityAddOns: {},
+      capturedAt: new Date().toISOString(),
     },
     pricingLocked: false,
     pricingLockedAt: null,
@@ -182,11 +200,17 @@ describe('Pricing Lock System - Regression Tests', () => {
     it('should preserve pricing snapshot when facility settings change', async () => {
       // Original proposal with snapshot
       const originalSnapshot = {
-        settingsSnapshot: {
-          pricingSettingsId: 'settings-1',
-          baseRatePerSqFt: 0.1, // Original rate
-          minimumMonthlyCharge: 250,
-        },
+        pricingSettingsId: 'settings-1',
+        pricingSettingsName: 'Default Settings',
+        baseRatePerSqFt: 0.1, // Original rate
+        minimumMonthlyCharge: 250,
+        hourlyRate: 0,
+        floorTypeMultipliers: {},
+        frequencyMultipliers: {},
+        conditionMultipliers: {},
+        buildingTypeMultipliers: {},
+        taskComplexityAddOns: {},
+        capturedAt: '2024-01-01T00:00:00.000Z',
       };
 
       const proposal = createMockProposal({
@@ -214,10 +238,17 @@ describe('Pricing Lock System - Regression Tests', () => {
       const proposal = createMockProposal({
         pricingLocked: false,
         pricingSnapshot: {
-          settingsSnapshot: {
-            pricingSettingsId: 'settings-1',
-            baseRatePerSqFt: 0.1,
-          },
+          pricingSettingsId: 'settings-1',
+          pricingSettingsName: 'Default Settings',
+          baseRatePerSqFt: 0.1,
+          minimumMonthlyCharge: 250,
+          hourlyRate: 0,
+          floorTypeMultipliers: {},
+          frequencyMultipliers: {},
+          conditionMultipliers: {},
+          buildingTypeMultipliers: {},
+          taskComplexityAddOns: {},
+          capturedAt: '2024-01-01T00:00:00.000Z',
         },
       });
 
@@ -244,10 +275,8 @@ describe('Pricing Lock System - Regression Tests', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             pricingSnapshot: expect.objectContaining({
-              settingsSnapshot: expect.objectContaining({
-                pricingSettingsId: 'settings-2',
-                baseRatePerSqFt: 0.12,
-              }),
+              pricingSettingsId: 'settings-2',
+              baseRatePerSqFt: 0.12,
             }),
           }),
         })
@@ -447,9 +476,7 @@ describe('Pricing Lock System - Regression Tests', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             pricingSnapshot: expect.objectContaining({
-              settingsSnapshot: expect.objectContaining({
-                capturedAt: expect.any(String),
-              }),
+              capturedAt: expect.any(String),
             }),
           }),
         })
@@ -461,10 +488,17 @@ describe('Pricing Lock System - Regression Tests', () => {
       const lockedProposal = createMockProposal({
         pricingLocked: true,
         pricingSnapshot: {
-          settingsSnapshot: {
-            pricingSettingsId: 'settings-1',
-            capturedAt: originalCapturedAt,
-          },
+          pricingSettingsId: 'settings-1',
+          pricingSettingsName: 'Default Settings',
+          baseRatePerSqFt: 0.1,
+          minimumMonthlyCharge: 250,
+          hourlyRate: 0,
+          floorTypeMultipliers: {},
+          frequencyMultipliers: {},
+          conditionMultipliers: {},
+          buildingTypeMultipliers: {},
+          taskComplexityAddOns: {},
+          capturedAt: originalCapturedAt,
         },
       });
 
@@ -472,7 +506,7 @@ describe('Pricing Lock System - Regression Tests', () => {
 
       const fetched = await proposalService.getProposalById('proposal-1');
 
-      expect(fetched?.pricingSnapshot.settingsSnapshot.capturedAt).toBe(originalCapturedAt);
+      expect(fetched?.pricingSnapshot.capturedAt).toBe(originalCapturedAt);
     });
   });
 });

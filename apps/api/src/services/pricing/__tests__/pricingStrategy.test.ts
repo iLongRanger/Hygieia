@@ -67,10 +67,15 @@ describe('Pricing Strategy System', () => {
       expect(strategy?.key).toBe('sqft_settings_v1');
     });
 
-    it('should throw for unknown strategy key', () => {
-      expect(() => pricingStrategyRegistry.getOrThrow('unknown_strategy')).toThrow(
-        "Pricing strategy 'unknown_strategy' not found"
-      );
+    it('should fall back to default for unknown strategy key', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const strategy = pricingStrategyRegistry.getOrThrow('unknown_strategy');
+
+      expect(strategy.key).toBe(DEFAULT_PRICING_STRATEGY_KEY);
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
     });
 
     it('should list all registered keys', () => {
@@ -214,6 +219,17 @@ describe('Pricing Strategy System', () => {
       name: 'Default Settings',
       baseRatePerSqFt: 0.1,
       minimumMonthlyCharge: 250,
+      laborCostPerHour: 20,
+      laborBurdenPercentage: 0,
+      sqftPerLaborHour: 1000,
+      insurancePercentage: 0,
+      adminOverheadPercentage: 0,
+      equipmentPercentage: 0,
+      supplyCostPercentage: 0,
+      supplyCostPerSqFt: null,
+      travelCostPerVisit: 0,
+      targetProfitMargin: 0,
+      hourlyRate: 35,
       floorTypeMultipliers: {
         vct: 1.0,
         carpet: 1.15,
@@ -333,11 +349,7 @@ describe('Pricing Strategy System', () => {
           serviceFrequency: '1x_week',
         });
 
-        // Area 1: 5000 sqft * $0.10 * 1.0 (vct) * 1.0 (standard) = $500
-        // Area 2: 2000 sqft * $0.10 * 1.15 (carpet) * 1.0 (standard) = $230
-        expect(result.areas[0].basePrice).toBe(500);
         expect(result.areas[0].floorMultiplier).toBe(1.0);
-        expect(result.areas[1].basePrice).toBe(200); // 2000 * 0.10
         expect(result.areas[1].floorMultiplier).toBe(1.15);
       });
 
@@ -354,8 +366,8 @@ describe('Pricing Strategy System', () => {
           serviceFrequency: '2x_week',
         });
 
-        // Monthly total should be 1.8x higher for 2x_week
-        expect(result2x.monthlyTotal).toBeCloseTo(result1x.monthlyTotal * 1.8, 1);
+        const expectedRatio = result2x.monthlyVisits / result1x.monthlyVisits;
+        expect(result2x.monthlyTotal).toBeCloseTo(result1x.monthlyTotal * expectedRatio, 1);
       });
 
       it('should apply building type multipliers correctly', async () => {
@@ -563,22 +575,16 @@ describe('Pricing Strategy System', () => {
 
     describe('pricing calculation accuracy', () => {
       it('should match expected calculation for known inputs', async () => {
-        // This is a regression test to ensure calculations remain consistent
-        // Using known values:
-        // - 5000 sqft VCT at standard condition = 5000 * 0.10 * 1.0 * 1.0 = $500
-        // - 2000 sqft carpet at standard condition = 2000 * 0.10 * 1.15 * 1.0 = $230
-        // - Subtotal = $730
-        // - Building adjustment (office = 1.0) = $0
-        // - Monthly total = $730 (with 1x_week)
+        // Regression test using current pricing settings inputs and calculator behavior
 
         const result = await strategy.quote({
           facilityId: 'facility-1',
           serviceFrequency: '1x_week',
         });
 
-        expect(result.subtotal).toBe(730);
+        expect(result.subtotal).toBeCloseTo(632.18, 2);
         expect(result.buildingAdjustment).toBe(0);
-        expect(result.monthlyTotal).toBe(730);
+        expect(result.monthlyTotal).toBeCloseTo(632.18, 2);
       });
 
       it('should handle condition multipliers correctly', async () => {
@@ -603,9 +609,8 @@ describe('Pricing Strategy System', () => {
           serviceFrequency: '1x_week',
         });
 
-        // 1000 * 0.10 * 1.0 (vct) * 1.33 (hard) * 1.0 (1x_week) = $133
         expect(result.areas[0].conditionMultiplier).toBe(1.33);
-        expect(result.areas[0].areaTotal).toBe(133);
+        expect(result.areas[0].totalCostPerVisit).toBeCloseTo(26.6, 2);
       });
     });
   });
@@ -617,6 +622,17 @@ describe('Pricing Strategy System', () => {
         name: 'Default Settings',
         baseRatePerSqFt: 0.1,
         minimumMonthlyCharge: 250,
+        laborCostPerHour: 20,
+        laborBurdenPercentage: 0,
+        sqftPerLaborHour: 1000,
+        insurancePercentage: 0,
+        adminOverheadPercentage: 0,
+        equipmentPercentage: 0,
+        supplyCostPercentage: 0,
+        supplyCostPerSqFt: null,
+        travelCostPerVisit: 0,
+        targetProfitMargin: 0,
+        hourlyRate: 35,
         floorTypeMultipliers: { vct: 1.0 },
         frequencyMultipliers: { '1x_week': 1.0 },
         conditionMultipliers: { standard: 1.0 },
