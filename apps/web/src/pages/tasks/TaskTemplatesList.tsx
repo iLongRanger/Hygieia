@@ -395,7 +395,7 @@ const TaskTemplatesList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search templates..."
@@ -534,7 +534,7 @@ const TaskTemplatesList = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Cleaning Type"
               options={CLEANING_TYPES}
@@ -557,7 +557,7 @@ const TaskTemplatesList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Estimated Minutes"
               type="number"
@@ -583,7 +583,7 @@ const TaskTemplatesList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Base Minutes"
               type="number"
@@ -695,3 +695,5 @@ const TaskTemplatesList = () => {
 };
 
 export default TaskTemplatesList;
+
+

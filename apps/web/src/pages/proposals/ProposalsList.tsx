@@ -412,7 +412,7 @@ const ProposalsList = () => {
       {/* Search, Filters, and Table */}
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search proposals..."
@@ -504,3 +504,4 @@ const ProposalsList = () => {
 };
 
 export default ProposalsList;
+

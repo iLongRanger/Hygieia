@@ -359,7 +359,7 @@ const PricingRulesList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search pricing rules..."
@@ -476,7 +476,7 @@ const PricingRulesList = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Pricing Type"
               options={PRICING_TYPES}
@@ -494,7 +494,7 @@ const PricingRulesList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Base Rate ($)"
               type="number"
@@ -542,7 +542,7 @@ const PricingRulesList = () => {
             />
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Difficulty Multiplier"
               type="number"
@@ -618,3 +618,5 @@ const PricingRulesList = () => {
 };
 
 export default PricingRulesList;
+
+

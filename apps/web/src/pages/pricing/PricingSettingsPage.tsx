@@ -602,10 +602,9 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, laborCostPerHour: Number(e.target.value) })
                       }
-                      hint="Average hourly wage"
                     />
                     <Input
-                      label="Labor Burden (%)"
+                      label="Labor Burden (decimal)"
                       type="number"
                       step="0.01"
                       min={0}
@@ -614,7 +613,6 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, laborBurdenPercentage: Number(e.target.value) })
                       }
-                      hint="Payroll taxes, benefits (e.g., 0.25 = 25%)"
                     />
                     <Input
                       label="Sq Ft per Labor Hour"
@@ -625,7 +623,6 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, sqftPerLaborHour: Number(e.target.value) })
                       }
-                      hint="Productivity rate"
                     />
                   </>
                 ) : (
@@ -662,11 +659,11 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Configure overhead costs as percentages of labor cost, plus flat travel costs.
               </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {isEditing ? (
                   <>
                     <Input
-                      label="Insurance (%)"
+                      label="Insurance (decimal)"
                       type="number"
                       step="0.01"
                       min={0}
@@ -675,10 +672,9 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, insurancePercentage: Number(e.target.value) })
                       }
-                      hint="Liability + workers comp"
                     />
                     <Input
-                      label="Admin Overhead (%)"
+                      label="Admin Overhead (decimal)"
                       type="number"
                       step="0.01"
                       min={0}
@@ -687,10 +683,9 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, adminOverheadPercentage: Number(e.target.value) })
                       }
-                      hint="Administrative costs"
                     />
                     <Input
-                      label="Equipment (%)"
+                      label="Equipment (decimal)"
                       type="number"
                       step="0.01"
                       min={0}
@@ -699,7 +694,6 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, equipmentPercentage: Number(e.target.value) })
                       }
-                      hint="Equipment depreciation"
                     />
                     <Input
                       label="Travel Cost per Visit ($)"
@@ -710,7 +704,6 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, travelCostPerVisit: Number(e.target.value) })
                       }
-                      hint="Flat per-visit cost"
                     />
                   </>
                 ) : (
@@ -757,7 +750,7 @@ const PricingSettingsPage = () => {
                 {isEditing ? (
                   <>
                     <Input
-                      label="Supply Cost (%)"
+                      label="Supply Cost (decimal)"
                       type="number"
                       step="0.01"
                       min={0}
@@ -766,10 +759,9 @@ const PricingSettingsPage = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, supplyCostPercentage: Number(e.target.value) })
                       }
-                      hint="As % of labor+overhead (e.g., 0.04 = 4%)"
                     />
                     <Input
-                      label="Supply Cost per Sq Ft ($) - Optional"
+                      label="Supply Cost per Sq Ft ($)"
                       type="number"
                       step="0.001"
                       min={0}
@@ -780,7 +772,6 @@ const PricingSettingsPage = () => {
                           supplyCostPerSqFt: e.target.value ? Number(e.target.value) : undefined
                         })
                       }
-                      hint="Alternative flat rate (overrides percentage if set)"
                     />
                   </>
                 ) : (
@@ -816,7 +807,7 @@ const PricingSettingsPage = () => {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {isEditing ? (
                   <Input
-                    label="Target Profit Margin (%)"
+                    label="Target Profit Margin (decimal)"
                     type="number"
                     step="0.01"
                     min={0}
@@ -825,7 +816,6 @@ const PricingSettingsPage = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, targetProfitMargin: Number(e.target.value) })
                     }
-                    hint="e.g., 0.25 = 25% profit margin"
                   />
                 ) : (
                   <div className="rounded-lg bg-navy-darker/50 p-3">
@@ -844,7 +834,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Adjust pricing based on floor type. Value of 1.0 = base rate.
               </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {DEFAULT_FLOOR_TYPES.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -877,7 +867,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Adjust pricing based on service frequency. Higher frequency = lower per-visit cost.
               </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {DEFAULT_FREQUENCIES.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -910,7 +900,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Adjust pricing based on area condition/difficulty. Harder conditions = higher price.
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {DEFAULT_CONDITIONS.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -943,7 +933,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Adjust pricing based on traffic level. Higher traffic = higher price.
               </p>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {DEFAULT_TRAFFIC_LEVELS.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -976,7 +966,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Adjust pricing based on building type. Medical/specialized facilities = higher price.
               </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {DEFAULT_BUILDING_TYPES.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -1009,7 +999,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Additional percentage for specialized tasks. Value of 0.15 = 15% add-on to base price.
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {DEFAULT_TASK_COMPLEXITIES.map((key) => (
                   <div key={key}>
                     {isEditing ? (
@@ -1128,3 +1118,4 @@ const PricingSettingsPage = () => {
 };
 
 export default PricingSettingsPage;
+

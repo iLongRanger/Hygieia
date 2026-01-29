@@ -550,7 +550,7 @@ const AccountDetail = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Account Type"
               options={ACCOUNT_TYPES}
@@ -568,7 +568,7 @@ const AccountDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Website"
               placeholder="https://example.com"
@@ -591,7 +591,7 @@ const AccountDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Billing Email"
               type="email"
@@ -617,7 +617,7 @@ const AccountDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Payment Terms"
               options={PAYMENT_TERMS}
@@ -682,7 +682,7 @@ const AccountDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Building Type"
               placeholder="Select type"
@@ -738,7 +738,7 @@ const AccountDetail = () => {
                   })
                 }
               />
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Input
                   label="City"
                   placeholder="New York"
@@ -843,3 +843,4 @@ const AccountDetail = () => {
 };
 
 export default AccountDetail;
+

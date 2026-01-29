@@ -749,10 +749,10 @@ const AreaTemplatesPage = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => setShowAreaTypeManagerModal(true)}>
+          <Button onClick={() => setShowAreaTypeManagerModal(true)}>
             Manage Area Types
           </Button>
-          <Button variant="secondary" onClick={() => setShowItemManagerModal(true)}>
+          <Button onClick={() => setShowItemManagerModal(true)}>
             Manage Item Types
           </Button>
         </div>
@@ -764,7 +764,7 @@ const AreaTemplatesPage = () => {
             <LayoutTemplate className="h-5 w-5 text-emerald" />
             Templates
           </div>
-          <Button variant="secondary" onClick={() => openTemplateEditor()}>
+          <Button onClick={() => openTemplateEditor()}>
             New Template
           </Button>
         </div>
