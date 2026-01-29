@@ -6,7 +6,6 @@ import {
   Archive,
   RotateCcw,
   LayoutTemplate,
-  Box,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
@@ -30,28 +29,50 @@ import {
   createAreaTemplate,
   updateAreaTemplate,
   deleteAreaTemplate,
+  listTaskTemplates,
 } from '../../lib/facilities';
+import { createTaskTemplate } from '../../lib/tasks';
 import type {
   AreaType,
   FixtureType,
   AreaTemplate,
   CreateAreaTemplateInput,
+  TaskTemplate,
 } from '../../types/facility';
 
 type TemplateItemInput = NonNullable<CreateAreaTemplateInput['items']>[0];
-type TemplateTaskInput = NonNullable<CreateAreaTemplateInput['tasks']>[0];
+type TemplateTaskInput = NonNullable<CreateAreaTemplateInput['taskTemplates']>[0];
 
 const ITEM_CATEGORIES = [
   { value: 'fixture', label: 'Fixture' },
   { value: 'furniture', label: 'Furniture' },
 ];
 
+const CLEANING_TYPES = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annual', label: 'Annual' },
+  { value: 'deep_clean', label: 'Deep Clean' },
+  { value: 'move_out', label: 'Move Out' },
+  { value: 'post_construction', label: 'Post Construction' },
+];
+
 const AreaTemplatesPage = () => {
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [areaTemplates, setAreaTemplates] = useState<AreaTemplate[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [loadingItems, setLoadingItems] = useState(true);
+  const [loadingTaskTemplates, setLoadingTaskTemplates] = useState(true);
+
+  const [showItemManagerModal, setShowItemManagerModal] = useState(false);
+  const [showAreaTypeManagerModal, setShowAreaTypeManagerModal] = useState(false);
+  const [showTemplateEditorModal, setShowTemplateEditorModal] = useState(false);
+  const [showTaskTemplateModal, setShowTaskTemplateModal] = useState(false);
 
   const [showItemModal, setShowItemModal] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -83,10 +104,19 @@ const AreaTemplatesPage = () => {
     name: '',
     defaultSquareFeet: null,
     items: [],
-    tasks: [],
+    taskTemplates: [],
   });
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateDeleteId, setTemplateDeleteId] = useState<string | null>(null);
+  const [selectedTaskTemplateId, setSelectedTaskTemplateId] = useState('');
+  const [taskTemplateForm, setTaskTemplateForm] = useState({
+    name: '',
+    cleaningType: 'daily',
+    areaTypeId: '',
+    estimatedMinutes: 30,
+    isGlobal: true,
+  });
+  const [taskTemplateSaving, setTaskTemplateSaving] = useState(false);
 
   const fetchAreaTypes = useCallback(async () => {
     try {
@@ -131,13 +161,34 @@ const AreaTemplatesPage = () => {
     }
   }, [selectedTemplate]);
 
+  const fetchTaskTemplates = useCallback(async () => {
+    try {
+      setLoadingTaskTemplates(true);
+      const response = await listTaskTemplates({ isActive: true, limit: 200 });
+      setTaskTemplates(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch task templates:', error);
+      setTaskTemplates([]);
+    } finally {
+      setLoadingTaskTemplates(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAreaTypes();
     fetchFixtureTypes();
     fetchAreaTemplates();
-  }, [fetchAreaTypes, fetchFixtureTypes, fetchAreaTemplates]);
+    fetchTaskTemplates();
+  }, [fetchAreaTypes, fetchFixtureTypes, fetchAreaTemplates, fetchTaskTemplates]);
 
   const hydrateTemplateForm = (template: AreaTemplate) => {
+    const linkedTasks = template.tasks
+      .filter((task) => task.taskTemplate)
+      .map((task) => ({
+        id: task.taskTemplate!.id,
+        sortOrder: task.sortOrder,
+      }));
+
     setTemplateForm({
       areaTypeId: template.areaType.id,
       name: template.name || '',
@@ -148,15 +199,9 @@ const AreaTemplatesPage = () => {
         minutesPerItem: Number(item.minutesPerItem) || 0,
         sortOrder: item.sortOrder,
       })),
-      tasks: template.tasks.map((task) => ({
-        name: task.name,
-        baseMinutes: Number(task.baseMinutes) || 0,
-        perSqftMinutes: Number(task.perSqftMinutes) || 0,
-        perUnitMinutes: Number(task.perUnitMinutes) || 0,
-        perRoomMinutes: Number(task.perRoomMinutes) || 0,
-        sortOrder: task.sortOrder,
-      })),
+      taskTemplates: linkedTasks,
     });
+    setSelectedTaskTemplateId('');
   };
 
   const resetTemplateForm = () => {
@@ -166,8 +211,19 @@ const AreaTemplatesPage = () => {
       name: '',
       defaultSquareFeet: null,
       items: [],
-      tasks: [],
+      taskTemplates: [],
     });
+    setSelectedTaskTemplateId('');
+  };
+
+  const openTemplateEditor = (template?: AreaTemplate) => {
+    if (template) {
+      setSelectedTemplate(template);
+      hydrateTemplateForm(template);
+    } else {
+      resetTemplateForm();
+    }
+    setShowTemplateEditorModal(true);
   };
 
   const openCreateItemModal = () => {
@@ -319,11 +375,6 @@ const AreaTemplatesPage = () => {
       toast.error('Select an area type');
       return;
     }
-    const hasEmptyTask = (templateForm.tasks || []).some((task) => !task.name?.trim());
-    if (hasEmptyTask) {
-      toast.error('All tasks must have a name');
-      return;
-    }
 
     try {
       setTemplateSaving(true);
@@ -344,6 +395,54 @@ const AreaTemplatesPage = () => {
       toast.error('Failed to save area template');
     } finally {
       setTemplateSaving(false);
+    }
+  };
+
+  const resetTaskTemplateForm = () => {
+    setTaskTemplateForm({
+      name: '',
+      cleaningType: 'daily',
+      areaTypeId: '',
+      estimatedMinutes: 30,
+      isGlobal: true,
+    });
+  };
+
+  const handleSaveTaskTemplate = async () => {
+    if (!taskTemplateForm.name.trim()) {
+      toast.error('Enter a task template name');
+      return;
+    }
+
+    try {
+      setTaskTemplateSaving(true);
+      const created = await createTaskTemplate({
+        name: taskTemplateForm.name.trim(),
+        cleaningType: taskTemplateForm.cleaningType,
+        areaTypeId: taskTemplateForm.areaTypeId || null,
+        estimatedMinutes: taskTemplateForm.estimatedMinutes || 0,
+        baseMinutes: 0,
+        perSqftMinutes: 0,
+        perUnitMinutes: 0,
+        perRoomMinutes: 0,
+        difficultyLevel: 3,
+        requiredEquipment: [],
+        requiredSupplies: [],
+        instructions: null,
+        isGlobal: taskTemplateForm.isGlobal,
+        isActive: true,
+        fixtureMinutes: [],
+      });
+      toast.success('Task template created');
+      setShowTaskTemplateModal(false);
+      resetTaskTemplateForm();
+      setSelectedTaskTemplateId(created.id);
+      fetchTaskTemplates();
+    } catch (error) {
+      console.error('Failed to create task template:', error);
+      toast.error('Failed to create task template');
+    } finally {
+      setTaskTemplateSaving(false);
     }
   };
 
@@ -397,36 +496,45 @@ const AreaTemplatesPage = () => {
     });
   };
 
-  const addTemplateTaskRow = () => {
-    setTemplateForm((prev) => ({
-      ...prev,
-      tasks: [
-        ...(prev.tasks || []),
-        {
-          name: '',
-          baseMinutes: 0,
-          perSqftMinutes: 0,
-          perUnitMinutes: 0,
-          perRoomMinutes: 0,
-          sortOrder: (prev.tasks?.length || 0) + 1,
-        },
-      ],
-    }));
+  const addTemplateTaskTemplate = () => {
+    if (!selectedTaskTemplateId) {
+      toast.error('Select a task template to add');
+      return;
+    }
+
+    setTemplateForm((prev) => {
+      const current = prev.taskTemplates || [];
+      if (current.some((task) => task.id === selectedTaskTemplateId)) {
+        toast.error('Task template already added');
+        return prev;
+      }
+      return {
+        ...prev,
+        taskTemplates: [
+          ...current,
+          {
+            id: selectedTaskTemplateId,
+            sortOrder: current.length + 1,
+          },
+        ],
+      };
+    });
+    setSelectedTaskTemplateId('');
   };
 
-  const updateTemplateTask = (index: number, patch: Partial<TemplateTaskInput>) => {
+  const updateTemplateTaskTemplate = (index: number, patch: Partial<TemplateTaskInput>) => {
     setTemplateForm((prev) => {
-      const tasks = [...(prev.tasks || [])];
+      const tasks = [...(prev.taskTemplates || [])];
       tasks[index] = { ...tasks[index], ...patch };
-      return { ...prev, tasks };
+      return { ...prev, taskTemplates: tasks };
     });
   };
 
-  const removeTemplateTask = (index: number) => {
+  const removeTemplateTaskTemplate = (index: number) => {
     setTemplateForm((prev) => {
-      const tasks = [...(prev.tasks || [])];
+      const tasks = [...(prev.taskTemplates || [])];
       tasks.splice(index, 1);
-      return { ...prev, tasks };
+      return { ...prev, taskTemplates: tasks };
     });
   };
 
@@ -563,90 +671,171 @@ const AreaTemplatesPage = () => {
     },
   ];
 
+  const templateColumns = [
+    {
+      header: 'Template',
+      cell: (template: AreaTemplate) => (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="font-medium text-white">
+              {template.name || template.areaType.name}
+            </div>
+            <div className="text-xs text-gray-500">{template.areaType.name}</div>
+          </div>
+          {selectedTemplate?.id === template.id && (
+            <Badge variant="success">Editing</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: 'Default Sq Ft',
+      cell: (template: AreaTemplate) => (
+        <span className="text-gray-300">
+          {template.defaultSquareFeet ? Number(template.defaultSquareFeet).toLocaleString() : '-'}
+        </span>
+      ),
+    },
+    {
+      header: 'Items',
+      cell: (template: AreaTemplate) => (
+        <span className="text-gray-300">{template.items?.length ?? 0}</span>
+      ),
+    },
+    {
+      header: 'Tasks',
+      cell: (template: AreaTemplate) => (
+        <span className="text-gray-300">{template.tasks?.length ?? 0}</span>
+      ),
+    },
+    {
+      header: 'Actions',
+      cell: (template: AreaTemplate) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              openTemplateEditor(template);
+            }}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setTemplateDeleteId(template.id);
+            }}
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <LayoutTemplate className="h-6 w-6 text-emerald" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Area Templates</h1>
-          <p className="text-gray-400">Configure default tasks and items for each area type.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <LayoutTemplate className="h-6 w-6 text-emerald" />
+          <div>
+            <h1 className="text-2xl font-bold text-white">Area Templates</h1>
+            <p className="text-gray-400">Configure default tasks and items for each area type.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowAreaTypeManagerModal(true)}>
+            Manage Area Types
+          </Button>
+          <Button variant="secondary" onClick={() => setShowItemManagerModal(true)}>
+            Manage Item Types
+          </Button>
         </div>
       </div>
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-lg font-semibold text-white">
-            <Box className="h-5 w-5 text-orange-400" />
-            Item Types
+            <LayoutTemplate className="h-5 w-5 text-emerald" />
+            Templates
           </div>
-          <Button onClick={openCreateItemModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Item Type
+          <Button variant="secondary" onClick={() => openTemplateEditor()}>
+            New Template
           </Button>
         </div>
         <div className="mt-4">
+          <Table
+            data={areaTemplates}
+            columns={templateColumns}
+            isLoading={loadingTemplates}
+            onRowClick={(template) => {
+              openTemplateEditor(template);
+            }}
+          />
+        </div>
+      </Card>
+
+      <Modal
+        isOpen={showItemManagerModal}
+        onClose={() => setShowItemManagerModal(false)}
+        title="Item Types"
+        size="xl"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-gray-400">
+              Manage item types used in templates.
+            </div>
+            <Button onClick={openCreateItemModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Item Type
+            </Button>
+          </div>
           <Table data={fixtureTypes} columns={itemColumns} isLoading={loadingItems} />
         </div>
-      </Card>
+      </Modal>
 
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-lg font-semibold text-white">
-            <LayoutTemplate className="h-5 w-5 text-emerald" />
-            Area Types
+      <Modal
+        isOpen={showAreaTypeManagerModal}
+        onClose={() => setShowAreaTypeManagerModal(false)}
+        title="Area Types"
+        size="xl"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-gray-400">
+              Manage area types used in templates.
+            </div>
+            <Button onClick={openCreateAreaTypeModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Area Type
+            </Button>
           </div>
-          <Button onClick={openCreateAreaTypeModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Area Type
-          </Button>
-        </div>
-        <div className="mt-4">
           <Table data={areaTypes} columns={areaTypeColumns} isLoading={areaTypesLoading} />
         </div>
-      </Card>
+      </Modal>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card noPadding className="overflow-hidden xl:col-span-1">
-          <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-white">Templates</h3>
-              <Button variant="secondary" size="sm" onClick={resetTemplateForm}>
-                New
-              </Button>
+      <Modal
+        isOpen={showTemplateEditorModal}
+        onClose={() => setShowTemplateEditorModal(false)}
+        title={selectedTemplate ? 'Edit Template' : 'Create Template'}
+        size="xl"
+      >
+        <div className="space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                {selectedTemplate ? 'Edit Template' : 'Create Template'}
+              </h2>
+              <p className="text-sm text-gray-400">
+                Define defaults for space size, items, and tasks.
+              </p>
             </div>
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {loadingTemplates ? (
-              <div className="p-4 text-sm text-gray-500">Loading templates...</div>
-            ) : areaTemplates.length === 0 ? (
-              <div className="p-4 text-sm text-gray-500">No templates yet.</div>
-            ) : (
-              areaTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className={`cursor-pointer border-b border-white/5 p-4 transition-colors hover:bg-white/5 ${
-                    selectedTemplate?.id === template.id ? 'bg-emerald/10' : ''
-                  }`}
-                  onClick={() => {
-                    setSelectedTemplate(template);
-                    hydrateTemplateForm(template);
-                  }}
-                >
-                  <div className="font-medium text-white">
-                    {template.name || template.areaType.name}
-                  </div>
-                  <div className="text-sm text-gray-400">{template.areaType.name}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-        <Card className="xl:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              {selectedTemplate ? 'Edit Template' : 'Create Template'}
-            </h2>
             {selectedTemplate && (
               <Button variant="danger" size="sm" onClick={() => setTemplateDeleteId(selectedTemplate.id)}>
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -655,7 +844,7 @@ const AreaTemplatesPage = () => {
             )}
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-dark/30 p-4 sm:grid-cols-2">
             <Select
               label="Area Type"
               placeholder="Select area type"
@@ -683,9 +872,12 @@ const AreaTemplatesPage = () => {
             />
           </div>
 
-          <div className="mt-6">
+          <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-200">Default Items</h3>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-200">Default Items</h3>
+                <p className="text-xs text-gray-500">Assign item counts and timing per area.</p>
+              </div>
               <Button variant="ghost" size="sm" onClick={addTemplateItemRow}>
                 <Plus className="mr-1 h-4 w-4" />
                 Add Item
@@ -744,75 +936,83 @@ const AreaTemplatesPage = () => {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-200">Default Tasks</h3>
-              <Button variant="ghost" size="sm" onClick={addTemplateTaskRow}>
-                <Plus className="mr-1 h-4 w-4" />
-                Add Task
-              </Button>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-200">Default Tasks</h3>
+                <p className="text-xs text-gray-500">Attach reusable task templates to this area.</p>
+              </div>
+              <div className="flex items-end gap-2">
+                <Select
+                  label="Task Template"
+                  placeholder={loadingTaskTemplates ? 'Loading...' : 'Select task template'}
+                  options={taskTemplates.map((task) => ({
+                    value: task.id,
+                    label: `${task.name} (${task.cleaningType})`,
+                  }))}
+                  value={selectedTaskTemplateId}
+                  onChange={(value) => setSelectedTaskTemplateId(value)}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={addTemplateTaskTemplate}
+                  disabled={loadingTaskTemplates || taskTemplates.length === 0}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Task
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTaskTemplateModal(true)}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Quick Create
+                </Button>
+              </div>
             </div>
             <div className="mt-3 space-y-3">
-              {(templateForm.tasks || []).map((task, index) => (
-                <div key={`${task.name}-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-3 sm:grid-cols-6">
-                  <Input
-                    label="Task Name"
-                    value={task.name}
-                    onChange={(e) => updateTemplateTask(index, { name: e.target.value })}
-                  />
-                  <Input
-                    label="Base Min"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={task.baseMinutes}
-                    onChange={(e) => updateTemplateTask(index, { baseMinutes: Number(e.target.value) || 0 })}
-                  />
-                  <Input
-                    label="Per Sq Ft"
-                    type="number"
-                    min={0}
-                    step="0.0001"
-                    value={task.perSqftMinutes}
-                    onChange={(e) => updateTemplateTask(index, { perSqftMinutes: Number(e.target.value) || 0 })}
-                  />
-                  <Input
-                    label="Per Unit"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={task.perUnitMinutes}
-                    onChange={(e) => updateTemplateTask(index, { perUnitMinutes: Number(e.target.value) || 0 })}
-                  />
-                  <Input
-                    label="Per Room"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={task.perRoomMinutes}
-                    onChange={(e) => updateTemplateTask(index, { perRoomMinutes: Number(e.target.value) || 0 })}
-                  />
-                  <div className="flex items-end gap-2">
+              {(templateForm.taskTemplates || []).map((task, index) => {
+                const template = taskTemplates.find((option) => option.id === task.id);
+                return (
+                  <div
+                    key={`${task.id}-${index}`}
+                    className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-3 sm:grid-cols-4"
+                  >
+                    <div className="sm:col-span-2">
+                      <div className="text-xs text-gray-500">Task Template</div>
+                      <div className="text-sm font-medium text-white">
+                        {template ? template.name : 'Missing template'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {template
+                          ? `${template.cleaningType} · Est ${template.estimatedMinutes ?? 0} min`
+                          : 'Select a valid template'}
+                      </div>
+                    </div>
                     <Input
                       label="Sort"
                       type="number"
                       min={0}
                       value={task.sortOrder ?? 0}
-                      onChange={(e) => updateTemplateTask(index, { sortOrder: Number(e.target.value) || 0 })}
+                      onChange={(e) => updateTemplateTaskTemplate(index, { sortOrder: Number(e.target.value) || 0 })}
                     />
-                    <Button variant="ghost" size="sm" onClick={() => removeTemplateTask(index)}>
-                      Remove
-                    </Button>
+                    <div className="flex items-end">
+                      <Button variant="ghost" size="sm" onClick={() => removeTemplateTaskTemplate(index)}>
+                        Remove
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {(templateForm.tasks || []).length === 0 && (
-                <div className="text-sm text-gray-500">No tasks added yet.</div>
+                );
+              })}
+              {(templateForm.taskTemplates || []).length === 0 && (
+                <div className="text-sm text-gray-500">No task templates added yet.</div>
               )}
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="flex flex-wrap justify-end gap-3">
             <Button variant="secondary" onClick={resetTemplateForm}>
               Reset
             </Button>
@@ -820,8 +1020,69 @@ const AreaTemplatesPage = () => {
               Save Template
             </Button>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showTaskTemplateModal}
+        onClose={() => setShowTaskTemplateModal(false)}
+        title="Quick Create Task Template"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Task Name"
+            placeholder="e.g., Empty trash, Dust surfaces"
+            value={taskTemplateForm.name}
+            onChange={(e) => setTaskTemplateForm({ ...taskTemplateForm, name: e.target.value })}
+          />
+          <Select
+            label="Cleaning Type"
+            options={CLEANING_TYPES}
+            value={taskTemplateForm.cleaningType}
+            onChange={(value) => setTaskTemplateForm({ ...taskTemplateForm, cleaningType: value })}
+          />
+          <Select
+            label="Area Type (optional)"
+            placeholder="Select area type"
+            options={[{ value: '', label: 'None' }, ...areaTypes.map((at) => ({ value: at.id, label: at.name }))]}
+            value={taskTemplateForm.areaTypeId}
+            onChange={(value) => setTaskTemplateForm({ ...taskTemplateForm, areaTypeId: value })}
+          />
+          <Input
+            label="Estimated Minutes"
+            type="number"
+            min={0}
+            value={taskTemplateForm.estimatedMinutes}
+            onChange={(e) =>
+              setTaskTemplateForm({ ...taskTemplateForm, estimatedMinutes: Number(e.target.value) || 0 })
+            }
+          />
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={taskTemplateForm.isGlobal}
+              onChange={(e) => setTaskTemplateForm({ ...taskTemplateForm, isGlobal: e.target.checked })}
+              className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+            />
+            Global Template
+          </label>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowTaskTemplateModal(false);
+                resetTaskTemplateForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTaskTemplate} isLoading={taskTemplateSaving}>
+              Create Task Template
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showItemModal}

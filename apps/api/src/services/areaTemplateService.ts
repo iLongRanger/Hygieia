@@ -13,6 +13,8 @@ export interface AreaTemplateCreateInput {
   name?: string | null;
   defaultSquareFeet?: number | null;
   items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
+  taskTemplateIds?: string[];
+  taskTemplates?: { id: string; sortOrder?: number }[];
   tasks?: {
     name: string;
     baseMinutes?: number;
@@ -29,6 +31,8 @@ export interface AreaTemplateUpdateInput {
   name?: string | null;
   defaultSquareFeet?: number | null;
   items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
+  taskTemplateIds?: string[];
+  taskTemplates?: { id: string; sortOrder?: number }[];
   tasks?: {
     name: string;
     baseMinutes?: number;
@@ -83,12 +87,25 @@ const areaTemplateSelect = {
     orderBy: { sortOrder: 'asc' },
     select: {
       id: true,
+      sortOrder: true,
       name: true,
       baseMinutes: true,
       perSqftMinutes: true,
       perUnitMinutes: true,
       perRoomMinutes: true,
-      sortOrder: true,
+      taskTemplate: {
+        select: {
+          id: true,
+          name: true,
+          cleaningType: true,
+          estimatedMinutes: true,
+          baseMinutes: true,
+          perSqftMinutes: true,
+          perUnitMinutes: true,
+          perRoomMinutes: true,
+          difficultyLevel: true,
+        },
+      },
     },
   },
   createdByUser: {
@@ -152,6 +169,14 @@ export async function getAreaTemplateByAreaType(areaTypeId: string) {
 }
 
 export async function createAreaTemplate(input: AreaTemplateCreateInput) {
+  const taskLinks = await buildAreaTemplateTaskLinks({
+    taskTemplates: input.taskTemplates,
+    taskTemplateIds: input.taskTemplateIds,
+    legacyTasks: input.tasks,
+    areaTypeId: input.areaTypeId,
+    createdByUserId: input.createdByUserId,
+  });
+
   return prisma.areaTemplate.create({
     data: {
       areaTypeId: input.areaTypeId,
@@ -166,13 +191,9 @@ export async function createAreaTemplate(input: AreaTemplateCreateInput) {
           sortOrder: item.sortOrder ?? 0,
         })),
       } : undefined,
-      tasks: input.tasks && input.tasks.length > 0 ? {
-        create: input.tasks.map((task) => ({
-          name: task.name,
-          baseMinutes: task.baseMinutes ?? 0,
-          perSqftMinutes: task.perSqftMinutes ?? 0,
-          perUnitMinutes: task.perUnitMinutes ?? 0,
-          perRoomMinutes: task.perRoomMinutes ?? 0,
+      tasks: taskLinks && taskLinks.length > 0 ? {
+        create: taskLinks.map((task) => ({
+          taskTemplateId: task.taskTemplateId,
           sortOrder: task.sortOrder ?? 0,
         })),
       } : undefined,
@@ -183,6 +204,9 @@ export async function createAreaTemplate(input: AreaTemplateCreateInput) {
 
 export async function updateAreaTemplate(id: string, input: AreaTemplateUpdateInput) {
   const updateData: Prisma.AreaTemplateUpdateInput = {};
+  const shouldUpdateTasks = input.taskTemplates !== undefined
+    || input.taskTemplateIds !== undefined
+    || input.tasks !== undefined;
 
   if (input.areaTypeId !== undefined) {
     updateData.areaType = { connect: { id: input.areaTypeId } };
@@ -200,15 +224,23 @@ export async function updateAreaTemplate(id: string, input: AreaTemplateUpdateIn
       })),
     };
   }
-  if (input.tasks !== undefined) {
+
+  if (shouldUpdateTasks) {
+    const existing = await prisma.areaTemplate.findUnique({
+      where: { id },
+      select: { createdByUserId: true, areaTypeId: true },
+    });
+    const taskLinks = await buildAreaTemplateTaskLinks({
+      taskTemplates: input.taskTemplates,
+      taskTemplateIds: input.taskTemplateIds,
+      legacyTasks: input.tasks,
+      areaTypeId: input.areaTypeId ?? existing?.areaTypeId ?? '',
+      createdByUserId: existing?.createdByUserId ?? '',
+    });
     updateData.tasks = {
       deleteMany: {},
-      create: input.tasks.map((task) => ({
-        name: task.name,
-        baseMinutes: task.baseMinutes ?? 0,
-        perSqftMinutes: task.perSqftMinutes ?? 0,
-        perUnitMinutes: task.perUnitMinutes ?? 0,
-        perRoomMinutes: task.perRoomMinutes ?? 0,
+      create: (taskLinks || []).map((task) => ({
+        taskTemplateId: task.taskTemplateId,
         sortOrder: task.sortOrder ?? 0,
       })),
     };
@@ -226,4 +258,70 @@ export async function deleteAreaTemplate(id: string) {
     where: { id },
     select: { id: true },
   });
+}
+
+type LegacyTaskInput = {
+  name: string;
+  baseMinutes?: number;
+  perSqftMinutes?: number;
+  perUnitMinutes?: number;
+  perRoomMinutes?: number;
+  sortOrder?: number;
+};
+
+async function buildAreaTemplateTaskLinks(params: {
+  taskTemplates?: { id: string; sortOrder?: number }[];
+  taskTemplateIds?: string[];
+  legacyTasks?: LegacyTaskInput[];
+  areaTypeId: string;
+  createdByUserId: string;
+}): Promise<{ taskTemplateId: string; sortOrder: number }[] | undefined> {
+  const { taskTemplates, taskTemplateIds, legacyTasks, areaTypeId, createdByUserId } = params;
+
+  if (taskTemplates !== undefined) {
+    return taskTemplates.map((task, index) => ({
+      taskTemplateId: task.id,
+      sortOrder: task.sortOrder ?? index,
+    }));
+  }
+
+  if (taskTemplateIds !== undefined) {
+    return taskTemplateIds.map((id, index) => ({
+      taskTemplateId: id,
+      sortOrder: index,
+    }));
+  }
+
+  if (legacyTasks !== undefined) {
+    if (!legacyTasks.length) return [];
+    const createdTemplates = await prisma.$transaction(
+      legacyTasks.map((task) =>
+        prisma.taskTemplate.create({
+          data: {
+            name: task.name,
+            cleaningType: 'daily',
+            areaTypeId: areaTypeId || null,
+            estimatedMinutes: Math.round(task.baseMinutes ?? 0),
+            baseMinutes: task.baseMinutes ?? 0,
+            perSqftMinutes: task.perSqftMinutes ?? 0,
+            perUnitMinutes: task.perUnitMinutes ?? 0,
+            perRoomMinutes: task.perRoomMinutes ?? 0,
+            difficultyLevel: 3,
+            requiredEquipment: [],
+            requiredSupplies: [],
+            isGlobal: false,
+            isActive: true,
+            createdByUserId,
+          },
+          select: { id: true },
+        })
+      )
+    );
+    return createdTemplates.map((template, index) => ({
+      taskTemplateId: template.id,
+      sortOrder: legacyTasks[index]?.sortOrder ?? index,
+    }));
+  }
+
+  return undefined;
 }

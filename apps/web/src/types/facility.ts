@@ -204,12 +204,23 @@ export interface AreaTemplate {
   }[];
   tasks: {
     id: string;
-    name: string;
-    baseMinutes: string;
-    perSqftMinutes: string;
-    perUnitMinutes: string;
-    perRoomMinutes: string;
     sortOrder: number;
+    name: string | null;
+    baseMinutes: string | null;
+    perSqftMinutes: string | null;
+    perUnitMinutes: string | null;
+    perRoomMinutes: string | null;
+    taskTemplate: {
+      id: string;
+      name: string;
+      cleaningType: string;
+      estimatedMinutes: number;
+      baseMinutes: string;
+      perSqftMinutes: string;
+      perUnitMinutes: string;
+      perRoomMinutes: string;
+      difficultyLevel: number;
+    } | null;
   }[];
   createdByUser: {
     id: string;
@@ -222,14 +233,8 @@ export interface CreateAreaTemplateInput {
   name?: string | null;
   defaultSquareFeet?: number | null;
   items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
-  tasks?: {
-    name: string;
-    baseMinutes?: number;
-    perSqftMinutes?: number;
-    perUnitMinutes?: number;
-    perRoomMinutes?: number;
-    sortOrder?: number;
-  }[];
+  taskTemplateIds?: string[];
+  taskTemplates?: { id: string; sortOrder?: number }[];
 }
 
 export interface UpdateAreaTemplateInput {
@@ -237,14 +242,8 @@ export interface UpdateAreaTemplateInput {
   name?: string | null;
   defaultSquareFeet?: number | null;
   items?: { fixtureTypeId: string; defaultCount: number; minutesPerItem: number; sortOrder?: number }[];
-  tasks?: {
-    name: string;
-    baseMinutes?: number;
-    perSqftMinutes?: number;
-    perUnitMinutes?: number;
-    perRoomMinutes?: number;
-    sortOrder?: number;
-  }[];
+  taskTemplateIds?: string[];
+  taskTemplates?: { id: string; sortOrder?: number }[];
 }
 
 export interface Pagination {
