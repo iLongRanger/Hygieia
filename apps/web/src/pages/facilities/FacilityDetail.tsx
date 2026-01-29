@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -918,7 +918,7 @@ const FacilityDetail = () => {
             </div>
 
             <div className="border-t border-white/10 pt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-gray-400">Total Square Feet</div>
                   <div className="font-medium text-white">
@@ -1060,7 +1060,7 @@ const FacilityDetail = () => {
                             {areaTasks.length} task
                             {areaTasks.length !== 1 ? 's' : ''}
                             {area.squareFeet &&
-                              ` â€¢ ${Number(area.squareFeet).toLocaleString()} sq ft`}
+                              ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
                           </div>
                         </div>
                       </div>
@@ -1188,7 +1188,7 @@ const FacilityDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Street Address"
               value={facilityForm.address?.street || ''}
@@ -1211,7 +1211,7 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Input
               label="State/Province"
               value={facilityForm.address?.state || ''}
@@ -1247,7 +1247,7 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Building Type"
               options={BUILDING_TYPES}
@@ -1357,7 +1357,7 @@ const FacilityDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Quantity"
               type="number"
@@ -1384,7 +1384,7 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Floor Type"
               options={FLOOR_TYPES}
@@ -1409,7 +1409,7 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Room Count"
               type="number"
@@ -1619,7 +1619,7 @@ const FacilityDetail = () => {
             <label className="block text-sm font-medium text-gray-200">
               Task Source
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 className={`rounded-lg border p-3 text-left transition-colors ${
@@ -1683,7 +1683,7 @@ const FacilityDetail = () => {
             />
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Frequency"
               options={CLEANING_FREQUENCIES}
@@ -1711,7 +1711,7 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Base Minutes Override"
               type="number"
@@ -1962,4 +1962,5 @@ const FacilityDetail = () => {
 };
 
 export default FacilityDetail;
+
 

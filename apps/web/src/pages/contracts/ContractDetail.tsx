@@ -479,7 +479,7 @@ const ContractDetail = () => {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-400">Billing Cycle</div>
                 <div className="text-white capitalize">
@@ -501,7 +501,7 @@ const ContractDetail = () => {
             <h2 className="text-lg font-semibold text-white">Service Terms</h2>
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-400">Start Date</div>
                 <div className="text-white">{formatDate(contract.startDate)}</div>
@@ -519,7 +519,7 @@ const ContractDetail = () => {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-400">Auto-Renew</div>
                 <div className="text-white">{contract.autoRenew ? 'Yes' : 'No'}</div>
@@ -617,7 +617,7 @@ const ContractDetail = () => {
             <p className="text-sm text-gray-400">{contract.title}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Start Date *"
               type="date"
@@ -639,7 +639,7 @@ const ContractDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Monthly Value"
               type="number"
@@ -665,7 +665,7 @@ const ContractDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Service Frequency"
               placeholder="Select frequency"
@@ -690,7 +690,7 @@ const ContractDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-end gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-300">
                 <input
@@ -760,3 +760,4 @@ const ContractDetail = () => {
 };
 
 export default ContractDetail;
+

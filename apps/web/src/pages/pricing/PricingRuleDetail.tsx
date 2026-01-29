@@ -373,7 +373,7 @@ const PricingRuleDetail = () => {
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Select
                     label="Pricing Type"
                     options={PRICING_TYPES}
@@ -390,7 +390,7 @@ const PricingRuleDetail = () => {
                     }
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="Base Rate ($)"
                     type="number"
@@ -459,7 +459,7 @@ const PricingRuleDetail = () => {
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <span className="text-sm text-gray-400">Pricing Type</span>
                   <p className="text-white">{formatPricingType(pricingRule.pricingType)}</p>
@@ -603,7 +603,7 @@ const PricingRuleDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Effective Date"
               type="date"
@@ -648,3 +648,4 @@ const PricingRuleDetail = () => {
 };
 
 export default PricingRuleDetail;
+

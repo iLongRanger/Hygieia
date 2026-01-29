@@ -331,7 +331,7 @@ const AccountsList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search accounts..."
@@ -441,7 +441,7 @@ const AccountsList = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Account Type"
               options={ACCOUNT_TYPES}
@@ -459,7 +459,7 @@ const AccountsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Website"
               placeholder="https://example.com"
@@ -482,7 +482,7 @@ const AccountsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Billing Email"
               type="email"
@@ -508,7 +508,7 @@ const AccountsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Payment Terms"
               options={PAYMENT_TERMS}
@@ -562,3 +562,5 @@ const AccountsList = () => {
 };
 
 export default AccountsList;
+
+

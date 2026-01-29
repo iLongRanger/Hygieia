@@ -585,7 +585,7 @@ const LeadsList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search leads..."
@@ -698,7 +698,7 @@ const LeadsList = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Contact Name"
               placeholder="John Smith"
@@ -720,7 +720,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Email"
               type="email"
@@ -746,7 +746,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Lead Source"
               placeholder="Select source"
@@ -767,7 +767,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Estimated Value"
               type="number"
@@ -794,7 +794,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Probability (%)"
               type="number"
@@ -910,7 +910,7 @@ const LeadsList = () => {
                 Account
               </h4>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input
                     type="radio"
@@ -944,7 +944,7 @@ const LeadsList = () => {
 
               {conversionFormData.createNewAccount ? (
                 <div className="space-y-4 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Account Name"
                       required
@@ -975,7 +975,7 @@ const LeadsList = () => {
                       }
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Industry"
                       value={conversionFormData.accountData?.industry || ''}
@@ -1003,7 +1003,7 @@ const LeadsList = () => {
                       }
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Billing Email"
                       type="email"
@@ -1055,7 +1055,7 @@ const LeadsList = () => {
             {/* Facility Option */}
             <div className="space-y-4">
               <h4 className="font-medium text-white">Facility</h4>
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input
                     type="radio"
@@ -1104,7 +1104,7 @@ const LeadsList = () => {
 
               {conversionFormData.facilityOption === 'new' && (
                 <div className="space-y-4 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Facility Name"
                       required
@@ -1134,7 +1134,7 @@ const LeadsList = () => {
                       }
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Square Feet"
                       type="number"
@@ -1215,7 +1215,7 @@ const LeadsList = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Contact Name"
               placeholder="John Smith"
@@ -1237,7 +1237,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Primary Email"
               type="email"
@@ -1263,7 +1263,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Secondary Email"
               type="email"
@@ -1289,7 +1289,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Lead Source"
               placeholder="Select source"
@@ -1310,7 +1310,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Estimated Value"
               type="number"
@@ -1337,7 +1337,7 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Probability (%)"
               type="number"
@@ -1407,3 +1407,5 @@ const LeadsList = () => {
 };
 
 export default LeadsList;
+
+

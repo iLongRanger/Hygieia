@@ -13,11 +13,17 @@ import {
   FileText,
   FileSignature,
   LayoutTemplate,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { clsx } from 'clsx';
 
-const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
 
@@ -47,11 +53,25 @@ const Sidebar = () => {
   });
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 border-r border-white/10 bg-navy-dark/95 backdrop-blur-xl">
-      <div className="flex h-16 items-center justify-center border-b border-white/10 px-6">
+    <aside
+      className={clsx(
+        'fixed left-0 top-0 z-40 h-full w-64 border-r border-white/10 bg-navy-dark/95 backdrop-blur-xl transition-transform duration-200',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        'lg:translate-x-0'
+      )}
+    >
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-6">
         <h1 className="text-xl font-bold tracking-tight text-white">
           HYGIEIA<span className="text-gold">.</span>
         </h1>
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="rounded-lg border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10 lg:hidden"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-4 py-6">
@@ -60,6 +80,7 @@ const Sidebar = () => {
             <li key={item.to}>
               <NavLink
                 to={item.to}
+                onClick={() => onClose?.()}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',

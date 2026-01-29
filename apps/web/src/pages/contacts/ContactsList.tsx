@@ -311,7 +311,7 @@ const ContactsList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search contacts..."
@@ -427,7 +427,7 @@ const ContactsList = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Full Name"
               placeholder="John Smith"
@@ -450,7 +450,7 @@ const ContactsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Title"
               placeholder="Facility Manager"
@@ -469,7 +469,7 @@ const ContactsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Email"
               type="email"
@@ -554,3 +554,5 @@ const ContactsList = () => {
 };
 
 export default ContactsList;
+
+

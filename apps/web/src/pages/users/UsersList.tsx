@@ -209,7 +209,7 @@ const UsersList = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
                 placeholder="Search users..."
@@ -269,7 +269,7 @@ const UsersList = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Email"
               type="email"
@@ -290,7 +290,7 @@ const UsersList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Phone"
               placeholder="(555) 123-4567"
@@ -342,3 +342,5 @@ const UsersList = () => {
 };
 
 export default UsersList;
+
+

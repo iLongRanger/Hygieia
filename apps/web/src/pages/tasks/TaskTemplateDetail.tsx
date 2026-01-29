@@ -415,7 +415,7 @@ const TaskTemplateDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Cleaning Type"
               options={CLEANING_TYPES}
@@ -438,7 +438,7 @@ const TaskTemplateDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Estimated Minutes"
               type="number"
@@ -460,7 +460,7 @@ const TaskTemplateDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Base Minutes"
               type="number"
@@ -550,7 +550,7 @@ const TaskTemplateDetail = () => {
             }
           />
 
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -594,3 +594,5 @@ const TaskTemplateDetail = () => {
 };
 
 export default TaskTemplateDetail;
+
+

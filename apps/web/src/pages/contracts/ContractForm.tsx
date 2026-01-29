@@ -416,7 +416,7 @@ const ContractForm = () => {
                   <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-green-200 font-medium">Proposal Selected</p>
-                    <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-400">Account:</span>
                         <span className="ml-2 text-white">{selectedProposal.account.name}</span>
@@ -652,3 +652,4 @@ const ContractForm = () => {
 };
 
 export default ContractForm;
+

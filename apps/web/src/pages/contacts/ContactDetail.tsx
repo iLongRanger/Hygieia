@@ -395,7 +395,7 @@ const ContactDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Email"
               type="email"
@@ -415,7 +415,7 @@ const ContactDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Mobile"
               placeholder="(555) 987-6543"
@@ -443,7 +443,7 @@ const ContactDetail = () => {
             }
           />
 
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -496,3 +496,5 @@ const ContactDetail = () => {
 };
 
 export default ContactDetail;
+
+
