@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -107,7 +107,10 @@ const CLEANING_FREQUENCIES = [
 
 type AreaTemplateTaskSelection = {
   id: string;
+  taskTemplateId: string | null;
   name: string;
+  cleaningType: string;
+  estimatedMinutes: number | null;
   baseMinutes: number;
   perSqftMinutes: number;
   perUnitMinutes: number;
@@ -276,11 +279,14 @@ const FacilityDetail = () => {
       })) || [];
       const templateTasks = template.tasks?.map((task) => ({
         id: task.id,
-        name: task.name,
-        baseMinutes: Number(task.baseMinutes) || 0,
-        perSqftMinutes: Number(task.perSqftMinutes) || 0,
-        perUnitMinutes: Number(task.perUnitMinutes) || 0,
-        perRoomMinutes: Number(task.perRoomMinutes) || 0,
+        taskTemplateId: task.taskTemplate?.id || null,
+        name: task.taskTemplate?.name || task.name || 'Untitled Task',
+        cleaningType: task.taskTemplate?.cleaningType || 'daily',
+        estimatedMinutes: task.taskTemplate?.estimatedMinutes ?? null,
+        baseMinutes: Number(task.taskTemplate?.baseMinutes ?? task.baseMinutes) || 0,
+        perSqftMinutes: Number(task.taskTemplate?.perSqftMinutes ?? task.perSqftMinutes) || 0,
+        perUnitMinutes: Number(task.taskTemplate?.perUnitMinutes ?? task.perUnitMinutes) || 0,
+        perRoomMinutes: Number(task.taskTemplate?.perRoomMinutes ?? task.perRoomMinutes) || 0,
         include: true,
       })) || [];
 
@@ -353,10 +359,25 @@ const FacilityDetail = () => {
         await updateArea(editingArea.id, areaForm as UpdateAreaInput);
       } else {
         const createdArea = await createArea({ ...areaForm, facilityId: id } as CreateAreaInput);
-        const selectedTemplateTasks = areaTemplateTasks.filter((task) => task.include);
+        const selectedTemplateTasks = areaTemplateTasks.filter(
+          (task) => task.include && task.taskTemplateId
+        );
+        const selectedLegacyTasks = areaTemplateTasks.filter(
+          (task) => task.include && !task.taskTemplateId
+        );
+
         if (selectedTemplateTasks.length > 0) {
+          await bulkCreateFacilityTasks(
+            id,
+            selectedTemplateTasks.map((task) => task.taskTemplateId!) || [],
+            createdArea.id,
+            undefined
+          );
+        }
+
+        if (selectedLegacyTasks.length > 0) {
           await Promise.all(
-            selectedTemplateTasks.map((task) =>
+            selectedLegacyTasks.map((task) =>
               createFacilityTask({
                 facilityId: id,
                 areaId: createdArea.id,
@@ -1039,7 +1060,7 @@ const FacilityDetail = () => {
                             {areaTasks.length} task
                             {areaTasks.length !== 1 ? 's' : ''}
                             {area.squareFeet &&
-                              ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
+                              ` â€¢ ${Number(area.squareFeet).toLocaleString()} sq ft`}
                           </div>
                         </div>
                       </div>
@@ -1512,9 +1533,22 @@ const FacilityDetail = () => {
                       className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
                     >
                       <div>
-                        <div className="font-medium text-white">{task.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-white">{task.name}</div>
+                          {task.taskTemplateId ? (
+                            <Badge variant="info" className="text-xs">
+                              Template
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs">
+                              Legacy
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">
-                          Base {task.baseMinutes}m · SqFt {task.perSqftMinutes}m · Unit {task.perUnitMinutes}m · Room {task.perRoomMinutes}m
+                          {task.taskTemplateId
+                            ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
+                            : `Base ${task.baseMinutes}m - SqFt ${task.perSqftMinutes}m - Unit ${task.perUnitMinutes}m - Room ${task.perRoomMinutes}m`}
                         </div>
                       </div>
                       <label className="flex items-center gap-2 text-sm text-gray-300">
@@ -1928,3 +1962,4 @@ const FacilityDetail = () => {
 };
 
 export default FacilityDetail;
+

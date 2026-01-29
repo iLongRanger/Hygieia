@@ -16,12 +16,19 @@ const areaTemplateTaskSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).optional().default(0),
 });
 
+const areaTemplateTaskTemplateSchema = z.object({
+  id: z.string().uuid('Invalid task template ID'),
+  sortOrder: z.coerce.number().int().min(0).optional().default(0),
+});
+
 export const createAreaTemplateSchema = z.object({
   areaTypeId: z.string().uuid('Invalid area type ID'),
   name: z.string().max(255).optional().nullable(),
   defaultSquareFeet: z.coerce.number().min(0).optional().nullable(),
   items: z.array(areaTemplateItemSchema).optional().default([]),
-  tasks: z.array(areaTemplateTaskSchema).optional().default([]),
+  taskTemplateIds: z.array(z.string().uuid('Invalid task template ID')).optional(),
+  taskTemplates: z.array(areaTemplateTaskTemplateSchema).optional(),
+  tasks: z.array(areaTemplateTaskSchema).optional(),
 });
 
 export const updateAreaTemplateSchema = z.object({
@@ -29,6 +36,8 @@ export const updateAreaTemplateSchema = z.object({
   name: z.string().max(255).optional().nullable(),
   defaultSquareFeet: z.coerce.number().min(0).optional().nullable(),
   items: z.array(areaTemplateItemSchema).optional(),
+  taskTemplateIds: z.array(z.string().uuid('Invalid task template ID')).optional(),
+  taskTemplates: z.array(areaTemplateTaskTemplateSchema).optional(),
   tasks: z.array(areaTemplateTaskSchema).optional(),
 });
 

@@ -341,6 +341,7 @@ model TaskTemplate {
   facility             Facility?            @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
   facilityTasks        FacilityTask[]
   fixtureMinutes       TaskFixtureMinutes[]
+  areaTemplateTasks    AreaTemplateTask[]
   createdByUser        User                 @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
 
   @@index([cleaningType])
@@ -511,18 +512,22 @@ model AreaTemplateItem {
 model AreaTemplateTask {
   id             String    @id @default(uuid()) @db.Uuid
   areaTemplateId String    @map("area_template_id") @db.Uuid
-  name           String    @db.VarChar(255)
-  baseMinutes    Decimal   @default(0) @map("base_minutes") @db.Decimal(10, 4)
-  perSqftMinutes Decimal   @default(0) @map("per_sqft_minutes") @db.Decimal(10, 4)
-  perUnitMinutes Decimal   @default(0) @map("per_unit_minutes") @db.Decimal(10, 4)
-  perRoomMinutes Decimal   @default(0) @map("per_room_minutes") @db.Decimal(10, 4)
+  taskTemplateId String?   @map("task_template_id") @db.Uuid
+  name           String?   @db.VarChar(255)
+  baseMinutes    Decimal?  @map("base_minutes") @db.Decimal(10, 4)
+  perSqftMinutes Decimal?  @map("per_sqft_minutes") @db.Decimal(10, 4)
+  perUnitMinutes Decimal?  @map("per_unit_minutes") @db.Decimal(10, 4)
+  perRoomMinutes Decimal?  @map("per_room_minutes") @db.Decimal(10, 4)
   sortOrder      Int       @default(0) @map("sort_order")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   areaTemplate AreaTemplate @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
+  taskTemplate TaskTemplate? @relation(fields: [taskTemplateId], references: [id], onDelete: SetNull)
 
   @@index([areaTemplateId])
+  @@index([areaTemplateId, sortOrder])
+  @@index([taskTemplateId])
   @@map("area_template_tasks")
 }
 
