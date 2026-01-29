@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Facility area creation auto-applies template defaults with editable counts and task inclusion
   - Area Types configurator available under Area Templates
 
+### Changed
+- **Responsive Admin UI**: Mobile-friendly admin layout and page grids
+  - Collapsible sidebar with overlay on small screens and menu toggle in header
+  - Responsive padding and content container updates in admin layout
+  - Form and filter rows stack on small screens to avoid horizontal overflow
+  - Multi-column page sections now collapse to single-column on small screens
+
 ### Fixed
 - Fixed 422 error on proposals list page caused by empty status filter string
 - Fixed Prisma client not recognizing Proposal model (regenerate required)
