@@ -13,6 +13,9 @@ jest.mock('../../lib/prisma', () => ({
       delete: jest.fn(),
       count: jest.fn(),
     },
+    account: {
+      findUnique: jest.fn(),
+    },
   },
 }));
 

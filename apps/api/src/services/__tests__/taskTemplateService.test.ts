@@ -163,6 +163,21 @@ describe('taskTemplateService', () => {
         })
       );
     });
+
+    it('should fallback to createdAt when sortBy is invalid', async () => {
+      const mockTemplates = [createTestTaskTemplate()];
+
+      (prisma.taskTemplate.findMany as jest.Mock).mockResolvedValue(mockTemplates);
+      (prisma.taskTemplate.count as jest.Mock).mockResolvedValue(1);
+
+      await taskTemplateService.listTaskTemplates({ sortBy: 'invalid-field' });
+
+      expect(prisma.taskTemplate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { createdAt: 'desc' },
+        })
+      );
+    });
   });
 
   describe('getTaskTemplateById', () => {

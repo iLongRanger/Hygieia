@@ -434,6 +434,7 @@ describe('facilityTaskService', () => {
         where: { id: { in: ['template-1', 'template-2'] } },
         select: {
           id: true,
+          cleaningType: true,
           estimatedMinutes: true,
         },
       });
@@ -445,12 +446,16 @@ describe('facilityTaskService', () => {
             taskTemplateId: 'template-1',
             estimatedMinutes: 30,
             createdByUserId: 'user-123',
+            areaId: null,
+            cleaningFrequency: 'daily',
           },
           {
             facilityId: 'facility-123',
             taskTemplateId: 'template-2',
             estimatedMinutes: 45,
             createdByUserId: 'user-123',
+            areaId: null,
+            cleaningFrequency: 'daily',
           },
         ],
       });

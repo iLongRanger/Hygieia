@@ -102,8 +102,8 @@ describe('calculatePerHourPricing', () => {
     // Hours: 0.125
     // Per-visit cost: 0.125 * 35 = 4.375
     // Monthly visits (weekly) = 4.33
-    // Monthly total = 4.375 * 4.33 * 2 workers = 37.87
-    expect(result.monthlyTotal).toBeCloseTo(37.87, 2);
+    // Monthly total = 4.375 * 4.33 * 2 workers = 37.89 (rounded)
+    expect(result.monthlyTotal).toBeCloseTo(37.89, 2);
     expect(result.areas[0].laborHours).toBeCloseTo(0.13, 2);
   });
 });
