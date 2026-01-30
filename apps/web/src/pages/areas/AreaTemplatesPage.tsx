@@ -164,7 +164,7 @@ const AreaTemplatesPage = () => {
   const fetchTaskTemplates = useCallback(async () => {
     try {
       setLoadingTaskTemplates(true);
-      const response = await listTaskTemplates({ isActive: true, limit: 200 });
+      const response = await listTaskTemplates({ isActive: true, limit: 100 });
       setTaskTemplates(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch task templates:', error);
