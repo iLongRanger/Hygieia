@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import {
   Users,
@@ -15,6 +16,7 @@ import { listAppointments } from '../lib/appointments';
 import type { Appointment } from '../types/crm';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
@@ -147,7 +149,10 @@ const Dashboard = () => {
       {/* Content grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Appointments */}
-        <Card className="min-h-[400px]">
+        <Card
+          className="min-h-[400px] cursor-pointer transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/40"
+          onClick={() => navigate('/appointments')}
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
               Appointments
@@ -183,7 +188,10 @@ const Dashboard = () => {
                       >
                         <div>
                           <div className="font-medium text-surface-800 dark:text-surface-100">
-                            {appointment.lead.companyName || appointment.lead.contactName}
+                            {appointment.lead?.companyName ||
+                              appointment.lead?.contactName ||
+                              appointment.account?.name ||
+                              'Unknown'}
                           </div>
                           <div className="text-xs text-surface-500 dark:text-surface-400">
                             {appointment.assignedToUser.fullName}

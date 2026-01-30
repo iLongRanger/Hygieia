@@ -38,6 +38,7 @@ describe('Dashboard', () => {
           companyName: 'Acme Corp',
           status: 'walk_through_booked',
         },
+        account: null,
         assignedToUser: {
           id: 'user-2',
           fullName: 'Rep One',

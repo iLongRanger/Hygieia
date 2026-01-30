@@ -15,7 +15,8 @@ export const appointmentStatusSchema = z.enum([
 ]);
 
 export const createAppointmentSchema = z.object({
-  leadId: z.string().uuid(),
+  leadId: z.string().uuid().optional(),
+  accountId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid(),
   type: appointmentTypeSchema.default('walk_through'),
   status: appointmentStatusSchema.optional().default('scheduled'),
@@ -29,6 +30,14 @@ export const createAppointmentSchema = z.object({
   {
     message: 'Scheduled end must be after scheduled start',
     path: ['scheduledEnd'],
+  }
+).refine(
+  (data) =>
+    (data.type === 'walk_through' && !!data.leadId && !data.accountId) ||
+    (data.type !== 'walk_through' && !!data.accountId && !data.leadId),
+  {
+    message: 'Walk-through requires a lead. Visits/inspections require an account.',
+    path: ['type'],
   }
 );
 
@@ -53,6 +62,7 @@ export const updateAppointmentSchema = z.object({
 
 export const listAppointmentsQuerySchema = z.object({
   leadId: z.string().uuid().optional(),
+  accountId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
   type: appointmentTypeSchema.optional(),
   status: appointmentStatusSchema.optional(),

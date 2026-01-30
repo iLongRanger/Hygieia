@@ -4,6 +4,7 @@ import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 
 export interface AppointmentListParams {
   leadId?: string;
+  accountId?: string;
   assignedToUserId?: string;
   type?: string;
   status?: string;
@@ -13,7 +14,8 @@ export interface AppointmentListParams {
 }
 
 export interface AppointmentCreateInput {
-  leadId: string;
+  leadId?: string;
+  accountId?: string;
   assignedToUserId: string;
   type: string;
   status: string;
@@ -70,6 +72,13 @@ const appointmentSelect = {
       status: true,
     },
   },
+  account: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+    },
+  },
   assignedToUser: {
     select: {
       id: true,
@@ -88,6 +97,7 @@ const appointmentSelect = {
 export async function listAppointments(params: AppointmentListParams) {
   const {
     leadId,
+    accountId,
     assignedToUserId,
     type,
     status,
@@ -99,6 +109,7 @@ export async function listAppointments(params: AppointmentListParams) {
   const where: Prisma.AppointmentWhereInput = {};
 
   if (leadId) where.leadId = leadId;
+  if (accountId) where.accountId = accountId;
   if (assignedToUserId) where.assignedToUserId = assignedToUserId;
   if (type) where.type = type;
   if (status) where.status = status;
@@ -126,23 +137,56 @@ export async function getAppointmentById(id: string) {
 }
 
 export async function createAppointment(input: AppointmentCreateInput) {
-  const lead = await prisma.lead.findUnique({
-    where: { id: input.leadId },
-    select: { id: true, archivedAt: true },
-  });
+  if (input.type === 'walk_through') {
+    if (!input.leadId) {
+      throw new BadRequestError('Lead is required for walkthrough appointments');
+    }
 
-  if (!lead) {
-    throw new NotFoundError('Lead not found');
-  }
+    const lead = await prisma.lead.findUnique({
+      where: { id: input.leadId },
+      select: { id: true, archivedAt: true },
+    });
 
-  if (lead.archivedAt) {
-    throw new BadRequestError('Cannot schedule appointment for archived lead');
+    if (!lead) {
+      throw new NotFoundError('Lead not found');
+    }
+
+    if (lead.archivedAt) {
+      throw new BadRequestError('Cannot schedule appointment for archived lead');
+    }
+  } else {
+    if (!input.accountId) {
+      throw new BadRequestError('Account is required for visit or inspection appointments');
+    }
+
+    const account = await prisma.account.findUnique({
+      where: { id: input.accountId },
+      select: { id: true, archivedAt: true },
+    });
+
+    if (!account || account.archivedAt) {
+      throw new BadRequestError('Account not found or archived');
+    }
+
+    const activeContract = await prisma.contract.findFirst({
+      where: {
+        accountId: input.accountId,
+        status: 'active',
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!activeContract) {
+      throw new BadRequestError('Account must have an active contract');
+    }
   }
 
   return prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.create({
       data: {
-        leadId: input.leadId,
+        leadId: input.leadId ?? null,
+        accountId: input.accountId ?? null,
         assignedToUserId: input.assignedToUserId,
         type: input.type,
         status: input.status,
@@ -156,7 +200,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
       select: appointmentSelect,
     });
 
-    if (input.type === 'walk_through') {
+    if (input.type === 'walk_through' && input.leadId) {
       await tx.lead.update({
         where: { id: input.leadId },
         data: { status: 'walk_through_booked' },
@@ -171,7 +215,8 @@ export async function createAppointment(input: AppointmentCreateInput) {
         body: 'You have been assigned a new appointment.',
         metadata: {
           appointmentId: appointment.id,
-          leadId: appointment.lead.id,
+          leadId: appointment.lead?.id,
+          accountId: appointment.account?.id,
           type: appointment.type,
           scheduledStart: appointment.scheduledStart,
         },
@@ -215,6 +260,7 @@ export async function rescheduleAppointment(
     select: {
       id: true,
       leadId: true,
+      accountId: true,
       assignedToUserId: true,
       status: true,
       type: true,
@@ -237,7 +283,8 @@ export async function rescheduleAppointment(
 
     const appointment = await tx.appointment.create({
       data: {
-        leadId: existing.leadId,
+        leadId: existing.leadId ?? null,
+        accountId: existing.accountId ?? null,
         assignedToUserId: existing.assignedToUserId,
         type: existing.type,
         status: 'scheduled',
@@ -260,7 +307,8 @@ export async function rescheduleAppointment(
         body: 'An assigned appointment has been rescheduled.',
         metadata: {
           appointmentId: appointment.id,
-          leadId: appointment.lead.id,
+          leadId: appointment.lead?.id,
+          accountId: appointment.account?.id,
           type: appointment.type,
           scheduledStart: appointment.scheduledStart,
         },
@@ -292,6 +340,10 @@ export async function completeAppointment(
 
   if (appointment.status === 'completed') {
     throw new BadRequestError('Appointment already completed');
+  }
+
+  if (appointment.type !== 'walk_through' || !appointment.leadId) {
+    throw new BadRequestError('Only walkthrough appointments can be completed here');
   }
 
   const lead = await prisma.lead.findUnique({

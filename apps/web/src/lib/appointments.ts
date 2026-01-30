@@ -3,6 +3,7 @@ import type { Appointment, AppointmentType, AppointmentStatus } from '../types/c
 
 export interface ListAppointmentsParams {
   leadId?: string;
+  accountId?: string;
   assignedToUserId?: string;
   type?: AppointmentType;
   status?: AppointmentStatus;
@@ -12,7 +13,8 @@ export interface ListAppointmentsParams {
 }
 
 export interface CreateAppointmentInput {
-  leadId: string;
+  leadId?: string;
+  accountId?: string;
   assignedToUserId: string;
   type?: AppointmentType;
   scheduledStart: string;

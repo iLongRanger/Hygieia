@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CalendarPlus, Pencil, Search, Trash2 } from 'lucide-react';
+import { CalendarPlus, Filter, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
@@ -13,8 +13,10 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { listAppointments, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
+import { listContracts } from '../../lib/contracts';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
 import type { User } from '../../types/user';
+import type { Contract } from '../../types/contract';
 
 const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
   { value: 'walk_through', label: 'Walk Through' },
@@ -34,8 +36,10 @@ const AppointmentsPage = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [activeContracts, setActiveContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -44,11 +48,13 @@ const AppointmentsPage = () => {
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>('');
   const [assignedFilter, setAssignedFilter] = useState('');
   const [leadFilter, setLeadFilter] = useState('');
+  const [accountFilter, setAccountFilter] = useState('');
   const [includePast, setIncludePast] = useState(false);
   const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
     leadId: '',
+    accountId: '',
     assignedToUserId: '',
     type: 'walk_through' as AppointmentType,
     status: 'scheduled' as AppointmentStatus,
@@ -67,6 +73,7 @@ const AppointmentsPage = () => {
       setLoading(true);
       const data = await listAppointments({
         leadId: leadFilter || undefined,
+        accountId: accountFilter || undefined,
         assignedToUserId: assignedFilter || undefined,
         type: typeFilter || undefined,
         status: statusFilter || undefined,
@@ -80,7 +87,7 @@ const AppointmentsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [assignedFilter, includePast, leadFilter, statusFilter, typeFilter]);
+  }, [accountFilter, assignedFilter, includePast, leadFilter, statusFilter, typeFilter]);
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -100,14 +107,42 @@ const AppointmentsPage = () => {
     }
   }, []);
 
+  const fetchActiveContracts = useCallback(async () => {
+    try {
+      const response = await listContracts({ status: 'active', limit: 100, includeArchived: 'false' });
+      setActiveContracts(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch contracts:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
 
   useEffect(() => {
+    if (typeFilter === 'walk_through') {
+      setAccountFilter('');
+    } else if (typeFilter) {
+      setLeadFilter('');
+    }
+  }, [typeFilter]);
+
+  useEffect(() => {
     fetchLeads();
     fetchUsers();
-  }, [fetchLeads, fetchUsers]);
+    fetchActiveContracts();
+  }, [fetchLeads, fetchUsers, fetchActiveContracts]);
+
+  const activeAccounts = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; type: string }>();
+    activeContracts.forEach((contract) => {
+      if (contract.account?.id) {
+        map.set(contract.account.id, contract.account);
+      }
+    });
+    return Array.from(map.values());
+  }, [activeContracts]);
 
   const statusVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -130,17 +165,46 @@ const AppointmentsPage = () => {
     if (!search) return appointments;
     const term = search.toLowerCase();
     return appointments.filter((appointment) => {
-      const leadName = appointment.lead.companyName || appointment.lead.contactName || '';
+      const leadName = appointment.lead?.companyName || appointment.lead?.contactName || '';
+      const accountName = appointment.account?.name || '';
       const assignee = appointment.assignedToUser.fullName || '';
       return (
         leadName.toLowerCase().includes(term) ||
+        accountName.toLowerCase().includes(term) ||
         assignee.toLowerCase().includes(term)
       );
     });
   }, [appointments, search]);
 
+  const clearFilters = () => {
+    setTypeFilter('');
+    setStatusFilter('');
+    setAssignedFilter('');
+    setLeadFilter('');
+    setAccountFilter('');
+    setIncludePast(false);
+  };
+
+  const hasActiveFilters =
+    typeFilter || statusFilter || assignedFilter || leadFilter || accountFilter || includePast;
+
   const handleCreate = async () => {
-    if (!formData.leadId || !formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
+    if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    if (formData.type === 'walk_through' && !formData.leadId) {
+      toast.error('Please select a lead');
+      return;
+    }
+
+    if (formData.type !== 'walk_through' && !formData.accountId) {
+      toast.error('Please select an account with an active contract');
+      return;
+    }
+
+    if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -148,7 +212,8 @@ const AppointmentsPage = () => {
     try {
       setCreating(true);
       await createAppointment({
-        leadId: formData.leadId,
+        leadId: formData.type === 'walk_through' ? formData.leadId : undefined,
+        accountId: formData.type !== 'walk_through' ? formData.accountId : undefined,
         assignedToUserId: formData.assignedToUserId,
         type: formData.type,
         scheduledStart: new Date(formData.scheduledStart).toISOString(),
@@ -161,6 +226,7 @@ const AppointmentsPage = () => {
       setShowCreateModal(false);
       setFormData({
         leadId: '',
+        accountId: '',
         assignedToUserId: '',
         type: 'walk_through',
         status: 'scheduled',
@@ -181,13 +247,16 @@ const AppointmentsPage = () => {
 
   const openEditModal = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
+    const startLocal = new Date(appointment.scheduledStart);
+    const endLocal = new Date(appointment.scheduledEnd);
     setFormData({
-      leadId: appointment.lead.id,
+      leadId: appointment.lead?.id || '',
+      accountId: appointment.account?.id || '',
       assignedToUserId: appointment.assignedToUser.id,
       type: appointment.type,
       status: appointment.status,
-      scheduledStart: new Date(appointment.scheduledStart).toISOString().slice(0, 16),
-      scheduledEnd: new Date(appointment.scheduledEnd).toISOString().slice(0, 16),
+      scheduledStart: new Date(startLocal.getTime() - startLocal.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      scheduledEnd: new Date(endLocal.getTime() - endLocal.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
       timezone: appointment.timezone,
       location: appointment.location || '',
       notes: appointment.notes || '',
@@ -244,14 +313,14 @@ const AppointmentsPage = () => {
 
   const columns = [
     {
-      header: 'Lead',
+      header: 'Lead / Account',
       cell: (item: Appointment) => (
         <div>
           <div className="font-medium text-surface-900 dark:text-surface-100">
-            {item.lead.companyName || item.lead.contactName}
+            {item.lead?.companyName || item.lead?.contactName || item.account?.name || 'Unknown'}
           </div>
           <div className="text-sm text-surface-500 dark:text-surface-400">
-            {item.lead.contactName}
+            {item.lead?.contactName || item.account?.type || '—'}
           </div>
         </div>
       ),
@@ -336,16 +405,27 @@ const AppointmentsPage = () => {
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
-                placeholder="Search by lead or rep..."
+                placeholder="Search appointments..."
                 icon={<Search className="h-4 w-4" />}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Button
+              variant={hasActiveFilters ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+            >
+              <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="ml-2">•</span>}
+            </Button>
+          </div>
+
+          {showFilterPanel && (
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Type"
                 placeholder="All Types"
@@ -367,29 +447,60 @@ const AppointmentsPage = () => {
                 value={assignedFilter}
                 onChange={setAssignedFilter}
               />
-              <Select
-                label="Lead"
-                placeholder="All Leads"
-                options={leads.map((lead) => ({
-                  value: lead.id,
-                  label: lead.companyName || lead.contactName,
-                }))}
-                value={leadFilter}
-                onChange={setLeadFilter}
-              />
+              {(typeFilter === '' || typeFilter === 'walk_through') ? (
+                <Select
+                  label="Lead"
+                  placeholder="All Leads"
+                  options={leads.map((lead) => ({
+                    value: lead.id,
+                    label: lead.companyName || lead.contactName,
+                  }))}
+                  value={leadFilter}
+                  onChange={(value) => {
+                    setLeadFilter(value);
+                    if (!typeFilter) setAccountFilter('');
+                  }}
+                />
+              ) : null}
+              {(typeFilter === '' || typeFilter !== 'walk_through') ? (
+                <Select
+                  label="Account"
+                  placeholder="All Accounts"
+                  options={activeAccounts.map((account) => ({
+                    value: account.id,
+                    label: account.name,
+                  }))}
+                  value={accountFilter}
+                  onChange={(value) => {
+                    setAccountFilter(value);
+                    if (!typeFilter) setLeadFilter('');
+                  }}
+                />
+              ) : null}
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                  <input
+                    type="checkbox"
+                    checked={includePast}
+                    onChange={(e) => setIncludePast(e.target.checked)}
+                    className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
+                  />
+                  Include past appointments
+                </label>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="ml-auto"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
-              <input
-                type="checkbox"
-                checked={includePast}
-                onChange={(e) => setIncludePast(e.target.checked)}
-                className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
-              />
-              Include past appointments
-            </label>
-          </div>
+          )}
         </div>
 
         <Table data={filteredAppointments} columns={columns} isLoading={loading} />
@@ -403,15 +514,42 @@ const AppointmentsPage = () => {
       >
         <div className="space-y-4">
           <Select
-            label="Lead"
-            placeholder="Select lead"
-            options={leads.map((lead) => ({
-              value: lead.id,
-              label: lead.companyName || lead.contactName,
-            }))}
-            value={formData.leadId}
-            onChange={(value) => setFormData({ ...formData, leadId: value })}
+            label="Appointment Type"
+            options={APPOINTMENT_TYPES}
+            value={formData.type}
+            onChange={(value) =>
+              setFormData({
+                ...formData,
+                type: value as AppointmentType,
+                leadId: '',
+                accountId: '',
+              })
+            }
           />
+
+          {formData.type === 'walk_through' ? (
+            <Select
+              label="Lead"
+              placeholder="Select lead"
+              options={leads.map((lead) => ({
+                value: lead.id,
+                label: lead.companyName || lead.contactName,
+              }))}
+              value={formData.leadId}
+              onChange={(value) => setFormData({ ...formData, leadId: value })}
+            />
+          ) : (
+            <Select
+              label="Account (Active Contract)"
+              placeholder="Select account"
+              options={activeAccounts.map((account) => ({
+                value: account.id,
+                label: account.name,
+              }))}
+              value={formData.accountId}
+              onChange={(value) => setFormData({ ...formData, accountId: value })}
+            />
+          )}
 
           <Select
             label="Assigned Rep"
@@ -419,13 +557,6 @@ const AppointmentsPage = () => {
             options={users.map((u) => ({ value: u.id, label: u.fullName }))}
             value={formData.assignedToUserId}
             onChange={(value) => setFormData({ ...formData, assignedToUserId: value })}
-          />
-
-          <Select
-            label="Appointment Type"
-            options={APPOINTMENT_TYPES}
-            value={formData.type}
-            onChange={(value) => setFormData({ ...formData, type: value as AppointmentType })}
           />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -481,17 +612,31 @@ const AppointmentsPage = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <Select
-            label="Lead"
-            placeholder="Select lead"
-            options={leads.map((lead) => ({
-              value: lead.id,
-              label: lead.companyName || lead.contactName,
-            }))}
-            value={formData.leadId}
-            onChange={(value) => setFormData({ ...formData, leadId: value })}
-            disabled
-          />
+          {formData.type === 'walk_through' ? (
+            <Select
+              label="Lead"
+              placeholder="Select lead"
+              options={leads.map((lead) => ({
+                value: lead.id,
+                label: lead.companyName || lead.contactName,
+              }))}
+              value={formData.leadId}
+              onChange={(value) => setFormData({ ...formData, leadId: value })}
+              disabled
+            />
+          ) : (
+            <Select
+              label="Account (Active Contract)"
+              placeholder="Select account"
+              options={activeAccounts.map((account) => ({
+                value: account.id,
+                label: account.name,
+              }))}
+              value={formData.accountId}
+              onChange={(value) => setFormData({ ...formData, accountId: value })}
+              disabled
+            />
+          )}
 
           <Select
             label="Assigned Rep"

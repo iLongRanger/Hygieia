@@ -60,7 +60,8 @@ export type AppointmentStatus =
 
 export interface Appointment {
   id: string;
-  leadId: string;
+  leadId?: string | null;
+  accountId?: string | null;
   type: AppointmentType;
   status: AppointmentStatus;
   scheduledStart: string;

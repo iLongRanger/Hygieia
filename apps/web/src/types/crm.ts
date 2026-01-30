@@ -88,7 +88,12 @@ export interface Appointment {
     contactName: string;
     companyName: string | null;
     status: string;
-  };
+  } | null;
+  account: {
+    id: string;
+    name: string;
+    type: string;
+  } | null;
   assignedToUser: {
     id: string;
     fullName: string;
