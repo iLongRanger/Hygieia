@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { clsx } from 'clsx';
+import { cn } from '../../lib/utils';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -54,27 +54,29 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   return (
     <aside
-      className={clsx(
-        'fixed left-0 top-0 z-40 h-full w-64 border-r border-white/10 bg-navy-dark/95 backdrop-blur-xl transition-transform duration-200',
+      className={cn(
+        'fixed left-0 top-0 z-40 h-full w-64 border-r border-surface-200 bg-white transition-transform duration-200 dark:border-surface-700 dark:bg-surface-900',
         isOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0'
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-white/10 px-6">
-        <h1 className="text-xl font-bold tracking-tight text-white">
-          HYGIEIA<span className="text-gold">.</span>
+      {/* Logo */}
+      <div className="flex h-16 items-center justify-between border-b border-surface-200 px-6 dark:border-surface-700">
+        <h1 className="text-xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
+          HYGIEIA<span className="text-primary-600 dark:text-primary-400">.</span>
         </h1>
         <button
           type="button"
           aria-label="Close navigation menu"
-          className="rounded-lg border border-white/10 bg-white/5 p-2 text-white transition-colors hover:bg-white/10 lg:hidden"
+          className="rounded-lg border border-surface-200 bg-surface-50 p-2 text-surface-600 transition-colors hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700 lg:hidden"
           onClick={onClose}
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-4 py-6">
+      {/* Navigation */}
+      <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
           {visibleNavItems.map((item) => (
             <li key={item.to}>
@@ -82,25 +84,37 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 to={item.to}
                 onClick={() => onClose?.()}
                 className={({ isActive }) =>
-                  clsx(
-                    'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+                  cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-emerald text-white shadow-lg shadow-emerald/20'
-                      : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100'
                   )
                 }
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      className={cn(
+                        'h-5 w-5',
+                        isActive
+                          ? 'text-primary-600 dark:text-primary-400'
+                          : 'text-surface-400 dark:text-surface-500'
+                      )}
+                    />
+                    {item.label}
+                  </>
+                )}
               </NavLink>
             </li>
           ))}
         </ul>
 
-        <div className="border-t border-white/10 pt-4">
+        {/* Sign out button */}
+        <div className="mt-4 border-t border-surface-200 pt-4 dark:border-surface-700">
           <button
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-400 transition-all duration-200 hover:bg-red-500/10 hover:text-red-500"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-surface-600 transition-all duration-200 hover:bg-error-50 hover:text-error-700 dark:text-surface-400 dark:hover:bg-error-900/20 dark:hover:text-error-400"
           >
             <LogOut className="h-5 w-5" />
             Sign Out
