@@ -146,7 +146,7 @@ describe('Select', () => {
     it('should apply error styles when error prop is provided', () => {
       render(<Select options={mockOptions} error="Error message" />);
       const select = screen.getByRole('combobox');
-      expect(select).toHaveClass('border-red-500');
+      expect(select).toHaveClass('border-error-500');
     });
 
     it('should apply custom className', () => {
@@ -158,19 +158,19 @@ describe('Select', () => {
     it('should have focus styles', () => {
       render(<Select options={mockOptions} />);
       const select = screen.getByRole('combobox');
-      expect(select).toHaveClass('focus:border-gold', 'focus:ring-gold');
+      expect(select).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/20');
     });
 
     it('should apply placeholder text color when no value selected', () => {
       render(<Select options={mockOptions} value="" onChange={() => {}} />);
       const select = screen.getByRole('combobox');
-      expect(select).toHaveClass('text-gray-500');
+      expect(select).toHaveClass('text-surface-400');
     });
 
     it('should not apply placeholder text color when value is selected', () => {
       render(<Select options={mockOptions} value="option1" onChange={() => {}} />);
       const select = screen.getByRole('combobox');
-      expect(select).not.toHaveClass('text-gray-500');
+      expect(select).not.toHaveClass('text-surface-400');
     });
   });
 

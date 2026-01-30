@@ -83,7 +83,7 @@ describe('Modal', () => {
         </Modal>
       );
 
-      const backdrop = container.querySelector('.bg-black\\/60');
+      const backdrop = container.querySelector('.bg-surface-900\\/50');
       expect(backdrop).toBeInTheDocument();
     });
   });
@@ -161,7 +161,7 @@ describe('Modal', () => {
         </Modal>
       );
 
-      const backdrop = container.querySelector('.bg-black\\/60') as HTMLElement;
+      const backdrop = container.querySelector('.bg-surface-900\\/50') as HTMLElement;
       await user.click(backdrop);
 
       expect(handleClose).toHaveBeenCalledTimes(1);
