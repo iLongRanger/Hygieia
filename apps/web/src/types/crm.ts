@@ -64,6 +64,52 @@ export interface Lead {
   } | null;
 }
 
+export type AppointmentType = 'walk_through' | 'inspection' | 'visit';
+export type AppointmentStatus =
+  | 'scheduled'
+  | 'completed'
+  | 'canceled'
+  | 'rescheduled'
+  | 'no_show';
+
+export interface Appointment {
+  id: string;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  scheduledStart: string;
+  scheduledEnd: string;
+  timezone: string;
+  location: string | null;
+  notes: string | null;
+  completedAt: string | null;
+  rescheduledFromId: string | null;
+  lead: {
+    id: string;
+    contactName: string;
+    companyName: string | null;
+    status: string;
+  };
+  assignedToUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  createdByUser: {
+    id: string;
+    fullName: string;
+  };
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface CreateLeadInput {
   leadSourceId?: string | null;
   status?: string;

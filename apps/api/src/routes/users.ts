@@ -42,7 +42,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listUsersQuerySchema.safeParse(req.query);

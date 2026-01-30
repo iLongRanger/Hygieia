@@ -50,6 +50,43 @@ export type LeadStatus =
   | 'lost'
   | 'reopened';
 
+export type AppointmentType = 'walk_through' | 'inspection' | 'visit';
+export type AppointmentStatus =
+  | 'scheduled'
+  | 'completed'
+  | 'canceled'
+  | 'rescheduled'
+  | 'no_show';
+
+export interface Appointment {
+  id: string;
+  leadId: string;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  scheduledStart: string;
+  scheduledEnd: string;
+  timezone: string;
+  location: string | null;
+  notes: string | null;
+  assignedToUserId: string;
+  createdByUserId: string;
+  completedAt: string | null;
+  rescheduledFromId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface Account {
   id: string;
   name: string;

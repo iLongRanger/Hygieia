@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { BadRequestError } from '../middleware/errorHandler';
 
 export interface LeadListParams {
   page?: number;
@@ -230,6 +231,18 @@ export async function createLead(input: LeadCreateInput) {
 
 export async function updateLead(id: string, input: LeadUpdateInput) {
   const updateData: Prisma.LeadUpdateInput = {};
+
+  if (input.status === 'proposal_sent') {
+    const latestAppointment = await prisma.appointment.findFirst({
+      where: { leadId: id, type: 'walk_through' },
+      orderBy: { scheduledStart: 'desc' },
+      select: { status: true },
+    });
+
+    if (!latestAppointment || latestAppointment.status !== 'completed') {
+      throw new BadRequestError('Walkthrough must be completed before sending proposal');
+    }
+  }
 
   if (input.leadSourceId !== undefined) {
     updateData.leadSource = input.leadSourceId
