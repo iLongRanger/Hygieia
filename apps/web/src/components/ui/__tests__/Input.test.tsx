@@ -129,7 +129,7 @@ describe('Input', () => {
     it('should apply error styles when error prop is provided', () => {
       render(<Input error="Error message" />);
       const input = screen.getByRole('textbox');
-      expect(input).toHaveClass('border-red-500');
+      expect(input).toHaveClass('border-error-500');
     });
 
     it('should apply icon padding when icon is provided', () => {
@@ -147,7 +147,7 @@ describe('Input', () => {
     it('should have focus styles', () => {
       render(<Input />);
       const input = screen.getByRole('textbox');
-      expect(input).toHaveClass('focus:border-gold', 'focus:ring-gold');
+      expect(input).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/20');
     });
   });
 

@@ -42,7 +42,7 @@ describe('Textarea', () => {
     it('should render label with correct styling', () => {
       const { container } = render(<Textarea label="Comments" />);
       const label = container.querySelector('label');
-      expect(label).toHaveClass('mb-1.5', 'block', 'text-sm', 'font-medium', 'text-gray-300');
+      expect(label).toHaveClass('mb-1.5', 'block', 'text-sm', 'font-medium', 'text-surface-700');
     });
 
     it('should associate label with textarea', () => {
@@ -67,24 +67,24 @@ describe('Textarea', () => {
     it('should apply error styles when error is present', () => {
       render(<Textarea error="Invalid input" />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+      expect(textarea).toHaveClass('border-error-500', 'focus:border-error-500', 'focus:ring-error-500/20');
     });
 
     it('should not apply error styles when no error', () => {
       render(<Textarea />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).not.toHaveClass('border-red-500');
+      expect(textarea).not.toHaveClass('border-error-500');
     });
 
     it('should render error with correct styling', () => {
       const { container } = render(<Textarea error="Error message" />);
-      const errorElement = container.querySelector('.text-red-500');
-      expect(errorElement).toHaveClass('mt-1', 'text-xs', 'text-red-500');
+      const errorElement = container.querySelector('.text-error-600');
+      expect(errorElement).toHaveClass('text-xs', 'text-error-600');
     });
 
     it('should not render error element when no error', () => {
       const { container } = render(<Textarea />);
-      const errorElement = container.querySelector('.text-red-500');
+      const errorElement = container.querySelector('.text-error-600');
       expect(errorElement).not.toBeInTheDocument();
     });
   });
@@ -97,13 +97,13 @@ describe('Textarea', () => {
         'flex',
         'min-h-[100px]',
         'w-full',
-        'rounded-xl',
+        'rounded-lg',
         'border',
-        'border-white/10',
-        'bg-navy-dark/50',
+        'border-surface-300',
+        'bg-white',
         'px-3',
         'py-2',
-        'text-white',
+        'text-surface-900',
         'resize-none'
       );
     });
@@ -112,23 +112,23 @@ describe('Textarea', () => {
       render(<Textarea />);
       const textarea = screen.getByRole('textbox');
       expect(textarea).toHaveClass(
-        'focus:border-gold',
+        'focus:border-primary-500',
         'focus:outline-none',
-        'focus:ring-1',
-        'focus:ring-gold'
+        'focus:ring-2',
+        'focus:ring-primary-500/20'
       );
     });
 
     it('should apply placeholder styles', () => {
       render(<Textarea />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('placeholder:text-gray-500');
+      expect(textarea).toHaveClass('placeholder:text-surface-400');
     });
 
     it('should apply disabled styles', () => {
       render(<Textarea disabled />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('disabled:cursor-not-allowed', 'disabled:opacity-50');
+      expect(textarea).toHaveClass('disabled:cursor-not-allowed', 'disabled:bg-surface-100');
     });
 
     it('should apply transition styles', () => {
@@ -146,7 +146,7 @@ describe('Textarea', () => {
     it('should merge custom className with default styles', () => {
       render(<Textarea className="min-h-[200px]" />);
       const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('min-h-[200px]', 'rounded-xl', 'border');
+      expect(textarea).toHaveClass('min-h-[200px]', 'rounded-lg', 'border');
     });
   });
 
@@ -436,21 +436,21 @@ describe('Textarea', () => {
       render(<Textarea error="" />);
       const textarea = screen.getByRole('textbox');
       // Empty error string should not apply error styles
-      expect(textarea).not.toHaveClass('border-red-500');
+      expect(textarea).not.toHaveClass('border-error-500');
     });
 
     it('should handle error state changes', () => {
       const { rerender } = render(<Textarea />);
       let textarea = screen.getByRole('textbox');
-      expect(textarea).not.toHaveClass('border-red-500');
+      expect(textarea).not.toHaveClass('border-error-500');
 
       rerender(<Textarea error="Error message" />);
       textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('border-red-500');
+      expect(textarea).toHaveClass('border-error-500');
 
       rerender(<Textarea />);
       textarea = screen.getByRole('textbox');
-      expect(textarea).not.toHaveClass('border-red-500');
+      expect(textarea).not.toHaveClass('border-error-500');
     });
 
     it('should handle rapid value changes', () => {

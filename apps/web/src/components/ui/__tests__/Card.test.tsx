@@ -36,12 +36,11 @@ describe('Card', () => {
       expect(card).toHaveClass(
         'relative',
         'overflow-hidden',
-        'rounded-2xl',
+        'rounded-xl',
         'border',
-        'border-white/10',
-        'bg-navy/50',
-        'backdrop-blur-xl',
-        'shadow-xl'
+        'border-surface-200',
+        'bg-white',
+        'shadow-soft'
       );
     });
 
@@ -54,7 +53,7 @@ describe('Card', () => {
     it('should merge custom className with default styles', () => {
       const { container } = render(<Card className="mt-4">Merged</Card>);
       const card = container.firstChild as HTMLElement;
-      expect(card).toHaveClass('mt-4', 'rounded-2xl', 'border');
+      expect(card).toHaveClass('mt-4', 'rounded-xl', 'border');
     });
 
     it('should override default padding with custom className', () => {

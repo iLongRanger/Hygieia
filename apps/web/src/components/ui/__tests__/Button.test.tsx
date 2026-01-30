@@ -13,19 +13,19 @@ describe('Button', () => {
     it('should render with default primary variant', () => {
       render(<Button>Primary</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-emerald');
+      expect(button).toHaveClass('bg-primary-600');
     });
 
     it('should render secondary variant', () => {
       render(<Button variant="secondary">Secondary</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-navy-dark');
+      expect(button).toHaveClass('bg-surface-100');
     });
 
     it('should render outline variant', () => {
       render(<Button variant="outline">Outline</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-transparent', 'border-gold');
+      expect(button).toHaveClass('bg-transparent', 'border-primary-600');
     });
 
     it('should render ghost variant', () => {
@@ -37,7 +37,7 @@ describe('Button', () => {
     it('should render danger variant', () => {
       render(<Button variant="danger">Danger</Button>);
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-red-500');
+      expect(button).toHaveClass('bg-error-600');
     });
   });
 

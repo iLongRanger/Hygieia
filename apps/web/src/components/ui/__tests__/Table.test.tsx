@@ -72,22 +72,21 @@ describe('Table', () => {
 
     it('should render empty state with proper styling', () => {
       const { container } = render(<Table data={[]} columns={basicColumns} />);
-      const emptyState = container.querySelector('.flex.h-40.w-full');
+      const emptyState = container.querySelector('.flex.h-48.w-full');
       expect(emptyState).toBeInTheDocument();
       expect(emptyState).toHaveClass(
         'flex',
-        'h-40',
+        'h-48',
         'w-full',
         'flex-col',
         'items-center',
         'justify-center',
         'rounded-lg',
-        'border',
+        'border-2',
         'border-dashed',
-        'border-white/10',
+        'border-surface-200',
         'p-8',
-        'text-center',
-        'text-gray-400'
+        'text-center'
       );
     });
   });
@@ -97,7 +96,7 @@ describe('Table', () => {
       const { container } = render(
         <Table data={sampleData} columns={basicColumns} isLoading={true} />
       );
-      const skeletons = container.querySelectorAll('.animate-pulse');
+      const skeletons = container.querySelectorAll('.skeleton');
       expect(skeletons.length).toBeGreaterThan(0);
     });
 
@@ -105,7 +104,7 @@ describe('Table', () => {
       const { container } = render(
         <Table data={sampleData} columns={basicColumns} isLoading={true} />
       );
-      const skeletons = container.querySelectorAll('.animate-pulse');
+      const skeletons = container.querySelectorAll('.skeleton');
       expect(skeletons).toHaveLength(5);
     });
 
@@ -284,10 +283,7 @@ describe('Table', () => {
       const tableContainer = container.firstChild as HTMLElement;
       expect(tableContainer).toHaveClass(
         'w-full',
-        'overflow-hidden',
-        'rounded-xl',
-        'border',
-        'border-white/10'
+        'overflow-hidden'
       );
     });
 
@@ -308,19 +304,19 @@ describe('Table', () => {
     it('should apply header background color', () => {
       const { container } = render(<Table data={sampleData} columns={basicColumns} />);
       const thead = container.querySelector('thead');
-      expect(thead).toHaveClass('bg-white/5', 'text-gray-300');
+      expect(thead).toHaveClass('bg-surface-50');
     });
 
     it('should apply row hover styles', () => {
       const { container } = render(<Table data={sampleData} columns={basicColumns} />);
       const row = container.querySelector('tbody tr');
-      expect(row).toHaveClass('transition-colors', 'hover:bg-white/5');
+      expect(row).toHaveClass('transition-colors', 'hover:bg-surface-100');
     });
 
     it('should apply row dividers', () => {
       const { container } = render(<Table data={sampleData} columns={basicColumns} />);
       const tbody = container.querySelector('tbody');
-      expect(tbody).toHaveClass('divide-y', 'divide-white/5');
+      expect(tbody).toHaveClass('divide-y', 'divide-surface-100');
     });
   });
 
@@ -384,7 +380,7 @@ describe('Table', () => {
       const { rerender, container } = render(
         <Table data={sampleData} columns={basicColumns} isLoading={true} />
       );
-      expect(container.querySelectorAll('.animate-pulse')).toHaveLength(5);
+      expect(container.querySelectorAll('.skeleton')).toHaveLength(5);
 
       rerender(<Table data={sampleData} columns={basicColumns} isLoading={false} />);
       expect(screen.getByText('John Doe')).toBeInTheDocument();

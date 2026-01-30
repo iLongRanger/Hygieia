@@ -18,7 +18,7 @@ describe('Badge', () => {
     it('should render with default variant when variant prop is not provided', () => {
       render(<Badge>Default</Badge>);
       const badge = screen.getByText('Default');
-      expect(badge).toHaveClass('bg-white/5', 'text-gray-300', 'border-white/10');
+      expect(badge).toHaveClass('bg-surface-100', 'text-surface-600', 'border-surface-200');
     });
   });
 
@@ -26,31 +26,31 @@ describe('Badge', () => {
     it('should render success variant', () => {
       render(<Badge variant="success">Success</Badge>);
       const badge = screen.getByText('Success');
-      expect(badge).toHaveClass('bg-emerald/10', 'text-emerald', 'border-emerald/20');
+      expect(badge).toHaveClass('bg-success-50', 'text-success-700', 'border-success-200');
     });
 
     it('should render warning variant', () => {
       render(<Badge variant="warning">Warning</Badge>);
       const badge = screen.getByText('Warning');
-      expect(badge).toHaveClass('bg-gold/10', 'text-gold', 'border-gold/20');
+      expect(badge).toHaveClass('bg-warning-50', 'text-warning-700', 'border-warning-200');
     });
 
     it('should render error variant', () => {
       render(<Badge variant="error">Error</Badge>);
       const badge = screen.getByText('Error');
-      expect(badge).toHaveClass('bg-red-500/10', 'text-red-500', 'border-red-500/20');
+      expect(badge).toHaveClass('bg-error-50', 'text-error-700', 'border-error-200');
     });
 
     it('should render info variant', () => {
       render(<Badge variant="info">Info</Badge>);
       const badge = screen.getByText('Info');
-      expect(badge).toHaveClass('bg-blue-500/10', 'text-blue-400', 'border-blue-500/20');
+      expect(badge).toHaveClass('bg-blue-50', 'text-blue-700', 'border-blue-200');
     });
 
     it('should render default variant explicitly', () => {
       render(<Badge variant="default">Default</Badge>);
       const badge = screen.getByText('Default');
-      expect(badge).toHaveClass('bg-white/5', 'text-gray-300', 'border-white/10');
+      expect(badge).toHaveClass('bg-surface-100', 'text-surface-600', 'border-surface-200');
     });
   });
 
@@ -63,11 +63,10 @@ describe('Badge', () => {
         'items-center',
         'rounded-full',
         'border',
+        'font-medium',
         'px-2.5',
         'py-0.5',
-        'text-xs',
-        'font-medium',
-        'transition-colors'
+        'text-xs'
       );
     });
 
@@ -142,19 +141,19 @@ describe('Badge', () => {
     it('should render status badge for active state', () => {
       render(<Badge variant="success">Active</Badge>);
       const badge = screen.getByText('Active');
-      expect(badge).toHaveClass('text-emerald');
+      expect(badge).toHaveClass('text-success-700');
     });
 
     it('should render status badge for pending state', () => {
       render(<Badge variant="warning">Pending</Badge>);
       const badge = screen.getByText('Pending');
-      expect(badge).toHaveClass('text-gold');
+      expect(badge).toHaveClass('text-warning-700');
     });
 
     it('should render status badge for error state', () => {
       render(<Badge variant="error">Failed</Badge>);
       const badge = screen.getByText('Failed');
-      expect(badge).toHaveClass('text-red-500');
+      expect(badge).toHaveClass('text-error-700');
     });
 
     it('should render count badge', () => {
@@ -189,10 +188,10 @@ describe('Badge', () => {
 
     it('should handle variant switching', () => {
       const { rerender } = render(<Badge variant="success">Test</Badge>);
-      expect(screen.getByText('Test')).toHaveClass('text-emerald');
+      expect(screen.getByText('Test')).toHaveClass('text-success-700');
 
       rerender(<Badge variant="error">Test</Badge>);
-      expect(screen.getByText('Test')).toHaveClass('text-red-500');
+      expect(screen.getByText('Test')).toHaveClass('text-error-700');
     });
   });
 
