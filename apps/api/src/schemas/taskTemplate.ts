@@ -62,27 +62,25 @@ export const updateTaskTemplateSchema = z.object({
   ).optional(),
 });
 
+const booleanQueryParam = z.preprocess((value) => {
+  if (value === undefined) return undefined;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return value;
+}, z.boolean().optional());
+
 export const listTaskTemplatesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   cleaningType: cleaningTypeSchema.optional(),
   areaTypeId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
-  isGlobal: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
-  isActive: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
+  isGlobal: booleanQueryParam,
+  isActive: booleanQueryParam,
   search: z.string().max(100).optional(),
   sortBy: z.enum(['createdAt', 'name', 'estimatedMinutes']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
-  includeArchived: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
+  includeArchived: booleanQueryParam,
 });
 
 export type CreateTaskTemplateInput = z.infer<typeof createTaskTemplateSchema>;
