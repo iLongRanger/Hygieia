@@ -6,10 +6,16 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   icon?: React.ReactNode;
   hint?: string;
+  showCharacterCount?: boolean;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, icon, hint, ...props }, ref) => {
+  ({ className, label, error, icon, hint, showCharacterCount, ...props }, ref) => {
+    const currentLength = typeof props.value === 'string' ? props.value.length : 0;
+    const maxLength = props.maxLength;
+    const showCounter = showCharacterCount && maxLength;
+    const isNearLimit = maxLength && currentLength >= maxLength * 0.9;
+
     return (
       <div className="w-full">
         {label && (
@@ -40,12 +46,26 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
         </div>
-        {hint && !error && (
-          <p className="mt-1.5 text-xs text-surface-500 dark:text-surface-400">{hint}</p>
-        )}
-        {error && (
-          <p className="mt-1.5 text-xs text-error-600 dark:text-error-400">{error}</p>
-        )}
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex-1">
+            {hint && !error && (
+              <p className="text-xs text-surface-500 dark:text-surface-400">{hint}</p>
+            )}
+            {error && (
+              <p className="text-xs text-error-600 dark:text-error-400">{error}</p>
+            )}
+          </div>
+          {showCounter && (
+            <p className={cn(
+              'text-xs ml-2',
+              isNearLimit
+                ? 'text-warning-600 dark:text-warning-400'
+                : 'text-surface-400 dark:text-surface-500'
+            )}>
+              {currentLength}/{maxLength}
+            </p>
+          )}
+        </div>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   Plus,
   Search,
@@ -30,6 +31,7 @@ import type {
   Account,
   CreateFacilityInput,
 } from '../../types/facility';
+import { maxLengths } from '../../lib/validation';
 
 const BUILDING_TYPES = [
   { value: 'office', label: 'Office' },
@@ -100,6 +102,7 @@ const FacilitiesList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch facilities:', error);
+        toast.error('Failed to load facilities');
         setFacilities([]);
       } finally {
         setLoading(false);
@@ -131,11 +134,15 @@ const FacilitiesList = () => {
   }, [fetchAccounts]);
 
   const handleCreate = async () => {
-    if (!formData.accountId || !formData.name) return;
+    if (!formData.accountId || !formData.name) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     try {
       setCreating(true);
       await createFacility(formData);
+      toast.success('Facility created successfully');
       setShowCreateModal(false);
       setFormData({
         accountId: '',
@@ -153,6 +160,7 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to create facility:', error);
+      toast.error('Failed to create facility');
     } finally {
       setCreating(false);
     }
@@ -171,6 +179,7 @@ const FacilitiesList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveFacility(id);
+      toast.success('Facility archived successfully');
       fetchFacilities(page, search, {
         accountId: accountFilter,
         status: statusFilter,
@@ -179,12 +188,14 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to archive facility:', error);
+      toast.error('Failed to archive facility');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreFacility(id);
+      toast.success('Facility restored successfully');
       fetchFacilities(page, search, {
         accountId: accountFilter,
         status: statusFilter,
@@ -193,6 +204,7 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to restore facility:', error);
+      toast.error('Failed to restore facility');
     }
   };
 
@@ -452,6 +464,8 @@ const FacilitiesList = () => {
             placeholder="Enter facility name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            maxLength={maxLengths.name}
+            showCharacterCount
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -465,6 +479,7 @@ const FacilitiesList = () => {
                   address: { ...formData.address, street: e.target.value },
                 })
               }
+              maxLength={maxLengths.street}
             />
             <Input
               label="City"
@@ -476,6 +491,7 @@ const FacilitiesList = () => {
                   address: { ...formData.address, city: e.target.value },
                 })
               }
+              maxLength={maxLengths.city}
             />
           </div>
 
@@ -490,6 +506,7 @@ const FacilitiesList = () => {
                   address: { ...formData.address, state: e.target.value },
                 })
               }
+              maxLength={maxLengths.state}
             />
             <Input
               label="Postal Code"
@@ -501,6 +518,7 @@ const FacilitiesList = () => {
                   address: { ...formData.address, postalCode: e.target.value },
                 })
               }
+              maxLength={maxLengths.postalCode}
             />
             <Input
               label="Country"
@@ -512,6 +530,7 @@ const FacilitiesList = () => {
                   address: { ...formData.address, country: e.target.value },
                 })
               }
+              maxLength={maxLengths.country}
             />
           </div>
 
@@ -535,6 +554,8 @@ const FacilitiesList = () => {
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value || null })
             }
+            maxLength={maxLengths.notes}
+            showCharacterCount
           />
 
           <div className="flex justify-end gap-3 pt-4">

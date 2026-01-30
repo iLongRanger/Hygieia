@@ -29,6 +29,7 @@ import {
 } from '../../lib/contacts';
 import { listAccounts } from '../../lib/accounts';
 import type { Contact, CreateContactInput, Account } from '../../types/crm';
+import { maxLengths } from '../../lib/validation';
 
 const ContactsList = () => {
   const navigate = useNavigate();
@@ -435,6 +436,8 @@ const ContactsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
+              maxLength={maxLengths.fullName}
+              showCharacterCount
             />
             <Select
               label="Account"
@@ -458,6 +461,7 @@ const ContactsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value || null })
               }
+              maxLength={maxLengths.title}
             />
             <Input
               label="Department"
@@ -466,6 +470,7 @@ const ContactsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, department: e.target.value || null })
               }
+              maxLength={maxLengths.name}
             />
           </div>
 
@@ -478,6 +483,7 @@ const ContactsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value || null })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Phone"
@@ -486,6 +492,7 @@ const ContactsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value || null })
               }
+              maxLength={maxLengths.phone}
             />
           </div>
 
@@ -496,6 +503,7 @@ const ContactsList = () => {
             onChange={(e) =>
               setFormData({ ...formData, mobile: e.target.value || null })
             }
+            maxLength={maxLengths.phone}
           />
 
           <div className="flex gap-6">
@@ -530,6 +538,8 @@ const ContactsList = () => {
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value || null })
             }
+            maxLength={maxLengths.notes}
+            showCharacterCount
           />
 
           <div className="flex justify-end gap-3 pt-4">
