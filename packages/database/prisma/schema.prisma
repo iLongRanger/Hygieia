@@ -48,6 +48,9 @@ model User {
   createdContracts         Contract[]        @relation("CreatedContracts")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
+  createdAppointments      Appointment[]     @relation("CreatedAppointments")
+  assignedAppointments     Appointment[]     @relation("AssignedAppointments")
+  notifications            Notification[]    @relation("UserNotifications")
 
   @@index([email])
   @@index([status])
@@ -138,6 +141,7 @@ model Lead {
   createdByUser      User        @relation("CreatedLeads", fields: [createdByUserId], references: [id])
   convertedToAccount Account?    @relation("LeadToAccount", fields: [convertedToAccountId], references: [id])
   convertedByUser    User?       @relation("ConvertedLeads", fields: [convertedByUserId], references: [id])
+  appointments       Appointment[] @relation("LeadAppointments")
 
   @@index([status])
   @@index([leadSourceId])
@@ -147,6 +151,53 @@ model Lead {
   @@index([createdAt])
   @@index([convertedToAccountId])
   @@map("leads")
+}
+
+model Appointment {
+  id                String    @id @default(uuid()) @db.Uuid
+  leadId            String    @map("lead_id") @db.Uuid
+  type              String    @default("walk_through") @db.VarChar(30)
+  status            String    @default("scheduled") @db.VarChar(30)
+  scheduledStart    DateTime  @map("scheduled_start") @db.Timestamptz(6)
+  scheduledEnd      DateTime  @map("scheduled_end") @db.Timestamptz(6)
+  timezone          String    @db.VarChar(50)
+  location          String?   @db.Text
+  notes             String?   @db.Text
+  assignedToUserId  String    @map("assigned_to_user_id") @db.Uuid
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+  rescheduledFromId String?   @map("rescheduled_from_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lead            Lead         @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
+  assignedToUser  User         @relation("AssignedAppointments", fields: [assignedToUserId], references: [id])
+  createdByUser   User         @relation("CreatedAppointments", fields: [createdByUserId], references: [id])
+  rescheduledFrom Appointment? @relation("AppointmentReschedules", fields: [rescheduledFromId], references: [id])
+  reschedules     Appointment[] @relation("AppointmentReschedules")
+
+  @@index([leadId])
+  @@index([assignedToUserId])
+  @@index([scheduledStart])
+  @@index([status])
+  @@map("appointments")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(255)
+  body      String?  @db.Text
+  metadata  Json     @default("{}") @db.JsonB
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([readAt])
+  @@map("notifications")
 }
 
 model Account {

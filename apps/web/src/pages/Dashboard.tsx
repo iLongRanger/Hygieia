@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import {
   Users,
@@ -8,11 +8,15 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  Calendar,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { listAppointments } from '../lib/appointments';
+import type { Appointment } from '../types/crm';
 
 const Dashboard = () => {
   const user = useAuthStore((state) => state.user);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   const stats = [
     {
@@ -52,6 +56,41 @@ const Dashboard = () => {
       bg: 'bg-purple-100 dark:bg-purple-900/30',
     },
   ];
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const data = await listAppointments({
+          includePast: false,
+        });
+        setAppointments(data);
+      } catch (error) {
+        console.error('Failed to fetch appointments:', error);
+      }
+    };
+    fetchAppointments();
+  }, []);
+
+  const groupedAppointments = useMemo(() => {
+    const groups: Record<string, Appointment[]> = {};
+    appointments.forEach((appointment) => {
+      const date = new Date(appointment.scheduledStart);
+      const dateKey = date.toISOString().slice(0, 10);
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(appointment);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, items]) => ({
+        key,
+        label: new Date(key).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          weekday: 'short',
+        }),
+        items,
+      }));
+  }, [appointments]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -107,27 +146,62 @@ const Dashboard = () => {
 
       {/* Content grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
+        {/* Appointments */}
         <Card className="min-h-[400px]">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-              Recent Activity
+              Appointments
             </h3>
-            <button className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
-              View all
-            </button>
+            <span className="text-xs text-surface-400 dark:text-surface-500">
+              Upcoming
+            </span>
           </div>
-          <div className="mt-8 flex flex-col items-center justify-center text-center">
-            <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-700">
-              <TrendingUp className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+          {appointments.length === 0 ? (
+            <div className="mt-8 flex flex-col items-center justify-center text-center">
+              <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-700">
+                <Calendar className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
+                No upcoming appointments
+              </p>
+              <p className="mt-1 text-xs text-surface-400 dark:text-surface-500">
+                Scheduled walkthroughs will appear here
+              </p>
             </div>
-            <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
-              Activity feed coming soon
-            </p>
-            <p className="mt-1 text-xs text-surface-400 dark:text-surface-500">
-              Track your team's actions in real-time
-            </p>
-          </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {groupedAppointments.map((group) => (
+                <div key={group.key} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    {group.label}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {group.items.map((appointment) => (
+                      <div
+                        key={appointment.id}
+                        className="flex items-center justify-between rounded-md bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/50"
+                      >
+                        <div>
+                          <div className="font-medium text-surface-800 dark:text-surface-100">
+                            {appointment.lead.companyName || appointment.lead.contactName}
+                          </div>
+                          <div className="text-xs text-surface-500 dark:text-surface-400">
+                            {appointment.assignedToUser.fullName}
+                          </div>
+                        </div>
+                        <div className="text-xs text-surface-500 dark:text-surface-400">
+                          {new Date(appointment.scheduledStart).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Performance Overview */}

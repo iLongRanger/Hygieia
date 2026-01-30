@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Item types include category + default minutes per item
   - Facility area creation auto-applies template defaults with editable counts and task inclusion
   - Area Types configurator available under Area Templates
+- **Appointments & Notifications**: Walkthrough scheduling with reschedule history and in-app notifications
+  - Appointments model + API endpoints for scheduling, rescheduling, and completion
+  - Lead detail page with walkthrough history and completion flow
+  - Dashboard appointments calendar widget
+  - In-app notification dropdown for assigned reps
 
 ### Changed
 - **Responsive Admin UI**: Mobile-friendly admin layout and page grids
