@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
+  Calendar,
   Users,
   Building2,
   Contact,
@@ -29,6 +30,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
+    { to: '/appointments', icon: Calendar, label: 'Appointments' },
     { to: '/leads', icon: Users, label: 'Leads' },
     { to: '/accounts', icon: Building2, label: 'Accounts' },
     { to: '/contacts', icon: Contact, label: 'Contacts' },
