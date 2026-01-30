@@ -29,6 +29,9 @@ export interface AreaCreateInput {
   notes?: string | null;
   fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
   createdByUserId: string;
+  // Template auto-apply options
+  applyTemplate?: boolean;
+  excludeTaskTemplateIds?: string[];
 }
 
 export interface AreaUpdateInput {
@@ -196,30 +199,113 @@ export async function getAreaById(id: string) {
 }
 
 export async function createArea(input: AreaCreateInput) {
-  return prisma.area.create({
-    data: {
-      facilityId: input.facilityId,
-      areaTypeId: input.areaTypeId,
-      name: input.name,
-      quantity: input.quantity ?? 1,
-      squareFeet: input.squareFeet,
-      floorType: input.floorType ?? 'vct',
-      conditionLevel: input.conditionLevel ?? 'standard',
-      roomCount: input.roomCount ?? 0,
-      unitCount: input.unitCount ?? 0,
-      trafficLevel: input.trafficLevel ?? 'medium',
-      notes: input.notes,
-      createdByUserId: input.createdByUserId,
-      fixtures: input.fixtures && input.fixtures.length > 0 ? {
-        create: input.fixtures.map((fixture) => ({
-          fixtureTypeId: fixture.fixtureTypeId,
-          count: fixture.count,
-          minutesPerItem: fixture.minutesPerItem ?? 0,
-        })),
-      } : undefined,
-    },
-    select: areaSelect,
+  const shouldApplyTemplate = input.applyTemplate !== false; // Default to true
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Fetch template if applyTemplate is true
+    const template = shouldApplyTemplate
+      ? await tx.areaTemplate.findUnique({
+          where: { areaTypeId: input.areaTypeId },
+          select: {
+            defaultSquareFeet: true,
+            items: {
+              select: {
+                fixtureType: { select: { id: true } },
+                defaultCount: true,
+                minutesPerItem: true,
+              },
+            },
+            tasks: {
+              select: {
+                taskTemplate: { select: { id: true } },
+              },
+            },
+          },
+        })
+      : null;
+
+    // 2. Determine fixtures: use provided OR template defaults
+    const fixtures = input.fixtures && input.fixtures.length > 0
+      ? input.fixtures
+      : template?.items?.map(item => ({
+          fixtureTypeId: item.fixtureType.id,
+          count: item.defaultCount,
+          minutesPerItem: item.minutesPerItem,
+        })) || [];
+
+    // 3. Create the area with fixtures
+    const area = await tx.area.create({
+      data: {
+        facilityId: input.facilityId,
+        areaTypeId: input.areaTypeId,
+        name: input.name,
+        quantity: input.quantity ?? 1,
+        squareFeet: input.squareFeet ?? template?.defaultSquareFeet ?? null,
+        floorType: input.floorType ?? 'vct',
+        conditionLevel: input.conditionLevel ?? 'standard',
+        roomCount: input.roomCount ?? 0,
+        unitCount: input.unitCount ?? 0,
+        trafficLevel: input.trafficLevel ?? 'medium',
+        notes: input.notes,
+        createdByUserId: input.createdByUserId,
+        fixtures: fixtures.length > 0 ? {
+          create: fixtures.map((fixture) => ({
+            fixtureTypeId: fixture.fixtureTypeId,
+            count: fixture.count,
+            minutesPerItem: fixture.minutesPerItem ?? 0,
+          })),
+        } : undefined,
+      },
+      select: areaSelect,
+    });
+
+    // 4. Create facility tasks from template (if applyTemplate)
+    let tasksCreated = 0;
+    if (shouldApplyTemplate && template?.tasks?.length) {
+      const excludeIds = new Set(input.excludeTaskTemplateIds || []);
+      const taskTemplateIds = template.tasks
+        .filter(t => t.taskTemplate && !excludeIds.has(t.taskTemplate.id))
+        .map(t => t.taskTemplate!.id);
+
+      if (taskTemplateIds.length > 0) {
+        // Fetch task template details for creating facility tasks
+        const taskTemplates = await tx.taskTemplate.findMany({
+          where: { id: { in: taskTemplateIds } },
+          select: { id: true, estimatedMinutes: true, cleaningType: true },
+        });
+
+        const taskData = taskTemplates.map((tmpl) => ({
+          facilityId: input.facilityId,
+          areaId: area.id,
+          taskTemplateId: tmpl.id,
+          estimatedMinutes: tmpl.estimatedMinutes,
+          cleaningFrequency: mapCleaningTypeToFrequency(tmpl.cleaningType),
+          createdByUserId: input.createdByUserId,
+        }));
+
+        const result = await tx.facilityTask.createMany({ data: taskData });
+        tasksCreated = result.count;
+      }
+    }
+
+    return { ...area, _appliedTemplate: { tasksCreated } };
   });
+}
+
+// Helper to map task template cleaning type to frequency
+function mapCleaningTypeToFrequency(cleaningType: string): string {
+  const mapping: Record<string, string> = {
+    daily: 'daily',
+    weekly: 'weekly',
+    biweekly: 'biweekly',
+    monthly: 'monthly',
+    quarterly: 'quarterly',
+    annual: 'annual',
+    deep_clean: 'monthly',
+    move_out: 'as_needed',
+    post_construction: 'as_needed',
+  };
+  return mapping[cleaningType] || 'daily';
 }
 
 export async function updateArea(id: string, input: AreaUpdateInput) {

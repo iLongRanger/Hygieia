@@ -40,6 +40,9 @@ export const createAreaSchema = z.object({
   trafficLevel: trafficLevelSchema.optional().default('medium'),
   notes: z.string().max(10000).optional().nullable(),
   fixtures: z.array(fixtureInputSchema).optional().default([]),
+  // Template auto-apply options
+  applyTemplate: z.boolean().optional().default(true),
+  excludeTaskTemplateIds: z.array(z.string().uuid()).optional(),
 });
 
 export const updateAreaSchema = z.object({
