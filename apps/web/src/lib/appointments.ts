@@ -65,6 +65,10 @@ export async function updateAppointment(id: string, input: UpdateAppointmentInpu
   return response.data.data;
 }
 
+export async function deleteAppointment(id: string): Promise<void> {
+  await api.delete(`/appointments/${id}`);
+}
+
 export async function rescheduleAppointment(id: string, input: RescheduleAppointmentInput): Promise<Appointment> {
   const response = await api.post(`/appointments/${id}/reschedule`, input);
   return response.data.data;

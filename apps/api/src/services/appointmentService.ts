@@ -198,6 +198,13 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
   });
 }
 
+export async function deleteAppointment(id: string) {
+  return prisma.appointment.delete({
+    where: { id },
+    select: { id: true },
+  });
+}
+
 export async function rescheduleAppointment(
   id: string,
   input: AppointmentRescheduleInput,

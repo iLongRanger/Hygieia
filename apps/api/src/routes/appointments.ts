@@ -17,6 +17,7 @@ import {
   updateAppointment,
   rescheduleAppointment,
   completeAppointment,
+  deleteAppointment,
 } from '../services/appointmentService';
 
 const router: Router = Router();
@@ -184,6 +185,25 @@ router.post(
       });
 
       res.json({ data: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  '/:id',
+  authenticate,
+  requireManager,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getAppointmentById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Appointment not found');
+      }
+
+      await deleteAppointment(req.params.id);
+      res.status(204).send();
     } catch (error) {
       next(error);
     }
