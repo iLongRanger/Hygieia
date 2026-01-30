@@ -27,6 +27,7 @@ import {
 import { listUsers } from '../../lib/users';
 import type { Account, CreateAccountInput } from '../../types/crm';
 import type { User } from '../../types/user';
+import { maxLengths } from '../../lib/validation';
 
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
@@ -439,6 +440,8 @@ const AccountsList = () => {
             placeholder="Acme Corporation"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            maxLength={maxLengths.companyName}
+            showCharacterCount
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -467,6 +470,7 @@ const AccountsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, website: e.target.value || null })
               }
+              maxLength={maxLengths.website}
             />
             <Select
               label="Account Manager"
@@ -494,6 +498,7 @@ const AccountsList = () => {
                   billingEmail: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Billing Phone"
@@ -505,6 +510,7 @@ const AccountsList = () => {
                   billingPhone: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.phone}
             />
           </div>
 
@@ -538,6 +544,8 @@ const AccountsList = () => {
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value || null })
             }
+            maxLength={maxLengths.notes}
+            showCharacterCount
           />
 
           <div className="flex justify-end gap-3 pt-4">

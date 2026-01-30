@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import {
   Plus,
   Search,
@@ -37,6 +38,7 @@ import { listFacilities } from '../../lib/facilities';
 import type { Lead, CreateLeadInput, UpdateLeadInput, LeadSource, Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import type { User } from '../../types/user';
+import { maxLengths } from '../../lib/validation';
 
 const LEAD_STATUSES = [
   { value: 'lead', label: 'Lead' },
@@ -150,6 +152,7 @@ const LeadsList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch leads:', error);
+        toast.error('Failed to load leads');
         setLeads([]);
       } finally {
         setLoading(false);
@@ -211,11 +214,15 @@ const LeadsList = () => {
   }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities]);
 
   const handleCreate = async () => {
-    if (!formData.contactName) return;
+    if (!formData.contactName) {
+      toast.error('Contact name is required');
+      return;
+    }
 
     try {
       setCreating(true);
       await createLead(formData);
+      toast.success('Lead created successfully');
       setShowCreateModal(false);
       resetForm();
       fetchLeads(page, search, {
@@ -226,6 +233,7 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to create lead:', error);
+      toast.error('Failed to create lead');
     } finally {
       setCreating(false);
     }
@@ -260,6 +268,7 @@ const LeadsList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveLead(id);
+      toast.success('Lead archived successfully');
       fetchLeads(page, search, {
         status: statusFilter,
         leadSourceId: leadSourceFilter,
@@ -268,12 +277,14 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to archive lead:', error);
+      toast.error('Failed to archive lead');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreLead(id);
+      toast.success('Lead restored successfully');
       fetchLeads(page, search, {
         status: statusFilter,
         leadSourceId: leadSourceFilter,
@@ -282,6 +293,7 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to restore lead:', error);
+      toast.error('Failed to restore lead');
     }
   };
 
@@ -290,11 +302,12 @@ const LeadsList = () => {
     try {
       const result = await canConvertLead(lead.id);
       if (!result.canConvert) {
-        alert(result.reason || 'This lead cannot be converted');
+        toast.error(result.reason || 'This lead cannot be converted');
         return;
       }
     } catch (error) {
       console.error('Failed to check conversion eligibility:', error);
+      toast.error('Failed to check conversion eligibility');
       return;
     }
 
@@ -333,29 +346,30 @@ const LeadsList = () => {
     // Validate form
     if (conversionFormData.createNewAccount) {
       if (!conversionFormData.accountData?.name || !conversionFormData.accountData?.type) {
-        alert('Please fill in required account fields');
+        toast.error('Please fill in required account fields');
         return;
       }
     } else {
       if (!conversionFormData.existingAccountId) {
-        alert('Please select an existing account');
+        toast.error('Please select an existing account');
         return;
       }
     }
 
     if (conversionFormData.facilityOption === 'new' && !conversionFormData.facilityData?.name) {
-      alert('Please enter a facility name');
+      toast.error('Please enter a facility name');
       return;
     }
 
     if (conversionFormData.facilityOption === 'existing' && !conversionFormData.existingFacilityId) {
-      alert('Please select an existing facility');
+      toast.error('Please select an existing facility');
       return;
     }
 
     try {
       setConverting(true);
       const result = await convertLead(selectedLead.id, conversionFormData);
+      toast.success('Lead converted successfully');
       setConversionResult(result);
       // Refresh leads list
       fetchLeads(page, search, {
@@ -366,7 +380,7 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to convert lead:', error);
-      alert('Failed to convert lead. Please try again.');
+      toast.error('Failed to convert lead. Please try again.');
     } finally {
       setConverting(false);
     }
@@ -406,11 +420,15 @@ const LeadsList = () => {
   };
 
   const handleUpdate = async () => {
-    if (!editingLead || !editFormData.contactName) return;
+    if (!editingLead || !editFormData.contactName) {
+      toast.error('Contact name is required');
+      return;
+    }
 
     try {
       setUpdating(true);
       await updateLead(editingLead.id, editFormData);
+      toast.success('Lead updated successfully');
       closeEditModal();
       fetchLeads(page, search, {
         status: statusFilter,
@@ -420,6 +438,7 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to update lead:', error);
+      toast.error('Failed to update lead');
     } finally {
       setUpdating(false);
     }
@@ -706,6 +725,8 @@ const LeadsList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, contactName: e.target.value })
               }
+              maxLength={maxLengths.fullName}
+              showCharacterCount
             />
             <Input
               label="Company Name"
@@ -717,6 +738,7 @@ const LeadsList = () => {
                   companyName: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.companyName}
             />
           </div>
 
@@ -732,6 +754,7 @@ const LeadsList = () => {
                   primaryEmail: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Phone"
@@ -743,6 +766,7 @@ const LeadsList = () => {
                   primaryPhone: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.phone}
             />
           </div>
 
@@ -829,6 +853,8 @@ const LeadsList = () => {
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value || null })
             }
+            maxLength={maxLengths.notes}
+            showCharacterCount
           />
 
           <div className="flex justify-end gap-3 pt-4">
@@ -958,6 +984,8 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.companyName}
+                      showCharacterCount
                     />
                     <Select
                       label="Account Type"
@@ -988,6 +1016,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.industry}
                     />
                     <Input
                       label="Website"
@@ -1001,6 +1030,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.website}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1017,6 +1047,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.email}
                     />
                     <Input
                       label="Billing Phone"
@@ -1030,6 +1061,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.phone}
                     />
                   </div>
                 </div>
@@ -1118,6 +1150,8 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.name}
+                      showCharacterCount
                     />
                     <Input
                       label="Building Type"
@@ -1132,6 +1166,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.buildingType}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1161,6 +1196,7 @@ const LeadsList = () => {
                           },
                         })
                       }
+                      maxLength={maxLengths.accessInstructions}
                     />
                   </div>
                 </div>
@@ -1223,6 +1259,8 @@ const LeadsList = () => {
               onChange={(e) =>
                 setEditFormData({ ...editFormData, contactName: e.target.value })
               }
+              maxLength={maxLengths.fullName}
+              showCharacterCount
             />
             <Input
               label="Company Name"
@@ -1234,6 +1272,7 @@ const LeadsList = () => {
                   companyName: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.companyName}
             />
           </div>
 
@@ -1249,6 +1288,7 @@ const LeadsList = () => {
                   primaryEmail: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Primary Phone"
@@ -1260,6 +1300,7 @@ const LeadsList = () => {
                   primaryPhone: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.phone}
             />
           </div>
 
@@ -1275,6 +1316,7 @@ const LeadsList = () => {
                   secondaryEmail: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Secondary Phone"
@@ -1286,6 +1328,7 @@ const LeadsList = () => {
                   secondaryPhone: e.target.value || null,
                 })
               }
+              maxLength={maxLengths.phone}
             />
           </div>
 
@@ -1372,6 +1415,8 @@ const LeadsList = () => {
             onChange={(e) =>
               setEditFormData({ ...editFormData, notes: e.target.value || null })
             }
+            maxLength={maxLengths.notes}
+            showCharacterCount
           />
 
           {editFormData.status === 'lost' && (
@@ -1382,6 +1427,8 @@ const LeadsList = () => {
               onChange={(e) =>
                 setEditFormData({ ...editFormData, lostReason: e.target.value || null })
               }
+              maxLength={maxLengths.lostReason}
+              showCharacterCount
             />
           )}
 

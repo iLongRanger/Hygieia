@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { listUsers, createUser, listRoles } from '../../lib/users';
 import type { User, Role, CreateUserInput } from '../../types/user';
+import { maxLengths } from '../../lib/validation';
 
 const USER_STATUSES = [
   { value: 'active', label: 'Active' },
@@ -267,6 +268,8 @@ const UsersList = () => {
             onChange={(e) =>
               setFormData({ ...formData, fullName: e.target.value })
             }
+            maxLength={maxLengths.fullName}
+            showCharacterCount
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -278,6 +281,7 @@ const UsersList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              maxLength={maxLengths.email}
             />
             <Input
               label="Password"
@@ -298,6 +302,7 @@ const UsersList = () => {
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value || null })
               }
+              maxLength={maxLengths.phone}
             />
             <Select
               label="Status"
