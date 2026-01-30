@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useThemeStore } from '../stores/themeStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, Sun, Moon } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ const Login = () => {
   const [error, setError] = useState('');
 
   const login = useAuthStore((state) => state.login);
+  const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,13 +33,26 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-navy p-4">
-      <Card className="w-full max-w-md space-y-8 bg-navy-dark/50 backdrop-blur-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-surface-100 via-surface-50 to-primary-50 p-4 dark:from-surface-900 dark:via-surface-900 dark:to-surface-800">
+      {/* Theme toggle in corner */}
+      <button
+        onClick={toggleTheme}
+        className="absolute right-4 top-4 rounded-lg p-2 text-surface-500 transition-colors hover:bg-white hover:text-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        {theme === 'dark' ? (
+          <Sun className="h-5 w-5" />
+        ) : (
+          <Moon className="h-5 w-5" />
+        )}
+      </button>
+
+      <Card className="w-full max-w-md space-y-8 animate-fade-in-up">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            HYGIEIA<span className="text-gold">.</span>
+          <h1 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
+            HYGIEIA<span className="text-primary-600 dark:text-primary-400">.</span>
           </h1>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
             Sign in to manage your cleaning operations
           </p>
         </div>
@@ -56,7 +71,7 @@ const Login = () => {
             <Input
               type="password"
               label="Password"
-              placeholder="••••••••"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               icon={<Lock className="h-5 w-5" />}
@@ -65,14 +80,17 @@ const Login = () => {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 p-3 text-center text-sm text-red-500 border border-red-500/20">
+            <div className="rounded-lg bg-error-50 p-3 text-center text-sm text-error-700 border border-error-200 dark:bg-error-900/20 dark:text-error-400 dark:border-error-800">
               {error}
             </div>
           )}
 
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <a href="#" className="font-medium text-gold hover:text-gold/80">
+              <a
+                href="#"
+                className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              >
                 Forgot your password?
               </a>
             </div>
@@ -82,6 +100,10 @@ const Login = () => {
             Sign in
           </Button>
         </form>
+
+        <p className="text-center text-xs text-surface-400 dark:text-surface-500">
+          Commercial Cleaning Management System
+        </p>
       </Card>
     </div>
   );

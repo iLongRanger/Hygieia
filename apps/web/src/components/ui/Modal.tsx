@@ -1,11 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '../../lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
@@ -48,26 +43,35 @@ export const Modal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-surface-900/50 backdrop-blur-sm dark:bg-black/60"
         onClick={onClose}
       />
+
+      {/* Modal content */}
       <div
         className={cn(
-          'relative w-full mx-4 rounded-2xl border border-white/10 bg-navy-dark shadow-2xl',
+          'relative w-full rounded-xl border border-surface-200 bg-white shadow-soft-xl animate-scale-in',
+          'dark:border-surface-700 dark:bg-surface-800',
           sizes[size]
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-surface-200 px-6 py-4 dark:border-surface-700">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+            className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 dark:text-surface-500 dark:hover:bg-surface-700 dark:hover:text-surface-300"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Body */}
         <div className="max-h-[calc(100vh-200px)] overflow-y-auto px-6 py-4">
           {children}
         </div>

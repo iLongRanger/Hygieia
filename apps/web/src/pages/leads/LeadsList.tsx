@@ -455,8 +455,8 @@ const LeadsList = () => {
       header: 'Lead',
       cell: (item: Lead) => (
         <div>
-          <div className="font-medium text-white">{item.contactName}</div>
-          <div className="text-sm text-gray-400">
+          <div className="font-medium text-surface-900 dark:text-surface-100">{item.contactName}</div>
+          <div className="text-sm text-surface-500 dark:text-surface-400">
             {item.companyName || 'No company'}
           </div>
         </div>
@@ -480,8 +480,8 @@ const LeadsList = () => {
     {
       header: 'Value',
       cell: (item: Lead) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <DollarSign className="h-4 w-4 text-gray-500" />
+        <div className="flex items-center gap-2 text-surface-700 dark:text-surface-300">
+          <DollarSign className="h-4 w-4 text-surface-400 dark:text-surface-500" />
           {formatCurrency(item.estimatedValue)}
         </div>
       ),
@@ -497,7 +497,7 @@ const LeadsList = () => {
     {
       header: 'Assigned To',
       cell: (item: Lead) => (
-        <span className="text-gray-300">
+        <span className="text-surface-700 dark:text-surface-300">
           {item.assignedToUser?.fullName || 'Unassigned'}
         </span>
       ),
@@ -576,7 +576,7 @@ const LeadsList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-white">Leads</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Leads</h1>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add New Lead
@@ -584,7 +584,7 @@ const LeadsList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -608,7 +608,7 @@ const LeadsList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Status"
                 placeholder="All Statuses"
@@ -637,12 +637,12 @@ const LeadsList = () => {
                 onChange={setAssignedToFilter}
               />
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
                   />
                   Include Archived
                 </label>
@@ -664,8 +664,8 @@ const LeadsList = () => {
 
         <Table data={leads} columns={columns} isLoading={loading} />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {leads.length} of {total} leads
             </span>
