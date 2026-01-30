@@ -171,6 +171,7 @@ npm run deploy            # Deploy to production
 - [📊 Data Model](./Complete_Data_Model.md)
 - [🔐 Authentication Guide](./AUTHENTICATION.md)
 - [🧪 Testing Strategy](./Testing_Strategy.md)
+- [User Testing Workflow](./User_Test_Workflow.md)
 - [🔌 Security Implementation](./Security_Implementation_Guide.md)
 - [📋 API Error Handling](./API_Error_Handling.md)
 - [🔌 Integration Specifications](./Integration_Specifications.md)
