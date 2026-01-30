@@ -39,6 +39,7 @@ For detailed documentation, see the [Documentation/](./Documentation/) folder:
 - [Architecture Overview](./Documentation/ARCHITECTURE.md)
 - [Data Model](./Documentation/Complete_Data_Model.md)
 - [Testing Strategy](./Documentation/Testing_Strategy.md)
+- [User Testing Workflow](./Documentation/User_Test_Workflow.md)
 - [Security Implementation](./Documentation/Security_Implementation_Guide.md)
 - [API Error Handling](./Documentation/API_Error_Handling.md)
 
