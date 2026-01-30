@@ -59,6 +59,7 @@ describe('AppointmentsPage', () => {
           companyName: 'Acme Corp',
           status: 'walk_through_booked',
         },
+        account: null,
         assignedToUser: {
           id: 'user-2',
           fullName: 'Rep One',
@@ -79,6 +80,7 @@ describe('AppointmentsPage', () => {
     expect(screen.getByText('Rep One')).toBeInTheDocument();
     expect(listAppointmentsMock).toHaveBeenCalledWith({
       leadId: undefined,
+      accountId: undefined,
       assignedToUserId: undefined,
       type: undefined,
       status: undefined,

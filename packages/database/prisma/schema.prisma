@@ -155,7 +155,8 @@ model Lead {
 
 model Appointment {
   id                String    @id @default(uuid()) @db.Uuid
-  leadId            String    @map("lead_id") @db.Uuid
+  leadId            String?   @map("lead_id") @db.Uuid
+  accountId         String?   @map("account_id") @db.Uuid
   type              String    @default("walk_through") @db.VarChar(30)
   status            String    @default("scheduled") @db.VarChar(30)
   scheduledStart    DateTime  @map("scheduled_start") @db.Timestamptz(6)
@@ -170,13 +171,15 @@ model Appointment {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  lead            Lead         @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
+  lead            Lead?        @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
+  account         Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
   assignedToUser  User         @relation("AssignedAppointments", fields: [assignedToUserId], references: [id])
   createdByUser   User         @relation("CreatedAppointments", fields: [createdByUserId], references: [id])
   rescheduledFrom Appointment? @relation("AppointmentReschedules", fields: [rescheduledFromId], references: [id])
   reschedules     Appointment[] @relation("AppointmentReschedules")
 
   @@index([leadId])
+  @@index([accountId])
   @@index([assignedToUserId])
   @@index([scheduledStart])
   @@index([status])
@@ -227,6 +230,7 @@ model Account {
   facilities     Facility[]
   proposals      Proposal[]
   contracts      Contract[]
+  appointments   Appointment[]
   accountManager User?      @relation("AccountManager", fields: [accountManagerId], references: [id])
   createdByUser  User       @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
   sourceLead     Lead?      @relation("LeadToAccount")
