@@ -168,6 +168,9 @@ export interface CreateAreaInput {
   trafficLevel?: TrafficLevel;
   notes?: string | null;
   fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
+  // Template auto-apply options
+  applyTemplate?: boolean;
+  excludeTaskTemplateIds?: string[];
 }
 
 export interface UpdateAreaInput {

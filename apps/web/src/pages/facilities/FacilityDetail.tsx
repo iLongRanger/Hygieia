@@ -358,23 +358,23 @@ const FacilityDetail = () => {
       if (editingArea) {
         await updateArea(editingArea.id, areaForm as UpdateAreaInput);
       } else {
-        const createdArea = await createArea({ ...areaForm, facilityId: id } as CreateAreaInput);
-        const selectedTemplateTasks = areaTemplateTasks.filter(
-          (task) => task.include && task.taskTemplateId
-        );
+        // Get excluded task template IDs (unchecked tasks with taskTemplateId)
+        const excludeTaskTemplateIds = areaTemplateTasks
+          .filter((task) => !task.include && task.taskTemplateId)
+          .map((task) => task.taskTemplateId!);
+
+        // Create area with auto-apply template - tasks are created in backend transaction
+        const createdArea = await createArea({
+          ...areaForm,
+          facilityId: id,
+          applyTemplate: true,
+          excludeTaskTemplateIds,
+        } as CreateAreaInput);
+
+        // Handle legacy tasks (inline tasks without taskTemplateId) - rare case
         const selectedLegacyTasks = areaTemplateTasks.filter(
           (task) => task.include && !task.taskTemplateId
         );
-
-        if (selectedTemplateTasks.length > 0) {
-          await bulkCreateFacilityTasks(
-            id,
-            selectedTemplateTasks.map((task) => task.taskTemplateId!) || [],
-            createdArea.id,
-            undefined
-          );
-        }
-
         if (selectedLegacyTasks.length > 0) {
           await Promise.all(
             selectedLegacyTasks.map((task) =>
