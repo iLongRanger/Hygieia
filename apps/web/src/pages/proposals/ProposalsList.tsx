@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -79,6 +79,8 @@ const formatDate = (date: string | null | undefined) => {
 
 const ProposalsList = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountIdFilter = searchParams.get('accountId') || undefined;
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [search, setSearch] = useState('');
@@ -107,6 +109,7 @@ const ProposalsList = () => {
           page: currentPage,
           status: (filters?.status as ProposalStatus) || undefined,
           includeArchived: filters?.includeArchived,
+          accountId: accountIdFilter,
         });
         setProposals(response?.data || []);
         if (response?.pagination) {
@@ -121,7 +124,7 @@ const ProposalsList = () => {
         setLoading(false);
       }
     },
-    []
+    [accountIdFilter]
   );
 
   useEffect(() => {
@@ -130,6 +133,10 @@ const ProposalsList = () => {
       includeArchived,
     });
   }, [fetchProposals, page, search, statusFilter, includeArchived]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [accountIdFilter]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -430,6 +437,20 @@ const ProposalsList = () => {
               {hasActiveFilters && <span className="ml-2">*</span>}
             </Button>
           </div>
+          {accountIdFilter && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
+              <span className="rounded-full border border-white/10 bg-navy-darker/60 px-3 py-1">
+                Filtered by account
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/proposals')}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
 
           {/* Filter Panel */}
           {showFilterPanel && (
