@@ -119,6 +119,21 @@ describe('Contract Routes', () => {
     expect(response.body.data.id).toBe('contract-1');
   });
 
+  it('PATCH /:id should allow updates when status is pending_signature', async () => {
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'pending_signature',
+    });
+    (contractService.updateContract as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+
+    const response = await request(app)
+      .patch('/api/v1/contracts/contract-1')
+      .send({ title: 'Updated' })
+      .expect(200);
+
+    expect(response.body.data.id).toBe('contract-1');
+  });
+
   it('PATCH /:id should return 422 when status locked for edits', async () => {
     (contractService.getContractById as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'active' });
 

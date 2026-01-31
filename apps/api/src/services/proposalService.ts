@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { ValidationError } from '../middleware/errorHandler';
 import {
   resolvePricingStrategyKey,
   getStrategy,
@@ -221,6 +222,14 @@ function calculateTotals(
   };
 }
 
+function assertPositiveTotal(totalAmount: number) {
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    throw new ValidationError('Proposal total must be greater than 0', {
+      field: 'totalAmount',
+    });
+  }
+}
+
 export async function listProposals(
   params: ProposalListParams
 ): Promise<PaginatedResult<Prisma.ProposalGetPayload<{ select: typeof proposalSelect }>>> {
@@ -317,6 +326,7 @@ export async function createProposal(input: ProposalCreateInput) {
   const items = input.proposalItems ?? [];
   const services = input.proposalServices ?? [];
   const totals = calculateTotals(items, services, taxRate);
+  assertPositiveTotal(totals.totalAmount);
 
   // Resolve pricing strategy - use provided key, or resolve from facility/account
   const pricingStrategyKey =
@@ -434,6 +444,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
 
     const taxRate = input.taxRate ?? Number(currentProposal.taxRate);
     const totals = calculateTotals(items, services, taxRate);
+    assertPositiveTotal(totals.totalAmount);
 
     updateData.subtotal = totals.subtotal;
     updateData.taxRate = taxRate;
@@ -791,6 +802,7 @@ export async function recalculateProposalPricing(
   const taxRate = Number(proposal.taxRate);
   const taxAmount = servicesTotal * taxRate;
   const totalAmount = servicesTotal + taxAmount;
+  assertPositiveTotal(Number(totalAmount.toFixed(2)));
 
   // Update the proposal
   return prisma.proposal.update({

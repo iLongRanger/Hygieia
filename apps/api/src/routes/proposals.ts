@@ -192,8 +192,8 @@ router.patch(
         throw new NotFoundError('Proposal not found');
       }
 
-      // Prevent editing sent, accepted, or rejected proposals
-      if (['sent', 'accepted', 'rejected'].includes(proposal.status)) {
+      // Allow edits only before acceptance
+      if (!['draft', 'sent', 'viewed'].includes(proposal.status)) {
         throw new ValidationError(
           `Cannot edit proposal with status: ${proposal.status}. Please create a new proposal instead.`
         );

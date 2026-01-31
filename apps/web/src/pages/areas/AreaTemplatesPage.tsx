@@ -144,14 +144,19 @@ const AreaTemplatesPage = () => {
     }
   }, []);
 
-  const fetchAreaTemplates = useCallback(async () => {
+  const fetchAreaTemplates = useCallback(async (ensureTemplate?: AreaTemplate) => {
     try {
       setLoadingTemplates(true);
       const response = await listAreaTemplates({ limit: 100 });
-      setAreaTemplates(response?.data || []);
-      if (!selectedTemplate && response?.data?.length) {
-        setSelectedTemplate(response.data[0]);
-        hydrateTemplateForm(response.data[0]);
+      const templates = response?.data || [];
+      const mergedTemplates =
+        ensureTemplate && !templates.some((template) => template.id === ensureTemplate.id)
+          ? [ensureTemplate, ...templates]
+          : templates;
+      setAreaTemplates(mergedTemplates);
+      if (!selectedTemplate && !ensureTemplate && mergedTemplates.length) {
+        setSelectedTemplate(mergedTemplates[0]);
+        hydrateTemplateForm(mergedTemplates[0]);
       }
     } catch (error) {
       console.error('Failed to fetch area templates:', error);
@@ -383,13 +388,20 @@ const AreaTemplatesPage = () => {
         toast.success('Area template updated');
         setSelectedTemplate(updated);
         hydrateTemplateForm(updated);
+        setAreaTemplates((prev) =>
+          prev.map((template) => (template.id === updated.id ? updated : template))
+        );
+        setShowTemplateEditorModal(false);
+        await fetchAreaTemplates(updated);
       } else {
         const created = await createAreaTemplate(templateForm);
         toast.success('Area template created');
         setSelectedTemplate(created);
         hydrateTemplateForm(created);
+        setAreaTemplates((prev) => [created, ...prev.filter((template) => template.id !== created.id)]);
+        setShowTemplateEditorModal(false);
+        await fetchAreaTemplates(created);
       }
-      await fetchAreaTemplates();
     } catch (error) {
       console.error('Failed to save area template:', error);
       toast.error('Failed to save area template');

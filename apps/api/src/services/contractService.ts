@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { BadRequestError, ConflictError, NotFoundError, ValidationError } from '../middleware/errorHandler';
 
 export interface ContractListParams {
   page?: number;
@@ -349,11 +350,11 @@ export async function createContractFromProposal(
   });
 
   if (!proposal) {
-    throw new Error('Proposal not found');
+    throw new NotFoundError('Proposal not found');
   }
 
   if (proposal.status !== 'accepted') {
-    throw new Error('Only accepted proposals can be converted to contracts');
+    throw new BadRequestError('Only accepted proposals can be converted to contracts');
   }
 
   // Check if contract already exists for this proposal
@@ -362,11 +363,20 @@ export async function createContractFromProposal(
   });
 
   if (existingContract) {
-    throw new Error('A contract already exists for this proposal');
+    throw new ConflictError('A contract already exists for this proposal');
+  }
+
+  if (!proposal.account) {
+    throw new BadRequestError('Proposal is missing an account');
   }
 
   // Calculate total value based on proposal and contract duration
   const monthlyValue = Number(proposal.totalAmount);
+  if (!Number.isFinite(monthlyValue) || monthlyValue <= 0) {
+    throw new ValidationError('Proposal total amount must be greater than 0', {
+      field: 'totalAmount',
+    });
+  }
   const contractNumber = await generateContractNumber();
 
   const contractData: Prisma.ContractCreateInput = {

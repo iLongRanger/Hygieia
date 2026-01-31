@@ -2,18 +2,38 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as areaService from '../areaService';
 import { prisma } from '../../lib/prisma';
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    area: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-  },
-}));
+jest.mock('../../lib/prisma', () => {
+  const area = {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  };
+  const areaTemplate = {
+    findUnique: jest.fn(),
+  };
+  const taskTemplate = {
+    findMany: jest.fn(),
+  };
+  const facilityTask = {
+    createMany: jest.fn(),
+  };
+  const prisma = {
+    area,
+    areaTemplate,
+    taskTemplate,
+    facilityTask,
+    $transaction: jest.fn((fn: any) => fn({
+      area,
+      areaTemplate,
+      taskTemplate,
+      facilityTask,
+    })),
+  };
+  return { prisma };
+});
 
 const createTestArea = (overrides?: Partial<any>) => ({
   id: 'area-123',
@@ -37,6 +57,10 @@ const createTestArea = (overrides?: Partial<any>) => ({
 describe('areaService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.$transaction as jest.Mock).mockImplementation((fn: any) => fn(prisma));
+    (prisma.areaTemplate.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.taskTemplate.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.facilityTask.createMany as jest.Mock).mockResolvedValue({ count: 0 });
   });
 
   describe('listAreas', () => {
@@ -120,7 +144,10 @@ describe('areaService', () => {
 
       const result = await areaService.createArea(input);
 
-      expect(result).toEqual(mockArea);
+      expect(result).toMatchObject({
+        ...mockArea,
+        _appliedTemplate: { tasksCreated: 0 },
+      });
     });
   });
 

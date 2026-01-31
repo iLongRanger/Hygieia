@@ -121,8 +121,8 @@ const ContractForm = () => {
           // Edit mode - fetch existing contract
           const contract = await getContract(id);
 
-          if (contract.status !== 'draft') {
-            toast.error('Only draft contracts can be edited');
+          if (!['draft', 'pending_signature'].includes(contract.status)) {
+            toast.error('Only draft or pending signature contracts can be edited');
             navigate(`/contracts/${id}`);
             return;
           }
