@@ -56,6 +56,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Lead detail page with walkthrough history and completion flow
   - Dashboard appointments calendar widget
   - In-app notification dropdown for assigned reps
+- **Appointments Calendar View**: Outlook-style month view calendar for appointments
+  - View toggle to switch between Table and Calendar views (preference persisted to localStorage)
+  - Month view calendar with 6-week grid display
+  - Color-coded appointment types (Blue = Walk Through, Green = Visit, Orange = Inspection)
+  - Today highlighting with primary color
+  - Month navigation with prev/next buttons and "Today" quick-nav
+  - Click empty day cell to create appointment (date pre-filled)
+  - Click appointment to open edit modal
+  - Click customer name to navigate to lead/account profile
+  - Overflow handling with "+N more" indicator for days with >3 appointments
+  - Appointment type legend in calendar header
+  - Full test coverage (30 utility tests, 57 component tests)
 
 ### Changed
 - **Responsive Admin UI**: Mobile-friendly admin layout and page grids
