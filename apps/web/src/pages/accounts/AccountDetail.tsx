@@ -14,6 +14,8 @@ import {
   User as UserIcon,
   MapPin,
   Plus,
+  FileText,
+  FileSignature,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -31,9 +33,13 @@ import {
 } from '../../lib/accounts';
 import { listFacilities, createFacility } from '../../lib/facilities';
 import { listUsers } from '../../lib/users';
+import { listProposals } from '../../lib/proposals';
+import { listContracts } from '../../lib/contracts';
 import type { Account, UpdateAccountInput } from '../../types/crm';
 import type { Facility, CreateFacilityInput } from '../../types/facility';
 import type { User } from '../../types/user';
+import type { Proposal } from '../../types/proposal';
+import type { Contract, ContractStatus } from '../../types/contract';
 
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
@@ -76,6 +82,30 @@ const FACILITY_STATUSES = [
   { value: 'pending', label: 'Pending' },
 ];
 
+const CONTRACT_STATUS_VARIANTS: Record<
+  ContractStatus,
+  'default' | 'success' | 'warning' | 'error' | 'info'
+> = {
+  draft: 'default',
+  pending_signature: 'warning',
+  active: 'success',
+  expired: 'default',
+  terminated: 'error',
+  renewed: 'info',
+};
+
+const PROPOSAL_STATUS_VARIANTS: Record<
+  Proposal['status'],
+  'default' | 'success' | 'warning' | 'error' | 'info'
+> = {
+  draft: 'default',
+  sent: 'info',
+  viewed: 'warning',
+  accepted: 'success',
+  rejected: 'error',
+  expired: 'default',
+};
+
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -83,6 +113,10 @@ const AccountDetail = () => {
   const [account, setAccount] = useState<Account | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [proposalTotal, setProposalTotal] = useState(0);
+  const [contractTotal, setContractTotal] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFacilityModal, setShowFacilityModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -161,11 +195,47 @@ const AccountDetail = () => {
     }
   }, [id]);
 
+  const fetchProposals = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await listProposals({
+        accountId: id,
+        limit: 5,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        includeArchived: false,
+      });
+      setProposals(response?.data || []);
+      setProposalTotal(response?.pagination?.total ?? response?.data?.length ?? 0);
+    } catch (error) {
+      console.error('Failed to fetch proposals:', error);
+    }
+  }, [id]);
+
+  const fetchContracts = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await listContracts({
+        accountId: id,
+        limit: 5,
+        sortBy: 'startDate',
+        sortOrder: 'desc',
+        includeArchived: false,
+      });
+      setContracts(response?.data || []);
+      setContractTotal(response?.pagination?.total ?? response?.data?.length ?? 0);
+    } catch (error) {
+      console.error('Failed to fetch contracts:', error);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchAccount();
     fetchUsers();
     fetchFacilities();
-  }, [fetchAccount, fetchUsers, fetchFacilities]);
+    fetchProposals();
+    fetchContracts();
+  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -254,6 +324,21 @@ const AccountDetail = () => {
       day: 'numeric',
     });
   };
+
+  const formatShortDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
 
   if (loading) {
     return (
@@ -388,6 +473,14 @@ const AccountDetail = () => {
                   <div className="text-white">{formatDate(account.createdAt)}</div>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <UserIcon className="mt-1 h-4 w-4 text-gray-400" />
+                <div>
+                  <div className="text-sm text-gray-400">Assigned Team</div>
+                  <div className="text-white">Coming soon</div>
+                </div>
+              </div>
             </div>
 
             {account.archivedAt && (
@@ -442,7 +535,7 @@ const AccountDetail = () => {
               <h3 className="mb-4 text-lg font-semibold text-white">
                 Related Records
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card
                   noPadding
                   className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
@@ -463,9 +556,153 @@ const AccountDetail = () => {
                   </div>
                   <div className="text-sm text-gray-400">Contacts</div>
                 </Card>
+                <Card
+                  noPadding
+                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
+                  onClick={() => navigate(`/proposals?accountId=${account.id}`)}
+                >
+                  <div className="text-2xl font-bold text-gold">
+                    {proposalTotal}
+                  </div>
+                  <div className="text-sm text-gray-400">Proposals</div>
+                </Card>
+                <Card
+                  noPadding
+                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
+                  onClick={() => navigate(`/contracts?accountId=${account.id}`)}
+                >
+                  <div className="text-2xl font-bold text-gold">
+                    {contractTotal}
+                  </div>
+                  <div className="text-sm text-gray-400">Contracts</div>
+                </Card>
               </div>
             </div>
           </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-gold" />
+              <h3 className="text-lg font-semibold text-white">Proposals</h3>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate(`/proposals?accountId=${account.id}`)}
+            >
+              View all
+            </Button>
+          </div>
+
+          {proposals.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
+              <p>No proposals yet</p>
+              <p className="text-sm">Create a proposal to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {proposals.map((proposal) => (
+                <div
+                  key={proposal.id}
+                  onClick={() => navigate(`/proposals/${proposal.id}`)}
+                  className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
+                      <FileText className="h-5 w-5 text-gold" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white">
+                        {proposal.proposalNumber}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {proposal.title}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm text-emerald">
+                        {formatCurrency(Number(proposal.totalAmount))}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {formatShortDate(proposal.createdAt)}
+                      </div>
+                    </div>
+                    <Badge variant={PROPOSAL_STATUS_VARIANTS[proposal.status]}>
+                      {proposal.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileSignature className="h-5 w-5 text-gold" />
+              <h3 className="text-lg font-semibold text-white">Contracts</h3>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate(`/contracts?accountId=${account.id}`)}
+            >
+              View all
+            </Button>
+          </div>
+
+          {contracts.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <FileSignature className="mx-auto h-12 w-12 mb-2 opacity-50" />
+              <p>No contracts yet</p>
+              <p className="text-sm">Create a contract to start servicing</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {contracts.map((contract) => (
+                <div
+                  key={contract.id}
+                  onClick={() => navigate(`/contracts/${contract.id}`)}
+                  className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
+                      <FileSignature className="h-5 w-5 text-gold" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white">
+                        {contract.contractNumber}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {contract.title}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm text-emerald">
+                        {formatCurrency(Number(contract.monthlyValue))}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {formatShortDate(contract.startDate)}
+                      </div>
+                    </div>
+                    <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]}>
+                      {contract.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -592,6 +829,16 @@ const AccountDetail = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="Assigned Team"
+              placeholder="Team management coming soon"
+              options={[
+                { value: 'coming-soon', label: 'Coming soon' },
+              ]}
+              value=""
+              disabled
+              hint="Team management module coming soon"
+            />
             <Input
               label="Billing Email"
               type="email"

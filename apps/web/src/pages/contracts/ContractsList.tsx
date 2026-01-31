@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -77,6 +77,8 @@ const formatDate = (date: string | null | undefined) => {
 
 const ContractsList = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accountIdFilter = searchParams.get('accountId') || undefined;
   const [loading, setLoading] = useState(true);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [search, setSearch] = useState('');
@@ -106,6 +108,7 @@ const ContractsList = () => {
           search: currentSearch || undefined,
           status: (filters?.status && filters.status !== '' ? filters.status : undefined) as ContractStatus | undefined,
           includeArchived: filters?.includeArchived,
+          accountId: accountIdFilter,
         });
         setContracts(result.data);
         setTotal(result.pagination.total);
@@ -117,12 +120,16 @@ const ContractsList = () => {
         setLoading(false);
       }
     },
-    []
+    [accountIdFilter]
   );
 
   useEffect(() => {
     fetchContracts(page, search, { status: statusFilter, includeArchived });
   }, [page, search, statusFilter, includeArchived, fetchContracts]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [accountIdFilter]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -330,6 +337,20 @@ const ContractsList = () => {
               {hasActiveFilters && <span className="ml-2">*</span>}
             </Button>
           </div>
+          {accountIdFilter && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
+              <span className="rounded-full border border-white/10 bg-navy-darker/60 px-3 py-1">
+                Filtered by account
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/contracts')}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
 
           {showFilterPanel && (
             <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
