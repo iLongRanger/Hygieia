@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { CalendarPlus, Filter, Pencil, Search, Trash2, X } from 'lucide-react';
+import { Calendar, CalendarPlus, Filter, List, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
@@ -10,13 +11,19 @@ import { Modal } from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { MonthCalendar } from '../../components/calendar';
 import { listAppointments, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
+import { getDateRange } from '../../lib/calendar-utils';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Contract } from '../../types/contract';
+
+type ViewMode = 'table' | 'calendar';
+
+const VIEW_MODE_KEY = 'appointments_view_mode';
 
 const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
   { value: 'walk_through', label: 'Walk Through' },
@@ -33,6 +40,7 @@ const APPOINTMENT_STATUSES: { value: AppointmentStatus; label: string }[] = [
 ];
 
 const AppointmentsPage = () => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -43,6 +51,18 @@ const AppointmentsPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  // View mode state
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem(VIEW_MODE_KEY);
+    return (saved === 'calendar' || saved === 'table') ? saved : 'table';
+  });
+
+  // Calendar-specific state
+  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
+  const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
 
   const [typeFilter, setTypeFilter] = useState<AppointmentType | ''>('');
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>('');
@@ -89,6 +109,30 @@ const AppointmentsPage = () => {
     }
   }, [accountFilter, assignedFilter, includePast, leadFilter, statusFilter, typeFilter]);
 
+  const fetchCalendarAppointments = useCallback(async () => {
+    try {
+      setCalendarLoading(true);
+      const { dateFrom, dateTo } = getDateRange(calendarYear, calendarMonth);
+      const data = await listAppointments({
+        dateFrom,
+        dateTo,
+        leadId: leadFilter || undefined,
+        accountId: accountFilter || undefined,
+        assignedToUserId: assignedFilter || undefined,
+        type: typeFilter || undefined,
+        status: statusFilter || undefined,
+        includePast: true, // Always include past for calendar view
+      });
+      setCalendarAppointments(data || []);
+    } catch (error) {
+      console.error('Failed to fetch calendar appointments:', error);
+      toast.error('Failed to load calendar');
+      setCalendarAppointments([]);
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [calendarYear, calendarMonth, leadFilter, accountFilter, assignedFilter, typeFilter, statusFilter]);
+
   const fetchLeads = useCallback(async () => {
     try {
       const response = await listLeads({ limit: 100, includeArchived: false });
@@ -117,8 +161,16 @@ const AppointmentsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]);
+    if (viewMode === 'table') {
+      fetchAppointments();
+    }
+  }, [fetchAppointments, viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      fetchCalendarAppointments();
+    }
+  }, [fetchCalendarAppointments, viewMode]);
 
   useEffect(() => {
     if (typeFilter === 'walk_through') {
@@ -133,6 +185,11 @@ const AppointmentsPage = () => {
     fetchUsers();
     fetchActiveContracts();
   }, [fetchLeads, fetchUsers, fetchActiveContracts]);
+
+  // Save view mode preference
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
 
   const activeAccounts = useMemo(() => {
     const map = new Map<string, { id: string; name: string; type: string }>();
@@ -236,7 +293,11 @@ const AppointmentsPage = () => {
         location: '',
         notes: '',
       });
-      fetchAppointments();
+      if (viewMode === 'calendar') {
+        fetchCalendarAppointments();
+      } else {
+        fetchAppointments();
+      }
     } catch (error) {
       console.error('Failed to create appointment:', error);
       toast.error('Failed to schedule appointment');
@@ -285,7 +346,11 @@ const AppointmentsPage = () => {
       toast.success('Appointment updated');
       setShowEditModal(false);
       setSelectedAppointment(null);
-      fetchAppointments();
+      if (viewMode === 'calendar') {
+        fetchCalendarAppointments();
+      } else {
+        fetchAppointments();
+      }
     } catch (error) {
       console.error('Failed to update appointment:', error);
       toast.error('Failed to update appointment');
@@ -302,12 +367,56 @@ const AppointmentsPage = () => {
       toast.success('Appointment deleted');
       setShowDeleteDialog(false);
       setSelectedAppointment(null);
-      fetchAppointments();
+      if (viewMode === 'calendar') {
+        fetchCalendarAppointments();
+      } else {
+        fetchAppointments();
+      }
     } catch (error) {
       console.error('Failed to delete appointment:', error);
       toast.error('Failed to delete appointment');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Calendar handlers
+  const handleMonthChange = (year: number, month: number) => {
+    setCalendarYear(year);
+    setCalendarMonth(month);
+  };
+
+  const handleCalendarCreateClick = (date: Date) => {
+    // Pre-fill the form with the selected date
+    const startDate = new Date(date);
+    startDate.setHours(9, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(10, 0, 0, 0);
+
+    setFormData({
+      leadId: '',
+      accountId: '',
+      assignedToUserId: '',
+      type: 'walk_through',
+      status: 'scheduled',
+      scheduledStart: new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16),
+      scheduledEnd: new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      location: '',
+      notes: '',
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleCustomerClick = (appointment: Appointment) => {
+    if (appointment.lead?.id) {
+      navigate(`/leads/${appointment.lead.id}`);
+    } else if (appointment.account?.id) {
+      navigate(`/accounts/${appointment.account.id}`);
     }
   };
 
@@ -397,32 +506,60 @@ const AppointmentsPage = () => {
             Schedule and track walkthroughs, inspections, and visits
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <CalendarPlus className="mr-2 h-4 w-4" />
-          Schedule Appointment
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex rounded-lg border border-surface-200 p-0.5 dark:border-surface-700">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+              }`}
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                viewMode === 'calendar'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Calendar</span>
+            </button>
+          </div>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            Schedule Appointment
+          </Button>
+        </div>
       </div>
 
-      <Card noPadding className="overflow-hidden">
-        <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="w-full max-w-sm">
-              <Input
-                placeholder="Search appointments..."
-                icon={<Search className="h-4 w-4" />}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+      {viewMode === 'table' ? (
+        <Card noPadding className="overflow-hidden">
+          <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="w-full max-w-sm">
+                <Input
+                  placeholder="Search appointments..."
+                  icon={<Search className="h-4 w-4" />}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button
+                variant={hasActiveFilters ? 'primary' : 'secondary'}
+                className="px-3"
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+              >
+                <Filter className="h-4 w-4" />
+                {hasActiveFilters && <span className="ml-2">•</span>}
+              </Button>
             </div>
-            <Button
-              variant={hasActiveFilters ? 'primary' : 'secondary'}
-              className="px-3"
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-            >
-              <Filter className="h-4 w-4" />
-              {hasActiveFilters && <span className="ml-2">•</span>}
-            </Button>
-          </div>
 
           {showFilterPanel && (
             <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
@@ -505,6 +642,18 @@ const AppointmentsPage = () => {
 
         <Table data={filteredAppointments} columns={columns} isLoading={loading} />
       </Card>
+      ) : (
+        <MonthCalendar
+          year={calendarYear}
+          month={calendarMonth}
+          appointments={calendarAppointments}
+          onMonthChange={handleMonthChange}
+          onEdit={openEditModal}
+          onCustomerClick={handleCustomerClick}
+          onCreateClick={handleCalendarCreateClick}
+          isLoading={calendarLoading}
+        />
+      )}
 
       <Modal
         isOpen={showCreateModal}
