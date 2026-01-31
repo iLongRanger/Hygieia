@@ -2,6 +2,8 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { prisma } from '../../../lib/prisma';
 import * as pricingSettingsService from '../../pricingSettingsService';
 import * as proposalService from '../../proposalService';
+import * as pricingCalculatorService from '../../pricingCalculatorService';
+import * as pricingModule from '../../pricing';
 
 // Mock prisma
 jest.mock('../../../lib/prisma', () => ({
@@ -37,6 +39,13 @@ jest.mock('../../../lib/prisma', () => ({
 // Mock pricingSettingsService
 jest.mock('../../pricingSettingsService', () => ({
   getActivePricingSettings: jest.fn(),
+}));
+
+jest.mock('../../pricingCalculatorService', () => ({
+  calculateFacilityPricing: jest.fn(),
+  calculateFacilityPricingComparison: jest.fn(),
+  generateProposalServicesFromFacility: jest.fn(),
+  getFacilityTasksGrouped: jest.fn(),
 }));
 
 describe('Pricing Lock System - Regression Tests', () => {
@@ -123,6 +132,9 @@ describe('Pricing Lock System - Regression Tests', () => {
     pricingLocked: false,
     pricingLockedAt: null,
     subtotal: 500,
+    taxRate: 0,
+    taxAmount: 0,
+    totalAmount: 500,
     tax: 0,
     total: 500,
     proposalServices: [],
@@ -136,11 +148,90 @@ describe('Pricing Lock System - Regression Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(pricingModule, 'getStrategy').mockResolvedValue({
+      key: 'sqft_settings_v1',
+      version: '1.0.0',
+      quote: jest.fn().mockImplementation(async (context: any) => {
+        // Dynamically get the current settings from the mock
+        const currentSettings = await pricingSettingsService.getActivePricingSettings();
+        return {
+          strategyKey: 'sqft_settings_v1',
+          strategyVersion: '1.0.0',
+          serviceFrequency: context.serviceFrequency,
+          settingsSnapshot: {
+            pricingSettingsId: currentSettings.id,
+            pricingSettingsName: currentSettings.name,
+            baseRatePerSqFt: Number(currentSettings.baseRatePerSqFt),
+            minimumMonthlyCharge: Number(currentSettings.minimumMonthlyCharge),
+            hourlyRate: Number(currentSettings.hourlyRate),
+            floorTypeMultipliers: {},
+            frequencyMultipliers: {},
+            conditionMultipliers: {},
+            buildingTypeMultipliers: {},
+            taskComplexityAddOns: {},
+            capturedAt: new Date().toISOString(),
+          },
+        };
+      }),
+      generateProposalServices: jest.fn().mockResolvedValue([
+        {
+          serviceName: 'Monthly Cleaning',
+          serviceType: 'monthly',
+          frequency: 'monthly',
+          monthlyPrice: 500,
+          description: 'Base service line',
+          includedTasks: [],
+        },
+      ]),
+    } as any);
     (pricingSettingsService.getActivePricingSettings as jest.Mock).mockResolvedValue(
       mockPricingSettings
     );
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue(mockFacility);
     (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+    (pricingCalculatorService.calculateFacilityPricing as jest.Mock).mockImplementation(
+      async ({ facilityId, serviceFrequency }) => ({
+        facilityId,
+        facilityName: mockFacility.name,
+        buildingType: mockFacility.buildingType,
+        serviceFrequency,
+        totalSquareFeet: 5000,
+        areas: [],
+        costBreakdown: {
+          totalLaborCost: 0,
+          totalLaborHours: 0,
+          totalInsuranceCost: 0,
+          totalAdminOverheadCost: 0,
+          totalEquipmentCost: 0,
+          totalTravelCost: 0,
+          totalSupplyCost: 0,
+          totalCostPerVisit: 0,
+        },
+        monthlyVisits: 4.33,
+        monthlyCostBeforeProfit: 500,
+        profitAmount: 0,
+        profitMarginApplied: 0,
+        buildingMultiplier: 1,
+        buildingAdjustment: 0,
+        taskComplexityAddOn: 0,
+        taskComplexityAmount: 0,
+        subtotal: 500,
+        monthlyTotal: 500,
+        minimumApplied: false,
+        pricingSettingsId: mockPricingSettings.id,
+        pricingSettingsName: mockPricingSettings.name,
+      })
+    );
+    (pricingCalculatorService.generateProposalServicesFromFacility as jest.Mock).mockResolvedValue([
+      {
+        serviceName: 'Monthly Cleaning',
+        serviceType: 'monthly',
+        frequency: 'monthly',
+        monthlyPrice: 500,
+        description: 'Base service line',
+        includedTasks: [],
+      },
+    ]);
   });
 
   describe('Locked pricing protection', () => {

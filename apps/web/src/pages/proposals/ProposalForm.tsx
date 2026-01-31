@@ -423,6 +423,10 @@ const ProposalForm = () => {
       toast.error('Please enter a proposal title');
       return;
     }
+    if (totals.totalAmount <= 0) {
+      toast.error('Proposal total must be greater than 0');
+      return;
+    }
 
     setSaving(true);
     try {

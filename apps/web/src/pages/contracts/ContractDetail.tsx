@@ -316,7 +316,7 @@ const ContractDetail = () => {
           <p className="text-gray-400">{contract.title}</p>
         </div>
         <div className="flex gap-2">
-          {contract.status === 'draft' && (
+          {['draft', 'pending_signature'].includes(contract.status) && (
             <>
               <Button
                 variant="secondary"
@@ -325,10 +325,12 @@ const ContractDetail = () => {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
               </Button>
-              <Button onClick={handleActivate}>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Activate
-              </Button>
+              {contract.status === 'draft' && (
+                <Button onClick={handleActivate}>
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Activate
+                </Button>
+              )}
             </>
           )}
           {contract.status === 'pending_signature' && (

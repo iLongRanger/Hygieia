@@ -165,10 +165,26 @@ describe('Proposal Routes', () => {
       .expect(422);
   });
 
-  it('PATCH /:id should return 422 when status locked for edits', async () => {
+  it('PATCH /:id should allow updates when status is sent', async () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'sent',
+      pricingStrategyKey: 'sqft_settings_v1',
+    });
+    (proposalService.updateProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+
+    const response = await request(app)
+      .patch('/api/v1/proposals/proposal-1')
+      .send({ title: 'Updated' })
+      .expect(200);
+
+    expect(response.body.data.id).toBe('proposal-1');
+  });
+
+  it('PATCH /:id should return 422 when status locked for edits', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'accepted',
     });
 
     await request(app)

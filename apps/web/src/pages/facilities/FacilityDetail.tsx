@@ -272,12 +272,12 @@ const FacilityDetail = () => {
     try {
       setAreaTemplateLoading(true);
       const template = await getAreaTemplateByAreaType(areaTypeId);
-      const templateItems = template.items?.map((item) => ({
+      const templateItems = template?.items?.map((item) => ({
         fixtureTypeId: item.fixtureType.id,
         count: item.defaultCount,
         minutesPerItem: Number(item.minutesPerItem) || 0,
       })) || [];
-      const templateTasks = template.tasks?.map((task) => ({
+      const templateTasks = template?.tasks?.map((task) => ({
         id: task.id,
         taskTemplateId: task.taskTemplate?.id || null,
         name: task.taskTemplate?.name || task.name || 'Untitled Task',
@@ -293,7 +293,7 @@ const FacilityDetail = () => {
       setAreaTemplateTasks(templateTasks);
       setAreaForm((prev) => {
         const areaType = areaTypes.find((type) => type.id === areaTypeId);
-        const defaultSquareFeet = template.defaultSquareFeet
+        const defaultSquareFeet = template?.defaultSquareFeet
           ? Number(template.defaultSquareFeet)
           : areaType?.defaultSquareFeet
             ? Number(areaType.defaultSquareFeet)
@@ -304,8 +304,10 @@ const FacilityDetail = () => {
           fixtures: templateItems,
         };
       });
-    } catch (error) {
-      console.error('Failed to load area template:', error);
+    } catch (error: any) {
+      if (error?.response?.status !== 404) {
+        console.error('Failed to load area template:', error);
+      }
       setAreaTemplateTasks([]);
     } finally {
       setAreaTemplateLoading(false);

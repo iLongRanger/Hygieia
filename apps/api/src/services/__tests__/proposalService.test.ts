@@ -270,33 +270,17 @@ describe('proposalService', () => {
       (prisma.proposal.findFirst as jest.Mock).mockResolvedValue(null);
     });
 
-    it('should create proposal with minimal data', async () => {
-      const mockProposal = createTestProposal();
-      (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
-
+    it('should reject proposal creation when total is 0', async () => {
       const input = {
         accountId: 'account-1',
         title: 'Test Proposal',
         createdByUserId: 'user-1',
       };
 
-      const result = await proposalService.createProposal(input);
-
-      expect(prisma.proposal.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          proposalNumber: expect.stringMatching(/^PROP-\d{8}-\d{4}$/),
-          title: 'Test Proposal',
-          accountId: 'account-1',
-          status: 'draft',
-          subtotal: 0,
-          taxRate: 0,
-          taxAmount: 0,
-          totalAmount: 0,
-          createdByUserId: 'user-1',
-        }),
-        select: expect.any(Object),
-      });
-      expect(result).toEqual(mockProposal);
+      await expect(proposalService.createProposal(input)).rejects.toThrow(
+        'Proposal total must be greater than 0'
+      );
+      expect(prisma.proposal.create).not.toHaveBeenCalled();
     });
 
     it('should create proposal with items and calculate totals', async () => {
@@ -376,6 +360,15 @@ describe('proposalService', () => {
         accountId: 'account-1',
         title: 'Test Proposal',
         createdByUserId: 'user-1',
+        proposalItems: [
+          {
+            itemType: 'labor',
+            description: 'Cleaning labor',
+            quantity: 1,
+            unitPrice: 100,
+            totalPrice: 100,
+          },
+        ],
       };
 
       await proposalService.createProposal(input);

@@ -162,8 +162,8 @@ router.patch(
         throw new NotFoundError('Contract not found');
       }
 
-      // Prevent editing active or terminated contracts
-      if (['active', 'terminated'].includes(existingContract.status)) {
+      // Prevent editing contracts after signature/activation
+      if (!['draft', 'pending_signature'].includes(existingContract.status)) {
         throw new ValidationError(
           `Cannot edit ${existingContract.status} contract. Create an amendment or new contract instead.`
         );

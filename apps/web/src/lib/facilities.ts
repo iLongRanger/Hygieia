@@ -131,9 +131,16 @@ export async function listAreaTemplates(params?: {
   return response.data;
 }
 
-export async function getAreaTemplateByAreaType(areaTypeId: string): Promise<AreaTemplate> {
-  const response = await api.get(`/area-templates/area-type/${areaTypeId}`);
-  return response.data.data;
+export async function getAreaTemplateByAreaType(areaTypeId: string): Promise<AreaTemplate | null> {
+  try {
+    const response = await api.get(`/area-templates/area-type/${areaTypeId}`);
+    return response.data.data;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function createAreaTemplate(data: CreateAreaTemplateInput): Promise<AreaTemplate> {

@@ -212,7 +212,7 @@ const ProposalDetail = () => {
           <p className="text-gray-400">{proposal.proposalNumber}</p>
         </div>
         <div className="flex gap-2">
-          {proposal.status === 'draft' && (
+          {['draft', 'sent', 'viewed'].includes(proposal.status) && (
             <>
               <Button
                 variant="secondary"
@@ -221,10 +221,12 @@ const ProposalDetail = () => {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
               </Button>
-              <Button onClick={handleSend}>
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
+              {proposal.status === 'draft' && (
+                <Button onClick={handleSend}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </Button>
+              )}
             </>
           )}
           {['sent', 'viewed'].includes(proposal.status) && (
