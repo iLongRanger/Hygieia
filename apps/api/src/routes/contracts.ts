@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listContracts,
@@ -70,6 +71,7 @@ router.get(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await getContractById(req.params.id);
@@ -150,6 +152,7 @@ router.patch(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateContractSchema.safeParse(req.body);

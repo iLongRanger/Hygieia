@@ -6,6 +6,7 @@ import {
   ValidationError,
   ConflictError,
 } from '../middleware/errorHandler';
+import { validatePassword } from '../utils/passwordPolicy';
 import {
   listUsers,
   getUserById,
@@ -239,8 +240,13 @@ router.patch(
       const { id } = req.params;
       const { password } = req.body;
 
-      if (!password || password.length < 8) {
-        throw new ValidationError('Password must be at least 8 characters long');
+      if (!password) {
+        throw new ValidationError('Password is required');
+      }
+
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        throw new ValidationError(passwordValidation.error || 'Invalid password');
       }
 
       const existingUser = await getUserById(id);

@@ -21,6 +21,22 @@ jest.mock('../../lib/prisma', () => ({
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
 
+jest.mock('../tokenService', () => ({
+  storeRefreshToken: jest.fn().mockResolvedValue(undefined),
+  isTokenRevoked: jest.fn().mockResolvedValue(false),
+  revokeToken: jest.fn().mockResolvedValue(true),
+  revokeAllUserTokens: jest.fn().mockResolvedValue(1),
+}));
+
+jest.mock('../../lib/logger', () => ({
+  logAuthEvent: jest.fn(),
+  default: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
+
 describe('authService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -86,6 +102,7 @@ describe('authService', () => {
       expect(result).toEqual({
         accessToken: mockAccessToken,
         refreshToken: mockRefreshToken,
+        refreshTokenJti: expect.any(String),
         expiresIn: 15 * 60,
       });
     });

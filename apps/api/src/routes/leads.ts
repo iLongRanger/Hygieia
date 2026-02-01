@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listLeads,
@@ -58,6 +59,7 @@ router.get(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const lead = await getLeadById(req.params.id);
@@ -102,6 +104,7 @@ router.patch(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadById(req.params.id);
@@ -188,6 +191,7 @@ router.get(
   '/:id/can-convert',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await canConvertLead(req.params.id);
@@ -203,6 +207,7 @@ router.post(
   '/:id/convert',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = convertLeadSchema.safeParse(req.body);

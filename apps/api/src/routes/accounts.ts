@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import {
   NotFoundError,
   ValidationError,
@@ -59,6 +60,7 @@ router.get(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const account = await getAccountById(req.params.id);

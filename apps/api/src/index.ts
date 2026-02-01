@@ -16,6 +16,8 @@ import {
   errorHandler,
   notFoundHandler,
 } from './middleware';
+import logger from './lib/logger';
+import { globalRateLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
 import leadSourcesRoutes from './routes/leadSources';
@@ -51,9 +53,25 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(requestIdMiddleware);
+app.use(globalRateLimiter);
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', (req, res) => {
+  const basicInfo = { status: 'ok', timestamp: new Date().toISOString() };
+
+  // Detailed info only for internal requests with valid secret
+  const internalSecret = process.env.INTERNAL_SECRET;
+  const isInternal = internalSecret && req.headers['x-internal-request'] === internalSecret;
+
+  if (isInternal) {
+    res.json({
+      ...basicInfo,
+      version: process.env.npm_package_version || '0.1.0',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+    });
+  } else {
+    res.json(basicInfo);
+  }
 });
 
 app.use('/api/v1/auth', authRoutes);
@@ -81,7 +99,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`API server running on port ${PORT}`);
+  logger.info(`API server running on port ${PORT}`);
 });
 
 export default app;

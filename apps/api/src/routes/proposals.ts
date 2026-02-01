@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listProposals,
@@ -106,6 +107,7 @@ router.get(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -180,6 +182,7 @@ router.patch(
   '/:id',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateProposalSchema.safeParse(req.body);

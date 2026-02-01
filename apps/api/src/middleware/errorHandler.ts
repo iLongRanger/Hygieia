@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../lib/logger';
 
 export class AppError extends Error {
   public readonly statusCode: number;
@@ -96,7 +97,13 @@ export function errorHandler(
     return;
   }
 
-  console.error(`[${requestId}] Unhandled error:`, err);
+  logger.error('Unhandled error', {
+    requestId,
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+  });
 
   res.status(500).json({
     error: {

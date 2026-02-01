@@ -1,0 +1,35 @@
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'hygieia-api' },
+  transports: [
+    new winston.transports.Console({
+      format:
+        process.env.NODE_ENV === 'development'
+          ? winston.format.combine(
+              winston.format.colorize(),
+              winston.format.simple()
+            )
+          : winston.format.json(),
+    }),
+  ],
+});
+
+export function logSecurityEvent(
+  event: string,
+  details: Record<string, unknown>
+) {
+  logger.info(event, { ...details, category: 'security' });
+}
+
+export function logAuthEvent(event: string, details: Record<string, unknown>) {
+  logger.info(event, { ...details, category: 'auth' });
+}
+
+export default logger;
