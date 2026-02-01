@@ -12,6 +12,33 @@ jest.mock('../../lib/prisma', () => ({
       delete: jest.fn(),
       count: jest.fn(),
     },
+    areaTemplate: {
+      findUnique: jest.fn(),
+    },
+    taskTemplate: {
+      findMany: jest.fn(),
+    },
+    facilityTask: {
+      createMany: jest.fn(),
+    },
+    $transaction: jest.fn((callback: (tx: any) => Promise<any>) => {
+      // Execute the callback with the prisma mock as the transaction client
+      const tx = {
+        area: {
+          create: jest.fn(),
+        },
+        areaTemplate: {
+          findUnique: jest.fn(),
+        },
+        taskTemplate: {
+          findMany: jest.fn(),
+        },
+        facilityTask: {
+          createMany: jest.fn(),
+        },
+      };
+      return callback(tx);
+    }),
   },
 }));
 
@@ -112,15 +139,80 @@ describe('areaService', () => {
         squareFeet: 400,
         conditionLevel: 'good',
         createdByUserId: 'user-123',
+        applyTemplate: false, // Skip template lookup for this test
       };
 
       const mockArea = createTestArea(input);
 
-      (prisma.area.create as jest.Mock).mockResolvedValue(mockArea);
+      // Mock $transaction to execute callback with mocked tx
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          area: {
+            create: jest.fn().mockResolvedValue(mockArea),
+          },
+          areaTemplate: {
+            findUnique: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return callback(tx);
+      });
 
       const result = await areaService.createArea(input);
 
-      expect(result).toEqual(mockArea);
+      expect(result).toMatchObject({
+        ...mockArea,
+        _appliedTemplate: { tasksCreated: 0 },
+      });
+    });
+
+    it('should create area with template defaults', async () => {
+      const input: areaService.AreaCreateInput = {
+        facilityId: 'facility-123',
+        areaTypeId: 'type-123',
+        name: 'Conference Room',
+        createdByUserId: 'user-123',
+        applyTemplate: true,
+      };
+
+      const mockTemplate = {
+        defaultSquareFeet: 300,
+        items: [
+          { fixtureType: { id: 'fixture-1' }, defaultCount: 5, minutesPerItem: 2 },
+        ],
+        tasks: [
+          { taskTemplate: { id: 'task-1' } },
+        ],
+      };
+
+      const mockTaskTemplates = [
+        { id: 'task-1', estimatedMinutes: 15, cleaningType: 'daily' },
+      ];
+
+      const mockArea = createTestArea({ ...input, squareFeet: 300 });
+
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          area: {
+            create: jest.fn().mockResolvedValue(mockArea),
+          },
+          areaTemplate: {
+            findUnique: jest.fn().mockResolvedValue(mockTemplate),
+          },
+          taskTemplate: {
+            findMany: jest.fn().mockResolvedValue(mockTaskTemplates),
+          },
+          facilityTask: {
+            createMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+        };
+        return callback(tx);
+      });
+
+      const result = await areaService.createArea(input);
+
+      expect(result).toMatchObject({
+        _appliedTemplate: { tasksCreated: 1 },
+      });
     });
   });
 
