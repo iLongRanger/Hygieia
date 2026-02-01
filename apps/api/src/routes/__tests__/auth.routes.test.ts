@@ -27,7 +27,7 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/auth/login')
-        .send({ email: 'test@example.com', password: 'password123' })
+        .send({ email: 'test@example.com', password: 'Password123' })
         .expect(200);
 
       expect(response.body.data.user).toEqual(mockResult.user);
@@ -46,7 +46,7 @@ describe('Auth Routes', () => {
     it('should return 422 for missing email', async () => {
       await request(app)
         .post('/api/v1/auth/login')
-        .send({ password: 'password123' })
+        .send({ password: 'Password123' })
         .expect(422);
     });
 
@@ -60,7 +60,7 @@ describe('Auth Routes', () => {
     it('should return 422 for invalid email format', async () => {
       await request(app)
         .post('/api/v1/auth/login')
-        .send({ email: 'invalid-email', password: 'password123' })
+        .send({ email: 'invalid-email', password: 'Password123' })
         .expect(422);
     });
   });
@@ -111,7 +111,7 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/auth/dev/create-user')
-        .send({ email: 'new@example.com', password: 'password123', fullName: 'New User', role: 'owner' })
+        .send({ email: 'new@example.com', password: 'Password123', fullName: 'New User', role: 'owner' })
         .expect(201);
 
       expect(response.body.data.user.email).toBe('new@example.com');
@@ -120,14 +120,14 @@ describe('Auth Routes', () => {
     it('should return 422 for missing email', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
-        .send({ password: 'password123', fullName: 'Test' })
+        .send({ password: 'Password123', fullName: 'Test' })
         .expect(422);
     });
 
     it('should return 422 for missing fullName', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
-        .send({ email: 'test@example.com', password: 'password123' })
+        .send({ email: 'test@example.com', password: 'Password123' })
         .expect(422);
     });
 

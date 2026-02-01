@@ -4,6 +4,8 @@ import {
   refreshAccessToken,
   getUserById,
   createDevUser,
+  logout,
+  logoutAll,
 } from '../services/authService';
 import { authenticate } from '../middleware/auth';
 import {
@@ -12,11 +14,14 @@ import {
   ValidationError,
 } from '../middleware/errorHandler';
 import { UserRole, isValidRole } from '../types/roles';
+import { authRateLimiter } from '../middleware/rateLimiter';
+import { validatePassword } from '../utils/passwordPolicy';
 
 const router: Router = Router();
 
 router.post(
   '/login',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password } = req.body;
@@ -36,7 +41,13 @@ router.post(
         throw new ValidationError('Invalid email format', { field: 'email' });
       }
 
-      const result = await login({ email, password });
+      const result = await login(
+        { email, password },
+        {
+          ipAddress: req.ip || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent'],
+        }
+      );
 
       if (!result) {
         throw new UnauthorizedError('Invalid email or password');
@@ -62,8 +73,14 @@ router.post(
 router.post(
   '/logout',
   authenticate,
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { refreshToken } = req.body;
+
+      if (refreshToken) {
+        await logout(refreshToken);
+      }
+
       res.json({
         data: {
           message: 'Logged out successfully',
@@ -76,7 +93,31 @@ router.post(
 );
 
 router.post(
+  '/logout-all',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const revokedCount = await logoutAll(req.user.id);
+
+      res.json({
+        data: {
+          message: 'All sessions logged out successfully',
+          sessionsRevoked: revokedCount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
   '/refresh',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { refreshToken } = req.body;
@@ -87,7 +128,10 @@ router.post(
         });
       }
 
-      const tokens = await refreshAccessToken(refreshToken);
+      const tokens = await refreshAccessToken(refreshToken, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+      });
 
       if (!tokens) {
         throw new UnauthorizedError('Invalid or expired refresh token');
@@ -163,8 +207,9 @@ router.post(
         });
       }
 
-      if (password.length < 6) {
-        throw new ValidationError('Password must be at least 6 characters', {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        throw new ValidationError(passwordValidation.error || 'Invalid password', {
           field: 'password',
         });
       }
