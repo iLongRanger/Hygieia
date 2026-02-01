@@ -12,6 +12,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { MonthCalendar } from '../../components/calendar';
+import { ClientProfileModal } from '../../components/appointments/ClientProfileModal';
 import { listAppointments, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
@@ -51,6 +52,9 @@ const AppointmentsPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [selectedClientLeadId, setSelectedClientLeadId] = useState<string | null>(null);
+  const [selectedClientAccountId, setSelectedClientAccountId] = useState<string | null>(null);
 
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -153,7 +157,7 @@ const AppointmentsPage = () => {
 
   const fetchActiveContracts = useCallback(async () => {
     try {
-      const response = await listContracts({ status: 'active', limit: 100, includeArchived: 'false' });
+      const response = await listContracts({ status: 'active', limit: 100, includeArchived: false });
       setActiveContracts(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch contracts:', error);
@@ -414,18 +418,33 @@ const AppointmentsPage = () => {
 
   const handleCustomerClick = (appointment: Appointment) => {
     if (appointment.lead?.id) {
-      navigate(`/leads/${appointment.lead.id}`);
+      setSelectedClientLeadId(appointment.lead.id);
+      setSelectedClientAccountId(null);
     } else if (appointment.account?.id) {
-      navigate(`/accounts/${appointment.account.id}`);
+      setSelectedClientAccountId(appointment.account.id);
+      setSelectedClientLeadId(null);
     }
+    setShowClientModal(true);
+  };
+
+  const handleCloseClientModal = () => {
+    setShowClientModal(false);
+    setSelectedClientLeadId(null);
+    setSelectedClientAccountId(null);
   };
 
   const columns = [
     {
       header: 'Lead / Account',
       cell: (item: Appointment) => (
-        <div>
-          <div className="font-medium text-surface-900 dark:text-surface-100">
+        <div
+          className="cursor-pointer hover:text-primary-600 dark:hover:text-primary-400"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCustomerClick(item);
+          }}
+        >
+          <div className="font-medium text-surface-900 dark:text-surface-100 hover:text-primary-600 dark:hover:text-primary-400">
             {item.lead?.companyName || item.lead?.contactName || item.account?.name || 'Unknown'}
           </div>
           <div className="text-sm text-surface-500 dark:text-surface-400">
@@ -865,6 +884,13 @@ const AppointmentsPage = () => {
         confirmText="Delete"
         variant="danger"
         isLoading={deleting}
+      />
+
+      <ClientProfileModal
+        isOpen={showClientModal}
+        onClose={handleCloseClientModal}
+        leadId={selectedClientLeadId}
+        accountId={selectedClientAccountId}
       />
     </div>
   );
