@@ -23,6 +23,7 @@ import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { SafeLink } from '../../components/ui/SafeLink';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import {
@@ -431,14 +432,13 @@ const AccountDetail = () => {
                   <div className="text-sm text-gray-400">Website</div>
                   <div className="text-white">
                     {account.website ? (
-                      <a
+                      <SafeLink
                         href={account.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        type="url"
                         className="text-gold hover:underline"
                       >
                         {account.website}
-                      </a>
+                      </SafeLink>
                     ) : (
                       'Not provided'
                     )}

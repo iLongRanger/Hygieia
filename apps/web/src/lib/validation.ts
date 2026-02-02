@@ -189,3 +189,95 @@ export function getUrlError(url: string | null | undefined, required = false): s
   }
   return null;
 }
+
+// Password validation constants
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+
+/**
+ * Password validation rules
+ */
+export const passwordRules = {
+  minLength: PASSWORD_MIN_LENGTH,
+  maxLength: PASSWORD_MAX_LENGTH,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumber: true,
+};
+
+/**
+ * Validates password strength
+ * @returns Object with valid flag and error messages
+ */
+export function validatePassword(password: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  if (!password) {
+    return { valid: false, errors: ['Password is required'] };
+  }
+
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    errors.push(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+  }
+
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    errors.push(`Password must be at most ${PASSWORD_MAX_LENGTH} characters`);
+  }
+
+  if (passwordRules.requireUppercase && !/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+
+  if (passwordRules.requireLowercase && !/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+
+  if (passwordRules.requireNumber && !/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Gets validation error for password field (returns first error)
+ */
+export function getPasswordError(
+  password: string | null | undefined,
+  required = true
+): string | null {
+  if (required && (!password || password.trim() === '')) {
+    return 'Password is required';
+  }
+
+  if (password) {
+    const { valid, errors } = validatePassword(password);
+    if (!valid) {
+      return errors[0] || 'Invalid password';
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validates password confirmation matches
+ */
+export function validatePasswordMatch(
+  password: string | null | undefined,
+  confirmPassword: string | null | undefined
+): string | null {
+  if (!password || !confirmPassword) return null;
+
+  if (password !== confirmPassword) {
+    return 'Passwords do not match';
+  }
+
+  return null;
+}
