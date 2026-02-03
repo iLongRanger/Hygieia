@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Calendar, CalendarPlus, Filter, List, Pencil, Search, Trash2, X } from 'lucide-react';
+import { Calendar, CalendarPlus, Filter, LayoutGrid, List, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
@@ -11,20 +11,23 @@ import { Modal } from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { MonthCalendar } from '../../components/calendar';
+import { DayCalendar, MonthCalendar, WeekCalendar } from '../../components/calendar';
 import { ClientProfileModal } from '../../components/appointments/ClientProfileModal';
 import { listAppointments, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
-import { getDateRange } from '../../lib/calendar-utils';
+import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Contract } from '../../types/contract';
 
 type ViewMode = 'table' | 'calendar';
+type CalendarView = 'month' | 'week' | 'day';
+type CalendarLayout = 'grid' | 'list';
 
 const VIEW_MODE_KEY = 'appointments_view_mode';
+const CALENDAR_VIEW_KEY = 'appointments_calendar_view';
 
 const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
   { value: 'walk_through', label: 'Walk Through' },
@@ -63,6 +66,12 @@ const AppointmentsPage = () => {
   });
 
   // Calendar-specific state
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    const saved = localStorage.getItem(CALENDAR_VIEW_KEY);
+    return (saved === 'month' || saved === 'week' || saved === 'day') ? saved : 'month';
+  });
+  const [calendarLayout, setCalendarLayout] = useState<CalendarLayout>('grid');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
@@ -116,7 +125,12 @@ const AppointmentsPage = () => {
   const fetchCalendarAppointments = useCallback(async () => {
     try {
       setCalendarLoading(true);
-      const { dateFrom, dateTo } = getDateRange(calendarYear, calendarMonth);
+      const { dateFrom, dateTo } =
+        calendarView === 'month'
+          ? getDateRange(calendarYear, calendarMonth)
+          : calendarView === 'week'
+            ? getWeekRange(calendarDate)
+            : getDayRange(calendarDate);
       const data = await listAppointments({
         dateFrom,
         dateTo,
@@ -135,7 +149,17 @@ const AppointmentsPage = () => {
     } finally {
       setCalendarLoading(false);
     }
-  }, [calendarYear, calendarMonth, leadFilter, accountFilter, assignedFilter, typeFilter, statusFilter]);
+  }, [
+    calendarView,
+    calendarYear,
+    calendarMonth,
+    calendarDate,
+    leadFilter,
+    accountFilter,
+    assignedFilter,
+    typeFilter,
+    statusFilter,
+  ]);
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -194,6 +218,17 @@ const AppointmentsPage = () => {
   useEffect(() => {
     localStorage.setItem(VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem(CALENDAR_VIEW_KEY, calendarView);
+  }, [calendarView]);
+
+  useEffect(() => {
+    if (calendarView === 'month') {
+      setCalendarYear(calendarDate.getFullYear());
+      setCalendarMonth(calendarDate.getMonth());
+    }
+  }, [calendarDate, calendarView]);
 
   const activeAccounts = useMemo(() => {
     const map = new Map<string, { id: string; name: string; type: string }>();
@@ -388,14 +423,18 @@ const AppointmentsPage = () => {
   const handleMonthChange = (year: number, month: number) => {
     setCalendarYear(year);
     setCalendarMonth(month);
+    setCalendarDate(new Date(year, month, 1));
   };
 
   const handleCalendarCreateClick = (date: Date) => {
     // Pre-fill the form with the selected date
     const startDate = new Date(date);
-    startDate.setHours(9, 0, 0, 0);
-    const endDate = new Date(date);
-    endDate.setHours(10, 0, 0, 0);
+    const hasTime = startDate.getHours() !== 0 || startDate.getMinutes() !== 0;
+    if (!hasTime) {
+      startDate.setHours(9, 0, 0, 0);
+    }
+    const endDate = new Date(startDate);
+    endDate.setMinutes(endDate.getMinutes() + 60);
 
     setFormData({
       leadId: '',
@@ -558,7 +597,7 @@ const AppointmentsPage = () => {
         </div>
       </div>
 
-      {viewMode === 'table' ? (
+            {viewMode === 'table' ? (
         <Card noPadding className="overflow-hidden">
           <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -580,98 +619,186 @@ const AppointmentsPage = () => {
               </Button>
             </div>
 
-          {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
-              <Select
-                label="Type"
-                placeholder="All Types"
-                options={APPOINTMENT_TYPES}
-                value={typeFilter}
-                onChange={(value) => setTypeFilter(value as AppointmentType)}
-              />
-              <Select
-                label="Status"
-                placeholder="All Statuses"
-                options={APPOINTMENT_STATUSES}
-                value={statusFilter}
-                onChange={(value) => setStatusFilter(value as AppointmentStatus)}
-              />
-              <Select
-                label="Assigned To"
-                placeholder="All Reps"
-                options={users.map((u) => ({ value: u.id, label: u.fullName }))}
-                value={assignedFilter}
-                onChange={setAssignedFilter}
-              />
-              {(typeFilter === '' || typeFilter === 'walk_through') ? (
+            {showFilterPanel && (
+              <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
                 <Select
-                  label="Lead"
-                  placeholder="All Leads"
-                  options={leads.map((lead) => ({
-                    value: lead.id,
-                    label: lead.companyName || lead.contactName,
-                  }))}
-                  value={leadFilter}
-                  onChange={(value) => {
-                    setLeadFilter(value);
-                    if (!typeFilter) setAccountFilter('');
-                  }}
+                  label="Type"
+                  placeholder="All Types"
+                  options={APPOINTMENT_TYPES}
+                  value={typeFilter}
+                  onChange={(value) => setTypeFilter(value as AppointmentType)}
                 />
-              ) : null}
-              {(typeFilter === '' || typeFilter !== 'walk_through') ? (
                 <Select
-                  label="Account"
-                  placeholder="All Accounts"
-                  options={activeAccounts.map((account) => ({
-                    value: account.id,
-                    label: account.name,
-                  }))}
-                  value={accountFilter}
-                  onChange={(value) => {
-                    setAccountFilter(value);
-                    if (!typeFilter) setLeadFilter('');
-                  }}
+                  label="Status"
+                  placeholder="All Statuses"
+                  options={APPOINTMENT_STATUSES}
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(value as AppointmentStatus)}
                 />
-              ) : null}
-              <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
-                  <input
-                    type="checkbox"
-                    checked={includePast}
-                    onChange={(e) => setIncludePast(e.target.checked)}
-                    className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
+                <Select
+                  label="Assigned To"
+                  placeholder="All Reps"
+                  options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+                  value={assignedFilter}
+                  onChange={setAssignedFilter}
+                />
+                {(typeFilter === '' || typeFilter === 'walk_through') ? (
+                  <Select
+                    label="Lead"
+                    placeholder="All Leads"
+                    options={leads.map((lead) => ({
+                      value: lead.id,
+                      label: lead.companyName || lead.contactName,
+                    }))}
+                    value={leadFilter}
+                    onChange={(value) => {
+                      setLeadFilter(value);
+                      if (!typeFilter) setAccountFilter('');
+                    }}
                   />
-                  Include past appointments
-                </label>
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="ml-auto"
-                  >
-                    <X className="mr-1 h-4 w-4" />
-                    Clear
-                  </Button>
-                )}
+                ) : null}
+                {(typeFilter === '' || typeFilter !== 'walk_through') ? (
+                  <Select
+                    label="Account"
+                    placeholder="All Accounts"
+                    options={activeAccounts.map((account) => ({
+                      value: account.id,
+                      label: account.name,
+                    }))}
+                    value={accountFilter}
+                    onChange={(value) => {
+                      setAccountFilter(value);
+                      if (!typeFilter) setLeadFilter('');
+                    }}
+                  />
+                ) : null}
+                <div className="flex items-end gap-2">
+                  <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                    <input
+                      type="checkbox"
+                      checked={includePast}
+                      onChange={(e) => setIncludePast(e.target.checked)}
+                      className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
+                    />
+                    Include past appointments
+                  </label>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="ml-auto"
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </div>
+            )}
+          </div>
+
+          <Table data={filteredAppointments} columns={columns} isLoading={loading} />
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex rounded-lg border border-surface-200 p-0.5 dark:border-surface-700">
+              <button
+                onClick={() => setCalendarView('month')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  calendarView === 'month'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+                }`}
+              >
+                Month
+              </button>
+              <button
+                onClick={() => setCalendarView('week')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  calendarView === 'week'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+                }`}
+              >
+                Week
+              </button>
+              <button
+                onClick={() => setCalendarView('day')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  calendarView === 'day'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+                }`}
+              >
+                Day
+              </button>
             </div>
+
+            {calendarView !== 'month' && (
+              <div className="flex rounded-lg border border-surface-200 p-0.5 dark:border-surface-700">
+                <button
+                  onClick={() => setCalendarLayout('grid')}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    calendarLayout === 'grid'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+                <button
+                  onClick={() => setCalendarLayout('list')}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    calendarLayout === 'list'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700'
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {calendarView === 'month' ? (
+            <MonthCalendar
+              year={calendarYear}
+              month={calendarMonth}
+              appointments={calendarAppointments}
+              onMonthChange={handleMonthChange}
+              onEdit={openEditModal}
+              onCustomerClick={handleCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              isLoading={calendarLoading}
+            />
+          ) : calendarView === 'week' ? (
+            <WeekCalendar
+              date={calendarDate}
+              appointments={calendarAppointments}
+              onDateChange={setCalendarDate}
+              onEdit={openEditModal}
+              onCustomerClick={handleCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              layout={calendarLayout}
+              isLoading={calendarLoading}
+            />
+          ) : (
+            <DayCalendar
+              date={calendarDate}
+              appointments={calendarAppointments}
+              onDateChange={setCalendarDate}
+              onEdit={openEditModal}
+              onCustomerClick={handleCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              layout={calendarLayout}
+              isLoading={calendarLoading}
+            />
           )}
         </div>
-
-        <Table data={filteredAppointments} columns={columns} isLoading={loading} />
-      </Card>
-      ) : (
-        <MonthCalendar
-          year={calendarYear}
-          month={calendarMonth}
-          appointments={calendarAppointments}
-          onMonthChange={handleMonthChange}
-          onEdit={openEditModal}
-          onCustomerClick={handleCustomerClick}
-          onCreateClick={handleCalendarCreateClick}
-          isLoading={calendarLoading}
-        />
       )}
 
       <Modal
@@ -897,3 +1024,4 @@ const AppointmentsPage = () => {
 };
 
 export default AppointmentsPage;
+

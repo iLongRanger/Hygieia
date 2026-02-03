@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import AppointmentsPage from '../appointments/AppointmentsPage';
 import { useAuthStore } from '../../stores/authStore';
+import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
 
 const listAppointmentsMock = vi.fn();
 const createAppointmentMock = vi.fn();
@@ -62,6 +63,9 @@ const mockAppointment = {
 
 describe('AppointmentsPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-02T12:00:00Z'));
+
     // Clear localStorage to reset view preference
     localStorage.clear();
 
@@ -86,6 +90,7 @@ describe('AppointmentsPage', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     localStorage.clear();
   });
 
@@ -125,7 +130,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('switches to calendar view when calendar button is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -143,7 +148,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('switches back to table view when table button is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -160,7 +165,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('persists view preference to localStorage', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -192,8 +197,7 @@ describe('AppointmentsPage', () => {
       render(<AppointmentsPage />);
 
       // Should show current month
-      const today = new Date();
-      const monthYear = today.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
       await waitFor(() => {
         expect(screen.getByText(monthYear)).toBeInTheDocument();
@@ -238,14 +242,86 @@ describe('AppointmentsPage', () => {
       render(<AppointmentsPage />);
 
       await waitFor(() => {
-        expect(listAppointmentsMock).toHaveBeenCalledWith(
+        const today = new Date();
+        const { dateFrom, dateTo } = getDateRange(today.getFullYear(), today.getMonth());
+        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
+        expect(lastCall).toEqual(
           expect.objectContaining({
-            dateFrom: expect.any(String),
-            dateTo: expect.any(String),
+            dateFrom,
+            dateTo,
             includePast: true,
           })
         );
       });
+    });
+
+    it('fetches appointments with week range when week view is selected', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      localStorage.setItem('appointments_view_mode', 'calendar');
+      listAppointmentsMock.mockResolvedValue([]);
+
+      render(<AppointmentsPage />);
+
+      await user.click(screen.getByRole('button', { name: /week/i }));
+
+      await waitFor(() => {
+        const { dateFrom, dateTo } = getWeekRange(new Date());
+        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
+        expect(lastCall).toEqual(
+          expect.objectContaining({
+            dateFrom,
+            dateTo,
+            includePast: true,
+          })
+        );
+      });
+    });
+
+    it('fetches appointments with day range when day view is selected', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      localStorage.setItem('appointments_view_mode', 'calendar');
+      listAppointmentsMock.mockResolvedValue([]);
+
+      render(<AppointmentsPage />);
+
+      await user.click(screen.getByRole('button', { name: /^day$/i }));
+
+      await waitFor(() => {
+        const { dateFrom, dateTo } = getDayRange(new Date());
+        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
+        expect(lastCall).toEqual(
+          expect.objectContaining({
+            dateFrom,
+            dateTo,
+            includePast: true,
+          })
+        );
+      });
+    });
+
+    it('persists calendar view preference to localStorage', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      localStorage.setItem('appointments_view_mode', 'calendar');
+      listAppointmentsMock.mockResolvedValue([]);
+
+      render(<AppointmentsPage />);
+
+      await user.click(screen.getByRole('button', { name: /week/i }));
+
+      await waitFor(() => {
+        expect(localStorage.getItem('appointments_calendar_view')).toBe('week');
+      });
+    });
+
+    it('restores calendar view preference from localStorage', async () => {
+      localStorage.setItem('appointments_view_mode', 'calendar');
+      localStorage.setItem('appointments_calendar_view', 'day');
+      listAppointmentsMock.mockResolvedValue([]);
+
+      render(<AppointmentsPage />);
+
+      const dayButton = screen.getByRole('button', { name: /^day$/i });
+      expect(dayButton).toHaveClass('bg-primary-600');
     });
 
     it('shows appointment type legend', async () => {
@@ -270,3 +346,5 @@ describe('AppointmentsPage', () => {
     });
   });
 });
+
+
