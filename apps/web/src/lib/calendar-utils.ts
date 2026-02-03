@@ -115,3 +115,78 @@ export function getDateRange(year: number, month: number): { dateFrom: string; d
     dateTo: new Date(lastDay.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString(),
   };
 }
+
+function startOfDay(date: Date): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+export function getDayRange(date: Date): { dateFrom: string; dateTo: string } {
+  const start = startOfDay(date);
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+  return {
+    dateFrom: start.toISOString(),
+    dateTo: end.toISOString(),
+  };
+}
+
+export function getWeekRange(date: Date): { dateFrom: string; dateTo: string } {
+  const start = startOfDay(date);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return {
+    dateFrom: start.toISOString(),
+    dateTo: end.toISOString(),
+  };
+}
+
+export function getWeekDays(date: Date): Date[] {
+  const start = startOfDay(date);
+  start.setDate(start.getDate() - start.getDay());
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(start);
+    day.setDate(start.getDate() + index);
+    return day;
+  });
+}
+
+export function getTimeSlots(startHour: number, endHour: number, stepMins: number): Date[] {
+  const slots: Date[] = [];
+  const startMinutes = startHour * 60;
+  const endMinutes = endHour * 60;
+
+  for (let minutes = startMinutes; minutes < endMinutes; minutes += stepMins) {
+    const slot = new Date(1970, 0, 1, 0, 0, 0, 0);
+    slot.setMinutes(minutes);
+    slots.push(slot);
+  }
+
+  return slots;
+}
+
+export function formatWeekRangeLabel(date: Date): string {
+  const weekDays = getWeekDays(date);
+  const start = weekDays[0];
+  const end = weekDays[weekDays.length - 1];
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
+
+  if (sameMonth && sameYear) {
+    const month = start.toLocaleString('en-US', { month: 'short' });
+    return `${month} ${start.getDate()} - ${end.getDate()}, ${start.getFullYear()}`;
+  }
+
+  if (sameYear) {
+    const startLabel = start.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+    const endLabel = end.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+    return `${startLabel} - ${endLabel}, ${start.getFullYear()}`;
+  }
+
+  const startLabel = start.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const endLabel = end.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startLabel} - ${endLabel}`;
+}

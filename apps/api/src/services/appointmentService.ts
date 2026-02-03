@@ -115,9 +115,21 @@ export async function listAppointments(params: AppointmentListParams) {
   if (status) where.status = status;
 
   if (dateFrom || dateTo) {
-    where.scheduledStart = {};
-    if (dateFrom) where.scheduledStart.gte = dateFrom;
-    if (dateTo) where.scheduledStart.lte = dateTo;
+    const overlapFilters: Prisma.AppointmentWhereInput[] = [];
+
+    if (dateTo) {
+      overlapFilters.push({ scheduledStart: { lte: dateTo } });
+    }
+
+    if (dateFrom) {
+      overlapFilters.push({ scheduledEnd: { gte: dateFrom } });
+    }
+
+    if (overlapFilters.length === 1) {
+      Object.assign(where, overlapFilters[0]);
+    } else if (overlapFilters.length > 1) {
+      where.AND = overlapFilters;
+    }
   } else if (!includePast) {
     where.scheduledEnd = { gte: new Date() };
   }

@@ -45,8 +45,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     <div className="flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-800">
       <CalendarHeader
         currentDate={currentDate}
-        onPrevMonth={handlePrevMonth}
-        onNextMonth={handleNextMonth}
+        onPrev={handlePrevMonth}
+        onNext={handleNextMonth}
         onToday={handleToday}
       />
 

@@ -6,8 +6,8 @@ import { CalendarHeader } from '../CalendarHeader';
 describe('CalendarHeader', () => {
   const defaultProps = {
     currentDate: new Date(2026, 0, 1), // January 2026
-    onPrevMonth: vi.fn(),
-    onNextMonth: vi.fn(),
+    onPrev: vi.fn(),
+    onNext: vi.fn(),
     onToday: vi.fn(),
   };
 
@@ -44,7 +44,7 @@ describe('CalendarHeader', () => {
       const user = userEvent.setup();
       const onPrevMonth = vi.fn();
 
-      render(<CalendarHeader {...defaultProps} onPrevMonth={onPrevMonth} />);
+      render(<CalendarHeader {...defaultProps} onPrev={onPrevMonth} />);
 
       const buttons = screen.getAllByRole('button');
       // First button with chevron is prev month
@@ -57,7 +57,7 @@ describe('CalendarHeader', () => {
       const user = userEvent.setup();
       const onNextMonth = vi.fn();
 
-      render(<CalendarHeader {...defaultProps} onNextMonth={onNextMonth} />);
+      render(<CalendarHeader {...defaultProps} onNext={onNextMonth} />);
 
       const buttons = screen.getAllByRole('button');
       // Second button with chevron is next month
