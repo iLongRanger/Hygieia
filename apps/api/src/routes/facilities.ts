@@ -11,6 +11,7 @@ import {
   archiveFacility,
   restoreFacility,
   deleteFacility,
+  getTaskTimeBreakdown,
 } from '../services/facilityService';
 import {
   calculateFacilityPricing,
@@ -335,6 +336,26 @@ router.get(
           byFrequency: frequencyObj,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get task time breakdown for per-hour pricing preview
+router.get(
+  '/:id/task-time-breakdown',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getFacilityById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Facility not found');
+      }
+
+      const breakdown = await getTaskTimeBreakdown(req.params.id);
+      res.json({ data: breakdown });
     } catch (error) {
       next(error);
     }
