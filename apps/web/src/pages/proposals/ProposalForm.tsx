@@ -50,6 +50,7 @@ import type {
 } from '../../types/proposal';
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
+import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -612,6 +613,16 @@ const ProposalForm = () => {
                       </p>
                     )}
                   </div>
+
+                  {/* Per-hour strategy: Show task time breakdown */}
+                  {isPerHourStrategy(selectedPricingStrategy) && pricingReadiness?.isReady && (
+                    <div className="mt-4">
+                      <AreaTaskTimeBreakdown
+                        facilityId={formData.facilityId!}
+                        workerCount={workerCount}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               <div className="md:col-span-2">

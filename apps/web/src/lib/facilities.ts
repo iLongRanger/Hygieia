@@ -303,6 +303,38 @@ export async function getFacilityTasksGrouped(facilityId: string): Promise<{
   return response.data.data;
 }
 
+// Task time breakdown types
+export interface TaskTimeBreakdownItem {
+  taskId: string;
+  taskName: string;
+  calculatedMinutes: number;
+}
+
+export interface AreaTimeBreakdown {
+  id: string;
+  name: string;
+  squareFeet: number;
+  floorType: string;
+  tasks: TaskTimeBreakdownItem[];
+  totalMinutes: number;
+}
+
+export interface FacilityTaskTimeBreakdown {
+  facilityId: string;
+  facilityName: string;
+  areas: AreaTimeBreakdown[];
+  totalMinutes: number;
+  totalHours: number;
+}
+
+// Get task time breakdown for per-hour pricing preview
+export async function getFacilityTaskTimeBreakdown(
+  facilityId: string
+): Promise<FacilityTaskTimeBreakdown> {
+  const response = await api.get(`/facilities/${facilityId}/task-time-breakdown`);
+  return response.data.data;
+}
+
 // Task Templates
 export async function listTaskTemplates(params?: {
   page?: number;
