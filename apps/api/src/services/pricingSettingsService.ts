@@ -55,6 +55,21 @@ const pricingSettingsSelect = {
   baseRatePerSqFt: true,
   minimumMonthlyCharge: true,
   hourlyRate: true,
+  // Labor cost settings
+  laborCostPerHour: true,
+  laborBurdenPercentage: true,
+  sqftPerLaborHour: true,
+  // Overhead cost settings
+  insurancePercentage: true,
+  adminOverheadPercentage: true,
+  travelCostPerVisit: true,
+  equipmentPercentage: true,
+  // Supply cost settings
+  supplyCostPercentage: true,
+  supplyCostPerSqFt: true,
+  // Profit settings
+  targetProfitMargin: true,
+  // Multipliers
   floorTypeMultipliers: true,
   frequencyMultipliers: true,
   conditionMultipliers: true,
