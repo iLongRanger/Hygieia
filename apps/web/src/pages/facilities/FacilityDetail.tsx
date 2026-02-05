@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -178,6 +178,40 @@ const FacilityDetail = () => {
     perRoomMinutesOverride: null,
     fixtureMinutes: [],
   });
+
+  const filteredTaskTemplates = useMemo(() => {
+    const frequency = taskForm.cleaningFrequency || 'daily';
+    return taskTemplates.filter(
+      (template) => template.cleaningType === frequency
+    );
+  }, [taskTemplates, taskForm.cleaningFrequency]);
+
+  const filteredBulkTaskTemplates = useMemo(
+    () =>
+      taskTemplates.filter((template) => template.cleaningType === bulkFrequency),
+    [taskTemplates, bulkFrequency]
+  );
+
+  useEffect(() => {
+    if (!taskForm.taskTemplateId) return;
+    const matchesFrequency = filteredTaskTemplates.some(
+      (template) => template.id === taskForm.taskTemplateId
+    );
+    if (!matchesFrequency) {
+      setTaskForm((prev) => ({
+        ...prev,
+        taskTemplateId: filteredTaskTemplates[0]?.id || null,
+      }));
+    }
+  }, [filteredTaskTemplates, taskForm.taskTemplateId]);
+
+  useEffect(() => {
+    setSelectedTaskTemplateIds((prev) => {
+      const allowed = new Set(filteredBulkTaskTemplates.map((t) => t.id));
+      const next = new Set([...prev].filter((id) => allowed.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredBulkTaskTemplates]);
 
   const fetchFacility = useCallback(async () => {
     if (!id) return;
@@ -549,7 +583,9 @@ const FacilityDetail = () => {
   };
 
   const selectAllTaskTemplates = () => {
-    setSelectedTaskTemplateIds(new Set(taskTemplates.map((t) => t.id)));
+    setSelectedTaskTemplateIds(
+      new Set(filteredBulkTaskTemplates.map((t) => t.id))
+    );
   };
 
   const clearAllTaskTemplates = () => {
@@ -1646,7 +1682,7 @@ const FacilityDetail = () => {
                 onClick={() =>
                   setTaskForm({
                     ...taskForm,
-                    taskTemplateId: taskTemplates[0]?.id || null,
+                    taskTemplateId: filteredTaskTemplates[0]?.id || null,
                     customName: '',
                   })
                 }
@@ -1663,7 +1699,7 @@ const FacilityDetail = () => {
             <Select
               label="Task Template"
               placeholder="Select a task template"
-              options={taskTemplates.map((tt) => ({
+              options={filteredTaskTemplates.map((tt) => ({
                 value: tt.id,
                 label: `${tt.name} (${tt.cleaningType})`,
               }))}
@@ -1869,7 +1905,7 @@ const FacilityDetail = () => {
           {/* Selection Controls */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-400">
-              {selectedTaskTemplateIds.size} of {taskTemplates.length} selected
+              {selectedTaskTemplateIds.size} of {filteredBulkTaskTemplates.length} selected
             </div>
             <div className="flex gap-2">
               <Button
@@ -1891,12 +1927,12 @@ const FacilityDetail = () => {
 
           {/* Task Templates List */}
           <div className="max-h-80 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
-            {taskTemplates.length === 0 ? (
+            {filteredBulkTaskTemplates.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                No task templates available. Create some task templates first.
+                No task templates for the selected frequency.
               </div>
             ) : (
-              taskTemplates.map((template) => {
+              filteredBulkTaskTemplates.map((template) => {
                 const isSelected = selectedTaskTemplateIds.has(template.id);
                 return (
                   <div
