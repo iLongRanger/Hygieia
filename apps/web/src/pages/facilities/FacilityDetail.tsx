@@ -666,6 +666,84 @@ const FacilityDetail = () => {
     });
   };
 
+  const TASK_SEQUENCE_RULES = [
+    {
+      weight: 10,
+      patterns: [
+        /trash|garbage|litter|empty|liner/i,
+        /restock|refill|replenish|suppl(y|ies)|stock/i,
+        /remove expired/i,
+      ],
+    },
+    {
+      weight: 20,
+      patterns: [
+        /dust|high dust/i,
+        /vent|vents|light fixture|lights|ceiling fan/i,
+        /blinds|sill|sills|racks|shelf|shelves/i,
+      ],
+    },
+    {
+      weight: 70,
+      patterns: [
+        /deep clean|deep-clean|deep extraction|extract/i,
+        /carpet cleaning|shampoo/i,
+      ],
+    },
+    {
+      weight: 40,
+      patterns: [/disinfect|sanitize|sanitise/i],
+    },
+    {
+      weight: 30,
+      patterns: [
+        /glass|window|mirror/i,
+        /wipe|wash|clean/i,
+        /counter|desk|table|chair|appliance|fixture|door/i,
+        /toilet|urinal|sink|shower/i,
+        /furniture|wood surface|board/i,
+      ],
+    },
+    {
+      weight: 60,
+      patterns: [
+        /mop|wet mop|scrub|buff|strip|wax|refinish/i,
+        /power wash|pressure wash/i,
+        /floor.*polish|polish.*floor/i,
+      ],
+    },
+    {
+      weight: 50,
+      patterns: [/vacuum|sweep|sweeping/i],
+    },
+    {
+      weight: 80,
+      patterns: [/inspect|check|pest|organize|organise/i, /filters|ducts/i],
+    },
+  ];
+
+  const getTaskDisplayName = (task: FacilityTask) =>
+    (task.customName || task.taskTemplate?.name || '').trim();
+
+  const getTaskSequenceWeight = (name: string) => {
+    if (!name) return 90;
+    for (const rule of TASK_SEQUENCE_RULES) {
+      if (rule.patterns.some((pattern) => pattern.test(name))) {
+        return rule.weight;
+      }
+    }
+    return 90;
+  };
+
+  const compareTasksByStandard = (a: FacilityTask, b: FacilityTask) => {
+    const aName = getTaskDisplayName(a).toLowerCase();
+    const bName = getTaskDisplayName(b).toLowerCase();
+    const weightDiff =
+      getTaskSequenceWeight(aName) - getTaskSequenceWeight(bName);
+    if (weightDiff !== 0) return weightDiff;
+    return aName.localeCompare(bName);
+  };
+
   // Group tasks by area
   const getTasksForArea = (areaId: string) => {
     return tasks.filter((t) => t.area?.id === areaId && !t.archivedAt);
@@ -681,6 +759,9 @@ const FacilityDetail = () => {
       }
       grouped[freq].push(task);
     }
+    Object.values(grouped).forEach((group) =>
+      group.sort(compareTasksByStandard)
+    );
     return grouped;
   };
 
