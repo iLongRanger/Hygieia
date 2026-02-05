@@ -7,70 +7,65 @@ import {
   Contact,
   CheckCircle,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
   Calendar,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { listAppointments } from '../lib/appointments';
+import { getDashboardStats } from '../lib/dashboard';
+import type { DashboardStats } from '../lib/dashboard';
 import type { Appointment } from '../types/crm';
+
+const statCards = [
+  {
+    label: 'Total Leads',
+    key: 'totalLeads' as keyof DashboardStats,
+    icon: Users,
+    color: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-100 dark:bg-blue-900/30',
+  },
+  {
+    label: 'Active Accounts',
+    key: 'activeAccounts' as keyof DashboardStats,
+    icon: Building2,
+    color: 'text-primary-600 dark:text-primary-400',
+    bg: 'bg-primary-100 dark:bg-primary-900/30',
+  },
+  {
+    label: 'Total Contacts',
+    key: 'totalContacts' as keyof DashboardStats,
+    icon: Contact,
+    color: 'text-accent-600 dark:text-accent-400',
+    bg: 'bg-accent-100 dark:bg-accent-900/30',
+  },
+  {
+    label: 'Active Users',
+    key: 'activeUsers' as keyof DashboardStats,
+    icon: CheckCircle,
+    color: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-100 dark:bg-purple-900/30',
+  },
+];
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-
-  const stats = [
-    {
-      label: 'Total Leads',
-      value: '248',
-      change: '+12.5%',
-      trend: 'up',
-      icon: Users,
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-    },
-    {
-      label: 'Active Accounts',
-      value: '86',
-      change: '+4.2%',
-      trend: 'up',
-      icon: Building2,
-      color: 'text-primary-600 dark:text-primary-400',
-      bg: 'bg-primary-100 dark:bg-primary-900/30',
-    },
-    {
-      label: 'Total Contacts',
-      value: '1,240',
-      change: '+8.1%',
-      trend: 'up',
-      icon: Contact,
-      color: 'text-accent-600 dark:text-accent-400',
-      bg: 'bg-accent-100 dark:bg-accent-900/30',
-    },
-    {
-      label: 'Active Users',
-      value: '12',
-      change: '0%',
-      trend: 'neutral',
-      icon: CheckCircle,
-      color: 'text-purple-600 dark:text-purple-400',
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
-    },
-  ];
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    const fetchAppointments = async () => {
+    const fetchData = async () => {
       try {
-        const data = await listAppointments({
-          includePast: false,
-        });
-        setAppointments(data);
+        const [statsData, appointmentsData] = await Promise.all([
+          getDashboardStats(),
+          listAppointments({ includePast: false }),
+        ]);
+        setStats(statsData);
+        setAppointments(appointmentsData);
       } catch (error) {
-        console.error('Failed to fetch appointments:', error);
+        console.error('Failed to fetch dashboard data:', error);
       }
     };
-    fetchAppointments();
+    fetchData();
   }, []);
 
   const groupedAppointments = useMemo(() => {
@@ -108,39 +103,24 @@ const Dashboard = () => {
 
       {/* Stats grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
-        {stats.map((stat) => (
+        {statCards.map((card) => (
           <Card
-            key={stat.label}
+            key={card.label}
             hover
             className="flex items-start gap-4"
           >
             <div
-              className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.bg}`}
+              className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.bg}`}
             >
-              <stat.icon className={`h-6 w-6 ${stat.color}`} />
+              <card.icon className={`h-6 w-6 ${card.color}`} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-surface-500 dark:text-surface-400">
-                {stat.label}
+                {card.label}
               </p>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-surface-900 dark:text-surface-100">
-                  {stat.value}
-                </span>
-                <span
-                  className={`inline-flex items-center text-xs font-medium ${
-                    stat.trend === 'up'
-                      ? 'text-success-600 dark:text-success-400'
-                      : stat.trend === 'down'
-                        ? 'text-error-600 dark:text-error-400'
-                        : 'text-surface-500 dark:text-surface-400'
-                  }`}
-                >
-                  {stat.trend === 'up' && <ArrowUpRight className="mr-0.5 h-3 w-3" />}
-                  {stat.trend === 'down' && <ArrowDownRight className="mr-0.5 h-3 w-3" />}
-                  {stat.change}
-                </span>
-              </div>
+              <p className="mt-1 text-2xl font-bold text-surface-900 dark:text-surface-100">
+                {stats ? stats[card.key].toLocaleString() : '...'}
+              </p>
             </div>
           </Card>
         ))}
