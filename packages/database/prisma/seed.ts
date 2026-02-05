@@ -43,6 +43,113 @@ async function main() {
 
   console.log(`Created ${roles.count} system roles`)
 
+  // Seed commercial area types
+  const areaTypes = await prisma.areaType.createMany({
+    data: [
+      { name: 'Break Room' },
+      { name: 'Cafeteria' },
+      { name: 'Changing Room' },
+      { name: 'Classroom' },
+      { name: 'Clinic Room' },
+      { name: 'Conference Room' },
+      { name: 'Copy Room' },
+      { name: 'Corridor' },
+      { name: 'Cubicle Area' },
+      { name: 'Dining Area' },
+      { name: 'Electrical Room' },
+      { name: 'Elevator Lobby' },
+      { name: 'Exam Room' },
+      { name: 'Gym' },
+      { name: 'Hallway' },
+      { name: 'Janitor Closet' },
+      { name: 'Kitchen' },
+      { name: 'Lab' },
+      { name: 'Loading Dock' },
+      { name: 'Locker Room' },
+      { name: 'Lobby' },
+      { name: 'Lounge' },
+      { name: 'Mail Room' },
+      { name: 'Manufacturing Floor' },
+      { name: 'Mechanical Room' },
+      { name: 'Meeting Room' },
+      { name: 'Office' },
+      { name: 'Open Workspace' },
+      { name: 'Pantry' },
+      { name: 'Private Office' },
+      { name: 'Reception' },
+      { name: 'Retail Floor' },
+      { name: 'Security Room' },
+      { name: 'Server Room' },
+      { name: 'Shower Room' },
+      { name: 'Showroom' },
+      { name: 'Stairwell' },
+      { name: 'Storage Room' },
+      { name: 'Stockroom' },
+      { name: 'Supply Closet' },
+      { name: 'Training Room' },
+      { name: 'Waiting Area' },
+      { name: 'Warehouse' },
+      { name: 'Washroom' },
+      { name: 'Workshop' }
+    ],
+    skipDuplicates: true
+  })
+
+  console.log(`Created ${areaTypes.count} commercial area types`)
+
+  // Seed commercial fixture and furniture types
+  const fixtureTypes = await prisma.fixtureType.createMany({
+    data: [
+      // Furniture
+      { name: 'Bench', category: 'furniture' },
+      { name: 'Bookcase', category: 'furniture' },
+      { name: 'Cart', category: 'furniture' },
+      { name: 'Coffee Table', category: 'furniture' },
+      { name: 'Conference Table', category: 'furniture' },
+      { name: 'Desk', category: 'furniture' },
+      { name: 'Filing Cabinet', category: 'furniture' },
+      { name: 'Guest Chair', category: 'furniture' },
+      { name: 'Locker', category: 'furniture' },
+      { name: 'Meeting Table', category: 'furniture' },
+      { name: 'Office Chair', category: 'furniture' },
+      { name: 'Podium', category: 'furniture' },
+      { name: 'Reception Desk', category: 'furniture' },
+      { name: 'Shelving Unit', category: 'furniture' },
+      { name: 'Side Table', category: 'furniture' },
+      { name: 'Sofa', category: 'furniture' },
+      { name: 'Stool', category: 'furniture' },
+      { name: 'Storage Cabinet', category: 'furniture' },
+      { name: 'Trash Can', category: 'furniture' },
+      { name: 'Workstation', category: 'furniture' },
+
+      // Fixtures
+      { name: 'Ceiling Fan', category: 'fixture' },
+      { name: 'Exit Sign', category: 'fixture' },
+      { name: 'Faucet', category: 'fixture' },
+      { name: 'Fire Extinguisher', category: 'fixture' },
+      { name: 'Glass Door', category: 'fixture' },
+      { name: 'Grab Bar', category: 'fixture' },
+      { name: 'Hand Dryer', category: 'fixture' },
+      { name: 'Light Fixture', category: 'fixture' },
+      { name: 'Mirror', category: 'fixture' },
+      { name: 'Paper Towel Dispenser', category: 'fixture' },
+      { name: 'Shower Head', category: 'fixture' },
+      { name: 'Shower Stall', category: 'fixture' },
+      { name: 'Sink', category: 'fixture' },
+      { name: 'Soap Dispenser', category: 'fixture' },
+      { name: 'Toilet', category: 'fixture' },
+      { name: 'Toilet Paper Dispenser', category: 'fixture' },
+      { name: 'Urinal', category: 'fixture' },
+      { name: 'Wall Mounted TV', category: 'fixture' },
+      { name: 'Water Fountain', category: 'fixture' },
+      { name: 'Whiteboard', category: 'fixture' },
+      { name: 'Window', category: 'fixture' }
+    ],
+    skipDuplicates: true
+  })
+
+  console.log(`Created ${fixtureTypes.count} commercial fixture types`)
+
   // Create default super admin user
   const defaultPassword = 'Admin@123'
   const hashedPassword = await bcrypt.hash(defaultPassword, 10)
