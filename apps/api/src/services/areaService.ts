@@ -200,6 +200,7 @@ export async function getAreaById(id: string) {
 
 export async function createArea(input: AreaCreateInput) {
   const shouldApplyTemplate = input.applyTemplate !== false; // Default to true
+  const normalizedName = input.name?.trim() || null;
 
   return prisma.$transaction(async (tx) => {
     // 1. Fetch template if applyTemplate is true
@@ -238,7 +239,7 @@ export async function createArea(input: AreaCreateInput) {
       data: {
         facilityId: input.facilityId,
         areaTypeId: input.areaTypeId,
-        name: input.name,
+        name: normalizedName,
         quantity: input.quantity ?? 1,
         squareFeet: input.squareFeet ?? template?.defaultSquareFeet ?? null,
         floorType: input.floorType ?? 'vct',
@@ -314,7 +315,10 @@ export async function updateArea(id: string, input: AreaUpdateInput) {
   if (input.areaTypeId !== undefined) {
     updateData.areaType = { connect: { id: input.areaTypeId } };
   }
-  if (input.name !== undefined) updateData.name = input.name;
+  if (input.name !== undefined) {
+    const normalizedName = input.name?.trim();
+    updateData.name = normalizedName ? normalizedName : null;
+  }
   if (input.quantity !== undefined) updateData.quantity = input.quantity;
   if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
   if (input.floorType !== undefined) updateData.floorType = input.floorType;
