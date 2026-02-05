@@ -554,6 +554,15 @@ export async function generateProposalServicesFromFacility(
   }
 
   // Create one service line per area with tasks in description
+  const areaPriceTotal = pricing.areas.reduce(
+    (sum, area) => sum + Number(area.monthlyPrice || 0),
+    0
+  );
+  const targetMonthlyTotal = pricing.monthlyTotal;
+  const applyScaling = areaPriceTotal > 0 && targetMonthlyTotal > 0;
+  const scalingFactor = applyScaling ? targetMonthlyTotal / areaPriceTotal : 0;
+  let scaledMonthlySum = 0;
+
   for (const areaPricing of pricing.areas) {
     const areaTasks = byArea.get(areaPricing.areaId);
 
@@ -593,14 +602,31 @@ export async function generateProposalServicesFromFacility(
     // Collect all task names for includedTasks array
     const allTasks = areaTasks?.tasks.map(t => t.name) || [];
 
+    let scaledMonthlyPrice = areaPricing.monthlyPrice;
+    if (applyScaling) {
+      scaledMonthlyPrice = roundToTwo(areaPricing.monthlyPrice * scalingFactor);
+      scaledMonthlySum += scaledMonthlyPrice;
+    }
+
     services.push({
       serviceName: areaPricing.areaName,
       serviceType: mapFrequencyToServiceType(serviceFrequency),
       frequency: mapFrequencyToProposalFrequency(serviceFrequency),
-      monthlyPrice: areaPricing.monthlyPrice,
+      monthlyPrice: scaledMonthlyPrice,
       description: descriptionParts.join('\n'),
       includedTasks: allTasks,
     });
+  }
+
+  if (applyScaling && services.length > 0) {
+    const adjustment = roundToTwo(targetMonthlyTotal - scaledMonthlySum);
+    if (Math.abs(adjustment) >= 0.01) {
+      const lastIndex = services.length - 1;
+      services[lastIndex] = {
+        ...services[lastIndex],
+        monthlyPrice: roundToTwo(services[lastIndex].monthlyPrice + adjustment),
+      };
+    }
   }
 
   return services;
