@@ -38,6 +38,7 @@ import fixtureTypesRoutes from './routes/fixtureTypes';
 import areaTemplatesRoutes from './routes/areaTemplates';
 import proposalsRoutes from './routes/proposals';
 import contractsRoutes from './routes/contracts';
+import dashboardRoutes from './routes/dashboard';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -94,6 +95,7 @@ app.use('/api/v1/fixture-types', fixtureTypesRoutes);
 app.use('/api/v1/area-templates', areaTemplatesRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
