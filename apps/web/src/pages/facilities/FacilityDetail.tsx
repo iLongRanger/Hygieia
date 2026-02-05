@@ -1452,6 +1452,7 @@ const FacilityDetail = () => {
           resetAreaForm();
         }}
         title={editingArea ? 'Edit Area' : 'Add Area'}
+        size="xl"
       >
         <div className="space-y-4">
           <Select

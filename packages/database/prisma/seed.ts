@@ -208,6 +208,30 @@ async function main() {
   const taskTemplateSeeds = [
     // Daily
     {
+      name: 'Disinfect High-Touch Surfaces',
+      cleaningType: 'daily',
+      areaTypeName: null,
+      instructions: 'Disinfect handles, switches, and common touch points.'
+    },
+    {
+      name: 'Empty Trash And Replace Liners',
+      cleaningType: 'daily',
+      areaTypeName: null,
+      instructions: 'Remove trash, replace liners, and wipe bin rims if needed.'
+    },
+    {
+      name: 'Spot Clean Spills And Stains',
+      cleaningType: 'daily',
+      areaTypeName: null,
+      instructions: 'Blot spills and spot-clean stains on floors or upholstery.'
+    },
+    {
+      name: 'Vacuum Or Sweep Floors',
+      cleaningType: 'daily',
+      areaTypeName: null,
+      instructions: 'Vacuum carpets and sweep hard floors in high-traffic paths.'
+    },
+    {
       name: 'Clean Dry Erase Boards',
       cleaningType: 'daily',
       areaTypeName: 'Meeting Room',
@@ -336,6 +360,18 @@ async function main() {
 
     // Weekly
     {
+      name: 'Clean Interior Windows And Glass Doors',
+      cleaningType: 'weekly',
+      areaTypeName: null,
+      instructions: 'Clean interior glass and doors with streak-free cleaner.'
+    },
+    {
+      name: 'Mop Hard Floors',
+      cleaningType: 'weekly',
+      areaTypeName: null,
+      instructions: 'Wet mop hard floors with neutral cleaner and let dry.'
+    },
+    {
       name: 'Clean And Organize Storage Areas',
       cleaningType: 'weekly',
       areaTypeName: 'Storage Room',
@@ -459,6 +495,12 @@ async function main() {
     },
 
     // Monthly
+    {
+      name: 'Dust High Surfaces',
+      cleaningType: 'monthly',
+      areaTypeName: null,
+      instructions: 'High-dust shelves and upper surfaces top-to-bottom.'
+    },
     {
       name: 'Buff And Polish Hardwood Floors',
       cleaningType: 'monthly',
@@ -616,7 +658,11 @@ async function main() {
   ]
 
   const areaTypeNames = Array.from(
-    new Set(taskTemplateSeeds.map((task) => task.areaTypeName))
+    new Set(
+      taskTemplateSeeds
+        .map((task) => task.areaTypeName)
+        .filter((name): name is string => Boolean(name))
+    )
   )
 
   const areaTypeRows = await prisma.areaType.findMany({
@@ -639,7 +685,9 @@ async function main() {
   const taskTemplatesData = taskTemplateSeeds.map((task) => ({
     name: task.name,
     cleaningType: task.cleaningType,
-    areaTypeId: areaTypeMap.get(task.areaTypeName) as string,
+    areaTypeId: task.areaTypeName
+      ? (areaTypeMap.get(task.areaTypeName) ?? null)
+      : null,
     estimatedMinutes: 0,
     instructions: task.instructions,
     isGlobal: true,
@@ -657,14 +705,15 @@ async function main() {
 
   const existingTaskKeys = new Set(
     existingTaskTemplates.map(
-      (task) => `${task.name}||${task.cleaningType}||${task.areaTypeId}`
+      (task) =>
+        `${task.name}||${task.cleaningType}||${task.areaTypeId ?? 'null'}`
     )
   )
 
   const newTaskTemplates = taskTemplatesData.filter(
     (task) =>
       !existingTaskKeys.has(
-        `${task.name}||${task.cleaningType}||${task.areaTypeId}`
+        `${task.name}||${task.cleaningType}||${task.areaTypeId ?? 'null'}`
       )
   )
 
@@ -676,6 +725,357 @@ async function main() {
     console.log(`Created ${createdTasks.count} commercial task templates`)
   } else {
     console.log('No new commercial task templates to create')
+  }
+
+  const areaTemplateFixtureMap: Record<string, string[]> = {
+    'Break Room': [
+      'Meeting Table',
+      'Guest Chair',
+      'Trash Can',
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser'
+    ],
+    Cafeteria: [
+      'Meeting Table',
+      'Guest Chair',
+      'Trash Can',
+      'Water Fountain',
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser'
+    ],
+    'Changing Room': ['Locker', 'Bench', 'Mirror', 'Trash Can'],
+    Classroom: ['Desk', 'Guest Chair', 'Whiteboard', 'Wall Mounted TV'],
+    'Clinic Room': [
+      'Guest Chair',
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Trash Can',
+      'Mirror'
+    ],
+    'Conference Room': [
+      'Conference Table',
+      'Office Chair',
+      'Guest Chair',
+      'Whiteboard',
+      'Wall Mounted TV'
+    ],
+    'Copy Room': ['Storage Cabinet', 'Shelving Unit', 'Trash Can'],
+    Corridor: [
+      'Light Fixture',
+      'Exit Sign',
+      'Fire Extinguisher',
+      'Water Fountain'
+    ],
+    'Cubicle Area': [
+      'Workstation',
+      'Office Chair',
+      'Trash Can',
+      'Storage Cabinet'
+    ],
+    'Dining Area': [
+      'Meeting Table',
+      'Guest Chair',
+      'Trash Can',
+      'Water Fountain'
+    ],
+    'Electrical Room': ['Light Fixture', 'Fire Extinguisher'],
+    'Elevator Lobby': ['Light Fixture', 'Exit Sign', 'Fire Extinguisher'],
+    'Exam Room': [
+      'Guest Chair',
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Trash Can',
+      'Mirror'
+    ],
+    Gym: ['Bench', 'Trash Can', 'Water Fountain', 'Mirror'],
+    Hallway: [
+      'Light Fixture',
+      'Exit Sign',
+      'Fire Extinguisher',
+      'Water Fountain'
+    ],
+    'Janitor Closet': [
+      'Storage Cabinet',
+      'Shelving Unit',
+      'Cart',
+      'Trash Can',
+      'Sink',
+      'Faucet'
+    ],
+    Kitchen: [
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Trash Can'
+    ],
+    Lab: [
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Trash Can',
+      'Storage Cabinet'
+    ],
+    'Loading Dock': ['Cart', 'Trash Can', 'Light Fixture', 'Fire Extinguisher'],
+    'Locker Room': ['Locker', 'Bench', 'Mirror', 'Trash Can'],
+    Lobby: [
+      'Sofa',
+      'Coffee Table',
+      'Side Table',
+      'Bench',
+      'Trash Can',
+      'Glass Door',
+      'Window'
+    ],
+    Lounge: ['Sofa', 'Coffee Table', 'Side Table', 'Trash Can', 'Window'],
+    'Mail Room': ['Storage Cabinet', 'Shelving Unit', 'Trash Can'],
+    'Manufacturing Floor': ['Light Fixture', 'Fire Extinguisher', 'Trash Can'],
+    'Mechanical Room': ['Light Fixture', 'Fire Extinguisher'],
+    'Meeting Room': [
+      'Meeting Table',
+      'Office Chair',
+      'Guest Chair',
+      'Whiteboard',
+      'Wall Mounted TV'
+    ],
+    Office: [
+      'Desk',
+      'Office Chair',
+      'Guest Chair',
+      'Filing Cabinet',
+      'Storage Cabinet',
+      'Trash Can',
+      'Bookcase'
+    ],
+    'Open Workspace': [
+      'Workstation',
+      'Office Chair',
+      'Guest Chair',
+      'Trash Can',
+      'Storage Cabinet'
+    ],
+    Pantry: [
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Trash Can'
+    ],
+    'Private Office': [
+      'Desk',
+      'Office Chair',
+      'Guest Chair',
+      'Filing Cabinet',
+      'Storage Cabinet',
+      'Trash Can',
+      'Bookcase'
+    ],
+    Reception: [
+      'Reception Desk',
+      'Guest Chair',
+      'Trash Can',
+      'Glass Door',
+      'Window'
+    ],
+    'Retail Floor': ['Shelving Unit', 'Trash Can', 'Glass Door', 'Window'],
+    'Security Room': [
+      'Desk',
+      'Office Chair',
+      'Storage Cabinet',
+      'Trash Can',
+      'Wall Mounted TV'
+    ],
+    'Server Room': ['Storage Cabinet', 'Shelving Unit', 'Fire Extinguisher'],
+    'Shower Room': [
+      'Shower Stall',
+      'Shower Head',
+      'Sink',
+      'Faucet',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Grab Bar',
+      'Trash Can',
+      'Mirror'
+    ],
+    Showroom: [
+      'Shelving Unit',
+      'Trash Can',
+      'Glass Door',
+      'Window',
+      'Coffee Table',
+      'Side Table'
+    ],
+    Stairwell: ['Light Fixture', 'Exit Sign', 'Fire Extinguisher'],
+    'Storage Room': ['Shelving Unit', 'Storage Cabinet', 'Trash Can'],
+    Stockroom: ['Shelving Unit', 'Storage Cabinet', 'Trash Can'],
+    'Supply Closet': ['Shelving Unit', 'Storage Cabinet', 'Trash Can'],
+    'Training Room': [
+      'Meeting Table',
+      'Guest Chair',
+      'Whiteboard',
+      'Wall Mounted TV'
+    ],
+    'Waiting Area': [
+      'Sofa',
+      'Coffee Table',
+      'Side Table',
+      'Guest Chair',
+      'Trash Can'
+    ],
+    Warehouse: ['Shelving Unit', 'Cart', 'Trash Can', 'Light Fixture'],
+    Washroom: [
+      'Toilet',
+      'Urinal',
+      'Sink',
+      'Faucet',
+      'Mirror',
+      'Soap Dispenser',
+      'Paper Towel Dispenser',
+      'Hand Dryer',
+      'Toilet Paper Dispenser',
+      'Grab Bar',
+      'Trash Can'
+    ],
+    Workshop: [
+      'Storage Cabinet',
+      'Shelving Unit',
+      'Trash Can',
+      'Light Fixture',
+      'Fire Extinguisher'
+    ]
+  }
+
+  const areaTypesForTemplates = await prisma.areaType.findMany({
+    select: { id: true, name: true }
+  })
+
+  const existingTemplates = await prisma.areaTemplate.findMany({
+    select: { areaTypeId: true }
+  })
+
+  const existingTemplateAreaTypeIds = new Set(
+    existingTemplates.map((template) => template.areaTypeId)
+  )
+
+  const fixtureRows = await prisma.fixtureType.findMany({
+    select: { id: true, name: true }
+  })
+
+  const fixtureTypeMap = new Map(fixtureRows.map((row) => [row.name, row.id]))
+
+  const taskTemplateRows = await prisma.taskTemplate.findMany({
+    where: {
+      isGlobal: true,
+      facilityId: null,
+      isActive: true
+    },
+    select: { id: true, name: true, cleaningType: true, areaTypeId: true }
+  })
+
+  const generalTaskTemplates = taskTemplateRows.filter(
+    (task) => !task.areaTypeId
+  )
+
+  const tasksByAreaTypeId = new Map<string, typeof taskTemplateRows>()
+  for (const task of taskTemplateRows) {
+    if (!task.areaTypeId) continue
+    const list = tasksByAreaTypeId.get(task.areaTypeId) || []
+    list.push(task)
+    tasksByAreaTypeId.set(task.areaTypeId, list)
+  }
+
+  const frequencyOrder = [
+    'daily',
+    'weekly',
+    'biweekly',
+    'monthly',
+    'quarterly',
+    'annual',
+    'deep_clean',
+    'move_out',
+    'post_construction'
+  ]
+  const frequencyIndex = new Map(
+    frequencyOrder.map((frequency, index) => [frequency, index])
+  )
+
+  const sortTasksByFrequency = (
+    a: { name: string; cleaningType: string },
+    b: { name: string; cleaningType: string }
+  ) => {
+    const aIndex = frequencyIndex.get(a.cleaningType) ?? 999
+    const bIndex = frequencyIndex.get(b.cleaningType) ?? 999
+    if (aIndex !== bIndex) return aIndex - bIndex
+    return a.name.localeCompare(b.name)
+  }
+
+  let createdAreaTemplates = 0
+  for (const areaType of areaTypesForTemplates) {
+    if (existingTemplateAreaTypeIds.has(areaType.id)) continue
+
+    const fixtureNames = areaTemplateFixtureMap[areaType.name] || []
+    const missingFixtures = fixtureNames.filter(
+      (name) => !fixtureTypeMap.has(name)
+    )
+    if (missingFixtures.length > 0) {
+      throw new Error(
+        `Missing fixture types for ${areaType.name}: ${missingFixtures.join(', ')}`
+      )
+    }
+
+    const itemsData = fixtureNames.map((name, index) => ({
+      fixtureTypeId: fixtureTypeMap.get(name) as string,
+      defaultCount: 0,
+      minutesPerItem: 0,
+      sortOrder: index
+    }))
+
+    const areaSpecificTasks = tasksByAreaTypeId.get(areaType.id) || []
+    const taskNameSet = new Set(
+      areaSpecificTasks.map((task) => task.name.toLowerCase())
+    )
+    const combinedTasks = [...areaSpecificTasks]
+    for (const task of generalTaskTemplates) {
+      const key = task.name.toLowerCase()
+      if (taskNameSet.has(key)) continue
+      combinedTasks.push(task)
+      taskNameSet.add(key)
+    }
+
+    combinedTasks.sort(sortTasksByFrequency)
+    const taskData = combinedTasks.map((task, index) => ({
+      taskTemplateId: task.id,
+      sortOrder: index
+    }))
+
+    await prisma.areaTemplate.create({
+      data: {
+        areaTypeId: areaType.id,
+        name: null,
+        defaultSquareFeet: null,
+        createdByUserId: seedUser.id,
+        items: itemsData.length > 0 ? { create: itemsData } : undefined,
+        tasks: taskData.length > 0 ? { create: taskData } : undefined
+      },
+      select: { id: true }
+    })
+
+    createdAreaTemplates += 1
+  }
+
+  if (createdAreaTemplates > 0) {
+    console.log(`Created ${createdAreaTemplates} area templates`)
+  } else {
+    console.log('No new area templates to create')
   }
 
   console.log('Database seed completed successfully')
