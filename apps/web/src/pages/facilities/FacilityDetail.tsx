@@ -1407,9 +1407,10 @@ const FacilityDetail = () => {
               }
             />
             <Input
-              label="Square Feet"
+              label="Square Feet (per area)"
               type="number"
-              placeholder="Total for all"
+              placeholder="Per area"
+              hint="Total square feet is calculated as quantity × per-area."
               value={areaForm.squareFeet || ''}
               onChange={(e) =>
                 setAreaForm({
