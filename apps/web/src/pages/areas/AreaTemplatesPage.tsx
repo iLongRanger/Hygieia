@@ -97,6 +97,7 @@ const AreaTemplatesPage = () => {
   });
   const [areaTypeSaving, setAreaTypeSaving] = useState(false);
   const [areaTypeDeleteId, setAreaTypeDeleteId] = useState<string | null>(null);
+  const [areaTypeTaskTemplateIds, setAreaTypeTaskTemplateIds] = useState<string[]>([]);
 
   const [selectedTemplate, setSelectedTemplate] = useState<AreaTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState<CreateAreaTemplateInput>({
@@ -246,6 +247,7 @@ const AreaTemplatesPage = () => {
       defaultSquareFeet: 0,
       baseCleaningTimeMinutes: 0,
     });
+    setAreaTypeTaskTemplateIds([]);
     setShowAreaTypeModal(true);
   };
 
@@ -257,6 +259,7 @@ const AreaTemplatesPage = () => {
       defaultSquareFeet: areaType.defaultSquareFeet ? Number(areaType.defaultSquareFeet) : 0,
       baseCleaningTimeMinutes: areaType.baseCleaningTimeMinutes || 0,
     });
+    setAreaTypeTaskTemplateIds([]);
     setShowAreaTypeModal(true);
   };
 
@@ -277,16 +280,30 @@ const AreaTemplatesPage = () => {
         });
         toast.success('Area type updated');
       } else {
-        await createAreaType({
+        const created = await createAreaType({
           name: areaTypeForm.name.trim(),
           description: areaTypeForm.description || null,
           defaultSquareFeet: areaTypeForm.defaultSquareFeet || null,
           baseCleaningTimeMinutes: areaTypeForm.baseCleaningTimeMinutes || null,
         });
+        const uniqueTaskTemplateIds = Array.from(new Set(areaTypeTaskTemplateIds));
+        if (uniqueTaskTemplateIds.length > 0) {
+          try {
+            await createAreaTemplate({
+              areaTypeId: created.id,
+              taskTemplateIds: uniqueTaskTemplateIds,
+            });
+          } catch (error) {
+            console.error('Failed to create area template:', error);
+            toast.error('Area type created, but default tasks failed to save');
+          }
+        }
         toast.success('Area type created');
       }
       setShowAreaTypeModal(false);
+      setAreaTypeTaskTemplateIds([]);
       await fetchAreaTypes();
+      await fetchAreaTemplates();
     } catch (error) {
       console.error('Failed to save area type:', error);
       toast.error('Failed to save area type');
@@ -1176,6 +1193,54 @@ const AreaTemplatesPage = () => {
               setAreaTypeForm({ ...areaTypeForm, baseCleaningTimeMinutes: Number(e.target.value) || 0 })
             }
           />
+          {!areaTypeForm.id && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-200">
+                Default Task Templates (optional)
+              </div>
+              <div className="text-xs text-gray-500">
+                Selected tasks will be attached to this area type template.
+              </div>
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
+                {taskTemplates.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-500">
+                    No task templates available.
+                  </div>
+                ) : (
+                  taskTemplates.map((template) => {
+                    const isSelected = areaTypeTaskTemplateIds.includes(template.id);
+                    return (
+                      <label
+                        key={template.id}
+                        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setAreaTypeTaskTemplateIds((prev) => {
+                              if (checked) return [...prev, template.id];
+                              return prev.filter((id) => id !== template.id);
+                            });
+                          }}
+                          className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm text-white truncate">
+                            {template.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {template.cleaningType}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" onClick={() => setShowAreaTypeModal(false)}>
               Cancel
