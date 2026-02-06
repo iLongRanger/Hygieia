@@ -278,14 +278,16 @@ describe('ProposalForm', () => {
     const calculateButton = await screen.findByRole('button', { name: /calculate & populate/i });
     await user.click(calculateButton);
 
-    expect(await screen.findByDisplayValue('Daily Cleaning')).toBeInTheDocument();
-    expect(getFacilityProposalTemplateMock).toHaveBeenCalledWith(
-      'facility-1',
-      '5x_week',
-      'pricing-1',
-      undefined,
-      undefined
-    );
+    expect(await screen.findByText('Daily Cleaning')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getFacilityProposalTemplateMock).toHaveBeenCalledWith(
+        'facility-1',
+        '5x_week',
+        'pricing-1',
+        undefined,
+        undefined
+      );
+    });
   });
 
   it('updates a proposal in edit mode', async () => {
