@@ -42,7 +42,7 @@ export interface PricingSettingsSnapshot {
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
   trafficMultipliers?: Record<string, number>;
-  buildingTypeMultipliers: Record<string, number>;
+  sqftPerLaborHour: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string; // ISO timestamp
   workerCount?: number;

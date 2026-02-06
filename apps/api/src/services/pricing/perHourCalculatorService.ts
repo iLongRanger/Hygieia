@@ -4,7 +4,6 @@ import type {
   FloorTypeMultipliers,
   FrequencyMultipliers,
   ConditionMultipliers,
-  BuildingTypeMultipliers,
   TaskComplexityAddOns,
   TrafficMultipliers,
 } from '../../schemas/pricingSettings';
@@ -102,7 +101,6 @@ export async function calculatePerHourPricing(
   const hourlyRate = Number(pricingSettings.hourlyRate);
   const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
-  const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const trafficMultipliers = pricingSettings.trafficMultipliers as TrafficMultipliers;
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
@@ -110,7 +108,6 @@ export async function calculatePerHourPricing(
   const difficultyMultiplier = 1.0;
 
   const buildingType = facility.buildingType || 'other';
-  const buildingMultiplier = buildingTypeMultipliers[buildingType as keyof BuildingTypeMultipliers] ?? 1.0;
   const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
   const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
   const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
@@ -238,7 +235,6 @@ export async function calculatePerHourPricing(
   }
 
   let perVisitSubtotal = totalLaborCost * difficultyMultiplier;
-  perVisitSubtotal *= buildingMultiplier;
   perVisitSubtotal *= frequencyMultiplier;
 
   const taskComplexityAmount = perVisitSubtotal * taskAddOn;
@@ -282,8 +278,6 @@ export async function calculatePerHourPricing(
     monthlyCostBeforeProfit: roundToTwo(perVisitTotal * monthlyVisits),
     profitAmount: 0,
     profitMarginApplied: 0,
-    buildingMultiplier,
-    buildingAdjustment: roundToTwo(perVisitSubtotal - (totalLaborCost * difficultyMultiplier)),
     taskComplexityAddOn: taskAddOn,
     taskComplexityAmount: roundToTwo(taskComplexityAmount),
     subtotal: roundToTwo(perVisitTotal),

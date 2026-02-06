@@ -16,7 +16,7 @@ export interface PricingSettings {
   // Labor Cost Settings
   laborCostPerHour: string;
   laborBurdenPercentage: string;
-  sqftPerLaborHour: string;
+  sqftPerLaborHour: Record<string, number>;
 
   // Overhead Cost Settings
   insurancePercentage: string;
@@ -38,7 +38,6 @@ export interface PricingSettings {
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
   trafficMultipliers: Record<string, number>;
-  buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   isActive: boolean;
   isDefault: boolean;
@@ -55,7 +54,7 @@ export interface CreatePricingSettingsInput {
   hourlyRate?: number;
   laborCostPerHour?: number;
   laborBurdenPercentage?: number;
-  sqftPerLaborHour?: number;
+  sqftPerLaborHour?: Record<string, number>;
   insurancePercentage?: number;
   adminOverheadPercentage?: number;
   travelCostPerVisit?: number;
@@ -68,7 +67,6 @@ export interface CreatePricingSettingsInput {
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
   trafficMultipliers?: Record<string, number>;
-  buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
   isDefault?: boolean;
@@ -82,7 +80,7 @@ export interface UpdatePricingSettingsInput {
   hourlyRate?: number;
   laborCostPerHour?: number;
   laborBurdenPercentage?: number;
-  sqftPerLaborHour?: number;
+  sqftPerLaborHour?: Record<string, number>;
   insurancePercentage?: number;
   adminOverheadPercentage?: number;
   travelCostPerVisit?: number;
@@ -95,7 +93,6 @@ export interface UpdatePricingSettingsInput {
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
   trafficMultipliers?: Record<string, number>;
-  buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
   isDefault?: boolean;
@@ -211,7 +208,7 @@ export interface PricingSettingsSnapshot {
   hourlyRate?: number;
   laborCostPerHour?: number;
   laborBurdenPercentage?: number;
-  sqftPerLaborHour?: number;
+  sqftPerLaborHour?: Record<string, number>;
   insurancePercentage?: number;
   adminOverheadPercentage?: number;
   travelCostPerVisit?: number;
@@ -222,7 +219,6 @@ export interface PricingSettingsSnapshot {
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
   trafficMultipliers?: Record<string, number>;
-  buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string;
   workerCount?: number;
@@ -258,10 +254,6 @@ export interface FacilityPricingResult {
   monthlyCostBeforeProfit: number;
   profitAmount: number;
   profitMarginApplied: number;
-
-  // Building adjustment
-  buildingMultiplier: number;
-  buildingAdjustment: number;
 
   // Task complexity
   taskComplexityAddOn: number;

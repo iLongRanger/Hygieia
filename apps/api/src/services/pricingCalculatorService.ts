@@ -4,7 +4,7 @@ import type {
   FloorTypeMultipliers,
   FrequencyMultipliers,
   ConditionMultipliers,
-  BuildingTypeMultipliers,
+  SqftPerLaborHour,
   TaskComplexityAddOns,
 } from '../schemas/pricingSettings';
 
@@ -74,10 +74,6 @@ export interface FacilityPricingResult {
   profitAmount: number;
   profitMarginApplied: number;
 
-  // Building adjustment
-  buildingMultiplier: number;
-  buildingAdjustment: number;
-
   // Task complexity
   taskComplexityAddOn: number;
   taskComplexityAmount: number;
@@ -139,7 +135,7 @@ export async function calculateFacilityPricing(
   // Extract pricing settings values
   const laborCostPerHour = Number(pricingSettings.laborCostPerHour);
   const laborBurdenPct = Number(pricingSettings.laborBurdenPercentage);
-  const sqftPerLaborHour = Number(pricingSettings.sqftPerLaborHour);
+  const sqftPerLaborHourMap = pricingSettings.sqftPerLaborHour as SqftPerLaborHour;
   const insurancePct = Number(pricingSettings.insurancePercentage);
   const adminOverheadPct = Number(pricingSettings.adminOverheadPercentage);
   const travelCostPerVisit = Number(pricingSettings.travelCostPerVisit);
@@ -153,15 +149,14 @@ export async function calculateFacilityPricing(
   // Extract multipliers
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
   const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
-  const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
 
   const difficultyMultiplier = 1.0;
 
-  // Get building type multiplier
+  // Get building type and look up productivity rate
   const buildingType = facility.buildingType || 'other';
-  const buildingMultiplier = buildingTypeMultipliers[buildingType as keyof BuildingTypeMultipliers] ?? 1.0;
+  const sqftPerLaborHour = sqftPerLaborHourMap[buildingType as keyof SqftPerLaborHour] ?? sqftPerLaborHourMap.other ?? 2500;
 
   // Get frequency multiplier (used to calculate monthly visits)
   const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
@@ -277,10 +272,6 @@ export async function calculateFacilityPricing(
   let subtotal = monthlyCostBeforeProfit / (1 - targetProfitMargin);
   const profitAmount = subtotal - monthlyCostBeforeProfit;
 
-  // Apply building type multiplier
-  const buildingAdjustment = subtotal * (buildingMultiplier - 1);
-  subtotal += buildingAdjustment;
-
   // Apply task complexity add-on
   const taskComplexityAmount = subtotal * taskAddOn;
   let monthlyTotal = subtotal + taskComplexityAmount;
@@ -316,8 +307,6 @@ export async function calculateFacilityPricing(
     monthlyCostBeforeProfit: roundToTwo(monthlyCostBeforeProfit),
     profitAmount: roundToTwo(profitAmount),
     profitMarginApplied: targetProfitMargin,
-    buildingMultiplier,
-    buildingAdjustment: roundToTwo(buildingAdjustment),
     taskComplexityAddOn: taskAddOn,
     taskComplexityAmount: roundToTwo(taskComplexityAmount),
     subtotal: roundToTwo(subtotal),

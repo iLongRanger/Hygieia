@@ -55,27 +55,27 @@ export const conditionMultipliersSchema = z.object({
   hard: 1.33,
 });
 
-// Building type multipliers schema
-export const buildingTypeMultipliersSchema = z.object({
-  office: z.number().min(0).max(5).default(1.0),
-  medical: z.number().min(0).max(5).default(1.3),
-  industrial: z.number().min(0).max(5).default(1.15),
-  retail: z.number().min(0).max(5).default(1.05),
-  educational: z.number().min(0).max(5).default(1.1),
-  warehouse: z.number().min(0).max(5).default(0.9),
-  residential: z.number().min(0).max(5).default(1.0),
-  mixed: z.number().min(0).max(5).default(1.05),
-  other: z.number().min(0).max(5).default(1.0),
+// Sq ft per labor hour schema (productivity rate per building type)
+export const sqftPerLaborHourSchema = z.object({
+  office: z.number().min(100).max(10000).default(2500),
+  medical: z.number().min(100).max(10000).default(1500),
+  industrial: z.number().min(100).max(10000).default(2200),
+  retail: z.number().min(100).max(10000).default(2400),
+  educational: z.number().min(100).max(10000).default(2000),
+  warehouse: z.number().min(100).max(10000).default(3500),
+  residential: z.number().min(100).max(10000).default(2200),
+  mixed: z.number().min(100).max(10000).default(2200),
+  other: z.number().min(100).max(10000).default(2500),
 }).default({
-  office: 1.0,
-  medical: 1.3,
-  industrial: 1.15,
-  retail: 1.05,
-  educational: 1.1,
-  warehouse: 0.9,
-  residential: 1.0,
-  mixed: 1.05,
-  other: 1.0,
+  office: 2500,
+  medical: 1500,
+  industrial: 2200,
+  retail: 2400,
+  educational: 2000,
+  warehouse: 3500,
+  residential: 2200,
+  mixed: 2200,
+  other: 2500,
 });
 
 // Traffic multipliers schema
@@ -113,7 +113,7 @@ export const createPricingSettingsSchema = z.object({
   // Labor Cost Settings
   laborCostPerHour: z.coerce.number().min(0).default(18.00), // Average hourly wage
   laborBurdenPercentage: z.coerce.number().min(0).max(1).default(0.25), // Payroll taxes, benefits (25%)
-  sqftPerLaborHour: z.coerce.number().min(100).default(2500), // Productivity rate
+  sqftPerLaborHour: sqftPerLaborHourSchema.optional(), // Productivity rate per building type
 
   // Overhead Cost Settings
   insurancePercentage: z.coerce.number().min(0).max(1).default(0.08), // Liability + workers comp
@@ -135,7 +135,6 @@ export const createPricingSettingsSchema = z.object({
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
   conditionMultipliers: conditionMultipliersSchema.optional(),
   trafficMultipliers: trafficMultipliersSchema.optional(),
-  buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional().default(true),
   isDefault: z.boolean().optional().default(false),
@@ -152,7 +151,7 @@ export const updatePricingSettingsSchema = z.object({
   // Labor Cost Settings
   laborCostPerHour: z.coerce.number().min(0).optional(),
   laborBurdenPercentage: z.coerce.number().min(0).max(1).optional(),
-  sqftPerLaborHour: z.coerce.number().min(100).optional(),
+  sqftPerLaborHour: sqftPerLaborHourSchema.optional(),
 
   // Overhead Cost Settings
   insurancePercentage: z.coerce.number().min(0).max(1).optional(),
@@ -174,7 +173,6 @@ export const updatePricingSettingsSchema = z.object({
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
   conditionMultipliers: conditionMultipliersSchema.optional(),
   trafficMultipliers: trafficMultipliersSchema.optional(),
-  buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
@@ -212,6 +210,6 @@ export type ListPricingSettingsQuery = z.infer<typeof listPricingSettingsQuerySc
 export type FloorTypeMultipliers = z.infer<typeof floorTypeMultipliersSchema>;
 export type FrequencyMultipliers = z.infer<typeof frequencyMultipliersSchema>;
 export type ConditionMultipliers = z.infer<typeof conditionMultipliersSchema>;
-export type BuildingTypeMultipliers = z.infer<typeof buildingTypeMultipliersSchema>;
+export type SqftPerLaborHour = z.infer<typeof sqftPerLaborHourSchema>;
 export type TrafficMultipliers = z.infer<typeof trafficMultipliersSchema>;
 export type TaskComplexityAddOns = z.infer<typeof taskComplexityAddOnsSchema>;

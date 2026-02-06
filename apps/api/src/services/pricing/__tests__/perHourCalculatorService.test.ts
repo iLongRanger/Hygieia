@@ -35,7 +35,7 @@ describe('calculatePerHourPricing', () => {
       frequencyMultipliers: { weekly: 1.0 },
       conditionMultipliers: { standard: 1.0 },
       trafficMultipliers: { medium: 1.0 },
-      buildingTypeMultipliers: { office: 1.0, other: 1.0 },
+      sqftPerLaborHour: { office: 2500, other: 2500 },
       taskComplexityAddOns: { standard: 0 },
     });
 

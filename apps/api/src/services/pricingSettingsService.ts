@@ -23,7 +23,7 @@ export interface PricingSettingsCreateInput {
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
   trafficMultipliers?: object;
-  buildingTypeMultipliers?: object;
+  sqftPerLaborHour?: object;
   taskComplexityAddOns?: object;
   subcontractorPercentage?: number;
   isActive?: boolean;
@@ -40,7 +40,7 @@ export interface PricingSettingsUpdateInput {
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
   trafficMultipliers?: object;
-  buildingTypeMultipliers?: object;
+  sqftPerLaborHour?: object;
   taskComplexityAddOns?: object;
   subcontractorPercentage?: number;
   isActive?: boolean;
@@ -85,7 +85,6 @@ const pricingSettingsSelect = {
   frequencyMultipliers: true,
   conditionMultipliers: true,
   trafficMultipliers: true,
-  buildingTypeMultipliers: true,
   taskComplexityAddOns: true,
   isActive: true,
   isDefault: true,
@@ -232,16 +231,16 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
     high: 1.15,
   };
 
-  const defaultBuildingTypeMultipliers = {
-    office: 1.0,
-    medical: 1.3,
-    industrial: 1.15,
-    retail: 1.05,
-    educational: 1.1,
-    warehouse: 0.9,
-    residential: 1.0,
-    mixed: 1.05,
-    other: 1.0,
+  const defaultSqftPerLaborHour = {
+    office: 2500,
+    medical: 1500,
+    industrial: 2200,
+    retail: 2400,
+    educational: 2000,
+    warehouse: 3500,
+    residential: 2200,
+    mixed: 2200,
+    other: 2500,
   };
 
   const defaultTaskComplexityAddOns = {
@@ -262,7 +261,7 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
       frequencyMultipliers: input.frequencyMultipliers ?? defaultFrequencyMultipliers,
       conditionMultipliers: input.conditionMultipliers ?? defaultConditionMultipliers,
       trafficMultipliers: input.trafficMultipliers ?? defaultTrafficMultipliers,
-      buildingTypeMultipliers: input.buildingTypeMultipliers ?? defaultBuildingTypeMultipliers,
+      sqftPerLaborHour: input.sqftPerLaborHour ?? defaultSqftPerLaborHour,
       taskComplexityAddOns: input.taskComplexityAddOns ?? defaultTaskComplexityAddOns,
       subcontractorPercentage: input.subcontractorPercentage ?? 0.60,
       isActive: input.isActive ?? true,
@@ -284,7 +283,7 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
   if (input.frequencyMultipliers !== undefined) updateData.frequencyMultipliers = input.frequencyMultipliers;
   if (input.conditionMultipliers !== undefined) updateData.conditionMultipliers = input.conditionMultipliers;
   if (input.trafficMultipliers !== undefined) updateData.trafficMultipliers = input.trafficMultipliers;
-  if (input.buildingTypeMultipliers !== undefined) updateData.buildingTypeMultipliers = input.buildingTypeMultipliers;
+  if (input.sqftPerLaborHour !== undefined) updateData.sqftPerLaborHour = input.sqftPerLaborHour;
   if (input.taskComplexityAddOns !== undefined) updateData.taskComplexityAddOns = input.taskComplexityAddOns;
   if (input.subcontractorPercentage !== undefined) updateData.subcontractorPercentage = input.subcontractorPercentage;
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
