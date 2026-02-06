@@ -63,9 +63,6 @@ const mockAppointment = {
 
 describe('AppointmentsPage', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-02-02T12:00:00Z'));
-
     // Clear localStorage to reset view preference
     localStorage.clear();
 
@@ -90,7 +87,6 @@ describe('AppointmentsPage', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     localStorage.clear();
   });
 
@@ -130,7 +126,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('switches to calendar view when calendar button is clicked', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -148,7 +144,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('switches back to table view when table button is clicked', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -165,7 +161,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('persists view preference to localStorage', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
       render(<AppointmentsPage />);
@@ -256,7 +252,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('fetches appointments with week range when week view is selected', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
@@ -278,7 +274,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('fetches appointments with day range when day view is selected', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
@@ -300,7 +296,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('persists calendar view preference to localStorage', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 

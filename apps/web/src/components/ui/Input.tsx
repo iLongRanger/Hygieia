@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { cn } from '../../lib/utils';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -11,6 +11,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, icon, hint, showCharacterCount, ...props }, ref) => {
+    const inputId = props.id ?? useId();
     const currentLength = typeof props.value === 'string' ? props.value.length : 0;
     const maxLength = props.maxLength;
     const showCounter = showCharacterCount && maxLength;
@@ -19,7 +20,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">
+          <label
+            htmlFor={inputId}
+            className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300"
+          >
             {label}
             {props.required && <span className="ml-1 text-error-500">*</span>}
           </label>
@@ -32,6 +36,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             ref={ref}
+            id={inputId}
             className={cn(
               'flex h-10 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 transition-all duration-200',
               'focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20',

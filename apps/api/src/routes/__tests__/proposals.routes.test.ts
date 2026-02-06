@@ -296,7 +296,7 @@ describe('Proposal Routes', () => {
 
     const response = await request(app)
       .post('/api/v1/proposals/proposal-1/pricing/plan')
-      .send({ pricingPlanId: 'plan-1' })
+      .send({ pricingPlanId: '11111111-1111-1111-1111-111111111111' })
       .expect(200);
 
     expect(response.body.data.id).toBe('proposal-1');
