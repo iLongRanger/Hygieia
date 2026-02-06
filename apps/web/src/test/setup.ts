@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 
 // Cleanup after each test
 afterEach(() => {
@@ -32,3 +32,31 @@ global.IntersectionObserver = class IntersectionObserver {
   }
   unobserve() {}
 } as any;
+
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+    const message = String(args[0] ?? '');
+    if (message.includes('React Router Future Flag Warning')) {
+      return;
+    }
+    originalConsoleWarn(...args);
+  });
+
+  vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    const message = String(args[0] ?? '');
+    if (
+      message.includes('not wrapped in act(...)') ||
+      message.includes('Warning: An update to')
+    ) {
+      return;
+    }
+    originalConsoleError(...args);
+  });
+});
+
+afterAll(() => {
+  vi.restoreAllMocks();
+});
