@@ -1,9 +1,11 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import {
-  resolvePricingStrategyKey,
-  getStrategy,
-  DEFAULT_PRICING_STRATEGY_KEY,
+  calculatePricing,
+  generateProposalServices,
+  resolvePricingPlanId,
+  resolvePricingPlan,
+  getStrategyForPricingType,
   type PricingBreakdown,
   type PricingSettingsSnapshot,
 } from './pricing';
@@ -53,8 +55,8 @@ export interface ProposalCreateInput {
   createdByUserId: string;
   proposalItems?: ProposalItemInput[];
   proposalServices?: ProposalServiceInput[];
-  // Pricing strategy fields
-  pricingStrategyKey?: string | null;
+  // Pricing plan fields
+  pricingPlanId?: string | null;
   pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
@@ -70,8 +72,8 @@ export interface ProposalUpdateInput {
   termsAndConditions?: string | null;
   proposalItems?: (ProposalItemInput & { id?: string })[];
   proposalServices?: (ProposalServiceInput & { id?: string })[];
-  // Pricing strategy fields
-  pricingStrategyKey?: string | null;
+  // Pricing plan fields
+  pricingPlanId?: string | null;
   pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
@@ -106,9 +108,8 @@ const proposalSelect = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
-  // Pricing strategy fields
-  pricingStrategyKey: true,
-  pricingStrategyVersion: true,
+  // Pricing plan fields
+  pricingPlanId: true,
   pricingSnapshot: true,
   pricingLocked: true,
   pricingLockedAt: true,
@@ -117,7 +118,7 @@ const proposalSelect = {
       id: true,
       name: true,
       type: true,
-      defaultPricingStrategyKey: true,
+      defaultPricingPlanId: true,
     },
   },
   facility: {
@@ -125,7 +126,7 @@ const proposalSelect = {
       id: true,
       name: true,
       address: true,
-      defaultPricingStrategyKey: true,
+      defaultPricingPlanId: true,
     },
   },
   createdByUser: {
@@ -318,17 +319,15 @@ export async function createProposal(input: ProposalCreateInput) {
   const services = input.proposalServices ?? [];
   const totals = calculateTotals(items, services, taxRate);
 
-  // Resolve pricing strategy - use provided key, or resolve from facility/account
-  const pricingStrategyKey =
-    input.pricingStrategyKey ??
-    (await resolvePricingStrategyKey({
-      facilityId: input.facilityId ?? undefined,
-      accountId: input.accountId,
-    }));
+  const pricingPlan = await resolvePricingPlan({
+    pricingPlanId: input.pricingPlanId ?? undefined,
+    facilityId: input.facilityId ?? undefined,
+    accountId: input.accountId,
+  });
 
-  // Get strategy version
-  const strategy = await getStrategy({ strategyKey: pricingStrategyKey });
-  const pricingStrategyVersion = strategy.version;
+  if (!pricingPlan) {
+    throw new Error('No pricing plan found. Please configure pricing plans first.');
+  }
 
   return prisma.proposal.create({
     data: {
@@ -346,9 +345,8 @@ export async function createProposal(input: ProposalCreateInput) {
       accountId: input.accountId,
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
-      // Pricing strategy fields
-      pricingStrategyKey,
-      pricingStrategyVersion,
+      // Pricing plan fields
+      pricingPlanId: pricingPlan.id,
       pricingSnapshot: input.pricingSnapshot ?? Prisma.JsonNull,
       pricingLocked: false,
       proposalItems: {
@@ -396,6 +394,15 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
   if (input.validUntil !== undefined) updateData.validUntil = input.validUntil;
   if (input.notes !== undefined) updateData.notes = input.notes;
   if (input.termsAndConditions !== undefined) updateData.termsAndConditions = input.termsAndConditions;
+  if (input.pricingPlanId !== undefined) {
+    updateData.pricingPlan = input.pricingPlanId
+      ? { connect: { id: input.pricingPlanId } }
+      : { disconnect: true };
+    updateData.pricingSnapshot = Prisma.JsonNull;
+  }
+  if (input.pricingSnapshot !== undefined) {
+    updateData.pricingSnapshot = input.pricingSnapshot ?? Prisma.JsonNull;
+  }
 
   // If items or services are being updated, recalculate totals
   if (input.proposalItems || input.proposalServices || input.taxRate !== undefined) {
@@ -620,7 +627,7 @@ export async function lockProposalPricing(proposalId: string) {
     select: {
       id: true,
       pricingLocked: true,
-      pricingStrategyKey: true,
+      pricingPlanId: true,
       pricingSnapshot: true,
     },
   });
@@ -681,12 +688,12 @@ export async function unlockProposalPricing(proposalId: string) {
 }
 
 /**
- * Change the pricing strategy for a proposal
+ * Change the pricing plan for a proposal
  * Requires the proposal to be in draft status and pricing to be unlocked
  */
-export async function changeProposalPricingStrategy(
+export async function changeProposalPricingPlan(
   proposalId: string,
-  newStrategyKey: string
+  pricingPlanId: string
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
@@ -694,7 +701,7 @@ export async function changeProposalPricingStrategy(
       id: true,
       status: true,
       pricingLocked: true,
-      pricingStrategyKey: true,
+      pricingPlanId: true,
     },
   });
 
@@ -703,22 +710,20 @@ export async function changeProposalPricingStrategy(
   }
 
   if (proposal.status !== 'draft') {
-    throw new Error('Can only change pricing strategy for draft proposals');
+    throw new Error('Can only change pricing plan for draft proposals');
   }
 
   if (proposal.pricingLocked) {
-    throw new Error('Cannot change pricing strategy while pricing is locked');
+    throw new Error('Cannot change pricing plan while pricing is locked');
   }
 
-  // Verify the strategy exists
-  const strategy = await getStrategy({ strategyKey: newStrategyKey });
+  await resolvePricingPlan({ pricingPlanId });
 
   return prisma.proposal.update({
     where: { id: proposalId },
     data: {
-      pricingStrategyKey: newStrategyKey,
-      pricingStrategyVersion: strategy.version,
-      // Clear snapshot since strategy changed
+      pricingPlan: { connect: { id: pricingPlanId } },
+      // Clear snapshot since plan changed
       pricingSnapshot: Prisma.JsonNull,
     },
     select: proposalSelect,
@@ -726,7 +731,7 @@ export async function changeProposalPricingStrategy(
 }
 
 /**
- * Recalculate pricing for a proposal using the stored strategy
+ * Recalculate pricing for a proposal using the stored plan
  * Updates the proposal services and totals based on current facility data
  */
 export async function recalculateProposalPricing(
@@ -745,7 +750,7 @@ export async function recalculateProposalPricing(
       facilityId: true,
       accountId: true,
       pricingLocked: true,
-      pricingStrategyKey: true,
+      pricingPlanId: true,
       taxRate: true,
     },
   });
@@ -766,25 +771,29 @@ export async function recalculateProposalPricing(
     throw new Error('Proposal must have a facility to recalculate pricing');
   }
 
-  // Get the strategy
-  const { strategyKey, pricingRuleId } = resolveStrategyKey(proposal.pricingStrategyKey ?? DEFAULT_PRICING_STRATEGY_KEY);
-  const strategy = await getStrategy({ strategyKey });
+  const pricing = await calculatePricing(
+    {
+      facilityId: proposal.facilityId,
+      serviceFrequency,
+      workerCount: options?.workerCount,
+    },
+    {
+      pricingPlanId: proposal.pricingPlanId ?? undefined,
+      accountId: proposal.accountId,
+    }
+  );
 
-  // Calculate new pricing
-  const pricing = await strategy.quote({
-    facilityId: proposal.facilityId,
-    serviceFrequency,
-    workerCount: options?.workerCount,
-    pricingRuleId,
-  });
-
-  // Generate new services
-  const newServices = await strategy.generateProposalServices({
-    facilityId: proposal.facilityId,
-    serviceFrequency,
-    workerCount: options?.workerCount,
-    pricingRuleId,
-  });
+  const newServices = await generateProposalServices(
+    {
+      facilityId: proposal.facilityId,
+      serviceFrequency,
+      workerCount: options?.workerCount,
+    },
+    {
+      pricingPlanId: proposal.pricingPlanId ?? undefined,
+      accountId: proposal.accountId,
+    }
+  );
 
   // Calculate new totals
   const servicesTotal = newServices.reduce((sum, service) => sum + service.monthlyPrice, 0);
@@ -799,8 +808,7 @@ export async function recalculateProposalPricing(
       subtotal: Number(servicesTotal.toFixed(2)),
       taxAmount: Number(taxAmount.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
-      pricingStrategyKey: strategy.key,
-      pricingStrategyVersion: strategy.version,
+      pricingPlanId: pricing.settingsSnapshot.pricingPlanId,
       pricingSnapshot: pricing.settingsSnapshot,
       pricingLocked: options?.lockAfterRecalculation ?? false,
       pricingLockedAt: options?.lockAfterRecalculation ? new Date() : null,
@@ -830,7 +838,7 @@ export async function getProposalPricingPreview(
   proposalId: string,
   serviceFrequency: string,
   options?: {
-    strategyKey?: string;
+    pricingPlanId?: string;
     workerCount?: number;
   }
 ): Promise<PricingBreakdown> {
@@ -840,7 +848,7 @@ export async function getProposalPricingPreview(
       id: true,
       facilityId: true,
       accountId: true,
-      pricingStrategyKey: true,
+      pricingPlanId: true,
     },
   });
 
@@ -852,40 +860,15 @@ export async function getProposalPricingPreview(
     throw new Error('Proposal must have a facility for pricing preview');
   }
 
-  // Use provided strategy key, or fall back to proposal's strategy, or resolve from context
-  const rawStrategyKey =
-    options?.strategyKey ??
-    proposal.pricingStrategyKey ??
-    (await resolvePricingStrategyKey({
+  return calculatePricing(
+    {
       facilityId: proposal.facilityId,
+      serviceFrequency,
+      workerCount: options?.workerCount,
+    },
+    {
+      pricingPlanId: options?.pricingPlanId ?? proposal.pricingPlanId ?? undefined,
       accountId: proposal.accountId,
-    }));
-
-  const { strategyKey, pricingRuleId } = resolveStrategyKey(rawStrategyKey);
-  const strategy = await getStrategy({ strategyKey });
-
-  return strategy.quote({
-    facilityId: proposal.facilityId,
-    serviceFrequency,
-    workerCount: options?.workerCount,
-    pricingRuleId,
-  });
-}
-
-function resolveStrategyKey(rawKey: string) {
-  if (!rawKey.startsWith('rule:')) {
-    return { strategyKey: rawKey, pricingRuleId: undefined };
-  }
-
-  const parts = rawKey.split(':');
-  if (parts.length >= 3) {
-    const pricingType = parts[1];
-    const pricingRuleId = parts.slice(2).join(':');
-    if (pricingType === 'hourly') {
-      return { strategyKey: 'per_hour_v1', pricingRuleId };
     }
-    return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
-  }
-
-  return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId: parts[1] };
+  );
 }

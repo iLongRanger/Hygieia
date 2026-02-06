@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { getActivePricingSettings } from './pricingSettingsService';
-import { getPricingRuleById } from './pricingRuleService';
+import { getDefaultPricingSettings, getPricingSettingsById } from './pricingSettingsService';
 import type {
   FloorTypeMultipliers,
   FrequencyMultipliers,
@@ -8,16 +7,6 @@ import type {
   BuildingTypeMultipliers,
   TaskComplexityAddOns,
 } from '../schemas/pricingSettings';
-
-// Types for pricing rule condition multipliers
-type PricingRuleConditionMultipliers = {
-  excellent?: number;
-  good?: number;
-  fair?: number;
-  poor?: number;
-  standard?: number;
-  [key: string]: number | undefined;
-};
 
 // Detailed cost breakdown for an area
 export interface AreaCostBreakdown {
@@ -99,15 +88,15 @@ export interface FacilityPricingResult {
   minimumApplied: boolean;
 
   // Pricing source
-  pricingSettingsId: string;
-  pricingSettingsName: string;
+  pricingPlanId: string;
+  pricingPlanName: string;
 }
 
 export interface CalculatePricingOptions {
   facilityId: string;
   serviceFrequency: string; // e.g., '5x_week', '3x_week', 'weekly', etc.
   taskComplexity?: string; // e.g., 'standard', 'sanitization', 'biohazard'
-  pricingRuleId?: string; // Optional: use a specific pricing rule instead of global settings
+  pricingPlanId?: string; // Optional: use a specific pricing plan instead of default
 }
 
 /**
@@ -116,21 +105,13 @@ export interface CalculatePricingOptions {
 export async function calculateFacilityPricing(
   options: CalculatePricingOptions
 ): Promise<FacilityPricingResult> {
-  const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingRuleId } = options;
+  const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId } = options;
 
-  // Get the active pricing settings
-  const pricingSettings = await getActivePricingSettings();
+  const pricingSettings = pricingPlanId
+    ? await getPricingSettingsById(pricingPlanId)
+    : await getDefaultPricingSettings();
   if (!pricingSettings) {
-    throw new Error('No active pricing settings found. Please configure pricing settings first.');
-  }
-
-  // Get pricing rule if specified
-  let pricingRule = null;
-  if (pricingRuleId) {
-    pricingRule = await getPricingRuleById(pricingRuleId);
-    if (!pricingRule) {
-      console.warn(`Pricing rule ${pricingRuleId} not found, using default settings`);
-    }
+    throw new Error('No pricing plan found. Please configure pricing plans first.');
   }
 
   // Get the facility with its areas
@@ -161,22 +142,16 @@ export async function calculateFacilityPricing(
   const supplyCostPct = Number(pricingSettings.supplyCostPercentage);
   const supplyCostPerSqFt = pricingSettings.supplyCostPerSqFt ? Number(pricingSettings.supplyCostPerSqFt) : null;
   const targetProfitMargin = Number(pricingSettings.targetProfitMargin);
-  const minimumMonthlyCharge = pricingRule?.minimumCharge
-    ? Number(pricingRule.minimumCharge)
-    : Number(pricingSettings.minimumMonthlyCharge);
+  const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
   // Extract multipliers
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
   const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
   const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
-  const conditionMultipliers = (pricingRule?.conditionMultipliers as PricingRuleConditionMultipliers)
-    || (pricingSettings.conditionMultipliers as ConditionMultipliers);
+  const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
 
-  // Difficulty multiplier from pricing rule
-  const difficultyMultiplier = pricingRule?.difficultyMultiplier
-    ? Number(pricingRule.difficultyMultiplier)
-    : 1.0;
+  const difficultyMultiplier = 1.0;
 
   // Get building type multiplier
   const buildingType = facility.buildingType || 'other';
@@ -338,10 +313,8 @@ export async function calculateFacilityPricing(
     subtotal: roundToTwo(subtotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
-    pricingSettingsId: pricingRule
-      ? `rule:${pricingRule.pricingType}:${pricingRule.id}`
-      : pricingSettings.id,
-    pricingSettingsName: pricingRule ? pricingRule.name : pricingSettings.name,
+    pricingPlanId: pricingSettings.id,
+    pricingPlanName: pricingSettings.name,
   };
 }
 
@@ -350,13 +323,15 @@ export async function calculateFacilityPricing(
  */
 export async function calculateFacilityPricingComparison(
   facilityId: string,
-  frequencies: string[] = ['1x_week', '2x_week', '3x_week', '5x_week']
+  frequencies: string[] = ['1x_week', '2x_week', '3x_week', '5x_week'],
+  pricingPlanId?: string
 ): Promise<{ frequency: string; monthlyTotal: number; monthlyVisits: number }[]> {
   const results = await Promise.all(
     frequencies.map(async (frequency) => {
       const pricing = await calculateFacilityPricing({
         facilityId,
         serviceFrequency: frequency,
+        pricingPlanId,
       });
       return {
         frequency,
@@ -501,7 +476,7 @@ export async function getFacilityTasksGrouped(facilityId: string): Promise<{
 export async function generateProposalServicesFromFacility(
   facilityId: string,
   serviceFrequency: string,
-  pricingRuleId?: string
+  pricingPlanId?: string
 ): Promise<{
   serviceName: string;
   serviceType: string;
@@ -513,7 +488,7 @@ export async function generateProposalServicesFromFacility(
   const pricing = await calculateFacilityPricing({
     facilityId,
     serviceFrequency,
-    pricingRuleId,
+    pricingPlanId,
   });
 
   // Get facility tasks grouped by area

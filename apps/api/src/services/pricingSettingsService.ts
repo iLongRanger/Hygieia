@@ -5,6 +5,8 @@ export interface PricingSettingsListParams {
   page?: number;
   limit?: number;
   isActive?: boolean;
+  pricingType?: string;
+  isDefault?: boolean;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -13,6 +15,7 @@ export interface PricingSettingsListParams {
 
 export interface PricingSettingsCreateInput {
   name: string;
+  pricingType?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
@@ -23,10 +26,12 @@ export interface PricingSettingsCreateInput {
   buildingTypeMultipliers?: object;
   taskComplexityAddOns?: object;
   isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface PricingSettingsUpdateInput {
   name?: string;
+  pricingType?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
@@ -37,6 +42,7 @@ export interface PricingSettingsUpdateInput {
   buildingTypeMultipliers?: object;
   taskComplexityAddOns?: object;
   isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface PaginatedResult<T> {
@@ -52,6 +58,7 @@ export interface PaginatedResult<T> {
 const pricingSettingsSelect = {
   id: true,
   name: true,
+  pricingType: true,
   baseRatePerSqFt: true,
   minimumMonthlyCharge: true,
   hourlyRate: true,
@@ -77,6 +84,7 @@ const pricingSettingsSelect = {
   buildingTypeMultipliers: true,
   taskComplexityAddOns: true,
   isActive: true,
+  isDefault: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -91,6 +99,8 @@ export async function listPricingSettings(
     page = 1,
     limit = 20,
     isActive,
+    pricingType,
+    isDefault,
     search,
     sortBy = 'createdAt',
     sortOrder = 'desc',
@@ -105,6 +115,14 @@ export async function listPricingSettings(
 
   if (isActive !== undefined) {
     where.isActive = isActive;
+  }
+
+  if (pricingType) {
+    where.pricingType = pricingType;
+  }
+
+  if (isDefault !== undefined) {
+    where.isDefault = isDefault;
   }
 
   if (search) {
@@ -143,8 +161,21 @@ export async function getPricingSettingsById(id: string) {
   });
 }
 
-export async function getActivePricingSettings() {
-  // Get the first active pricing settings (typically there's only one active at a time)
+export async function getDefaultPricingSettings() {
+  const defaultPlan = await prisma.pricingSettings.findFirst({
+    where: {
+      isDefault: true,
+      isActive: true,
+      archivedAt: null,
+    },
+    select: pricingSettingsSelect,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (defaultPlan) {
+    return defaultPlan;
+  }
+
   return prisma.pricingSettings.findFirst({
     where: {
       isActive: true,
@@ -219,6 +250,7 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
   return prisma.pricingSettings.create({
     data: {
       name: input.name,
+      pricingType: input.pricingType ?? 'square_foot',
       baseRatePerSqFt: input.baseRatePerSqFt ?? 0.10,
       minimumMonthlyCharge: input.minimumMonthlyCharge ?? 250,
       hourlyRate: input.hourlyRate ?? 35.00,
@@ -229,6 +261,7 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
       buildingTypeMultipliers: input.buildingTypeMultipliers ?? defaultBuildingTypeMultipliers,
       taskComplexityAddOns: input.taskComplexityAddOns ?? defaultTaskComplexityAddOns,
       isActive: input.isActive ?? true,
+      isDefault: input.isDefault ?? false,
     },
     select: pricingSettingsSelect,
   });
@@ -238,6 +271,7 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
   const updateData: Prisma.PricingSettingsUpdateInput = {};
 
   if (input.name !== undefined) updateData.name = input.name;
+  if (input.pricingType !== undefined) updateData.pricingType = input.pricingType;
   if (input.baseRatePerSqFt !== undefined) updateData.baseRatePerSqFt = input.baseRatePerSqFt;
   if (input.minimumMonthlyCharge !== undefined) updateData.minimumMonthlyCharge = input.minimumMonthlyCharge;
   if (input.hourlyRate !== undefined) updateData.hourlyRate = input.hourlyRate;
@@ -248,6 +282,7 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
   if (input.buildingTypeMultipliers !== undefined) updateData.buildingTypeMultipliers = input.buildingTypeMultipliers;
   if (input.taskComplexityAddOns !== undefined) updateData.taskComplexityAddOns = input.taskComplexityAddOns;
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
+  if (input.isDefault !== undefined) updateData.isDefault = input.isDefault;
 
   return prisma.pricingSettings.update({
     where: { id },
@@ -259,7 +294,11 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
 export async function archivePricingSettings(id: string) {
   return prisma.pricingSettings.update({
     where: { id },
-    data: { archivedAt: new Date() },
+    data: {
+      archivedAt: new Date(),
+      isActive: false,
+      isDefault: false,
+    },
     select: pricingSettingsSelect,
   });
 }
@@ -279,21 +318,25 @@ export async function deletePricingSettings(id: string) {
   });
 }
 
-// Helper function to set a pricing settings as the only active one
-export async function setActivePricingSettings(id: string) {
-  // Deactivate all other pricing settings
-  await prisma.pricingSettings.updateMany({
-    where: {
-      id: { not: id },
-      isActive: true,
-    },
-    data: { isActive: false },
+// Helper function to set the default pricing plan
+export async function setDefaultPricingSettings(id: string) {
+  const existing = await prisma.pricingSettings.findUnique({
+    where: { id },
+    select: { id: true, archivedAt: true },
   });
 
-  // Activate the specified one
+  if (!existing || existing.archivedAt) {
+    throw new Error('Pricing plan not found');
+  }
+
+  await prisma.pricingSettings.updateMany({
+    where: { isDefault: true },
+    data: { isDefault: false },
+  });
+
   return prisma.pricingSettings.update({
     where: { id },
-    data: { isActive: true },
+    data: { isDefault: true, isActive: true },
     select: pricingSettingsSelect,
   });
 }

@@ -45,7 +45,6 @@ const areaTypeSelect = {
     select: {
       areas: true,
       taskTemplates: true,
-      pricingRules: true,
     },
   },
 } satisfies Prisma.AreaTypeSelect;

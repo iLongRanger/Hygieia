@@ -5,7 +5,7 @@
  */
 
 import { calculatePerHourPricing } from '../perHourCalculatorService';
-import { getActivePricingSettings } from '../../pricingSettingsService';
+import { getDefaultPricingSettings, getPricingSettingsById } from '../../pricingSettingsService';
 import { getFacilityTasksGrouped } from '../../pricingCalculatorService';
 import { prisma } from '../../../lib/prisma';
 import type {
@@ -25,24 +25,27 @@ export class PerHourV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard', workerCount = 1, pricingRuleId } = context;
+    const { facilityId, serviceFrequency, taskComplexity = 'standard', workerCount = 1, pricingPlanId } = context;
 
     const pricingResult = await calculatePerHourPricing({
       facilityId,
       serviceFrequency,
       taskComplexity,
-      pricingRuleId,
+      pricingPlanId,
       workerCount,
     });
 
-    const pricingSettings = await getActivePricingSettings();
+    const pricingSettings = pricingPlanId
+      ? await getPricingSettingsById(pricingPlanId)
+      : await getDefaultPricingSettings();
     if (!pricingSettings) {
-      throw new Error('No active pricing settings found');
+      throw new Error('No pricing plan found');
     }
 
     const settingsSnapshot: PricingSettingsSnapshot = {
-      pricingSettingsId: pricingSettings.id,
-      pricingSettingsName: pricingSettings.name,
+      pricingPlanId: pricingSettings.id,
+      pricingPlanName: pricingSettings.name,
+      pricingType: pricingSettings.pricingType,
       baseRatePerSqFt: Number(pricingSettings.baseRatePerSqFt),
       minimumMonthlyCharge: Number(pricingSettings.minimumMonthlyCharge),
       hourlyRate: Number(pricingSettings.hourlyRate),
@@ -65,12 +68,12 @@ export class PerHourV1Strategy implements PricingStrategy {
   }
 
   async generateProposalServices(context: PricingContext): Promise<ProposalServiceLine[]> {
-    const { facilityId, serviceFrequency, workerCount = 1, pricingRuleId } = context;
+    const { facilityId, serviceFrequency, workerCount = 1, pricingPlanId } = context;
 
     const pricing = await calculatePerHourPricing({
       facilityId,
       serviceFrequency,
-      pricingRuleId,
+      pricingPlanId,
       workerCount,
     });
 

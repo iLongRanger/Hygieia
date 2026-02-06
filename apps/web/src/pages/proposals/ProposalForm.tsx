@@ -23,6 +23,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/Badge';
 import {
   getProposal,
   createProposal,
@@ -33,10 +34,11 @@ import { listFacilities } from '../../lib/facilities';
 import {
   getFacilityPricingReadiness,
   getFacilityProposalTemplate,
-  listPricingStrategies,
+  listPricingSettings,
+  type PricingSettings,
   type FacilityPricingReadiness,
+  type FacilityPricingResult,
   type FacilityProposalTemplate,
-  type PricingStrategyMetadata,
 } from '../../lib/pricing';
 import type {
   Proposal,
@@ -87,8 +89,8 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const isPerHourStrategy = (key: string) => {
-  return key === 'per_hour_v1' || key.startsWith('rule:hourly:');
+const formatPercent = (value: number, decimals: number = 1) => {
+  return `${(value * 100).toFixed(decimals)}%`;
 };
 
 // Empty item template
@@ -139,12 +141,19 @@ const ProposalForm = () => {
     termsAndConditions: null,
     proposalItems: [],
     proposalServices: [],
+    pricingPlanId: null,
   });
 
   // Calculated totals
   const [totals, setTotals] = useState({
     itemsTotal: 0,
     servicesTotal: 0,
+    recurringServicesTotal: 0,
+    oneTimeServicesTotal: 0,
+    oneTimeChargesTotal: 0,
+    monthlyTotal: 0,
+    dailyTotal: 0,
+    annualTotal: 0,
     subtotal: 0,
     taxAmount: 0,
     totalAmount: 0,
@@ -154,10 +163,11 @@ const ProposalForm = () => {
   const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
+  const [pricingBreakdown, setPricingBreakdown] = useState<FacilityPricingResult | null>(null);
 
-  // Pricing strategy states
-  const [pricingStrategies, setPricingStrategies] = useState<PricingStrategyMetadata[]>([]);
-  const [selectedPricingStrategy, setSelectedPricingStrategy] = useState<string>('sqft_settings_v1');
+  // Pricing plan states
+  const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
+  const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
   const [workerCount, setWorkerCount] = useState<number>(1);
 
   // Frequency options for auto-population
@@ -171,16 +181,49 @@ const ProposalForm = () => {
     { value: 'monthly', label: 'Monthly' },
   ];
 
+  const selectedPricingPlan = pricingPlans.find((plan) => plan.id === selectedPricingPlanId);
+  const isHourlyPlan = selectedPricingPlan?.pricingType === 'hourly';
+
   // Calculate totals whenever items, services, or tax rate change
   useEffect(() => {
     const itemsTotal = (formData.proposalItems || []).reduce(
       (sum, item) => sum + Number(item.totalPrice || 0),
       0
     );
-    const servicesTotal = (formData.proposalServices || []).reduce(
+
+    const oneTimeServicesTotal = (formData.proposalServices || [])
+      .filter((service) => service.serviceType === 'one_time')
+      .reduce((sum, service) => sum + Number(service.monthlyPrice || 0), 0);
+
+    const recurringServices = (formData.proposalServices || []).filter(
+      (service) => service.serviceType !== 'one_time'
+    );
+
+    const recurringServicesTotal = recurringServices.reduce(
       (sum, service) => sum + Number(service.monthlyPrice || 0),
       0
     );
+
+    const servicesTotal = recurringServicesTotal + oneTimeServicesTotal;
+
+    const frequencyDailyDivisors: Record<ServiceFrequency, number> = {
+      daily: 30,
+      weekly: 28,
+      biweekly: 28,
+      monthly: 30,
+      quarterly: 90,
+      annually: 365,
+    };
+
+    const dailyTotal = recurringServices.reduce((sum, service) => {
+      const divisor = frequencyDailyDivisors[service.frequency] || 30;
+      return sum + Number(service.monthlyPrice || 0) / divisor;
+    }, 0);
+
+    const monthlyTotal = recurringServicesTotal;
+    const annualTotal = recurringServicesTotal * 12;
+    const oneTimeChargesTotal = itemsTotal + oneTimeServicesTotal;
+
     const subtotal = itemsTotal + servicesTotal;
     const taxRate = formData.taxRate || 0;
     const taxAmount = subtotal * taxRate;
@@ -189,6 +232,12 @@ const ProposalForm = () => {
     setTotals({
       itemsTotal: Number(itemsTotal.toFixed(2)),
       servicesTotal: Number(servicesTotal.toFixed(2)),
+      recurringServicesTotal: Number(recurringServicesTotal.toFixed(2)),
+      oneTimeServicesTotal: Number(oneTimeServicesTotal.toFixed(2)),
+      oneTimeChargesTotal: Number(oneTimeChargesTotal.toFixed(2)),
+      monthlyTotal: Number(monthlyTotal.toFixed(2)),
+      dailyTotal: Number(dailyTotal.toFixed(2)),
+      annualTotal: Number(annualTotal.toFixed(2)),
       subtotal: Number(subtotal.toFixed(2)),
       taxAmount: Number(taxAmount.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
@@ -198,21 +247,22 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, strategiesRes] = await Promise.all([
+      const [accountsRes, facilitiesRes, plansRes] = await Promise.all([
         listAccounts({ limit: 100 }),
         listFacilities({ limit: 100 }),
-        listPricingStrategies(),
+        listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
       ]);
       setAccounts(accountsRes?.data || []);
       setFacilities(facilitiesRes?.data || []);
-      setPricingStrategies(strategiesRes || []);
-      // Set default strategy if available
-      const defaultStrategy = strategiesRes?.find(s => s.isDefault);
-      if (defaultStrategy) {
-        setSelectedPricingStrategy(defaultStrategy.key);
+      const plans = plansRes?.data || [];
+      setPricingPlans(plans);
+      // Set default plan if available
+      const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0];
+      if (defaultPlan) {
+        setSelectedPricingPlanId(defaultPlan.id);
         setFormData((prev) => ({
           ...prev,
-          pricingStrategyKey: defaultStrategy.key,
+          pricingPlanId: defaultPlan.id,
         }));
       }
     } catch (error) {
@@ -238,11 +288,11 @@ const ProposalForm = () => {
         termsAndConditions: proposal.termsAndConditions || null,
         proposalItems: proposal.proposalItems || [],
         proposalServices: proposal.proposalServices || [],
-        pricingStrategyKey: proposal.pricingStrategyKey || null,
+        pricingPlanId: proposal.pricingPlanId || null,
       });
-      // Set pricing strategy from proposal
-      if (proposal.pricingStrategyKey) {
-        setSelectedPricingStrategy(proposal.pricingStrategyKey);
+      // Set pricing plan from proposal
+      if (proposal.pricingPlanId) {
+        setSelectedPricingPlanId(proposal.pricingPlanId);
       }
     } catch (error) {
       console.error('Failed to fetch proposal:', error);
@@ -287,10 +337,19 @@ const ProposalForm = () => {
     checkPricingReadiness();
   }, [formData.facilityId]);
 
+  // Clear breakdown when inputs change (ensures breakdown reflects latest calculation)
+  useEffect(() => {
+    setPricingBreakdown(null);
+  }, [formData.facilityId, selectedFrequency, selectedPricingPlanId, workerCount]);
+
   // Auto-populate services from facility pricing
   const handleAutoPopulateFromFacility = async () => {
     if (!formData.facilityId) {
       toast.error('Please select a facility first');
+      return;
+    }
+    if (!selectedPricingPlanId) {
+      toast.error('Please select a pricing plan first');
       return;
     }
 
@@ -299,8 +358,8 @@ const ProposalForm = () => {
       const template = await getFacilityProposalTemplate(
         formData.facilityId,
         selectedFrequency,
-        selectedPricingStrategy,
-        isPerHourStrategy(selectedPricingStrategy) ? workerCount : undefined
+        selectedPricingPlanId || undefined,
+        isHourlyPlan ? workerCount : undefined
       );
 
       // Convert suggested services to proposal services
@@ -335,9 +394,11 @@ const ProposalForm = () => {
         title: prev.title || `Cleaning Services - ${template.facility.name}`,
       }));
 
+      setPricingBreakdown(template.pricing);
       toast.success(`Auto-populated ${newServices.length} service(s) from facility pricing`);
     } catch (error: any) {
       console.error('Failed to auto-populate from facility:', error);
+      setPricingBreakdown(null);
       toast.error(error.response?.data?.message || 'Failed to calculate pricing from facility');
     } finally {
       setLoadingPricing(false);
@@ -422,6 +483,10 @@ const ProposalForm = () => {
     }
     if (!formData.title.trim()) {
       toast.error('Please enter a proposal title');
+      return;
+    }
+    if (!formData.pricingPlanId) {
+      toast.error('Please select a pricing plan');
       return;
     }
 
@@ -526,25 +591,25 @@ const ProposalForm = () => {
               />
               <div className="flex flex-col gap-1">
                 <Select
-                  label="Pricing Strategy"
-                  placeholder="Select pricing strategy"
-                  value={selectedPricingStrategy}
+                  label="Pricing Plan"
+                  placeholder="Select pricing plan"
+                  value={selectedPricingPlanId}
                   onChange={(value) => {
-                    setSelectedPricingStrategy(value);
-                    handleChange('pricingStrategyKey', value);
+                    setSelectedPricingPlanId(value);
+                    handleChange('pricingPlanId', value || null);
                   }}
-                  options={pricingStrategies.map((s) => ({
-                    value: s.key,
-                    label: `${s.name}${s.isDefault ? ' (Default)' : ''}`,
+                  options={pricingPlans.map((plan) => ({
+                    value: plan.id,
+                    label: `${plan.name}${plan.isDefault ? ' (Default)' : ''}`,
                   }))}
                 />
-                {pricingStrategies.find(s => s.key === selectedPricingStrategy)?.description && (
+                {selectedPricingPlan && (
                   <p className="text-xs text-gray-400 mt-1">
-                    {pricingStrategies.find(s => s.key === selectedPricingStrategy)?.description}
+                    Type: {selectedPricingPlan.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
                   </p>
                 )}
               </div>
-              {isPerHourStrategy(selectedPricingStrategy) && (
+              {isHourlyPlan && (
                 <Input
                   label="Worker Count"
                   type="number"
@@ -614,13 +679,148 @@ const ProposalForm = () => {
                     )}
                   </div>
 
-                  {/* Per-hour strategy: Show task time breakdown */}
-                  {isPerHourStrategy(selectedPricingStrategy) && pricingReadiness?.isReady && (
+                  {/* Hourly plan: Show task time breakdown */}
+                  {isHourlyPlan && pricingReadiness?.isReady && (
                     <div className="mt-4">
                       <AreaTaskTimeBreakdown
                         facilityId={formData.facilityId!}
                         workerCount={workerCount}
                       />
+                    </div>
+                  )}
+
+                  {/* Internal pricing breakdown (shown after calculation) */}
+                  {pricingBreakdown && (
+                    <div className="mt-4 bg-surface-800 rounded-xl border border-surface-700 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700 bg-surface-700/30">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-amber-400" />
+                          <span className="font-medium text-white text-sm">
+                            Internal Pricing Breakdown
+                          </span>
+                        </div>
+                        <Badge variant="warning" size="sm" className="flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Internal Only
+                        </Badge>
+                      </div>
+
+                      <div className="px-4 py-3 text-xs text-gray-400 border-b border-surface-700">
+                        {pricingBreakdown.facilityName} •{' '}
+                        {(PRICING_FREQUENCIES.find((f) => f.value === selectedFrequency)?.label ??
+                          selectedFrequency)}
+                        {' • '}
+                        {pricingBreakdown.totalSquareFeet.toLocaleString()} sq ft
+                      </div>
+
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Monthly total:</span>
+                            <span className="text-emerald font-semibold">
+                              {formatCurrency(pricingBreakdown.monthlyTotal)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Subtotal (before task complexity):</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.subtotal)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Task complexity add-on:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.taskComplexityAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Building adjustment:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.buildingAdjustment)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Profit:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.profitAmount)}{' '}
+                              <span className="text-gray-500">
+                                ({formatPercent(pricingBreakdown.profitMarginApplied)})
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Monthly cost (before profit):</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.monthlyCostBeforeProfit)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Monthly visits:</span>
+                            <span className="text-white">
+                              {pricingBreakdown.monthlyVisits.toFixed(2)}
+                            </span>
+                          </div>
+                          {pricingBreakdown.minimumApplied && (
+                            <div className="flex items-center gap-2 text-amber-400 text-xs pt-1">
+                              <AlertCircle className="w-4 h-4" />
+                              Minimum monthly charge applied
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-xs uppercase tracking-wide text-gray-500">
+                            Cost Per Visit
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Labor:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalLaborCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Insurance:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalInsuranceCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Admin overhead:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalAdminOverheadCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Equipment:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalEquipmentCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Supplies:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalSupplyCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Travel:</span>
+                            <span className="text-white">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalTravelCost)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t border-surface-700 pt-2 mt-2">
+                            <span className="text-gray-400">Total cost per visit:</span>
+                            <span className="text-white font-medium">
+                              {formatCurrency(pricingBreakdown.costBreakdown.totalCostPerVisit)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3 border-t border-surface-700 text-xs text-gray-500">
+                        Internal pricing details are for staff use and are not included in
+                        client-facing proposals.
+                      </div>
                     </div>
                   )}
                 </div>
@@ -860,6 +1060,16 @@ const ProposalForm = () => {
                     </span>
                   </div>
                 </div>
+                {totals.oneTimeServicesTotal > 0 && (
+                  <div className="flex justify-end pt-2">
+                    <div className="text-right">
+                      <span className="text-gray-400 text-sm mr-4">One-Time Services:</span>
+                      <span className="text-white font-semibold">
+                        {formatCurrency(totals.oneTimeServicesTotal)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -903,6 +1113,24 @@ const ProposalForm = () => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Services Total:</span>
                 <span className="text-white">{formatCurrency(totals.servicesTotal)}</span>
+              </div>
+              {totals.oneTimeChargesTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">One-Time Charges:</span>
+                  <span className="text-white">{formatCurrency(totals.oneTimeChargesTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Recurring Monthly:</span>
+                <span className="text-white">{formatCurrency(totals.monthlyTotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Daily (by frequency):</span>
+                <span className="text-white">{formatCurrency(totals.dailyTotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Annual (recurring):</span>
+                <span className="text-white">{formatCurrency(totals.annualTotal)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-white/10 pt-3">
                 <span className="text-gray-400">Subtotal:</span>

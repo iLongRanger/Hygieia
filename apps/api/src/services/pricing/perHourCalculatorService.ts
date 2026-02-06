@@ -1,6 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { getActivePricingSettings } from '../pricingSettingsService';
-import { getPricingRuleById } from '../pricingRuleService';
+import { getDefaultPricingSettings, getPricingSettingsById } from '../pricingSettingsService';
 import type {
   FloorTypeMultipliers,
   FrequencyMultipliers,
@@ -11,21 +10,11 @@ import type {
 } from '../../schemas/pricingSettings';
 import type { AreaCostBreakdown, FacilityPricingResult } from '../pricingCalculatorService';
 
-// Types for pricing rule condition multipliers
-type PricingRuleConditionMultipliers = {
-  excellent?: number;
-  good?: number;
-  fair?: number;
-  poor?: number;
-  standard?: number;
-  [key: string]: number | undefined;
-};
-
 export interface CalculatePerHourPricingOptions {
   facilityId: string;
   serviceFrequency: string;
   taskComplexity?: string;
-  pricingRuleId?: string;
+  pricingPlanId?: string;
   workerCount?: number;
 }
 
@@ -59,21 +48,15 @@ export async function calculatePerHourPricing(
     facilityId,
     serviceFrequency,
     taskComplexity = 'standard',
-    pricingRuleId,
+    pricingPlanId,
     workerCount = 1,
   } = options;
 
-  const pricingSettings = await getActivePricingSettings();
+  const pricingSettings = pricingPlanId
+    ? await getPricingSettingsById(pricingPlanId)
+    : await getDefaultPricingSettings();
   if (!pricingSettings) {
-    throw new Error('No active pricing settings found. Please configure pricing settings first.');
-  }
-
-  let pricingRule = null;
-  if (pricingRuleId) {
-    pricingRule = await getPricingRuleById(pricingRuleId);
-    if (!pricingRule) {
-      console.warn(`Pricing rule ${pricingRuleId} not found, using default settings`);
-    }
+    throw new Error('No pricing plan found. Please configure pricing plans first.');
   }
 
   const facility = await prisma.facility.findUnique({
@@ -116,26 +99,21 @@ export async function calculatePerHourPricing(
     },
   });
 
-  const hourlyRate = pricingRule?.baseRate ? Number(pricingRule.baseRate) : Number(pricingSettings.hourlyRate);
+  const hourlyRate = Number(pricingSettings.hourlyRate);
   const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
   const buildingTypeMultipliers = pricingSettings.buildingTypeMultipliers as BuildingTypeMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const trafficMultipliers = pricingSettings.trafficMultipliers as TrafficMultipliers;
-  const conditionMultipliers = (pricingRule?.conditionMultipliers as PricingRuleConditionMultipliers)
-    || (pricingSettings.conditionMultipliers as ConditionMultipliers);
+  const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
 
-  const difficultyMultiplier = pricingRule?.difficultyMultiplier
-    ? Number(pricingRule.difficultyMultiplier)
-    : 1.0;
+  const difficultyMultiplier = 1.0;
 
   const buildingType = facility.buildingType || 'other';
   const buildingMultiplier = buildingTypeMultipliers[buildingType as keyof BuildingTypeMultipliers] ?? 1.0;
   const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
   const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
-  const minimumMonthlyCharge = pricingRule?.minimumCharge
-    ? Number(pricingRule.minimumCharge)
-    : Number(pricingSettings.minimumMonthlyCharge);
+  const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
   const tasksByArea = new Map<string | null, typeof facilityTasks>();
   for (const task of facilityTasks) {
@@ -306,10 +284,8 @@ export async function calculatePerHourPricing(
     subtotal: roundToTwo(perVisitTotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
-    pricingSettingsId: pricingRule
-      ? `rule:${pricingRule.pricingType}:${pricingRule.id}`
-      : pricingSettings.id,
-    pricingSettingsName: pricingRule ? pricingRule.name : pricingSettings.name,
+    pricingPlanId: pricingSettings.id,
+    pricingPlanName: pricingSettings.name,
   };
 }
 

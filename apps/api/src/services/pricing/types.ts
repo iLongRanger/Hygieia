@@ -19,9 +19,7 @@ export interface PricingContext {
   serviceFrequency: string;
   taskComplexity?: string;
   workerCount?: number;
-  pricingRuleId?: string;
-  // Optional overrides for specific calculations
-  pricingSettingsId?: string;
+  pricingPlanId?: string;
 }
 
 /**
@@ -34,8 +32,9 @@ export type AreaPricingBreakdown = BaseAreaPricingBreakdown;
  * Used for proposal pricing lock and audit trail
  */
 export interface PricingSettingsSnapshot {
-  pricingSettingsId: string;
-  pricingSettingsName: string;
+  pricingPlanId: string;
+  pricingPlanName: string;
+  pricingType: string;
   baseRatePerSqFt: number;
   minimumMonthlyCharge: number;
   hourlyRate?: number;

@@ -1,7 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { prisma } from '../../../lib/prisma';
 import * as pricingSettingsService from '../../pricingSettingsService';
-import * as pricingRuleService from '../../pricingRuleService';
 import { calculatePerHourPricing } from '../perHourCalculatorService';
 
 jest.mock('../../../lib/prisma', () => ({
@@ -16,11 +15,7 @@ jest.mock('../../../lib/prisma', () => ({
 }));
 
 jest.mock('../../pricingSettingsService', () => ({
-  getActivePricingSettings: jest.fn(),
-}));
-
-jest.mock('../../pricingRuleService', () => ({
-  getPricingRuleById: jest.fn(),
+  getDefaultPricingSettings: jest.fn(),
 }));
 
 describe('calculatePerHourPricing', () => {
@@ -29,9 +24,10 @@ describe('calculatePerHourPricing', () => {
   });
 
   it('calculates per-hour pricing with fixtures and worker count', async () => {
-    (pricingSettingsService.getActivePricingSettings as jest.Mock).mockResolvedValue({
+    (pricingSettingsService.getDefaultPricingSettings as jest.Mock).mockResolvedValue({
       id: 'settings-1',
       name: 'Default',
+      pricingType: 'hourly',
       baseRatePerSqFt: 0.1,
       minimumMonthlyCharge: 0,
       hourlyRate: 35,
@@ -42,8 +38,6 @@ describe('calculatePerHourPricing', () => {
       buildingTypeMultipliers: { office: 1.0, other: 1.0 },
       taskComplexityAddOns: { standard: 0 },
     });
-
-    (pricingRuleService.getPricingRuleById as jest.Mock).mockResolvedValue(null);
 
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',

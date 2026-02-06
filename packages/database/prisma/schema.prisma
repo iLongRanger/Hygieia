@@ -42,9 +42,6 @@ model User {
   facilities               Facility[]        @relation("FacilityManager")
   createdTaskTemplates     TaskTemplate[]    @relation("CreatedTaskTemplates")
   createdAreaTemplates     AreaTemplate[]    @relation("CreatedAreaTemplates")
-  createdPricingRules      PricingRule[]     @relation("CreatedPricingRules")
-  pricingOverrides         PricingOverride[] @relation("CreatedPricingOverrides")
-  approvedPricingOverrides PricingOverride[] @relation("ApprovedPricingOverrides")
   createdProposals         Proposal[]        @relation("CreatedProposals")
   createdContracts         Contract[]        @relation("CreatedContracts")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
@@ -243,8 +240,8 @@ model Account {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt       DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  // Pricing strategy default for this account
-  defaultPricingStrategyKey String? @default("sqft_settings_v1") @map("default_pricing_strategy_key") @db.VarChar(100)
+  // Default pricing plan for this account
+  defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
   contacts       Contact[]
   facilities     Facility[]
@@ -254,11 +251,12 @@ model Account {
   accountManager User?      @relation("AccountManager", fields: [accountManagerId], references: [id])
   createdByUser  User       @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
   sourceLead     Lead?      @relation("LeadToAccount")
+  defaultPricingPlan PricingSettings? @relation("AccountDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
 
   @@index([type])
   @@index([accountManagerId])
   @@index([qboCustomerId])
-  @@index([defaultPricingStrategyKey])
+  @@index([defaultPricingPlanId])
   @@map("accounts")
 }
 
@@ -305,7 +303,6 @@ model AreaType {
 
   areas         Area[]
   taskTemplates TaskTemplate[]
-  pricingRules  PricingRule[]
   areaTemplate  AreaTemplate?
 
   @@index([name])
@@ -330,24 +327,24 @@ model Facility {
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  // Pricing strategy default for this facility (overrides account default)
-  defaultPricingStrategyKey String? @default("sqft_settings_v1") @map("default_pricing_strategy_key") @db.VarChar(100)
+  // Default pricing plan for this facility (overrides account default)
+  defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
   account          Account           @relation(fields: [accountId], references: [id])
   areas            Area[]
   taskTemplates    TaskTemplate[]    @relation("FacilityTaskTemplates")
   facilityTasks    FacilityTask[]    @relation("FacilityTasks")
-  pricingOverrides PricingOverride[] @relation("FacilityPricingOverrides")
   proposals        Proposal[]
   contracts        Contract[]
   facilityManager  User?             @relation("FacilityManager", fields: [facilityManagerId], references: [id])
   createdByUser    User              @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
+  defaultPricingPlan PricingSettings? @relation("FacilityDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
 
   @@unique([accountId, name])
   @@index([accountId])
   @@index([status])
   @@index([facilityManagerId])
-  @@index([defaultPricingStrategyKey])
+  @@index([defaultPricingPlanId])
   @@map("facilities")
 }
 
@@ -469,6 +466,7 @@ model FacilityTask {
 model PricingSettings {
   id   String @id @default(uuid()) @db.Uuid
   name String @unique @db.VarChar(100)
+  pricingType String @default("square_foot") @map("pricing_type") @db.VarChar(20)
 
   // Base Rate
   baseRatePerSqFt      Decimal @default(0.10) @map("base_rate_per_sq_ft") @db.Decimal(8, 4)
@@ -502,11 +500,18 @@ model PricingSettings {
   taskComplexityAddOns    Json @default("{\"standard\": 0, \"sanitization\": 0.15, \"biohazard\": 0.5, \"high_security\": 0.2}") @map("task_complexity_add_ons") @db.JsonB
 
   isActive  Boolean   @default(true) @map("is_active")
+  isDefault Boolean   @default(false) @map("is_default")
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
 
+  defaultForAccounts  Account[]  @relation("AccountDefaultPricingPlan")
+  defaultForFacilities Facility[] @relation("FacilityDefaultPricingPlan")
+  proposals            Proposal[] @relation("ProposalPricingPlan")
+
   @@index([isActive])
+  @@index([pricingType])
+  @@index([isDefault])
   @@map("pricing_settings")
 }
 
@@ -640,59 +645,6 @@ model FacilityTaskFixtureMinutes {
   @@map("facility_task_fixture_minutes")
 }
 
-model PricingRule {
-  id                   String    @id @default(uuid()) @db.Uuid
-  name                 String    @db.VarChar(255)
-  description          String?   @db.Text
-  pricingType          String    @map("pricing_type") @db.VarChar(20)
-  baseRate             Decimal   @map("base_rate") @db.Decimal(10, 2)
-  minimumCharge        Decimal?  @map("minimum_charge") @db.Decimal(10, 2)
-  squareFootRate       Decimal?  @map("square_foot_rate") @db.Decimal(8, 4)
-  difficultyMultiplier Decimal   @default(1.0) @map("difficulty_multiplier") @db.Decimal(4, 3)
-  conditionMultipliers Json      @default("{\"excellent\": 0.8, \"good\": 1.0, \"fair\": 1.3, \"poor\": 1.6}") @map("condition_multipliers") @db.JsonB
-  cleaningType         String?   @map("cleaning_type") @db.VarChar(50)
-  areaTypeId           String?   @map("area_type_id") @db.Uuid
-  isActive             Boolean   @default(true) @map("is_active")
-  createdByUserId      String    @map("created_by_user_id") @db.Uuid
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
-
-  areaType         AreaType?         @relation(fields: [areaTypeId], references: [id])
-  pricingOverrides PricingOverride[]
-  createdByUser    User              @relation("CreatedPricingRules", fields: [createdByUserId], references: [id])
-
-  @@index([pricingType])
-  @@index([cleaningType])
-  @@index([areaTypeId])
-  @@index([isActive])
-  @@map("pricing_rules")
-}
-
-model PricingOverride {
-  id               String    @id @default(uuid()) @db.Uuid
-  facilityId       String    @map("facility_id") @db.Uuid
-  pricingRuleId    String    @map("pricing_rule_id") @db.Uuid
-  overrideRate     Decimal   @map("override_rate") @db.Decimal(10, 2)
-  overrideReason   String    @map("override_reason") @db.Text
-  effectiveDate    DateTime  @default(now()) @map("effective_date") @db.Date
-  expiryDate       DateTime? @map("expiry_date") @db.Date
-  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
-  createdByUserId  String    @map("created_by_user_id") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  facility       Facility    @relation("FacilityPricingOverrides", fields: [facilityId], references: [id], onDelete: Cascade)
-  pricingRule    PricingRule @relation(fields: [pricingRuleId], references: [id])
-  approvedByUser User?       @relation("ApprovedPricingOverrides", fields: [approvedByUserId], references: [id])
-  createdByUser  User        @relation("CreatedPricingOverrides", fields: [createdByUserId], references: [id])
-
-  @@index([facilityId])
-  @@index([effectiveDate])
-  @@index([expiryDate])
-  @@map("pricing_overrides")
-}
-
 // ============================================================
 // PROPOSAL & ESTIMATE TABLES
 // ============================================================
@@ -722,15 +674,15 @@ model Proposal {
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  // Pricing strategy fields
-  pricingStrategyKey     String?   @map("pricing_strategy_key") @db.VarChar(100)
-  pricingStrategyVersion String?   @map("pricing_strategy_version") @db.VarChar(50)
+  // Pricing plan fields
+  pricingPlanId          String?   @map("pricing_plan_id") @db.Uuid
   pricingSnapshot        Json?     @map("pricing_snapshot") @db.JsonB
   pricingLocked          Boolean   @default(false) @map("pricing_locked")
   pricingLockedAt        DateTime? @map("pricing_locked_at") @db.Timestamptz(6)
 
   account          Account           @relation(fields: [accountId], references: [id])
   facility         Facility?         @relation(fields: [facilityId], references: [id])
+  pricingPlan      PricingSettings?  @relation("ProposalPricingPlan", fields: [pricingPlanId], references: [id])
   createdByUser    User              @relation("CreatedProposals", fields: [createdByUserId], references: [id])
   proposalItems    ProposalItem[]
   proposalServices ProposalService[]
@@ -742,7 +694,7 @@ model Proposal {
   @@index([proposalNumber])
   @@index([validUntil])
   @@index([sentAt])
-  @@index([pricingStrategyKey])
+  @@index([pricingPlanId])
   @@index([pricingLocked])
   @@map("proposals")
 }

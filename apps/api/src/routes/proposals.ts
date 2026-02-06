@@ -19,7 +19,7 @@ import {
   getProposalsAvailableForContract,
   lockProposalPricing,
   unlockProposalPricing,
-  changeProposalPricingStrategy,
+  changeProposalPricingPlan,
   recalculateProposalPricing,
   getProposalPricingPreview,
 } from '../services/proposalService';
@@ -30,12 +30,11 @@ import {
   sendProposalSchema,
   acceptProposalSchema,
   rejectProposalSchema,
-  changePricingStrategySchema,
+  changePricingPlanSchema,
   recalculatePricingSchema,
   pricingPreviewQuerySchema,
 } from '../schemas/proposal';
 import { ZodError } from 'zod';
-import { pricingStrategyRegistry, DEFAULT_PRICING_STRATEGY_KEY } from '../services/pricing';
 
 const router: Router = Router();
 
@@ -80,22 +79,6 @@ router.get(
       const accountId = req.query.accountId as string | undefined;
       const proposals = await getProposalsAvailableForContract(accountId);
       res.json({ data: proposals });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Get available pricing strategies (must be before /:id route)
-// Includes both built-in strategies and pricing rules from database
-router.get(
-  '/pricing-strategies',
-  authenticate,
-  requireRole('owner', 'admin', 'manager'),
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const strategies = await pricingStrategyRegistry.listAllAsync();
-      res.json({ data: strategies });
     } catch (error) {
       next(error);
     }
@@ -166,7 +149,7 @@ router.post(
         termsAndConditions: parsed.data.termsAndConditions,
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
-        pricingStrategyKey: parsed.data.pricingStrategyKey,
+        pricingPlanId: parsed.data.pricingPlanId,
         createdByUserId: req.user.id,
       });
 
@@ -223,13 +206,13 @@ router.patch(
       }
 
       if (
-        parsed.data.pricingStrategyKey !== undefined
-        && parsed.data.pricingStrategyKey !== proposal.pricingStrategyKey
+        parsed.data.pricingPlanId !== undefined
+        && parsed.data.pricingPlanId !== proposal.pricingPlanId
       ) {
-        await changeProposalPricingStrategy(
-          req.params.id,
-          parsed.data.pricingStrategyKey || DEFAULT_PRICING_STRATEGY_KEY
-        );
+        if (!parsed.data.pricingPlanId) {
+          throw new ValidationError('Pricing plan is required');
+        }
+        await changeProposalPricingPlan(req.params.id, parsed.data.pricingPlanId);
       }
 
       const updated = await updateProposal(req.params.id, updateData);
@@ -459,14 +442,14 @@ router.post(
   }
 );
 
-// Change pricing strategy for a proposal
+// Change pricing plan for a proposal
 router.post(
-  '/:id/pricing/strategy',
+  '/:id/pricing/plan',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = changePricingStrategySchema.safeParse(req.body);
+      const parsed = changePricingPlanSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
@@ -476,11 +459,11 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
-      const updated = await changeProposalPricingStrategy(
+      const updated = await changeProposalPricingPlan(
         req.params.id,
-        parsed.data.strategyKey
+        parsed.data.pricingPlanId
       );
-      res.json({ data: updated, message: 'Pricing strategy changed successfully' });
+      res.json({ data: updated, message: 'Pricing plan changed successfully' });
     } catch (error) {
       next(error);
     }
@@ -539,7 +522,7 @@ router.get(
       const preview = await getProposalPricingPreview(
         req.params.id,
         parsed.data.serviceFrequency,
-        { strategyKey: parsed.data.strategyKey, workerCount: parsed.data.workerCount }
+        { pricingPlanId: parsed.data.pricingPlanId, workerCount: parsed.data.workerCount }
       );
       res.json({ data: preview });
     } catch (error) {

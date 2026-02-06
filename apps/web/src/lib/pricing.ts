@@ -1,21 +1,14 @@
 import api from './api';
-import type {
-  PricingRule,
-  CreatePricingRuleInput,
-  UpdatePricingRuleInput,
-  PricingOverride,
-  CreatePricingOverrideInput,
-  UpdatePricingOverrideInput,
-  PaginatedResponse,
-} from '../types/crm';
+import type { PaginatedResponse } from '../types/crm';
 
 // ============================================================
-// Pricing Settings API
+// Pricing Plans API
 // ============================================================
 
 export interface PricingSettings {
   id: string;
   name: string;
+  pricingType: string;
   baseRatePerSqFt: string;
   minimumMonthlyCharge: string;
   hourlyRate: string;
@@ -45,6 +38,7 @@ export interface PricingSettings {
   buildingTypeMultipliers: Record<string, number>;
   taskComplexityAddOns: Record<string, number>;
   isActive: boolean;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
@@ -52,6 +46,7 @@ export interface PricingSettings {
 
 export interface CreatePricingSettingsInput {
   name: string;
+  pricingType?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
@@ -72,10 +67,12 @@ export interface CreatePricingSettingsInput {
   buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface UpdatePricingSettingsInput {
   name?: string;
+  pricingType?: string;
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
@@ -96,12 +93,15 @@ export interface UpdatePricingSettingsInput {
   buildingTypeMultipliers?: Record<string, number>;
   taskComplexityAddOns?: Record<string, number>;
   isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export async function listPricingSettings(params?: {
   page?: number;
   limit?: number;
   isActive?: boolean;
+  pricingType?: string;
+  isDefault?: boolean;
   search?: string;
   includeArchived?: boolean;
 }): Promise<PaginatedResponse<PricingSettings>> {
@@ -109,8 +109,8 @@ export async function listPricingSettings(params?: {
   return response.data;
 }
 
-export async function getActivePricingSettings(): Promise<PricingSettings> {
-  const response = await api.get('/pricing-settings/active');
+export async function getDefaultPricingSettings(): Promise<PricingSettings> {
+  const response = await api.get('/pricing-settings/default');
   return response.data.data;
 }
 
@@ -132,8 +132,8 @@ export async function updatePricingSettings(
   return response.data.data;
 }
 
-export async function setActivePricingSettings(id: string): Promise<PricingSettings> {
-  const response = await api.post(`/pricing-settings/${id}/set-active`);
+export async function setDefaultPricingSettings(id: string): Promise<PricingSettings> {
+  const response = await api.post(`/pricing-settings/${id}/set-default`);
   return response.data.data;
 }
 
@@ -198,8 +198,9 @@ export interface AreaPricingBreakdown extends AreaCostBreakdown {
 }
 
 export interface PricingSettingsSnapshot {
-  pricingSettingsId: string;
-  pricingSettingsName: string;
+  pricingPlanId: string;
+  pricingPlanName: string;
+  pricingType: string;
   baseRatePerSqFt: number;
   minimumMonthlyCharge: number;
   hourlyRate?: number;
@@ -267,8 +268,8 @@ export interface FacilityPricingResult {
   minimumApplied: boolean;
 
   // Pricing source
-  pricingSettingsId: string;
-  pricingSettingsName: string;
+  pricingPlanId: string;
+  pricingPlanName: string;
 }
 
 // Extended pricing breakdown that includes strategy info
@@ -293,20 +294,22 @@ export async function getFacilityPricingReadiness(facilityId: string): Promise<F
 export async function getFacilityPricing(
   facilityId: string,
   frequency: string = '5x_week',
-  taskComplexity: string = 'standard'
+  taskComplexity: string = 'standard',
+  pricingPlanId?: string
 ): Promise<FacilityPricingResult> {
   const response = await api.get(`/facilities/${facilityId}/pricing`, {
-    params: { frequency, taskComplexity },
+    params: { frequency, taskComplexity, pricingPlanId },
   });
   return response.data.data;
 }
 
 export async function getFacilityPricingComparison(
   facilityId: string,
-  frequencies?: string[]
+  frequencies?: string[],
+  pricingPlanId?: string
 ): Promise<{ frequency: string; monthlyTotal: number }[]> {
   const response = await api.get(`/facilities/${facilityId}/pricing-comparison`, {
-    params: { frequencies: frequencies?.join(',') },
+    params: { frequencies: frequencies?.join(','), pricingPlanId },
   });
   return response.data.data;
 }
@@ -330,122 +333,18 @@ export interface FacilityProposalTemplate {
 export async function getFacilityProposalTemplate(
   facilityId: string,
   frequency: string = '5x_week',
-  strategyKey?: string,
+  pricingPlanId?: string,
   workerCount?: number
 ): Promise<FacilityProposalTemplate> {
   const response = await api.get(`/facilities/${facilityId}/proposal-template`, {
-    params: { frequency, strategyKey, workerCount },
+    params: { frequency, pricingPlanId, workerCount },
   });
   return response.data.data;
 }
 
-// Pricing Rules API
-
-export async function listPricingRules(params?: {
-  page?: number;
-  limit?: number;
-  pricingType?: string;
-  cleaningType?: string;
-  areaTypeId?: string;
-  isActive?: boolean;
-  search?: string;
-  includeArchived?: boolean;
-}): Promise<PaginatedResponse<PricingRule>> {
-  const response = await api.get('/pricing-rules', { params });
-  return response.data;
-}
-
-export async function getPricingRule(id: string): Promise<PricingRule> {
-  const response = await api.get(`/pricing-rules/${id}`);
-  return response.data.data;
-}
-
-export async function createPricingRule(data: CreatePricingRuleInput): Promise<PricingRule> {
-  const response = await api.post('/pricing-rules', data);
-  return response.data.data;
-}
-
-export async function updatePricingRule(
-  id: string,
-  data: UpdatePricingRuleInput
-): Promise<PricingRule> {
-  const response = await api.patch(`/pricing-rules/${id}`, data);
-  return response.data.data;
-}
-
-export async function archivePricingRule(id: string): Promise<PricingRule> {
-  const response = await api.post(`/pricing-rules/${id}/archive`);
-  return response.data.data;
-}
-
-export async function restorePricingRule(id: string): Promise<PricingRule> {
-  const response = await api.post(`/pricing-rules/${id}/restore`);
-  return response.data.data;
-}
-
-export async function deletePricingRule(id: string): Promise<void> {
-  await api.delete(`/pricing-rules/${id}`);
-}
-
-// Pricing Overrides API
-
-export async function listPricingOverrides(params?: {
-  page?: number;
-  limit?: number;
-  facilityId?: string;
-  pricingRuleId?: string;
-  approvedByUserId?: string;
-  isActive?: boolean;
-  search?: string;
-}): Promise<PaginatedResponse<PricingOverride>> {
-  const response = await api.get('/pricing-overrides', { params });
-  return response.data;
-}
-
-export async function getPricingOverride(id: string): Promise<PricingOverride> {
-  const response = await api.get(`/pricing-overrides/${id}`);
-  return response.data.data;
-}
-
-export async function createPricingOverride(data: CreatePricingOverrideInput): Promise<PricingOverride> {
-  const response = await api.post('/pricing-overrides', data);
-  return response.data.data;
-}
-
-export async function updatePricingOverride(
-  id: string,
-  data: UpdatePricingOverrideInput
-): Promise<PricingOverride> {
-  const response = await api.patch(`/pricing-overrides/${id}`, data);
-  return response.data.data;
-}
-
-export async function approvePricingOverride(id: string): Promise<PricingOverride> {
-  const response = await api.post(`/pricing-overrides/${id}/approve`);
-  return response.data.data;
-}
-
-export async function deletePricingOverride(id: string): Promise<void> {
-  await api.delete(`/pricing-overrides/${id}`);
-}
-
 // ============================================================
-// Pricing Strategy API
+// Proposal Pricing API
 // ============================================================
-
-export interface PricingStrategyMetadata {
-  key: string;
-  name: string;
-  description: string;
-  version: string;
-  isDefault?: boolean;
-  isActive?: boolean;
-}
-
-export async function listPricingStrategies(): Promise<PricingStrategyMetadata[]> {
-  const response = await api.get('/proposals/pricing-strategies');
-  return response.data.data;
-}
 
 export async function lockProposalPricing(proposalId: string): Promise<any> {
   const response = await api.post(`/proposals/${proposalId}/pricing/lock`);
@@ -457,12 +356,12 @@ export async function unlockProposalPricing(proposalId: string): Promise<any> {
   return response.data.data;
 }
 
-export async function changeProposalPricingStrategy(
+export async function changeProposalPricingPlan(
   proposalId: string,
-  strategyKey: string
+  pricingPlanId: string
 ): Promise<any> {
-  const response = await api.post(`/proposals/${proposalId}/pricing/strategy`, {
-    strategyKey,
+  const response = await api.post(`/proposals/${proposalId}/pricing/plan`, {
+    pricingPlanId,
   });
   return response.data.data;
 }
@@ -484,11 +383,11 @@ export async function recalculateProposalPricing(
 export async function getProposalPricingPreview(
   proposalId: string,
   serviceFrequency: string,
-  strategyKey?: string,
+  pricingPlanId?: string,
   workerCount?: number
 ): Promise<PricingBreakdown> {
   const response = await api.get(`/proposals/${proposalId}/pricing/preview`, {
-    params: { serviceFrequency, strategyKey, workerCount },
+    params: { serviceFrequency, pricingPlanId, workerCount },
   });
   return response.data.data;
 }
