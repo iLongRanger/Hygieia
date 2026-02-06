@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import AppointmentsPage from '../appointments/AppointmentsPage';
@@ -61,6 +61,16 @@ const mockAppointment = {
   },
 };
 
+const renderAppointmentsPage = async () => {
+  render(<AppointmentsPage />);
+  await waitFor(() => {
+    expect(listAppointmentsMock).toHaveBeenCalled();
+    expect(listLeadsMock).toHaveBeenCalled();
+    expect(listUsersMock).toHaveBeenCalled();
+    expect(listContractsMock).toHaveBeenCalled();
+  });
+};
+
 describe('AppointmentsPage', () => {
   beforeEach(() => {
     // Clear localStorage to reset view preference
@@ -94,7 +104,7 @@ describe('AppointmentsPage', () => {
     it('loads and displays appointments in table view', async () => {
       listAppointmentsMock.mockResolvedValue([mockAppointment]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
       expect(screen.getByText('Rep One')).toBeInTheDocument();
@@ -109,7 +119,7 @@ describe('AppointmentsPage', () => {
     });
 
     it('shows table view by default', async () => {
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       // Table button should be active (has primary bg)
       const tableButton = screen.getByRole('button', { name: /table/i });
@@ -118,8 +128,8 @@ describe('AppointmentsPage', () => {
   });
 
   describe('View toggle', () => {
-    it('displays view toggle buttons', () => {
-      render(<AppointmentsPage />);
+    it('displays view toggle buttons', async () => {
+      await renderAppointmentsPage();
 
       expect(screen.getByRole('button', { name: /table/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /calendar/i })).toBeInTheDocument();
@@ -129,7 +139,7 @@ describe('AppointmentsPage', () => {
       const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await user.click(screen.getByRole('button', { name: /calendar/i }));
 
@@ -147,7 +157,7 @@ describe('AppointmentsPage', () => {
       const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       // Switch to calendar
       await user.click(screen.getByRole('button', { name: /calendar/i }));
@@ -164,7 +174,7 @@ describe('AppointmentsPage', () => {
       const user = userEvent.setup();
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await user.click(screen.getByRole('button', { name: /calendar/i }));
 
@@ -177,7 +187,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         const calendarButton = screen.getByRole('button', { name: /calendar/i });
@@ -191,7 +201,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       // Should show current month
       const monthYear = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
@@ -205,7 +215,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         expect(screen.getByText('Sun')).toBeInTheDocument();
@@ -225,7 +235,7 @@ describe('AppointmentsPage', () => {
       };
       listAppointmentsMock.mockResolvedValue([appointmentForCurrentMonth]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         expect(screen.getByText('Acme Corp')).toBeInTheDocument();
@@ -236,7 +246,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         const today = new Date();
@@ -257,7 +267,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await user.click(screen.getByRole('button', { name: /week/i }));
 
@@ -279,7 +289,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await user.click(screen.getByRole('button', { name: /^day$/i }));
 
@@ -301,7 +311,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await user.click(screen.getByRole('button', { name: /week/i }));
 
@@ -315,7 +325,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_calendar_view', 'day');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         const dayButton = screen.getByRole('button', { name: /^day$/i });
@@ -327,7 +337,7 @@ describe('AppointmentsPage', () => {
       localStorage.setItem('appointments_view_mode', 'calendar');
       listAppointmentsMock.mockResolvedValue([]);
 
-      render(<AppointmentsPage />);
+      await renderAppointmentsPage();
 
       await waitFor(() => {
         expect(screen.getByText('Walk Through')).toBeInTheDocument();
@@ -338,12 +348,13 @@ describe('AppointmentsPage', () => {
   });
 
   describe('Schedule button', () => {
-    it('displays schedule appointment button', () => {
-      render(<AppointmentsPage />);
+    it('displays schedule appointment button', async () => {
+      await renderAppointmentsPage();
 
       expect(screen.getByRole('button', { name: /schedule appointment/i })).toBeInTheDocument();
     });
   });
 });
+
 
 
