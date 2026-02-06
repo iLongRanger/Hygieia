@@ -115,15 +115,20 @@ describe('TaskTemplatesList', () => {
     render(<TaskTemplatesList />);
 
     await user.click(screen.getByRole('button', { name: /create template/i }));
-    await user.type(await screen.findByLabelText(/template name/i), 'Wipe Desks');
-    await user.click(screen.getByRole('button', { name: /^create template$/i }));
+    const modalTitle = await screen.findByText(/create task template/i);
+    const modal = modalTitle.parentElement?.parentElement as HTMLElement;
+    expect(modal).toBeTruthy();
+    await user.type(within(modal).getByLabelText(/template name/i), 'Wipe Desks');
+    await user.click(within(modal).getByRole('button', { name: /^create template$/i }));
 
-    expect(createTaskTemplateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Wipe Desks',
-        cleaningType: 'daily',
-      })
-    );
+    await waitFor(() => {
+      expect(createTaskTemplateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Wipe Desks',
+          cleaningType: 'daily',
+        })
+      );
+    });
   });
 
   it('archives template from row action', async () => {

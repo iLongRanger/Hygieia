@@ -180,7 +180,7 @@ describe('LeadDetail', () => {
   it('renders lead details', async () => {
     render(<LeadDetail />);
 
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Jane Smith' })).toBeInTheDocument();
     expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
     expect(screen.getByText('Walkthrough Appointments')).toBeInTheDocument();
   });
@@ -190,7 +190,7 @@ describe('LeadDetail', () => {
     render(<LeadDetail />);
 
     await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
-    await userEventInstance.selectOptions(screen.getByLabelText(/assigned rep/i), 'user-1');
+    await userEventInstance.selectOptions(await screen.findByLabelText(/assigned rep/i), 'user-1');
     await userEventInstance.type(screen.getByLabelText(/^start$/i), '2026-02-25T09:00');
     await userEventInstance.type(screen.getByLabelText(/^end$/i), '2026-02-25T10:00');
     await userEventInstance.click(screen.getByRole('button', { name: /^schedule$/i }));

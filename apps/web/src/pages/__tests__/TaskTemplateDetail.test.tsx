@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import TaskTemplateDetail from '../tasks/TaskTemplateDetail';
 import type { TaskTemplate } from '../../types/task';
@@ -118,7 +118,7 @@ describe('TaskTemplateDetail', () => {
   it('renders template details', async () => {
     render(<TaskTemplateDetail />);
 
-    expect(await screen.findByText('Vacuum Floors')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Vacuum Floors' })).toBeInTheDocument();
     expect(screen.getByText('Vacuum all floor surfaces')).toBeInTheDocument();
     expect(screen.getByText('Instructions')).toBeInTheDocument();
   });
@@ -128,10 +128,13 @@ describe('TaskTemplateDetail', () => {
     render(<TaskTemplateDetail />);
 
     await user.click(await screen.findByRole('button', { name: /edit template/i }));
-    const nameInput = await screen.findByLabelText(/task template name/i);
+    const modalTitle = await screen.findByText(/edit task template/i);
+    const modal = modalTitle.parentElement?.parentElement as HTMLElement;
+    expect(modal).toBeTruthy();
+    const nameInput = within(modal).getByLabelText(/task template name/i);
     await user.clear(nameInput);
     await user.type(nameInput, 'Vacuum & Mop');
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await user.click(within(modal).getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
       expect(updateTaskTemplateMock).toHaveBeenCalledWith(
