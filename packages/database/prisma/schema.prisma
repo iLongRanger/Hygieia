@@ -476,7 +476,7 @@ model PricingSettings {
   // Labor Cost Settings
   laborCostPerHour       Decimal @default(18.00) @map("labor_cost_per_hour") @db.Decimal(8, 2) // Average hourly wage
   laborBurdenPercentage  Decimal @default(0.25) @map("labor_burden_percentage") @db.Decimal(5, 4) // Payroll taxes, benefits (25%)
-  sqftPerLaborHour       Decimal @default(2500) @map("sqft_per_labor_hour") @db.Decimal(10, 2) // Productivity rate: sq ft cleaned per hour
+  sqftPerLaborHour       Json @default("{\"office\": 2500, \"medical\": 1500, \"industrial\": 2200, \"retail\": 2400, \"educational\": 2000, \"warehouse\": 3500, \"residential\": 2200, \"mixed\": 2200, \"other\": 2500}") @map("sqft_per_labor_hour") @db.JsonB // Productivity rate per building type: sq ft cleaned per hour
 
   // Overhead Cost Settings (as percentages of labor cost)
   insurancePercentage     Decimal @default(0.08) @map("insurance_percentage") @db.Decimal(5, 4) // Liability + workers comp (8%)
@@ -499,7 +499,6 @@ model PricingSettings {
   frequencyMultipliers    Json @default("{\"1x_week\": 1.0, \"2x_week\": 1.8, \"3x_week\": 2.5, \"4x_week\": 3.2, \"5x_week\": 4.0, \"daily\": 4.33, \"weekly\": 1.0, \"biweekly\": 0.5, \"monthly\": 0.25, \"quarterly\": 0.083}") @map("frequency_multipliers") @db.JsonB
   conditionMultipliers    Json @default("{\"standard\": 1.0, \"medium\": 1.25, \"hard\": 1.33}") @map("condition_multipliers") @db.JsonB
   trafficMultipliers      Json @default("{\"low\": 0.9, \"medium\": 1.0, \"high\": 1.15}") @map("traffic_multipliers") @db.JsonB
-  buildingTypeMultipliers Json @default("{\"office\": 1.0, \"medical\": 1.3, \"industrial\": 1.15, \"retail\": 1.05, \"educational\": 1.1, \"warehouse\": 0.9, \"residential\": 1.0, \"mixed\": 1.05, \"other\": 1.0}") @map("building_type_multipliers") @db.JsonB
   taskComplexityAddOns    Json @default("{\"standard\": 0, \"sanitization\": 0.15, \"biohazard\": 0.5, \"high_security\": 0.2}") @map("task_complexity_add_ons") @db.JsonB
 
   isActive  Boolean   @default(true) @map("is_active")

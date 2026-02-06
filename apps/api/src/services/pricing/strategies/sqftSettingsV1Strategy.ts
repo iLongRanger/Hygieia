@@ -59,7 +59,7 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       frequencyMultipliers: pricingSettings.frequencyMultipliers as Record<string, number>,
       conditionMultipliers: pricingSettings.conditionMultipliers as Record<string, number>,
       trafficMultipliers: pricingSettings.trafficMultipliers as Record<string, number>,
-      buildingTypeMultipliers: pricingSettings.buildingTypeMultipliers as Record<string, number>,
+      sqftPerLaborHour: pricingSettings.sqftPerLaborHour as Record<string, number>,
       taskComplexityAddOns: pricingSettings.taskComplexityAddOns as Record<string, number>,
       capturedAt: new Date().toISOString(),
     };

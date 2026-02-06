@@ -279,26 +279,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                 </span>
               </div>
 
-              {/* Step 3: Building Multiplier */}
-              {pricing.buildingMultiplier !== 1 && (
-                <div className="flex justify-between text-gray-300">
-                  <span className="flex items-center gap-1.5">
-                    <MultiplierBadge label="Building" value={pricing.buildingMultiplier} />
-                    <span className="capitalize">({pricing.buildingType})</span>
-                  </span>
-                  <span className="font-mono text-amber-400">
-                    {pricing.buildingAdjustment >= 0 ? '+' : ''}{fmt(pricing.buildingAdjustment)}
-                  </span>
-                </div>
-              )}
-              {pricing.buildingMultiplier === 1 && (
-                <div className="flex justify-between text-gray-500 text-xs">
-                  <span>Building type multiplier ({pricing.buildingType}):</span>
-                  <span>1.00x (no adjustment)</span>
-                </div>
-              )}
-
-              {/* Step 4: Task Complexity */}
+              {/* Step 3: Task Complexity */}
               {pricing.taskComplexityAddOn > 0 && (
                 <div className="flex justify-between text-gray-300">
                   <span>Task complexity add-on ({pct(pricing.taskComplexityAddOn)}):</span>
@@ -312,7 +293,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                 </div>
               )}
 
-              {/* Step 5: Minimum */}
+              {/* Step 4: Minimum */}
               {pricing.minimumApplied && (
                 <div className="flex justify-between text-amber-400 text-xs">
                   <span>Minimum monthly charge applied</span>

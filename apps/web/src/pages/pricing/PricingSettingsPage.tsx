@@ -44,7 +44,7 @@ const DEFAULT_FLOOR_TYPES = ['vct', 'carpet', 'hardwood', 'tile', 'concrete', 'e
 const DEFAULT_FREQUENCIES = ['1x_week', '2x_week', '3x_week', '4x_week', '5x_week', 'daily', 'monthly'];
 const DEFAULT_CONDITIONS = ['standard', 'medium', 'hard'];
 const DEFAULT_TRAFFIC_LEVELS = ['low', 'medium', 'high'];
-const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'education', 'warehouse'];
+const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'educational', 'warehouse', 'residential', 'mixed', 'other'];
 const DEFAULT_TASK_COMPLEXITIES = ['standard', 'sanitization', 'floor_care', 'window_cleaning'];
 
 const FLOOR_TYPE_LABELS: Record<string, string> = {
@@ -82,8 +82,11 @@ const BUILDING_TYPE_LABELS: Record<string, string> = {
   medical: 'Medical/Healthcare',
   industrial: 'Industrial',
   retail: 'Retail',
-  education: 'Education',
+  educational: 'Education',
   warehouse: 'Warehouse',
+  residential: 'Residential',
+  mixed: 'Mixed Use',
+  other: 'Other',
 };
 
 const TASK_COMPLEXITY_LABELS: Record<string, string> = {
@@ -120,7 +123,10 @@ const PricingSettingsPage = () => {
     // Labor Cost Settings (defaults)
     laborCostPerHour: 18,
     laborBurdenPercentage: 0.25,
-    sqftPerLaborHour: 2500,
+    sqftPerLaborHour: {
+      office: 2500, medical: 1500, industrial: 2200, retail: 2400,
+      educational: 2000, warehouse: 3500, residential: 2200, mixed: 2200, other: 2500,
+    },
     // Overhead Cost Settings (defaults)
     insurancePercentage: 0.08,
     adminOverheadPercentage: 0.12,
@@ -171,7 +177,10 @@ const PricingSettingsPage = () => {
         // Labor Cost Settings
         laborCostPerHour: Number(data.laborCostPerHour || 18),
         laborBurdenPercentage: Number(data.laborBurdenPercentage || 0.25),
-        sqftPerLaborHour: Number(data.sqftPerLaborHour || 2500),
+        sqftPerLaborHour: data.sqftPerLaborHour || {
+          office: 2500, medical: 1500, industrial: 2200, retail: 2400,
+          educational: 2000, warehouse: 3500, residential: 2200, mixed: 2200, other: 2500,
+        },
         // Overhead Cost Settings
         insurancePercentage: Number(data.insurancePercentage || 0.08),
         adminOverheadPercentage: Number(data.adminOverheadPercentage || 0.12),
@@ -189,7 +198,6 @@ const PricingSettingsPage = () => {
         frequencyMultipliers: data.frequencyMultipliers,
         conditionMultipliers: data.conditionMultipliers,
         trafficMultipliers: data.trafficMultipliers,
-        buildingTypeMultipliers: data.buildingTypeMultipliers,
         taskComplexityAddOns: data.taskComplexityAddOns,
         isActive: data.isActive,
         isDefault: data.isDefault,
@@ -239,7 +247,10 @@ const PricingSettingsPage = () => {
         hourlyRate: 35,
         laborCostPerHour: 18,
         laborBurdenPercentage: 0.25,
-        sqftPerLaborHour: 2500,
+        sqftPerLaborHour: {
+          office: 2500, medical: 1500, industrial: 2200, retail: 2400,
+          educational: 2000, warehouse: 3500, residential: 2200, mixed: 2200, other: 2500,
+        },
         insurancePercentage: 0.08,
         adminOverheadPercentage: 0.12,
         travelCostPerVisit: 15,
@@ -297,14 +308,14 @@ const PricingSettingsPage = () => {
 
 
   const updateMultiplier = (
-    category: 'floorTypeMultipliers' | 'frequencyMultipliers' | 'conditionMultipliers' | 'trafficMultipliers' | 'buildingTypeMultipliers' | 'taskComplexityAddOns',
+    category: 'floorTypeMultipliers' | 'frequencyMultipliers' | 'conditionMultipliers' | 'trafficMultipliers' | 'sqftPerLaborHour' | 'taskComplexityAddOns',
     key: string,
     value: number
   ) => {
     setFormData((prev) => ({
       ...prev,
       [category]: {
-        ...(prev[category] || {}),
+        ...((prev as any)[category] || {}),
         [key]: value,
       },
     }));
@@ -646,7 +657,7 @@ const PricingSettingsPage = () => {
               <p className="mb-4 text-sm text-gray-400">
                 Configure labor rates, burden (taxes/benefits), and productivity rates.
               </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {isEditing ? (
                   <>
                     <Input
@@ -670,16 +681,6 @@ const PricingSettingsPage = () => {
                         setFormData({ ...formData, laborBurdenPercentage: Number(e.target.value) })
                       }
                     />
-                    <Input
-                      label="Sq Ft per Labor Hour"
-                      type="number"
-                      step="100"
-                      min={100}
-                      value={formData.sqftPerLaborHour ?? 2500}
-                      onChange={(e) =>
-                        setFormData({ ...formData, sqftPerLaborHour: Number(e.target.value) })
-                      }
-                    />
                   </>
                 ) : (
                   <>
@@ -695,14 +696,42 @@ const PricingSettingsPage = () => {
                         {formatPercent(selectedSettings.laborBurdenPercentage || 0.25)}
                       </p>
                     </div>
-                    <div className="rounded-lg bg-navy-darker/50 p-3">
-                      <span className="text-sm text-gray-400">Sq Ft per Labor Hour</span>
-                      <p className="text-xl font-semibold text-white">
-                        {formatNumber(selectedSettings.sqftPerLaborHour || 2500)}
-                      </p>
-                    </div>
                   </>
                 )}
+              </div>
+
+              {/* Per-Building-Type Productivity Rates */}
+              <h4 className="mt-6 mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                Sq Ft per Labor Hour (by Building Type)
+              </h4>
+              <p className="mb-4 text-sm text-gray-400">
+                Productivity rate: how many square feet a cleaner can clean per hour for each building type. Lower values = more time needed = higher cost.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {DEFAULT_BUILDING_TYPES.map((key) => (
+                  <div key={key}>
+                    {isEditing ? (
+                      <Input
+                        label={BUILDING_TYPE_LABELS[key] || key}
+                        type="number"
+                        step="100"
+                        min={100}
+                        max={10000}
+                        value={formData.sqftPerLaborHour?.[key] ?? 2500}
+                        onChange={(e) =>
+                          updateMultiplier('sqftPerLaborHour', key, Number(e.target.value))
+                        }
+                      />
+                    ) : (
+                      <div className="rounded-lg bg-navy-darker/50 p-3">
+                        <span className="text-sm text-gray-400">{BUILDING_TYPE_LABELS[key] || key}</span>
+                        <p className="text-lg font-semibold text-white">
+                          {formatNumber(selectedSettings.sqftPerLaborHour?.[key] ?? 2500)} sqft/hr
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </Card>
 
@@ -1041,39 +1070,6 @@ const PricingSettingsPage = () => {
                         <span className="text-sm text-gray-400">{TRAFFIC_LABELS[key] || key}</span>
                         <p className="text-lg font-semibold text-white">
                           {(selectedSettings.trafficMultipliers?.[key] ?? 1.0).toFixed(2)}x
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Building Type Multipliers */}
-            <Card>
-              <h3 className="mb-4 text-lg font-semibold text-white">Building Type Multipliers</h3>
-              <p className="mb-4 text-sm text-gray-400">
-                Adjust pricing based on building type. Medical/specialized facilities = higher price.
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {DEFAULT_BUILDING_TYPES.map((key) => (
-                  <div key={key}>
-                    {isEditing ? (
-                      <Input
-                        label={BUILDING_TYPE_LABELS[key] || key}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={formData.buildingTypeMultipliers?.[key] ?? 1.0}
-                        onChange={(e) =>
-                          updateMultiplier('buildingTypeMultipliers', key, Number(e.target.value))
-                        }
-                      />
-                    ) : (
-                      <div className="rounded-lg bg-navy-darker/50 p-3">
-                        <span className="text-sm text-gray-400">{BUILDING_TYPE_LABELS[key] || key}</span>
-                        <p className="text-lg font-semibold text-white">
-                          {(selectedSettings.buildingTypeMultipliers?.[key] ?? 1.0).toFixed(2)}x
                         </p>
                       </div>
                     )}
