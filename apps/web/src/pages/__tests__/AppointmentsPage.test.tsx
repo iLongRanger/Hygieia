@@ -179,9 +179,10 @@ describe('AppointmentsPage', () => {
 
       render(<AppointmentsPage />);
 
-      // Calendar button should be active
-      const calendarButton = screen.getByRole('button', { name: /calendar/i });
-      expect(calendarButton).toHaveClass('bg-primary-600');
+      await waitFor(() => {
+        const calendarButton = screen.getByRole('button', { name: /calendar/i });
+        expect(calendarButton).toHaveClass('bg-primary-600');
+      });
     });
   });
 
@@ -316,8 +317,10 @@ describe('AppointmentsPage', () => {
 
       render(<AppointmentsPage />);
 
-      const dayButton = screen.getByRole('button', { name: /^day$/i });
-      expect(dayButton).toHaveClass('bg-primary-600');
+      await waitFor(() => {
+        const dayButton = screen.getByRole('button', { name: /^day$/i });
+        expect(dayButton).toHaveClass('bg-primary-600');
+      });
     });
 
     it('shows appointment type legend', async () => {
