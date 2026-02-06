@@ -105,8 +105,8 @@ describe('UserDetail', () => {
   it('renders user detail', async () => {
     render(<UserDetail />);
 
-    expect(await screen.findByText('Jane Cleaner')).toBeInTheDocument();
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Jane Cleaner' })).toBeInTheDocument();
+    expect((await screen.findAllByText('jane@example.com')).length).toBeGreaterThan(0);
     expect(screen.getByText('Assigned Roles')).toBeInTheDocument();
   });
 
