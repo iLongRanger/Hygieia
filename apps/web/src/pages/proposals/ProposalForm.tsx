@@ -15,6 +15,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Settings,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +24,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/Badge';
 import {
   getProposal,
   createProposal,
@@ -161,6 +164,21 @@ const ProposalForm = () => {
     taxAmount: 0,
     totalAmount: 0,
   });
+
+  // Service expand/collapse state
+  const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set());
+
+  const toggleServiceExpand = (index: number) => {
+    setExpandedServices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
 
   // Facility pricing states
   const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
@@ -461,11 +479,14 @@ const ProposalForm = () => {
 
   // --- Proposal Services Management ---
   const addService = () => {
-    const newService = createEmptyService((formData.proposalServices || []).length);
+    const newIndex = (formData.proposalServices || []).length;
+    const newService = createEmptyService(newIndex);
     setFormData((prev) => ({
       ...prev,
       proposalServices: [...(prev.proposalServices || []), newService],
     }));
+    // Auto-expand the newly added service
+    setExpandedServices((prev) => new Set(prev).add(newIndex));
   };
 
   const updateService = (index: number, field: keyof ProposalService, value: any) => {
@@ -481,6 +502,15 @@ const ProposalForm = () => {
       ...prev,
       proposalServices: (prev.proposalServices || []).filter((_, i) => i !== index),
     }));
+    // Adjust expanded indices after removal
+    setExpandedServices((prev) => {
+      const next = new Set<number>();
+      for (const i of prev) {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      }
+      return next;
+    });
   };
 
   // Handle form submission
@@ -853,97 +883,121 @@ const ProposalForm = () => {
                 <p className="text-sm mt-1">Click "Add Service" to add recurring services to this proposal.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {(formData.proposalServices || []).map((service, index) => (
-                  <div
-                    key={index}
-                    className="bg-navy-dark/30 p-4 rounded-xl border border-white/5 space-y-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <Input
-                          label="Service Name"
-                          placeholder="e.g., Daily Cleaning"
-                          value={service.serviceName}
-                          onChange={(e) => updateService(index, 'serviceName', e.target.value)}
-                        />
-                        <Select
-                          label="Service Type"
-                          value={service.serviceType}
-                          onChange={(value) => updateService(index, 'serviceType', value)}
-                          options={SERVICE_TYPES}
-                        />
-                        <Select
-                          label="Frequency"
-                          value={service.frequency}
-                          onChange={(value) => updateService(index, 'frequency', value)}
-                          options={SERVICE_FREQUENCIES}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeService(index)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 ml-2"
+              <div className="space-y-2">
+                {(formData.proposalServices || []).map((service, index) => {
+                  const isExpanded = expandedServices.has(index);
+                  const typeLabel = SERVICE_TYPES.find((t) => t.value === service.serviceType)?.label;
+                  const freqLabel = SERVICE_FREQUENCIES.find((f) => f.value === service.frequency)?.label;
+
+                  return (
+                    <div
+                      key={index}
+                      className="bg-navy-dark/30 rounded-xl border border-white/5 overflow-hidden"
+                    >
+                      {/* Summary Row */}
+                      <div
+                        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors"
+                        onClick={() => toggleServiceExpand(index)}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <Input
-                        label="Est. Hours"
-                        type="number"
-                        placeholder="Hours"
-                        min="0"
-                        step="0.5"
-                        value={service.estimatedHours || ''}
-                        onChange={(e) =>
-                          updateService(index, 'estimatedHours', e.target.value ? parseFloat(e.target.value) : null)
-                        }
-                      />
-                      <Input
-                        label="Hourly Rate"
-                        type="number"
-                        placeholder="$/hr"
-                        min="0"
-                        step="0.01"
-                        value={service.hourlyRate || ''}
-                        onChange={(e) =>
-                          updateService(index, 'hourlyRate', e.target.value ? parseFloat(e.target.value) : null)
-                        }
-                      />
-                      <Input
-                        label="Monthly Price *"
-                        type="number"
-                        placeholder="Monthly price"
-                        min="0"
-                        step="0.01"
-                        value={service.monthlyPrice}
-                        onChange={(e) =>
-                          updateService(index, 'monthlyPrice', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                      <div className="flex items-end">
-                        <div className="text-right w-full pb-2">
-                          <span className="text-gray-400 text-xs block">Monthly</span>
-                          <span className="text-white font-semibold text-lg">
-                            {formatCurrency(service.monthlyPrice)}
-                          </span>
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                        )}
+                        <span className={`font-medium truncate ${service.serviceName ? 'text-white' : 'text-gray-500 italic'}`}>
+                          {service.serviceName || 'Untitled Service'}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {freqLabel && <Badge size="sm" variant="default">{freqLabel}</Badge>}
+                          {typeLabel && <Badge size="sm" variant="info">{typeLabel}</Badge>}
                         </div>
+                        <span className="ml-auto text-white font-semibold tabular-nums shrink-0">
+                          {formatCurrency(service.monthlyPrice)}/mo
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeService(index);
+                          }}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10 shrink-0 ml-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                    </div>
 
-                    <Textarea
-                      label="Service Description"
-                      placeholder="Describe the service..."
-                      value={service.description || ''}
-                      onChange={(e) => updateService(index, 'description', e.target.value || null)}
-                      rows={2}
-                    />
-                  </div>
-                ))}
+                      {/* Expanded Detail Panel */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <Input
+                              label="Service Name"
+                              placeholder="e.g., Daily Cleaning"
+                              value={service.serviceName}
+                              onChange={(e) => updateService(index, 'serviceName', e.target.value)}
+                            />
+                            <Select
+                              label="Service Type"
+                              value={service.serviceType}
+                              onChange={(value) => updateService(index, 'serviceType', value)}
+                              options={SERVICE_TYPES}
+                            />
+                            <Select
+                              label="Frequency"
+                              value={service.frequency}
+                              onChange={(value) => updateService(index, 'frequency', value)}
+                              options={SERVICE_FREQUENCIES}
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <Input
+                              label="Est. Hours"
+                              type="number"
+                              placeholder="Hours"
+                              min="0"
+                              step="0.5"
+                              value={service.estimatedHours || ''}
+                              onChange={(e) =>
+                                updateService(index, 'estimatedHours', e.target.value ? parseFloat(e.target.value) : null)
+                              }
+                            />
+                            <Input
+                              label="Hourly Rate"
+                              type="number"
+                              placeholder="$/hr"
+                              min="0"
+                              step="0.01"
+                              value={service.hourlyRate || ''}
+                              onChange={(e) =>
+                                updateService(index, 'hourlyRate', e.target.value ? parseFloat(e.target.value) : null)
+                              }
+                            />
+                            <Input
+                              label="Monthly Price *"
+                              type="number"
+                              placeholder="Monthly price"
+                              min="0"
+                              step="0.01"
+                              value={service.monthlyPrice}
+                              onChange={(e) =>
+                                updateService(index, 'monthlyPrice', parseFloat(e.target.value) || 0)
+                              }
+                            />
+                          </div>
+                          <Textarea
+                            label="Service Description"
+                            placeholder="Describe the service..."
+                            value={service.description || ''}
+                            onChange={(e) => updateService(index, 'description', e.target.value || null)}
+                            rows={2}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Services Subtotal */}
                 <div className="flex justify-end pt-2 border-t border-white/10">
