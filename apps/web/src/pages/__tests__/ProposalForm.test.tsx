@@ -283,6 +283,7 @@ describe('ProposalForm', () => {
       'facility-1',
       '5x_week',
       'pricing-1',
+      undefined,
       undefined
     );
   });
