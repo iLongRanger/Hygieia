@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -17,6 +17,8 @@ export const Modal = ({
   children,
   size = 'md',
 }: ModalProps) => {
+  const titleId = useId();
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -57,10 +59,13 @@ export const Modal = ({
           'dark:border-surface-700 dark:bg-surface-800',
           sizes[size]
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-surface-200 px-6 py-4 dark:border-surface-700">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+          <h2 id={titleId} className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             {title}
           </h2>
           <button

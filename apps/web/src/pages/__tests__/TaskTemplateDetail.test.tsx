@@ -128,9 +128,7 @@ describe('TaskTemplateDetail', () => {
     render(<TaskTemplateDetail />);
 
     await user.click(await screen.findByRole('button', { name: /edit template/i }));
-    const modalTitle = await screen.findByText(/edit task template/i);
-    const modal = modalTitle.parentElement?.parentElement as HTMLElement;
-    expect(modal).toBeTruthy();
+    const modal = await screen.findByRole('dialog', { name: /edit task template/i });
     const nameInput = within(modal).getByLabelText(/task template name/i);
     await user.clear(nameInput);
     await user.type(nameInput, 'Vacuum & Mop');

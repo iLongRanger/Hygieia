@@ -201,7 +201,6 @@ describe('AreaTemplatesPage', () => {
 
     await screen.findByRole('heading', { name: 'Area Templates' });
     await user.click(screen.getByRole('button', { name: /new template/i }));
-
     await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
     await user.type(screen.getByLabelText(/template name \(optional\)/i), 'New Template');
     await user.click(screen.getByRole('button', { name: /save template/i }));

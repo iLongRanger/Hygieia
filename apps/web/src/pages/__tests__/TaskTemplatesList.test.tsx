@@ -115,9 +115,7 @@ describe('TaskTemplatesList', () => {
     render(<TaskTemplatesList />);
 
     await user.click(screen.getByRole('button', { name: /create template/i }));
-    const modalTitle = await screen.findByText(/create task template/i);
-    const modal = modalTitle.parentElement?.parentElement as HTMLElement;
-    expect(modal).toBeTruthy();
+    const modal = await screen.findByRole('dialog', { name: /create task template/i });
     await user.type(within(modal).getByLabelText(/template name/i), 'Wipe Desks');
     await user.click(within(modal).getByRole('button', { name: /^create template$/i }));
 
