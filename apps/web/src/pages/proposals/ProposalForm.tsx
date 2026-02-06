@@ -14,7 +14,6 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  Lock,
   Settings,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -23,7 +22,6 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
 import {
   getProposal,
   createProposal,
@@ -53,6 +51,7 @@ import type {
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
+import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -87,10 +86,6 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'USD',
   }).format(amount);
-};
-
-const formatPercent = (value: number, decimals: number = 1) => {
-  return `${(value * 100).toFixed(decimals)}%`;
 };
 
 // Empty item template
@@ -394,6 +389,7 @@ const ProposalForm = () => {
         title: prev.title || `Cleaning Services - ${template.facility.name}`,
       }));
 
+      // Store the full pricing breakdown for internal view
       setPricingBreakdown(template.pricing);
       toast.success(`Auto-populated ${newServices.length} service(s) from facility pricing`);
     } catch (error: any) {
@@ -412,6 +408,11 @@ const ProposalForm = () => {
       // Clear facility when account changes
       if (field === 'accountId') {
         updated.facilityId = null;
+        setPricingBreakdown(null);
+      }
+      // Clear breakdown when facility changes
+      if (field === 'facilityId') {
+        setPricingBreakdown(null);
       }
       return updated;
     });
@@ -691,136 +692,8 @@ const ProposalForm = () => {
 
                   {/* Internal pricing breakdown (shown after calculation) */}
                   {pricingBreakdown && (
-                    <div className="mt-4 bg-surface-800 rounded-xl border border-surface-700 overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700 bg-surface-700/30">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-amber-400" />
-                          <span className="font-medium text-white text-sm">
-                            Internal Pricing Breakdown
-                          </span>
-                        </div>
-                        <Badge variant="warning" size="sm" className="flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          Internal Only
-                        </Badge>
-                      </div>
-
-                      <div className="px-4 py-3 text-xs text-gray-400 border-b border-surface-700">
-                        {pricingBreakdown.facilityName} •{' '}
-                        {(PRICING_FREQUENCIES.find((f) => f.value === selectedFrequency)?.label ??
-                          selectedFrequency)}
-                        {' • '}
-                        {pricingBreakdown.totalSquareFeet.toLocaleString()} sq ft
-                      </div>
-
-                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Monthly total:</span>
-                            <span className="text-emerald font-semibold">
-                              {formatCurrency(pricingBreakdown.monthlyTotal)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Subtotal (before task complexity):</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.subtotal)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Task complexity add-on:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.taskComplexityAmount)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Building adjustment:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.buildingAdjustment)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Profit:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.profitAmount)}{' '}
-                              <span className="text-gray-500">
-                                ({formatPercent(pricingBreakdown.profitMarginApplied)})
-                              </span>
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Monthly cost (before profit):</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.monthlyCostBeforeProfit)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Monthly visits:</span>
-                            <span className="text-white">
-                              {pricingBreakdown.monthlyVisits.toFixed(2)}
-                            </span>
-                          </div>
-                          {pricingBreakdown.minimumApplied && (
-                            <div className="flex items-center gap-2 text-amber-400 text-xs pt-1">
-                              <AlertCircle className="w-4 h-4" />
-                              Minimum monthly charge applied
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-xs uppercase tracking-wide text-gray-500">
-                            Cost Per Visit
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Labor:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalLaborCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Insurance:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalInsuranceCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Admin overhead:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalAdminOverheadCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Equipment:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalEquipmentCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Supplies:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalSupplyCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Travel:</span>
-                            <span className="text-white">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalTravelCost)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between border-t border-surface-700 pt-2 mt-2">
-                            <span className="text-gray-400">Total cost per visit:</span>
-                            <span className="text-white font-medium">
-                              {formatCurrency(pricingBreakdown.costBreakdown.totalCostPerVisit)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="px-4 py-3 border-t border-surface-700 text-xs text-gray-500">
-                        Internal pricing details are for staff use and are not included in
-                        client-facing proposals.
-                      </div>
+                    <div className="mt-4">
+                      <PricingBreakdownPanel pricing={pricingBreakdown} />
                     </div>
                   )}
                 </div>
