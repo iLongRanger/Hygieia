@@ -256,6 +256,11 @@ export async function calculatePerHourPricing(
     monthlyTotal = minimumMonthlyCharge;
   }
 
+  // Calculate subcontractor split
+  const subcontractorPercentage = Number(pricingSettings.subcontractorPercentage ?? 0.60);
+  const subcontractorPayout = roundToTwo(monthlyTotal * subcontractorPercentage);
+  const companyRevenue = roundToTwo(monthlyTotal - subcontractorPayout);
+
   return {
     facilityId: facility.id,
     facilityName: facility.name,
@@ -284,6 +289,9 @@ export async function calculatePerHourPricing(
     subtotal: roundToTwo(perVisitTotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
+    subcontractorPercentage,
+    subcontractorPayout,
+    companyRevenue,
     pricingPlanId: pricingSettings.id,
     pricingPlanName: pricingSettings.name,
   };

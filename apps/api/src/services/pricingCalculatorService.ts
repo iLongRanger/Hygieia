@@ -87,6 +87,11 @@ export interface FacilityPricingResult {
   monthlyTotal: number;
   minimumApplied: boolean;
 
+  // Subcontractor split
+  subcontractorPercentage: number;
+  subcontractorPayout: number;
+  companyRevenue: number;
+
   // Pricing source
   pricingPlanId: string;
   pricingPlanName: string;
@@ -142,6 +147,7 @@ export async function calculateFacilityPricing(
   const supplyCostPct = Number(pricingSettings.supplyCostPercentage);
   const supplyCostPerSqFt = pricingSettings.supplyCostPerSqFt ? Number(pricingSettings.supplyCostPerSqFt) : null;
   const targetProfitMargin = Number(pricingSettings.targetProfitMargin);
+  const subcontractorPercentage = Number(pricingSettings.subcontractorPercentage ?? 0.60);
   const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
   // Extract multipliers
@@ -285,6 +291,10 @@ export async function calculateFacilityPricing(
     monthlyTotal = minimumMonthlyCharge;
   }
 
+  // Calculate subcontractor split
+  const subcontractorPayout = roundToTwo(monthlyTotal * subcontractorPercentage);
+  const companyRevenue = roundToTwo(monthlyTotal - subcontractorPayout);
+
   return {
     facilityId: facility.id,
     facilityName: facility.name,
@@ -313,6 +323,9 @@ export async function calculateFacilityPricing(
     subtotal: roundToTwo(subtotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
+    subcontractorPercentage,
+    subcontractorPayout,
+    companyRevenue,
     pricingPlanId: pricingSettings.id,
     pricingPlanName: pricingSettings.name,
   };

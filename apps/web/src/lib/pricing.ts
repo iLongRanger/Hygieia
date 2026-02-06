@@ -31,6 +31,9 @@ export interface PricingSettings {
   // Profit Settings
   targetProfitMargin: string;
 
+  // Subcontractor Settings
+  subcontractorPercentage: string;
+
   floorTypeMultipliers: Record<string, number>;
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;
@@ -60,6 +63,7 @@ export interface CreatePricingSettingsInput {
   supplyCostPercentage?: number;
   supplyCostPerSqFt?: number | null;
   targetProfitMargin?: number;
+  subcontractorPercentage?: number;
   floorTypeMultipliers?: Record<string, number>;
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
@@ -86,6 +90,7 @@ export interface UpdatePricingSettingsInput {
   supplyCostPercentage?: number;
   supplyCostPerSqFt?: number | null;
   targetProfitMargin?: number;
+  subcontractorPercentage?: number;
   floorTypeMultipliers?: Record<string, number>;
   frequencyMultipliers?: Record<string, number>;
   conditionMultipliers?: Record<string, number>;
@@ -266,6 +271,11 @@ export interface FacilityPricingResult {
   subtotal: number;
   monthlyTotal: number;
   minimumApplied: boolean;
+
+  // Subcontractor split
+  subcontractorPercentage: number;
+  subcontractorPayout: number;
+  companyRevenue: number;
 
   // Pricing source
   pricingPlanId: string;

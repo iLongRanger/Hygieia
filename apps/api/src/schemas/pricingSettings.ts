@@ -128,6 +128,9 @@ export const createPricingSettingsSchema = z.object({
   // Profit Settings
   targetProfitMargin: z.coerce.number().min(0).max(1).default(0.25), // Target profit margin
 
+  // Subcontractor Settings
+  subcontractorPercentage: z.coerce.number().min(0).max(1).default(0.60), // Sub gets 60% of monthly total
+
   floorTypeMultipliers: floorTypeMultipliersSchema.optional(),
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
   conditionMultipliers: conditionMultipliersSchema.optional(),
@@ -163,6 +166,9 @@ export const updatePricingSettingsSchema = z.object({
 
   // Profit Settings
   targetProfitMargin: z.coerce.number().min(0).max(1).optional(),
+
+  // Subcontractor Settings
+  subcontractorPercentage: z.coerce.number().min(0).max(1).optional(),
 
   floorTypeMultipliers: floorTypeMultipliersSchema.optional(),
   frequencyMultipliers: frequencyMultipliersSchema.optional(),
