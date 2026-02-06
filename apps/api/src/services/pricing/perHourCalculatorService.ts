@@ -15,6 +15,7 @@ export interface CalculatePerHourPricingOptions {
   taskComplexity?: string;
   pricingPlanId?: string;
   workerCount?: number;
+  subcontractorPercentageOverride?: number;
 }
 
 export interface PerHourAreaContext {
@@ -253,7 +254,7 @@ export async function calculatePerHourPricing(
   }
 
   // Calculate subcontractor split
-  const subcontractorPercentage = Number(pricingSettings.subcontractorPercentage ?? 0.60);
+  const subcontractorPercentage = options.subcontractorPercentageOverride ?? Number(pricingSettings.subcontractorPercentage ?? 0.60);
   const subcontractorPayout = roundToTwo(monthlyTotal * subcontractorPercentage);
   const companyRevenue = roundToTwo(monthlyTotal - subcontractorPayout);
 

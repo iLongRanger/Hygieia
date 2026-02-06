@@ -336,10 +336,11 @@ export async function getFacilityProposalTemplate(
   facilityId: string,
   frequency: string = '5x_week',
   pricingPlanId?: string,
-  workerCount?: number
+  workerCount?: number,
+  subcontractorTier?: string
 ): Promise<FacilityProposalTemplate> {
   const response = await api.get(`/facilities/${facilityId}/proposal-template`, {
-    params: { frequency, pricingPlanId, workerCount },
+    params: { frequency, pricingPlanId, workerCount, subcontractorTier },
   });
   return response.data.data;
 }

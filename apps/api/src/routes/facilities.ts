@@ -32,6 +32,13 @@ import { ZodError } from 'zod';
 
 const router: Router = Router();
 
+const SUBCONTRACTOR_TIER_MAP: Record<string, number> = {
+  labor_only: 0.40,
+  standard: 0.50,
+  premium: 0.60,
+  independent: 0.70,
+};
+
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
   return new ValidationError(firstError.message, {
@@ -261,6 +268,10 @@ router.get(
       const frequency = (req.query.frequency as string) || '5x_week';
       const pricingPlanId = (req.query.pricingPlanId as string) || undefined;
       const workerCount = req.query.workerCount ? Number(req.query.workerCount) : undefined;
+      const subcontractorTier = (req.query.subcontractorTier as string) || undefined;
+      const subcontractorPercentageOverride = subcontractorTier
+        ? SUBCONTRACTOR_TIER_MAP[subcontractorTier]
+        : undefined;
 
       // Check if facility is ready
       const readiness = await isFacilityReadyForPricing(req.params.id);
@@ -274,6 +285,7 @@ router.get(
           facilityId: req.params.id,
           serviceFrequency: frequency,
           workerCount,
+          subcontractorPercentageOverride,
         },
         { pricingPlanId, accountId: existing.accountId }
       );
@@ -284,6 +296,7 @@ router.get(
           facilityId: req.params.id,
           serviceFrequency: frequency,
           workerCount,
+          subcontractorPercentageOverride,
         },
         { pricingPlanId, accountId: existing.accountId }
       );

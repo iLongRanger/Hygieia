@@ -80,6 +80,14 @@ const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
   { value: 'annually', label: 'Annually' },
 ];
 
+const SUBCONTRACTOR_TIERS = [
+  { value: '', label: 'Plan Default' },
+  { value: 'labor_only', label: 'Labor Only (Sub 40%)' },
+  { value: 'standard', label: 'Standard (Sub 50%)' },
+  { value: 'premium', label: 'Premium (Sub 60%)' },
+  { value: 'independent', label: 'Independent (Sub 70%)' },
+];
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -164,6 +172,7 @@ const ProposalForm = () => {
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
   const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
   const [workerCount, setWorkerCount] = useState<number>(1);
+  const [selectedSubcontractorTier, setSelectedSubcontractorTier] = useState<string>('');
 
   // Frequency options for auto-population
   const PRICING_FREQUENCIES = [
@@ -335,7 +344,7 @@ const ProposalForm = () => {
   // Clear breakdown when inputs change (ensures breakdown reflects latest calculation)
   useEffect(() => {
     setPricingBreakdown(null);
-  }, [formData.facilityId, selectedFrequency, selectedPricingPlanId, workerCount]);
+  }, [formData.facilityId, selectedFrequency, selectedPricingPlanId, workerCount, selectedSubcontractorTier]);
 
   // Auto-populate services from facility pricing
   const handleAutoPopulateFromFacility = async () => {
@@ -354,7 +363,8 @@ const ProposalForm = () => {
         formData.facilityId,
         selectedFrequency,
         selectedPricingPlanId || undefined,
-        isHourlyPlan ? workerCount : undefined
+        isHourlyPlan ? workerCount : undefined,
+        selectedSubcontractorTier || undefined
       );
 
       // Convert suggested services to proposal services
@@ -654,12 +664,18 @@ const ProposalForm = () => {
                     </div>
 
                     {pricingReadiness?.isReady ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <Select
                           placeholder="Service Frequency"
                           value={selectedFrequency}
                           onChange={(value) => setSelectedFrequency(value)}
                           options={PRICING_FREQUENCIES}
+                        />
+                        <Select
+                          placeholder="Subcontractor Tier"
+                          value={selectedSubcontractorTier}
+                          onChange={(value) => setSelectedSubcontractorTier(value)}
+                          options={SUBCONTRACTOR_TIERS}
                         />
                         <Button
                           type="button"

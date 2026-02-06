@@ -25,7 +25,7 @@ export class PerHourV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard', workerCount = 1, pricingPlanId } = context;
+    const { facilityId, serviceFrequency, taskComplexity = 'standard', workerCount = 1, pricingPlanId, subcontractorPercentageOverride } = context;
 
     const pricingResult = await calculatePerHourPricing({
       facilityId,
@@ -33,6 +33,7 @@ export class PerHourV1Strategy implements PricingStrategy {
       taskComplexity,
       pricingPlanId,
       workerCount,
+      subcontractorPercentageOverride,
     });
 
     const pricingSettings = pricingPlanId

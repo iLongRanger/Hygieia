@@ -98,6 +98,7 @@ export interface CalculatePricingOptions {
   serviceFrequency: string; // e.g., '5x_week', '3x_week', 'weekly', etc.
   taskComplexity?: string; // e.g., 'standard', 'sanitization', 'biohazard'
   pricingPlanId?: string; // Optional: use a specific pricing plan instead of default
+  subcontractorPercentageOverride?: number; // Override plan's subcontractor percentage
 }
 
 /**
@@ -143,7 +144,7 @@ export async function calculateFacilityPricing(
   const supplyCostPct = Number(pricingSettings.supplyCostPercentage);
   const supplyCostPerSqFt = pricingSettings.supplyCostPerSqFt ? Number(pricingSettings.supplyCostPerSqFt) : null;
   const targetProfitMargin = Number(pricingSettings.targetProfitMargin);
-  const subcontractorPercentage = Number(pricingSettings.subcontractorPercentage ?? 0.60);
+  const subcontractorPercentage = options.subcontractorPercentageOverride ?? Number(pricingSettings.subcontractorPercentage ?? 0.60);
   const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
   // Extract multipliers
