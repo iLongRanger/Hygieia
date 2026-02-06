@@ -81,11 +81,11 @@ const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
 ];
 
 const SUBCONTRACTOR_TIERS = [
-  { value: '', label: 'Plan Default' },
-  { value: 'labor_only', label: 'Labor Only (Sub 40%)' },
-  { value: 'standard', label: 'Standard (Sub 50%)' },
-  { value: 'premium', label: 'Premium (Sub 60%)' },
-  { value: 'independent', label: 'Independent (Sub 70%)' },
+  { value: '', label: 'Plan Default', description: 'Uses the percentage configured in the pricing plan' },
+  { value: 'labor_only', label: 'Labor Only (Sub 40%)', description: 'Sub provides labor only; company supplies all equipment, chemicals, and consumables' },
+  { value: 'standard', label: 'Standard (Sub 50%)', description: 'Sub uses company-provided supplies and equipment' },
+  { value: 'premium', label: 'Premium (Sub 60%)', description: 'Sub provides some of their own supplies and small equipment' },
+  { value: 'independent', label: 'Independent (Sub 70%)', description: 'Sub provides own equipment, supplies, and vehicles' },
 ];
 
 // Helper to format currency
@@ -671,12 +671,17 @@ const ProposalForm = () => {
                           onChange={(value) => setSelectedFrequency(value)}
                           options={PRICING_FREQUENCIES}
                         />
-                        <Select
-                          placeholder="Subcontractor Tier"
-                          value={selectedSubcontractorTier}
-                          onChange={(value) => setSelectedSubcontractorTier(value)}
-                          options={SUBCONTRACTOR_TIERS}
-                        />
+                        <div className="flex flex-col">
+                          <Select
+                            placeholder="Subcontractor Tier"
+                            value={selectedSubcontractorTier}
+                            onChange={(value) => setSelectedSubcontractorTier(value)}
+                            options={SUBCONTRACTOR_TIERS}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            {SUBCONTRACTOR_TIERS.find((t) => t.value === selectedSubcontractorTier)?.description}
+                          </p>
+                        </div>
                         <Button
                           type="button"
                           variant="secondary"
