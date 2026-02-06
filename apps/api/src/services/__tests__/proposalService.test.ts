@@ -1,5 +1,6 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import * as proposalService from '../proposalService';
+import * as pricingService from '../pricing';
 import { prisma } from '../../lib/prisma';
 
 jest.mock('../../lib/prisma', () => ({
@@ -12,6 +13,10 @@ jest.mock('../../lib/prisma', () => ({
       update: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
+    },
+    pricingSettings: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
     },
     account: {
       findUnique: jest.fn(),
@@ -66,6 +71,15 @@ const createTestProposal = (overrides = {}) => ({
 describe('proposalService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(pricingService, 'resolvePricingPlan').mockResolvedValue({
+      id: 'pricing-plan-1',
+      name: 'Standard',
+      pricingType: 'square_foot',
+    } as any);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('listProposals', () => {

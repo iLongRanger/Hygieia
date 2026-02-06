@@ -4,9 +4,14 @@ import Dashboard from '../Dashboard';
 import { useAuthStore } from '../../stores/authStore';
 
 const listAppointmentsMock = vi.fn();
+const getDashboardStatsMock = vi.fn();
 
 vi.mock('../../lib/appointments', () => ({
   listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
+}));
+
+vi.mock('../../lib/dashboard', () => ({
+  getDashboardStats: (...args: unknown[]) => getDashboardStatsMock(...args),
 }));
 
 describe('Dashboard', () => {
@@ -17,9 +22,16 @@ describe('Dashboard', () => {
       isAuthenticated: true,
     });
     listAppointmentsMock.mockReset();
+    getDashboardStatsMock.mockReset();
   });
 
   it('shows upcoming appointments from the API', async () => {
+    getDashboardStatsMock.mockResolvedValue({
+      totalLeads: 5,
+      activeAccounts: 2,
+      totalContacts: 3,
+      activeUsers: 1,
+    });
     listAppointmentsMock.mockResolvedValue([
       {
         id: 'appt-1',

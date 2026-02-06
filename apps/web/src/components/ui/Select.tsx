@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -34,10 +34,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     },
     ref
   ) => {
+    const selectId = props.id ?? useId();
+
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">
+          <label
+            htmlFor={selectId}
+            className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300"
+          >
             {label}
             {props.required && <span className="ml-1 text-error-500">*</span>}
           </label>
@@ -45,6 +50,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         <div className="relative">
           <select
             ref={ref}
+            id={selectId}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             className={cn(
