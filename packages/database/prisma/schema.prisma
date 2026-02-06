@@ -491,6 +491,9 @@ model PricingSettings {
   // Profit Settings
   targetProfitMargin Decimal @default(0.25) @map("target_profit_margin") @db.Decimal(5, 4) // Target profit margin (25%)
 
+  // Subcontractor Settings
+  subcontractorPercentage Decimal @default(0.60) @map("subcontractor_percentage") @db.Decimal(5, 4) // Sub gets 60% of monthly total
+
   // Multipliers stored as JSON
   floorTypeMultipliers    Json @default("{\"vct\": 1.0, \"carpet\": 1.15, \"tile\": 1.1, \"hardwood\": 1.2, \"concrete\": 0.9, \"other\": 1.0}") @map("floor_type_multipliers") @db.JsonB
   frequencyMultipliers    Json @default("{\"1x_week\": 1.0, \"2x_week\": 1.8, \"3x_week\": 2.5, \"4x_week\": 3.2, \"5x_week\": 4.0, \"daily\": 4.33, \"weekly\": 1.0, \"biweekly\": 0.5, \"monthly\": 0.25, \"quarterly\": 0.083}") @map("frequency_multipliers") @db.JsonB

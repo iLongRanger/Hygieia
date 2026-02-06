@@ -326,6 +326,48 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
               </div>
             </div>
           </div>
+
+          {/* Subcontractor Split */}
+          {pricing.subcontractorPercentage > 0 && (
+            <div className="px-4 py-3">
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                Subcontractor Split
+              </div>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between text-gray-300">
+                  <span>Sub Percentage:</span>
+                  <span className="font-mono">{pct(pricing.subcontractorPercentage)}</span>
+                </div>
+                <div className="flex justify-between text-gray-300">
+                  <span>Subcontractor Payout:</span>
+                  <span className="font-mono text-amber-400">{fmt(pricing.subcontractorPayout)}</span>
+                </div>
+                <div className="flex justify-between text-white font-medium">
+                  <span>Company Revenue:</span>
+                  <span className="font-mono text-emerald-400">{fmt(pricing.companyRevenue)}</span>
+                </div>
+                {/* Margin bar */}
+                <div className="pt-1.5">
+                  <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-surface-700">
+                    <div
+                      className="bg-amber-500/70 transition-all"
+                      style={{ width: `${pricing.subcontractorPercentage * 100}%` }}
+                      title={`Sub: ${pct(pricing.subcontractorPercentage)}`}
+                    />
+                    <div
+                      className="bg-emerald-500/70 transition-all"
+                      style={{ width: `${(1 - pricing.subcontractorPercentage) * 100}%` }}
+                      title={`Company: ${pct(1 - pricing.subcontractorPercentage)}`}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Sub ({pct(pricing.subcontractorPercentage)})</span>
+                    <span>Company ({pct(1 - pricing.subcontractorPercentage)})</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

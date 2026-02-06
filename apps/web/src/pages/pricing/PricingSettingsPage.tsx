@@ -15,6 +15,7 @@ import {
   Building,
   Package,
   TrendingUp,
+  UserCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -129,6 +130,8 @@ const PricingSettingsPage = () => {
     supplyCostPercentage: 0.04,
     // Profit Settings (defaults)
     targetProfitMargin: 0.25,
+    // Subcontractor Settings (defaults)
+    subcontractorPercentage: 0.60,
   });
 
   const fetchSettingsList = useCallback(async () => {
@@ -179,6 +182,8 @@ const PricingSettingsPage = () => {
         supplyCostPerSqFt: data.supplyCostPerSqFt ? Number(data.supplyCostPerSqFt) : undefined,
         // Profit Settings
         targetProfitMargin: Number(data.targetProfitMargin || 0.25),
+        // Subcontractor Settings
+        subcontractorPercentage: Number(data.subcontractorPercentage || 0.60),
         // Multipliers
         floorTypeMultipliers: data.floorTypeMultipliers,
         frequencyMultipliers: data.frequencyMultipliers,
@@ -241,6 +246,7 @@ const PricingSettingsPage = () => {
         equipmentPercentage: 0.05,
         supplyCostPercentage: 0.04,
         targetProfitMargin: 0.25,
+        subcontractorPercentage: 0.60,
       });
       await fetchSettingsList();
       await loadSettings(created.id);
@@ -872,6 +878,39 @@ const PricingSettingsPage = () => {
                     <span className="text-sm text-gray-400">Target Profit Margin</span>
                     <p className="text-xl font-semibold text-white">
                       {formatPercent(selectedSettings.targetProfitMargin || 0.25)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Subcontractor Settings */}
+            <Card>
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                <UserCheck className="h-5 w-5 text-cyan-400" />
+                Subcontractor Settings
+              </h3>
+              <p className="mb-4 text-sm text-gray-400">
+                Percentage of the final monthly total paid to the subcontractor. For example, 60% means the sub gets 60% and the company keeps 40%.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {isEditing ? (
+                  <Input
+                    label="Subcontractor Percentage (%)"
+                    type="number"
+                    step="1"
+                    min={0}
+                    max={100}
+                    value={Math.round((formData.subcontractorPercentage ?? 0.60) * 100)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, subcontractorPercentage: Number(e.target.value) / 100 })
+                    }
+                  />
+                ) : (
+                  <div className="rounded-lg bg-navy-darker/50 p-3">
+                    <span className="text-sm text-gray-400">Subcontractor Percentage</span>
+                    <p className="text-xl font-semibold text-white">
+                      {formatPercent(selectedSettings.subcontractorPercentage || '0.60')}
                     </p>
                   </div>
                 )}
