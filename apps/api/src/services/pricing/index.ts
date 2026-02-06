@@ -13,11 +13,11 @@ export * from './types';
 // Strategy registry and resolution
 export {
   pricingStrategyRegistry,
-  resolvePricingStrategyKey,
-  getStrategy,
+  resolvePricingPlanId,
+  resolvePricingPlan,
+  getStrategyForPricingType,
   calculatePricing,
   generateProposalServices,
-  comparePricingFrequencies,
   PRICING_STRATEGY_KEYS,
   DEFAULT_PRICING_STRATEGY_KEY,
 } from './strategyRegistry';

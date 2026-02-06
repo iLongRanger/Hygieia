@@ -17,13 +17,11 @@ import {
   calculateFacilityPricing,
   calculateFacilityPricingComparison,
   isFacilityReadyForPricing,
-  generateProposalServicesFromFacility,
   getFacilityTasksGrouped,
 } from '../services/pricingCalculatorService';
 import {
   calculatePricing,
   generateProposalServices,
-  resolvePricingStrategyKey,
 } from '../services/pricing';
 import {
   createFacilitySchema,
@@ -201,11 +199,13 @@ router.get(
 
       const frequency = (req.query.frequency as string) || '5x_week';
       const taskComplexity = (req.query.taskComplexity as string) || 'standard';
+      const pricingPlanId = (req.query.pricingPlanId as string) || undefined;
 
       const pricing = await calculateFacilityPricing({
         facilityId: req.params.id,
         serviceFrequency: frequency,
         taskComplexity,
+        pricingPlanId,
       });
 
       res.json({ data: pricing });
@@ -231,10 +231,12 @@ router.get(
       const frequencies = frequenciesParam
         ? frequenciesParam.split(',')
         : ['1x_week', '2x_week', '3x_week', '5x_week'];
+      const pricingPlanId = (req.query.pricingPlanId as string) || undefined;
 
       const comparison = await calculateFacilityPricingComparison(
         req.params.id,
-        frequencies
+        frequencies,
+        pricingPlanId
       );
 
       res.json({ data: comparison });
@@ -257,7 +259,7 @@ router.get(
       }
 
       const frequency = (req.query.frequency as string) || '5x_week';
-      const strategyKey = (req.query.strategyKey as string) || undefined;
+      const pricingPlanId = (req.query.pricingPlanId as string) || undefined;
       const workerCount = req.query.workerCount ? Number(req.query.workerCount) : undefined;
 
       // Check if facility is ready
@@ -266,19 +268,14 @@ router.get(
         throw new ValidationError(readiness.reason || 'Facility is not ready for proposal');
       }
 
-      const resolvedStrategyKey = strategyKey || await resolvePricingStrategyKey({
-        facilityId: req.params.id,
-        accountId: existing.accountId,
-      });
-
-      // Get pricing calculation using selected strategy
+      // Get pricing calculation using selected plan
       const pricing = await calculatePricing(
         {
           facilityId: req.params.id,
           serviceFrequency: frequency,
           workerCount,
         },
-        { strategyKey: resolvedStrategyKey }
+        { pricingPlanId, accountId: existing.accountId }
       );
 
       // Generate suggested services
@@ -288,7 +285,7 @@ router.get(
           serviceFrequency: frequency,
           workerCount,
         },
-        { strategyKey: resolvedStrategyKey }
+        { pricingPlanId, accountId: existing.accountId }
       );
 
       res.json({

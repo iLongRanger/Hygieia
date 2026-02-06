@@ -19,6 +19,7 @@ import {
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -29,7 +30,7 @@ import {
   getPricingSettings,
   createPricingSettings,
   updatePricingSettings,
-  setActivePricingSettings,
+  setDefaultPricingSettings,
   archivePricingSettings,
   restorePricingSettings,
   type PricingSettings,
@@ -91,6 +92,11 @@ const TASK_COMPLEXITY_LABELS: Record<string, string> = {
   window_cleaning: 'Window Cleaning',
 };
 
+const PRICING_TYPE_OPTIONS = [
+  { value: 'square_foot', label: 'Per Sq Ft' },
+  { value: 'hourly', label: 'Hourly' },
+];
+
 const PricingSettingsPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -106,6 +112,7 @@ const PricingSettingsPage = () => {
   const [formData, setFormData] = useState<UpdatePricingSettingsInput>({});
   const [createFormData, setCreateFormData] = useState<CreatePricingSettingsInput>({
     name: '',
+    pricingType: 'square_foot',
     baseRatePerSqFt: 0.10,
     minimumMonthlyCharge: 250,
     hourlyRate: 35,
@@ -132,16 +139,16 @@ const PricingSettingsPage = () => {
 
       // Auto-select the active one if nothing selected
       if (!selectedSettings && response?.data?.length > 0) {
-        const active = response.data.find((s) => s.isActive);
-        if (active) {
-          await loadSettings(active.id);
+        const defaultPlan = response.data.find((s) => s.isDefault);
+        if (defaultPlan) {
+          await loadSettings(defaultPlan.id);
         } else {
           await loadSettings(response.data[0].id);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch pricing settings:', error);
-      toast.error('Failed to load pricing settings');
+      console.error('Failed to fetch pricing plans:', error);
+      toast.error('Failed to load pricing plans');
     } finally {
       setLoading(false);
     }
@@ -154,6 +161,7 @@ const PricingSettingsPage = () => {
       setSelectedSettings(data);
       setFormData({
         name: data.name,
+        pricingType: data.pricingType,
         baseRatePerSqFt: Number(data.baseRatePerSqFt),
         minimumMonthlyCharge: Number(data.minimumMonthlyCharge),
         hourlyRate: Number(data.hourlyRate || 35),
@@ -179,6 +187,7 @@ const PricingSettingsPage = () => {
         buildingTypeMultipliers: data.buildingTypeMultipliers,
         taskComplexityAddOns: data.taskComplexityAddOns,
         isActive: data.isActive,
+        isDefault: data.isDefault,
       });
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -196,12 +205,12 @@ const PricingSettingsPage = () => {
     try {
       setSaving(true);
       await updatePricingSettings(selectedSettings.id, formData);
-      toast.success('Pricing settings updated successfully');
+      toast.success('Pricing plan updated successfully');
       setIsEditing(false);
       await loadSettings(selectedSettings.id);
     } catch (error) {
-      console.error('Failed to update pricing settings:', error);
-      toast.error('Failed to update pricing settings');
+      console.error('Failed to update pricing plan:', error);
+      toast.error('Failed to update pricing plan');
     } finally {
       setSaving(false);
     }
@@ -215,10 +224,11 @@ const PricingSettingsPage = () => {
     try {
       setCreating(true);
       const created = await createPricingSettings(createFormData);
-      toast.success('Pricing settings created successfully');
+      toast.success('Pricing plan created successfully');
       setShowCreateModal(false);
       setCreateFormData({
         name: '',
+        pricingType: 'square_foot',
         baseRatePerSqFt: 0.10,
         minimumMonthlyCharge: 250,
         hourlyRate: 35,
@@ -235,22 +245,22 @@ const PricingSettingsPage = () => {
       await fetchSettingsList();
       await loadSettings(created.id);
     } catch (error) {
-      console.error('Failed to create pricing settings:', error);
-      toast.error('Failed to create pricing settings');
+      console.error('Failed to create pricing plan:', error);
+      toast.error('Failed to create pricing plan');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleSetActive = async (id: string) => {
+  const handleSetDefault = async (id: string) => {
     try {
-      await setActivePricingSettings(id);
-      toast.success('Pricing settings activated');
+      await setDefaultPricingSettings(id);
+      toast.success('Pricing plan set as default');
       await fetchSettingsList();
       await loadSettings(id);
     } catch (error) {
-      console.error('Failed to activate settings:', error);
-      toast.error('Failed to activate pricing settings');
+      console.error('Failed to set default pricing plan:', error);
+      toast.error('Failed to set default pricing plan');
     }
   };
 
@@ -258,24 +268,24 @@ const PricingSettingsPage = () => {
     if (!selectedSettings) return;
     try {
       await archivePricingSettings(selectedSettings.id);
-      toast.success('Pricing settings archived');
+      toast.success('Pricing plan archived');
       setShowArchiveConfirm(false);
       setSelectedSettings(null);
       await fetchSettingsList();
     } catch (error) {
       console.error('Failed to archive settings:', error);
-      toast.error('Failed to archive pricing settings');
+      toast.error('Failed to archive pricing plan');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restorePricingSettings(id);
-      toast.success('Pricing settings restored');
+      toast.success('Pricing plan restored');
       await fetchSettingsList();
     } catch (error) {
       console.error('Failed to restore settings:', error);
-      toast.error('Failed to restore pricing settings');
+      toast.error('Failed to restore pricing plan');
     }
   };
 
@@ -313,9 +323,26 @@ const PricingSettingsPage = () => {
     }).format(Number(value));
   };
 
+  const formatPricingType = (value: string) => (
+    value === 'hourly' ? 'Hourly' : 'Per Sq Ft'
+  );
+
+  const getPlanRateSummary = (plan: PricingSettings) => (
+    plan.pricingType === 'hourly'
+      ? `${formatCurrency(plan.hourlyRate)}/hr`
+      : `${formatCurrency(plan.baseRatePerSqFt)}/sqft`
+  );
+
+  const activePricingType = (isEditing ? formData.pricingType : selectedSettings?.pricingType)
+    ?? selectedSettings?.pricingType
+    ?? formData.pricingType
+    ?? 'square_foot';
+  const isHourlyPlan = activePricingType === 'hourly';
+  const isCreateHourlyPlan = createFormData.pricingType === 'hourly';
+
   const settingsColumns = [
     {
-      header: 'Settings Name',
+      header: 'Plan',
       cell: (item: PricingSettings) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-500/10">
@@ -324,7 +351,7 @@ const PricingSettingsPage = () => {
           <div>
             <div className="font-medium text-white">{item.name}</div>
             <div className="text-sm text-gray-400">
-              Base: {formatCurrency(item.baseRatePerSqFt)}/sqft
+              {formatPricingType(item.pricingType)} - {getPlanRateSummary(item)}
             </div>
           </div>
         </div>
@@ -340,6 +367,7 @@ const PricingSettingsPage = () => {
       header: 'Status',
       cell: (item: PricingSettings) => (
         <div className="flex gap-2">
+          {item.isDefault && <Badge variant="info">Default</Badge>}
           {item.isActive ? (
             <Badge variant="success">Active</Badge>
           ) : (
@@ -360,12 +388,12 @@ const PricingSettingsPage = () => {
           >
             View
           </Button>
-          {!item.isActive && !item.archivedAt && (
+          {!item.isDefault && !item.archivedAt && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleSetActive(item.id)}
-              title="Set as active"
+              onClick={() => handleSetDefault(item.id)}
+              title="Set as default"
             >
               <Check className="h-4 w-4" />
             </Button>
@@ -400,12 +428,12 @@ const PricingSettingsPage = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">Pricing Settings</h1>
-          <p className="text-gray-400">Configure pricing multipliers and base rates</p>
+          <h1 className="text-2xl font-bold text-white">Pricing Plans</h1>
+          <p className="text-gray-400">Configure pricing plans and base rates</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Settings
+          New Plan
         </Button>
       </div>
 
@@ -413,7 +441,7 @@ const PricingSettingsPage = () => {
         {/* Settings List */}
         <Card noPadding className="overflow-hidden xl:col-span-1">
           <div className="border-b border-white/10 bg-navy-dark/30 p-4">
-            <h3 className="font-semibold text-white">Settings Profiles</h3>
+            <h3 className="font-semibold text-white">Plan Profiles</h3>
             <label className="mt-2 flex items-center gap-2 text-sm text-gray-400">
               <input
                 type="checkbox"
@@ -437,7 +465,7 @@ const PricingSettingsPage = () => {
                   <div>
                     <div className="font-medium text-white">{settings.name}</div>
                     <div className="text-sm text-gray-400">
-                      {formatCurrency(settings.baseRatePerSqFt)}/sqft
+                      {getPlanRateSummary(settings)}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -463,8 +491,9 @@ const PricingSettingsPage = () => {
                   <div>
                     <h2 className="text-xl font-semibold text-white">{selectedSettings.name}</h2>
                     <div className="flex items-center gap-2 mt-1">
+                      {selectedSettings.isDefault && <Badge variant="info">Default</Badge>}
                       {selectedSettings.isActive ? (
-                        <Badge variant="success">Active Profile</Badge>
+                        <Badge variant="success">Active</Badge>
                       ) : (
                         <Badge variant="default">Inactive</Badge>
                       )}
@@ -492,13 +521,13 @@ const PricingSettingsPage = () => {
                             <Edit2 className="mr-2 h-4 w-4" />
                             Edit
                           </Button>
-                          {!selectedSettings.isActive && (
+                          {!selectedSettings.isDefault && (
                             <Button
                               variant="secondary"
-                              onClick={() => handleSetActive(selectedSettings.id)}
+                              onClick={() => handleSetDefault(selectedSettings.id)}
                             >
                               <Check className="mr-2 h-4 w-4" />
-                              Set Active
+                              Set Default
                             </Button>
                           )}
                           <Button
@@ -522,19 +551,28 @@ const PricingSettingsPage = () => {
                 <DollarSign className="h-5 w-5 text-emerald" />
                 Base Rates
               </h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 {isEditing ? (
                   <>
-                    <Input
-                      label="Base Rate per Sq Ft ($)"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      value={formData.baseRatePerSqFt || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, baseRatePerSqFt: Number(e.target.value) })
-                      }
+                    <Select
+                      label="Pricing Type"
+                      placeholder="Select pricing type"
+                      options={PRICING_TYPE_OPTIONS}
+                      value={activePricingType}
+                      onChange={(value) => setFormData({ ...formData, pricingType: value })}
                     />
+                    {!isHourlyPlan && (
+                      <Input
+                        label="Base Rate per Sq Ft ($)"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={formData.baseRatePerSqFt || ''}
+                        onChange={(e) =>
+                          setFormData({ ...formData, baseRatePerSqFt: Number(e.target.value) })
+                        }
+                      />
+                    )}
                     <Input
                       label="Minimum Monthly Charge ($)"
                       type="number"
@@ -545,37 +583,49 @@ const PricingSettingsPage = () => {
                         setFormData({ ...formData, minimumMonthlyCharge: Number(e.target.value) })
                       }
                     />
-                    <Input
-                      label="Hourly Rate ($)"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      value={formData.hourlyRate ?? 35}
-                      onChange={(e) =>
-                        setFormData({ ...formData, hourlyRate: Number(e.target.value) })
-                      }
-                    />
+                    {isHourlyPlan && (
+                      <Input
+                        label="Hourly Rate ($)"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={formData.hourlyRate ?? 35}
+                        onChange={(e) =>
+                          setFormData({ ...formData, hourlyRate: Number(e.target.value) })
+                        }
+                      />
+                    )}
                   </>
                 ) : (
                   <>
                     <div>
-                      <span className="text-sm text-gray-400">Base Rate per Sq Ft</span>
+                      <span className="text-sm text-gray-400">Pricing Type</span>
                       <p className="text-xl font-semibold text-white">
-                        {formatCurrency(selectedSettings.baseRatePerSqFt)}
+                        {formatPricingType(selectedSettings.pricingType)}
                       </p>
                     </div>
+                    {!isHourlyPlan && (
+                      <div>
+                        <span className="text-sm text-gray-400">Base Rate per Sq Ft</span>
+                        <p className="text-xl font-semibold text-white">
+                          {formatCurrency(selectedSettings.baseRatePerSqFt)}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-sm text-gray-400">Minimum Monthly Charge</span>
                       <p className="text-xl font-semibold text-white">
                         {formatCurrency(selectedSettings.minimumMonthlyCharge)}
                       </p>
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-400">Hourly Rate</span>
-                      <p className="text-xl font-semibold text-white">
-                        {formatCurrency(selectedSettings.hourlyRate || 35)}
-                      </p>
-                    </div>
+                    {isHourlyPlan && (
+                      <div>
+                        <span className="text-sm text-gray-400">Hourly Rate</span>
+                        <p className="text-xl font-semibold text-white">
+                          {formatCurrency(selectedSettings.hourlyRate || 35)}
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -802,7 +852,7 @@ const PricingSettingsPage = () => {
                 Profit Settings
               </h3>
               <p className="mb-4 text-sm text-gray-400">
-                Target profit margin applied using: Final Price = Total Cost ÷ (1 - Margin)
+                Target profit margin applied using: Final Price = Total Cost / (1 - Margin)
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {isEditing ? (
@@ -1031,13 +1081,13 @@ const PricingSettingsPage = () => {
             <Card>
               <div className="py-12 text-center">
                 <Settings className="mx-auto h-12 w-12 text-gray-500" />
-                <h3 className="mt-4 text-lg font-medium text-white">No Settings Selected</h3>
+                <h3 className="mt-4 text-lg font-medium text-white">No Plan Selected</h3>
                 <p className="mt-2 text-gray-400">
-                  Select a pricing settings profile from the list or create a new one.
+                  Select a pricing plan from the list or create a new one.
                 </p>
                 <Button className="mt-4" onClick={() => setShowCreateModal(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create New Settings
+                  Create New Plan
                 </Button>
               </div>
             </Card>
@@ -1049,26 +1099,35 @@ const PricingSettingsPage = () => {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create Pricing Settings"
+        title="Create Pricing Plan"
         size="md"
       >
         <div className="space-y-4">
           <Input
-            label="Settings Name"
+            label="Plan Name"
             placeholder="e.g., Standard 2024 Rates"
             value={createFormData.name}
             onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
           />
-          <Input
-            label="Base Rate per Sq Ft ($)"
-            type="number"
-            step="0.01"
-            min={0}
-            value={createFormData.baseRatePerSqFt || ''}
-            onChange={(e) =>
-              setCreateFormData({ ...createFormData, baseRatePerSqFt: Number(e.target.value) })
-            }
+          <Select
+            label="Pricing Type"
+            placeholder="Select pricing type"
+            options={PRICING_TYPE_OPTIONS}
+            value={createFormData.pricingType || 'square_foot'}
+            onChange={(value) => setCreateFormData({ ...createFormData, pricingType: value })}
           />
+          {!isCreateHourlyPlan && (
+            <Input
+              label="Base Rate per Sq Ft ($)"
+              type="number"
+              step="0.01"
+              min={0}
+              value={createFormData.baseRatePerSqFt || ''}
+              onChange={(e) =>
+                setCreateFormData({ ...createFormData, baseRatePerSqFt: Number(e.target.value) })
+              }
+            />
+          )}
           <Input
             label="Minimum Monthly Charge ($)"
             type="number"
@@ -1079,16 +1138,18 @@ const PricingSettingsPage = () => {
               setCreateFormData({ ...createFormData, minimumMonthlyCharge: Number(e.target.value) })
             }
           />
-          <Input
-            label="Hourly Rate ($)"
-            type="number"
-            step="0.01"
-            min={0}
-            value={createFormData.hourlyRate ?? 35}
-            onChange={(e) =>
-              setCreateFormData({ ...createFormData, hourlyRate: Number(e.target.value) })
-            }
-          />
+          {isCreateHourlyPlan && (
+            <Input
+              label="Hourly Rate ($)"
+              type="number"
+              step="0.01"
+              min={0}
+              value={createFormData.hourlyRate ?? 35}
+              onChange={(e) =>
+                setCreateFormData({ ...createFormData, hourlyRate: Number(e.target.value) })
+              }
+            />
+          )}
           <p className="text-sm text-gray-400">
             Default multipliers will be applied. You can customize them after creation.
           </p>
@@ -1097,7 +1158,7 @@ const PricingSettingsPage = () => {
               Cancel
             </Button>
             <Button onClick={handleCreate} isLoading={creating} disabled={!createFormData.name}>
-              Create Settings
+              Create Plan
             </Button>
           </div>
         </div>
@@ -1108,7 +1169,7 @@ const PricingSettingsPage = () => {
         isOpen={showArchiveConfirm}
         onClose={() => setShowArchiveConfirm(false)}
         onConfirm={handleArchive}
-        title="Archive Pricing Settings"
+        title="Archive Pricing Plan"
         message={`Are you sure you want to archive "${selectedSettings?.name}"? You can restore it later if needed.`}
         variant="warning"
       />

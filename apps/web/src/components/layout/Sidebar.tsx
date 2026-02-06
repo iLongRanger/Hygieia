@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Area Templates',
       roles: ['owner', 'admin', 'manager'],
     },
-    { to: '/pricing', icon: Calculator, label: 'Pricing' },
+    { to: '/pricing', icon: Calculator, label: 'Pricing Plans' },
     { to: '/users', icon: UserCog, label: 'Users', roles: ['owner', 'admin'] },
   ];
 

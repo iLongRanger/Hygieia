@@ -23,7 +23,7 @@ const createTestAreaType = (overrides?: Partial<any>) => ({
   baseCleaningTimeMinutes: 15,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
-  _count: { areas: 5, taskTemplates: 3, pricingRules: 2 },
+  _count: { areas: 5, taskTemplates: 3 },
   ...overrides,
 });
 

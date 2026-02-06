@@ -76,7 +76,6 @@ export interface AreaType {
   _count: {
     areas: number;
     taskTemplates: number;
-    pricingRules: number;
   };
 }
 

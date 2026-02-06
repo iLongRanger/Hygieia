@@ -11,7 +11,7 @@ import {
   calculateFacilityPricingComparison,
   generateProposalServicesFromFacility,
 } from '../../pricingCalculatorService';
-import { getActivePricingSettings } from '../../pricingSettingsService';
+import { getDefaultPricingSettings, getPricingSettingsById } from '../../pricingSettingsService';
 import type {
   PricingStrategy,
   PricingContext,
@@ -29,25 +29,29 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard' } = context;
+    const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId } = context;
 
     // Use the existing pricing calculator
     const pricingResult = await calculateFacilityPricing({
       facilityId,
       serviceFrequency,
       taskComplexity,
+      pricingPlanId,
     });
 
     // Get pricing settings for the snapshot
-    const pricingSettings = await getActivePricingSettings();
+    const pricingSettings = pricingPlanId
+      ? await getPricingSettingsById(pricingPlanId)
+      : await getDefaultPricingSettings();
     if (!pricingSettings) {
-      throw new Error('No active pricing settings found');
+      throw new Error('No pricing plan found');
     }
 
     // Create settings snapshot for audit trail
     const settingsSnapshot: PricingSettingsSnapshot = {
-      pricingSettingsId: pricingSettings.id,
-      pricingSettingsName: pricingSettings.name,
+      pricingPlanId: pricingSettings.id,
+      pricingPlanName: pricingSettings.name,
+      pricingType: pricingSettings.pricingType,
       baseRatePerSqFt: Number(pricingSettings.baseRatePerSqFt),
       minimumMonthlyCharge: Number(pricingSettings.minimumMonthlyCharge),
       hourlyRate: Number(pricingSettings.hourlyRate),
@@ -70,10 +74,10 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
   }
 
   async generateProposalServices(context: PricingContext): Promise<ProposalServiceLine[]> {
-    const { facilityId, serviceFrequency } = context;
+    const { facilityId, serviceFrequency, pricingPlanId } = context;
 
     // Use the existing service generator
-    return generateProposalServicesFromFacility(facilityId, serviceFrequency);
+    return generateProposalServicesFromFacility(facilityId, serviceFrequency, pricingPlanId);
   }
 
   async compareFrequencies(

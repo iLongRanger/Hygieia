@@ -17,13 +17,6 @@ jest.mock('../../middleware/rbac', () => ({
 
 jest.mock('../../services/proposalService');
 
-jest.mock('../../services/pricing', () => ({
-  pricingStrategyRegistry: {
-    listAllAsync: jest.fn(),
-  },
-  DEFAULT_PRICING_STRATEGY_KEY: 'sqft_settings_v1',
-}));
-
 describe('Proposal Routes', () => {
   let app: Application;
 
@@ -65,19 +58,6 @@ describe('Proposal Routes', () => {
 
     expect(response.body.data).toHaveLength(1);
     expect(proposalService.getProposalsAvailableForContract).toHaveBeenCalled();
-  });
-
-  it('GET /pricing-strategies should list strategies', async () => {
-    const pricing = await import('../../services/pricing');
-    (pricing.pricingStrategyRegistry.listAllAsync as jest.Mock).mockResolvedValue([
-      { key: 'sqft_settings_v1' },
-    ]);
-
-    const response = await request(app)
-      .get('/api/v1/proposals/pricing-strategies')
-      .expect(200);
-
-    expect(response.body.data).toHaveLength(1);
   });
 
   it('GET /:id should return proposal', async () => {
@@ -140,7 +120,7 @@ describe('Proposal Routes', () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'draft',
-      pricingStrategyKey: 'sqft_settings_v1',
+      pricingPlanId: 'plan-1',
     });
     (proposalService.updateProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
 
@@ -156,7 +136,7 @@ describe('Proposal Routes', () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'draft',
-      pricingStrategyKey: 'sqft_settings_v1',
+      pricingPlanId: 'plan-1',
     });
 
     await request(app)
@@ -310,13 +290,13 @@ describe('Proposal Routes', () => {
     expect(response.body.data.id).toBe('proposal-1');
   });
 
-  it('POST /:id/pricing/strategy should change pricing strategy', async () => {
+  it('POST /:id/pricing/plan should change pricing plan', async () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
-    (proposalService.changeProposalPricingStrategy as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+    (proposalService.changeProposalPricingPlan as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
 
     const response = await request(app)
-      .post('/api/v1/proposals/proposal-1/pricing/strategy')
-      .send({ strategyKey: 'sqft_settings_v1' })
+      .post('/api/v1/proposals/proposal-1/pricing/plan')
+      .send({ pricingPlanId: 'plan-1' })
       .expect(200);
 
     expect(response.body.data.id).toBe('proposal-1');

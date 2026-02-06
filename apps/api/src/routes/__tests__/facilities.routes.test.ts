@@ -169,7 +169,6 @@ describe('Facility Routes', () => {
   it('GET /:id/proposal-template should return template', async () => {
     (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
     (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
-    (pricingService.resolvePricingStrategyKey as jest.Mock).mockResolvedValue('sqft_settings_v1');
     (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 100 });
     (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([{ serviceName: 'Weekly' }]);
 

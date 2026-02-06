@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const pricingTypeSchema = z.enum(['square_foot', 'hourly']).default('square_foot');
+
 // Floor type multipliers schema
 export const floorTypeMultipliersSchema = z.object({
   vct: z.number().min(0).max(5).default(1.0),
@@ -103,6 +105,7 @@ export const taskComplexityAddOnsSchema = z.object({
 // Create pricing settings schema
 export const createPricingSettingsSchema = z.object({
   name: z.string().min(1, 'Pricing settings name is required').max(100),
+  pricingType: pricingTypeSchema.optional(),
   baseRatePerSqFt: z.coerce.number().min(0, 'Base rate must be non-negative').default(0.10),
   minimumMonthlyCharge: z.coerce.number().min(0, 'Minimum charge must be non-negative').default(250),
   hourlyRate: z.coerce.number().min(0).default(35.00),
@@ -132,11 +135,13 @@ export const createPricingSettingsSchema = z.object({
   buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional().default(true),
+  isDefault: z.boolean().optional().default(false),
 });
 
 // Update pricing settings schema
 export const updatePricingSettingsSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  pricingType: pricingTypeSchema.optional(),
   baseRatePerSqFt: z.coerce.number().min(0).optional(),
   minimumMonthlyCharge: z.coerce.number().min(0).optional(),
   hourlyRate: z.coerce.number().min(0).optional(),
@@ -166,6 +171,7 @@ export const updatePricingSettingsSchema = z.object({
   buildingTypeMultipliers: buildingTypeMultipliersSchema.optional(),
   taskComplexityAddOns: taskComplexityAddOnsSchema.optional(),
   isActive: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
 });
 
 // List pricing settings query schema
@@ -173,6 +179,11 @@ export const listPricingSettingsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   isActive: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+  pricingType: pricingTypeSchema.optional(),
+  isDefault: z
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),

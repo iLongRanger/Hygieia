@@ -78,7 +78,7 @@ export const createProposalSchema = z.object({
   termsAndConditions: z.string().max(20000).optional().nullable(),
   proposalItems: z.array(proposalItemSchema).optional().default([]),
   proposalServices: z.array(proposalServiceSchema).optional().default([]),
-  pricingStrategyKey: z.string().max(100).optional().nullable(),
+  pricingPlanId: z.string().uuid().optional().nullable(),
 });
 
 // Update Proposal Schema
@@ -94,7 +94,7 @@ export const updateProposalSchema = z.object({
   termsAndConditions: z.string().max(20000).optional().nullable(),
   proposalItems: z.array(proposalItemUpdateSchema).optional(),
   proposalServices: z.array(proposalServiceUpdateSchema).optional(),
-  pricingStrategyKey: z.string().max(100).optional().nullable(),
+  pricingPlanId: z.string().uuid().optional().nullable(),
 });
 
 // List Proposals Query Schema
@@ -142,7 +142,7 @@ export const rejectProposalSchema = z.object({
 });
 
 // ============================================================
-// PRICING STRATEGY SCHEMAS
+// PRICING PLAN SCHEMAS
 // ============================================================
 
 // Extended frequency schema for pricing calculations
@@ -159,9 +159,9 @@ export const pricingFrequencySchema = z.enum([
   'quarterly',
 ]);
 
-// Change pricing strategy
-export const changePricingStrategySchema = z.object({
-  strategyKey: z.string().min(1, 'Strategy key is required').max(100),
+// Change pricing plan
+export const changePricingPlanSchema = z.object({
+  pricingPlanId: z.string().uuid(),
 });
 
 // Recalculate pricing
@@ -174,7 +174,7 @@ export const recalculatePricingSchema = z.object({
 // Pricing preview query
 export const pricingPreviewQuerySchema = z.object({
   serviceFrequency: pricingFrequencySchema,
-  strategyKey: z.string().max(100).optional(),
+  pricingPlanId: z.string().uuid().optional(),
   workerCount: z.coerce.number().int().min(1).optional(),
 });
 
@@ -187,6 +187,6 @@ export type AcceptProposalInput = z.infer<typeof acceptProposalSchema>;
 export type RejectProposalInput = z.infer<typeof rejectProposalSchema>;
 export type ProposalItemInput = z.infer<typeof proposalItemSchema>;
 export type ProposalServiceInput = z.infer<typeof proposalServiceSchema>;
-export type ChangePricingStrategyInput = z.infer<typeof changePricingStrategySchema>;
+export type ChangePricingPlanInput = z.infer<typeof changePricingPlanSchema>;
 export type RecalculatePricingInput = z.infer<typeof recalculatePricingSchema>;
 export type PricingPreviewQuery = z.infer<typeof pricingPreviewQuerySchema>;

@@ -492,14 +492,14 @@ const ProposalDetail = () => {
                 </div>
               </div>
 
-              {/* Pricing Strategy Info */}
-              {proposal.pricingStrategyKey && (
+              {/* Pricing Plan Info */}
+              {proposal.pricingPlanId && (
                 <div className="flex items-start gap-3">
                   <Settings className="mt-1 h-4 w-4 text-gray-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Pricing Strategy</div>
+                    <div className="text-sm text-gray-400">Pricing Plan</div>
                     <div className="text-white flex items-center gap-2">
-                      {proposal.pricingStrategyKey}
+                      {proposal.pricingSnapshot?.pricingPlanName || proposal.pricingPlanId}
                       {proposal.pricingLocked && (
                         <Badge variant="warning" className="flex items-center gap-1">
                           <Lock className="h-3 w-3" />
@@ -507,9 +507,9 @@ const ProposalDetail = () => {
                         </Badge>
                       )}
                     </div>
-                    {proposal.pricingStrategyVersion && (
+                    {proposal.pricingSnapshot?.pricingType && (
                       <div className="text-xs text-gray-500">
-                        Version: {proposal.pricingStrategyVersion}
+                        Type: {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
                       </div>
                     )}
                   </div>

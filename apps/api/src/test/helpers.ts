@@ -135,46 +135,6 @@ export const createTestTaskTemplate = (overrides?: Partial<any>) => ({
   ...overrides,
 });
 
-export const createTestPricingRule = (overrides?: Partial<any>) => ({
-  id: 'test-pricing-rule-id',
-  name: 'Standard Hourly Rate',
-  description: 'Default hourly rate for cleaning services',
-  pricingType: 'hourly',
-  baseRate: 25.00,
-  minimumCharge: 50.00,
-  squareFootRate: null,
-  difficultyMultiplier: 1.0,
-  conditionMultipliers: {
-    excellent: 0.8,
-    good: 1.0,
-    fair: 1.3,
-    poor: 1.6,
-  },
-  cleaningType: 'standard',
-  areaTypeId: null,
-  isActive: true,
-  createdByUserId: 'test-user-id',
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-  archivedAt: null,
-  ...overrides,
-});
-
-export const createTestPricingOverride = (overrides?: Partial<any>) => ({
-  id: 'test-pricing-override-id',
-  facilityId: 'test-facility-id',
-  pricingRuleId: 'test-pricing-rule-id',
-  overrideRate: 30.00,
-  overrideReason: 'Special arrangement for long-term client',
-  effectiveDate: new Date('2024-01-01'),
-  expiryDate: null,
-  approvedByUserId: null,
-  createdByUserId: 'test-user-id',
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-  ...overrides,
-});
-
 export const mockPaginatedResult = <T>(data: T[], page = 1, limit = 20) => ({
   data,
   pagination: {

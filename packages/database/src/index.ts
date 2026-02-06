@@ -13,8 +13,6 @@ export type {
   LeadSource,
   TaskTemplate,
   FacilityTask,
-  PricingRule,
-  PricingOverride,
   Proposal,
   ProposalItem,
   ProposalService,

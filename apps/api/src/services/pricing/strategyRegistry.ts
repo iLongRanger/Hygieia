@@ -4,10 +4,9 @@
  * Central registry for all pricing strategies. Provides methods to:
  * - Register and retrieve strategies
  * - Get the appropriate strategy for a facility/account/proposal
- * - List available strategies for UI selection (including database pricing rules)
+ * - List available strategies for internal selection
  */
 
-import { prisma } from '../../lib/prisma';
 import type {
   PricingStrategy,
   PricingStrategyMetadata,
@@ -18,6 +17,8 @@ import type {
 import { DEFAULT_PRICING_STRATEGY_KEY, PRICING_STRATEGY_KEYS } from './types';
 import { sqftSettingsV1Strategy } from './strategies/sqftSettingsV1Strategy';
 import { perHourV1Strategy } from './strategies/perHourV1Strategy';
+import { getDefaultPricingSettings, getPricingSettingsById } from '../pricingSettingsService';
+import { prisma } from '../../lib/prisma';
 
 /**
  * Registry that holds all available pricing strategies
@@ -50,20 +51,8 @@ class PricingStrategyRegistry {
 
   /**
    * Get a strategy by key, throwing if not found
-   * For pricing rule keys (rule:*), returns the default strategy
    */
   getOrThrow(key: string): PricingStrategy {
-    // If it's a pricing rule reference, use the default sqft strategy
-    // The rule ID will be used for configuration, but calculation uses sqft strategy
-    if (key.startsWith('rule:')) {
-      const parts = key.split(':');
-      const pricingType = parts.length >= 3 ? parts[1] : 'square_foot';
-      if (pricingType === 'hourly') {
-        return this.strategies.get(PRICING_STRATEGY_KEYS.PER_HOUR_V1)!;
-      }
-      return this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY)!;
-    }
-
     const strategy = this.strategies.get(key);
     if (!strategy) {
       // Fall back to default if strategy not found
@@ -77,7 +66,7 @@ class PricingStrategyRegistry {
    * Check if a strategy exists
    */
   has(key: string): boolean {
-    return this.strategies.has(key) || key.startsWith('rule:');
+    return this.strategies.has(key);
   }
 
   /**
@@ -111,43 +100,10 @@ class PricingStrategyRegistry {
   }
 
   /**
-   * List all strategies including pricing rules from database
+   * List all strategies (built-in only)
    */
   async listAllAsync(): Promise<PricingStrategyMetadata[]> {
-    // Get built-in strategies
-    const builtIn = this.listBuiltIn();
-
-    // Get pricing rules from database
-    const pricingRules = await prisma.pricingRule.findMany({
-      where: {
-        isActive: true,
-        archivedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        pricingType: true,
-        baseRate: true,
-        cleaningType: true,
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    // Convert pricing rules to strategy metadata
-    const ruleStrategies: PricingStrategyMetadata[] = pricingRules.map((rule) => ({
-      key: `rule:${rule.pricingType}:${rule.id}`,
-      name: rule.name,
-      description: rule.description || `${rule.pricingType} pricing - Base rate: $${rule.baseRate}`,
-      version: '1.0.0',
-      isDefault: false,
-      isActive: true,
-      // Extra metadata for rules
-      pricingType: rule.pricingType,
-      cleaningType: rule.cleaningType,
-    }));
-
-    return [...builtIn, ...ruleStrategies];
+    return this.listBuiltIn();
   }
 
   /**
@@ -161,189 +117,174 @@ class PricingStrategyRegistry {
 // Singleton registry instance
 export const pricingStrategyRegistry = new PricingStrategyRegistry();
 
+type PricingPlanRecord = Awaited<ReturnType<typeof getPricingSettingsById>>;
+
 /**
- * Determine the pricing strategy key for a given context
+ * Determine the pricing plan id for a given context
  * Priority: Proposal > Facility > Account > Default
  */
-export async function resolvePricingStrategyKey(options: {
+export async function resolvePricingPlanId(options: {
   proposalId?: string;
   facilityId?: string;
   accountId?: string;
-}): Promise<string> {
+}): Promise<string | null> {
   const { proposalId, facilityId, accountId } = options;
 
-  // 1. Check proposal-specific strategy
+  // 1. Check proposal-specific plan
   if (proposalId) {
     const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },
       select: {
-        pricingStrategyKey: true,
+        pricingPlanId: true,
         facilityId: true,
         accountId: true,
       },
     });
 
-    if (proposal?.pricingStrategyKey) {
-      return proposal.pricingStrategyKey;
+    if (proposal?.pricingPlanId) {
+      return proposal.pricingPlanId;
     }
 
-    // Fall through to facility/account from proposal
     if (proposal?.facilityId && !facilityId) {
-      return resolvePricingStrategyKey({
+      return resolvePricingPlanId({
         facilityId: proposal.facilityId,
         accountId: proposal.accountId,
       });
     }
     if (proposal?.accountId && !accountId) {
-      return resolvePricingStrategyKey({ accountId: proposal.accountId });
+      return resolvePricingPlanId({ accountId: proposal.accountId });
     }
   }
 
-  // 2. Check facility-specific strategy
+  // 2. Check facility-specific plan
   if (facilityId) {
     const facility = await prisma.facility.findUnique({
       where: { id: facilityId },
       select: {
-        defaultPricingStrategyKey: true,
+        defaultPricingPlanId: true,
         accountId: true,
       },
     });
 
-    if (facility?.defaultPricingStrategyKey) {
-      return facility.defaultPricingStrategyKey;
+    if (facility?.defaultPricingPlanId) {
+      return facility.defaultPricingPlanId;
     }
 
-    // Fall through to account
     if (facility?.accountId && !accountId) {
-      return resolvePricingStrategyKey({ accountId: facility.accountId });
+      return resolvePricingPlanId({ accountId: facility.accountId });
     }
   }
 
-  // 3. Check account-specific strategy
+  // 3. Check account-specific plan
   if (accountId) {
     const account = await prisma.account.findUnique({
       where: { id: accountId },
-      select: { defaultPricingStrategyKey: true },
+      select: { defaultPricingPlanId: true },
     });
 
-    if (account?.defaultPricingStrategyKey) {
-      return account.defaultPricingStrategyKey;
+    if (account?.defaultPricingPlanId) {
+      return account.defaultPricingPlanId;
     }
   }
 
-  // 4. Return default
-  return DEFAULT_PRICING_STRATEGY_KEY;
+  return null;
 }
 
 /**
- * Get the pricing strategy instance for a given context
+ * Resolve the pricing plan record for a given context
  */
-export async function getStrategy(options: {
-  strategyKey?: string;
+export async function resolvePricingPlan(options: {
+  pricingPlanId?: string;
   proposalId?: string;
   facilityId?: string;
   accountId?: string;
-}): Promise<PricingStrategy> {
-  const { strategyKey, ...resolveOptions } = options;
-
-  // Use explicit key if provided
-  if (strategyKey) {
-    return pricingStrategyRegistry.getOrThrow(strategyKey);
+}): Promise<PricingPlanRecord | null> {
+  if (options.pricingPlanId) {
+    const plan = await getPricingSettingsById(options.pricingPlanId);
+    if (!plan) {
+      throw new Error('Pricing plan not found');
+    }
+    return plan;
   }
 
-  // Otherwise resolve from context
-  const resolvedKey = await resolvePricingStrategyKey(resolveOptions);
-  return pricingStrategyRegistry.getOrThrow(resolvedKey);
+  const resolvedPlanId = await resolvePricingPlanId({
+    proposalId: options.proposalId,
+    facilityId: options.facilityId,
+    accountId: options.accountId,
+  });
+
+  if (resolvedPlanId) {
+    const plan = await getPricingSettingsById(resolvedPlanId);
+    if (plan) {
+      return plan;
+    }
+  }
+
+  return getDefaultPricingSettings();
 }
 
 /**
- * Convenience function to calculate pricing using the appropriate strategy
+ * Get the strategy for a pricing plan type
+ */
+export function getStrategyForPricingType(pricingType?: string): PricingStrategy {
+  if (pricingType === 'hourly') {
+    return pricingStrategyRegistry.getOrThrow(PRICING_STRATEGY_KEYS.PER_HOUR_V1);
+  }
+  return pricingStrategyRegistry.getOrThrow(DEFAULT_PRICING_STRATEGY_KEY);
+}
+
+/**
+ * Convenience function to calculate pricing using the appropriate plan + strategy
  */
 export async function calculatePricing(
   context: PricingContext,
   options?: {
-    strategyKey?: string;
+    pricingPlanId?: string;
     proposalId?: string;
+    accountId?: string;
   }
 ): Promise<PricingBreakdown> {
-  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
-  const strategy = await getStrategy({
-    strategyKey,
+  const pricingPlan = await resolvePricingPlan({
+    pricingPlanId: options?.pricingPlanId ?? context.pricingPlanId,
     proposalId: options?.proposalId,
     facilityId: context.facilityId,
+    accountId: options?.accountId,
   });
 
-  return strategy.quote({ ...context, pricingRuleId });
+  if (!pricingPlan) {
+    throw new Error('No pricing plan found');
+  }
+
+  const strategy = getStrategyForPricingType(pricingPlan.pricingType);
+  return strategy.quote({ ...context, pricingPlanId: pricingPlan.id });
 }
 
 /**
- * Convenience function to generate proposal services using the appropriate strategy
+ * Convenience function to generate proposal services using the appropriate plan + strategy
  */
 export async function generateProposalServices(
   context: PricingContext,
   options?: {
-    strategyKey?: string;
+    pricingPlanId?: string;
     proposalId?: string;
+    accountId?: string;
   }
 ): Promise<ProposalServiceLine[]> {
-  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
-  const strategy = await getStrategy({
-    strategyKey,
+  const pricingPlan = await resolvePricingPlan({
+    pricingPlanId: options?.pricingPlanId ?? context.pricingPlanId,
     proposalId: options?.proposalId,
     facilityId: context.facilityId,
+    accountId: options?.accountId,
   });
 
-  return strategy.generateProposalServices({ ...context, pricingRuleId });
-}
-
-/**
- * Convenience function to compare frequencies using the appropriate strategy
- */
-export async function comparePricingFrequencies(
-  facilityId: string,
-  frequencies?: string[],
-  options?: {
-    strategyKey?: string;
-  }
-): Promise<{ frequency: string; monthlyTotal: number }[]> {
-  const { strategyKey, pricingRuleId } = parseStrategyKey(options?.strategyKey);
-  const strategy = await getStrategy({
-    strategyKey,
-    facilityId,
-  });
-
-  if (pricingRuleId) {
-    return strategy.compareFrequencies(facilityId, frequencies);
+  if (!pricingPlan) {
+    throw new Error('No pricing plan found');
   }
 
-  return strategy.compareFrequencies(facilityId, frequencies);
+  const strategy = getStrategyForPricingType(pricingPlan.pricingType);
+  return strategy.generateProposalServices({ ...context, pricingPlanId: pricingPlan.id });
 }
 
 // Re-export types and constants
 export { PRICING_STRATEGY_KEYS, DEFAULT_PRICING_STRATEGY_KEY };
 export type { PricingStrategy, PricingStrategyMetadata };
-
-function parseStrategyKey(
-  rawKey?: string
-): { strategyKey?: string; pricingRuleId?: string } {
-  if (!rawKey) {
-    return {};
-  }
-
-  if (!rawKey.startsWith('rule:')) {
-    return { strategyKey: rawKey };
-  }
-
-  const parts = rawKey.split(':');
-  if (parts.length >= 3) {
-    const pricingType = parts[1];
-    const pricingRuleId = parts.slice(2).join(':');
-    if (pricingType === 'hourly') {
-      return { strategyKey: PRICING_STRATEGY_KEYS.PER_HOUR_V1, pricingRuleId };
-    }
-    return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
-  }
-
-  const pricingRuleId = parts[1];
-  return { strategyKey: DEFAULT_PRICING_STRATEGY_KEY, pricingRuleId };
-}

@@ -5,13 +5,13 @@ import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listPricingSettings,
   getPricingSettingsById,
-  getActivePricingSettings,
+  getDefaultPricingSettings,
   createPricingSettings,
   updatePricingSettings,
   archivePricingSettings,
   restorePricingSettings,
   deletePricingSettings,
-  setActivePricingSettings,
+  setDefaultPricingSettings,
 } from '../services/pricingSettingsService';
 import {
   createPricingSettingsSchema,
@@ -53,16 +53,34 @@ router.get(
   }
 );
 
-// Get active pricing settings (commonly used for calculations)
+// Get default pricing plan (commonly used for calculations)
 router.get(
   '/active',
   authenticate,
   requireRole('owner', 'admin', 'manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const pricingSettings = await getActivePricingSettings();
+      const pricingSettings = await getDefaultPricingSettings();
       if (!pricingSettings) {
-        throw new NotFoundError('No active pricing settings found');
+        throw new NotFoundError('No default pricing plan found');
+      }
+      res.json({ data: pricingSettings });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Alias: get default pricing plan
+router.get(
+  '/default',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const pricingSettings = await getDefaultPricingSettings();
+      if (!pricingSettings) {
+        throw new NotFoundError('No default pricing plan found');
       }
       res.json({ data: pricingSettings });
     } catch (error) {
@@ -134,7 +152,7 @@ router.patch(
   }
 );
 
-// Set as active (deactivates all others)
+// Set as default (unsets previous default)
 router.post(
   '/:id/set-active',
   authenticate,
@@ -146,7 +164,27 @@ router.post(
         throw new NotFoundError('Pricing settings not found');
       }
 
-      const pricingSettings = await setActivePricingSettings(req.params.id);
+      const pricingSettings = await setDefaultPricingSettings(req.params.id);
+      res.json({ data: pricingSettings });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Alias: set default pricing plan
+router.post(
+  '/:id/set-default',
+  authenticate,
+  requireRole('owner', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getPricingSettingsById(req.params.id);
+      if (!existing) {
+        throw new NotFoundError('Pricing settings not found');
+      }
+
+      const pricingSettings = await setDefaultPricingSettings(req.params.id);
       res.json({ data: pricingSettings });
     } catch (error) {
       next(error);
