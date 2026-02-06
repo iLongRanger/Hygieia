@@ -100,4 +100,83 @@ describe('calculatePerHourPricing', () => {
     expect(result.monthlyTotal).toBeCloseTo(37.89, 2);
     expect(result.areas[0].laborHours).toBeCloseTo(0.13, 2);
   });
+
+  it('uses subcontractorPercentageOverride when provided', async () => {
+    const mockSettings = {
+      id: 'settings-1',
+      name: 'Default',
+      pricingType: 'hourly',
+      baseRatePerSqFt: 0.1,
+      minimumMonthlyCharge: 0,
+      hourlyRate: 35,
+      floorTypeMultipliers: { vct: 1.0 },
+      frequencyMultipliers: { weekly: 1.0 },
+      conditionMultipliers: { standard: 1.0 },
+      trafficMultipliers: { medium: 1.0 },
+      sqftPerLaborHour: { office: 2500, other: 2500 },
+      taskComplexityAddOns: { standard: 0 },
+      subcontractorPercentage: 0.60,
+    };
+
+    (pricingSettingsService.getDefaultPricingSettings as jest.Mock).mockResolvedValue(mockSettings);
+
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      name: 'Test Facility',
+      buildingType: 'office',
+      areas: [
+        {
+          id: 'area-1',
+          name: 'Restroom A',
+          quantity: 1,
+          squareFeet: 100,
+          floorType: 'vct',
+          conditionLevel: 'standard',
+          trafficLevel: 'medium',
+          roomCount: 1,
+          unitCount: 1,
+          areaType: { name: 'Restroom' },
+          fixtures: [],
+        },
+      ],
+    });
+
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'task-1',
+        areaId: 'area-1',
+        baseMinutesOverride: null,
+        perSqftMinutesOverride: null,
+        perUnitMinutesOverride: null,
+        perRoomMinutesOverride: null,
+        taskTemplate: {
+          baseMinutes: 10,
+          perSqftMinutes: 0,
+          perUnitMinutes: 0,
+          perRoomMinutes: 0,
+          fixtureMinutes: [],
+        },
+        fixtureMinutes: [],
+      },
+    ]);
+
+    const resultDefault = await calculatePerHourPricing({
+      facilityId: 'facility-1',
+      serviceFrequency: 'weekly',
+    });
+
+    const resultOverride = await calculatePerHourPricing({
+      facilityId: 'facility-1',
+      serviceFrequency: 'weekly',
+      subcontractorPercentageOverride: 0.40,
+    });
+
+    expect(resultDefault.subcontractorPercentage).toBe(0.60);
+    expect(resultOverride.subcontractorPercentage).toBe(0.40);
+
+    // Same monthly total, different split
+    expect(resultDefault.monthlyTotal).toBe(resultOverride.monthlyTotal);
+    expect(resultOverride.subcontractorPayout).toBeLessThan(resultDefault.subcontractorPayout);
+    expect(resultOverride.companyRevenue).toBeGreaterThan(resultDefault.companyRevenue);
+  });
 });

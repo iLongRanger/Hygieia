@@ -180,6 +180,73 @@ describe('Facility Routes', () => {
     expect(response.body.data.suggestedServices).toHaveLength(1);
   });
 
+  it('GET /:id/proposal-template should pass subcontractorPercentageOverride for known tier', async () => {
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
+    (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
+    (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
+
+    await request(app)
+      .get('/api/v1/facilities/facility-1/proposal-template?frequency=weekly&subcontractorTier=labor_only')
+      .expect(200);
+
+    expect(pricingService.calculatePricing).toHaveBeenCalledWith(
+      expect.objectContaining({ subcontractorPercentageOverride: 0.40 }),
+      expect.any(Object)
+    );
+    expect(pricingService.generateProposalServices).toHaveBeenCalledWith(
+      expect.objectContaining({ subcontractorPercentageOverride: 0.40 }),
+      expect.any(Object)
+    );
+  });
+
+  it('GET /:id/proposal-template should not pass override when no tier specified', async () => {
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
+    (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
+    (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
+
+    await request(app)
+      .get('/api/v1/facilities/facility-1/proposal-template?frequency=weekly')
+      .expect(200);
+
+    expect(pricingService.calculatePricing).toHaveBeenCalledWith(
+      expect.objectContaining({ subcontractorPercentageOverride: undefined }),
+      expect.any(Object)
+    );
+  });
+
+  it('GET /:id/proposal-template should map all tier keys correctly', async () => {
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
+    (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
+    (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
+
+    const tierMap = [
+      ['labor_only', 0.40],
+      ['standard', 0.50],
+      ['premium', 0.60],
+      ['independent', 0.70],
+    ] as const;
+
+    for (const [tier, expectedPct] of tierMap) {
+      jest.clearAllMocks();
+      (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+      (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
+      (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
+      (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
+
+      await request(app)
+        .get(`/api/v1/facilities/facility-1/proposal-template?frequency=weekly&subcontractorTier=${tier}`)
+        .expect(200);
+
+      expect(pricingService.calculatePricing).toHaveBeenCalledWith(
+        expect.objectContaining({ subcontractorPercentageOverride: expectedPct }),
+        expect.any(Object)
+      );
+    }
+  });
+
   it('GET /:id/tasks-grouped should return grouped tasks', async () => {
     (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1' });
     (pricingCalculatorService.getFacilityTasksGrouped as jest.Mock).mockResolvedValue({

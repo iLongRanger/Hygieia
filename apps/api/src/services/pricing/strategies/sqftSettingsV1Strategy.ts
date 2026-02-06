@@ -29,7 +29,7 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId } = context;
+    const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId, subcontractorPercentageOverride } = context;
 
     // Use the existing pricing calculator
     const pricingResult = await calculateFacilityPricing({
@@ -37,6 +37,7 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       serviceFrequency,
       taskComplexity,
       pricingPlanId,
+      subcontractorPercentageOverride,
     });
 
     // Get pricing settings for the snapshot
