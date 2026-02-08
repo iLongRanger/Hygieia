@@ -271,20 +271,20 @@ const ProposalDetail = () => {
         </div>
         <div className="flex items-center gap-2">
           {/* Primary actions based on status */}
+          {['draft', 'sent', 'viewed'].includes(proposal.status) && (
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/proposals/${id}/edit`)}
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          )}
           {proposal.status === 'draft' && (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/proposals/${id}/edit`)}
-              >
-                <Edit2 className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-              <Button onClick={() => setSendModalOpen(true)}>
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
-            </>
+            <Button onClick={() => setSendModalOpen(true)}>
+              <Send className="mr-2 h-4 w-4" />
+              Send
+            </Button>
           )}
           {['sent', 'viewed'].includes(proposal.status) && (
             <Button
