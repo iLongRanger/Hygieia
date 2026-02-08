@@ -23,6 +23,16 @@ import {
   recalculateProposalPricing,
   getProposalPricingPreview,
 } from '../services/proposalService';
+import { logActivity, getProposalActivities } from '../services/proposalActivityService';
+import { createVersion, getVersions, getVersion } from '../services/proposalVersionService';
+import { generateProposalPdf } from '../services/pdfService';
+import { generatePublicToken } from '../services/proposalPublicService';
+import { sendProposalEmail, sendNotificationEmail } from '../services/emailService';
+import { buildProposalEmailHtml, buildProposalEmailSubject } from '../templates/proposalEmail';
+import { buildProposalAcceptedHtml, buildProposalAcceptedSubject } from '../templates/proposalAccepted';
+import { buildProposalRejectedHtml, buildProposalRejectedSubject } from '../templates/proposalRejected';
+import logger from '../lib/logger';
+import { isEmailConfigured } from '../config/email';
 import {
   createProposalSchema,
   updateProposalSchema,
@@ -34,6 +44,7 @@ import {
   recalculatePricingSchema,
   pricingPreviewQuerySchema,
 } from '../schemas/proposal';
+import { listActivitiesQuerySchema } from '../schemas/proposalActivity';
 import { ZodError } from 'zod';
 
 const router: Router = Router();
@@ -153,6 +164,14 @@ router.post(
         createdByUserId: req.user.id,
       });
 
+      await logActivity({
+        proposalId: proposal.id,
+        action: 'created',
+        performedByUserId: req.user.id,
+        ipAddress: req.ip,
+        metadata: { title: proposal.title },
+      });
+
       res.status(201).json({ data: proposal });
     } catch (error) {
       next(error);
@@ -216,6 +235,14 @@ router.patch(
       }
 
       const updated = await updateProposal(req.params.id, updateData);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'updated',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: updated });
     } catch (error) {
       next(error);
@@ -244,12 +271,85 @@ router.post(
         throw new ValidationError('Only draft proposals can be sent');
       }
 
+      // 1. Lock pricing if not already locked
+      if (!proposal.pricingLocked) {
+        await lockProposalPricing(req.params.id);
+      }
+
+      // 2. Create version snapshot
+      await createVersion(req.params.id, req.user!.id, 'Proposal sent');
+
+      // 3. Generate public token
+      const publicToken = await generatePublicToken(req.params.id);
+
+      // 4. Mark as sent
       const sent = await sendProposal(req.params.id);
 
-      // TODO: Implement email sending logic here using emailService
-      // await emailService.sendProposal(sent, parsed.data);
+      // 5. Log activity
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'sent',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: {
+          emailTo: parsed.data.emailTo,
+          emailCc: parsed.data.emailCc,
+        },
+      });
 
-      res.json({ data: sent, message: 'Proposal sent successfully' });
+      // 6. Send email with PDF if email address provided
+      if (parsed.data.emailTo) {
+        if (!isEmailConfigured()) {
+          logger.warn('Email not configured — skipping proposal email send');
+        } else {
+          try {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
+
+            logger.info(`Generating PDF for proposal ${sent.proposalNumber}`);
+            const pdfBuffer = await generateProposalPdf(sent as any);
+
+            const emailSubject = parsed.data.emailSubject || buildProposalEmailSubject(
+              sent.proposalNumber,
+              sent.title
+            );
+            const emailHtml = buildProposalEmailHtml({
+              proposalNumber: sent.proposalNumber,
+              title: sent.title,
+              accountName: sent.account.name,
+              totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(sent.totalAmount)),
+              validUntil: sent.validUntil ? new Date(sent.validUntil).toLocaleDateString() : null,
+              publicViewUrl,
+            });
+
+            logger.info(`Sending proposal email to ${parsed.data.emailTo}`);
+            const emailSent = await sendProposalEmail(
+              parsed.data.emailTo,
+              parsed.data.emailCc,
+              emailSubject,
+              emailHtml,
+              pdfBuffer,
+              sent.proposalNumber
+            );
+            logger.info(`Proposal email result: ${emailSent ? 'sent' : 'failed'}`);
+
+            await logActivity({
+              proposalId: req.params.id,
+              action: 'email_sent',
+              performedByUserId: req.user!.id,
+              ipAddress: req.ip,
+              metadata: { to: parsed.data.emailTo },
+            });
+          } catch (emailError) {
+            // Don't fail the whole send if email fails
+            logger.error('Failed to send proposal email:', emailError);
+          }
+        }
+      }
+
+      // Re-fetch to get updated fields
+      const updatedProposal = await getProposalById(req.params.id);
+      res.json({ data: updatedProposal, message: 'Proposal sent successfully' });
     } catch (error) {
       next(error);
     }
@@ -269,6 +369,14 @@ router.post(
       }
 
       const viewed = await markProposalAsViewed(req.params.id);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'viewed',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: viewed });
     } catch (error) {
       next(error);
@@ -299,7 +407,32 @@ router.post(
 
       const accepted = await acceptProposal(req.params.id);
 
-      // TODO: Create contract from accepted proposal
+      // Create version snapshot
+      await createVersion(req.params.id, req.user!.id, 'Proposal accepted');
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'accepted',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
+      // Send notification to proposal creator
+      if (proposal.createdByUser?.email) {
+        try {
+          const html = buildProposalAcceptedHtml({
+            proposalNumber: proposal.proposalNumber,
+            title: proposal.title,
+            accountName: proposal.account.name,
+            totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(proposal.totalAmount)),
+            acceptedAt: new Date().toLocaleDateString(),
+          });
+          const subject = buildProposalAcceptedSubject(proposal.proposalNumber);
+          await sendNotificationEmail(proposal.createdByUser.email, subject, html);
+        } catch (emailError) {
+          console.error('Failed to send acceptance notification:', emailError);
+        }
+      }
 
       res.json({ data: accepted, message: 'Proposal accepted successfully' });
     } catch (error) {
@@ -331,6 +464,31 @@ router.post(
 
       const rejected = await rejectProposal(req.params.id, parsed.data.rejectionReason);
 
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'rejected',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { rejectionReason: parsed.data.rejectionReason },
+      });
+
+      // Send notification to proposal creator
+      if (proposal.createdByUser?.email) {
+        try {
+          const html = buildProposalRejectedHtml({
+            proposalNumber: proposal.proposalNumber,
+            title: proposal.title,
+            accountName: proposal.account.name,
+            rejectedAt: new Date().toLocaleDateString(),
+            rejectionReason: parsed.data.rejectionReason,
+          });
+          const subject = buildProposalRejectedSubject(proposal.proposalNumber);
+          await sendNotificationEmail(proposal.createdByUser.email, subject, html);
+        } catch (emailError) {
+          console.error('Failed to send rejection notification:', emailError);
+        }
+      }
+
       res.json({ data: rejected, message: 'Proposal rejected' });
     } catch (error) {
       next(error);
@@ -351,6 +509,14 @@ router.post(
       }
 
       const archived = await archiveProposal(req.params.id);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'archived',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: archived, message: 'Proposal archived successfully' });
     } catch (error) {
       next(error);
@@ -371,7 +537,100 @@ router.post(
       }
 
       const restored = await restoreProposal(req.params.id);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'restored',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: restored, message: 'Proposal restored successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Send reminder for sent/viewed proposals
+router.post(
+  '/:id/remind',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      logger.info(`Remind request body: ${JSON.stringify(req.body)}`);
+      const parsed = sendProposalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        logger.error(`Remind validation errors: ${JSON.stringify(parsed.error.errors)}`);
+        throw handleZodError(parsed.error);
+      }
+
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      logger.info(`Remind: proposal ${proposal.proposalNumber} status=${proposal.status}`);
+      if (!['sent', 'viewed'].includes(proposal.status)) {
+        throw new ValidationError('Can only send reminders for sent or viewed proposals');
+      }
+
+      if (parsed.data.emailTo) {
+        if (!isEmailConfigured()) {
+          logger.warn('Email not configured — skipping reminder email send');
+          throw new ValidationError('Email is not configured. Set RESEND_API_KEY.');
+        }
+
+        try {
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          const publicViewUrl = proposal.publicToken
+            ? `${frontendUrl}/p/${proposal.publicToken}`
+            : undefined;
+
+          logger.info(`Generating PDF for reminder ${proposal.proposalNumber}`);
+          const pdfBuffer = await generateProposalPdf(proposal as any);
+
+          const emailSubject = parsed.data.emailSubject || `Reminder: Proposal ${proposal.proposalNumber}`;
+          const emailHtml = buildProposalEmailHtml({
+            proposalNumber: proposal.proposalNumber,
+            title: proposal.title,
+            accountName: proposal.account.name,
+            totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(proposal.totalAmount)),
+            validUntil: proposal.validUntil ? new Date(proposal.validUntil).toLocaleDateString() : null,
+            publicViewUrl,
+          });
+
+          logger.info(`Sending reminder email to ${parsed.data.emailTo}`);
+          const emailSent = await sendProposalEmail(
+            parsed.data.emailTo,
+            parsed.data.emailCc,
+            emailSubject,
+            emailHtml,
+            pdfBuffer,
+            proposal.proposalNumber
+          );
+          logger.info(`Reminder email result: ${emailSent ? 'sent' : 'failed'}`);
+
+          if (!emailSent) {
+            throw new ValidationError('Failed to send reminder email');
+          }
+
+          await logActivity({
+            proposalId: req.params.id,
+            action: 'reminder_sent',
+            performedByUserId: req.user!.id,
+            ipAddress: req.ip,
+            metadata: { to: parsed.data.emailTo },
+          });
+        } catch (emailError) {
+          if (emailError instanceof ValidationError) throw emailError;
+          logger.error('Failed to send reminder:', emailError);
+          throw new ValidationError('Failed to send reminder email');
+        }
+      }
+
+      res.json({ message: 'Reminder sent successfully' });
     } catch (error) {
       next(error);
     }
@@ -390,8 +649,130 @@ router.delete(
         throw new NotFoundError('Proposal not found');
       }
 
+      // Log before delete since cascade will remove activities
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'deleted',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { proposalNumber: proposal.proposalNumber },
+      });
+
       await deleteProposal(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// PDF GENERATION ROUTES
+// ============================================================
+
+// Download proposal as PDF
+router.get(
+  '/:id/pdf',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const pdfBuffer = await generateProposalPdf(proposal as any);
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${proposal.proposalNumber}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// ACTIVITY LOG ROUTES
+// ============================================================
+
+// Get proposal activities
+router.get(
+  '/:id/activities',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = listActivitiesQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const result = await getProposalActivities(req.params.id, parsed.data);
+      res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// VERSION HISTORY ROUTES
+// ============================================================
+
+// Get proposal versions
+router.get(
+  '/:id/versions',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const versions = await getVersions(req.params.id);
+      res.json({ data: versions });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get specific version
+router.get(
+  '/:id/versions/:versionNumber',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const versionNumber = parseInt(req.params.versionNumber, 10);
+      if (isNaN(versionNumber)) {
+        throw new ValidationError('Invalid version number');
+      }
+
+      const version = await getVersion(req.params.id, versionNumber);
+      if (!version) {
+        throw new NotFoundError('Version not found');
+      }
+
+      res.json({ data: version });
     } catch (error) {
       next(error);
     }
@@ -415,6 +796,14 @@ router.post(
       }
 
       const locked = await lockProposalPricing(req.params.id);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'pricing_locked',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: locked, message: 'Proposal pricing locked successfully' });
     } catch (error) {
       next(error);
@@ -435,6 +824,14 @@ router.post(
       }
 
       const unlocked = await unlockProposalPricing(req.params.id);
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'pricing_unlocked',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+      });
+
       res.json({ data: unlocked, message: 'Proposal pricing unlocked successfully' });
     } catch (error) {
       next(error);
@@ -463,6 +860,15 @@ router.post(
         req.params.id,
         parsed.data.pricingPlanId
       );
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'pricing_plan_changed',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { pricingPlanId: parsed.data.pricingPlanId },
+      });
+
       res.json({ data: updated, message: 'Pricing plan changed successfully' });
     } catch (error) {
       next(error);
@@ -495,6 +901,18 @@ router.post(
           workerCount: parsed.data.workerCount,
         }
       );
+
+      // Create version snapshot after recalculation
+      await createVersion(req.params.id, req.user!.id, 'Pricing recalculated');
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: 'pricing_recalculated',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { serviceFrequency: parsed.data.serviceFrequency },
+      });
+
       res.json({ data: recalculated, message: 'Pricing recalculated successfully' });
     } catch (error) {
       next(error);

@@ -1,11 +1,4 @@
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Load environment variables from root .env file
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+import './env.js';
 
 import express, { Application } from 'express';
 import cors from 'cors';
@@ -35,8 +28,11 @@ import pricingSettingsRoutes from './routes/pricingSettings';
 import fixtureTypesRoutes from './routes/fixtureTypes';
 import areaTemplatesRoutes from './routes/areaTemplates';
 import proposalsRoutes from './routes/proposals';
+import proposalTemplatesRoutes from './routes/proposalTemplates';
 import contractsRoutes from './routes/contracts';
 import dashboardRoutes from './routes/dashboard';
+import teamsRoutes from './routes/teams';
+import publicProposalsRoutes from './routes/publicProposals';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -90,8 +86,13 @@ app.use('/api/v1/pricing-settings', pricingSettingsRoutes);
 app.use('/api/v1/fixture-types', fixtureTypesRoutes);
 app.use('/api/v1/area-templates', areaTemplatesRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
+app.use('/api/v1/proposal-templates', proposalTemplatesRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
+app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+
+// Public routes (no auth middleware)
+app.use('/api/v1/public/proposals', publicProposalsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
