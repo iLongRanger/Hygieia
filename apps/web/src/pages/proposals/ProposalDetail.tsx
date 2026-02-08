@@ -22,6 +22,7 @@ import {
   Link2,
   RefreshCw,
   PenTool,
+  MoreHorizontal,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -90,12 +91,20 @@ const ProposalDetail = () => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [activityRefresh, setActivityRefresh] = useState(0);
   const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchProposal(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = () => setMenuOpen(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [menuOpen]);
 
   const fetchProposal = async (proposalId: string) => {
     try {
@@ -250,9 +259,9 @@ const ProposalDetail = () => {
         <Button variant="ghost" onClick={() => navigate('/proposals')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{proposal.title}</h1>
+            <h1 className="text-2xl font-bold text-white truncate">{proposal.title}</h1>
             <Badge variant={getStatusVariant(proposal.status)}>
               <StatusIcon className="w-3 h-3 mr-1" />
               {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
@@ -260,11 +269,8 @@ const ProposalDetail = () => {
           </div>
           <p className="text-gray-400">{proposal.proposalNumber}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleDownloadPdf}>
-            <Download className="mr-2 h-4 w-4" />
-            PDF
-          </Button>
+        <div className="flex items-center gap-2">
+          {/* Primary actions based on status */}
           {proposal.status === 'draft' && (
             <>
               <Button
@@ -281,50 +287,91 @@ const ProposalDetail = () => {
             </>
           )}
           {['sent', 'viewed'].includes(proposal.status) && (
-            <>
-              {proposal.publicToken && (
-                <Button variant="secondary" onClick={handleCopyPublicLink}>
-                  <Link2 className="mr-2 h-4 w-4" />
-                  Copy Link
-                </Button>
-              )}
-              <Button variant="secondary" onClick={handleResend}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Resend
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleAccept}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Accept
-              </Button>
-              <Button variant="danger" onClick={handleReject}>
-                <XCircle className="mr-2 h-4 w-4" />
-                Reject
-              </Button>
-            </>
+            <Button
+              onClick={handleAccept}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Accept
+            </Button>
           )}
-          {proposal.archivedAt ? (
+          {proposal.archivedAt && (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
             </Button>
-          ) : (
+          )}
+
+          {/* More actions dropdown */}
+          <div className="relative">
             <Button
               variant="secondary"
-              onClick={handleArchive}
-              className="text-orange-400 hover:text-orange-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
             >
-              <Archive className="mr-2 h-4 w-4" />
-              Archive
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
-          )}
-          <Button variant="danger" onClick={handleDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <button
+                  onClick={handleDownloadPdf}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                >
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </button>
+                {proposal.publicToken && (
+                  <button
+                    onClick={handleCopyPublicLink}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Copy Public Link
+                  </button>
+                )}
+                {['sent', 'viewed'].includes(proposal.status) && (
+                  <>
+                    <button
+                      onClick={handleResend}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Resend Email
+                    </button>
+                    <div className="my-1 border-t border-white/10" />
+                    <button
+                      onClick={handleReject}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </button>
+                  </>
+                )}
+                {!proposal.archivedAt && (
+                  <>
+                    <div className="my-1 border-t border-white/10" />
+                    <button
+                      onClick={handleArchive}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                    >
+                      <Archive className="h-4 w-4" />
+                      Archive
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={handleDelete}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -406,59 +453,75 @@ const ProposalDetail = () => {
             </Card>
           )}
 
-          {/* Proposal Services */}
+          {/* Proposal Services (Areas) */}
           {proposal.proposalServices && proposal.proposalServices.length > 0 && (
             <Card>
               <h2 className="text-lg font-semibold text-white mb-4">Services</h2>
-              <div className="space-y-4">
-                {proposal.proposalServices.map((service, idx) => (
-                  <div
-                    key={idx}
-                    className="border-b border-white/10 pb-4 last:border-0 last:pb-0"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium text-white">{service.serviceName}</h3>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="info">
-                            {service.serviceType.charAt(0).toUpperCase() +
-                              service.serviceType.slice(1).replace('_', ' ')}
-                          </Badge>
-                          <Badge variant="default">
-                            {service.frequency.charAt(0).toUpperCase() +
-                              service.frequency.slice(1)}
-                          </Badge>
+              <div className="space-y-6">
+                {proposal.proposalServices.map((service, idx) => {
+                  // Parse description: first line is area info, remaining are "Frequency: task1, task2"
+                  const lines = service.description?.split('\n') || [];
+                  const areaInfo = lines[0] || '';
+                  const taskGroups: { label: string; tasks: string[] }[] = [];
+                  for (let i = 1; i < lines.length; i++) {
+                    const match = lines[i].match(/^(.+?):\s*(.+)$/);
+                    if (match) {
+                      taskGroups.push({
+                        label: match[1].trim(),
+                        tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
+                      });
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className="border-b border-white/10 pb-5 last:border-0 last:pb-0"
+                    >
+                      {/* Area header */}
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-medium text-white text-base">{service.serviceName}</h3>
+                          {areaInfo && (
+                            <p className="text-sm text-gray-400 mt-1">{areaInfo}</p>
+                          )}
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-emerald">
-                          {formatCurrency(service.monthlyPrice)}/month
-                        </div>
-                        {service.estimatedHours && service.hourlyRate && (
-                          <div className="text-sm text-gray-400">
-                            {service.estimatedHours} hrs x{' '}
-                            {formatCurrency(service.hourlyRate)}/hr
+                        <div className="text-right">
+                          <div className="text-lg font-semibold text-emerald">
+                            {formatCurrency(service.monthlyPrice)}/month
                           </div>
-                        )}
+                          {service.estimatedHours && service.hourlyRate && (
+                            <div className="text-sm text-gray-400">
+                              {service.estimatedHours} hrs x{' '}
+                              {formatCurrency(service.hourlyRate)}/hr
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    {service.description && (
-                      <p className="text-sm text-gray-400 mt-2 whitespace-pre-wrap">{service.description}</p>
-                    )}
-                    {service.includedTasks && service.includedTasks.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-sm font-medium text-gray-300 mb-1">
-                          Included Tasks:
-                        </p>
-                        <ul className="list-disc list-inside text-sm text-gray-400">
-                          {service.includedTasks.map((task, taskIdx) => (
-                            <li key={taskIdx}>{task}</li>
+
+                      {/* Tasks grouped by frequency */}
+                      {taskGroups.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {taskGroups.map((group, gIdx) => (
+                            <div key={gIdx}>
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                {group.label}
+                              </p>
+                              <ul className="space-y-1 ml-1">
+                                {group.tasks.map((task, tIdx) => (
+                                  <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-300">
+                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
+                                    {task}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}
