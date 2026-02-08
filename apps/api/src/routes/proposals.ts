@@ -198,18 +198,23 @@ router.patch(
         throw new NotFoundError('Proposal not found');
       }
 
-      // Prevent editing sent, accepted, or rejected proposals
-      if (['sent', 'accepted', 'rejected'].includes(proposal.status)) {
+      // Prevent editing accepted or rejected proposals
+      if (['accepted', 'rejected'].includes(proposal.status)) {
         throw new ValidationError(
           `Cannot edit proposal with status: ${proposal.status}. Please create a new proposal instead.`
         );
+      }
+
+      // Revert sent/viewed proposals back to draft when editing
+      if (['sent', 'viewed'].includes(proposal.status)) {
+        await createVersion(req.params.id, req.user!.id, 'Revised after sending');
       }
 
       const updateData: any = {
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
         title: parsed.data.title,
-        status: parsed.data.status,
+        status: ['sent', 'viewed'].includes(proposal.status) ? 'draft' : parsed.data.status,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
