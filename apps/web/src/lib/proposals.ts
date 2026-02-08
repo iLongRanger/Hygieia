@@ -6,6 +6,8 @@ import type {
   ListProposalsParams,
   SendProposalInput,
   RejectProposalInput,
+  ProposalVersion,
+  ProposalVersionSummary,
 } from '../types/proposal';
 
 interface PaginatedResponse<T> {
@@ -86,6 +88,62 @@ export async function restoreProposal(id: string): Promise<Proposal> {
 
 export async function deleteProposal(id: string): Promise<void> {
   await api.delete(`/proposals/${id}`);
+}
+
+// Activity log
+export interface ProposalActivity {
+  id: string;
+  action: string;
+  metadata: Record<string, any>;
+  ipAddress: string | null;
+  createdAt: string;
+  performedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+export async function getProposalActivities(
+  proposalId: string,
+  params?: { page?: number; limit?: number }
+): Promise<{ data: ProposalActivity[]; pagination: any }> {
+  const response = await api.get(`/proposals/${proposalId}/activities`, { params });
+  return response.data;
+}
+
+// PDF download
+export async function downloadProposalPdf(id: string, proposalNumber: string): Promise<void> {
+  const response = await api.get(`/proposals/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${proposalNumber}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// Version history
+export async function getProposalVersions(proposalId: string): Promise<ProposalVersionSummary[]> {
+  const response = await api.get(`/proposals/${proposalId}/versions`);
+  return response.data.data;
+}
+
+export async function getProposalVersion(
+  proposalId: string,
+  versionNumber: number
+): Promise<ProposalVersion> {
+  const response = await api.get(`/proposals/${proposalId}/versions/${versionNumber}`);
+  return response.data.data;
+}
+
+// Resend / remind
+export async function remindProposal(id: string, data?: SendProposalInput): Promise<void> {
+  await api.post(`/proposals/${id}/remind`, data || {});
 }
 
 // Proposals available for contract creation (accepted proposals without existing contracts)

@@ -18,19 +18,28 @@ import {
   RotateCcw,
   Lock,
   Settings,
+  Download,
+  Link2,
+  RefreshCw,
+  PenTool,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import ProposalTimeline from '../../components/proposals/ProposalTimeline';
+import ProposalVersionHistory from '../../components/proposals/ProposalVersionHistory';
+import SendProposalModal from '../../components/proposals/SendProposalModal';
 import {
   getProposal,
   sendProposal,
+  remindProposal,
   acceptProposal,
   rejectProposal,
   archiveProposal,
   restoreProposal,
   deleteProposal,
+  downloadProposalPdf,
 } from '../../lib/proposals';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
 
@@ -79,6 +88,8 @@ const ProposalDetail = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [activityRefresh, setActivityRefresh] = useState(0);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -91,6 +102,7 @@ const ProposalDetail = () => {
       setLoading(true);
       const data = await getProposal(proposalId);
       setProposal(data);
+      setActivityRefresh((n) => n + 1);
     } catch (error) {
       console.error('Failed to fetch proposal:', error);
       toast.error('Failed to load proposal');
@@ -100,15 +112,22 @@ const ProposalDetail = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (!proposal || !confirm('Send this proposal to the client?')) return;
+  const handleSend = async (data?: any) => {
+    if (!proposal) return;
 
     try {
-      await sendProposal(proposal.id);
-      toast.success('Proposal sent successfully');
+      if (['sent', 'viewed'].includes(proposal.status)) {
+        await remindProposal(proposal.id, data);
+        toast.success('Reminder sent successfully');
+      } else {
+        await sendProposal(proposal.id, data);
+        toast.success('Proposal sent successfully');
+      }
+      setSendModalOpen(false);
       fetchProposal(proposal.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to send proposal');
+      throw error;
     }
   };
 
@@ -162,6 +181,36 @@ const ProposalDetail = () => {
     }
   };
 
+  const handleCopyPublicLink = async () => {
+    if (!proposal?.publicToken) {
+      toast.error('No public link available. Send the proposal first.');
+      return;
+    }
+    const url = `${window.location.origin}/p/${proposal.publicToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Public link copied to clipboard');
+    } catch {
+      // Fallback for non-HTTPS
+      prompt('Copy this link:', url);
+    }
+  };
+
+  const handleResend = () => {
+    if (!proposal) return;
+    setSendModalOpen(true);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!proposal) return;
+    try {
+      await downloadProposalPdf(proposal.id, proposal.proposalNumber);
+      toast.success('PDF downloaded');
+    } catch (error) {
+      toast.error('Failed to download PDF');
+    }
+  };
+
   const handleDelete = async () => {
     if (
       !proposal ||
@@ -212,6 +261,10 @@ const ProposalDetail = () => {
           <p className="text-gray-400">{proposal.proposalNumber}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleDownloadPdf}>
+            <Download className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
           {proposal.status === 'draft' && (
             <>
               <Button
@@ -221,7 +274,7 @@ const ProposalDetail = () => {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
               </Button>
-              <Button onClick={handleSend}>
+              <Button onClick={() => setSendModalOpen(true)}>
                 <Send className="mr-2 h-4 w-4" />
                 Send
               </Button>
@@ -229,6 +282,16 @@ const ProposalDetail = () => {
           )}
           {['sent', 'viewed'].includes(proposal.status) && (
             <>
+              {proposal.publicToken && (
+                <Button variant="secondary" onClick={handleCopyPublicLink}>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Copy Link
+                </Button>
+              )}
+              <Button variant="secondary" onClick={handleResend}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Resend
+              </Button>
               <Button
                 variant="primary"
                 onClick={handleAccept}
@@ -515,78 +578,63 @@ const ProposalDetail = () => {
                   </div>
                 </div>
               )}
-            </div>
-          </Card>
 
-          {/* Timeline */}
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="h-5 w-5 text-gold" />
-              <h2 className="text-lg font-semibold text-white">Timeline</h2>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 mt-2 rounded-full bg-gray-400" />
-                <div>
-                  <div className="text-sm font-medium text-white">Created</div>
-                  <div className="text-sm text-gray-400">
-                    {formatDate(proposal.createdAt)}
-                  </div>
-                </div>
-              </div>
-              {proposal.sentAt && (
+              {/* Signature details for accepted proposals */}
+              {proposal.signatureName && (
                 <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-400" />
+                  <PenTool className="mt-1 h-4 w-4 text-green-400" />
                   <div>
-                    <div className="text-sm font-medium text-white">Sent</div>
-                    <div className="text-sm text-gray-400">
-                      {formatDate(proposal.sentAt)}
-                    </div>
+                    <div className="text-sm text-gray-400">Signed By</div>
+                    <div className="text-white">{proposal.signatureName}</div>
+                    {proposal.signatureDate && (
+                      <div className="text-xs text-gray-500">
+                        {formatDate(proposal.signatureDate)}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-              {proposal.viewedAt && (
+
+              {/* Public link status */}
+              {proposal.publicToken && (
                 <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-yellow-400" />
+                  <Link2 className="mt-1 h-4 w-4 text-gray-400" />
                   <div>
-                    <div className="text-sm font-medium text-white">Viewed</div>
-                    <div className="text-sm text-gray-400">
-                      {formatDate(proposal.viewedAt)}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {proposal.acceptedAt && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-green-400" />
-                  <div>
-                    <div className="text-sm font-medium text-green-400">Accepted</div>
-                    <div className="text-sm text-gray-400">
-                      {formatDate(proposal.acceptedAt)}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {proposal.rejectedAt && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 mt-2 rounded-full bg-red-400" />
-                  <div>
-                    <div className="text-sm font-medium text-red-400">Rejected</div>
-                    <div className="text-sm text-gray-400">
-                      {formatDate(proposal.rejectedAt)}
-                    </div>
-                    {proposal.rejectionReason && (
-                      <p className="text-sm text-gray-500 mt-1 italic">
-                        "{proposal.rejectionReason}"
-                      </p>
+                    <div className="text-sm text-gray-400">Public Link</div>
+                    <button
+                      onClick={handleCopyPublicLink}
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                    >
+                      Click to copy
+                    </button>
+                    {proposal.publicTokenExpiresAt && (
+                      <div className="text-xs text-gray-500">
+                        Expires {formatDate(proposal.publicTokenExpiresAt)}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
             </div>
           </Card>
+
+          {/* Version History */}
+          <ProposalVersionHistory proposalId={proposal.id} refreshTrigger={activityRefresh} />
+
+          {/* Activity Timeline */}
+          <ProposalTimeline proposalId={proposal.id} refreshTrigger={activityRefresh} />
         </div>
       </div>
+
+      {/* Send Proposal Modal */}
+      {['draft', 'sent', 'viewed'].includes(proposal.status) && (
+        <SendProposalModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+          proposal={proposal}
+          onSend={handleSend}
+        />
+      )}
     </div>
   );
 };
