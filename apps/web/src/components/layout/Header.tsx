@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { Bell, Menu, User, Sun, Moon } from 'lucide-react';
@@ -10,12 +11,14 @@ interface HeaderProps {
 }
 
 const Header = ({ onMenuClick }: HeaderProps) => {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { theme, toggleTheme } = useThemeStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     const fetchNotifications = async () => {
       try {
         const data = await listNotifications({ limit: 5 });
@@ -25,7 +28,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
       }
     };
     fetchNotifications();
-  }, []);
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -97,6 +102,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 : item
                             )
                           );
+                        }
+                        const proposalId = notification.metadata?.proposalId as string | undefined;
+                        if (proposalId) {
+                          setIsOpen(false);
+                          navigate(`/proposals/${proposalId}`);
                         }
                       }}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800"
