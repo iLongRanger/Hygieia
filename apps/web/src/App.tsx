@@ -28,6 +28,9 @@ import ProposalForm from './pages/proposals/ProposalForm';
 import ContractsList from './pages/contracts/ContractsList';
 import ContractDetail from './pages/contracts/ContractDetail';
 import ContractForm from './pages/contracts/ContractForm';
+import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
+import TeamsList from './pages/teams/TeamsList';
+import PublicProposalView from './pages/public/PublicProposalView';
 import AdminLayout from './components/layout/AdminLayout';
 
 function App() {
@@ -57,9 +60,10 @@ function App() {
           },
         }}
       />
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/p/:token" element={<PublicProposalView />} />
 
           <Route element={<AdminLayout />}>
             <Route path="/" element={<Dashboard />} />
@@ -85,6 +89,8 @@ function App() {
             <Route path="/contracts/new" element={<ContractForm />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
             <Route path="/contracts/:id/edit" element={<ContractForm />} />
+            <Route path="/teams" element={<TeamsList />} />
+            <Route path="/settings/proposal-templates" element={<ProposalTemplatesPage />} />
             <Route path="/users" element={<UsersList />} />
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />
