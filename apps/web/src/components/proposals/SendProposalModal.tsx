@@ -14,13 +14,32 @@ interface Props {
 }
 
 const SendProposalModal: React.FC<Props> = ({ isOpen, onClose, proposal, onSend }) => {
+  // Auto-populate from account contacts
+  const contacts = proposal.account.contacts || [];
+  const primaryContact = contacts.find((c) => c.isPrimary && c.email);
+  const ccContacts = contacts
+    .filter((c) => !c.isPrimary && c.email)
+    .map((c) => c.email!)
+    .filter(Boolean);
+
+  const defaultBody = `Dear ${primaryContact?.name || proposal.account.name},
+
+Thank you for giving us the opportunity to present our proposal. Please find the attached document outlining the scope of services, pricing, and terms for your review.
+
+You can also view and respond to this proposal online using the link provided in this email. Should you have any questions or require any modifications, please do not hesitate to reach out.
+
+We look forward to working with you.
+
+Best regards,
+${proposal.createdByUser.fullName}`;
+
   const [formData, setFormData] = useState<SendProposalInput>({
-    emailTo: '',
-    emailCc: [],
+    emailTo: primaryContact?.email || '',
+    emailCc: ccContacts,
     emailSubject: `Proposal ${proposal.proposalNumber}: ${proposal.title}`,
-    emailBody: '',
+    emailBody: defaultBody,
   });
-  const [ccInput, setCcInput] = useState('');
+  const [ccInput, setCcInput] = useState(ccContacts.join(', '));
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {

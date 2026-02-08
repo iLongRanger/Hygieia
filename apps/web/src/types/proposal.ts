@@ -78,11 +78,18 @@ export interface Proposal {
   pricingSnapshot?: any | null;
   pricingLocked?: boolean;
   pricingLockedAt?: string | null;
+  // Public access fields
+  publicToken?: string | null;
+  publicTokenExpiresAt?: string | null;
+  signatureName?: string | null;
+  signatureDate?: string | null;
+  signatureIp?: string | null;
   account: {
     id: string;
     name: string;
     type: string;
     defaultPricingPlanId?: string | null;
+    contacts?: { name: string; email: string | null; isPrimary: boolean }[];
   };
   facility?: {
     id: string;
@@ -151,4 +158,29 @@ export interface SendProposalInput {
 
 export interface RejectProposalInput {
   rejectionReason: string;
+}
+
+export interface ProposalVersion {
+  id: string;
+  versionNumber: number;
+  snapshot: any;
+  changeReason: string | null;
+  createdAt: string;
+  changedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+}
+
+export interface ProposalVersionSummary {
+  id: string;
+  versionNumber: number;
+  changeReason: string | null;
+  createdAt: string;
+  changedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
 }

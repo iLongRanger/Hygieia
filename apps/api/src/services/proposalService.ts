@@ -113,12 +113,23 @@ const proposalSelect = {
   pricingSnapshot: true,
   pricingLocked: true,
   pricingLockedAt: true,
+  // Public access fields
+  publicToken: true,
+  publicTokenExpiresAt: true,
+  signatureName: true,
+  signatureDate: true,
+  signatureIp: true,
   account: {
     select: {
       id: true,
       name: true,
       type: true,
       defaultPricingPlanId: true,
+      contacts: {
+        where: { archivedAt: null, email: { not: null } },
+        select: { name: true, email: true, isPrimary: true },
+        orderBy: { isPrimary: 'desc' as const },
+      },
     },
   },
   facility: {
