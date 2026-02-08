@@ -75,7 +75,7 @@ export const createProposalSchema = z.object({
   validUntil: z.coerce.date().optional().nullable(),
   taxRate: z.coerce.number().min(0).max(1).optional().default(0),
   notes: z.string().max(10000).optional().nullable(),
-  termsAndConditions: z.string().max(20000).optional().nullable(),
+
   proposalItems: z.array(proposalItemSchema).optional().default([]),
   proposalServices: z.array(proposalServiceSchema).optional().default([]),
   pricingPlanId: z.string().uuid().optional().nullable(),
@@ -91,7 +91,7 @@ export const updateProposalSchema = z.object({
   validUntil: z.coerce.date().optional().nullable(),
   taxRate: z.coerce.number().min(0).max(1).optional(),
   notes: z.string().max(10000).optional().nullable(),
-  termsAndConditions: z.string().max(20000).optional().nullable(),
+
   proposalItems: z.array(proposalItemUpdateSchema).optional(),
   proposalServices: z.array(proposalServiceUpdateSchema).optional(),
   pricingPlanId: z.string().uuid().optional().nullable(),

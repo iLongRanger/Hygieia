@@ -526,18 +526,6 @@ const ProposalDetail = () => {
             </Card>
           )}
 
-          {/* Terms and Conditions */}
-          {proposal.termsAndConditions && (
-            <Card>
-              <h2 className="text-lg font-semibold text-white mb-4">
-                Terms & Conditions
-              </h2>
-              <p className="text-gray-300 whitespace-pre-wrap text-sm">
-                {proposal.termsAndConditions}
-              </p>
-            </Card>
-          )}
-
           {/* Notes */}
           {proposal.notes && (
             <Card>

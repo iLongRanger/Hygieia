@@ -55,6 +55,8 @@ import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
+import { listTemplates } from '../../lib/proposalTemplates';
+import type { ProposalTemplate } from '../../types/proposalTemplate';
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -134,6 +136,7 @@ const ProposalForm = () => {
   // Reference data
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [termsTemplates, setTermsTemplates] = useState<ProposalTemplate[]>([]);
 
   // Form data
   const [formData, setFormData] = useState<CreateProposalInput>({
@@ -144,7 +147,6 @@ const ProposalForm = () => {
     validUntil: null,
     taxRate: 0,
     notes: null,
-    termsAndConditions: null,
     proposalItems: [],
     proposalServices: [],
     pricingPlanId: null,
@@ -269,13 +271,15 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, plansRes] = await Promise.all([
+      const [accountsRes, facilitiesRes, plansRes, templatesRes] = await Promise.all([
         listAccounts({ limit: 100 }),
         listFacilities({ limit: 100 }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
+        listTemplates(),
       ]);
       setAccounts(accountsRes?.data || []);
       setFacilities(facilitiesRes?.data || []);
+      setTermsTemplates(templatesRes || []);
       const plans = plansRes?.data || [];
       setPricingPlans(plans);
       // Set default plan if available
@@ -286,6 +290,13 @@ const ProposalForm = () => {
           ...prev,
           pricingPlanId: defaultPlan.id,
         }));
+      }
+      // Set default template terms for new proposals
+      if (!isEditMode) {
+        const defaultTemplate = (templatesRes || []).find((t: ProposalTemplate) => t.isDefault);
+        if (defaultTemplate) {
+          // Default template found (terms now managed in contracts)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch reference data:', error);
@@ -307,7 +318,6 @@ const ProposalForm = () => {
           : null,
         taxRate: proposal.taxRate,
         notes: proposal.notes || null,
-        termsAndConditions: proposal.termsAndConditions || null,
         proposalItems: proposal.proposalItems || [],
         proposalServices: proposal.proposalServices || [],
         pricingPlanId: proposal.pricingPlanId || null,
@@ -1022,17 +1032,10 @@ const ProposalForm = () => {
             )}
           </Card>
 
-          {/* Terms & Notes */}
+          {/* Notes */}
           <Card>
-            <h2 className="text-lg font-semibold text-white mb-4">Terms & Notes</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Notes</h2>
             <div className="space-y-4">
-              <Textarea
-                label="Terms & Conditions"
-                placeholder="Enter terms and conditions..."
-                value={formData.termsAndConditions || ''}
-                onChange={(e) => handleChange('termsAndConditions', e.target.value || null)}
-                rows={4}
-              />
               <Textarea
                 label="Internal Notes"
                 placeholder="Internal notes (not visible to client)..."

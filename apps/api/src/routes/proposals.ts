@@ -158,7 +158,6 @@ router.post(
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
-        termsAndConditions: parsed.data.termsAndConditions,
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
         pricingPlanId: parsed.data.pricingPlanId,
@@ -219,7 +218,6 @@ router.patch(
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
-        termsAndConditions: parsed.data.termsAndConditions,
       };
 
       if (parsed.data.proposalItems !== undefined) {
