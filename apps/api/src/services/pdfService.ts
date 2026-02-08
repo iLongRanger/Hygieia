@@ -49,7 +49,6 @@ interface ProposalForPdf {
   taxAmount: number | string;
   totalAmount: number | string;
   validUntil?: string | Date | null;
-  termsAndConditions?: string | null;
   createdAt: string | Date;
   account: { name: string };
   facility?: { name: string; address?: any } | null;
@@ -346,15 +345,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     margin: [0, 10, 0, 25] as [number, number, number, number],
   });
 
-  // Terms & Conditions
-  if (proposal.termsAndConditions) {
-    content.push({ text: 'Terms & Conditions', style: 'sectionHeader' });
-    content.push({
-      text: proposal.termsAndConditions,
-      style: 'termsText',
-      margin: [0, 5, 0, 20] as [number, number, number, number],
-    });
-  }
+
 
   // Signature Lines
   content.push({

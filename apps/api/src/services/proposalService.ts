@@ -51,7 +51,6 @@ export interface ProposalCreateInput {
   validUntil?: Date | null;
   taxRate?: number;
   notes?: string | null;
-  termsAndConditions?: string | null;
   createdByUserId: string;
   proposalItems?: ProposalItemInput[];
   proposalServices?: ProposalServiceInput[];
@@ -69,7 +68,6 @@ export interface ProposalUpdateInput {
   validUntil?: Date | null;
   taxRate?: number;
   notes?: string | null;
-  termsAndConditions?: string | null;
   proposalItems?: (ProposalItemInput & { id?: string })[];
   proposalServices?: (ProposalServiceInput & { id?: string })[];
   // Pricing plan fields
@@ -104,7 +102,6 @@ const proposalSelect = {
   rejectedAt: true,
   rejectionReason: true,
   notes: true,
-  termsAndConditions: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -352,7 +349,6 @@ export async function createProposal(input: ProposalCreateInput) {
       totalAmount: totals.totalAmount,
       validUntil: input.validUntil,
       notes: input.notes,
-      termsAndConditions: input.termsAndConditions,
       accountId: input.accountId,
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
@@ -404,7 +400,6 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
   if (input.description !== undefined) updateData.description = input.description;
   if (input.validUntil !== undefined) updateData.validUntil = input.validUntil;
   if (input.notes !== undefined) updateData.notes = input.notes;
-  if (input.termsAndConditions !== undefined) updateData.termsAndConditions = input.termsAndConditions;
   if (input.pricingPlanId !== undefined) {
     updateData.pricingPlan = input.pricingPlanId
       ? { connect: { id: input.pricingPlanId } }

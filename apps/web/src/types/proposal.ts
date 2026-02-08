@@ -69,7 +69,7 @@ export interface Proposal {
   rejectedAt?: string | null;
   rejectionReason?: string | null;
   notes?: string | null;
-  termsAndConditions?: string | null;
+
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
@@ -114,7 +114,7 @@ export interface CreateProposalInput {
   validUntil?: string | null;
   taxRate?: number;
   notes?: string | null;
-  termsAndConditions?: string | null;
+
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];
   // Pricing plan (optional - will use defaults if not provided)
@@ -130,7 +130,7 @@ export interface UpdateProposalInput {
   validUntil?: string | null;
   taxRate?: number;
   notes?: string | null;
-  termsAndConditions?: string | null;
+
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];
   // Pricing plan

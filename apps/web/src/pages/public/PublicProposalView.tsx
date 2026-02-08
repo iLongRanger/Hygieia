@@ -320,16 +320,6 @@ const PublicProposalView: React.FC = () => {
           </div>
         </div>
 
-        {/* Terms */}
-        {proposal.termsAndConditions && (
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Terms & Conditions</h3>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.termsAndConditions}</p>
-            </div>
-          </div>
-        )}
-
         {/* Action Buttons */}
         {canAct && !actionComplete && (
           <div className="flex flex-col sm:flex-row gap-3 justify-center py-8 border-t border-gray-200">
