@@ -14,6 +14,8 @@ import {
   RotateCcw,
   X,
   DollarSign,
+  Download,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -29,7 +31,10 @@ import {
   sendProposal,
   acceptProposal,
   rejectProposal,
+  downloadProposalPdf,
+  remindProposal,
 } from '../../lib/proposals';
+import SendProposalModal from '../../components/proposals/SendProposalModal';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
 
 const PROPOSAL_STATUSES: { value: ProposalStatus; label: string }[] = [
@@ -92,6 +97,7 @@ const ProposalsList = () => {
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [sendModalProposal, setSendModalProposal] = useState<Proposal | null>(null);
 
   const fetchProposals = useCallback(
     async (
@@ -167,17 +173,21 @@ const ProposalsList = () => {
     }
   };
 
-  const handleSend = async (id: string) => {
-    if (!confirm('Are you sure you want to send this proposal to the client?'))
-      return;
-
+  const handleSendFromModal = async (data?: any) => {
+    if (!sendModalProposal) return;
     try {
-      await sendProposal(id);
-      toast.success('Proposal sent successfully');
+      if (['sent', 'viewed'].includes(sendModalProposal.status)) {
+        await remindProposal(sendModalProposal.id, data);
+        toast.success('Reminder sent successfully');
+      } else {
+        await sendProposal(sendModalProposal.id, data);
+        toast.success('Proposal sent successfully');
+      }
+      setSendModalProposal(null);
       fetchProposals(page, search, { status: statusFilter, includeArchived });
     } catch (error: any) {
-      console.error('Failed to send proposal:', error);
       toast.error(error.response?.data?.message || 'Failed to send proposal');
+      throw error;
     }
   };
 
@@ -205,6 +215,16 @@ const ProposalsList = () => {
     } catch (error: any) {
       console.error('Failed to reject proposal:', error);
       toast.error(error.response?.data?.message || 'Failed to reject proposal');
+    }
+  };
+
+  const handleDownloadPdf = async (proposal: Proposal) => {
+    try {
+      await downloadProposalPdf(proposal.id, proposal.proposalNumber);
+      toast.success('PDF downloaded');
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      toast.error('Failed to download PDF');
     }
   };
 
@@ -278,13 +298,27 @@ const ProposalsList = () => {
       header: 'Actions',
       cell: (proposal: Proposal) => (
         <div className="flex gap-1">
+          {/* PDF Download - available for all non-draft proposals */}
+          {proposal.status !== 'draft' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadPdf(proposal);
+              }}
+              title="Download PDF"
+            >
+              <Download className="w-4 h-4 text-gray-400" />
+            </Button>
+          )}
           {proposal.status === 'draft' && (
             <Button
               variant="ghost"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                handleSend(proposal.id);
+                setSendModalProposal(proposal);
               }}
               title="Send Proposal"
             >
@@ -293,6 +327,17 @@ const ProposalsList = () => {
           )}
           {['sent', 'viewed'].includes(proposal.status) && (
             <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSendModalProposal(proposal);
+                }}
+                title="Send Reminder"
+              >
+                <RefreshCw className="w-4 h-4 text-purple-400" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -520,6 +565,16 @@ const ProposalsList = () => {
           </div>
         </div>
       </Card>
+
+      {/* Send Proposal Modal */}
+      {sendModalProposal && (
+        <SendProposalModal
+          isOpen={!!sendModalProposal}
+          onClose={() => setSendModalProposal(null)}
+          proposal={sendModalProposal}
+          onSend={handleSendFromModal}
+        />
+      )}
     </div>
   );
 };

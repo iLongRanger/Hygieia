@@ -46,6 +46,7 @@ import {
 } from '../schemas/proposal';
 import { listActivitiesQuerySchema } from '../schemas/proposalActivity';
 import { ZodError } from 'zod';
+import { prisma } from '../lib/prisma';
 
 const router: Router = Router();
 
@@ -297,8 +298,25 @@ router.post(
         },
       });
 
-      // 6. Send email with PDF if email address provided
-      if (parsed.data.emailTo) {
+      // 6. Auto-resolve recipient from account contacts if not provided
+      let emailTo = parsed.data.emailTo;
+      let emailCc = parsed.data.emailCc || [];
+      if (!emailTo) {
+        const contacts = await prisma.contact.findMany({
+          where: { accountId: proposal.account.id, archivedAt: null, email: { not: null } },
+          select: { email: true, isPrimary: true },
+          orderBy: { isPrimary: 'desc' },
+        });
+        const primary = contacts.find((c) => c.isPrimary);
+        if (primary?.email) {
+          emailTo = primary.email;
+          emailCc = contacts
+            .filter((c) => !c.isPrimary && c.email)
+            .map((c) => c.email!);
+        }
+      }
+
+      if (emailTo) {
         if (!isEmailConfigured()) {
           logger.warn('Email not configured — skipping proposal email send');
         } else {
@@ -322,10 +340,10 @@ router.post(
               publicViewUrl,
             });
 
-            logger.info(`Sending proposal email to ${parsed.data.emailTo}`);
+            logger.info(`Sending proposal email to ${emailTo}`);
             const emailSent = await sendProposalEmail(
-              parsed.data.emailTo,
-              parsed.data.emailCc,
+              emailTo,
+              emailCc,
               emailSubject,
               emailHtml,
               pdfBuffer,
@@ -338,7 +356,7 @@ router.post(
               action: 'email_sent',
               performedByUserId: req.user!.id,
               ipAddress: req.ip,
-              metadata: { to: parsed.data.emailTo },
+              metadata: { to: emailTo, cc: emailCc },
             });
           } catch (emailError) {
             // Don't fail the whole send if email fails
@@ -576,7 +594,25 @@ router.post(
         throw new ValidationError('Can only send reminders for sent or viewed proposals');
       }
 
-      if (parsed.data.emailTo) {
+      // Auto-resolve recipient from account contacts if not provided
+      let remindEmailTo = parsed.data.emailTo;
+      let remindEmailCc = parsed.data.emailCc || [];
+      if (!remindEmailTo) {
+        const contacts = await prisma.contact.findMany({
+          where: { accountId: proposal.account.id, archivedAt: null, email: { not: null } },
+          select: { email: true, isPrimary: true },
+          orderBy: { isPrimary: 'desc' },
+        });
+        const primary = contacts.find((c) => c.isPrimary);
+        if (primary?.email) {
+          remindEmailTo = primary.email;
+          remindEmailCc = contacts
+            .filter((c) => !c.isPrimary && c.email)
+            .map((c) => c.email!);
+        }
+      }
+
+      if (remindEmailTo) {
         if (!isEmailConfigured()) {
           logger.warn('Email not configured — skipping reminder email send');
           throw new ValidationError('Email is not configured. Set RESEND_API_KEY.');
@@ -601,10 +637,10 @@ router.post(
             publicViewUrl,
           });
 
-          logger.info(`Sending reminder email to ${parsed.data.emailTo}`);
+          logger.info(`Sending reminder email to ${remindEmailTo}`);
           const emailSent = await sendProposalEmail(
-            parsed.data.emailTo,
-            parsed.data.emailCc,
+            remindEmailTo,
+            remindEmailCc,
             emailSubject,
             emailHtml,
             pdfBuffer,
@@ -621,7 +657,7 @@ router.post(
             action: 'reminder_sent',
             performedByUserId: req.user!.id,
             ipAddress: req.ip,
-            metadata: { to: parsed.data.emailTo },
+            metadata: { to: remindEmailTo, cc: remindEmailCc },
           });
         } catch (emailError) {
           if (emailError instanceof ValidationError) throw emailError;
