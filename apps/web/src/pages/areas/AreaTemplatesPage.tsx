@@ -3,6 +3,7 @@ import {
   Plus,
   Edit2,
   Trash2,
+  Eye,
   Archive,
   RotateCcw,
   LayoutTemplate,
@@ -72,6 +73,7 @@ const AreaTemplatesPage = () => {
   const [showItemManagerModal, setShowItemManagerModal] = useState(false);
   const [showAreaTypeManagerModal, setShowAreaTypeManagerModal] = useState(false);
   const [showTemplateEditorModal, setShowTemplateEditorModal] = useState(false);
+  const [showTemplateViewModal, setShowTemplateViewModal] = useState(false);
   const [showTaskTemplateModal, setShowTaskTemplateModal] = useState(false);
 
   const [showItemModal, setShowItemModal] = useState(false);
@@ -100,6 +102,7 @@ const AreaTemplatesPage = () => {
   const [areaTypeTaskTemplateIds, setAreaTypeTaskTemplateIds] = useState<string[]>([]);
 
   const [selectedTemplate, setSelectedTemplate] = useState<AreaTemplate | null>(null);
+  const [viewTemplate, setViewTemplate] = useState<AreaTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState<CreateAreaTemplateInput>({
     areaTypeId: '',
     name: '',
@@ -224,7 +227,13 @@ const AreaTemplatesPage = () => {
     } else {
       resetTemplateForm();
     }
+    setShowTemplateViewModal(false);
     setShowTemplateEditorModal(true);
+  };
+
+  const openTemplateView = (template: AreaTemplate) => {
+    setViewTemplate(template);
+    setShowTemplateViewModal(true);
   };
 
   const openCreateItemModal = () => {
@@ -734,10 +743,11 @@ const AreaTemplatesPage = () => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              openTemplateEditor(template);
+              openTemplateView(template);
             }}
+            title="View"
           >
-            <Edit2 className="h-4 w-4" />
+            <Eye className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -791,11 +801,92 @@ const AreaTemplatesPage = () => {
             columns={templateColumns}
             isLoading={loadingTemplates}
             onRowClick={(template) => {
-              openTemplateEditor(template);
+              openTemplateView(template);
             }}
           />
         </div>
       </Card>
+
+      <Modal
+        isOpen={showTemplateViewModal}
+        onClose={() => setShowTemplateViewModal(false)}
+        title="Template Details"
+        size="lg"
+      >
+        {viewTemplate ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Template Name</p>
+                <p className="mt-1 text-sm text-white">{viewTemplate.name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Area Type</p>
+                <p className="mt-1 text-sm text-white">{viewTemplate.areaType.name}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Default Sq Ft</p>
+                <p className="mt-1 text-sm text-white">
+                  {viewTemplate.defaultSquareFeet
+                    ? Number(viewTemplate.defaultSquareFeet).toLocaleString()
+                    : '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Created By</p>
+                <p className="mt-1 text-sm text-white">{viewTemplate.createdByUser.fullName}</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-200">Items</h3>
+              {viewTemplate.items.length > 0 ? (
+                <ul className="mt-2 space-y-2">
+                  {viewTemplate.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-lg border border-white/10 bg-navy-dark/30 px-3 py-2 text-sm text-gray-200"
+                    >
+                      {item.fixtureType.name} - Count: {item.defaultCount}, Minutes/Item:{' '}
+                      {Number(item.minutesPerItem) || 0}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">No items configured.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-200">Tasks</h3>
+              {viewTemplate.tasks.length > 0 ? (
+                <ul className="mt-2 space-y-2">
+                  {viewTemplate.tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="rounded-lg border border-white/10 bg-navy-dark/30 px-3 py-2 text-sm text-gray-200"
+                    >
+                      {task.taskTemplate?.name || task.name || 'Custom Task'}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">No tasks configured.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setShowTemplateViewModal(false)}>
+                Close
+              </Button>
+              <Button onClick={() => openTemplateEditor(viewTemplate)}>
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit Template
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={showItemManagerModal}
