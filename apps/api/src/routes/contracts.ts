@@ -13,6 +13,7 @@ import {
   updateContractStatus,
   assignContractTeam,
   signContract,
+  sendContract as sendContractService,
   terminateContract,
   archiveContract,
   restoreContract,
@@ -21,6 +22,10 @@ import {
   completeInitialClean,
   getExpiringContracts,
 } from '../services/contractService';
+import { generatePublicToken } from '../services/contractPublicService';
+import { isEmailConfigured } from '../config/email';
+import { sendEmail } from '../services/emailService';
+import { buildContractSentHtmlWithBranding, buildContractSentSubject } from '../templates/contractSent';
 import { generateContractTerms } from '../services/contractTemplateService';
 import {
   createContractSchema,
@@ -33,6 +38,7 @@ import {
   terminateContractSchema,
   renewContractSchema,
   listContractsQuerySchema,
+  sendContractSchema,
 } from '../schemas/contract';
 import { listContractActivitiesQuerySchema } from '../schemas/contractActivity';
 import { logContractActivity, getContractActivities } from '../services/contractActivityService';
@@ -412,6 +418,122 @@ router.patch(
       });
 
       res.json({ data: contract });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Send contract to client
+router.post(
+  '/:id/send',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = sendContractSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const contract = await getContractById(req.params.id);
+      if (!contract) {
+        throw new NotFoundError('Contract not found');
+      }
+
+      if (!['draft', 'sent', 'viewed'].includes(contract.status)) {
+        throw new ValidationError('Only draft, sent, or viewed contracts can be sent');
+      }
+
+      // 1. Generate public token (regenerate on resend)
+      const publicToken = await generatePublicToken(req.params.id);
+
+      // 2. Mark as sent
+      const sent = await sendContractService(req.params.id);
+
+      // 3. Log activity
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'sent',
+        performedByUserId: req.user!.id,
+        metadata: {
+          emailTo: parsed.data.emailTo,
+          emailCc: parsed.data.emailCc,
+        },
+      });
+
+      // 4. Auto-resolve recipient from account contacts if not provided
+      let emailTo = parsed.data.emailTo;
+      let emailCc = parsed.data.emailCc || [];
+      if (!emailTo) {
+        const contacts = await prisma.contact.findMany({
+          where: { accountId: contract.account.id, archivedAt: null, email: { not: null } },
+          select: { email: true, isPrimary: true },
+          orderBy: { isPrimary: 'desc' },
+        });
+        const primary = contacts.find((c) => c.isPrimary);
+        if (primary?.email) {
+          emailTo = primary.email;
+          emailCc = contacts
+            .filter((c) => !c.isPrimary && c.email)
+            .map((c) => c.email!);
+        }
+      }
+
+      if (emailTo) {
+        if (!isEmailConfigured()) {
+          logger.warn('Email not configured — skipping contract email send');
+        } else {
+          try {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
+
+            logger.info(`Generating PDF for contract ${sent.contractNumber}`);
+            const pdfBuffer = await generateContractPdf(sent as any);
+
+            const emailSubject = parsed.data.emailSubject || buildContractSentSubject(
+              sent.contractNumber,
+              sent.title
+            );
+            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const emailHtml = buildContractSentHtmlWithBranding({
+              contractNumber: sent.contractNumber,
+              title: sent.title,
+              accountName: sent.account.name,
+              monthlyValue: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(sent.monthlyValue)),
+              startDate: new Date(sent.startDate).toLocaleDateString(),
+              publicViewUrl,
+            }, branding);
+
+            logger.info(`Sending contract email to ${emailTo}`);
+            const emailSent = await sendEmail({
+              to: emailTo,
+              cc: emailCc.length > 0 ? emailCc : undefined,
+              subject: emailSubject,
+              html: emailHtml,
+              attachments: [{
+                filename: `${sent.contractNumber}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+              }],
+            });
+            logger.info(`Contract email result: ${emailSent ? 'sent' : 'failed'}`);
+
+            await logContractActivity({
+              contractId: req.params.id,
+              action: 'email_sent',
+              performedByUserId: req.user!.id,
+              metadata: { to: emailTo, cc: emailCc },
+            });
+          } catch (emailError) {
+            logger.error('Failed to send contract email:', emailError);
+          }
+        }
+      }
+
+      // Re-fetch to get updated fields
+      const updatedContract = await getContractById(req.params.id);
+      res.json({ data: updatedContract, message: 'Contract sent successfully' });
     } catch (error) {
       next(error);
     }

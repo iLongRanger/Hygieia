@@ -50,9 +50,11 @@ model User {
   createdTeams             Team[]            @relation("CreatedTeams")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
+  contractActivities             ContractActivity[] @relation("ContractActivities")
   createdAppointments      Appointment[]     @relation("CreatedAppointments")
   assignedAppointments     Appointment[]     @relation("AssignedAppointments")
   notifications            Notification[]    @relation("UserNotifications")
+  accountActivities        AccountActivity[] @relation("AccountActivities")
 
   @@index([email])
   @@index([status])
@@ -256,6 +258,7 @@ model Account {
   createdByUser  User       @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
   sourceLead     Lead?      @relation("LeadToAccount")
   defaultPricingPlan PricingSettings? @relation("AccountDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
+  activities         AccountActivity[]
 
   @@index([type])
   @@index([accountManagerId])
@@ -290,6 +293,23 @@ model Contact {
   @@index([isPrimary])
   @@index([isBilling])
   @@map("contacts")
+}
+
+model AccountActivity {
+  id                String   @id @default(uuid()) @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  entryType         String   @map("entry_type") @db.VarChar(30)
+  note              String   @db.Text
+  performedByUserId String?  @map("performed_by_user_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  account         Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  performedByUser User?   @relation("AccountActivities", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([entryType])
+  @@index([createdAt])
+  @@map("account_activities")
 }
 
 // ============================================================
@@ -861,6 +881,13 @@ model Contract {
   initialCleanCompletedAt     DateTime? @map("initial_clean_completed_at") @db.Timestamptz(6)
   initialCleanCompletedByUserId String?  @map("initial_clean_completed_by_user_id") @db.Uuid
 
+  // Public access
+  publicToken          String?   @unique @map("public_token") @db.VarChar(64)
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  signatureIp          String?   @map("signature_ip") @db.VarChar(45)
+  sentAt               DateTime? @map("sent_at") @db.Timestamptz(6)
+  viewedAt             DateTime? @map("viewed_at") @db.Timestamptz(6)
+
   // Audit
   createdByUserId String    @map("created_by_user_id") @db.Uuid
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -888,8 +915,28 @@ model Contract {
   @@index([renewedFromContractId])
   @@index([startDate])
   @@index([endDate])
+  @@index([publicToken])
   @@index([createdAt])
   @@map("contracts")
+
+  activities ContractActivity[]
+}
+
+model ContractActivity {
+  id              String   @id @default(uuid()) @db.Uuid
+  contractId      String   @map("contract_id") @db.Uuid
+  action          String   @db.VarChar(50)
+  performedByUserId String? @map("performed_by_user_id") @db.Uuid
+  metadata        Json     @default("{}") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  performedByUser User?    @relation("ContractActivities", fields: [performedByUserId], references: [id])
+
+  @@index([contractId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("contract_activities")
 }
 
 model Team {

@@ -1,0 +1,126 @@
+import crypto from 'crypto';
+import { prisma } from '../lib/prisma';
+
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+
+const publicContractSelect = {
+  id: true,
+  contractNumber: true,
+  title: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  serviceFrequency: true,
+  monthlyValue: true,
+  billingCycle: true,
+  paymentTerms: true,
+  termsAndConditions: true,
+  signedByName: true,
+  signedDate: true,
+  sentAt: true,
+  account: {
+    select: {
+      name: true,
+    },
+  },
+  facility: {
+    select: {
+      name: true,
+      address: true,
+    },
+  },
+} as const;
+
+export async function generatePublicToken(contractId: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      publicToken: token,
+      publicTokenExpiresAt: expiresAt,
+    },
+  });
+
+  return token;
+}
+
+export async function getContractByPublicToken(token: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { publicToken: token },
+    select: {
+      ...publicContractSelect,
+      publicTokenExpiresAt: true,
+    },
+  });
+
+  if (!contract) {
+    return null;
+  }
+
+  if (contract.publicTokenExpiresAt && new Date() > contract.publicTokenExpiresAt) {
+    return null;
+  }
+
+  return contract;
+}
+
+export async function markPublicViewed(token: string, ipAddress?: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { publicToken: token },
+    select: { id: true, status: true, viewedAt: true },
+  });
+
+  if (!contract) return null;
+
+  if (!contract.viewedAt) {
+    return prisma.contract.update({
+      where: { id: contract.id },
+      data: {
+        status: contract.status === 'sent' ? 'viewed' : contract.status,
+        viewedAt: new Date(),
+      },
+      select: { id: true },
+    });
+  }
+
+  return { id: contract.id };
+}
+
+export async function signContractPublic(
+  token: string,
+  signedByName: string,
+  signedByEmail: string,
+  ipAddress?: string
+) {
+  const contract = await prisma.contract.findUnique({
+    where: { publicToken: token },
+    select: { id: true, status: true, publicTokenExpiresAt: true },
+  });
+
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  if (contract.publicTokenExpiresAt && new Date() > contract.publicTokenExpiresAt) {
+    throw new Error('This contract link has expired');
+  }
+
+  if (!['sent', 'viewed'].includes(contract.status)) {
+    throw new Error('This contract can no longer be signed');
+  }
+
+  return prisma.contract.update({
+    where: { id: contract.id },
+    data: {
+      status: 'pending_signature',
+      signedByName,
+      signedByEmail,
+      signedDate: new Date(),
+      signatureIp: ipAddress ?? null,
+    },
+    select: publicContractSelect,
+  });
+}

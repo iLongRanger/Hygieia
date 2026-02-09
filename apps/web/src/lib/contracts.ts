@@ -6,6 +6,7 @@ import type {
   CreateStandaloneContractInput,
   UpdateContractInput,
   SignContractInput,
+  SendContractInput,
   TerminateContractInput,
   RenewContractInput,
   CanRenewContractResult,
@@ -60,6 +61,14 @@ export async function updateContractStatus(
   status: string
 ): Promise<Contract> {
   const response = await api.patch(`/contracts/${id}/status`, { status });
+  return response.data.data;
+}
+
+export async function sendContract(
+  id: string,
+  data?: SendContractInput
+): Promise<Contract> {
+  const response = await api.post(`/contracts/${id}/send`, data || {});
   return response.data.data;
 }
 

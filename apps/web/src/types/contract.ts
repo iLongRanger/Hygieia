@@ -1,5 +1,7 @@
 export type ContractStatus =
   | 'draft'
+  | 'sent'
+  | 'viewed'
   | 'pending_signature'
   | 'active'
   | 'expired'
@@ -48,6 +50,9 @@ export interface Contract {
   paymentTerms: string;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
+  sentAt?: string | null;
+  viewedAt?: string | null;
+  publicToken?: string | null;
   signedDocumentUrl?: string | null;
   signedDate?: string | null;
   signedByName?: string | null;
@@ -55,6 +60,9 @@ export interface Contract {
   approvedAt?: string | null;
   terminationReason?: string | null;
   terminatedAt?: string | null;
+  includesInitialClean: boolean;
+  initialCleanCompleted: boolean;
+  initialCleanCompletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
@@ -72,6 +80,13 @@ export interface Contract {
     id: string;
     proposalNumber: string;
     title: string;
+  } | null;
+  assignedTeam?: {
+    id: string;
+    name: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
   } | null;
   renewedFromContract?: {
     id: string;
@@ -153,6 +168,13 @@ export interface SignContractInput {
   signedByName: string;
   signedByEmail: string;
   signedDocumentUrl?: string | null;
+}
+
+export interface SendContractInput {
+  emailTo?: string;
+  emailCc?: string[];
+  emailSubject?: string;
+  emailBody?: string;
 }
 
 export interface TerminateContractInput {

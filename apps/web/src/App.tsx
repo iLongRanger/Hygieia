@@ -32,7 +32,10 @@ import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
 import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
 import PublicProposalView from './pages/public/PublicProposalView';
+import PublicContractView from './pages/public/PublicContractView';
+import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
   return (
@@ -65,8 +68,10 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/p/:token" element={<PublicProposalView />} />
+          <Route path="/c/:token" element={<PublicContractView />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
-          <Route element={<AdminLayout />}>
+          <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/leads" element={<LeadsList />} />
             <Route path="/leads/:id" element={<LeadDetail />} />
@@ -79,7 +84,14 @@ function App() {
             <Route path="/facilities/:id" element={<FacilityDetail />} />
             <Route path="/tasks" element={<TaskTemplatesList />} />
             <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
-            <Route path="/area-templates" element={<AreaTemplatesPage />} />
+            <Route
+              path="/area-templates"
+              element={
+                <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
+                  <AreaTemplatesPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/pricing" element={<PricingSettingsPage />} />
             <Route path="/pricing/settings" element={<PricingSettingsPage />} />
             <Route path="/proposals" element={<ProposalsList />} />
@@ -91,10 +103,38 @@ function App() {
             <Route path="/contracts/:id" element={<ContractDetail />} />
             <Route path="/contracts/:id/edit" element={<ContractForm />} />
             <Route path="/teams" element={<TeamsList />} />
-            <Route path="/settings/global" element={<GlobalSettingsPage />} />
-            <Route path="/settings/proposal-templates" element={<ProposalTemplatesPage />} />
-            <Route path="/users" element={<UsersList />} />
-            <Route path="/users/:id" element={<UserDetail />} />
+            <Route
+              path="/settings/global"
+              element={
+                <ProtectedRoute requiredRoles={['owner', 'admin']}>
+                  <GlobalSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/proposal-templates"
+              element={
+                <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
+                  <ProposalTemplatesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute requiredRoles={['owner', 'admin']}>
+                  <UsersList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users/:id"
+              element={
+                <ProtectedRoute requiredRoles={['owner', 'admin']}>
+                  <UserDetail />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

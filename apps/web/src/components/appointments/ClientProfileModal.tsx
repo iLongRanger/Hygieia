@@ -37,6 +37,8 @@ const CONTRACT_STATUS_VARIANTS: Record<
   'default' | 'success' | 'warning' | 'error' | 'info'
 > = {
   draft: 'default',
+  sent: 'info',
+  viewed: 'info',
   pending_signature: 'warning',
   active: 'success',
   expired: 'default',

@@ -34,6 +34,7 @@ import dashboardRoutes from './routes/dashboard';
 import teamsRoutes from './routes/teams';
 import globalSettingsRoutes from './routes/globalSettings';
 import publicProposalsRoutes from './routes/publicProposals';
+import publicContractsRoutes from './routes/publicContracts';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -95,6 +96,7 @@ app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
+app.use('/api/v1/public/contracts', publicContractsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
