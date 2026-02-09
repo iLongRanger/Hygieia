@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listContacts,
@@ -17,6 +17,7 @@ import {
   listContactsQuerySchema,
 } from '../schemas/contact';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -34,7 +35,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listContactsQuerySchema.safeParse(req.query);
@@ -53,7 +54,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contact = await getContactById(req.params.id);
@@ -70,7 +71,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createContactSchema.safeParse(req.body);
@@ -97,7 +98,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -121,7 +122,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -140,7 +141,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -159,7 +160,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
