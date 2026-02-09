@@ -42,6 +42,13 @@ export const PERMISSIONS = {
   TASK_TEMPLATES_ADMIN: 'task_templates_admin',
   PROPOSAL_TEMPLATES_ADMIN: 'proposal_templates_admin',
   PROPOSAL_TEMPLATES_DELETE: 'proposal_templates_delete',
+  PROPOSALS_READ: 'proposals_read',
+  PROPOSALS_WRITE: 'proposals_write',
+  PROPOSALS_ADMIN: 'proposals_admin',
+  PROPOSALS_DELETE: 'proposals_delete',
+  CONTRACTS_READ: 'contracts_read',
+  CONTRACTS_WRITE: 'contracts_write',
+  CONTRACTS_ADMIN: 'contracts_admin',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

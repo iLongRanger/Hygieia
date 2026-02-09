@@ -12,10 +12,55 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/rbac', () => ({
-  requireRole: () => (_req: any, _res: any, next: any) => next(),
+  requirePermission: () => (_req: any, _res: any, next: any) => next(),
+}));
+
+jest.mock('../../middleware/ownership', () => ({
+  verifyOwnership: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock('../../services/contractService');
+
+jest.mock('../../services/contractActivityService', () => ({
+  logContractActivity: jest.fn().mockResolvedValue({}),
+  getContractActivities: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }),
+}));
+
+jest.mock('../../services/pdfService', () => ({
+  generateContractPdf: jest.fn().mockResolvedValue(Buffer.from('fake-pdf')),
+}));
+
+jest.mock('../../services/emailService', () => ({
+  sendNotificationEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../services/globalSettingsService', () => ({
+  getGlobalSettings: jest.fn().mockResolvedValue({}),
+  getDefaultBranding: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock('../../templates/contractActivated', () => ({
+  buildContractActivatedHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildContractActivatedSubject: jest.fn().mockReturnValue('Subject'),
+}));
+
+jest.mock('../../templates/contractTerminated', () => ({
+  buildContractTerminatedHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildContractTerminatedSubject: jest.fn().mockReturnValue('Subject'),
+}));
+
+jest.mock('../../lib/prisma', () => ({
+  prisma: {
+    contract: { findUnique: jest.fn().mockResolvedValue(null) },
+    notification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    userRole: { findMany: jest.fn().mockResolvedValue([]) },
+  },
+}));
+
+jest.mock('../../lib/logger', () => {
+  const logger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+  return { __esModule: true, default: logger };
+});
 
 describe('Contract Routes', () => {
   let app: Application;
@@ -133,10 +178,25 @@ describe('Contract Routes', () => {
 
     const response = await request(app)
       .patch('/api/v1/contracts/contract-1/status')
-      .send({ status: 'active' })
+      .send({ status: 'active' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.id).toBe('contract-1');
+  });
+
+  it('PATCH /:id/team should assign team', async () => {
+    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+
+    const response = await request(app)
+      .patch('/api/v1/contracts/contract-1/team')
+      .send({ teamId: '11111111-1111-1111-1111-111111111111' })
       .expect(200);
 
     expect(response.body.data.id).toBe('contract-1');
+    expect(contractService.assignContractTeam).toHaveBeenCalledWith(
+      'contract-1',
+      '11111111-1111-1111-1111-111111111111'
+    );
   });
 
   it('POST /:id/sign should sign contract', async () => {
