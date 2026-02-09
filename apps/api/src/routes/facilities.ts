@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -29,6 +29,7 @@ import {
   listFacilitiesQuerySchema,
 } from '../schemas/facility';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -53,7 +54,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listFacilitiesQuerySchema.safeParse(req.query);
@@ -72,7 +73,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -90,7 +91,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createFacilitySchema.safeParse(req.body);
@@ -117,7 +118,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_WRITE),
   verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -142,7 +143,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITIES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -161,7 +162,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITIES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -181,7 +182,7 @@ router.post(
 router.get(
   '/:id/pricing-readiness',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await isFacilityReadyForPricing(req.params.id);
@@ -196,7 +197,7 @@ router.get(
 router.get(
   '/:id/pricing',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -226,7 +227,7 @@ router.get(
 router.get(
   '/:id/pricing-comparison',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -257,7 +258,7 @@ router.get(
 router.get(
   '/:id/proposal-template',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -319,7 +320,7 @@ router.get(
 router.get(
   '/:id/tasks-grouped',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -356,7 +357,7 @@ router.get(
 router.get(
   '/:id/task-time-breakdown',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITIES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -375,7 +376,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITIES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);

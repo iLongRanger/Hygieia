@@ -32,6 +32,12 @@ export const PERMISSIONS = {
   ACCOUNTS_WRITE: 'accounts_write',
   ACCOUNTS_ADMIN: 'accounts_admin',
   DASHBOARD_READ: 'dashboard_read',
+  FACILITIES_READ: 'facilities_read',
+  FACILITIES_WRITE: 'facilities_write',
+  FACILITIES_ADMIN: 'facilities_admin',
+  FACILITY_TASKS_READ: 'facility_tasks_read',
+  FACILITY_TASKS_WRITE: 'facility_tasks_write',
+  FACILITY_TASKS_ADMIN: 'facility_tasks_admin',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
