@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listPricingSettings,
@@ -19,6 +19,7 @@ import {
   listPricingSettingsQuerySchema,
 } from '../schemas/pricingSettings';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -37,7 +38,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PRICING_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listPricingSettingsQuerySchema.safeParse(req.query);
@@ -57,7 +58,7 @@ router.get(
 router.get(
   '/active',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PRICING_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const pricingSettings = await getDefaultPricingSettings();
@@ -75,7 +76,7 @@ router.get(
 router.get(
   '/default',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PRICING_READ),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const pricingSettings = await getDefaultPricingSettings();
@@ -93,7 +94,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PRICING_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const pricingSettings = await getPricingSettingsById(req.params.id);
@@ -111,7 +112,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createPricingSettingsSchema.safeParse(req.body);
@@ -131,7 +132,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
@@ -156,7 +157,7 @@ router.patch(
 router.post(
   '/:id/set-active',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
@@ -176,7 +177,7 @@ router.post(
 router.post(
   '/:id/set-default',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
@@ -196,7 +197,7 @@ router.post(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
@@ -216,7 +217,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
@@ -236,7 +237,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PRICING_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getPricingSettingsById(req.params.id);
