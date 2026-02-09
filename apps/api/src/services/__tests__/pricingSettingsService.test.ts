@@ -4,6 +4,7 @@ import {
   listPricingSettings,
   getDefaultPricingSettings,
   createPricingSettings,
+  updatePricingSettings,
   setDefaultPricingSettings,
 } from '../pricingSettingsService';
 
@@ -77,8 +78,47 @@ describe('pricingSettingsService', () => {
             pricingType: 'square_foot',
             baseRatePerSqFt: 0.1,
             minimumMonthlyCharge: 250,
+            laborCostPerHour: 18,
             isActive: true,
             isDefault: false,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('updatePricingSettings', () => {
+    it('persists labor and overhead fields when provided', async () => {
+      (prisma.pricingSettings.update as jest.Mock).mockResolvedValue({
+        id: 'pricing-1',
+        laborCostPerHour: 22,
+      });
+
+      await updatePricingSettings('pricing-1', {
+        laborCostPerHour: 22,
+        laborBurdenPercentage: 0.3,
+        insurancePercentage: 0.09,
+        adminOverheadPercentage: 0.13,
+        travelCostPerVisit: 19,
+        equipmentPercentage: 0.06,
+        supplyCostPercentage: 0.05,
+        supplyCostPerSqFt: 0.01,
+        targetProfitMargin: 0.27,
+      });
+
+      expect(prisma.pricingSettings.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pricing-1' },
+          data: expect.objectContaining({
+            laborCostPerHour: 22,
+            laborBurdenPercentage: 0.3,
+            insurancePercentage: 0.09,
+            adminOverheadPercentage: 0.13,
+            travelCostPerVisit: 19,
+            equipmentPercentage: 0.06,
+            supplyCostPercentage: 0.05,
+            supplyCostPerSqFt: 0.01,
+            targetProfitMargin: 0.27,
           }),
         })
       );
@@ -122,4 +162,3 @@ describe('pricingSettingsService', () => {
     });
   });
 });
-

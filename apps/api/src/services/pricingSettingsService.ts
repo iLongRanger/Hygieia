@@ -19,6 +19,15 @@ export interface PricingSettingsCreateInput {
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  travelCostPerVisit?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  supplyCostPerSqFt?: number | null;
+  targetProfitMargin?: number;
   floorTypeMultipliers?: object;
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
@@ -36,6 +45,15 @@ export interface PricingSettingsUpdateInput {
   baseRatePerSqFt?: number;
   minimumMonthlyCharge?: number;
   hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  travelCostPerVisit?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  supplyCostPerSqFt?: number | null;
+  targetProfitMargin?: number;
   floorTypeMultipliers?: object;
   frequencyMultipliers?: object;
   conditionMultipliers?: object;
@@ -257,6 +275,15 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
       baseRatePerSqFt: input.baseRatePerSqFt ?? 0.10,
       minimumMonthlyCharge: input.minimumMonthlyCharge ?? 250,
       hourlyRate: input.hourlyRate ?? 35.00,
+      laborCostPerHour: input.laborCostPerHour ?? 18.00,
+      laborBurdenPercentage: input.laborBurdenPercentage ?? 0.25,
+      insurancePercentage: input.insurancePercentage ?? 0.08,
+      adminOverheadPercentage: input.adminOverheadPercentage ?? 0.12,
+      travelCostPerVisit: input.travelCostPerVisit ?? 15.00,
+      equipmentPercentage: input.equipmentPercentage ?? 0.05,
+      supplyCostPercentage: input.supplyCostPercentage ?? 0.04,
+      supplyCostPerSqFt: input.supplyCostPerSqFt ?? null,
+      targetProfitMargin: input.targetProfitMargin ?? 0.25,
       floorTypeMultipliers: input.floorTypeMultipliers ?? defaultFloorTypeMultipliers,
       frequencyMultipliers: input.frequencyMultipliers ?? defaultFrequencyMultipliers,
       conditionMultipliers: input.conditionMultipliers ?? defaultConditionMultipliers,
@@ -279,6 +306,15 @@ export async function updatePricingSettings(id: string, input: PricingSettingsUp
   if (input.baseRatePerSqFt !== undefined) updateData.baseRatePerSqFt = input.baseRatePerSqFt;
   if (input.minimumMonthlyCharge !== undefined) updateData.minimumMonthlyCharge = input.minimumMonthlyCharge;
   if (input.hourlyRate !== undefined) updateData.hourlyRate = input.hourlyRate;
+  if (input.laborCostPerHour !== undefined) updateData.laborCostPerHour = input.laborCostPerHour;
+  if (input.laborBurdenPercentage !== undefined) updateData.laborBurdenPercentage = input.laborBurdenPercentage;
+  if (input.insurancePercentage !== undefined) updateData.insurancePercentage = input.insurancePercentage;
+  if (input.adminOverheadPercentage !== undefined) updateData.adminOverheadPercentage = input.adminOverheadPercentage;
+  if (input.travelCostPerVisit !== undefined) updateData.travelCostPerVisit = input.travelCostPerVisit;
+  if (input.equipmentPercentage !== undefined) updateData.equipmentPercentage = input.equipmentPercentage;
+  if (input.supplyCostPercentage !== undefined) updateData.supplyCostPercentage = input.supplyCostPercentage;
+  if (input.supplyCostPerSqFt !== undefined) updateData.supplyCostPerSqFt = input.supplyCostPerSqFt;
+  if (input.targetProfitMargin !== undefined) updateData.targetProfitMargin = input.targetProfitMargin;
   if (input.floorTypeMultipliers !== undefined) updateData.floorTypeMultipliers = input.floorTypeMultipliers;
   if (input.frequencyMultipliers !== undefined) updateData.frequencyMultipliers = input.frequencyMultipliers;
   if (input.conditionMultipliers !== undefined) updateData.conditionMultipliers = input.conditionMultipliers;
