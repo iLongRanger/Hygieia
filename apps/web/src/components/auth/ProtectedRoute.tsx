@@ -102,13 +102,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check role-based access
-  if (requiredRoles && requiredRoles.length > 0 && user) {
-    const userRole = user.role;
+  if (requiredRoles && requiredRoles.length > 0) {
+    const userRole = user?.role;
 
-    if (!requiredRoles.includes(userRole)) {
+    if (!userRole || !requiredRoles.includes(userRole)) {
       logger.warn('Access denied - insufficient permissions', {
         component: 'ProtectedRoute',
-        userRole,
+        userRole: userRole ?? 'unknown',
         requiredRoles: requiredRoles.join(', '),
         path: location.pathname,
       });

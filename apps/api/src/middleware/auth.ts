@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { jwtConfig, getJwtSecret } from '../config/jwt';
-import { UserRole } from '../types';
+import { UserRole, isValidRole, resolveHighestRole } from '../types';
 
 interface JwtPayload {
   sub: string;
@@ -82,7 +82,10 @@ export async function authenticate(
       return;
     }
 
-    const primaryRole = (user.roles[0]?.role?.key as UserRole) || 'cleaner';
+    const assignedRoles = user.roles
+      .map((userRole) => userRole.role?.key)
+      .filter(isValidRole);
+    const primaryRole = resolveHighestRole(assignedRoles);
 
     req.user = {
       id: user.id,
