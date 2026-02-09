@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listAreaTemplates,
@@ -16,6 +16,7 @@ import {
   listAreaTemplatesQuerySchema,
 } from '../schemas/areaTemplate';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -33,7 +34,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listAreaTemplatesQuerySchema.safeParse(req.query);
@@ -52,7 +53,7 @@ router.get(
 router.get(
   '/area-type/:areaTypeId',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_READ_BY_TYPE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const template = await getAreaTemplateByAreaType(req.params.areaTypeId);
@@ -69,7 +70,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const template = await getAreaTemplateById(req.params.id);
@@ -86,7 +87,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createAreaTemplateSchema.safeParse(req.body);
@@ -108,7 +109,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAreaTemplateById(req.params.id);
@@ -132,7 +133,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.AREA_TEMPLATES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAreaTemplateById(req.params.id);
