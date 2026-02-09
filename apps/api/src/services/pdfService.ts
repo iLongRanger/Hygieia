@@ -1,7 +1,8 @@
 // @ts-ignore - pdfmake/src/printer has no type declarations
 import PdfPrinter from 'pdfmake/src/printer.js';
 import type { TDocumentDefinitions, Content, TableCell } from 'pdfmake/interfaces';
-import { companyConfig } from '../config/company';
+import { getDefaultBranding, getGlobalSettings } from './globalSettingsService';
+import type { GlobalBranding } from '../types/branding';
 
 // Use standard PDF fonts (no font files needed)
 const printer = new PdfPrinter({
@@ -13,9 +14,7 @@ const printer = new PdfPrinter({
   },
 });
 
-const COLORS = {
-  primary: '#1a1a2e',
-  accent: '#d4af37',
+const BASE_COLORS = {
   text: '#333333',
   lightText: '#666666',
   border: '#e0e0e0',
@@ -73,27 +72,43 @@ interface ProposalForPdf {
 }
 
 export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buffer> {
+  let branding: GlobalBranding;
+  try {
+    branding = await getGlobalSettings();
+  } catch {
+    branding = getDefaultBranding();
+  }
+
+  const COLORS = {
+    ...BASE_COLORS,
+    primary: branding.themePrimaryColor,
+    accent: branding.themeAccentColor,
+  };
+
   const content: Content[] = [];
 
   // Company Header
+  const headerStack: Content[] = [];
+  if (branding.logoDataUrl) {
+    headerStack.push({
+      image: branding.logoDataUrl,
+      fit: [120, 60],
+      margin: [0, 0, 0, 8] as [number, number, number, number],
+    });
+  }
+
+  headerStack.push(
+    { text: branding.companyName, style: 'companyName' },
+    ...(branding.companyAddress ? [{ text: branding.companyAddress, style: 'companyDetail' }] : []),
+    ...(branding.companyPhone ? [{ text: branding.companyPhone, style: 'companyDetail' }] : []),
+    ...(branding.companyEmail ? [{ text: branding.companyEmail, style: 'companyDetail' }] : []),
+    ...(branding.companyWebsite ? [{ text: branding.companyWebsite, style: 'companyDetail' }] : [])
+  );
+
   content.push({
     columns: [
       {
-        stack: [
-          { text: companyConfig.name, style: 'companyName' },
-          ...(companyConfig.address
-            ? [{ text: companyConfig.address, style: 'companyDetail' }]
-            : []),
-          ...(companyConfig.phone
-            ? [{ text: companyConfig.phone, style: 'companyDetail' }]
-            : []),
-          ...(companyConfig.email
-            ? [{ text: companyConfig.email, style: 'companyDetail' }]
-            : []),
-          ...(companyConfig.website
-            ? [{ text: companyConfig.website, style: 'companyDetail' }]
-            : []),
-        ],
+        stack: headerStack,
         width: '*',
       },
       {
@@ -463,7 +478,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     footer: (currentPage: number, pageCount: number) => ({
       columns: [
         {
-          text: `${companyConfig.name} - ${proposal.proposalNumber}`,
+          text: `${branding.companyName} - ${proposal.proposalNumber}`,
           fontSize: 8,
           color: COLORS.lightText,
           margin: [40, 0, 0, 0] as [number, number, number, number],

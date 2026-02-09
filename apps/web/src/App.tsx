@@ -29,6 +29,7 @@ import ContractsList from './pages/contracts/ContractsList';
 import ContractDetail from './pages/contracts/ContractDetail';
 import ContractForm from './pages/contracts/ContractForm';
 import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
+import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
 import PublicProposalView from './pages/public/PublicProposalView';
 import AdminLayout from './components/layout/AdminLayout';
@@ -90,6 +91,7 @@ function App() {
             <Route path="/contracts/:id" element={<ContractDetail />} />
             <Route path="/contracts/:id/edit" element={<ContractForm />} />
             <Route path="/teams" element={<TeamsList />} />
+            <Route path="/settings/global" element={<GlobalSettingsPage />} />
             <Route path="/settings/proposal-templates" element={<ProposalTemplatesPage />} />
             <Route path="/users" element={<UsersList />} />
             <Route path="/users/:id" element={<UserDetail />} />

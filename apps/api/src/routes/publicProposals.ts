@@ -9,9 +9,9 @@ import {
 import { logActivity } from '../services/proposalActivityService';
 import { generateProposalPdf } from '../services/pdfService';
 import { sendNotificationEmail } from '../services/emailService';
-import { buildProposalAcceptedHtml, buildProposalAcceptedSubject } from '../templates/proposalAccepted';
-import { buildProposalRejectedHtml, buildProposalRejectedSubject } from '../templates/proposalRejected';
-import { companyConfig } from '../config/company';
+import { buildProposalAcceptedHtmlWithBranding, buildProposalAcceptedSubject } from '../templates/proposalAccepted';
+import { buildProposalRejectedHtmlWithBranding, buildProposalRejectedSubject } from '../templates/proposalRejected';
+import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicAcceptSchema, publicRejectSchema } from '../schemas/publicProposal';
@@ -83,7 +83,8 @@ router.get(
         });
       }
 
-      res.json({ data: proposal });
+      const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+      res.json({ data: proposal, branding });
     } catch (error) {
       next(error);
     }
@@ -137,22 +138,23 @@ router.post(
           });
 
           // Send email notifications
-          const html = buildProposalAcceptedHtml({
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const html = buildProposalAcceptedHtmlWithBranding({
             proposalNumber: fullProposal.proposalNumber,
             title: fullProposal.title,
             accountName: fullProposal.account.name,
             totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(fullProposal.totalAmount)),
             acceptedAt: new Date().toLocaleDateString(),
             signatureName: parsed.data.signatureName,
-          });
+          }, branding);
           const subject = buildProposalAcceptedSubject(fullProposal.proposalNumber);
 
           const emailRecipients = new Set<string>();
           if (fullProposal.createdByUser?.email) {
             emailRecipients.add(fullProposal.createdByUser.email);
           }
-          if (companyConfig.email) {
-            emailRecipients.add(companyConfig.email);
+          if (branding.companyEmail) {
+            emailRecipients.add(branding.companyEmail);
           }
 
           await Promise.allSettled(
@@ -217,21 +219,22 @@ router.post(
           });
 
           // Send email notifications
-          const html = buildProposalRejectedHtml({
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const html = buildProposalRejectedHtmlWithBranding({
             proposalNumber: fullProposal.proposalNumber,
             title: fullProposal.title,
             accountName: fullProposal.account.name,
             rejectedAt: new Date().toLocaleDateString(),
             rejectionReason: parsed.data.rejectionReason,
-          });
+          }, branding);
           const subject = buildProposalRejectedSubject(fullProposal.proposalNumber);
 
           const emailRecipients = new Set<string>();
           if (fullProposal.createdByUser?.email) {
             emailRecipients.add(fullProposal.createdByUser.email);
           }
-          if (companyConfig.email) {
-            emailRecipients.add(companyConfig.email);
+          if (branding.companyEmail) {
+            emailRecipients.add(branding.companyEmail);
           }
 
           await Promise.allSettled(

@@ -16,6 +16,7 @@ import {
   downloadPublicProposalPdf,
 } from '../../lib/publicProposals';
 import type { PublicProposal } from '../../types/publicProposal';
+import type { GlobalBranding } from '../../types/globalSettings';
 
 const formatCurrency = (amount: number | string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
@@ -41,6 +42,7 @@ const formatDate = (date: string | null | undefined) => {
 const PublicProposalView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [proposal, setProposal] = useState<PublicProposal | null>(null);
+  const [branding, setBranding] = useState<GlobalBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +61,9 @@ const PublicProposalView: React.FC = () => {
   const fetchProposal = async () => {
     try {
       setLoading(true);
-      const data = await getPublicProposal(token!);
-      setProposal(data);
+      const response = await getPublicProposal(token!);
+      setProposal(response.data);
+      setBranding(response.branding);
     } catch (err: any) {
       setError(
         err.response?.status === 404
@@ -135,14 +138,24 @@ const PublicProposalView: React.FC = () => {
 
   const canAct = ['sent', 'viewed'].includes(proposal.status);
 
+  const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
+  const accentColor = branding?.themeAccentColor || '#d4af37';
+  const backgroundColor = branding?.themeBackgroundColor || '#f8fafc';
+  const textColor = branding?.themeTextColor || '#111827';
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor }}>
       {/* Header */}
-      <header className="bg-[#1a1a2e] text-white">
+      <header className="text-white" style={{ backgroundColor: primaryColor }}>
         <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-[#d4af37]">{proposal.account.name}</h1>
+              {branding?.logoDataUrl && (
+                <img src={branding.logoDataUrl} alt={branding.companyName} className="mb-2 max-h-10 w-auto" />
+              )}
+              <h1 className="text-xl font-bold" style={{ color: accentColor }}>
+                {branding?.companyName || proposal.account.name}
+              </h1>
               <p className="text-gray-300 text-sm mt-1">Proposal {proposal.proposalNumber}</p>
             </div>
             <button
@@ -214,7 +227,7 @@ const PublicProposalView: React.FC = () => {
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
         {/* Title & Meta */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">{proposal.title}</h2>
+          <h2 className="text-2xl font-bold" style={{ color: textColor }}>{proposal.title}</h2>
           <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
             {proposal.facility && (
               <span className="flex items-center gap-1">
@@ -304,7 +317,7 @@ const PublicProposalView: React.FC = () => {
 
         {/* Pricing Summary */}
         <div className="mb-8 flex justify-end">
-          <div className="w-72 bg-white rounded-lg border border-gray-200 p-4">
+            <div className="w-72 bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-500">Subtotal</span>
               <span className="text-gray-900">{formatCurrency(proposal.subtotal)}</span>
@@ -315,7 +328,7 @@ const PublicProposalView: React.FC = () => {
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-gray-200">
               <span className="text-lg font-bold text-gray-900">Total</span>
-              <span className="text-lg font-bold text-[#1a1a2e]">{formatCurrency(proposal.totalAmount)}</span>
+              <span className="text-lg font-bold" style={{ color: primaryColor }}>{formatCurrency(proposal.totalAmount)}</span>
             </div>
           </div>
         </div>
@@ -421,7 +434,7 @@ const PublicProposalView: React.FC = () => {
       {/* Footer */}
       <footer className="bg-gray-100 border-t border-gray-200 mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 text-center text-sm text-gray-400">
-          <p>Powered by Hygieia</p>
+          <p>Powered by {branding?.companyName || 'Hygieia'}</p>
         </div>
       </footer>
     </div>
