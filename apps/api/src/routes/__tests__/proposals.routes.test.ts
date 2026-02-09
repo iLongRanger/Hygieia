@@ -3,6 +3,10 @@ import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as proposalService from '../../services/proposalService';
+import * as proposalActivityService from '../../services/proposalActivityService';
+import * as proposalVersionService from '../../services/proposalVersionService';
+import * as pdfService from '../../services/pdfService';
+import * as emailService from '../../services/emailService';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -316,6 +320,78 @@ describe('Proposal Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('proposal-1');
+  });
+
+  it('POST /:id/remind should validate reminder payload', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'sent',
+      account: { id: 'acc-1', name: 'Test Account' },
+    });
+
+    await request(app)
+      .post('/api/v1/proposals/proposal-1/remind')
+      .send({ emailTo: 'not-an-email' })
+      .expect(422);
+
+    expect(emailService.sendProposalEmail).not.toHaveBeenCalled();
+  });
+
+  it('GET /:id/pdf should return proposal PDF', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      proposalNumber: 'PROP-001',
+    });
+    (pdfService.generateProposalPdf as jest.Mock).mockResolvedValue(Buffer.from('pdf'));
+
+    const response = await request(app)
+      .get('/api/v1/proposals/proposal-1/pdf')
+      .expect(200);
+
+    expect(response.header['content-type']).toContain('application/pdf');
+  });
+
+  it('GET /:id/activities should return proposal activities', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+    (proposalActivityService.getProposalActivities as jest.Mock).mockResolvedValue({
+      data: [{ id: 'activity-1', action: 'created' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    const response = await request(app)
+      .get('/api/v1/proposals/proposal-1/activities?page=1&limit=20')
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.pagination.total).toBe(1);
+  });
+
+  it('GET /:id/versions should return proposal versions', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+    (proposalVersionService.getVersions as jest.Mock).mockResolvedValue([
+      { id: 'version-1', versionNumber: 1 },
+    ]);
+
+    const response = await request(app)
+      .get('/api/v1/proposals/proposal-1/versions')
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].versionNumber).toBe(1);
+  });
+
+  it('GET /:id/versions/:versionNumber should return specific version', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+    (proposalVersionService.getVersion as jest.Mock).mockResolvedValue({
+      id: 'version-2',
+      versionNumber: 2,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/proposals/proposal-1/versions/2')
+      .expect(200);
+
+    expect(response.body.data.versionNumber).toBe(2);
   });
 
   it('POST /:id/archive should archive proposal', async () => {
