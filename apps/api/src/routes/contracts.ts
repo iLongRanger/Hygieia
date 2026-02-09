@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -51,6 +51,7 @@ import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -63,6 +64,14 @@ function handleZodError(error: ZodError): ValidationError {
       message: e.message,
     })),
   });
+}
+
+async function getBrandingSafe() {
+  try {
+    return await getGlobalSettings();
+  } catch {
+    return getDefaultBranding();
+  }
 }
 
 async function getContractNotificationRecipients(contractId: string) {
@@ -114,7 +123,7 @@ async function getContractNotificationRecipients(contractId: string) {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listContractsQuerySchema.safeParse(req.query);
@@ -134,7 +143,7 @@ router.get(
 router.get(
   '/expiring',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
@@ -150,7 +159,7 @@ router.get(
 router.post(
   '/generate-terms',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { accountId, facilityId, startDate, endDate, monthlyValue, billingCycle, paymentTerms, serviceFrequency, autoRenew, renewalNoticeDays, title } = req.body;
@@ -199,7 +208,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -218,7 +227,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createContractSchema.safeParse(req.body);
@@ -252,7 +261,7 @@ router.post(
 router.post(
   '/from-proposal/:proposalId',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createContractFromProposalSchema.safeParse({
@@ -293,7 +302,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -334,7 +343,7 @@ router.patch(
 router.patch(
   '/:id/status',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateContractStatusSchema.safeParse(req.body);
@@ -359,7 +368,7 @@ router.patch(
       if (parsed.data.status === 'active') {
         try {
           const { userIds, emails } = await getContractNotificationRecipients(contract.id);
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const branding = await getBrandingSafe();
 
           await prisma.notification.createMany({
             data: [...userIds].map((userId) => ({
@@ -400,7 +409,7 @@ router.patch(
 router.patch(
   '/:id/team',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = assignContractTeamSchema.safeParse(req.body);
@@ -428,7 +437,7 @@ router.patch(
 router.post(
   '/:id/send',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = sendContractSchema.safeParse(req.body);
@@ -495,7 +504,7 @@ router.post(
               sent.contractNumber,
               sent.title
             );
-            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const branding = await getBrandingSafe();
             const emailHtml = buildContractSentHtmlWithBranding({
               contractNumber: sent.contractNumber,
               title: sent.title,
@@ -544,7 +553,7 @@ router.post(
 router.post(
   '/:id/sign',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = signContractSchema.safeParse(req.body);
@@ -572,7 +581,7 @@ router.post(
 router.post(
   '/:id/terminate',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = terminateContractSchema.safeParse(req.body);
@@ -595,7 +604,7 @@ router.post(
       // Send termination notifications
       try {
         const { userIds, emails } = await getContractNotificationRecipients(contract.id);
-        const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+        const branding = await getBrandingSafe();
 
         await prisma.notification.createMany({
           data: [...userIds].map((userId) => ({
@@ -634,7 +643,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await archiveContract(req.params.id);
@@ -656,7 +665,7 @@ router.delete(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await restoreContract(req.params.id);
@@ -682,7 +691,7 @@ router.post(
 router.get(
   '/:id/can-renew',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await canRenewContract(req.params.id);
@@ -697,7 +706,7 @@ router.get(
 router.post(
   '/:id/renew',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = renewContractSchema.safeParse(req.body);
@@ -750,7 +759,7 @@ router.post(
 router.post(
   '/standalone',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createStandaloneContractSchema.safeParse(req.body);
@@ -789,7 +798,7 @@ router.post(
 router.post(
   '/:id/complete-initial-clean',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
@@ -819,7 +828,7 @@ router.post(
 router.get(
   '/:id/pdf',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await getContractById(req.params.id);
@@ -855,7 +864,7 @@ router.get(
 router.get(
   '/:id/activities',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listContractActivitiesQuerySchema.safeParse(req.query);

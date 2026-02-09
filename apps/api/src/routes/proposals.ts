@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -48,6 +48,7 @@ import {
 import { listActivitiesQuerySchema } from '../schemas/proposalActivity';
 import { ZodError } from 'zod';
 import { prisma } from '../lib/prisma';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -74,7 +75,7 @@ async function getBrandingSafe() {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listProposalsQuerySchema.safeParse(req.query);
@@ -94,7 +95,7 @@ router.get(
 router.get(
   '/available-for-contract',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const accountId = req.query.accountId as string | undefined;
@@ -110,7 +111,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -129,7 +130,7 @@ router.get(
 router.get(
   '/number/:proposalNumber',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalByNumber(req.params.proposalNumber);
@@ -147,7 +148,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createProposalSchema.safeParse(req.body);
@@ -192,7 +193,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -267,7 +268,7 @@ router.patch(
 router.post(
   '/:id/send',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = sendProposalSchema.safeParse(req.body);
@@ -391,7 +392,7 @@ router.post(
 router.post(
   '/:id/viewed',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -419,7 +420,7 @@ router.post(
 router.post(
   '/:id/accept',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = acceptProposalSchema.safeParse(req.body);
@@ -477,7 +478,7 @@ router.post(
 router.post(
   '/:id/reject',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = rejectProposalSchema.safeParse(req.body);
@@ -533,7 +534,7 @@ router.post(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PROPOSALS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -561,7 +562,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PROPOSALS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -589,7 +590,7 @@ router.post(
 router.post(
   '/:id/remind',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       logger.info(`Remind request body: ${JSON.stringify(req.body)}`);
@@ -693,7 +694,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner'),
+  requirePermission(PERMISSIONS.PROPOSALS_DELETE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -726,7 +727,7 @@ router.delete(
 router.get(
   '/:id/pdf',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -757,7 +758,7 @@ router.get(
 router.get(
   '/:id/activities',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listActivitiesQuerySchema.safeParse(req.query);
@@ -786,7 +787,7 @@ router.get(
 router.get(
   '/:id/versions',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -806,7 +807,7 @@ router.get(
 router.get(
   '/:id/versions/:versionNumber',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -839,7 +840,7 @@ router.get(
 router.post(
   '/:id/pricing/lock',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -867,7 +868,7 @@ router.post(
 router.post(
   '/:id/pricing/unlock',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -895,7 +896,7 @@ router.post(
 router.post(
   '/:id/pricing/plan',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = changePricingPlanSchema.safeParse(req.body);
@@ -932,7 +933,7 @@ router.post(
 router.post(
   '/:id/pricing/recalculate',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = recalculatePricingSchema.safeParse(req.body);
@@ -976,7 +977,7 @@ router.post(
 router.get(
   '/:id/pricing/preview',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = pricingPreviewQuerySchema.safeParse(req.query);
