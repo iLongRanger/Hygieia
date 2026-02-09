@@ -62,6 +62,14 @@ function handleZodError(error: ZodError): ValidationError {
   });
 }
 
+async function getBrandingSafe() {
+  try {
+    return await getGlobalSettings();
+  } catch {
+    return getDefaultBranding();
+  }
+}
+
 // List all proposals
 router.get(
   '/',
@@ -335,7 +343,7 @@ router.post(
               sent.proposalNumber,
               sent.title
             );
-            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const branding = await getBrandingSafe();
             const emailHtml = buildProposalEmailHtmlWithBranding({
               proposalNumber: sent.proposalNumber,
               title: sent.title,
@@ -443,7 +451,7 @@ router.post(
       // Send notification to proposal creator
       if (proposal.createdByUser?.email) {
         try {
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const branding = await getBrandingSafe();
           const html = buildProposalAcceptedHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
@@ -499,7 +507,7 @@ router.post(
       // Send notification to proposal creator
       if (proposal.createdByUser?.email) {
         try {
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const branding = await getBrandingSafe();
           const html = buildProposalRejectedHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
@@ -635,7 +643,7 @@ router.post(
           const pdfBuffer = await generateProposalPdf(proposal as any);
 
           const emailSubject = parsed.data.emailSubject || `Reminder: Proposal ${proposal.proposalNumber}`;
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const branding = await getBrandingSafe();
           const emailHtml = buildProposalEmailHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
