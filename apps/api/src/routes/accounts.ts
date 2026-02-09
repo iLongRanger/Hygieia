@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
 import {
   NotFoundError,
@@ -18,11 +18,20 @@ import {
   deleteAccount,
 } from '../services/accountService';
 import {
+  listAccountActivities,
+  createAccountActivity,
+} from '../services/accountActivityService';
+import {
   createAccountSchema,
   updateAccountSchema,
   listAccountsQuerySchema,
 } from '../schemas/account';
+import {
+  listAccountActivitiesQuerySchema,
+  createAccountActivitySchema,
+} from '../schemas/accountActivity';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -40,7 +49,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.ACCOUNTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listAccountsQuerySchema.safeParse(req.query);
@@ -59,7 +68,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.ACCOUNTS_READ),
   verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -74,10 +83,70 @@ router.get(
   }
 );
 
+router.get(
+  '/:id/activities',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_READ),
+  verifyOwnership({ resourceType: 'account' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = listAccountActivitiesQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const account = await getAccountById(req.params.id);
+      if (!account) {
+        throw new NotFoundError('Account not found');
+      }
+
+      const result = await listAccountActivities(req.params.id, parsed.data);
+      res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/activities',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_WRITE),
+  verifyOwnership({ resourceType: 'account' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = createAccountActivitySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const account = await getAccountById(req.params.id);
+      if (!account) {
+        throw new NotFoundError('Account not found');
+      }
+
+      const activity = await createAccountActivity({
+        accountId: req.params.id,
+        entryType: parsed.data.entryType,
+        note: parsed.data.note,
+        performedByUserId: req.user.id,
+      });
+
+      res.status(201).json({ data: activity });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createAccountSchema.safeParse(req.body);
@@ -109,7 +178,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -140,7 +209,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -159,7 +228,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -178,7 +247,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
