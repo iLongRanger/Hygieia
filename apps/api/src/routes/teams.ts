@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission, requireRole } from '../middleware/rbac';
 import { sensitiveRateLimiter } from '../middleware/rateLimiter';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -13,6 +13,7 @@ import {
   restoreTeam,
 } from '../services/teamService';
 import { createTeamSchema, updateTeamSchema, listTeamsQuerySchema } from '../schemas/team';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -30,7 +31,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TEAMS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listTeamsQuerySchema.safeParse(req.query);
@@ -49,7 +50,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TEAMS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const team = await getTeamById(req.params.id);
@@ -66,7 +67,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TEAMS_WRITE),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -90,7 +91,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TEAMS_WRITE),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
