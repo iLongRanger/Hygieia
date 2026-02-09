@@ -16,6 +16,12 @@ export const PERMISSIONS = {
   FIXTURE_TYPES_WRITE: 'fixture_types_write',
   TASK_TEMPLATES_READ: 'task_templates_read',
   TASK_TEMPLATES_WRITE: 'task_templates_write',
+  AREAS_READ: 'areas_read',
+  AREAS_WRITE: 'areas_write',
+  AREAS_ADMIN: 'areas_admin',
+  AREA_TEMPLATES_READ: 'area_templates_read',
+  AREA_TEMPLATES_READ_BY_TYPE: 'area_templates_read_by_type',
+  AREA_TEMPLATES_WRITE: 'area_templates_write',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
