@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole, requireAdmin } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import {
   NotFoundError,
   ValidationError,
@@ -26,6 +26,7 @@ import {
   assignRoleSchema,
 } from '../schemas/user';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -43,7 +44,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.USERS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listUsersQuerySchema.safeParse(req.query);
@@ -66,7 +67,7 @@ router.get(
 router.get(
   '/roles',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const roles = await listRoles();
@@ -80,7 +81,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.USERS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -100,7 +101,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireAdmin,
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createUserSchema.safeParse(req.body);
@@ -127,7 +128,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -154,7 +155,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireAdmin,
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -180,7 +181,7 @@ router.delete(
 router.post(
   '/:id/roles',
   authenticate,
-  requireAdmin,
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -207,7 +208,7 @@ router.post(
 router.delete(
   '/:id/roles/:roleKey',
   authenticate,
-  requireAdmin,
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id, roleKey } = req.params;
@@ -234,7 +235,7 @@ router.delete(
 router.patch(
   '/:id/password',
   authenticate,
-  requireAdmin,
+  requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;

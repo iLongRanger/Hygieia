@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { sensitiveRateLimiter } from '../middleware/rateLimiter';
 import { ValidationError } from '../middleware/errorHandler';
 import {
@@ -10,6 +10,7 @@ import {
   clearGlobalLogo,
 } from '../services/globalSettingsService';
 import { updateGlobalSettingsSchema, updateLogoSchema } from '../schemas/globalSettings';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -27,7 +28,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.SETTINGS_READ),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const settings = await getGlobalSettings();
@@ -41,7 +42,7 @@ router.get(
 router.put(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.SETTINGS_WRITE),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -61,7 +62,7 @@ router.put(
 router.post(
   '/logo',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.SETTINGS_WRITE),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -81,7 +82,7 @@ router.post(
 router.delete(
   '/logo',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.SETTINGS_WRITE),
   sensitiveRateLimiter,
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
@@ -94,4 +95,3 @@ router.delete(
 );
 
 export default router;
-

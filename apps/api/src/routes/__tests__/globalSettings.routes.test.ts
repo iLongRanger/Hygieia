@@ -19,14 +19,23 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/rbac', () => ({
-  requireRole:
-    (...allowedRoles: string[]) =>
+  requirePermission:
+    (permission: string) =>
     (req: any, res: any, next: any) => {
       if (!req.user) {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
         return;
       }
-      if (!allowedRoles.includes(req.user.role)) {
+
+      const rolePermissions: Record<string, string[]> = {
+        owner: ['all'],
+        admin: ['settings_read', 'settings_write'],
+        manager: ['settings_read'],
+        cleaner: [],
+      };
+      const permissions = rolePermissions[req.user.role] ?? [];
+
+      if (!permissions.includes('all') && !permissions.includes(permission)) {
         res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } });
         return;
       }
@@ -127,4 +136,3 @@ describe('Global Settings Routes', () => {
     await request(app).put('/api/v1/settings/global').send({ companyName: 'Blocked' }).expect(403);
   });
 });
-
