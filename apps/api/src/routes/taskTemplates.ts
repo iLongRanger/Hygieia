@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission, requireRole } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listTaskTemplates,
@@ -17,6 +17,7 @@ import {
   listTaskTemplatesQuerySchema,
 } from '../schemas/taskTemplate';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -34,7 +35,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listTaskTemplatesQuerySchema.safeParse(req.query);
@@ -53,7 +54,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const template = await getTaskTemplateById(req.params.id);
@@ -70,7 +71,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createTaskTemplateSchema.safeParse(req.body);
@@ -97,7 +98,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTaskTemplateById(req.params.id);

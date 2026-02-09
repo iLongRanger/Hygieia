@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import {
   NotFoundError,
   ValidationError,
@@ -20,6 +20,7 @@ import {
   listLeadSourcesQuerySchema,
 } from '../schemas/leadSource';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -37,7 +38,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEAD_SOURCES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listLeadSourcesQuerySchema.safeParse(req.query);
@@ -56,7 +57,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEAD_SOURCES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const source = await getLeadSourceById(req.params.id);
@@ -73,7 +74,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEAD_SOURCES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createLeadSourceSchema.safeParse(req.body);
@@ -97,7 +98,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEAD_SOURCES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadSourceById(req.params.id);
@@ -128,7 +129,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEAD_SOURCES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadSourceById(req.params.id);
