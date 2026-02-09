@@ -3,6 +3,7 @@ import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as accountService from '../../services/accountService';
+import * as accountActivityService from '../../services/accountActivityService';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -12,7 +13,7 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/rbac', () => ({
-  requireRole: () => (_req: any, _res: any, next: any) => next(),
+  requirePermission: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock('../../middleware/ownership', () => ({
@@ -20,6 +21,7 @@ jest.mock('../../middleware/ownership', () => ({
 }));
 
 jest.mock('../../services/accountService');
+jest.mock('../../services/accountActivityService');
 
 describe('Account Routes', () => {
   let app: Application;
@@ -57,6 +59,45 @@ describe('Account Routes', () => {
     await request(app)
       .get('/api/v1/accounts/missing')
       .expect(404);
+  });
+
+  it('GET /:id/activities should return account activity history', async () => {
+    (accountService.getAccountById as jest.Mock).mockResolvedValue({ id: 'account-1' });
+    (accountActivityService.listAccountActivities as jest.Mock).mockResolvedValue({
+      data: [{ id: 'activity-1', entryType: 'complaint', note: 'Client called with issue.' }],
+      pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+    });
+
+    const response = await request(app)
+      .get('/api/v1/accounts/account-1/activities')
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].entryType).toBe('complaint');
+  });
+
+  it('POST /:id/activities should create an account activity note', async () => {
+    (accountService.getAccountById as jest.Mock).mockResolvedValue({ id: 'account-1' });
+    (accountActivityService.createAccountActivity as jest.Mock).mockResolvedValue({
+      id: 'activity-1',
+      entryType: 'request',
+      note: 'Requested schedule change.',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/accounts/account-1/activities')
+      .send({ entryType: 'request', note: 'Requested schedule change.' })
+      .expect(201);
+
+    expect(response.body.data.id).toBe('activity-1');
+    expect(accountActivityService.createAccountActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: 'account-1',
+        entryType: 'request',
+        note: 'Requested schedule change.',
+        performedByUserId: 'user-1',
+      })
+    );
   });
 
   it('POST / should create account', async () => {

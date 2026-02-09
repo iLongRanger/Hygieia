@@ -28,6 +28,10 @@ export const PERMISSIONS = {
   CONTACTS_READ: 'contacts_read',
   CONTACTS_WRITE: 'contacts_write',
   CONTACTS_ADMIN: 'contacts_admin',
+  ACCOUNTS_READ: 'accounts_read',
+  ACCOUNTS_WRITE: 'accounts_write',
+  ACCOUNTS_ADMIN: 'accounts_admin',
+  DASHBOARD_READ: 'dashboard_read',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
