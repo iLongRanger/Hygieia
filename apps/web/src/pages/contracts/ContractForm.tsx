@@ -8,6 +8,7 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -20,6 +21,7 @@ import {
   getContract,
   updateContract,
   createContractFromProposal,
+  generateContractTerms,
 } from '../../lib/contracts';
 import {
   getProposalsAvailableForContract,
@@ -74,6 +76,7 @@ const ContractForm = () => {
   // Loading states
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingTerms, setGeneratingTerms] = useState(false);
 
   // Available proposals for contract creation
   const [availableProposals, setAvailableProposals] = useState<ProposalForContract[]>([]);
@@ -611,13 +614,53 @@ const ContractForm = () => {
             <Card>
               <h2 className="text-lg font-semibold text-white mb-4">Additional Details</h2>
               <div className="space-y-4">
-                <Textarea
-                  label="Terms & Conditions"
-                  value={formData.termsAndConditions || ''}
-                  onChange={(e) => handleChange('termsAndConditions', e.target.value || null)}
-                  rows={6}
-                  placeholder="Enter contract terms and conditions..."
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-300">Terms & Conditions</label>
+                    {selectedProposal && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          if (formData.termsAndConditions && !window.confirm('This will replace the current terms. Continue?')) return;
+                          setGeneratingTerms(true);
+                          try {
+                            const terms = await generateContractTerms({
+                              accountId: selectedProposal.account.id,
+                              facilityId: selectedProposal.facility?.id,
+                              startDate: formData.startDate,
+                              endDate: formData.endDate,
+                              monthlyValue: formData.monthlyValue,
+                              billingCycle: formData.billingCycle,
+                              paymentTerms: formData.paymentTerms,
+                              serviceFrequency: formData.serviceFrequency,
+                              autoRenew: formData.autoRenew,
+                              renewalNoticeDays: formData.renewalNoticeDays,
+                              title: formData.title,
+                            });
+                            handleChange('termsAndConditions', terms);
+                            toast.success('Default terms generated');
+                          } catch {
+                            toast.error('Failed to generate terms');
+                          } finally {
+                            setGeneratingTerms(false);
+                          }
+                        }}
+                        disabled={generatingTerms}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1" />
+                        {generatingTerms ? 'Generating...' : 'Generate Default Terms'}
+                      </Button>
+                    )}
+                  </div>
+                  <Textarea
+                    value={formData.termsAndConditions || ''}
+                    onChange={(e) => handleChange('termsAndConditions', e.target.value || null)}
+                    rows={12}
+                    placeholder="Enter contract terms and conditions..."
+                  />
+                </div>
 
                 <Textarea
                   label="Special Instructions"

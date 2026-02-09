@@ -89,6 +89,14 @@ export async function restoreContract(id: string): Promise<Contract> {
   return response.data.data;
 }
 
+export async function assignContractTeam(
+  id: string,
+  teamId: string | null
+): Promise<Contract> {
+  const response = await api.patch(`/contracts/${id}/team`, { teamId });
+  return response.data.data;
+}
+
 // Contract Renewal
 
 export async function canRenewContract(id: string): Promise<CanRenewContractResult> {
@@ -101,6 +109,67 @@ export async function renewContract(
   data: RenewContractInput
 ): Promise<Contract> {
   const response = await api.post(`/contracts/${id}/renew`, data);
+  return response.data.data;
+}
+
+// Initial Clean
+
+export async function completeInitialClean(id: string): Promise<Contract> {
+  const response = await api.post(`/contracts/${id}/complete-initial-clean`);
+  return response.data.data;
+}
+
+// Generate default contract terms
+
+export interface GenerateTermsParams {
+  accountId: string;
+  facilityId?: string | null;
+  startDate?: string;
+  endDate?: string | null;
+  monthlyValue: number;
+  billingCycle?: string;
+  paymentTerms?: string;
+  serviceFrequency?: string | null;
+  autoRenew?: boolean;
+  renewalNoticeDays?: number | null;
+  title?: string;
+}
+
+export async function generateContractTerms(params: GenerateTermsParams): Promise<string> {
+  const response = await api.post('/contracts/generate-terms', params);
+  return response.data.data;
+}
+
+// PDF
+
+export async function downloadContractPdf(id: string, contractNumber: string): Promise<void> {
+  const response = await api.get(`/contracts/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${contractNumber}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// Contract Activities
+
+export async function getContractActivities(
+  contractId: string,
+  params?: { page?: number; limit?: number }
+): Promise<{ data: any[]; pagination: any }> {
+  const response = await api.get(`/contracts/${contractId}/activities`, { params });
+  return response.data;
+}
+
+// Expiring Contracts
+
+export async function getExpiringContracts(days: number = 30): Promise<Contract[]> {
+  const response = await api.get('/contracts/expiring', { params: { days } });
   return response.data.data;
 }
 

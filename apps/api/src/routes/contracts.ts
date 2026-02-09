@@ -11,6 +11,7 @@ import {
   createStandaloneContract,
   updateContract,
   updateContractStatus,
+  assignContractTeam,
   signContract,
   terminateContract,
   archiveContract,
@@ -18,18 +19,30 @@ import {
   renewContract,
   canRenewContract,
   completeInitialClean,
+  getExpiringContracts,
 } from '../services/contractService';
+import { generateContractTerms } from '../services/contractTemplateService';
 import {
   createContractSchema,
   createContractFromProposalSchema,
   createStandaloneContractSchema,
   updateContractSchema,
   updateContractStatusSchema,
+  assignContractTeamSchema,
   signContractSchema,
   terminateContractSchema,
   renewContractSchema,
   listContractsQuerySchema,
 } from '../schemas/contract';
+import { listContractActivitiesQuerySchema } from '../schemas/contractActivity';
+import { logContractActivity, getContractActivities } from '../services/contractActivityService';
+import { generateContractPdf } from '../services/pdfService';
+import { sendNotificationEmail } from '../services/emailService';
+import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
+import { buildContractActivatedHtmlWithBranding, buildContractActivatedSubject } from '../templates/contractActivated';
+import { buildContractTerminatedHtmlWithBranding, buildContractTerminatedSubject } from '../templates/contractTerminated';
+import { prisma } from '../lib/prisma';
+import logger from '../lib/logger';
 import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 
@@ -46,6 +59,51 @@ function handleZodError(error: ZodError): ValidationError {
   });
 }
 
+async function getContractNotificationRecipients(contractId: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      createdByUserId: true,
+      createdByUser: { select: { email: true } },
+      account: {
+        select: {
+          accountManagerId: true,
+          accountManager: { select: { email: true } },
+        },
+      },
+    },
+  });
+  if (!contract) return { userIds: new Set<string>(), emails: new Set<string>() };
+
+  const userIds = new Set<string>();
+  const emails = new Set<string>();
+
+  userIds.add(contract.createdByUserId);
+  emails.add(contract.createdByUser.email);
+
+  if (contract.account.accountManagerId) {
+    userIds.add(contract.account.accountManagerId);
+    if (contract.account.accountManager?.email) {
+      emails.add(contract.account.accountManager.email);
+    }
+  }
+
+  // Also include admin/owner users
+  const adminUsers = await prisma.userRole.findMany({
+    where: {
+      user: { status: 'active' },
+      role: { key: { in: ['owner', 'admin'] } },
+    },
+    select: { user: { select: { id: true, email: true } } },
+  });
+  for (const ur of adminUsers) {
+    userIds.add(ur.user.id);
+    emails.add(ur.user.email);
+  }
+
+  return { userIds, emails };
+}
+
 // List all contracts
 router.get(
   '/',
@@ -60,6 +118,71 @@ router.get(
 
       const result = await listContracts(parsed.data);
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get expiring contracts
+router.get(
+  '/expiring',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+      const contracts = await getExpiringContracts(days);
+      res.json({ data: contracts });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Generate default contract terms
+router.post(
+  '/generate-terms',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { accountId, facilityId, startDate, endDate, monthlyValue, billingCycle, paymentTerms, serviceFrequency, autoRenew, renewalNoticeDays, title } = req.body;
+
+      if (!accountId) {
+        throw new ValidationError('accountId is required');
+      }
+      if (monthlyValue == null) {
+        throw new ValidationError('monthlyValue is required');
+      }
+
+      const [account, facility] = await Promise.all([
+        prisma.account.findUnique({ where: { id: accountId }, select: { name: true } }),
+        facilityId
+          ? prisma.facility.findUnique({ where: { id: facilityId }, select: { name: true, address: true } })
+          : null,
+      ]);
+
+      if (!account) {
+        throw new NotFoundError('Account not found');
+      }
+
+      const terms = await generateContractTerms({
+        title,
+        accountName: account.name,
+        facilityName: facility?.name,
+        facilityAddress: facility?.address as string | null | undefined,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : null,
+        monthlyValue: Number(monthlyValue),
+        billingCycle: billingCycle || 'monthly',
+        paymentTerms: paymentTerms || 'Net 30',
+        serviceFrequency: serviceFrequency || null,
+        autoRenew: autoRenew ?? false,
+        renewalNoticeDays: renewalNoticeDays ?? 30,
+      });
+
+      res.json({ data: terms });
     } catch (error) {
       next(error);
     }
@@ -106,6 +229,12 @@ router.post(
         createdByUserId: req.user.id,
       });
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'created',
+        performedByUserId: req.user.id,
+      });
+
       res.status(201).json({ data: contract });
     } catch (error) {
       next(error);
@@ -140,6 +269,13 @@ router.post(
         overrides
       );
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'created',
+        performedByUserId: req.user.id,
+        metadata: { source: 'proposal', proposalId },
+      });
+
       res.status(201).json({ data: contract });
     } catch (error) {
       next(error);
@@ -173,6 +309,14 @@ router.patch(
       }
 
       const contract = await updateContract(req.params.id, parsed.data);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'updated',
+        performedByUserId: req.user?.id,
+        metadata: { fields: Object.keys(parsed.data) },
+      });
+
       res.json({ data: contract });
     } catch (error) {
       next(error);
@@ -198,6 +342,75 @@ router.patch(
         req.user?.id
       );
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: parsed.data.status === 'active' ? 'activated' : 'status_changed',
+        performedByUserId: req.user?.id,
+        metadata: { newStatus: parsed.data.status },
+      });
+
+      // Send notifications on activation
+      if (parsed.data.status === 'active') {
+        try {
+          const { userIds, emails } = await getContractNotificationRecipients(contract.id);
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+
+          await prisma.notification.createMany({
+            data: [...userIds].map((userId) => ({
+              userId,
+              type: 'contract_activated',
+              title: `Contract ${contract.contractNumber} activated`,
+              body: `Contract "${contract.title}" for ${contract.account.name} is now active.`,
+              metadata: { contractId: contract.id },
+            })),
+          });
+
+          const html = buildContractActivatedHtmlWithBranding({
+            contractNumber: contract.contractNumber,
+            title: contract.title,
+            accountName: contract.account.name,
+            monthlyValue: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(contract.monthlyValue)),
+            startDate: new Date(contract.startDate).toLocaleDateString(),
+            activatedAt: new Date().toLocaleDateString(),
+          }, branding);
+          const subject = buildContractActivatedSubject(contract.contractNumber);
+
+          await Promise.allSettled(
+            [...emails].map((email) => sendNotificationEmail(email, subject, html))
+          );
+        } catch (notifyError) {
+          logger.error('Failed to send contract activation notifications:', notifyError);
+        }
+      }
+
+      res.json({ data: contract });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Assign team to active contract
+router.patch(
+  '/:id/team',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = assignContractTeamSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const contract = await assignContractTeam(req.params.id, parsed.data.teamId);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'team_assigned',
+        performedByUserId: req.user?.id,
+        metadata: { teamId: parsed.data.teamId },
+      });
+
       res.json({ data: contract });
     } catch (error) {
       next(error);
@@ -218,6 +431,14 @@ router.post(
       }
 
       const contract = await signContract(req.params.id, parsed.data);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'signed',
+        performedByUserId: req.user?.id,
+        metadata: { signedByName: parsed.data.signedByName, signedByEmail: parsed.data.signedByEmail },
+      });
+
       res.json({ data: contract });
     } catch (error) {
       next(error);
@@ -242,6 +463,44 @@ router.post(
         parsed.data.terminationReason
       );
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'terminated',
+        performedByUserId: req.user?.id,
+        metadata: { reason: parsed.data.terminationReason },
+      });
+
+      // Send termination notifications
+      try {
+        const { userIds, emails } = await getContractNotificationRecipients(contract.id);
+        const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+
+        await prisma.notification.createMany({
+          data: [...userIds].map((userId) => ({
+            userId,
+            type: 'contract_terminated',
+            title: `Contract ${contract.contractNumber} terminated`,
+            body: `Contract "${contract.title}" for ${contract.account.name} has been terminated.`,
+            metadata: { contractId: contract.id },
+          })),
+        });
+
+        const html = buildContractTerminatedHtmlWithBranding({
+          contractNumber: contract.contractNumber,
+          title: contract.title,
+          accountName: contract.account.name,
+          terminatedAt: new Date().toLocaleDateString(),
+          terminationReason: parsed.data.terminationReason,
+        }, branding);
+        const subject = buildContractTerminatedSubject(contract.contractNumber);
+
+        await Promise.allSettled(
+          [...emails].map((email) => sendNotificationEmail(email, subject, html))
+        );
+      } catch (notifyError) {
+        logger.error('Failed to send contract termination notifications:', notifyError);
+      }
+
       res.json({ data: contract });
     } catch (error) {
       next(error);
@@ -257,6 +516,13 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await archiveContract(req.params.id);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'archived',
+        performedByUserId: req.user?.id,
+      });
+
       res.json({ data: contract, message: 'Contract archived successfully' });
     } catch (error) {
       next(error);
@@ -272,6 +538,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await restoreContract(req.params.id);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'restored',
+        performedByUserId: req.user?.id,
+      });
+
       res.json({ data: contract, message: 'Contract restored successfully' });
     } catch (error) {
       next(error);
@@ -326,6 +599,20 @@ router.post(
         req.user.id
       );
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'created',
+        performedByUserId: req.user.id,
+        metadata: { source: 'renewal', renewedFromContractId: req.params.id },
+      });
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'renewed',
+        performedByUserId: req.user.id,
+        metadata: { renewedToContractId: contract.id },
+      });
+
       res.status(201).json({ data: contract });
     } catch (error) {
       next(error);
@@ -358,6 +645,13 @@ router.post(
         createdByUserId: req.user.id,
       });
 
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'created',
+        performedByUserId: req.user.id,
+        metadata: { source: parsed.data.contractSource },
+      });
+
       res.status(201).json({ data: contract });
     } catch (error) {
       next(error);
@@ -381,7 +675,74 @@ router.post(
       }
 
       const contract = await completeInitialClean(req.params.id, req.user.id);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'initial_clean_completed',
+        performedByUserId: req.user.id,
+      });
+
       res.json({ data: contract, message: 'Initial clean marked as completed' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Contract PDF
+// ============================================================
+
+/** Generate and download contract PDF */
+router.get(
+  '/:id/pdf',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contract = await getContractById(req.params.id);
+      if (!contract) {
+        throw new NotFoundError('Contract not found');
+      }
+
+      const pdfBuffer = await generateContractPdf(contract as any);
+
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'pdf_generated',
+        performedByUserId: req.user?.id,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${contract.contractNumber}.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================================
+// Contract Activities
+// ============================================================
+
+/** Get contract activity log */
+router.get(
+  '/:id/activities',
+  authenticate,
+  requireRole('owner', 'admin', 'manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = listContractActivitiesQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const result = await getContractActivities(req.params.id, parsed.data);
+      res.json(result);
     } catch (error) {
       next(error);
     }

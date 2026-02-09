@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { generateContractTerms } from './contractTemplateService';
 
 export interface ContractListParams {
   page?: number;
@@ -122,6 +123,15 @@ const contractSelect = {
       id: true,
       proposalNumber: true,
       title: true,
+    },
+  },
+  assignedTeam: {
+    select: {
+      id: true,
+      name: true,
+      contactName: true,
+      contactEmail: true,
+      contactPhone: true,
     },
   },
   renewedFromContract: {
@@ -316,10 +326,38 @@ export async function createContract(data: ContractCreateInput) {
 
   const contractNumber = await generateContractNumber();
 
+  // Auto-generate terms if not provided
+  let termsAndConditions = data.termsAndConditions;
+  if (!termsAndConditions) {
+    const [account, facility] = await Promise.all([
+      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true } }),
+      data.facilityId
+        ? prisma.facility.findUnique({ where: { id: data.facilityId }, select: { name: true, address: true } })
+        : null,
+    ]);
+    termsAndConditions = await generateContractTerms({
+      contractNumber,
+      title: data.title,
+      accountName: account?.name || 'Client',
+      facilityName: facility?.name,
+      facilityAddress: facility?.address as string | null | undefined,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      monthlyValue: data.monthlyValue,
+      totalValue: data.totalValue,
+      billingCycle: data.billingCycle,
+      paymentTerms: data.paymentTerms,
+      serviceFrequency: data.serviceFrequency,
+      autoRenew: data.autoRenew,
+      renewalNoticeDays: data.renewalNoticeDays,
+    });
+  }
+
   const contract = await prisma.contract.create({
     data: {
       contractNumber,
       ...data,
+      termsAndConditions,
       status: 'draft',
       contractSource: 'proposal',
       includesInitialClean: true,
@@ -387,11 +425,30 @@ export async function createContractFromProposal(
     totalValue: overrides?.totalValue || null,
     billingCycle: overrides?.billingCycle || 'monthly',
     paymentTerms: overrides?.paymentTerms || proposal.account.paymentTerms || 'Net 30',
-    termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions,
+    termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions || null,
     specialInstructions: overrides?.specialInstructions || proposal.notes,
     includesInitialClean: true,
     createdByUser: { connect: { id: createdByUserId } },
   };
+
+  // Auto-generate terms if not provided from overrides or proposal
+  if (!contractData.termsAndConditions) {
+    contractData.termsAndConditions = await generateContractTerms({
+      contractNumber,
+      title: contractData.title as string,
+      accountName: proposal.account.name,
+      facilityName: proposal.facility?.name,
+      facilityAddress: proposal.facility?.address as string | null | undefined,
+      startDate: contractData.startDate as Date,
+      endDate: contractData.endDate as Date | null,
+      monthlyValue,
+      billingCycle: contractData.billingCycle as string,
+      paymentTerms: contractData.paymentTerms as string,
+      serviceFrequency: contractData.serviceFrequency as string | null,
+      autoRenew: contractData.autoRenew as boolean,
+      renewalNoticeDays: contractData.renewalNoticeDays as number | null,
+    });
+  }
 
   const contract = await prisma.contract.create({
     data: contractData,
@@ -442,6 +499,50 @@ export async function updateContractStatus(
   });
 
   return contract;
+}
+
+/**
+ * Assign or unassign a team from an active contract.
+ */
+export async function assignContractTeam(contractId: string, teamId: string | null) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  if (contract.status !== 'active') {
+    throw new Error('Only active contracts can have team assignments');
+  }
+
+  if (teamId) {
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: {
+        id: true,
+        isActive: true,
+        archivedAt: true,
+      },
+    });
+
+    if (!team || team.archivedAt || !team.isActive) {
+      throw new Error('Team not found or inactive');
+    }
+  }
+
+  return prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      assignedTeamId: teamId,
+    },
+    select: contractSelect,
+  });
 }
 
 /**
@@ -676,6 +777,33 @@ export interface StandaloneContractCreateInput {
 export async function createStandaloneContract(data: StandaloneContractCreateInput) {
   const contractNumber = await generateContractNumber();
 
+  // Auto-generate terms if not provided
+  let termsAndConditions = data.termsAndConditions;
+  if (!termsAndConditions) {
+    const [account, facility] = await Promise.all([
+      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true } }),
+      data.facilityId
+        ? prisma.facility.findUnique({ where: { id: data.facilityId }, select: { name: true, address: true } })
+        : null,
+    ]);
+    termsAndConditions = await generateContractTerms({
+      contractNumber,
+      title: data.title,
+      accountName: account?.name || 'Client',
+      facilityName: facility?.name,
+      facilityAddress: facility?.address as string | null | undefined,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      monthlyValue: data.monthlyValue,
+      totalValue: data.totalValue,
+      billingCycle: data.billingCycle ?? 'monthly',
+      paymentTerms: data.paymentTerms ?? 'Net 30',
+      serviceFrequency: data.serviceFrequency,
+      autoRenew: data.autoRenew,
+      renewalNoticeDays: data.renewalNoticeDays ?? 30,
+    });
+  }
+
   const contract = await prisma.contract.create({
     data: {
       contractNumber,
@@ -694,7 +822,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       totalValue: data.totalValue,
       billingCycle: data.billingCycle ?? 'monthly',
       paymentTerms: data.paymentTerms ?? 'Net 30',
-      termsAndConditions: data.termsAndConditions,
+      termsAndConditions,
       specialInstructions: data.specialInstructions,
       createdByUserId: data.createdByUserId,
     },
@@ -702,6 +830,32 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
   });
 
   return contract;
+}
+
+// ============================================================
+// Expiration Check
+// ============================================================
+
+/**
+ * Get active contracts expiring within the given number of days
+ */
+export async function getExpiringContracts(daysAhead: number = 30) {
+  const now = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(now.getDate() + daysAhead);
+
+  return prisma.contract.findMany({
+    where: {
+      status: 'active',
+      archivedAt: null,
+      endDate: {
+        gte: now,
+        lte: futureDate,
+      },
+    },
+    select: contractSelect,
+    orderBy: { endDate: 'asc' },
+  });
 }
 
 // ============================================================
