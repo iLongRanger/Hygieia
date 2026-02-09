@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requirePermission, requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listTaskTemplates,
@@ -122,7 +122,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTaskTemplateById(req.params.id);
@@ -141,7 +141,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTaskTemplateById(req.params.id);
@@ -160,7 +160,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.TASK_TEMPLATES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTaskTemplateById(req.params.id);

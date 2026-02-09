@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
-import { requirePermission, requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { sensitiveRateLimiter } from '../middleware/rateLimiter';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -116,7 +116,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.TEAMS_ADMIN),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -131,7 +131,7 @@ router.delete(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.TEAMS_ADMIN),
   sensitiveRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
