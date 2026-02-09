@@ -26,37 +26,77 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  roles?: string[];
+}
+
+interface NavSection {
+  title: string | null;
+  items: NavItem[];
+}
+
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
 
-  const navItems = [
-    { to: '/', icon: Home, label: 'Dashboard' },
-    { to: '/appointments', icon: Calendar, label: 'Appointments' },
-    { to: '/leads', icon: Users, label: 'Leads' },
-    { to: '/accounts', icon: Building2, label: 'Accounts' },
-    { to: '/contacts', icon: Contact, label: 'Contacts' },
-    { to: '/facilities', icon: Warehouse, label: 'Facilities' },
-    { to: '/proposals', icon: FileText, label: 'Proposals' },
-    { to: '/contracts', icon: FileSignature, label: 'Contracts' },
-    { to: '/teams', icon: Handshake, label: 'Teams' },
-    { to: '/settings/global', icon: Settings, label: 'Global Settings', roles: ['owner', 'admin'] },
-    { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
+  const navSections: NavSection[] = [
     {
-      to: '/area-templates',
-      icon: LayoutTemplate,
-      label: 'Area Templates',
-      roles: ['owner', 'admin', 'manager'],
+      title: null,
+      items: [{ to: '/', icon: Home, label: 'Dashboard' }],
     },
-    { to: '/pricing', icon: Calculator, label: 'Pricing Plans' },
-    { to: '/users', icon: UserCog, label: 'Users', roles: ['owner', 'admin'] },
+    {
+      title: 'CRM',
+      items: [
+        { to: '/leads', icon: Users, label: 'Leads' },
+        { to: '/accounts', icon: Building2, label: 'Accounts' },
+        { to: '/contacts', icon: Contact, label: 'Contacts' },
+      ],
+    },
+    {
+      title: 'Operations',
+      items: [
+        { to: '/appointments', icon: Calendar, label: 'Appointments' },
+        { to: '/facilities', icon: Warehouse, label: 'Facilities' },
+        { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
+        { to: '/teams', icon: Handshake, label: 'Teams' },
+      ],
+    },
+    {
+      title: 'Sales',
+      items: [
+        { to: '/proposals', icon: FileText, label: 'Proposals' },
+        { to: '/contracts', icon: FileSignature, label: 'Contracts' },
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        { to: '/pricing', icon: Calculator, label: 'Pricing Plans' },
+        {
+          to: '/area-templates',
+          icon: LayoutTemplate,
+          label: 'Area Templates',
+          roles: ['owner', 'admin', 'manager'],
+        },
+        { to: '/users', icon: UserCog, label: 'Users', roles: ['owner', 'admin'] },
+        { to: '/settings/global', icon: Settings, label: 'Global Settings', roles: ['owner', 'admin'] },
+      ],
+    },
   ];
 
   const userRole = user?.role;
-  const visibleNavItems = navItems.filter((item) => {
-    if (!item.roles) return true;
-    return userRole ? item.roles.includes(userRole) : false;
-  });
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (!item.roles) return true;
+        return userRole ? item.roles.includes(userRole) : false;
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside
@@ -83,38 +123,49 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
       {/* Navigation */}
       <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
-          {visibleNavItems.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                onClick={() => onClose?.()}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                      : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100'
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon
-                      className={cn(
-                        'h-5 w-5',
-                        isActive
-                          ? 'text-primary-600 dark:text-primary-400'
-                          : 'text-surface-400 dark:text-surface-500'
+        <div className="space-y-4">
+          {visibleSections.map((section, idx) => (
+            <div key={section.title ?? 'main'}>
+              {section.title && (
+                <h3 className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
+                  {section.title}
+                </h3>
+              )}
+              <ul className="space-y-0.5">
+                {section.items.map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      onClick={() => onClose?.()}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                          isActive
+                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100'
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            className={cn(
+                              'h-5 w-5',
+                              isActive
+                                ? 'text-primary-600 dark:text-primary-400'
+                                : 'text-surface-400 dark:text-surface-500'
+                            )}
+                          />
+                          {item.label}
+                        </>
                       )}
-                    />
-                    {item.label}
-                  </>
-                )}
-              </NavLink>
-            </li>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
 
         {/* Sign out button */}
         <div className="mt-4 border-t border-surface-200 pt-4 dark:border-surface-700">
