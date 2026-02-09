@@ -24,6 +24,39 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/rbac', () => ({
+  requirePermission:
+    (permission: string) =>
+    (req: any, res: any, next: any) => {
+      if (!req.user) {
+        res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          },
+        });
+        return;
+      }
+
+      const rolePermissions: Record<string, string[]> = {
+        owner: ['all'],
+        admin: ['proposal_templates_read', 'proposal_templates_write'],
+        manager: ['proposal_templates_read', 'proposal_templates_write'],
+        cleaner: [],
+      };
+      const permissions = rolePermissions[req.user.role] ?? [];
+
+      if (!permissions.includes('all') && !permissions.includes(permission)) {
+        res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Insufficient permissions',
+          },
+        });
+        return;
+      }
+
+      next();
+    },
   requireRole:
     (...allowedRoles: string[]) =>
     (req: any, res: any, next: any) => {
