@@ -700,9 +700,9 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     margin: [0, 5, 0, 15] as [number, number, number, number],
   });
 
-  // Terms & Conditions
+  // Terms & Conditions (start on new page)
   if (contract.termsAndConditions) {
-    content.push({ text: 'Terms & Conditions', style: 'sectionHeader' });
+    content.push({ text: 'Terms & Conditions', style: 'sectionHeader', pageBreak: 'before' as const });
 
     // Parse section headings (## N. TITLE format) for formatted rendering
     const tcText = contract.termsAndConditions as string;
