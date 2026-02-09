@@ -3,26 +3,27 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { verifyToken } from '../../lib/auth';
 import { logger } from '../../lib/logger';
+import type { Permission } from '../../lib/permissions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: string[];
+  requiredPermissions?: Permission[];
 }
 
 /**
  * ProtectedRoute component that:
  * 1. Checks if user is authenticated
  * 2. Validates token with backend (optional, on mount)
- * 3. Verifies user has required roles (if specified)
+ * 3. Verifies user has required permissions (if specified)
  * 4. Redirects to login if not authenticated
  * 5. Redirects to unauthorized if missing required role
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  requiredRoles,
+  requiredPermissions,
 }) => {
   const location = useLocation();
-  const { isAuthenticated, user, token, clearAuth } = useAuthStore();
+  const { isAuthenticated, user, token, clearAuth, hasPermission } = useAuthStore();
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
 
@@ -101,15 +102,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check role-based access
-  if (requiredRoles && requiredRoles.length > 0) {
-    const userRole = user?.role;
+  // Check permission-based access
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    const missingPermissions = requiredPermissions.filter(
+      (permission) => !hasPermission(permission)
+    );
 
-    if (!userRole || !requiredRoles.includes(userRole)) {
+    if (missingPermissions.length > 0) {
       logger.warn('Access denied - insufficient permissions', {
         component: 'ProtectedRoute',
-        userRole: userRole ?? 'unknown',
-        requiredRoles: requiredRoles.join(', '),
+        userRole: user?.role ?? 'unknown',
+        missingPermissions: missingPermissions.join(', '),
         path: location.pathname,
       });
 

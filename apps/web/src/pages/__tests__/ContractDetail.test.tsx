@@ -24,6 +24,9 @@ const archiveContractMock = vi.fn();
 const restoreContractMock = vi.fn();
 const canRenewContractMock = vi.fn();
 const renewContractMock = vi.fn();
+const assignContractTeamMock = vi.fn();
+const getContractActivitiesMock = vi.fn();
+const listTeamsMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
   getContract: (...args: unknown[]) => getContractMock(...args),
@@ -34,6 +37,12 @@ vi.mock('../../lib/contracts', () => ({
   restoreContract: (...args: unknown[]) => restoreContractMock(...args),
   canRenewContract: (...args: unknown[]) => canRenewContractMock(...args),
   renewContract: (...args: unknown[]) => renewContractMock(...args),
+  assignContractTeam: (...args: unknown[]) => assignContractTeamMock(...args),
+  getContractActivities: (...args: unknown[]) => getContractActivitiesMock(...args),
+}));
+
+vi.mock('../../lib/teams', () => ({
+  listTeams: (...args: unknown[]) => listTeamsMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -70,6 +79,8 @@ const draftContract: Contract = {
   approvedAt: null,
   terminationReason: null,
   terminatedAt: null,
+  includesInitialClean: true,
+  initialCleanCompleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
@@ -90,6 +101,14 @@ describe('ContractDetail', () => {
     getContractMock.mockResolvedValue(draftContract);
     updateContractStatusMock.mockResolvedValue({ ...draftContract, status: 'active' });
     archiveContractMock.mockResolvedValue({ ...draftContract, archivedAt: new Date().toISOString() });
+    getContractActivitiesMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+    });
+    listTeamsMock.mockResolvedValue({
+      data: [{ id: 'team-1', name: 'Alpha Team' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
