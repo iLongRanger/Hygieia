@@ -47,6 +47,10 @@ vi.mock('../../lib/pricing', () => ({
   getFacilityProposalTemplate: (...args: unknown[]) => getFacilityProposalTemplateMock(...args),
 }));
 
+vi.mock('../../lib/proposalTemplates', () => ({
+  listTemplates: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('react-hot-toast', () => ({
   default: {
     success: vi.fn(),
@@ -209,7 +213,6 @@ describe('ProposalForm', () => {
       rejectedAt: null,
       rejectionReason: null,
       notes: null,
-      termsAndConditions: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       archivedAt: null,
