@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requirePermission, requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listTemplates,
@@ -143,7 +143,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PROPOSAL_TEMPLATES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTemplateById(req.params.id);
@@ -163,7 +163,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.PROPOSAL_TEMPLATES_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTemplateById(req.params.id);
@@ -183,7 +183,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner'),
+  requirePermission(PERMISSIONS.PROPOSAL_TEMPLATES_DELETE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getTemplateById(req.params.id);

@@ -38,6 +38,10 @@ export const PERMISSIONS = {
   FACILITY_TASKS_READ: 'facility_tasks_read',
   FACILITY_TASKS_WRITE: 'facility_tasks_write',
   FACILITY_TASKS_ADMIN: 'facility_tasks_admin',
+  TEAMS_ADMIN: 'teams_admin',
+  TASK_TEMPLATES_ADMIN: 'task_templates_admin',
+  PROPOSAL_TEMPLATES_ADMIN: 'proposal_templates_admin',
+  PROPOSAL_TEMPLATES_DELETE: 'proposal_templates_delete',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
