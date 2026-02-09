@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
+import { canAccessRoute } from '../../lib/routeAccess';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -30,7 +31,6 @@ interface NavItem {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  roles?: string[];
 }
 
 interface NavSection {
@@ -79,22 +79,17 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           to: '/area-templates',
           icon: LayoutTemplate,
           label: 'Area Templates',
-          roles: ['owner', 'admin', 'manager'],
         },
-        { to: '/users', icon: UserCog, label: 'Users', roles: ['owner', 'admin'] },
-        { to: '/settings/global', icon: Settings, label: 'Global Settings', roles: ['owner', 'admin'] },
+        { to: '/users', icon: UserCog, label: 'Users' },
+        { to: '/settings/global', icon: Settings, label: 'Global Settings' },
       ],
     },
   ];
 
-  const userRole = user?.role;
   const visibleSections = navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => {
-        if (!item.roles) return true;
-        return userRole ? item.roles.includes(userRole) : false;
-      }),
+      items: section.items.filter((item) => canAccessRoute(item.to, user)),
     }))
     .filter((section) => section.items.length > 0);
 

@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../lib/api';
+import { canUserAnyPermission, hasUserPermission } from '../lib/permissions';
 
 interface User {
   id: string;
   email: string;
   fullName: string;
   role: string;
+  permissions?: Record<string, boolean>;
 }
 
 interface AuthState {
@@ -19,7 +21,21 @@ interface AuthState {
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
+  hasPermission: (permission: string) => boolean;
+  canAny: (permissions: string[]) => boolean;
   clearAuth: () => void;
+}
+
+function normalizeUser(user: User): User {
+  const permissions =
+    user.permissions && typeof user.permissions === 'object'
+      ? user.permissions
+      : undefined;
+
+  return {
+    ...user,
+    permissions,
+  };
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -33,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
         const response = await api.post('/auth/login', { email, password });
         const { user, tokens } = response.data.data;
         set({
-          user,
+          user: normalizeUser(user),
           token: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           isAuthenticated: true,
@@ -54,10 +70,12 @@ export const useAuthStore = create<AuthState>()(
           api.post('/auth/logout', { refreshToken }).catch(() => {});
         }
       },
-      setUser: (user) => set({ user }),
+      setUser: (user) => set({ user: normalizeUser(user) }),
       setToken: (token) => set({ token, isAuthenticated: !!token }),
       setTokens: (accessToken, refreshToken) =>
         set({ token: accessToken, refreshToken, isAuthenticated: true }),
+      hasPermission: (permission) => hasUserPermission(permission, get().user),
+      canAny: (permissions) => canUserAnyPermission(permissions, get().user),
       clearAuth: () => {
         set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
         localStorage.removeItem('auth-storage');

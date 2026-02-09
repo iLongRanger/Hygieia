@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
 } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -36,6 +37,20 @@ import PublicContractView from './pages/public/PublicContractView';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { getRequiredPermissions } from './lib/routeAccess';
+
+function withRouteGuard(path: string, element: ReactNode) {
+  const requiredPermissions = getRequiredPermissions(path);
+  if (!requiredPermissions) {
+    return element;
+  }
+
+  return (
+    <ProtectedRoute requiredPermissions={requiredPermissions}>
+      {element}
+    </ProtectedRoute>
+  );
+}
 
 function App() {
   return (
@@ -86,11 +101,7 @@ function App() {
             <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
             <Route
               path="/area-templates"
-              element={
-                <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
-                  <AreaTemplatesPage />
-                </ProtectedRoute>
-              }
+              element={withRouteGuard('/area-templates', <AreaTemplatesPage />)}
             />
             <Route path="/pricing" element={<PricingSettingsPage />} />
             <Route path="/pricing/settings" element={<PricingSettingsPage />} />
@@ -105,35 +116,19 @@ function App() {
             <Route path="/teams" element={<TeamsList />} />
             <Route
               path="/settings/global"
-              element={
-                <ProtectedRoute requiredRoles={['owner', 'admin']}>
-                  <GlobalSettingsPage />
-                </ProtectedRoute>
-              }
+              element={withRouteGuard('/settings/global', <GlobalSettingsPage />)}
             />
             <Route
               path="/settings/proposal-templates"
-              element={
-                <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
-                  <ProposalTemplatesPage />
-                </ProtectedRoute>
-              }
+              element={withRouteGuard('/settings/proposal-templates', <ProposalTemplatesPage />)}
             />
             <Route
               path="/users"
-              element={
-                <ProtectedRoute requiredRoles={['owner', 'admin']}>
-                  <UsersList />
-                </ProtectedRoute>
-              }
+              element={withRouteGuard('/users', <UsersList />)}
             />
             <Route
               path="/users/:id"
-              element={
-                <ProtectedRoute requiredRoles={['owner', 'admin']}>
-                  <UserDetail />
-                </ProtectedRoute>
-              }
+              element={withRouteGuard('/users/:id', <UserDetail />)}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
