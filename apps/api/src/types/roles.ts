@@ -61,6 +61,16 @@ export function isRoleAtLeast(
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
 
+export function resolveHighestRole(roles: UserRole[]): UserRole {
+  if (roles.length === 0) {
+    return 'cleaner';
+  }
+
+  return roles.reduce((highest, current) =>
+    ROLE_HIERARCHY[current] > ROLE_HIERARCHY[highest] ? current : highest
+  );
+}
+
 const VALID_ROLES: UserRole[] = ['owner', 'admin', 'manager', 'cleaner'];
 
 export function isValidRole(role: unknown): role is UserRole {
