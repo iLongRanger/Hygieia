@@ -17,6 +17,8 @@ vi.mock('../../lib/proposals', () => ({
   sendProposal: (...args: unknown[]) => sendProposalMock(...args),
   acceptProposal: (...args: unknown[]) => acceptProposalMock(...args),
   rejectProposal: (...args: unknown[]) => rejectProposalMock(...args),
+  downloadProposalPdf: vi.fn().mockResolvedValue(undefined),
+  remindProposal: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -43,7 +45,6 @@ const baseProposal = {
   rejectedAt: null,
   rejectionReason: null,
   notes: null,
-  termsAndConditions: null,
   createdAt: new Date('2026-02-01T00:00:00Z').toISOString(),
   updatedAt: new Date('2026-02-01T00:00:00Z').toISOString(),
   archivedAt: null,
@@ -92,16 +93,15 @@ describe('ProposalsList', () => {
     expect(listProposalsMock).toHaveBeenCalled();
   });
 
-  it('sends a draft proposal when confirmed', async () => {
+  it('opens send modal when send button clicked', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(<ProposalsList />);
 
     const sendButton = await screen.findByTitle('Send Proposal');
     await user.click(sendButton);
 
-    expect(sendProposalMock).toHaveBeenCalledWith('proposal-1');
-    confirmSpy.mockRestore();
+    // Modal should be open with the "Send Proposal" heading
+    expect(await screen.findByRole('heading', { name: /send proposal/i })).toBeInTheDocument();
   });
 });

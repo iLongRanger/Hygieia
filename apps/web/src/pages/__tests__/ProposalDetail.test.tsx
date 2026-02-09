@@ -32,6 +32,11 @@ vi.mock('../../lib/proposals', () => ({
   archiveProposal: (...args: unknown[]) => archiveProposalMock(...args),
   restoreProposal: (...args: unknown[]) => restoreProposalMock(...args),
   deleteProposal: (...args: unknown[]) => deleteProposalMock(...args),
+  getProposalVersions: vi.fn().mockResolvedValue([]),
+  getProposalVersion: vi.fn().mockResolvedValue(null),
+  getProposalActivities: vi.fn().mockResolvedValue({ data: [], pagination: {} }),
+  remindProposal: vi.fn().mockResolvedValue(undefined),
+  downloadProposalPdf: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -58,7 +63,6 @@ const proposal: Proposal = {
   rejectedAt: null,
   rejectionReason: null,
   notes: null,
-  termsAndConditions: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
@@ -102,27 +106,38 @@ describe('ProposalDetail', () => {
     expect(screen.getByText('PROP-001')).toBeInTheDocument();
   });
 
-  it('sends proposal when confirmed', async () => {
+  it('opens send modal when send button clicked', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(<ProposalDetail />);
 
+    // Click the Send button in the action bar
     const sendButton = await screen.findByRole('button', { name: /send/i });
     await user.click(sendButton);
 
-    expect(sendProposalMock).toHaveBeenCalledWith('proposal-1');
-    confirmSpy.mockRestore();
+    // Modal should be open — the heading "Send Proposal" appears
+    expect(screen.getByRole('heading', { name: /send proposal/i })).toBeInTheDocument();
   });
 
-  it('deletes proposal when confirmed', async () => {
+  it('deletes proposal when confirmed via dropdown menu', async () => {
     const user = userEvent.setup();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(<ProposalDetail />);
 
-    const deleteButton = await screen.findByRole('button', { name: /delete/i });
-    await user.click(deleteButton);
+    // Wait for page to render
+    await screen.findByText('Cleaning Services');
+
+    // Find and click the MoreHorizontal dropdown button (the one with no text content in the actions bar)
+    const actionsDiv = screen.getByText('Edit').closest('div.flex.items-center.gap-2');
+    const actionButtons = actionsDiv!.querySelectorAll('button');
+    // The more menu button is the last button in the actions area
+    const menuButton = actionButtons[actionButtons.length - 1];
+    await user.click(menuButton);
+
+    // Click Delete in the dropdown
+    const deleteOption = await screen.findByText('Delete');
+    await user.click(deleteOption);
 
     expect(deleteProposalMock).toHaveBeenCalledWith('proposal-1');
     expect(navigateMock).toHaveBeenCalledWith('/proposals');

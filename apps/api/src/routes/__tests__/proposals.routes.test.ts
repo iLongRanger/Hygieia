@@ -16,6 +16,69 @@ jest.mock('../../middleware/rbac', () => ({
 }));
 
 jest.mock('../../services/proposalService');
+jest.mock('../../services/proposalActivityService', () => ({
+  logActivity: jest.fn().mockResolvedValue({}),
+  getProposalActivities: jest.fn().mockResolvedValue({ data: [], pagination: {} }),
+}));
+jest.mock('../../services/proposalVersionService', () => ({
+  createVersion: jest.fn().mockResolvedValue({ id: 'version-1', versionNumber: 1 }),
+  getVersions: jest.fn().mockResolvedValue([]),
+  getVersion: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('../../services/proposalPublicService', () => ({
+  generatePublicToken: jest.fn().mockResolvedValue('test-public-token'),
+}));
+jest.mock('../../services/pdfService', () => ({
+  generateProposalPdf: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+}));
+jest.mock('../../services/emailService', () => ({
+  sendProposalEmail: jest.fn().mockResolvedValue(true),
+  sendNotificationEmail: jest.fn().mockResolvedValue(true),
+}));
+jest.mock('../../services/globalSettingsService', () => {
+  const branding = {
+    companyName: 'Test',
+    companyEmail: null,
+    companyPhone: null,
+    companyWebsite: null,
+    companyAddress: null,
+    logoDataUrl: null,
+    themePrimaryColor: '#1e40af',
+    themeAccentColor: '#3b82f6',
+    themeBackgroundColor: '#ffffff',
+    themeTextColor: '#1e293b',
+  };
+  return {
+    getGlobalSettings: jest.fn().mockReturnValue(Promise.resolve(branding)),
+    getDefaultBranding: jest.fn().mockReturnValue(branding),
+  };
+});
+jest.mock('../../templates/proposalEmail', () => ({
+  buildProposalEmailHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildProposalEmailSubject: jest.fn().mockReturnValue('Subject'),
+}));
+jest.mock('../../templates/proposalAccepted', () => ({
+  buildProposalAcceptedHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildProposalAcceptedSubject: jest.fn().mockReturnValue('Subject'),
+}));
+jest.mock('../../templates/proposalRejected', () => ({
+  buildProposalRejectedHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildProposalRejectedSubject: jest.fn().mockReturnValue('Subject'),
+}));
+jest.mock('../../config/email', () => ({
+  isEmailConfigured: jest.fn().mockReturnValue(false),
+}));
+jest.mock('../../lib/prisma', () => ({
+  prisma: {
+    contact: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+  },
+}));
+jest.mock('../../lib/logger', () => ({
+  default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  __esModule: true,
+}));
 
 describe('Proposal Routes', () => {
   let app: Application;
@@ -148,7 +211,7 @@ describe('Proposal Routes', () => {
   it('PATCH /:id should return 422 when status locked for edits', async () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
-      status: 'sent',
+      status: 'accepted',
     });
 
     await request(app)
@@ -158,15 +221,24 @@ describe('Proposal Routes', () => {
   });
 
   it('POST /:id/send should send proposal', async () => {
-    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+    const mockProposal = {
       id: 'proposal-1',
       status: 'draft',
-    });
-    (proposalService.sendProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+      pricingLocked: false,
+      proposalNumber: 'PROP-001',
+      title: 'Test',
+      account: { id: 'acc-1', name: 'Test Account' },
+      totalAmount: '100',
+      validUntil: null,
+    };
+    (proposalService.getProposalById as jest.Mock)
+      .mockResolvedValueOnce(mockProposal)
+      .mockResolvedValueOnce({ ...mockProposal, id: 'proposal-1', status: 'sent' });
+    (proposalService.sendProposal as jest.Mock).mockResolvedValue({ ...mockProposal, status: 'sent' });
 
     const response = await request(app)
       .post('/api/v1/proposals/proposal-1/send')
-      .send({ to: 'test@example.com' })
+      .send({ emailTo: 'test@example.com' })
       .expect(200);
 
     expect(response.body.data.id).toBe('proposal-1');
@@ -180,7 +252,7 @@ describe('Proposal Routes', () => {
 
     await request(app)
       .post('/api/v1/proposals/proposal-1/send')
-      .send({ to: 'test@example.com' })
+      .send({ emailTo: 'test@example.com' })
       .expect(422);
   });
 
@@ -199,6 +271,11 @@ describe('Proposal Routes', () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'sent',
+      proposalNumber: 'PROP-001',
+      title: 'Test',
+      totalAmount: '100',
+      account: { id: 'acc-1', name: 'Test Account' },
+      createdByUser: { id: 'user-1', email: 'test@example.com' },
     });
     (proposalService.acceptProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
 
@@ -226,6 +303,10 @@ describe('Proposal Routes', () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'viewed',
+      proposalNumber: 'PROP-001',
+      title: 'Test',
+      account: { id: 'acc-1', name: 'Test Account' },
+      createdByUser: { id: 'user-1', email: 'test@example.com' },
     });
     (proposalService.rejectProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
 
