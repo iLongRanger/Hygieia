@@ -22,6 +22,12 @@ export const PERMISSIONS = {
   AREA_TEMPLATES_READ: 'area_templates_read',
   AREA_TEMPLATES_READ_BY_TYPE: 'area_templates_read_by_type',
   AREA_TEMPLATES_WRITE: 'area_templates_write',
+  LEADS_READ: 'leads_read',
+  LEADS_WRITE: 'leads_write',
+  LEADS_ADMIN: 'leads_admin',
+  CONTACTS_READ: 'contacts_read',
+  CONTACTS_WRITE: 'contacts_write',
+  CONTACTS_ADMIN: 'contacts_admin',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

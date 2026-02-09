@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../schemas/lead';
 import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -39,7 +40,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listLeadsQuerySchema.safeParse(req.query);
@@ -58,7 +59,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_READ),
   verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -76,7 +77,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createLeadSchema.safeParse(req.body);
@@ -103,7 +104,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_WRITE),
   verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -128,7 +129,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEADS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadById(req.params.id);
@@ -147,7 +148,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEADS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadById(req.params.id);
@@ -166,7 +167,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.LEADS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getLeadById(req.params.id);
@@ -190,7 +191,7 @@ router.delete(
 router.get(
   '/:id/can-convert',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_WRITE),
   verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -206,7 +207,7 @@ router.get(
 router.post(
   '/:id/convert',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.LEADS_WRITE),
   verifyOwnership({ resourceType: 'lead' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
