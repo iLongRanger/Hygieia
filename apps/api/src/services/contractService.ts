@@ -95,6 +95,9 @@ const contractSelect = {
   signedDate: true,
   signedByName: true,
   signedByEmail: true,
+  sentAt: true,
+  viewedAt: true,
+  publicToken: true,
   approvedAt: true,
   terminationReason: true,
   terminatedAt: true,
@@ -499,6 +502,17 @@ export async function updateContractStatus(
   });
 
   return contract;
+}
+
+/**
+ * Mark contract as sent
+ */
+export async function sendContract(id: string) {
+  return prisma.contract.update({
+    where: { id },
+    data: { status: 'sent', sentAt: new Date() },
+    select: contractSelect,
+  });
 }
 
 /**

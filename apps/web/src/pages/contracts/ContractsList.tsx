@@ -10,10 +10,13 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Archive,
   RotateCcw,
   X,
   DollarSign,
+  Send,
+  Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -32,6 +35,8 @@ import type { Contract, ContractStatus } from '../../types/contract';
 
 const CONTRACT_STATUSES = [
   { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'viewed', label: 'Viewed' },
   { value: 'pending_signature', label: 'Pending Signature' },
   { value: 'active', label: 'Active' },
   { value: 'expired', label: 'Expired' },
@@ -42,6 +47,8 @@ const CONTRACT_STATUSES = [
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
+    sent: 'info',
+    viewed: 'info',
     pending_signature: 'warning',
     active: 'success',
     expired: 'default',
@@ -54,6 +61,8 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
 const getStatusIcon = (status: ContractStatus) => {
   const icons: Record<ContractStatus, React.ElementType> = {
     draft: FileText,
+    sent: Send,
+    viewed: Eye,
     pending_signature: FileSignature,
     active: CheckCircle,
     expired: Clock,
@@ -211,11 +220,22 @@ const ContractsList = () => {
       header: 'Status',
       cell: (contract: Contract) => {
         const StatusIcon = getStatusIcon(contract.status);
+        const daysLeft = contract.status === 'active' && contract.endDate
+          ? Math.ceil((new Date(contract.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : null;
         return (
-          <Badge variant={getStatusVariant(contract.status)}>
-            <StatusIcon className="mr-1 h-3 w-3" />
-            {contract.status.replace('_', ' ').toUpperCase()}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={getStatusVariant(contract.status)}>
+              <StatusIcon className="mr-1 h-3 w-3" />
+              {contract.status.replace('_', ' ').toUpperCase()}
+            </Badge>
+            {daysLeft !== null && daysLeft <= 30 && daysLeft > 0 && (
+              <Badge variant="warning">
+                <AlertTriangle className="mr-1 h-3 w-3" />
+                {daysLeft}d
+              </Badge>
+            )}
+          </div>
         );
       },
     },

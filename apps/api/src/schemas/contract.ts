@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const contractStatusSchema = z.enum([
   'draft',
+  'sent',
+  'viewed',
   'pending_signature',
   'active',
   'expired',
@@ -117,6 +119,10 @@ export const updateContractStatusSchema = z.object({
   status: contractStatusSchema,
 });
 
+export const assignContractTeamSchema = z.object({
+  teamId: z.string().uuid().nullable(),
+});
+
 // Sign Contract Schema
 export const signContractSchema = z.object({
   signedDate: z.coerce.date(),
@@ -209,12 +215,22 @@ export const listContractsQuerySchema = z.object({
     .optional(),
 });
 
+// Send Contract Schema
+export const sendContractSchema = z.object({
+  emailTo: z.string().email().optional(),
+  emailCc: z.array(z.string().email()).optional(),
+  emailSubject: z.string().min(1).max(200).optional(),
+  emailBody: z.string().max(10000).optional(),
+});
+
 // Export types
+export type SendContractInput = z.infer<typeof sendContractSchema>;
 export type CreateContractInput = z.infer<typeof createContractSchema>;
 export type CreateContractFromProposalInput = z.infer<typeof createContractFromProposalSchema>;
 export type CreateStandaloneContractInput = z.infer<typeof createStandaloneContractSchema>;
 export type UpdateContractInput = z.infer<typeof updateContractSchema>;
 export type UpdateContractStatusInput = z.infer<typeof updateContractStatusSchema>;
+export type AssignContractTeamInput = z.infer<typeof assignContractTeamSchema>;
 export type SignContractInput = z.infer<typeof signContractSchema>;
 export type TerminateContractInput = z.infer<typeof terminateContractSchema>;
 export type RenewContractInput = z.infer<typeof renewContractSchema>;

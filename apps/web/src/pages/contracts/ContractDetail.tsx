@@ -22,6 +22,9 @@ import {
   Link as LinkIcon,
   Download,
   Sparkles,
+  Send,
+  Eye,
+  Mail,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -36,6 +39,7 @@ import {
   updateContract,
   updateContractStatus,
   signContract,
+  sendContract,
   terminateContract,
   archiveContract,
   restoreContract,
@@ -47,8 +51,9 @@ import {
   generateContractTerms,
 } from '../../lib/contracts';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
+import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
-import type { Contract, ContractStatus, RenewContractInput } from '../../types/contract';
+import type { Contract, ContractStatus, RenewContractInput, SendContractInput } from '../../types/contract';
 import type { Team } from '../../types/team';
 
 // Format address object into readable string
@@ -69,6 +74,8 @@ const formatAddress = (address: any): string => {
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
+    sent: 'info',
+    viewed: 'info',
     pending_signature: 'warning',
     active: 'success',
     expired: 'default',
@@ -81,6 +88,8 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
 const getStatusIcon = (status: ContractStatus) => {
   const icons: Record<ContractStatus, React.ElementType> = {
     draft: FileText,
+    sent: Send,
+    viewed: Eye,
     pending_signature: FileSignature,
     active: CheckCircle,
     expired: Calendar,
@@ -136,6 +145,9 @@ const ContractDetail = () => {
   const [termsText, setTermsText] = useState('');
   const [savingTerms, setSavingTerms] = useState(false);
   const [generatingTerms, setGeneratingTerms] = useState(false);
+
+  // Send modal state
+  const [showSendModal, setShowSendModal] = useState(false);
 
   // Renewal modal state
   const [activityRefresh, setActivityRefresh] = useState(0);
@@ -361,6 +373,18 @@ const ContractDetail = () => {
     }
   };
 
+  const handleSend = async (data: SendContractInput) => {
+    if (!contract) return;
+    try {
+      await sendContract(contract.id, data);
+      toast.success('Contract sent successfully');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to send contract');
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -417,6 +441,22 @@ const ContractDetail = () => {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
               </Button>
+              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
+                <Send className="mr-2 h-4 w-4" />
+                Send
+              </Button>
+              <Button onClick={handleActivate}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Activate
+              </Button>
+            </>
+          )}
+          {(contract.status === 'sent' || contract.status === 'viewed') && (
+            <>
+              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
+                <Mail className="mr-2 h-4 w-4" />
+                Resend
+              </Button>
               <Button onClick={handleActivate}>
                 <PlayCircle className="mr-2 h-4 w-4" />
                 Activate
@@ -424,9 +464,9 @@ const ContractDetail = () => {
             </>
           )}
           {contract.status === 'pending_signature' && (
-            <Button onClick={handleSign}>
-              <FileSignature className="mr-2 h-4 w-4" />
-              Sign Contract
+            <Button onClick={handleActivate}>
+              <PlayCircle className="mr-2 h-4 w-4" />
+              Activate
             </Button>
           )}
           {(contract.status === 'active' || contract.status === 'expired') && !contract.renewedToContract && (
@@ -670,6 +710,18 @@ const ContractDetail = () => {
             <h2 className="text-lg font-semibold text-white">Workflow & Signatures</h2>
           </div>
           <div className="space-y-4">
+            {contract.sentAt && (
+              <div>
+                <div className="text-sm text-gray-400">Sent</div>
+                <div className="text-white">{formatDate(contract.sentAt)}</div>
+              </div>
+            )}
+            {contract.viewedAt && (
+              <div>
+                <div className="text-sm text-gray-400">Viewed by Client</div>
+                <div className="text-white">{formatDate(contract.viewedAt)}</div>
+              </div>
+            )}
             {contract.signedByName && (
               <div>
                 <div className="text-sm text-gray-400">Signed By</div>
@@ -716,7 +768,7 @@ const ContractDetail = () => {
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
-          {['draft', 'pending_signature'].includes(contract.status) && !editingTerms && (
+          {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && (
             <Button
               variant="secondary"
               size="sm"
@@ -859,6 +911,16 @@ const ContractDetail = () => {
       {/* Activity Timeline */}
       {contract && (
         <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
+      )}
+
+      {/* Send Contract Modal */}
+      {contract && (
+        <SendContractModal
+          isOpen={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          contract={contract}
+          onSend={handleSend}
+        />
       )}
 
       {/* Renewal Modal */}

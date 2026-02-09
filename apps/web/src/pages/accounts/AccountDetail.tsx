@@ -16,6 +16,7 @@ import {
   Plus,
   FileText,
   FileSignature,
+  History,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -28,6 +29,8 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import {
   getAccount,
+  listAccountActivities,
+  createAccountActivity,
   updateAccount,
   archiveAccount,
   restoreAccount,
@@ -36,7 +39,12 @@ import { listFacilities, createFacility } from '../../lib/facilities';
 import { listUsers } from '../../lib/users';
 import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
-import type { Account, UpdateAccountInput } from '../../types/crm';
+import type {
+  Account,
+  AccountActivity,
+  AccountActivityEntryType,
+  UpdateAccountInput,
+} from '../../types/crm';
 import type { Facility, CreateFacilityInput } from '../../types/facility';
 import type { User } from '../../types/user';
 import type { Proposal } from '../../types/proposal';
@@ -88,6 +96,8 @@ const CONTRACT_STATUS_VARIANTS: Record<
   'default' | 'success' | 'warning' | 'error' | 'info'
 > = {
   draft: 'default',
+  sent: 'info',
+  viewed: 'info',
   pending_signature: 'warning',
   active: 'success',
   expired: 'default',
@@ -116,6 +126,11 @@ const AccountDetail = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [activities, setActivities] = useState<AccountActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [addingActivity, setAddingActivity] = useState(false);
+  const [activityNote, setActivityNote] = useState('');
+  const [activityType, setActivityType] = useState<AccountActivityEntryType>('note');
   const [proposalTotal, setProposalTotal] = useState(0);
   const [contractTotal, setContractTotal] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -230,13 +245,31 @@ const AccountDetail = () => {
     }
   }, [id]);
 
+  const fetchActivities = useCallback(async () => {
+    if (!id) return;
+    try {
+      setActivitiesLoading(true);
+      const response = await listAccountActivities(id, {
+        page: 1,
+        limit: 50,
+      });
+      setActivities(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch account activities:', error);
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchAccount();
     fetchUsers();
     fetchFacilities();
     fetchProposals();
     fetchContracts();
-  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts]);
+    fetchActivities();
+  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchActivities]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -306,6 +339,31 @@ const AccountDetail = () => {
     }
   };
 
+  const handleAddActivity = async () => {
+    if (!id) return;
+    const trimmed = activityNote.trim();
+    if (!trimmed) {
+      toast.error('Please enter a note');
+      return;
+    }
+    try {
+      setAddingActivity(true);
+      await createAccountActivity(id, {
+        entryType: activityType,
+        note: trimmed,
+      });
+      setActivityNote('');
+      setActivityType('note');
+      toast.success('Account history note added');
+      fetchActivities();
+    } catch (error) {
+      console.error('Failed to add account activity:', error);
+      toast.error('Failed to add account history note');
+    } finally {
+      setAddingActivity(false);
+    }
+  };
+
   const getTypeVariant = (type: string) => {
     switch (type) {
       case 'commercial':
@@ -332,6 +390,16 @@ const AccountDetail = () => {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
     });
   };
 
@@ -583,6 +651,78 @@ const AccountDetail = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-gold" />
+              <h3 className="text-lg font-semibold text-white">Account History</h3>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            <Select
+              label="Entry Type"
+              value={activityType}
+              onChange={(value) => setActivityType(value as AccountActivityEntryType)}
+              options={[
+                { value: 'note', label: 'General Note' },
+                { value: 'request', label: 'Customer Request' },
+                { value: 'complaint', label: 'Customer Complaint' },
+              ]}
+            />
+            <Textarea
+              label="New History Note"
+              placeholder="Log customer call, request, complaint, or other account note..."
+              value={activityNote}
+              onChange={(e) => setActivityNote(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleAddActivity} disabled={addingActivity}>
+                {addingActivity ? 'Saving...' : 'Add History Note'}
+              </Button>
+            </div>
+          </div>
+
+          {activitiesLoading ? (
+            <div className="text-sm text-gray-400">Loading history...</div>
+          ) : activities.length === 0 ? (
+            <div className="text-sm text-gray-400">No account history yet.</div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="rounded-lg border border-white/10 bg-navy-darker/30 p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge
+                      variant={
+                        activity.entryType === 'complaint'
+                          ? 'error'
+                          : activity.entryType === 'request'
+                            ? 'warning'
+                            : 'info'
+                      }
+                    >
+                      {activity.entryType}
+                    </Badge>
+                    <span className="text-xs text-gray-400">
+                      {formatDateTime(activity.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-200 mt-2 whitespace-pre-wrap">
+                    {activity.note}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Logged by {activity.performedByUser?.fullName || 'System'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1090,4 +1230,3 @@ const AccountDetail = () => {
 };
 
 export default AccountDetail;
-
