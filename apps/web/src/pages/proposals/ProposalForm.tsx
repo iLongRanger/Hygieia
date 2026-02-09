@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,6 +17,9 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  CircleCheck,
+  CircleAlert,
+  ClipboardCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -31,7 +34,7 @@ import {
   updateProposal,
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
-import { listFacilities } from '../../lib/facilities';
+import { listFacilities, listAreas, listFacilityTasks } from '../../lib/facilities';
 import {
   getFacilityPricingReadiness,
   getFacilityProposalTemplate,
@@ -53,6 +56,7 @@ import type {
 } from '../../types/proposal';
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
+import type { Area, FacilityTask } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTemplates } from '../../lib/proposalTemplates';
@@ -169,6 +173,11 @@ const ProposalForm = () => {
 
   // Service expand/collapse state
   const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set());
+  const [facilityAreas, setFacilityAreas] = useState<Area[]>([]);
+  const [facilityTasks, setFacilityTasks] = useState<FacilityTask[]>([]);
+  const [loadingFacilityReview, setLoadingFacilityReview] = useState(false);
+  const [areasReviewed, setAreasReviewed] = useState(false);
+  const [tasksReviewed, setTasksReviewed] = useState(false);
 
   const toggleServiceExpand = (index: number) => {
     setExpandedServices((prev) => {
@@ -350,6 +359,78 @@ const ProposalForm = () => {
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
     : facilities;
+
+  useEffect(() => {
+    const facilityId = formData.facilityId;
+
+    setAreasReviewed(false);
+    setTasksReviewed(false);
+
+    if (!facilityId) {
+      setFacilityAreas([]);
+      setFacilityTasks([]);
+      setLoadingFacilityReview(false);
+      return;
+    }
+
+    const loadFacilityReviewData = async () => {
+      try {
+        setLoadingFacilityReview(true);
+        const [areasResponse, tasksResponse] = await Promise.all([
+          listAreas({ facilityId, limit: 100, includeArchived: false }),
+          listFacilityTasks({ facilityId, limit: 100, includeArchived: false }),
+        ]);
+        setFacilityAreas(areasResponse?.data || []);
+        setFacilityTasks(tasksResponse?.data || []);
+      } catch (error) {
+        console.error('Failed to load facility review data:', error);
+        setFacilityAreas([]);
+        setFacilityTasks([]);
+      } finally {
+        setLoadingFacilityReview(false);
+      }
+    };
+
+    loadFacilityReviewData();
+  }, [formData.facilityId]);
+
+  const facilityReview = useMemo(() => {
+    const activeAreas = facilityAreas.filter((area) => !area.archivedAt);
+    const activeTasks = facilityTasks.filter((task) => !task.archivedAt);
+
+    const tasksByArea = new Map<string, number>();
+    activeTasks.forEach((task) => {
+      const areaId = task.area?.id;
+      if (!areaId) return;
+      tasksByArea.set(areaId, (tasksByArea.get(areaId) || 0) + 1);
+    });
+
+    const areasWithoutTasks = activeAreas.filter((area) => (tasksByArea.get(area.id) || 0) === 0);
+    const areasMissingSquareFeet = activeAreas.filter((area) => Number(area.squareFeet || 0) <= 0);
+    const unassignedTasks = activeTasks.filter((task) => !task.area);
+
+    return {
+      activeAreas,
+      activeTasks,
+      areasWithoutTasks,
+      areasMissingSquareFeet,
+      unassignedTasks,
+      hasBlockingIssues:
+        activeAreas.length === 0 ||
+        activeTasks.length === 0 ||
+        areasWithoutTasks.length > 0 ||
+        areasMissingSquareFeet.length > 0,
+    };
+  }, [facilityAreas, facilityTasks]);
+
+  const requiresFacilityReview = Boolean(formData.facilityId);
+  const isFacilityReviewComplete =
+    !requiresFacilityReview ||
+    (!loadingFacilityReview &&
+      !facilityReview.hasBlockingIssues &&
+      areasReviewed &&
+      tasksReviewed);
+  const canSubmitProposal = !saving && isFacilityReviewComplete;
 
   // Check pricing readiness when facility changes
   useEffect(() => {
@@ -540,6 +621,18 @@ const ProposalForm = () => {
       toast.error('Please select a pricing plan');
       return;
     }
+    if (requiresFacilityReview && loadingFacilityReview) {
+      toast.error('Please wait for facility review checks to finish');
+      return;
+    }
+    if (requiresFacilityReview && !isFacilityReviewComplete) {
+      if (facilityReview.hasBlockingIssues) {
+        toast.error('Resolve facility review issues before creating the proposal');
+        return;
+      }
+      toast.error('Please confirm area and task accuracy before creating the proposal');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -596,7 +689,7 @@ const ProposalForm = () => {
             </p>
           </div>
         </div>
-        <Button type="submit" isLoading={saving}>
+        <Button type="submit" isLoading={saving} disabled={!canSubmitProposal}>
           <Save className="w-5 h-5 mr-2" />
           {isEditMode ? 'Update Proposal' : 'Create Proposal'}
         </Button>
@@ -757,6 +850,104 @@ const ProposalForm = () => {
                       <PricingBreakdownPanel pricing={pricingBreakdown} />
                     </div>
                   )}
+                </div>
+              )}
+
+              {formData.facilityId && (
+                <div className="md:col-span-2">
+                  <div className="bg-navy-dark/50 rounded-xl border border-white/10 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <ClipboardCheck className="w-5 h-5 text-gold" />
+                        <span className="font-medium text-white">Facility Review Before Proposal</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/facilities/${formData.facilityId}`)}
+                      >
+                        Review Facility Details
+                      </Button>
+                    </div>
+
+                    {loadingFacilityReview ? (
+                      <p className="text-sm text-gray-400">Checking areas and tasks...</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                            <span className="text-gray-300">Areas</span>
+                            <span className="text-white font-medium">{facilityReview.activeAreas.length}</span>
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                            <span className="text-gray-300">Tasks</span>
+                            <span className="text-white font-medium">{facilityReview.activeTasks.length}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={facilityReview.areasWithoutTasks.length > 0 ? 'error' : 'success'} size="sm">
+                            Areas Missing Tasks: {facilityReview.areasWithoutTasks.length}
+                          </Badge>
+                          <Badge variant={facilityReview.areasMissingSquareFeet.length > 0 ? 'error' : 'success'} size="sm">
+                            Areas Missing Sq Ft: {facilityReview.areasMissingSquareFeet.length}
+                          </Badge>
+                          <Badge variant={facilityReview.unassignedTasks.length > 0 ? 'warning' : 'success'} size="sm">
+                            Unassigned Tasks: {facilityReview.unassignedTasks.length}
+                          </Badge>
+                        </div>
+
+                        {facilityReview.hasBlockingIssues && (
+                          <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CircleAlert className="w-4 h-4" />
+                              <span className="font-medium">Fix required before proposal submission</span>
+                            </div>
+                            <p>
+                              Each active area must have square footage and at least one task, and the facility must
+                              include both areas and tasks.
+                            </p>
+                          </div>
+                        )}
+
+                        {!facilityReview.hasBlockingIssues && (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={areasReviewed ? 'primary' : 'secondary'}
+                                onClick={() => setAreasReviewed((prev) => !prev)}
+                              >
+                                {areasReviewed ? <CircleCheck className="w-4 h-4 mr-1" /> : null}
+                                Confirm Areas Accuracy
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={tasksReviewed ? 'primary' : 'secondary'}
+                                onClick={() => setTasksReviewed((prev) => !prev)}
+                              >
+                                {tasksReviewed ? <CircleCheck className="w-4 h-4 mr-1" /> : null}
+                                Confirm Tasks Accuracy
+                              </Button>
+                            </div>
+                            {isFacilityReviewComplete ? (
+                              <p className="text-sm text-emerald flex items-center gap-2">
+                                <CircleCheck className="w-4 h-4" />
+                                Facility review complete. Proposal can be submitted.
+                              </p>
+                            ) : (
+                              <p className="text-sm text-amber-300">
+                                Confirm both checks after reviewing the facility.
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="md:col-span-2">
@@ -1140,6 +1331,7 @@ const ProposalForm = () => {
                 type="submit"
                 className="w-full"
                 isLoading={saving}
+                disabled={!canSubmitProposal}
               >
                 <Save className="w-5 h-5 mr-2" />
                 {isEditMode ? 'Update Proposal' : 'Create Proposal'}
