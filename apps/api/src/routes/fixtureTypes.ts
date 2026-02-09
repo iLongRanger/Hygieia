@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listFixtureTypes,
@@ -15,6 +15,7 @@ import {
   listFixtureTypesQuerySchema,
 } from '../schemas/fixtureType';
 import { ZodError } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -32,7 +33,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FIXTURE_TYPES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listFixtureTypesQuerySchema.safeParse(req.query);
@@ -51,7 +52,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FIXTURE_TYPES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const fixtureType = await getFixtureTypeById(req.params.id);
@@ -68,7 +69,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FIXTURE_TYPES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createFixtureTypeSchema.safeParse(req.body);
@@ -87,7 +88,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FIXTURE_TYPES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFixtureTypeById(req.params.id);
@@ -111,7 +112,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FIXTURE_TYPES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFixtureTypeById(req.params.id);

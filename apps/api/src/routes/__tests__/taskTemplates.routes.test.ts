@@ -12,6 +12,7 @@ jest.mock('../../middleware/auth', () => ({
 }));
 
 jest.mock('../../middleware/rbac', () => ({
+  requirePermission: () => (_req: any, _res: any, next: any) => next(),
   requireRole: () => (_req: any, _res: any, next: any) => next(),
 }));
 
