@@ -10,6 +10,7 @@ import {
   Building2,
   MapPin,
   User,
+  Users,
   Calendar,
   DollarSign,
   FileText,
@@ -19,6 +20,8 @@ import {
   RefreshCw,
   ArrowRight,
   Link as LinkIcon,
+  Download,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -30,6 +33,7 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import {
   getContract,
+  updateContract,
   updateContractStatus,
   signContract,
   terminateContract,
@@ -37,8 +41,15 @@ import {
   restoreContract,
   canRenewContract,
   renewContract,
+  assignContractTeam,
+  completeInitialClean as completeInitialCleanApi,
+  downloadContractPdf,
+  generateContractTerms,
 } from '../../lib/contracts';
+import ContractTimeline from '../../components/contracts/ContractTimeline';
+import { listTeams } from '../../lib/teams';
 import type { Contract, ContractStatus, RenewContractInput } from '../../types/contract';
+import type { Team } from '../../types/team';
 
 // Format address object into readable string
 const formatAddress = (address: any): string => {
@@ -116,8 +127,18 @@ const ContractDetail = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [contract, setContract] = useState<Contract | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [assigningTeam, setAssigningTeam] = useState(false);
+
+  // T&C inline editing state
+  const [editingTerms, setEditingTerms] = useState(false);
+  const [termsText, setTermsText] = useState('');
+  const [savingTerms, setSavingTerms] = useState(false);
+  const [generatingTerms, setGeneratingTerms] = useState(false);
 
   // Renewal modal state
+  const [activityRefresh, setActivityRefresh] = useState(0);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const [renewalFormData, setRenewalFormData] = useState<RenewContractInput>({
@@ -136,14 +157,21 @@ const ContractDetail = () => {
   useEffect(() => {
     if (id) {
       fetchContract(id);
+      fetchTeams();
     }
   }, [id]);
+
+  const refreshAll = (contractId: string) => {
+    fetchContract(contractId);
+    setActivityRefresh((n) => n + 1);
+  };
 
   const fetchContract = async (contractId: string) => {
     try {
       setLoading(true);
       const data = await getContract(contractId);
       setContract(data);
+      setSelectedTeamId(data.assignedTeam?.id || '');
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -153,13 +181,39 @@ const ContractDetail = () => {
     }
   };
 
+  const fetchTeams = async () => {
+    try {
+      const response = await listTeams({ limit: 100, isActive: true });
+      setTeams(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch teams:', error);
+      toast.error('Failed to load teams');
+    }
+  };
+
+  const handleAssignTeam = async () => {
+    if (!contract) return;
+
+    try {
+      setAssigningTeam(true);
+      const updatedContract = await assignContractTeam(contract.id, selectedTeamId || null);
+      setContract(updatedContract);
+      setActivityRefresh((n) => n + 1);
+      toast.success(selectedTeamId ? 'Team assigned successfully' : 'Team unassigned successfully');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to assign team');
+    } finally {
+      setAssigningTeam(false);
+    }
+  };
+
   const handleActivate = async () => {
     if (!contract || !confirm('Activate this contract? This will make it active and billable.')) return;
 
     try {
       await updateContractStatus(contract.id, 'active');
       toast.success('Contract activated successfully');
-      fetchContract(contract.id);
+      refreshAll(contract.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to activate contract');
     }
@@ -181,7 +235,7 @@ const ContractDetail = () => {
         signedByEmail,
       });
       toast.success('Contract signed successfully');
-      fetchContract(contract.id);
+      refreshAll(contract.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to sign contract');
     }
@@ -198,7 +252,7 @@ const ContractDetail = () => {
     try {
       await terminateContract(contract.id, { terminationReason: reason });
       toast.success('Contract terminated');
-      fetchContract(contract.id);
+      refreshAll(contract.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to terminate contract');
     }
@@ -210,7 +264,7 @@ const ContractDetail = () => {
     try {
       await archiveContract(contract.id);
       toast.success('Contract archived');
-      fetchContract(contract.id);
+      refreshAll(contract.id);
     } catch (error) {
       toast.error('Failed to archive contract');
     }
@@ -222,7 +276,7 @@ const ContractDetail = () => {
     try {
       await restoreContract(contract.id);
       toast.success('Contract restored');
-      fetchContract(contract.id);
+      refreshAll(contract.id);
     } catch (error) {
       toast.error('Failed to restore contract');
     }
@@ -284,6 +338,29 @@ const ContractDetail = () => {
     }
   };
 
+  const handleCompleteInitialClean = async () => {
+    if (!contract || !confirm('Mark the initial clean as completed?')) return;
+
+    try {
+      const updated = await completeInitialCleanApi(contract.id);
+      setContract(updated);
+      setActivityRefresh((n) => n + 1);
+      toast.success('Initial clean marked as completed');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to complete initial clean');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!contract) return;
+    try {
+      await downloadContractPdf(contract.id, contract.contractNumber);
+      toast.success('PDF downloaded');
+    } catch (error) {
+      toast.error('Failed to download PDF');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -312,10 +389,25 @@ const ContractDetail = () => {
               <StatusIcon className="mr-1 h-3 w-3" />
               {contract.status.replace('_', ' ').toUpperCase()}
             </Badge>
+            {contract.status === 'active' && contract.endDate && (() => {
+              const daysLeft = Math.ceil(
+                (new Date(contract.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+              );
+              return daysLeft <= 30 && daysLeft > 0 ? (
+                <Badge variant="warning">
+                  <AlertTriangle className="mr-1 h-3 w-3" />
+                  Expires in {daysLeft} days
+                </Badge>
+              ) : null;
+            })()}
           </div>
           <p className="text-gray-400">{contract.title}</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleDownloadPdf}>
+            <Download className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
           {contract.status === 'draft' && (
             <>
               <Button
@@ -494,6 +586,43 @@ const ContractDetail = () => {
           </div>
         </Card>
 
+        {/* Team Assignment */}
+        <Card>
+          <div className="mb-4 flex items-center gap-2">
+            <Users className="h-5 w-5 text-teal-400" />
+            <h2 className="text-lg font-semibold text-white">Assigned Team</h2>
+          </div>
+          <div className="space-y-4">
+            <Select
+              label="Subcontractor Team"
+              value={selectedTeamId}
+              onChange={setSelectedTeamId}
+              disabled={contract.status !== 'active'}
+              options={[
+                { value: '', label: 'Unassigned' },
+                ...teams.map((team) => ({ value: team.id, label: team.name })),
+              ]}
+              hint={
+                contract.status !== 'active'
+                  ? 'Teams can only be assigned to active contracts'
+                  : undefined
+              }
+            />
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400">
+                Current: {contract.assignedTeam?.name || 'No team assigned'}
+              </div>
+              <Button
+                onClick={handleAssignTeam}
+                disabled={contract.status !== 'active'}
+                isLoading={assigningTeam}
+              >
+                Save Team Assignment
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         {/* Service Terms */}
         <Card>
           <div className="flex items-center gap-2 mb-4">
@@ -584,14 +713,104 @@ const ContractDetail = () => {
       </div>
 
       {/* Terms & Conditions */}
-      {contract.termsAndConditions && (
-        <Card>
-          <h2 className="text-lg font-semibold text-white mb-4">Terms & Conditions</h2>
-          <div className="text-gray-300 whitespace-pre-wrap">
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
+          {['draft', 'pending_signature'].includes(contract.status) && !editingTerms && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setTermsText(contract.termsAndConditions || '');
+                setEditingTerms(true);
+              }}
+            >
+              <Edit2 className="w-3.5 h-3.5 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {editingTerms ? (
+          <div className="space-y-3">
+            <Textarea
+              value={termsText}
+              onChange={(e) => setTermsText(e.target.value)}
+              rows={16}
+              placeholder="Enter contract terms and conditions..."
+            />
+            <div className="flex items-center justify-between">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  if (termsText && !window.confirm('This will replace the current terms. Continue?')) return;
+                  setGeneratingTerms(true);
+                  try {
+                    const terms = await generateContractTerms({
+                      accountId: contract.account.id,
+                      facilityId: contract.facility?.id,
+                      startDate: contract.startDate,
+                      endDate: contract.endDate,
+                      monthlyValue: Number(contract.monthlyValue),
+                      billingCycle: contract.billingCycle,
+                      paymentTerms: contract.paymentTerms,
+                      serviceFrequency: contract.serviceFrequency,
+                      autoRenew: contract.autoRenew,
+                      renewalNoticeDays: contract.renewalNoticeDays,
+                      title: contract.title,
+                    });
+                    setTermsText(terms);
+                    toast.success('Default terms generated');
+                  } catch {
+                    toast.error('Failed to generate terms');
+                  } finally {
+                    setGeneratingTerms(false);
+                  }
+                }}
+                disabled={generatingTerms}
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                {generatingTerms ? 'Generating...' : 'Generate Default Terms'}
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditingTerms(false)}
+                  disabled={savingTerms}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    setSavingTerms(true);
+                    try {
+                      await updateContract(contract.id, { termsAndConditions: termsText || null });
+                      setEditingTerms(false);
+                      refreshAll(contract.id);
+                      toast.success('Terms updated');
+                    } catch {
+                      toast.error('Failed to save terms');
+                    } finally {
+                      setSavingTerms(false);
+                    }
+                  }}
+                  disabled={savingTerms}
+                >
+                  {savingTerms ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : contract.termsAndConditions ? (
+          <div className="text-gray-300 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto">
             {contract.termsAndConditions}
           </div>
-        </Card>
-      )}
+        ) : (
+          <p className="text-gray-500 text-sm italic">No terms and conditions set.</p>
+        )}
+      </Card>
 
       {/* Special Instructions */}
       {contract.specialInstructions && (
@@ -601,6 +820,45 @@ const ContractDetail = () => {
             {contract.specialInstructions}
           </div>
         </Card>
+      )}
+
+      {/* Initial Clean */}
+      {contract.includesInitialClean && (
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-emerald-400" />
+            <h2 className="text-lg font-semibold text-white">Initial Clean</h2>
+          </div>
+          {contract.initialCleanCompleted ? (
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">Completed</span>
+              <span className="text-sm text-gray-400 ml-2">
+                {formatDate(contract.initialCleanCompletedAt)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-yellow-400 font-medium">Pending</span>
+                <p className="text-sm text-gray-400 mt-1">
+                  The initial deep clean has not been completed yet.
+                </p>
+              </div>
+              {contract.status === 'active' && (
+                <Button onClick={handleCompleteInitialClean}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Mark Complete
+                </Button>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Activity Timeline */}
+      {contract && (
+        <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
       )}
 
       {/* Renewal Modal */}

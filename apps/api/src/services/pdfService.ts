@@ -494,6 +494,10 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     }),
   };
 
+  return buildPdfBuffer(docDefinition);
+}
+
+function buildPdfBuffer(docDefinition: TDocumentDefinitions): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     try {
       const pdfDoc = printer.createPdfKitDocument(docDefinition);
@@ -507,4 +511,339 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       reject(error);
     }
   });
+}
+
+// ============================================================
+// Contract PDF
+// ============================================================
+
+interface ContractForPdf {
+  contractNumber: string;
+  title: string;
+  status: string;
+  startDate: string | Date;
+  endDate?: string | Date | null;
+  monthlyValue: number | string;
+  totalValue?: number | string | null;
+  billingCycle: string;
+  paymentTerms: string;
+  serviceFrequency?: string | null;
+  termsAndConditions?: string | null;
+  specialInstructions?: string | null;
+  signedByName?: string | null;
+  signedByEmail?: string | null;
+  signedDate?: string | Date | null;
+  createdAt: string | Date;
+  account: { name: string };
+  facility?: { name: string; address?: any } | null;
+  createdByUser: { fullName: string; email: string };
+}
+
+export async function generateContractPdf(contract: ContractForPdf): Promise<Buffer> {
+  let branding: GlobalBranding;
+  try {
+    branding = await getGlobalSettings();
+  } catch {
+    branding = getDefaultBranding();
+  }
+
+  const COLORS = {
+    ...BASE_COLORS,
+    primary: branding.themePrimaryColor,
+    accent: branding.themeAccentColor,
+  };
+
+  const content: Content[] = [];
+
+  // Company Header
+  const headerStack: Content[] = [];
+  if (branding.logoDataUrl) {
+    headerStack.push({
+      image: branding.logoDataUrl,
+      fit: [120, 60],
+      margin: [0, 0, 0, 8] as [number, number, number, number],
+    });
+  }
+
+  headerStack.push(
+    { text: branding.companyName, style: 'companyName' },
+    ...(branding.companyAddress ? [{ text: branding.companyAddress, style: 'companyDetail' }] : []),
+    ...(branding.companyPhone ? [{ text: branding.companyPhone, style: 'companyDetail' }] : []),
+    ...(branding.companyEmail ? [{ text: branding.companyEmail, style: 'companyDetail' }] : []),
+    ...(branding.companyWebsite ? [{ text: branding.companyWebsite, style: 'companyDetail' }] : [])
+  );
+
+  content.push({
+    columns: [
+      { stack: headerStack, width: '*' },
+      {
+        stack: [
+          { text: 'SERVICE CONTRACT', style: 'proposalLabel' },
+          { text: contract.contractNumber, style: 'proposalNumber' },
+          { text: `Date: ${formatDate(contract.createdAt)}`, style: 'proposalMeta' },
+          { text: `Status: ${contract.status.replace('_', ' ').toUpperCase()}`, style: 'proposalMeta' },
+        ],
+        width: 220,
+        alignment: 'right' as const,
+      },
+    ],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  // Divider
+  content.push({
+    canvas: [{ type: 'line' as const, x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: COLORS.accent }],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  // Contract Title
+  content.push({
+    text: contract.title,
+    style: 'proposalTitle',
+    margin: [0, 0, 0, 15] as [number, number, number, number],
+  });
+
+  // Client Info
+  const clientInfo: Content[] = [
+    { text: 'Client:', style: 'sectionLabel' },
+    { text: contract.account.name, style: 'clientName' },
+  ];
+  if (contract.facility) {
+    clientInfo.push({ text: contract.facility.name, style: 'clientDetail' });
+    if (contract.facility.address) {
+      const addr = contract.facility.address;
+      const addrParts = [addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+      if (addrParts) clientInfo.push({ text: addrParts, style: 'clientDetail' });
+    }
+  }
+  content.push({ stack: clientInfo, margin: [0, 0, 0, 20] as [number, number, number, number] });
+
+  // Service Terms Table
+  content.push({ text: 'Service Terms', style: 'sectionHeader' });
+
+  const termsBody: any[][] = [
+    [
+      { text: 'Start Date', style: 'tableHeader' },
+      { text: formatDate(contract.startDate) },
+    ],
+    [
+      { text: 'End Date', style: 'tableHeader' },
+      { text: formatDate(contract.endDate) },
+    ],
+  ];
+
+  if (contract.serviceFrequency) {
+    termsBody.push([
+      { text: 'Service Frequency', style: 'tableHeader' },
+      { text: contract.serviceFrequency.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) },
+    ]);
+  }
+
+  content.push({
+    table: {
+      headerRows: 0,
+      widths: [150, '*'],
+      body: termsBody,
+    },
+    layout: {
+      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+      vLineWidth: () => 0,
+      hLineColor: () => COLORS.border,
+      paddingLeft: () => 8,
+      paddingRight: () => 8,
+      paddingTop: () => 6,
+      paddingBottom: () => 6,
+    },
+    margin: [0, 5, 0, 15] as [number, number, number, number],
+  });
+
+  // Financial Terms
+  content.push({ text: 'Financial Terms', style: 'sectionHeader' });
+
+  const financialBody: any[][] = [
+    [
+      { text: 'Monthly Value', style: 'tableHeader' },
+      { text: formatCurrency(contract.monthlyValue), bold: true, color: COLORS.primary },
+    ],
+    [
+      { text: 'Billing Cycle', style: 'tableHeader' },
+      { text: contract.billingCycle.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) },
+    ],
+    [
+      { text: 'Payment Terms', style: 'tableHeader' },
+      { text: contract.paymentTerms },
+    ],
+  ];
+
+  if (contract.totalValue) {
+    financialBody.push([
+      { text: 'Total Contract Value', style: 'tableHeader' },
+      { text: formatCurrency(contract.totalValue), bold: true },
+    ]);
+  }
+
+  content.push({
+    table: {
+      headerRows: 0,
+      widths: [150, '*'],
+      body: financialBody,
+    },
+    layout: {
+      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+      vLineWidth: () => 0,
+      hLineColor: () => COLORS.border,
+      paddingLeft: () => 8,
+      paddingRight: () => 8,
+      paddingTop: () => 6,
+      paddingBottom: () => 6,
+    },
+    margin: [0, 5, 0, 15] as [number, number, number, number],
+  });
+
+  // Terms & Conditions
+  if (contract.termsAndConditions) {
+    content.push({ text: 'Terms & Conditions', style: 'sectionHeader' });
+
+    // Parse section headings (## N. TITLE format) for formatted rendering
+    const tcText = contract.termsAndConditions as string;
+    if (tcText.includes('## ')) {
+      const parts = tcText.split(/^(?=## )/m);
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+
+        const headingMatch = trimmed.match(/^## (.+)/);
+        if (headingMatch) {
+          const heading = headingMatch[1];
+          const body = trimmed.slice(headingMatch[0].length).trim();
+          content.push({
+            text: heading,
+            fontSize: 11,
+            bold: true,
+            color: COLORS.primary,
+            margin: [0, 8, 0, 4] as [number, number, number, number],
+          });
+          if (body) {
+            content.push({
+              text: body,
+              style: 'bodyText',
+              margin: [0, 0, 0, 6] as [number, number, number, number],
+            });
+          }
+        } else {
+          content.push({
+            text: trimmed,
+            style: 'bodyText',
+            margin: [0, 0, 0, 6] as [number, number, number, number],
+          });
+        }
+      }
+      content.push({ text: '', margin: [0, 0, 0, 9] as [number, number, number, number] });
+    } else {
+      // Backward compatible: no section markers, render as single block
+      content.push({
+        text: tcText,
+        style: 'bodyText',
+        margin: [0, 0, 0, 15] as [number, number, number, number],
+      });
+    }
+  }
+
+  // Special Instructions
+  if (contract.specialInstructions) {
+    content.push({ text: 'Special Instructions', style: 'sectionHeader' });
+    content.push({
+      text: contract.specialInstructions,
+      style: 'bodyText',
+      margin: [0, 0, 0, 15] as [number, number, number, number],
+    });
+  }
+
+  // Signature Block
+  const sigLine = { type: 'line' as const, x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border };
+
+  const clientSigStack: Content[] = [
+    { canvas: [sigLine] },
+    { text: 'Client Signature', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+  ];
+
+  if (contract.signedByName) {
+    clientSigStack.push(
+      { text: contract.signedByName, fontSize: 10, margin: [0, 4, 0, 0] as [number, number, number, number] },
+      { text: `Signed: ${formatDate(contract.signedDate)}`, style: 'signatureLabel' },
+    );
+  } else {
+    clientSigStack.push(
+      { text: '\n', fontSize: 6 },
+      { canvas: [sigLine] },
+      { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+      { text: '\n', fontSize: 6 },
+      { canvas: [sigLine] },
+      { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+    );
+  }
+
+  content.push({
+    columns: [
+      { stack: clientSigStack, width: '*' },
+      {
+        stack: [
+          { canvas: [sigLine] },
+          { text: 'Company Representative', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+          { text: '\n', fontSize: 6 },
+          { canvas: [sigLine] },
+          { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+          { text: '\n', fontSize: 6 },
+          { canvas: [sigLine] },
+          { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+        ],
+        width: '*',
+      },
+    ],
+    margin: [0, 30, 0, 0] as [number, number, number, number],
+  });
+
+  const docDefinition: TDocumentDefinitions = {
+    content,
+    defaultStyle: {
+      font: 'Helvetica',
+      fontSize: 10,
+      color: COLORS.text,
+    },
+    styles: {
+      companyName: { fontSize: 18, bold: true, color: COLORS.primary },
+      companyDetail: { fontSize: 9, color: COLORS.lightText, margin: [0, 1, 0, 0] as [number, number, number, number] },
+      proposalLabel: { fontSize: 22, bold: true, color: COLORS.accent },
+      proposalNumber: { fontSize: 11, color: COLORS.lightText, margin: [0, 2, 0, 0] as [number, number, number, number] },
+      proposalMeta: { fontSize: 9, color: COLORS.lightText, margin: [0, 2, 0, 0] as [number, number, number, number] },
+      proposalTitle: { fontSize: 16, bold: true, color: COLORS.primary },
+      sectionLabel: { fontSize: 9, color: COLORS.lightText, margin: [0, 0, 0, 2] as [number, number, number, number] },
+      clientName: { fontSize: 14, bold: true, color: COLORS.primary },
+      clientDetail: { fontSize: 10, color: COLORS.lightText, margin: [0, 1, 0, 0] as [number, number, number, number] },
+      sectionHeader: { fontSize: 13, bold: true, color: COLORS.primary, margin: [0, 10, 0, 5] as [number, number, number, number] },
+      bodyText: { fontSize: 10, color: COLORS.text, lineHeight: 1.4 },
+      tableHeader: { fontSize: 9, bold: true, color: COLORS.primary },
+      signatureLabel: { fontSize: 8, color: COLORS.lightText },
+    },
+    pageMargins: [40, 40, 40, 60] as [number, number, number, number],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        {
+          text: `${branding.companyName} - ${contract.contractNumber}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          margin: [40, 0, 0, 0] as [number, number, number, number],
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          alignment: 'right' as const,
+          margin: [0, 0, 40, 0] as [number, number, number, number],
+        },
+      ],
+    }),
+  };
+
+  return buildPdfBuffer(docDefinition);
 }
