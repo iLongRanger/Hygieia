@@ -14,6 +14,8 @@ import {
   FileText,
   FileSignature,
   LayoutTemplate,
+  Handshake,
+  Settings,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
@@ -37,6 +39,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { to: '/facilities', icon: Warehouse, label: 'Facilities' },
     { to: '/proposals', icon: FileText, label: 'Proposals' },
     { to: '/contracts', icon: FileSignature, label: 'Contracts' },
+    { to: '/teams', icon: Handshake, label: 'Teams' },
+    { to: '/settings/global', icon: Settings, label: 'Global Settings', roles: ['owner', 'admin'] },
     { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
     {
       to: '/area-templates',

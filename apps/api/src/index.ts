@@ -32,6 +32,7 @@ import proposalTemplatesRoutes from './routes/proposalTemplates';
 import contractsRoutes from './routes/contracts';
 import dashboardRoutes from './routes/dashboard';
 import teamsRoutes from './routes/teams';
+import globalSettingsRoutes from './routes/globalSettings';
 import publicProposalsRoutes from './routes/publicProposals';
 
 const app: Application = express();
@@ -89,6 +90,7 @@ app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/proposal-templates', proposalTemplatesRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
 app.use('/api/v1/teams', teamsRoutes);
+app.use('/api/v1/settings/global', globalSettingsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Public routes (no auth middleware)

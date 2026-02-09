@@ -43,7 +43,11 @@ model User {
   createdTaskTemplates     TaskTemplate[]    @relation("CreatedTaskTemplates")
   createdAreaTemplates     AreaTemplate[]    @relation("CreatedAreaTemplates")
   createdProposals         Proposal[]        @relation("CreatedProposals")
+  proposalActivities       ProposalActivity[] @relation("ProposalActivities")
+  createdProposalTemplates ProposalTemplate[] @relation("CreatedProposalTemplates")
+  proposalVersions         ProposalVersion[] @relation("ProposalVersions")
   createdContracts         Contract[]        @relation("CreatedContracts")
+  createdTeams             Team[]            @relation("CreatedTeams")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
   createdAppointments      Appointment[]     @relation("CreatedAppointments")
@@ -682,6 +686,13 @@ model Proposal {
   pricingLocked          Boolean   @default(false) @map("pricing_locked")
   pricingLockedAt        DateTime? @map("pricing_locked_at") @db.Timestamptz(6)
 
+  // Public access fields
+  publicToken            String?   @unique @map("public_token") @db.VarChar(64)
+  publicTokenExpiresAt   DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  signatureName          String?   @map("signature_name") @db.VarChar(255)
+  signatureDate          DateTime? @map("signature_date") @db.Timestamptz(6)
+  signatureIp            String?   @map("signature_ip") @db.VarChar(45)
+
   account          Account           @relation(fields: [accountId], references: [id])
   facility         Facility?         @relation(fields: [facilityId], references: [id])
   pricingPlan      PricingSettings?  @relation("ProposalPricingPlan", fields: [pricingPlanId], references: [id])
@@ -689,6 +700,8 @@ model Proposal {
   proposalItems    ProposalItem[]
   proposalServices ProposalService[]
   contracts        Contract[]
+  activities       ProposalActivity[]
+  versions         ProposalVersion[]
 
   @@index([accountId])
   @@index([facilityId])
@@ -742,6 +755,57 @@ model ProposalService {
   @@map("proposal_services")
 }
 
+model ProposalActivity {
+  id              String   @id @default(uuid()) @db.Uuid
+  proposalId      String   @map("proposal_id") @db.Uuid
+  action          String   @db.VarChar(50)
+  performedByUserId String? @map("performed_by_user_id") @db.Uuid
+  metadata        Json     @default("{}") @db.JsonB
+  ipAddress       String?  @map("ip_address") @db.VarChar(45)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  proposal      Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  performedByUser User?  @relation("ProposalActivities", fields: [performedByUserId], references: [id])
+
+  @@index([proposalId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("proposal_activities")
+}
+
+model ProposalTemplate {
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String    @unique @db.VarChar(255)
+  termsAndConditions String    @map("terms_and_conditions") @db.Text
+  isDefault          Boolean   @default(false) @map("is_default")
+  createdByUserId    String    @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  createdByUser User @relation("CreatedProposalTemplates", fields: [createdByUserId], references: [id])
+
+  @@index([isDefault])
+  @@map("proposal_templates")
+}
+
+model ProposalVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  proposalId      String   @map("proposal_id") @db.Uuid
+  versionNumber   Int      @map("version_number")
+  snapshot        Json     @db.JsonB
+  changedByUserId String   @map("changed_by_user_id") @db.Uuid
+  changeReason    String?  @map("change_reason") @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  proposal      Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  changedByUser User     @relation("ProposalVersions", fields: [changedByUserId], references: [id])
+
+  @@unique([proposalId, versionNumber])
+  @@index([proposalId])
+  @@map("proposal_versions")
+}
+
 // ============================================================
 // CONTRACTS & AGREEMENTS TABLES
 // ============================================================
@@ -755,6 +819,7 @@ model Contract {
   accountId      String  @map("account_id") @db.Uuid
   facilityId     String? @map("facility_id") @db.Uuid
   proposalId     String? @map("proposal_id") @db.Uuid
+  assignedTeamId String? @map("assigned_team_id") @db.Uuid
 
   // Renewal tracking
   renewedFromContractId String? @unique @map("renewed_from_contract_id") @db.Uuid
@@ -806,6 +871,7 @@ model Contract {
   account                    Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
   facility                   Facility? @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   proposal                   Proposal? @relation(fields: [proposalId], references: [id])
+  assignedTeam               Team?     @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
   approvedByUser             User?     @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
   createdByUser              User      @relation("CreatedContracts", fields: [createdByUserId], references: [id])
   initialCleanCompletedByUser User?    @relation("InitialCleanCompletedContracts", fields: [initialCleanCompletedByUserId], references: [id])
@@ -818,9 +884,50 @@ model Contract {
   @@index([accountId])
   @@index([facilityId])
   @@index([proposalId])
+  @@index([assignedTeamId])
   @@index([renewedFromContractId])
   @@index([startDate])
   @@index([endDate])
   @@index([createdAt])
   @@map("contracts")
+}
+
+model Team {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @unique @db.VarChar(255)
+  contactName   String?   @map("contact_name") @db.VarChar(255)
+  contactEmail  String?   @map("contact_email") @db.VarChar(255)
+  contactPhone  String?   @map("contact_phone") @db.VarChar(20)
+  notes         String?   @db.Text
+  isActive      Boolean   @default(true) @map("is_active")
+  createdByUserId String  @map("created_by_user_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  createdByUser User      @relation("CreatedTeams", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  contracts     Contract[] @relation("AssignedTeamContracts")
+
+  @@index([isActive])
+  @@index([createdByUserId])
+  @@index([archivedAt])
+  @@map("teams")
+}
+
+model GlobalSettings {
+  id                   String   @id @default("global") @db.VarChar(32)
+  companyName          String   @default("Hygieia Cleaning Services") @map("company_name") @db.VarChar(255)
+  companyEmail         String?  @map("company_email") @db.VarChar(255)
+  companyPhone         String?  @map("company_phone") @db.VarChar(20)
+  companyWebsite       String?  @map("company_website") @db.VarChar(500)
+  companyAddress       String?  @map("company_address") @db.Text
+  logoDataUrl          String?  @map("logo_data_url") @db.Text
+  themePrimaryColor    String   @default("#1a1a2e") @map("theme_primary_color") @db.VarChar(7)
+  themeAccentColor     String   @default("#d4af37") @map("theme_accent_color") @db.VarChar(7)
+  themeBackgroundColor String   @default("#f5f5f5") @map("theme_background_color") @db.VarChar(7)
+  themeTextColor       String   @default("#333333") @map("theme_text_color") @db.VarChar(7)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("global_settings")
 }

@@ -28,9 +28,10 @@ import { createVersion, getVersions, getVersion } from '../services/proposalVers
 import { generateProposalPdf } from '../services/pdfService';
 import { generatePublicToken } from '../services/proposalPublicService';
 import { sendProposalEmail, sendNotificationEmail } from '../services/emailService';
-import { buildProposalEmailHtml, buildProposalEmailSubject } from '../templates/proposalEmail';
-import { buildProposalAcceptedHtml, buildProposalAcceptedSubject } from '../templates/proposalAccepted';
-import { buildProposalRejectedHtml, buildProposalRejectedSubject } from '../templates/proposalRejected';
+import { buildProposalEmailHtmlWithBranding, buildProposalEmailSubject } from '../templates/proposalEmail';
+import { buildProposalAcceptedHtmlWithBranding, buildProposalAcceptedSubject } from '../templates/proposalAccepted';
+import { buildProposalRejectedHtmlWithBranding, buildProposalRejectedSubject } from '../templates/proposalRejected';
+import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import logger from '../lib/logger';
 import { isEmailConfigured } from '../config/email';
 import {
@@ -334,14 +335,15 @@ router.post(
               sent.proposalNumber,
               sent.title
             );
-            const emailHtml = buildProposalEmailHtml({
+            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const emailHtml = buildProposalEmailHtmlWithBranding({
               proposalNumber: sent.proposalNumber,
               title: sent.title,
               accountName: sent.account.name,
               totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(sent.totalAmount)),
               validUntil: sent.validUntil ? new Date(sent.validUntil).toLocaleDateString() : null,
               publicViewUrl,
-            });
+            }, branding);
 
             logger.info(`Sending proposal email to ${emailTo}`);
             const emailSent = await sendProposalEmail(
@@ -441,13 +443,14 @@ router.post(
       // Send notification to proposal creator
       if (proposal.createdByUser?.email) {
         try {
-          const html = buildProposalAcceptedHtml({
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const html = buildProposalAcceptedHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
             accountName: proposal.account.name,
             totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(proposal.totalAmount)),
             acceptedAt: new Date().toLocaleDateString(),
-          });
+          }, branding);
           const subject = buildProposalAcceptedSubject(proposal.proposalNumber);
           await sendNotificationEmail(proposal.createdByUser.email, subject, html);
         } catch (emailError) {
@@ -496,13 +499,14 @@ router.post(
       // Send notification to proposal creator
       if (proposal.createdByUser?.email) {
         try {
-          const html = buildProposalRejectedHtml({
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const html = buildProposalRejectedHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
             accountName: proposal.account.name,
             rejectedAt: new Date().toLocaleDateString(),
             rejectionReason: parsed.data.rejectionReason,
-          });
+          }, branding);
           const subject = buildProposalRejectedSubject(proposal.proposalNumber);
           await sendNotificationEmail(proposal.createdByUser.email, subject, html);
         } catch (emailError) {
@@ -631,14 +635,15 @@ router.post(
           const pdfBuffer = await generateProposalPdf(proposal as any);
 
           const emailSubject = parsed.data.emailSubject || `Reminder: Proposal ${proposal.proposalNumber}`;
-          const emailHtml = buildProposalEmailHtml({
+          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+          const emailHtml = buildProposalEmailHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
             title: proposal.title,
             accountName: proposal.account.name,
             totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(proposal.totalAmount)),
             validUntil: proposal.validUntil ? new Date(proposal.validUntil).toLocaleDateString() : null,
             publicViewUrl,
-          });
+          }, branding);
 
           logger.info(`Sending reminder email to ${remindEmailTo}`);
           const emailSent = await sendProposalEmail(
