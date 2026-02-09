@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listFacilityTasks,
@@ -18,6 +18,7 @@ import {
   listFacilityTasksQuerySchema,
 } from '../schemas/facilityTask';
 import { ZodError, z } from 'zod';
+import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
@@ -46,7 +47,7 @@ const bulkCreateSchema = z.object({
 router.get(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listFacilityTasksQuerySchema.safeParse(req.query);
@@ -65,7 +66,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const task = await getFacilityTaskById(req.params.id);
@@ -82,7 +83,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createFacilityTaskSchema.safeParse(req.body);
@@ -109,7 +110,7 @@ router.post(
 router.post(
   '/bulk',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = bulkCreateSchema.safeParse(req.body);
@@ -139,7 +140,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin', 'manager'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityTaskById(req.params.id);
@@ -163,7 +164,7 @@ router.patch(
 router.post(
   '/:id/archive',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityTaskById(req.params.id);
@@ -182,7 +183,7 @@ router.post(
 router.post(
   '/:id/restore',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityTaskById(req.params.id);
@@ -201,7 +202,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('owner', 'admin'),
+  requirePermission(PERMISSIONS.FACILITY_TASKS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityTaskById(req.params.id);
