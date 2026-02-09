@@ -12,7 +12,16 @@ jest.mock('../../lib/prisma', () => ({
       update: jest.fn(),
       count: jest.fn(),
     },
+    team: {
+      findUnique: jest.fn(),
+    },
     proposal: {
+      findUnique: jest.fn(),
+    },
+    account: {
+      findUnique: jest.fn(),
+    },
+    facility: {
       findUnique: jest.fn(),
     },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => cb(prisma)),
@@ -168,6 +177,26 @@ describe('contractService', () => {
       expect.objectContaining({
         where: { id: 'contract-1' },
         data: { status: 'renewed' },
+      })
+    );
+  });
+
+  it('assignContractTeam should assign team to an active contract', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'active' });
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      id: 'team-1',
+      isActive: true,
+      archivedAt: null,
+    });
+    (prisma.contract.update as jest.Mock).mockResolvedValue({ id: 'contract-1', assignedTeam: { id: 'team-1' } });
+
+    const result = await contractService.assignContractTeam('contract-1', 'team-1');
+
+    expect(result).toEqual({ id: 'contract-1', assignedTeam: { id: 'team-1' } });
+    expect(prisma.contract.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'contract-1' },
+        data: { assignedTeamId: 'team-1' },
       })
     );
   });
