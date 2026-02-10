@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Send } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
@@ -14,7 +14,26 @@ interface Props {
 }
 
 const SendContractModal: React.FC<Props> = ({ isOpen, onClose, contract, onSend }) => {
-  const defaultBody = `Dear ${contract.account.name},
+  const { primaryContact, primaryContactFirstName, ccContacts } = useMemo(() => {
+    const contacts = contract.account.contacts || [];
+    const preferredPrimary =
+      contacts.find((contact) => contact.isPrimary && contact.email) ||
+      contacts.find((contact) => Boolean(contact.email));
+    const firstName =
+      preferredPrimary?.firstName || preferredPrimary?.name?.trim().split(/\s+/)[0] || '';
+    const additionalCc = contacts
+      .filter((contact) => contact.email && contact !== preferredPrimary)
+      .map((contact) => contact.email!)
+      .filter(Boolean);
+
+    return {
+      primaryContact: preferredPrimary,
+      primaryContactFirstName: firstName,
+      ccContacts: additionalCc,
+    };
+  }, [contract.account.contacts]);
+
+  const defaultBody = `Dear ${primaryContactFirstName || contract.account.name},
 
 Please find the attached contract for your review. You can also view the full contract details and sign online using the link provided in this email.
 
@@ -22,15 +41,23 @@ Should you have any questions or require any modifications, please do not hesita
 
 Best regards,
 ${contract.createdByUser.fullName}`;
-
-  const [formData, setFormData] = useState<SendContractInput>({
-    emailTo: '',
-    emailCc: [],
+  const defaultFormData = useMemo<SendContractInput>(() => ({
+    emailTo: primaryContact?.email || '',
+    emailCc: ccContacts,
     emailSubject: `Contract ${contract.contractNumber}: ${contract.title}`,
     emailBody: defaultBody,
-  });
-  const [ccInput, setCcInput] = useState('');
+  }), [ccContacts, contract.contractNumber, contract.title, defaultBody, primaryContact?.email]);
+  const defaultCcInput = useMemo(() => ccContacts.join(', '), [ccContacts]);
+
+  const [formData, setFormData] = useState<SendContractInput>(defaultFormData);
+  const [ccInput, setCcInput] = useState(defaultCcInput);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData(defaultFormData);
+    setCcInput(defaultCcInput);
+  }, [defaultCcInput, defaultFormData, isOpen]);
 
   const handleSend = async () => {
     try {

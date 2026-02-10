@@ -70,6 +70,13 @@ export interface Contract {
     id: string;
     name: string;
     type: string;
+    contacts?: {
+      firstName?: string | null;
+      lastName?: string | null;
+      name?: string | null;
+      email: string | null;
+      isPrimary: boolean;
+    }[];
   };
   facility?: {
     id: string;
