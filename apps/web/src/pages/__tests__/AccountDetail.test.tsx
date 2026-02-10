@@ -340,6 +340,7 @@ describe('AccountDetail', () => {
   });
 
   it('shows assigned team for active contracts', async () => {
+    const userEventInstance = userEvent.setup();
     const activeContract: Contract = {
       ...contract,
       status: 'active',
@@ -360,5 +361,8 @@ describe('AccountDetail', () => {
 
     expect(await screen.findByText('Team: Alpha Team')).toBeInTheDocument();
     expect(await screen.findByText('Alpha Team')).toBeInTheDocument();
+
+    await userEventInstance.click(screen.getByRole('button', { name: /edit account/i }));
+    expect(await screen.findByLabelText(/assigned team/i)).toHaveValue('Alpha Team');
   });
 });

@@ -1087,15 +1087,16 @@ const AccountDetail = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
+            <Input
               label="Assigned Team"
-              placeholder="Team management coming soon"
-              options={[
-                { value: 'coming-soon', label: 'Coming soon' },
-              ]}
-              value=""
+              value={
+                activeContract
+                  ? activeContract.assignedTeam?.name || 'Unassigned'
+                  : 'No active contract'
+              }
+              readOnly
               disabled
-              hint="Team management module coming soon"
+              hint="Update team assignment from the active contract."
             />
             <Input
               label="Billing Email"
