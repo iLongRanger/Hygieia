@@ -53,6 +53,7 @@ vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (state: any) => any) =>
     selector({
       user: { id: 'user-1', email: 'admin@example.com', fullName: 'Admin User', role: 'admin' },
+      hasPermission: () => true,
     }),
 }));
 

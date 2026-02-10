@@ -18,6 +18,8 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   listAccounts,
   createAccount,
@@ -70,6 +72,8 @@ const AccountsList = () => {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [accountManagerFilter, setAccountManagerFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canAdminAccounts = hasPermission(PERMISSIONS.ACCOUNTS_ADMIN);
 
   const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
@@ -292,7 +296,7 @@ const AccountsList = () => {
           >
             Manage
           </Button>
-          {item.archivedAt ? (
+          {item.archivedAt && canAdminAccounts ? (
             <Button
               variant="ghost"
               size="sm"
@@ -303,7 +307,7 @@ const AccountsList = () => {
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
-          ) : (
+          ) : !item.archivedAt && canAdminAccounts ? (
             <Button
               variant="ghost"
               size="sm"
@@ -314,7 +318,7 @@ const AccountsList = () => {
             >
               <Archive className="h-4 w-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       ),
     },
@@ -324,10 +328,12 @@ const AccountsList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Accounts</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Account
-        </Button>
+        {canAdminAccounts && (
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Account
+          </Button>
+        )}
       </div>
 
       <Card noPadding className="overflow-hidden">

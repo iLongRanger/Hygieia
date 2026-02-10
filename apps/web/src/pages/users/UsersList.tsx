@@ -9,6 +9,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
+import { Can } from '../../components/auth/Can';
+import { PERMISSIONS } from '../../lib/permissions';
 import { listUsers, createUser, listRoles } from '../../lib/users';
 import type { User, Role, CreateUserInput } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
@@ -202,10 +204,12 @@ const UsersList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">System Users</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New User
-        </Button>
+        <Can permission={PERMISSIONS.USERS_WRITE}>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New User
+          </Button>
+        </Can>
       </div>
 
       <Card noPadding className="overflow-hidden">
@@ -254,12 +258,13 @@ const UsersList = () => {
         </div>
       </Card>
 
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Add New User"
-        size="lg"
-      >
+      <Can permission={PERMISSIONS.USERS_WRITE}>
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Add New User"
+          size="lg"
+        >
         <div className="space-y-4">
           <Input
             label="Full Name"
@@ -341,7 +346,8 @@ const UsersList = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </Can>
     </div>
   );
 };

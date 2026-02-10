@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ContractsList from '../contracts/ContractsList';
 import type { Contract } from '../../types/contract';
+import { useAuthStore } from '../../stores/authStore';
 
 const navigateMock = vi.fn();
 
@@ -61,6 +62,8 @@ const contract: Contract = {
   approvedAt: null,
   terminationReason: null,
   terminatedAt: null,
+  includesInitialClean: true,
+  initialCleanCompleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
@@ -85,6 +88,12 @@ describe('ContractsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listContractsMock.mockResolvedValue({
       data: [contract],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },

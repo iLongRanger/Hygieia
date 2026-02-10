@@ -53,6 +53,8 @@ import {
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import type { Contract, ContractStatus, RenewContractInput, SendContractInput } from '../../types/contract';
 import type { Team } from '../../types/team';
 
@@ -148,6 +150,9 @@ const ContractDetail = () => {
 
   // Send modal state
   const [showSendModal, setShowSendModal] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
+  const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
   // Renewal modal state
   const [activityRefresh, setActivityRefresh] = useState(0);
@@ -432,7 +437,7 @@ const ContractDetail = () => {
             <Download className="mr-2 h-4 w-4" />
             PDF
           </Button>
-          {contract.status === 'draft' && (
+          {contract.status === 'draft' && canWriteContracts && (
             <>
               <Button
                 variant="secondary"
@@ -451,7 +456,7 @@ const ContractDetail = () => {
               </Button>
             </>
           )}
-          {(contract.status === 'sent' || contract.status === 'viewed') && (
+          {(contract.status === 'sent' || contract.status === 'viewed') && canWriteContracts && (
             <>
               <Button variant="secondary" onClick={() => setShowSendModal(true)}>
                 <Mail className="mr-2 h-4 w-4" />
@@ -463,19 +468,19 @@ const ContractDetail = () => {
               </Button>
             </>
           )}
-          {contract.status === 'pending_signature' && (
+          {contract.status === 'pending_signature' && canWriteContracts && (
             <Button onClick={handleActivate}>
               <PlayCircle className="mr-2 h-4 w-4" />
               Activate
             </Button>
           )}
-          {(contract.status === 'active' || contract.status === 'expired') && !contract.renewedToContract && (
+          {(contract.status === 'active' || contract.status === 'expired') && !contract.renewedToContract && canWriteContracts && (
             <Button onClick={openRenewModal}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Renew
             </Button>
           )}
-          {contract.status === 'active' && (
+          {contract.status === 'active' && canWriteContracts && (
             <Button
               variant="secondary"
               onClick={handleTerminate}
@@ -485,7 +490,7 @@ const ContractDetail = () => {
               Terminate
             </Button>
           )}
-          {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && (
+          {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
             <Button
               variant="secondary"
               onClick={handleArchive}
@@ -495,7 +500,7 @@ const ContractDetail = () => {
               Archive
             </Button>
           )}
-          {contract.archivedAt && (
+          {contract.archivedAt && canAdminContracts && (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
@@ -637,7 +642,7 @@ const ContractDetail = () => {
               label="Subcontractor Team"
               value={selectedTeamId}
               onChange={setSelectedTeamId}
-              disabled={contract.status !== 'active'}
+              disabled={contract.status !== 'active' || !canAdminContracts}
               options={[
                 { value: '', label: 'Unassigned' },
                 ...teams.map((team) => ({ value: team.id, label: team.name })),
@@ -645,6 +650,8 @@ const ContractDetail = () => {
               hint={
                 contract.status !== 'active'
                   ? 'Teams can only be assigned to active contracts'
+                  : !canAdminContracts
+                    ? 'You do not have permission to assign teams'
                   : undefined
               }
             />
@@ -654,7 +661,7 @@ const ContractDetail = () => {
               </div>
               <Button
                 onClick={handleAssignTeam}
-                disabled={contract.status !== 'active'}
+                disabled={contract.status !== 'active' || !canAdminContracts}
                 isLoading={assigningTeam}
               >
                 Save Team Assignment
@@ -768,7 +775,7 @@ const ContractDetail = () => {
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
-          {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && (
+          {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && canWriteContracts && (
             <Button
               variant="secondary"
               size="sm"
@@ -897,7 +904,7 @@ const ContractDetail = () => {
                   The initial deep clean has not been completed yet.
                 </p>
               </div>
-              {contract.status === 'active' && (
+              {contract.status === 'active' && canWriteContracts && (
                 <Button onClick={handleCompleteInitialClean}>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Mark Complete
@@ -914,7 +921,7 @@ const ContractDetail = () => {
       )}
 
       {/* Send Contract Modal */}
-      {contract && (
+      {contract && canWriteContracts && (
         <SendContractModal
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}

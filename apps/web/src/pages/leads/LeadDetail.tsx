@@ -32,6 +32,7 @@ import type { Appointment, Lead, LeadSource, UpdateLeadInput } from '../../types
 import type { User } from '../../types/user';
 import type { Facility } from '../../types/facility';
 import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import { maxLengths } from '../../lib/validation';
 
 const LEAD_STATUSES = [
@@ -49,6 +50,7 @@ const LeadDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const [loading, setLoading] = useState(true);
   const [lead, setLead] = useState<Lead | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -81,9 +83,10 @@ const LeadDetail = () => {
 
   const [saving, setSaving] = useState(false);
 
-  const isManager = useMemo(() => {
-    return ['owner', 'admin', 'manager'].includes(currentUser?.role || '');
-  }, [currentUser?.role]);
+  const canWriteLeads = useMemo(
+    () => hasPermission(PERMISSIONS.LEADS_WRITE),
+    [hasPermission]
+  );
 
   const fetchLead = useCallback(async () => {
     if (!id) return;
@@ -350,7 +353,7 @@ const LeadDetail = () => {
           <h1 className="text-2xl font-bold text-white">{lead.contactName}</h1>
           <p className="text-gray-400">{lead.companyName || 'No company name'}</p>
         </div>
-        {isManager && (
+        {canWriteLeads && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={openEditModal}>
               Edit Lead
@@ -455,7 +458,7 @@ const LeadDetail = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {isManager && appointment.status === 'scheduled' && (
+                          {canWriteLeads && appointment.status === 'scheduled' && (
                             <Button
                               size="sm"
                               variant="secondary"
@@ -476,7 +479,7 @@ const LeadDetail = () => {
                               Reschedule
                             </Button>
                           )}
-                          {(isAssigned || isManager) && appointment.status === 'scheduled' && (
+                          {(isAssigned || canWriteLeads) && appointment.status === 'scheduled' && (
                             <Button
                               size="sm"
                               onClick={() => {

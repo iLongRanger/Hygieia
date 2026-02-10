@@ -20,6 +20,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
+import { Can } from '../../components/auth/Can';
 import {
   getUser,
   updateUser,
@@ -29,6 +30,7 @@ import {
   removeRole,
   changePassword,
 } from '../../lib/users';
+import { PERMISSIONS } from '../../lib/permissions';
 import type { User, Role, UpdateUserInput } from '../../types/user';
 
 const USER_STATUSES = [
@@ -235,22 +237,28 @@ const UserDetail = () => {
           <p className="text-gray-400">{user.email}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setShowEditModal(true)}>
-            <Edit2 className="mr-2 h-4 w-4" />
-            Edit User
-          </Button>
-          <Button variant="secondary" onClick={() => setShowPasswordModal(true)}>
-            <Shield className="mr-2 h-4 w-4" />
-            Reset Password
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowDeleteModal(true)}
-            className="text-red-400 hover:text-red-300"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+          <Can permission={PERMISSIONS.USERS_WRITE}>
+            <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit User
+            </Button>
+          </Can>
+          <Can permission={PERMISSIONS.USERS_WRITE}>
+            <Button variant="secondary" onClick={() => setShowPasswordModal(true)}>
+              <Shield className="mr-2 h-4 w-4" />
+              Reset Password
+            </Button>
+          </Can>
+          <Can permission={PERMISSIONS.USERS_WRITE}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteModal(true)}
+              className="text-red-400 hover:text-red-300"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -325,12 +333,14 @@ const UserDetail = () => {
               <Shield className="mr-2 inline h-5 w-5 text-gold" />
               Assigned Roles
             </h2>
-            {availableRoles.length > 0 && (
-              <Button size="sm" onClick={() => setShowAddRoleModal(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Role
-              </Button>
-            )}
+            <Can permission={PERMISSIONS.USERS_WRITE}>
+              {availableRoles.length > 0 && (
+                <Button size="sm" onClick={() => setShowAddRoleModal(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Role
+                </Button>
+              )}
+            </Can>
           </div>
 
           <div className="mt-4 space-y-3">
@@ -353,15 +363,17 @@ const UserDetail = () => {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveRole(userRole.role.key)}
-                    className="text-red-400 hover:text-red-300"
-                    disabled={user.roles.length <= 1}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <Can permission={PERMISSIONS.USERS_WRITE}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveRole(userRole.role.key)}
+                      className="text-red-400 hover:text-red-300"
+                      disabled={user.roles.length <= 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </Can>
                 </div>
               ))
             ) : (
@@ -374,11 +386,12 @@ const UserDetail = () => {
       </div>
 
       {/* Edit User Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        title="Edit User"
-      >
+      <Can permission={PERMISSIONS.USERS_WRITE}>
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit User"
+        >
         <div className="space-y-4">
           <Input
             label="Full Name"
@@ -412,14 +425,16 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </Can>
 
       {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        title="Delete User"
-      >
+      <Can permission={PERMISSIONS.USERS_WRITE}>
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete User"
+        >
         <div className="space-y-4">
           <p className="text-gray-300">
             Are you sure you want to delete this user? This action cannot be
@@ -446,17 +461,19 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </Can>
 
       {/* Add Role Modal */}
-      <Modal
-        isOpen={showAddRoleModal}
-        onClose={() => {
-          setShowAddRoleModal(false);
-          setSelectedRole('');
-        }}
-        title="Add Role"
-      >
+      <Can permission={PERMISSIONS.USERS_WRITE}>
+        <Modal
+          isOpen={showAddRoleModal}
+          onClose={() => {
+            setShowAddRoleModal(false);
+            setSelectedRole('');
+          }}
+          title="Add Role"
+        >
         <div className="space-y-4">
           <Select
             label="Select Role"
@@ -488,18 +505,20 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </Can>
 
       {/* Reset Password Modal */}
-      <Modal
-        isOpen={showPasswordModal}
-        onClose={() => {
-          setShowPasswordModal(false);
-          setNewPassword('');
-          setConfirmPassword('');
-        }}
-        title="Reset Password"
-      >
+      <Can permission={PERMISSIONS.USERS_WRITE}>
+        <Modal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setNewPassword('');
+            setConfirmPassword('');
+          }}
+          title="Reset Password"
+        >
         <div className="space-y-4">
           <p className="text-gray-300">
             Set a new password for <strong className="text-white">{user.fullName}</strong>.
@@ -547,7 +566,8 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+        </Modal>
+      </Can>
     </div>
   );
 };

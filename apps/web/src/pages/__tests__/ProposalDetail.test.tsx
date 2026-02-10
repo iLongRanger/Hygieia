@@ -3,6 +3,7 @@ import { render, screen } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ProposalDetail from '../proposals/ProposalDetail';
 import type { Proposal } from '../../types/proposal';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'proposal-1' };
 const navigateMock = vi.fn();
@@ -90,6 +91,12 @@ describe('ProposalDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'proposal-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     getProposalMock.mockResolvedValue(proposal);
     sendProposalMock.mockResolvedValue(proposal);
     deleteProposalMock.mockResolvedValue({});

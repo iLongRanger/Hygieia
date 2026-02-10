@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ContractDetail from '../contracts/ContractDetail';
 import type { Contract } from '../../types/contract';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'contract-1' };
 const navigateMock = vi.fn();
@@ -98,6 +99,12 @@ describe('ContractDetail', () => {
     vi.clearAllMocks();
     mockParams = { id: 'contract-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     getContractMock.mockResolvedValue(draftContract);
     updateContractStatusMock.mockResolvedValue({ ...draftContract, status: 'active' });
     archiveContractMock.mockResolvedValue({ ...draftContract, archivedAt: new Date().toISOString() });

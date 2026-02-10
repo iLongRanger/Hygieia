@@ -27,6 +27,8 @@ import { Modal } from '../../components/ui/Modal';
 import { SafeLink } from '../../components/ui/SafeLink';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   getAccount,
   listAccountActivities,
@@ -137,6 +139,10 @@ const AccountDetail = () => {
   const [showFacilityModal, setShowFacilityModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creatingFacility, setCreatingFacility] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canAdminAccounts = hasPermission(PERMISSIONS.ACCOUNTS_ADMIN);
+  const canWriteAccounts = hasPermission(PERMISSIONS.ACCOUNTS_WRITE);
+  const canWriteFacilities = hasPermission(PERMISSIONS.FACILITIES_WRITE);
 
   const [formData, setFormData] = useState<UpdateAccountInput>({
     name: '',
@@ -434,16 +440,18 @@ const AccountDetail = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setShowEditModal(true)}>
-            <Edit2 className="mr-2 h-4 w-4" />
-            Edit Account
-          </Button>
-          {account.archivedAt ? (
+          {canAdminAccounts && (
+            <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit Account
+            </Button>
+          )}
+          {account.archivedAt && canAdminAccounts ? (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
             </Button>
-          ) : (
+          ) : !account.archivedAt && canAdminAccounts ? (
             <Button
               variant="secondary"
               onClick={handleArchive}
@@ -452,7 +460,7 @@ const AccountDetail = () => {
               <Archive className="mr-2 h-4 w-4" />
               Archive
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -659,30 +667,32 @@ const AccountDetail = () => {
             </div>
           </div>
 
-          <div className="space-y-3 mb-4">
-            <Select
-              label="Entry Type"
-              value={activityType}
-              onChange={(value) => setActivityType(value as AccountActivityEntryType)}
-              options={[
-                { value: 'note', label: 'General Note' },
-                { value: 'request', label: 'Customer Request' },
-                { value: 'complaint', label: 'Customer Complaint' },
-              ]}
-            />
-            <Textarea
-              label="New History Note"
-              placeholder="Log customer call, request, complaint, or other account note..."
-              value={activityNote}
-              onChange={(e) => setActivityNote(e.target.value)}
-              rows={3}
-            />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={handleAddActivity} disabled={addingActivity}>
-                {addingActivity ? 'Saving...' : 'Add History Note'}
-              </Button>
+          {canWriteAccounts && (
+            <div className="space-y-3 mb-4">
+              <Select
+                label="Entry Type"
+                value={activityType}
+                onChange={(value) => setActivityType(value as AccountActivityEntryType)}
+                options={[
+                  { value: 'note', label: 'General Note' },
+                  { value: 'request', label: 'Customer Request' },
+                  { value: 'complaint', label: 'Customer Complaint' },
+                ]}
+              />
+              <Textarea
+                label="New History Note"
+                placeholder="Log customer call, request, complaint, or other account note..."
+                value={activityNote}
+                onChange={(e) => setActivityNote(e.target.value)}
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleAddActivity} disabled={addingActivity}>
+                  {addingActivity ? 'Saving...' : 'Add History Note'}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {activitiesLoading ? (
             <div className="text-sm text-gray-400">Loading history...</div>
@@ -853,10 +863,12 @@ const AccountDetail = () => {
             <MapPin className="h-5 w-5 text-gold" />
             <h3 className="text-lg font-semibold text-white">Facilities</h3>
           </div>
-          <Button size="sm" onClick={() => setShowFacilityModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Facility
-          </Button>
+          {canWriteFacilities && (
+            <Button size="sm" onClick={() => setShowFacilityModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Facility
+            </Button>
+          )}
         </div>
 
         {facilities.length === 0 ? (
@@ -915,7 +927,7 @@ const AccountDetail = () => {
       </Card>
 
       <Modal
-        isOpen={showEditModal}
+        isOpen={showEditModal && canAdminAccounts}
         onClose={() => setShowEditModal(false)}
         title="Edit Account"
         size="lg"
@@ -1053,7 +1065,7 @@ const AccountDetail = () => {
 
       {/* Create Facility Modal */}
       <Modal
-        isOpen={showFacilityModal}
+        isOpen={showFacilityModal && canWriteFacilities}
         onClose={() => setShowFacilityModal(false)}
         title="Add Facility"
         size="lg"

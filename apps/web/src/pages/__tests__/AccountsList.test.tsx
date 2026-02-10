@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import AccountsList from '../accounts/AccountsList';
 import type { Account } from '../../types/crm';
 import type { User } from '../../types/user';
+import { useAuthStore } from '../../stores/authStore';
 
 const listAccountsMock = vi.fn();
 const createAccountMock = vi.fn();
@@ -77,6 +78,12 @@ const user: User = {
 
 describe('AccountsList', () => {
   beforeEach(() => {
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listAccountsMock.mockResolvedValue({
       data: [account],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
