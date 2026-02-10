@@ -834,6 +834,11 @@ const AccountDetail = () => {
                       <div className="text-sm text-gray-400">
                         {contract.title}
                       </div>
+                      {contract.status === 'active' && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          Team: {contract.assignedTeam?.name || 'Unassigned'}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
