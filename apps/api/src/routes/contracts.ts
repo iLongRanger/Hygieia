@@ -476,11 +476,12 @@ router.post(
       let emailCc = parsed.data.emailCc || [];
       const contacts = await prisma.contact.findMany({
         where: { accountId: contract.account.id, archivedAt: null, email: { not: null } },
-        select: { firstName: true, lastName: true, email: true, isPrimary: true },
+        select: { name: true, email: true, isPrimary: true },
         orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
       });
       const primary = contacts.find((c) => c.isPrimary) || contacts[0];
-      let recipientFirstName = primary?.firstName || undefined;
+      const firstNameFromName = (name?: string | null) => name?.trim().split(/\s+/)[0] || undefined;
+      let recipientFirstName = firstNameFromName(primary?.name);
 
       if (!emailTo) {
         if (primary?.email) {
@@ -491,8 +492,9 @@ router.post(
         }
       } else {
         const matchedRecipient = contacts.find((c) => c.email?.toLowerCase() === emailTo?.toLowerCase());
-        if (matchedRecipient?.firstName) {
-          recipientFirstName = matchedRecipient.firstName;
+        const matchedFirstName = firstNameFromName(matchedRecipient?.name);
+        if (matchedFirstName) {
+          recipientFirstName = matchedFirstName;
         }
       }
 
