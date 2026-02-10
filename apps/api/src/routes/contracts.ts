@@ -471,21 +471,28 @@ router.post(
         },
       });
 
-      // 4. Auto-resolve recipient from account contacts if not provided
+      // 4. Resolve recipient/contact context for defaults and personalization
       let emailTo = parsed.data.emailTo;
       let emailCc = parsed.data.emailCc || [];
+      const contacts = await prisma.contact.findMany({
+        where: { accountId: contract.account.id, archivedAt: null, email: { not: null } },
+        select: { firstName: true, lastName: true, email: true, isPrimary: true },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      });
+      const primary = contacts.find((c) => c.isPrimary) || contacts[0];
+      let recipientFirstName = primary?.firstName || undefined;
+
       if (!emailTo) {
-        const contacts = await prisma.contact.findMany({
-          where: { accountId: contract.account.id, archivedAt: null, email: { not: null } },
-          select: { email: true, isPrimary: true },
-          orderBy: { isPrimary: 'desc' },
-        });
-        const primary = contacts.find((c) => c.isPrimary);
         if (primary?.email) {
           emailTo = primary.email;
           emailCc = contacts
             .filter((c) => !c.isPrimary && c.email)
             .map((c) => c.email!);
+        }
+      } else {
+        const matchedRecipient = contacts.find((c) => c.email?.toLowerCase() === emailTo?.toLowerCase());
+        if (matchedRecipient?.firstName) {
+          recipientFirstName = matchedRecipient.firstName;
         }
       }
 
@@ -511,6 +518,8 @@ router.post(
               accountName: sent.account.name,
               monthlyValue: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(sent.monthlyValue)),
               startDate: new Date(sent.startDate).toLocaleDateString(),
+              recipientName: recipientFirstName || sent.account.name,
+              customMessage: parsed.data.emailBody,
               publicViewUrl,
             }, branding);
 
