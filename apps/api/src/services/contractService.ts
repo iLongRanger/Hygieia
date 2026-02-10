@@ -118,8 +118,7 @@ const contractSelect = {
           email: { not: null },
         },
         select: {
-          firstName: true,
-          lastName: true,
+          name: true,
           email: true,
           isPrimary: true,
         },
