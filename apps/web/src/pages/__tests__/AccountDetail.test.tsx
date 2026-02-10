@@ -338,4 +338,26 @@ describe('AccountDetail', () => {
       );
     });
   });
+
+  it('shows assigned team for active contracts', async () => {
+    const activeContract: Contract = {
+      ...contract,
+      status: 'active',
+      assignedTeam: {
+        id: 'team-1',
+        name: 'Alpha Team',
+        contactName: null,
+        contactEmail: null,
+        contactPhone: null,
+      },
+    };
+    listContractsMock.mockResolvedValueOnce({
+      data: [activeContract],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+    });
+
+    render(<AccountDetail />);
+
+    expect(await screen.findByText('Team: Alpha Team')).toBeInTheDocument();
+  });
 });
