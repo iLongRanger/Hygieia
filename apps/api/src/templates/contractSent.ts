@@ -6,7 +6,18 @@ interface ContractSentEmailData {
   accountName: string;
   monthlyValue: string;
   startDate: string;
+  recipientName?: string;
+  customMessage?: string;
   publicViewUrl?: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function buildContractSentHtmlWithBranding(
@@ -27,6 +38,15 @@ export function buildContractSentHtmlWithBranding(
   const logoBlock = branding.logoDataUrl
     ? `<img src="${branding.logoDataUrl}" alt="${branding.companyName} logo" style="max-height: 64px; margin-bottom: 12px;" />`
     : '';
+  const recipientName = data.recipientName?.trim() || data.accountName;
+  const messageHtml = data.customMessage?.trim()
+    ? `<p style="color: #333; font-size: 14px; line-height: 1.6; white-space: pre-line;">${escapeHtml(data.customMessage)}</p>`
+    : `<p style="color: #333; font-size: 14px; line-height: 1.6;">
+        Dear ${escapeHtml(recipientName)},
+      </p>
+      <p style="color: #333; font-size: 14px; line-height: 1.6;">
+        Please find the attached contract for your review. You can also review the full contract details and sign online using the button below.
+      </p>`;
 
   return `
 <!DOCTYPE html>
@@ -73,9 +93,7 @@ export function buildContractSentHtmlWithBranding(
 
               <p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">Start date: <strong>${data.startDate}</strong></p>
 
-              <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Please find the attached contract for your review. You can also review the full contract details and sign online using the button below.
-              </p>
+              ${messageHtml}
             </td>
           </tr>
 

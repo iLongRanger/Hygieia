@@ -112,6 +112,22 @@ const contractSelect = {
       id: true,
       name: true,
       type: true,
+      contacts: {
+        where: {
+          archivedAt: null,
+          email: { not: null },
+        },
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
+          isPrimary: true,
+        },
+        orderBy: [
+          { isPrimary: 'desc' },
+          { createdAt: 'asc' },
+        ],
+      },
     },
   },
   facility: {
