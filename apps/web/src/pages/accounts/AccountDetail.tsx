@@ -17,6 +17,8 @@ import {
   FileText,
   FileSignature,
   History,
+  Users,
+  ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -128,6 +130,7 @@ const AccountDetail = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [activeContract, setActiveContract] = useState<Contract | null>(null);
   const [activities, setActivities] = useState<AccountActivity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [addingActivity, setAddingActivity] = useState(false);
@@ -251,6 +254,24 @@ const AccountDetail = () => {
     }
   }, [id]);
 
+  const fetchActiveContract = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await listContracts({
+        accountId: id,
+        status: 'active',
+        limit: 1,
+        sortBy: 'startDate',
+        sortOrder: 'desc',
+        includeArchived: false,
+      });
+      setActiveContract(response?.data?.[0] || null);
+    } catch (error) {
+      console.error('Failed to fetch active contract:', error);
+      setActiveContract(null);
+    }
+  }, [id]);
+
   const fetchActivities = useCallback(async () => {
     if (!id) return;
     try {
@@ -274,8 +295,9 @@ const AccountDetail = () => {
     fetchFacilities();
     fetchProposals();
     fetchContracts();
+    fetchActiveContract();
     fetchActivities();
-  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchActivities]);
+  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchActiveContract, fetchActivities]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -418,25 +440,33 @@ const AccountDetail = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
       </div>
     );
   }
 
   if (!account) {
-    return <div className="text-center text-gray-400">Account not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Account not found</div>;
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate('/accounts')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{account.name}</h1>
-          <p className="text-gray-400">
-            {account.industry || 'No industry specified'}
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">{account.name}</h1>
+            <Badge variant={getTypeVariant(account.type)}>
+              {account.type.charAt(0).toUpperCase() + account.type.slice(1)}
+            </Badge>
+          </div>
+          <p className="text-surface-500 dark:text-surface-400">
+            {account.industry
+              ? account.industry.charAt(0).toUpperCase() + account.industry.slice(1)
+              : 'No industry specified'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -455,7 +485,7 @@ const AccountDetail = () => {
             <Button
               variant="secondary"
               onClick={handleArchive}
-              className="text-orange-400 hover:text-orange-300"
+              className="text-warning-600 dark:text-warning-400 hover:text-warning-700 dark:hover:text-warning-300"
             >
               <Archive className="mr-2 h-4 w-4" />
               Archive
@@ -464,108 +494,229 @@ const AccountDetail = () => {
         </div>
       </div>
 
+      {/* KPI Strip */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card
+          noPadding
+          className="cursor-pointer p-4 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+          onClick={() => navigate(`/facilities?accountId=${account.id}`)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+              <Building className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-surface-900 dark:text-surface-100">
+                {account._count?.facilities ?? 0}
+              </div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Facilities</div>
+            </div>
+          </div>
+        </Card>
+        <Card
+          noPadding
+          className="cursor-pointer p-4 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+          onClick={() => navigate(`/contacts?accountId=${account.id}`)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+              <Users className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-surface-900 dark:text-surface-100">
+                {account._count?.contacts ?? 0}
+              </div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Contacts</div>
+            </div>
+          </div>
+        </Card>
+        <Card
+          noPadding
+          className="cursor-pointer p-4 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+          onClick={() => navigate(`/proposals?accountId=${account.id}`)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+              <FileText className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-surface-900 dark:text-surface-100">
+                {proposalTotal}
+              </div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Proposals</div>
+            </div>
+          </div>
+        </Card>
+        <Card
+          noPadding
+          className="cursor-pointer p-4 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+          onClick={() => navigate(`/contracts?accountId=${account.id}`)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+              <FileSignature className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-surface-900 dark:text-surface-100">
+                {contractTotal}
+              </div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Contracts</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Main 2-column layout */}
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* LEFT — Account Details */}
         <Card className="lg:col-span-1">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gold/10">
-                <Building className="h-8 w-8 text-gold" />
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-white">
-                  {account.name}
-                </div>
-                <Badge variant={getTypeVariant(account.type)}>
-                  {account.type.charAt(0).toUpperCase() + account.type.slice(1)}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="space-y-3 border-t border-white/10 pt-4">
-              <div className="flex items-start gap-3">
-                <Mail className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Billing Email</div>
-                  <div className="text-white">
-                    {account.billingEmail || 'Not provided'}
+            {/* Contact Info Section */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                Contact
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Mail className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Billing Email</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.billingEmail || 'Not provided'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <Phone className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Billing Phone</div>
-                  <div className="text-white">
-                    {account.billingPhone || 'Not provided'}
+                <div className="flex items-start gap-3">
+                  <Phone className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Billing Phone</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.billingPhone || 'Not provided'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <Globe className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Website</div>
-                  <div className="text-white">
-                    {account.website ? (
-                      <SafeLink
-                        href={account.website}
-                        type="url"
-                        className="text-gold hover:underline"
-                      >
-                        {account.website}
-                      </SafeLink>
-                    ) : (
-                      'Not provided'
-                    )}
+                <div className="flex items-start gap-3">
+                  <Globe className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Website</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.website ? (
+                        <SafeLink
+                          href={account.website}
+                          type="url"
+                          className="text-primary-600 dark:text-primary-400 hover:underline"
+                        >
+                          {account.website}
+                        </SafeLink>
+                      ) : (
+                        'Not provided'
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <UserIcon className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Account Manager</div>
-                  <div className="text-white">
-                    {account.accountManager?.fullName || 'Unassigned'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CreditCard className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Payment Terms</div>
-                  <div className="text-white">
-                    {account.paymentTerms?.replace('_', ' ') || 'Not set'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Calendar className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Created</div>
-                  <div className="text-white">{formatDate(account.createdAt)}</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <UserIcon className="mt-1 h-4 w-4 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-400">Assigned Team</div>
-                  <div className="text-white">Coming soon</div>
                 </div>
               </div>
             </div>
 
+            {/* Business Section */}
+            <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                Business
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <UserIcon className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Account Manager</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.accountManager?.fullName || 'Unassigned'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Building className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Industry</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.industry
+                        ? account.industry.charAt(0).toUpperCase() + account.industry.slice(1)
+                        : 'Not specified'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <CreditCard className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Payment Terms</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.paymentTerms?.replace('_', ' ') || 'Not set'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <CreditCard className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Credit Limit</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {account.creditLimit
+                        ? `$${account.creditLimit.toLocaleString()}`
+                        : 'Not set'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Metadata Section */}
+            <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                Metadata
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Calendar className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
+                    <div className="text-surface-900 dark:text-surface-100">{formatDate(account.createdAt)}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Users className="mt-1 h-4 w-4 text-surface-400 dark:text-surface-500" />
+                  <div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Assigned Team</div>
+                    <div className="text-surface-900 dark:text-surface-100">
+                      {activeContract
+                        ? activeContract.assignedTeam?.name || 'Unassigned'
+                        : 'No active contract'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {account.notes && (
+              <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400">
+                  Notes
+                </h3>
+                <p className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">{account.notes}</p>
+              </div>
+            )}
+
+            {/* Archived Banner */}
             {account.archivedAt && (
-              <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-3">
-                <div className="flex items-center gap-2 text-orange-400">
+              <div className="rounded-lg border border-warning-200 dark:border-warning-800 bg-warning-50 dark:bg-warning-900/30 p-3">
+                <div className="flex items-center gap-2 text-warning-600 dark:text-warning-400">
                   <Archive className="h-4 w-4" />
                   <span className="text-sm font-medium">Archived</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                   {formatDate(account.archivedAt)}
                 </p>
               </div>
@@ -573,300 +724,174 @@ const AccountDetail = () => {
           </div>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <div className="space-y-6">
-            <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
-                Account Information
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <div className="text-sm text-gray-400">Industry</div>
-                  <div className="text-white">
-                    {account.industry
-                      ? account.industry.charAt(0).toUpperCase() +
-                        account.industry.slice(1)
-                      : 'Not specified'}
-                  </div>
+        {/* RIGHT — Active Contract Banner + Proposals + Contracts */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Active Contract Summary Banner */}
+          {activeContract && (
+            <div
+              className="flex cursor-pointer items-center justify-between rounded-lg border border-success-200 dark:border-success-800 bg-success-50 dark:bg-success-900/20 p-4 transition-colors hover:bg-success-100 dark:hover:bg-success-900/30"
+              onClick={() => navigate(`/contracts/${activeContract.id}`)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/40">
+                  <FileSignature className="h-5 w-5 text-success-600 dark:text-success-400" />
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Credit Limit</div>
-                  <div className="text-white">
-                    {account.creditLimit
-                      ? `$${account.creditLimit.toLocaleString()}`
-                      : 'Not set'}
+                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                    Active Contract: {activeContract.contractNumber}
+                  </div>
+                  <div className="text-sm text-surface-600 dark:text-surface-300">
+                    {formatCurrency(Number(activeContract.monthlyValue))}/mo
+                    {activeContract.assignedTeam?.name && (
+                      <span> · Team: {activeContract.assignedTeam.name}</span>
+                    )}
+                    {activeContract.endDate && (
+                      <span> · Ends: {formatShortDate(activeContract.endDate)}</span>
+                    )}
                   </div>
                 </div>
               </div>
+              <ExternalLink className="h-4 w-4 text-success-600 dark:text-success-400" />
+            </div>
+          )}
+
+          {/* Proposals */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Proposals</h3>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(`/proposals?accountId=${account.id}`)}
+              >
+                View all
+              </Button>
             </div>
 
-            {account.notes && (
-              <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Notes</h3>
-                <p className="text-gray-300">{account.notes}</p>
+            {proposals.length === 0 ? (
+              <div className="text-center py-8 text-surface-500 dark:text-surface-400">
+                <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                <p>No proposals yet</p>
+                <p className="text-sm">Create a proposal to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {proposals.map((proposal) => (
+                  <div
+                    key={proposal.id}
+                    onClick={() => navigate(`/proposals/${proposal.id}`)}
+                    className="flex items-center justify-between p-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+                        <FileText className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-surface-900 dark:text-surface-100">
+                          {proposal.proposalNumber}
+                        </div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">
+                          {proposal.title}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-success-600 dark:text-success-400">
+                          {formatCurrency(Number(proposal.totalAmount))}
+                        </div>
+                        <div className="text-xs text-surface-500 dark:text-surface-400">
+                          {formatShortDate(proposal.createdAt)}
+                        </div>
+                      </div>
+                      <Badge variant={PROPOSAL_STATUS_VARIANTS[proposal.status]}>
+                        {proposal.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+          </Card>
 
-            <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
-                Related Records
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card
-                  noPadding
-                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
-                  onClick={() => navigate(`/facilities?accountId=${account.id}`)}
-                >
-                  <div className="text-2xl font-bold text-gold">
-                    {account._count?.facilities ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-400">Facilities</div>
-                </Card>
-                <Card
-                  noPadding
-                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
-                  onClick={() => navigate(`/contacts?accountId=${account.id}`)}
-                >
-                  <div className="text-2xl font-bold text-gold">
-                    {account._count?.contacts ?? 0}
-                  </div>
-                  <div className="text-sm text-gray-400">Contacts</div>
-                </Card>
-                <Card
-                  noPadding
-                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
-                  onClick={() => navigate(`/proposals?accountId=${account.id}`)}
-                >
-                  <div className="text-2xl font-bold text-gold">
-                    {proposalTotal}
-                  </div>
-                  <div className="text-sm text-gray-400">Proposals</div>
-                </Card>
-                <Card
-                  noPadding
-                  className="p-4 cursor-pointer hover:bg-navy-darker/50 transition-colors"
-                  onClick={() => navigate(`/contracts?accountId=${account.id}`)}
-                >
-                  <div className="text-2xl font-bold text-gold">
-                    {contractTotal}
-                  </div>
-                  <div className="text-sm text-gray-400">Contracts</div>
-                </Card>
+          {/* Contracts */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileSignature className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Contracts</h3>
               </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(`/contracts?accountId=${account.id}`)}
+              >
+                View all
+              </Button>
             </div>
-          </div>
-        </Card>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <History className="h-5 w-5 text-gold" />
-              <h3 className="text-lg font-semibold text-white">Account History</h3>
-            </div>
-          </div>
-
-          {canWriteAccounts && (
-            <div className="space-y-3 mb-4">
-              <Select
-                label="Entry Type"
-                value={activityType}
-                onChange={(value) => setActivityType(value as AccountActivityEntryType)}
-                options={[
-                  { value: 'note', label: 'General Note' },
-                  { value: 'request', label: 'Customer Request' },
-                  { value: 'complaint', label: 'Customer Complaint' },
-                ]}
-              />
-              <Textarea
-                label="New History Note"
-                placeholder="Log customer call, request, complaint, or other account note..."
-                value={activityNote}
-                onChange={(e) => setActivityNote(e.target.value)}
-                rows={3}
-              />
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handleAddActivity} disabled={addingActivity}>
-                  {addingActivity ? 'Saving...' : 'Add History Note'}
-                </Button>
+            {contracts.length === 0 ? (
+              <div className="text-center py-8 text-surface-500 dark:text-surface-400">
+                <FileSignature className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                <p>No contracts yet</p>
+                <p className="text-sm">Create a contract to start servicing</p>
               </div>
-            </div>
-          )}
-
-          {activitiesLoading ? (
-            <div className="text-sm text-gray-400">Loading history...</div>
-          ) : activities.length === 0 ? (
-            <div className="text-sm text-gray-400">No account history yet.</div>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="rounded-lg border border-white/10 bg-navy-darker/30 p-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <Badge
-                      variant={
-                        activity.entryType === 'complaint'
-                          ? 'error'
-                          : activity.entryType === 'request'
-                            ? 'warning'
-                            : 'info'
-                      }
-                    >
-                      {activity.entryType}
-                    </Badge>
-                    <span className="text-xs text-gray-400">
-                      {formatDateTime(activity.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-200 mt-2 whitespace-pre-wrap">
-                    {activity.note}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Logged by {activity.performedByUser?.fullName || 'System'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-gold" />
-              <h3 className="text-lg font-semibold text-white">Proposals</h3>
-            </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => navigate(`/proposals?accountId=${account.id}`)}
-            >
-              View all
-            </Button>
-          </div>
-
-          {proposals.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
-              <p>No proposals yet</p>
-              <p className="text-sm">Create a proposal to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {proposals.map((proposal) => (
-                <div
-                  key={proposal.id}
-                  onClick={() => navigate(`/proposals/${proposal.id}`)}
-                  className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
-                      <FileText className="h-5 w-5 text-gold" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-white">
-                        {proposal.proposalNumber}
+            ) : (
+              <div className="space-y-3">
+                {contracts.map((contract) => (
+                  <div
+                    key={contract.id}
+                    onClick={() => navigate(`/contracts/${contract.id}`)}
+                    className="flex items-center justify-between p-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+                        <FileSignature className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                       </div>
-                      <div className="text-sm text-gray-400">
-                        {proposal.title}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm text-emerald">
-                        {formatCurrency(Number(proposal.totalAmount))}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {formatShortDate(proposal.createdAt)}
-                      </div>
-                    </div>
-                    <Badge variant={PROPOSAL_STATUS_VARIANTS[proposal.status]}>
-                      {proposal.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileSignature className="h-5 w-5 text-gold" />
-              <h3 className="text-lg font-semibold text-white">Contracts</h3>
-            </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => navigate(`/contracts?accountId=${account.id}`)}
-            >
-              View all
-            </Button>
-          </div>
-
-          {contracts.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <FileSignature className="mx-auto h-12 w-12 mb-2 opacity-50" />
-              <p>No contracts yet</p>
-              <p className="text-sm">Create a contract to start servicing</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {contracts.map((contract) => (
-                <div
-                  key={contract.id}
-                  onClick={() => navigate(`/contracts/${contract.id}`)}
-                  className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
-                      <FileSignature className="h-5 w-5 text-gold" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-white">
-                        {contract.contractNumber}
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        {contract.title}
-                      </div>
-                      {contract.status === 'active' && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          Team: {contract.assignedTeam?.name || 'Unassigned'}
+                      <div>
+                        <div className="font-medium text-surface-900 dark:text-surface-100">
+                          {contract.contractNumber}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm text-emerald">
-                        {formatCurrency(Number(contract.monthlyValue))}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {formatShortDate(contract.startDate)}
+                        <div className="text-sm text-surface-500 dark:text-surface-400">
+                          {contract.title}
+                        </div>
+                        {contract.status === 'active' && (
+                          <div className="text-xs text-surface-500 dark:text-surface-400 mt-1">
+                            Team: {contract.assignedTeam?.name || 'Unassigned'}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]}>
-                      {contract.status.replace('_', ' ')}
-                    </Badge>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-success-600 dark:text-success-400">
+                          {formatCurrency(Number(contract.monthlyValue))}
+                        </div>
+                        <div className="text-xs text-surface-500 dark:text-surface-400">
+                          {formatShortDate(contract.startDate)}
+                        </div>
+                      </div>
+                      <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]}>
+                        {contract.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
 
-      {/* Facilities Section */}
+      {/* Facilities Section — Full Width */}
       <Card>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-gold" />
-            <h3 className="text-lg font-semibold text-white">Facilities</h3>
+            <MapPin className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Facilities</h3>
           </div>
           {canWriteFacilities && (
             <Button size="sm" onClick={() => setShowFacilityModal(true)}>
@@ -877,7 +902,7 @@ const AccountDetail = () => {
         </div>
 
         {facilities.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
+          <div className="text-center py-8 text-surface-500 dark:text-surface-400">
             <MapPin className="mx-auto h-12 w-12 mb-2 opacity-50" />
             <p>No facilities yet</p>
             <p className="text-sm">Add a facility to start managing locations for this account</p>
@@ -888,15 +913,15 @@ const AccountDetail = () => {
               <div
                 key={facility.id}
                 onClick={() => navigate(`/facilities/${facility.id}`)}
-                className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-navy-darker/30 hover:bg-navy-darker/50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
-                    <Building className="h-5 w-5 text-gold" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
+                    <Building className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                   </div>
                   <div>
-                    <div className="font-medium text-white">{facility.name}</div>
-                    <div className="text-sm text-gray-400">
+                    <div className="font-medium text-surface-900 dark:text-surface-100">{facility.name}</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">
                       {[
                         facility.address?.street,
                         facility.address?.city,
@@ -909,7 +934,7 @@ const AccountDetail = () => {
                 </div>
                 <div className="flex items-center gap-4">
                   {facility.buildingType && (
-                    <span className="text-sm text-gray-400 capitalize">
+                    <span className="text-sm text-surface-500 dark:text-surface-400 capitalize">
                       {facility.buildingType}
                     </span>
                   )}
@@ -931,6 +956,82 @@ const AccountDetail = () => {
         )}
       </Card>
 
+      {/* Account History — Full Width */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Account History</h3>
+          </div>
+        </div>
+
+        {canWriteAccounts && (
+          <div className="space-y-3 mb-4">
+            <Select
+              label="Entry Type"
+              value={activityType}
+              onChange={(value) => setActivityType(value as AccountActivityEntryType)}
+              options={[
+                { value: 'note', label: 'General Note' },
+                { value: 'request', label: 'Customer Request' },
+                { value: 'complaint', label: 'Customer Complaint' },
+              ]}
+            />
+            <Textarea
+              label="New History Note"
+              placeholder="Log customer call, request, complaint, or other account note..."
+              value={activityNote}
+              onChange={(e) => setActivityNote(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleAddActivity} disabled={addingActivity}>
+                {addingActivity ? 'Saving...' : 'Add History Note'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {activitiesLoading ? (
+          <div className="text-sm text-surface-500 dark:text-surface-400">Loading history...</div>
+        ) : activities.length === 0 ? (
+          <div className="text-sm text-surface-500 dark:text-surface-400">No account history yet.</div>
+        ) : (
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+            {activities.map((activity) => (
+              <div
+                key={activity.id}
+                className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <Badge
+                    variant={
+                      activity.entryType === 'complaint'
+                        ? 'error'
+                        : activity.entryType === 'request'
+                          ? 'warning'
+                          : 'info'
+                    }
+                  >
+                    {activity.entryType}
+                  </Badge>
+                  <span className="text-xs text-surface-500 dark:text-surface-400">
+                    {formatDateTime(activity.createdAt)}
+                  </span>
+                </div>
+                <p className="text-sm text-surface-700 dark:text-surface-200 mt-2 whitespace-pre-wrap">
+                  {activity.note}
+                </p>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">
+                  Logged by {activity.performedByUser?.fullName || 'System'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Edit Account Modal */}
       <Modal
         isOpen={showEditModal && canAdminAccounts}
         onClose={() => setShowEditModal(false)}
@@ -1125,8 +1226,8 @@ const AccountDetail = () => {
             }
           />
 
-          <div className="border-t border-white/10 pt-4">
-            <h4 className="text-sm font-medium text-white mb-3">Address</h4>
+          <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+            <h4 className="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Address</h4>
             <div className="space-y-4">
               <Input
                 label="Street Address"
