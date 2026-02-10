@@ -68,8 +68,9 @@ const Dashboard = () => {
 
   const groupedAppointments = useMemo(() => {
     if (!stats) return [];
+    const upcomingAppointments = stats.upcomingAppointments ?? [];
     const groups: Record<string, DashboardStats['upcomingAppointments']> = {};
-    stats.upcomingAppointments.forEach((appointment) => {
+    upcomingAppointments.forEach((appointment) => {
       const date = new Date(appointment.scheduledStart);
       const dateKey = date.toISOString().slice(0, 10);
       if (!groups[dateKey]) groups[dateKey] = [];
@@ -205,7 +206,7 @@ const Dashboard = () => {
                 Next 10
               </span>
             </div>
-            {stats.upcomingAppointments.length === 0 ? (
+            {(stats.upcomingAppointments ?? []).length === 0 ? (
               <div className="mt-8 flex flex-col items-center justify-center text-center">
                 <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-700">
                   <Calendar className="h-8 w-8 text-surface-400 dark:text-surface-500" />
