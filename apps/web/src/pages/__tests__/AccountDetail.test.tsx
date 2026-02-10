@@ -351,7 +351,7 @@ describe('AccountDetail', () => {
         contactPhone: null,
       },
     };
-    listContractsMock.mockResolvedValueOnce({
+    listContractsMock.mockResolvedValue({
       data: [activeContract],
       pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
     });
@@ -359,5 +359,6 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     expect(await screen.findByText('Team: Alpha Team')).toBeInTheDocument();
+    expect(await screen.findByText('Alpha Team')).toBeInTheDocument();
   });
 });
