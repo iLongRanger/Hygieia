@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ContactsList from '../contacts/ContactsList';
 import type { Contact, Account } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
 
 const listContactsMock = vi.fn();
 const createContactMock = vi.fn();
@@ -83,6 +84,12 @@ const contact: Contact = {
 
 describe('ContactsList', () => {
   beforeEach(() => {
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listContactsMock.mockResolvedValue({
       data: [contact],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },

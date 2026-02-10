@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ContactDetail from '../contacts/ContactDetail';
 import type { Contact, Account } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'contact-1' };
 const navigateMock = vi.fn();
@@ -97,6 +98,12 @@ describe('ContactDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'contact-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
 
     getContactMock.mockResolvedValue(contact);
     updateContactMock.mockResolvedValue(contact);

@@ -5,6 +5,7 @@ import LeadsList from '../leads/LeadsList';
 import type { Lead, LeadSource, Account } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Facility } from '../../types/facility';
+import { useAuthStore } from '../../stores/authStore';
 
 const listLeadsMock = vi.fn();
 const createLeadMock = vi.fn();
@@ -142,6 +143,12 @@ const facility: Facility = {
 
 describe('LeadsList', () => {
   beforeEach(() => {
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listLeadsMock.mockResolvedValue({
       data: [lead],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },

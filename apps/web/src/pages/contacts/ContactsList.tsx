@@ -21,6 +21,8 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   listContacts,
   createContact,
@@ -49,6 +51,9 @@ const ContactsList = () => {
   const [isPrimaryFilter, setIsPrimaryFilter] = useState<string>('');
   const [isBillingFilter, setIsBillingFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteContacts = hasPermission(PERMISSIONS.CONTACTS_WRITE);
+  const canAdminContacts = hasPermission(PERMISSIONS.CONTACTS_ADMIN);
 
   const [formData, setFormData] = useState<CreateContactInput>({
     accountId: null,
@@ -272,7 +277,7 @@ const ContactsList = () => {
           >
             Edit
           </Button>
-          {item.archivedAt ? (
+          {item.archivedAt && canAdminContacts ? (
             <Button
               variant="ghost"
               size="sm"
@@ -283,7 +288,7 @@ const ContactsList = () => {
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
-          ) : (
+          ) : !item.archivedAt && canAdminContacts ? (
             <Button
               variant="ghost"
               size="sm"
@@ -294,7 +299,7 @@ const ContactsList = () => {
             >
               <Archive className="h-4 w-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       ),
     },
@@ -304,10 +309,12 @@ const ContactsList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Contacts</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Contact
-        </Button>
+        {canWriteContacts && (
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Contact
+          </Button>
+        )}
       </div>
 
       <Card noPadding className="overflow-hidden">
@@ -422,7 +429,7 @@ const ContactsList = () => {
       </Card>
 
       <Modal
-        isOpen={showCreateModal}
+        isOpen={showCreateModal && canWriteContacts}
         onClose={() => setShowCreateModal(false)}
         title="Add New Contact"
         size="lg"

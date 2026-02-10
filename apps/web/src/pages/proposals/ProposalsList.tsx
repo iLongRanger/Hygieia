@@ -24,6 +24,8 @@ import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   listProposals,
   archiveProposal,
@@ -98,6 +100,9 @@ const ProposalsList = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [sendModalProposal, setSendModalProposal] = useState<Proposal | null>(null);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteProposals = hasPermission(PERMISSIONS.PROPOSALS_WRITE);
+  const canAdminProposals = hasPermission(PERMISSIONS.PROPOSALS_ADMIN);
 
   const fetchProposals = useCallback(
     async (
@@ -312,7 +317,7 @@ const ProposalsList = () => {
               <Download className="w-4 h-4 text-gray-400" />
             </Button>
           )}
-          {proposal.status === 'draft' && (
+          {proposal.status === 'draft' && canWriteProposals && (
             <Button
               variant="ghost"
               size="sm"
@@ -325,7 +330,7 @@ const ProposalsList = () => {
               <Send className="w-4 h-4 text-blue-400" />
             </Button>
           )}
-          {['sent', 'viewed'].includes(proposal.status) && (
+          {['sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
             <>
               <Button
                 variant="ghost"
@@ -362,7 +367,7 @@ const ProposalsList = () => {
               </Button>
             </>
           )}
-          {!proposal.archivedAt ? (
+          {!proposal.archivedAt && canAdminProposals ? (
             <Button
               variant="ghost"
               size="sm"
@@ -374,7 +379,7 @@ const ProposalsList = () => {
             >
               <Archive className="w-4 h-4" />
             </Button>
-          ) : (
+          ) : proposal.archivedAt && canAdminProposals ? (
             <Button
               variant="ghost"
               size="sm"
@@ -386,7 +391,7 @@ const ProposalsList = () => {
             >
               <RotateCcw className="w-4 h-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       ),
     },
@@ -405,10 +410,12 @@ const ProposalsList = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Proposals</h1>
-        <Button onClick={() => navigate('/proposals/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Proposal
-        </Button>
+        {canWriteProposals && (
+          <Button onClick={() => navigate('/proposals/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Proposal
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -567,7 +574,7 @@ const ProposalsList = () => {
       </Card>
 
       {/* Send Proposal Modal */}
-      {sendModalProposal && (
+      {sendModalProposal && canWriteProposals && (
         <SendProposalModal
           isOpen={!!sendModalProposal}
           onClose={() => setSendModalProposal(null)}

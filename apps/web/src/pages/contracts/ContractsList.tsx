@@ -25,6 +25,8 @@ import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   listContracts,
   archiveContract,
@@ -99,6 +101,9 @@ const ContractsList = () => {
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
+  const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
   const fetchContracts = useCallback(
     async (
@@ -276,29 +281,33 @@ const ContractsList = () => {
           </Button>
           {contract.status === 'draft' && (
             <>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/contracts/${contract.id}/edit`);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleActivate(contract.id);
-                }}
-              >
-                Activate
-              </Button>
+              {canWriteContracts && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/contracts/${contract.id}/edit`);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
+              {canWriteContracts && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleActivate(contract.id);
+                  }}
+                >
+                  Activate
+                </Button>
+              )}
             </>
           )}
-          {!contract.archivedAt && contract.status !== 'active' && (
+          {!contract.archivedAt && contract.status !== 'active' && canAdminContracts && (
             <Button
               size="sm"
               variant="ghost"
@@ -310,7 +319,7 @@ const ContractsList = () => {
               <Archive className="h-4 w-4" />
             </Button>
           )}
-          {contract.archivedAt && (
+          {contract.archivedAt && canAdminContracts && (
             <Button
               size="sm"
               variant="ghost"
@@ -331,10 +340,12 @@ const ContractsList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-white">Contracts</h1>
-        <Button onClick={() => navigate('/contracts/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Contract
-        </Button>
+        {canWriteContracts && (
+          <Button onClick={() => navigate('/contracts/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Contract
+          </Button>
+        )}
       </div>
 
       <Card noPadding className="overflow-hidden">

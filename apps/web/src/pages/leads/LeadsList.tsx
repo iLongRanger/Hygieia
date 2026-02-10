@@ -21,6 +21,8 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   listLeads,
   createLead,
@@ -109,6 +111,9 @@ const LeadsList = () => {
       notes: null,
     },
   });
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteLeads = hasPermission(PERMISSIONS.LEADS_WRITE);
+  const canAdminLeads = hasPermission(PERMISSIONS.LEADS_ADMIN);
 
   const [formData, setFormData] = useState<CreateLeadInput>({
     contactName: '',
@@ -478,7 +483,7 @@ const LeadsList = () => {
       cell: (item: Lead) => (
         <div className="flex gap-2">
           {/* Show Convert button only for non-archived, non-converted leads */}
-          {!item.archivedAt && !item.convertedAt && (
+          {!item.archivedAt && !item.convertedAt && canWriteLeads && (
             <Button
               variant="ghost"
               size="sm"
@@ -498,7 +503,7 @@ const LeadsList = () => {
               Converted
             </Badge>
           )}
-          {item.archivedAt ? (
+          {item.archivedAt && canAdminLeads ? (
             <Button
               variant="ghost"
               size="sm"
@@ -509,7 +514,7 @@ const LeadsList = () => {
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
-          ) : (
+          ) : !item.archivedAt && canAdminLeads ? (
             <Button
               variant="ghost"
               size="sm"
@@ -520,7 +525,7 @@ const LeadsList = () => {
             >
               <Archive className="h-4 w-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       ),
     },
@@ -530,10 +535,12 @@ const LeadsList = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Leads</h1>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Lead
-        </Button>
+        {canWriteLeads && (
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Lead
+          </Button>
+        )}
       </div>
 
       <Card noPadding className="overflow-hidden">

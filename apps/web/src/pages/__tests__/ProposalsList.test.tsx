@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import ProposalsList from '../proposals/ProposalsList';
+import { useAuthStore } from '../../stores/authStore';
 
 const listProposalsMock = vi.fn();
 const archiveProposalMock = vi.fn();
@@ -70,6 +71,12 @@ const baseProposal = {
 
 describe('ProposalsList', () => {
   beforeEach(() => {
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listProposalsMock.mockResolvedValue({
       data: [baseProposal],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },

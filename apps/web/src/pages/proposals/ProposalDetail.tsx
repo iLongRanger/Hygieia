@@ -28,6 +28,8 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import ProposalTimeline from '../../components/proposals/ProposalTimeline';
 import ProposalVersionHistory from '../../components/proposals/ProposalVersionHistory';
 import SendProposalModal from '../../components/proposals/SendProposalModal';
@@ -92,6 +94,10 @@ const ProposalDetail = () => {
   const [activityRefresh, setActivityRefresh] = useState(0);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteProposals = hasPermission(PERMISSIONS.PROPOSALS_WRITE);
+  const canAdminProposals = hasPermission(PERMISSIONS.PROPOSALS_ADMIN);
+  const canDeleteProposals = hasPermission(PERMISSIONS.PROPOSALS_DELETE);
 
   useEffect(() => {
     if (id) {
@@ -271,7 +277,7 @@ const ProposalDetail = () => {
         </div>
         <div className="flex items-center gap-2">
           {/* Primary actions based on status */}
-          {['draft', 'sent', 'viewed'].includes(proposal.status) && (
+          {['draft', 'sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
             <Button
               variant="secondary"
               onClick={() => navigate(`/proposals/${id}/edit`)}
@@ -280,13 +286,13 @@ const ProposalDetail = () => {
               Edit
             </Button>
           )}
-          {proposal.status === 'draft' && (
+          {proposal.status === 'draft' && canWriteProposals && (
             <Button onClick={() => setSendModalOpen(true)}>
               <Send className="mr-2 h-4 w-4" />
               Send
             </Button>
           )}
-          {['sent', 'viewed'].includes(proposal.status) && (
+          {['sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
             <Button
               onClick={handleAccept}
               className="bg-green-600 hover:bg-green-700"
@@ -295,7 +301,7 @@ const ProposalDetail = () => {
               Accept
             </Button>
           )}
-          {proposal.archivedAt && (
+          {proposal.archivedAt && canAdminProposals && (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
@@ -331,7 +337,7 @@ const ProposalDetail = () => {
                     Copy Public Link
                   </button>
                 )}
-                {['sent', 'viewed'].includes(proposal.status) && (
+                {['sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
                   <>
                     <button
                       onClick={handleResend}
@@ -350,7 +356,7 @@ const ProposalDetail = () => {
                     </button>
                   </>
                 )}
-                {!proposal.archivedAt && (
+                {!proposal.archivedAt && canAdminProposals && (
                   <>
                     <div className="my-1 border-t border-white/10" />
                     <button
@@ -362,13 +368,15 @@ const ProposalDetail = () => {
                     </button>
                   </>
                 )}
-                <button
-                  onClick={handleDelete}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
+                {canDeleteProposals && (
+                  <button
+                    onClick={handleDelete}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -678,7 +686,7 @@ const ProposalDetail = () => {
       </div>
 
       {/* Send Proposal Modal */}
-      {['draft', 'sent', 'viewed'].includes(proposal.status) && (
+      {['draft', 'sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
         <SendProposalModal
           isOpen={sendModalOpen}
           onClose={() => setSendModalOpen(false)}

@@ -7,6 +7,7 @@ import type { Facility } from '../../types/facility';
 import type { Proposal } from '../../types/proposal';
 import type { Contract } from '../../types/contract';
 import type { User } from '../../types/user';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'account-1' };
 const navigateMock = vi.fn();
@@ -21,6 +22,8 @@ vi.mock('react-router-dom', async () => {
 });
 
 const getAccountMock = vi.fn();
+const listAccountActivitiesMock = vi.fn();
+const createAccountActivityMock = vi.fn();
 const updateAccountMock = vi.fn();
 const archiveAccountMock = vi.fn();
 const restoreAccountMock = vi.fn();
@@ -32,6 +35,8 @@ const listContractsMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   getAccount: (...args: unknown[]) => getAccountMock(...args),
+  listAccountActivities: (...args: unknown[]) => listAccountActivitiesMock(...args),
+  createAccountActivity: (...args: unknown[]) => createAccountActivityMock(...args),
   updateAccount: (...args: unknown[]) => updateAccountMock(...args),
   archiveAccount: (...args: unknown[]) => archiveAccountMock(...args),
   restoreAccount: (...args: unknown[]) => restoreAccountMock(...args),
@@ -191,6 +196,8 @@ const contract: Contract = {
   approvedAt: null,
   terminationReason: null,
   terminatedAt: null,
+  includesInitialClean: true,
+  initialCleanCompleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
@@ -229,12 +236,45 @@ describe('AccountDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'account-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
 
     getAccountMock.mockResolvedValue(account);
     updateAccountMock.mockResolvedValue(account);
     archiveAccountMock.mockResolvedValue({ ...account, archivedAt: new Date().toISOString() });
     restoreAccountMock.mockResolvedValue(account);
     createFacilityMock.mockResolvedValue(facility);
+    listAccountActivitiesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'activity-1',
+          entryType: 'request',
+          note: 'Client requested morning shift.',
+          createdAt: new Date().toISOString(),
+          performedByUser: {
+            id: 'user-1',
+            fullName: 'Account Manager',
+            email: 'manager@example.com',
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+    });
+    createAccountActivityMock.mockResolvedValue({
+      id: 'activity-2',
+      entryType: 'complaint',
+      note: 'Client reported missed trash bins.',
+      createdAt: new Date().toISOString(),
+      performedByUser: {
+        id: 'user-1',
+        fullName: 'Account Manager',
+        email: 'manager@example.com',
+      },
+    });
     listUsersMock.mockResolvedValue({ data: [user], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     listFacilitiesMock.mockResolvedValue({ data: [facility], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     listProposalsMock.mockResolvedValue({ data: [proposal], pagination: { page: 1, limit: 5, total: 1, totalPages: 1 } });
@@ -249,6 +289,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     expect(await screen.findByRole('heading', { name: 'Acme Corporation' })).toBeInTheDocument();
+    expect(screen.getByText('Client requested morning shift.')).toBeInTheDocument();
     expect(screen.getByText('Main Office')).toBeInTheDocument();
     expect(screen.getByText('PROP-001')).toBeInTheDocument();
     expect(screen.getByText('CONT-001')).toBeInTheDocument();
@@ -271,6 +312,29 @@ describe('AccountDetail', () => {
       expect(updateAccountMock).toHaveBeenCalledWith(
         'account-1',
         expect.objectContaining({ name: 'Acme Updated' })
+      );
+    });
+  });
+
+  it('adds account history note', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Acme Corporation' });
+    await userEventInstance.selectOptions(screen.getByLabelText(/entry type/i), 'complaint');
+    await userEventInstance.type(
+      screen.getByPlaceholderText(/log customer call, request, complaint/i),
+      'Client reported missed trash bins.'
+    );
+    await userEventInstance.click(screen.getByRole('button', { name: /add history note/i }));
+
+    await waitFor(() => {
+      expect(createAccountActivityMock).toHaveBeenCalledWith(
+        'account-1',
+        expect.objectContaining({
+          entryType: 'complaint',
+          note: 'Client reported missed trash bins.',
+        })
       );
     });
   });

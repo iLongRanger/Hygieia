@@ -23,6 +23,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   getContact,
   updateContact,
@@ -40,6 +42,9 @@ const ContactDetail = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteContacts = hasPermission(PERMISSIONS.CONTACTS_WRITE);
+  const canAdminContacts = hasPermission(PERMISSIONS.CONTACTS_ADMIN);
 
   const [formData, setFormData] = useState<UpdateContactInput>({
     accountId: null,
@@ -169,16 +174,18 @@ const ContactDetail = () => {
           <p className="text-gray-400">{contact.title || 'No title'}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setShowEditModal(true)}>
-            <Edit2 className="mr-2 h-4 w-4" />
-            Edit Contact
-          </Button>
-          {contact.archivedAt ? (
+          {canWriteContacts && (
+            <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit Contact
+            </Button>
+          )}
+          {contact.archivedAt && canAdminContacts ? (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
             </Button>
-          ) : (
+          ) : !contact.archivedAt && canAdminContacts ? (
             <Button
               variant="secondary"
               onClick={handleArchive}
@@ -187,7 +194,7 @@ const ContactDetail = () => {
               <Archive className="mr-2 h-4 w-4" />
               Archive
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -370,7 +377,7 @@ const ContactDetail = () => {
       </div>
 
       <Modal
-        isOpen={showEditModal}
+        isOpen={showEditModal && canWriteContacts}
         onClose={() => setShowEditModal(false)}
         title="Edit Contact"
         size="lg"

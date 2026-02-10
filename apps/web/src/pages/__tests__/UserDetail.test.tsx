@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import UserDetail from '../users/UserDetail';
 import type { User, Role } from '../../types/user';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'user-1' };
 const navigateMock = vi.fn();
@@ -89,6 +90,12 @@ describe('UserDetail', () => {
     vi.clearAllMocks();
     mockParams = { id: 'user-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     getUserMock.mockResolvedValue(userData);
     listRolesMock.mockResolvedValue({ data: [roleCleaner, roleManager] });
     updateUserMock.mockResolvedValue(userData);
