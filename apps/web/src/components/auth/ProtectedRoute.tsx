@@ -16,7 +16,7 @@ interface ProtectedRouteProps {
  * 2. Validates token with backend (optional, on mount)
  * 3. Verifies user has required permissions (if specified)
  * 4. Redirects to login if not authenticated
- * 5. Redirects to unauthorized if missing required role
+ * 5. Redirects to unauthorized if missing required permission
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
@@ -116,7 +116,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         path: location.pathname,
       });
 
-      return <Navigate to="/unauthorized" replace />;
+      return (
+        <Navigate
+          to="/unauthorized"
+          state={{
+            from: location.pathname,
+            missingPermissions,
+          }}
+          replace
+        />
+      );
     }
   }
 
