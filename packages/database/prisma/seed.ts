@@ -211,150 +211,175 @@ async function main() {
       name: 'Disinfect High-Touch Surfaces',
       cleaningType: 'daily',
       areaTypeName: null,
+      baseMinutes: 2, perSqftMinutes: 0, perUnitMinutes: 0.25, perRoomMinutes: 0,
       instructions: 'Disinfect handles, switches, and common touch points.'
     },
     {
       name: 'Empty Trash And Replace Liners',
       cleaningType: 'daily',
       areaTypeName: null,
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.5, perRoomMinutes: 0,
       instructions: 'Remove trash, replace liners, and wipe bin rims if needed.'
     },
     {
       name: 'Spot Clean Spills And Stains',
       cleaningType: 'daily',
       areaTypeName: null,
+      baseMinutes: 3, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Blot spills and spot-clean stains on floors or upholstery.'
     },
     {
       name: 'Vacuum Or Sweep Floors',
       cleaningType: 'daily',
       areaTypeName: null,
+      baseMinutes: 0, perSqftMinutes: 0.02, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Vacuum carpets and sweep hard floors in high-traffic paths.'
     },
     {
       name: 'Clean Dry Erase Boards',
       cleaningType: 'daily',
       areaTypeName: 'Meeting Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Erase boards and wipe with board-safe cleaner to remove ghosting.'
     },
     {
       name: 'Clean Conference Room Tables And Chairs',
       cleaningType: 'daily',
       areaTypeName: 'Conference Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 8.0,
       instructions: 'Wipe tables and chair backs with disinfectant, then dry.'
     },
     {
       name: 'Clean Toilets And Urinals',
       cleaningType: 'daily',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 3.0, perRoomMinutes: 0,
       instructions: 'Apply disinfectant, scrub bowls and exteriors, then flush.'
     },
     {
       name: 'Clean Washroom Sinks And Counters',
       cleaningType: 'daily',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Spray disinfectant on sinks/counters, scrub, and rinse.'
     },
     {
       name: 'Disinfect Hand Dryers And Paper Towel Holders',
       cleaningType: 'daily',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 0.5, perRoomMinutes: 0,
       instructions: 'Wipe touch points with disinfectant and dry.'
     },
     {
       name: 'Disinfect High-Touch Surfaces',
       cleaningType: 'daily',
       areaTypeName: 'Lobby',
+      baseMinutes: 2, perSqftMinutes: 0, perUnitMinutes: 0.25, perRoomMinutes: 0,
       instructions: 'Wipe handles, switches, and elevator buttons with disinfectant.'
     },
     {
       name: 'Dust And Wipe Desks And Work Surfaces',
       cleaningType: 'daily',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.5, perRoomMinutes: 0,
       instructions: 'Dust desks, tables, and shelves, then wipe with a damp cloth.'
     },
     {
       name: 'Dust Showroom Displays',
       cleaningType: 'daily',
       areaTypeName: 'Showroom',
+      baseMinutes: 2, perSqftMinutes: 0.005, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Dust display surfaces and spot-clean fingerprints.'
     },
     {
       name: 'Empty Dock Trash And Debris',
       cleaningType: 'daily',
       areaTypeName: 'Loading Dock',
+      baseMinutes: 5, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Remove trash, clear debris, and replace liners.'
     },
     {
       name: 'Empty Trash And Replace Liners',
       cleaningType: 'daily',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.5, perRoomMinutes: 0,
       instructions: 'Remove trash, replace liners, and wipe bin rims if soiled.'
     },
     {
       name: 'Restock Washroom Supplies',
       cleaningType: 'daily',
       areaTypeName: 'Washroom',
+      baseMinutes: 2, perSqftMinutes: 0, perUnitMinutes: 0.5, perRoomMinutes: 0,
       instructions: 'Refill soap, paper towels, and toilet paper to par levels.'
     },
     {
       name: 'Sanitize Warehouse High-Contact Surfaces',
       cleaningType: 'daily',
       areaTypeName: 'Warehouse',
+      baseMinutes: 3, perSqftMinutes: 0, perUnitMinutes: 0.25, perRoomMinutes: 0,
       instructions: 'Disinfect handles, switches, and shared equipment touch points.'
     },
     {
       name: 'Spot Clean Spills And Stains',
       cleaningType: 'daily',
       areaTypeName: 'Corridor',
+      baseMinutes: 3, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Blot spills and spot-clean stains on floors or upholstery.'
     },
     {
       name: 'Sweep And Spot Mop Retail Floor',
       cleaningType: 'daily',
       areaTypeName: 'Retail Floor',
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Sweep debris and spot mop spills in high-traffic zones.'
     },
     {
       name: 'Sweep And Wet Mop Kitchen Floor',
       cleaningType: 'daily',
       areaTypeName: 'Kitchen',
+      baseMinutes: 0, perSqftMinutes: 0.025, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Sweep debris, then wet mop with neutral cleaner.'
     },
     {
       name: 'Sweep Warehouse Aisles And Walkways',
       cleaningType: 'daily',
       areaTypeName: 'Warehouse',
+      baseMinutes: 0, perSqftMinutes: 0.01, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Sweep aisles and walkways, removing debris and spills.'
     },
     {
       name: 'Vacuum Or Sweep Floors',
       cleaningType: 'daily',
       areaTypeName: 'Open Workspace',
+      baseMinutes: 0, perSqftMinutes: 0.02, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Vacuum carpets and sweep hard floors in high-traffic paths.'
     },
     {
       name: 'Wipe Common Tables And Chairs',
       cleaningType: 'daily',
       areaTypeName: 'Break Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.5, perRoomMinutes: 0,
       instructions: 'Clean tabletops and chair backs with disinfectant.'
     },
     {
       name: 'Wipe Kitchen Surfaces And Appliance Exteriors',
       cleaningType: 'daily',
       areaTypeName: 'Kitchen',
+      baseMinutes: 5, perSqftMinutes: 0, perUnitMinutes: 3.0, perRoomMinutes: 0,
       instructions: 'Wipe countertops and appliance fronts/handles with disinfectant.'
     },
     {
       name: 'Wipe Reception Desk And Counters',
       cleaningType: 'daily',
       areaTypeName: 'Reception',
+      baseMinutes: 3, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Wipe counters and transaction surfaces with disinfectant.'
     },
     {
       name: 'Wash Pantry Sink',
       cleaningType: 'daily',
       areaTypeName: 'Pantry',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 3.0, perRoomMinutes: 0,
       instructions: 'Scrub the sink with cleaner, rinse, and dry.'
     },
 
@@ -363,96 +388,112 @@ async function main() {
       name: 'Clean Interior Windows And Glass Doors',
       cleaningType: 'weekly',
       areaTypeName: null,
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.5, perRoomMinutes: 0,
       instructions: 'Clean interior glass and doors with streak-free cleaner.'
     },
     {
       name: 'Mop Hard Floors',
       cleaningType: 'weekly',
       areaTypeName: null,
+      baseMinutes: 0, perSqftMinutes: 0.016, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Wet mop hard floors with neutral cleaner and let dry.'
     },
     {
       name: 'Clean And Organize Storage Areas',
       cleaningType: 'weekly',
       areaTypeName: 'Storage Room',
+      baseMinutes: 10, perSqftMinutes: 0.01, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Remove clutter, wipe shelves, and reset organization.'
     },
     {
       name: 'Clean And Sanitize Conference Surfaces',
       cleaningType: 'weekly',
       areaTypeName: 'Conference Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 8.0,
       instructions: 'Disinfect tables, armrests, and shared controls.'
     },
     {
       name: 'Clean Interior Windows And Glass Doors',
       cleaningType: 'weekly',
       areaTypeName: 'Lobby',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.5, perRoomMinutes: 0,
       instructions: 'Clean glass and doors with streak-free glass cleaner.'
     },
     {
       name: 'Clean Kitchen Appliances',
       cleaningType: 'weekly',
       areaTypeName: 'Kitchen',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 3.0, perRoomMinutes: 0,
       instructions: 'Clean microwave, refrigerator handles, and coffee equipment.'
     },
     {
       name: 'Clean Loading Dock Area',
       cleaningType: 'weekly',
       areaTypeName: 'Loading Dock',
+      baseMinutes: 10, perSqftMinutes: 0.01, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Sweep and mop dock floors, removing buildup.'
     },
     {
       name: 'Clean Refrigerator Shelves',
       cleaningType: 'weekly',
       areaTypeName: 'Kitchen',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 10.0, perRoomMinutes: 0,
       instructions: 'Remove old items, wipe shelves, and return current items.'
     },
     {
       name: 'Deep Clean Washroom Fixtures',
       cleaningType: 'weekly',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 5.0, perRoomMinutes: 0,
       instructions: 'Scrub toilets, sinks, and floors with disinfectant.'
     },
     {
       name: 'Disinfect Keyboards And Phones',
       cleaningType: 'weekly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.0, perRoomMinutes: 0,
       instructions: 'Wipe keyboards, mice, and phones with electronics-safe disinfectant.'
     },
     {
       name: 'Dust Blinds And Window Sills',
       cleaningType: 'weekly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 3.0, perRoomMinutes: 0,
       instructions: 'Dust blinds and wipe sills to remove buildup.'
     },
     {
       name: 'Dust Warehouse Shelves And Racks',
       cleaningType: 'weekly',
       areaTypeName: 'Warehouse',
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Dust shelves, racks, and overhead structures safely.'
     },
     {
       name: 'Mop Hard Floors',
       cleaningType: 'weekly',
       areaTypeName: 'Corridor',
+      baseMinutes: 0, perSqftMinutes: 0.016, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Wet mop hard floors with neutral cleaner and let dry.'
     },
     {
       name: 'Mop Warehouse Floors',
       cleaningType: 'weekly',
       areaTypeName: 'Warehouse',
+      baseMinutes: 0, perSqftMinutes: 0.012, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Mop floors and spot-treat heavy-use zones.'
     },
     {
       name: 'Sanitize Washroom Dispensers',
       cleaningType: 'weekly',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.0, perRoomMinutes: 0,
       instructions: 'Clean and refill soap, towel, and toilet paper dispensers.'
     },
     {
       name: 'Vacuum Upholstered Furniture',
       cleaningType: 'weekly',
       areaTypeName: 'Lounge',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Vacuum upholstery and cushions to remove dust and crumbs.'
     },
 
@@ -461,36 +502,42 @@ async function main() {
       name: 'Clean Baseboards',
       cleaningType: 'biweekly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0.025, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Wipe baseboards to remove dust and scuffs.'
     },
     {
       name: 'Clean Glass Partitions And Doors',
       cleaningType: 'biweekly',
       areaTypeName: 'Reception',
+      baseMinutes: 0, perSqftMinutes: 0.02, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Clean glass partitions and doors with streak-free cleaner.'
     },
     {
       name: 'Clean Outside Of Trash Cans',
       cleaningType: 'biweekly',
       areaTypeName: 'Break Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.0, perRoomMinutes: 0,
       instructions: 'Wipe exterior surfaces of trash cans and lids.'
     },
     {
       name: 'Dust Vents, Handrails, And Sills',
       cleaningType: 'biweekly',
       areaTypeName: 'Hallway',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Dust vents, handrails, shelves, and sills from top to bottom.'
     },
     {
       name: 'Polish Furniture And Wood Surfaces',
       cleaningType: 'biweekly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Dust then polish desks and wood furniture to remove smudges.'
     },
     {
       name: 'Sanitize Trash And Recycling Bins',
       cleaningType: 'biweekly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Wash or wipe bins with disinfectant and dry before relining.'
     },
 
@@ -499,84 +546,98 @@ async function main() {
       name: 'Dust High Surfaces',
       cleaningType: 'monthly',
       areaTypeName: null,
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'High-dust shelves and upper surfaces top-to-bottom.'
     },
     {
       name: 'Buff And Polish Hardwood Floors',
       cleaningType: 'monthly',
       areaTypeName: 'Lobby',
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Buff and polish hardwood floors to restore shine.'
     },
     {
       name: 'Check For Pest Activity',
       cleaningType: 'monthly',
       areaTypeName: 'Warehouse',
+      baseMinutes: 5, perSqftMinutes: 0.002, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Inspect for pest activity and document any findings.'
     },
     {
       name: 'Clean Behind Appliances',
       cleaningType: 'monthly',
       areaTypeName: 'Kitchen',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 8.0, perRoomMinutes: 0,
       instructions: 'Move appliances safely and clean behind and underneath.'
     },
     {
       name: 'Clean Upholstery',
       cleaningType: 'monthly',
       areaTypeName: 'Lounge',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 5.0, perRoomMinutes: 0,
       instructions: 'Vacuum and spot-clean upholstery with fabric-safe cleaner.'
     },
     {
       name: 'Clean Vents And Filters',
       cleaningType: 'monthly',
       areaTypeName: 'Warehouse',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Clean vents and filters to reduce dust buildup.'
     },
     {
       name: 'Deep Clean Carpets And Rugs',
       cleaningType: 'monthly',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0.06, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Deep clean carpets and rugs to remove embedded soil.'
     },
     {
       name: 'Deep Clean Kitchen Tile And Grout',
       cleaningType: 'monthly',
       areaTypeName: 'Kitchen',
+      baseMinutes: 0, perSqftMinutes: 0.05, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Scrub tile and grout with appropriate cleaner and rinse.'
     },
     {
       name: 'Deep Clean Tile And Grout',
       cleaningType: 'monthly',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0.05, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Scrub tile and grout with disinfecting cleaner and rinse.'
     },
     {
       name: 'Dust High Surfaces',
       cleaningType: 'monthly',
       areaTypeName: 'Storage Room',
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'High-dust shelves and upper surfaces top-to-bottom.'
     },
     {
       name: 'Dust Light Fixtures And Vents',
       cleaningType: 'monthly',
       areaTypeName: 'Corridor',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 2.0, perRoomMinutes: 0,
       instructions: 'Dust light fixtures and vents with high-dusting tools.'
     },
     {
       name: 'Organize And Clean Supply Closets',
       cleaningType: 'monthly',
       areaTypeName: 'Supply Closet',
+      baseMinutes: 15, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Sort supplies, discard expired items, and wipe shelves.'
     },
     {
       name: 'Remove Expired Inventory',
       cleaningType: 'monthly',
       areaTypeName: 'Stockroom',
+      baseMinutes: 10, perSqftMinutes: 0, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Remove expired items and clean shelves before restocking.'
     },
     {
       name: 'Replace Air Fresheners',
       cleaningType: 'monthly',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 1.0, perRoomMinutes: 0,
       instructions: 'Check and replace air fresheners or deodorizers as needed.'
     },
 
@@ -585,42 +646,49 @@ async function main() {
       name: 'Buff And Polish Washroom Floors',
       cleaningType: 'quarterly',
       areaTypeName: 'Washroom',
+      baseMinutes: 0, perSqftMinutes: 0.015, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Buff and polish floors to restore finish and sheen.'
     },
     {
       name: 'Clean Exterior Windows',
       cleaningType: 'quarterly',
       areaTypeName: 'Lobby',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 5.0, perRoomMinutes: 0,
       instructions: 'Clean accessible exterior windows and glass.'
     },
     {
       name: 'Deep Clean Carpets',
       cleaningType: 'quarterly',
       areaTypeName: 'Open Workspace',
+      baseMinutes: 0, perSqftMinutes: 0.06, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Perform deep carpet cleaning to remove embedded soil.'
     },
     {
       name: 'Deep Clean Storage Areas',
       cleaningType: 'quarterly',
       areaTypeName: 'Storage Room',
+      baseMinutes: 10, perSqftMinutes: 0.02, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Deep clean storage areas and reset organization.'
     },
     {
       name: 'Deep Clean Upholstery, Drapes, And Blinds',
       cleaningType: 'quarterly',
       areaTypeName: 'Lounge',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 8.0, perRoomMinutes: 0,
       instructions: 'Deep clean upholstery and window treatments.'
     },
     {
       name: 'Strip And Refinish Hard Floors If Needed',
       cleaningType: 'quarterly',
       areaTypeName: 'Corridor',
+      baseMinutes: 0, perSqftMinutes: 0.15, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Strip and refinish hard floors where finish is worn.'
     },
     {
       name: 'Wash Walls And Touch Up Paint',
       cleaningType: 'quarterly',
       areaTypeName: 'Hallway',
+      baseMinutes: 0, perSqftMinutes: 0.03, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Wash walls and note areas needing touch-up.'
     },
 
@@ -629,30 +697,35 @@ async function main() {
       name: 'Clean HVAC Ducts And Replace Filters',
       cleaningType: 'annual',
       areaTypeName: 'Mechanical Room',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 5.0, perRoomMinutes: 0,
       instructions: 'Coordinate duct cleaning and replace filters.'
     },
     {
       name: 'Deep Extraction Carpet Cleaning',
       cleaningType: 'annual',
       areaTypeName: 'Office',
+      baseMinutes: 0, perSqftMinutes: 0.1, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Perform hot-water extraction to deep clean carpet fibers.'
     },
     {
       name: 'Power Wash Exterior Entrances',
       cleaningType: 'annual',
       areaTypeName: 'Loading Dock',
+      baseMinutes: 15, perSqftMinutes: 0.01, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Pressure wash entryways and walkways to remove grime.'
     },
     {
       name: 'Strip And Wax VCT/Tile Floors',
       cleaningType: 'annual',
       areaTypeName: 'Lobby',
+      baseMinutes: 0, perSqftMinutes: 0.15, perUnitMinutes: 0, perRoomMinutes: 0,
       instructions: 'Strip old finish and apply fresh wax coats.'
     },
     {
       name: 'Wash Exterior Windows And Frames',
       cleaningType: 'annual',
       areaTypeName: 'Reception',
+      baseMinutes: 0, perSqftMinutes: 0, perUnitMinutes: 5.0, perRoomMinutes: 0,
       instructions: 'Wash exterior glass, frames, and sills for curb appeal.'
     }
   ]
@@ -689,6 +762,10 @@ async function main() {
       ? (areaTypeMap.get(task.areaTypeName) ?? null)
       : null,
     estimatedMinutes: 0,
+    baseMinutes: task.baseMinutes ?? 0,
+    perSqftMinutes: task.perSqftMinutes ?? 0,
+    perUnitMinutes: task.perUnitMinutes ?? 0,
+    perRoomMinutes: task.perRoomMinutes ?? 0,
     instructions: task.instructions,
     isGlobal: true,
     createdByUserId: seedUser.id
@@ -725,6 +802,39 @@ async function main() {
     console.log(`Created ${createdTasks.count} commercial task templates`)
   } else {
     console.log('No new commercial task templates to create')
+  }
+
+  // Update existing global templates that still have all-zero time values
+  let updatedTimeCount = 0
+  for (const task of taskTemplateSeeds) {
+    if (task.baseMinutes || task.perSqftMinutes || task.perUnitMinutes || task.perRoomMinutes) {
+      const areaTypeId = task.areaTypeName
+        ? (areaTypeMap.get(task.areaTypeName) ?? null)
+        : null
+      const result = await prisma.taskTemplate.updateMany({
+        where: {
+          name: task.name,
+          cleaningType: task.cleaningType,
+          isGlobal: true,
+          areaTypeId: areaTypeId,
+          baseMinutes: { lte: 0 },
+          perSqftMinutes: { lte: 0 },
+          perUnitMinutes: { lte: 0 },
+          perRoomMinutes: { lte: 0 },
+        },
+        data: {
+          baseMinutes: task.baseMinutes ?? 0,
+          perSqftMinutes: task.perSqftMinutes ?? 0,
+          perUnitMinutes: task.perUnitMinutes ?? 0,
+          perRoomMinutes: task.perRoomMinutes ?? 0,
+        },
+      })
+      updatedTimeCount += result.count
+    }
+  }
+
+  if (updatedTimeCount > 0) {
+    console.log(`Updated ISSA cleaning times on ${updatedTimeCount} existing task templates`)
   }
 
   const areaTemplateFixtureMap: Record<string, string[]> = {
