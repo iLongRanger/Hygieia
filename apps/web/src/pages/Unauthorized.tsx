@@ -1,6 +1,17 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+
+interface UnauthorizedState {
+  from?: string;
+  missingPermissions?: string[];
+}
 
 const Unauthorized = () => {
+  const location = useLocation();
+  const state = location.state as UnauthorizedState | null;
+  const missingPermissions = state?.missingPermissions ?? [];
+  const showMissingPermissions =
+    import.meta.env.DEV && missingPermissions.length > 0;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-50 px-4 dark:bg-surface-900">
       <div className="w-full max-w-md rounded-xl border border-surface-200 bg-white p-8 text-center shadow-sm dark:border-surface-700 dark:bg-surface-800">
@@ -10,6 +21,11 @@ const Unauthorized = () => {
         <p className="mt-3 text-sm text-surface-600 dark:text-surface-300">
           Your account does not have permission to view this page.
         </p>
+        {showMissingPermissions && (
+          <p className="mt-3 text-xs text-surface-500 dark:text-surface-400">
+            Missing permissions: {missingPermissions.join(', ')}
+          </p>
+        )}
         <Link
           to="/"
           className="mt-6 inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
