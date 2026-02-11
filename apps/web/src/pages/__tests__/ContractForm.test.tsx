@@ -69,6 +69,8 @@ const draftContract: Contract = {
   approvedAt: null,
   terminationReason: null,
   terminatedAt: null,
+  includesInitialClean: true,
+  initialCleanCompleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
