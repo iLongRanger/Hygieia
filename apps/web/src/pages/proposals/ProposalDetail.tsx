@@ -23,6 +23,9 @@ import {
   RefreshCw,
   PenTool,
   MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -86,6 +89,19 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatShortDate = (date: string | null | undefined) => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+const formatPercent = (val: number | undefined | null) => {
+  if (val == null) return '0%';
+  return `${(val * 100).toFixed(1)}%`;
+};
+
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -94,6 +110,7 @@ const ProposalDetail = () => {
   const [activityRefresh, setActivityRefresh] = useState(0);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rateCardOpen, setRateCardOpen] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWriteProposals = hasPermission(PERMISSIONS.PROPOSALS_WRITE);
   const canAdminProposals = hasPermission(PERMISSIONS.PROPOSALS_ADMIN);
@@ -396,6 +413,103 @@ const ProposalDetail = () => {
         </div>
       )}
 
+      {/* Status Progress Tracker */}
+      {(() => {
+        const isRejected = proposal.status === 'rejected';
+        const isExpired = proposal.status === 'expired';
+        const steps = [
+          { label: 'Draft', date: proposal.createdAt, done: true },
+          { label: 'Sent', date: proposal.sentAt, done: !!proposal.sentAt },
+          { label: 'Viewed', date: proposal.viewedAt, done: !!proposal.viewedAt },
+          {
+            label: isRejected ? 'Rejected' : 'Accepted',
+            date: isRejected ? proposal.rejectedAt : proposal.acceptedAt,
+            done: !!proposal.acceptedAt || isRejected,
+            rejected: isRejected,
+            expired: isExpired && !proposal.acceptedAt && !isRejected,
+          },
+        ];
+        // Find the current (latest completed) step index
+        const currentIdx = steps.reduce((acc, s, i) => (s.done ? i : acc), 0);
+
+        return (
+          <Card>
+            <div className="flex items-center justify-between overflow-x-auto px-2 py-1">
+              {steps.map((step, i) => {
+                const isLast = i === steps.length - 1;
+                const isCurrent = i === currentIdx && !isExpired;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className="flex flex-col items-center min-w-[64px]">
+                      {/* Circle */}
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold transition-all ${
+                          step.rejected
+                            ? 'border-red-500 bg-red-500/20 text-red-400'
+                            : step.expired
+                              ? 'border-gray-600 bg-gray-600/20 text-gray-500'
+                              : step.done
+                                ? `border-gold bg-gold/20 text-gold ${isCurrent ? 'ring-2 ring-gold/40 ring-offset-2 ring-offset-surface-800' : ''}`
+                                : 'border-gray-600 bg-transparent text-gray-600'
+                        }`}
+                      >
+                        {step.rejected ? (
+                          <XCircle className="h-4 w-4" />
+                        ) : step.done ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <span className="h-2 w-2 rounded-full bg-gray-600" />
+                        )}
+                      </div>
+                      {/* Label */}
+                      <span
+                        className={`mt-1.5 text-xs font-medium ${
+                          step.rejected
+                            ? 'text-red-400'
+                            : step.expired
+                              ? 'text-gray-500'
+                              : step.done
+                                ? 'text-white'
+                                : 'text-gray-500'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      {/* Date */}
+                      <span className="text-[10px] text-gray-500 mt-0.5">
+                        {step.done && step.date ? formatShortDate(step.date) : '\u00A0'}
+                      </span>
+                    </div>
+                    {/* Connector line */}
+                    {!isLast && (
+                      <div
+                        className={`h-0.5 flex-1 mx-1 mt-[-18px] ${
+                          steps[i + 1]?.done
+                            ? steps[i + 1]?.rejected
+                              ? 'bg-red-500/50'
+                              : 'bg-gold/60'
+                            : 'bg-gray-700'
+                        }`}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            {isRejected && proposal.rejectionReason && (
+              <div className="mt-2 rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
+                Rejection reason: {proposal.rejectionReason}
+              </div>
+            )}
+            {isExpired && (
+              <div className="mt-2 rounded-md bg-gray-500/10 border border-gray-500/20 px-3 py-2 text-sm text-gray-400">
+                This proposal has expired
+              </div>
+            )}
+          </Card>
+        );
+      })()}
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
@@ -530,6 +644,272 @@ const ProposalDetail = () => {
                     </div>
                   );
                 })}
+              </div>
+            </Card>
+          )}
+
+          {/* Pricing Breakdown */}
+          {proposal.pricingSnapshot && (
+            <Card>
+              <h2 className="text-lg font-semibold text-white mb-4">Pricing Breakdown</h2>
+
+              {/* Strategy header row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-white/5 p-3 mb-4">
+                <div>
+                  <div className="text-xs text-gray-400">Strategy</div>
+                  <div className="text-sm font-medium text-white">
+                    {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Per Hour v1' : 'Per Sq Ft v1'}
+                  </div>
+                </div>
+                {proposal.pricingSnapshot.hourlyRate != null && (
+                  <div>
+                    <div className="text-xs text-gray-400">Hourly Rate</div>
+                    <div className="text-sm font-medium text-white">
+                      {formatCurrency(proposal.pricingSnapshot.hourlyRate)}
+                    </div>
+                  </div>
+                )}
+                {proposal.pricingSnapshot.targetProfitMargin != null && (
+                  <div>
+                    <div className="text-xs text-gray-400">Profit Margin</div>
+                    <div className="text-sm font-medium text-white">
+                      {formatPercent(proposal.pricingSnapshot.targetProfitMargin)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cost stack */}
+              {proposal.pricingSnapshot.pricingType === 'hourly' && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-gray-300 mb-2">Cost Stack (per labor hour)</h3>
+                  <div className="space-y-1.5 text-sm">
+                    {proposal.pricingSnapshot.laborCostPerHour != null && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Labor Cost</span>
+                        <span className="text-white">{formatCurrency(proposal.pricingSnapshot.laborCostPerHour)}/hr</span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.laborBurdenPercentage != null && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Labor Burden ({formatPercent(proposal.pricingSnapshot.laborBurdenPercentage)})</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.laborBurdenPercentage)}/hr
+                        </span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.insurancePercentage != null && proposal.pricingSnapshot.insurancePercentage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Insurance ({formatPercent(proposal.pricingSnapshot.insurancePercentage)})</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.insurancePercentage)}/hr
+                        </span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.adminOverheadPercentage != null && proposal.pricingSnapshot.adminOverheadPercentage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Admin Overhead ({formatPercent(proposal.pricingSnapshot.adminOverheadPercentage)})</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.adminOverheadPercentage)}/hr
+                        </span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.equipmentPercentage != null && proposal.pricingSnapshot.equipmentPercentage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Equipment ({formatPercent(proposal.pricingSnapshot.equipmentPercentage)})</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.equipmentPercentage)}/hr
+                        </span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.supplyCostPercentage != null && proposal.pricingSnapshot.supplyCostPercentage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Supplies ({formatPercent(proposal.pricingSnapshot.supplyCostPercentage)})</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.supplyCostPercentage)}/hr
+                        </span>
+                      </div>
+                    )}
+                    {proposal.pricingSnapshot.travelCostPerVisit != null && proposal.pricingSnapshot.travelCostPerVisit > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Travel (per visit)</span>
+                        <span className="text-white">{formatCurrency(proposal.pricingSnapshot.travelCostPerVisit)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-white/10 pt-1.5 mt-1.5">
+                      <div className="flex justify-between font-medium">
+                        <span className="text-gray-300">Loaded Rate</span>
+                        <span className="text-white">
+                          {formatCurrency(proposal.pricingSnapshot.hourlyRate)}/hr
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Monthly summary */}
+              {proposal.proposalServices && proposal.proposalServices.length > 0 && (
+                <div className="rounded-lg bg-white/5 p-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Monthly Subtotal</span>
+                    <span className="text-white font-medium">{formatCurrency(proposal.subtotal)}</span>
+                  </div>
+                  {proposal.pricingSnapshot.minimumMonthlyCharge > 0 && (
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-gray-400">Minimum Monthly Charge</span>
+                      <span className="text-white">{formatCurrency(proposal.pricingSnapshot.minimumMonthlyCharge)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Collapsible Rate Card */}
+              <button
+                onClick={() => setRateCardOpen(!rateCardOpen)}
+                className="flex w-full items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
+              >
+                <span>Rate Card (Multipliers)</span>
+                {rateCardOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {rateCardOpen && (
+                <div className="mt-3 space-y-4 text-sm">
+                  {/* Frequency multipliers */}
+                  {proposal.pricingSnapshot.frequencyMultipliers && Object.keys(proposal.pricingSnapshot.frequencyMultipliers).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Frequency Multipliers</h4>
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(proposal.pricingSnapshot.frequencyMultipliers).map(([key, val]) => (
+                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
+                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="text-white">{(val as number).toFixed(2)}x</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Floor type multipliers */}
+                  {proposal.pricingSnapshot.floorTypeMultipliers && Object.keys(proposal.pricingSnapshot.floorTypeMultipliers).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Floor Type Multipliers</h4>
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(proposal.pricingSnapshot.floorTypeMultipliers).map(([key, val]) => (
+                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
+                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="text-white">{(val as number).toFixed(2)}x</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Condition multipliers */}
+                  {proposal.pricingSnapshot.conditionMultipliers && Object.keys(proposal.pricingSnapshot.conditionMultipliers).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Condition Multipliers</h4>
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(proposal.pricingSnapshot.conditionMultipliers).map(([key, val]) => (
+                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
+                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="text-white">{(val as number).toFixed(2)}x</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Sqft per labor hour by building type */}
+                  {proposal.pricingSnapshot.sqftPerLaborHour && Object.keys(proposal.pricingSnapshot.sqftPerLaborHour).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Productivity (Sq Ft / Labor Hour)</h4>
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(proposal.pricingSnapshot.sqftPerLaborHour).map(([key, val]) => (
+                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
+                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                            <span className="text-white">{val as number} sqft/hr</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Snapshot timestamp */}
+              {proposal.pricingSnapshot.capturedAt && (
+                <div className="mt-3 text-xs text-gray-500">
+                  Pricing snapshot captured {formatDate(proposal.pricingSnapshot.capturedAt)}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Facility & Areas */}
+          {proposal.facility && proposal.proposalServices && proposal.proposalServices.length > 0 && (
+            <Card>
+              <h2 className="text-lg font-semibold text-white mb-4">Facility & Areas</h2>
+
+              {/* Facility header */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 text-white font-medium">
+                  <Building2 className="h-4 w-4 text-gray-400" />
+                  {proposal.facility.name}
+                </div>
+                {proposal.facility.address && (
+                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {typeof proposal.facility.address === 'string'
+                      ? proposal.facility.address
+                      : [
+                          proposal.facility.address.street,
+                          proposal.facility.address.city,
+                          proposal.facility.address.state,
+                          proposal.facility.address.zip,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Areas table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="pb-2 text-left text-xs font-medium text-gray-400 uppercase">Area</th>
+                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Hours</th>
+                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Frequency</th>
+                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Monthly</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {proposal.proposalServices.map((svc, idx) => (
+                      <tr key={idx} className="hover:bg-white/5">
+                        <td className="py-2 text-gray-300">{svc.serviceName}</td>
+                        <td className="py-2 text-right text-gray-300">
+                          {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
+                        </td>
+                        <td className="py-2 text-right">
+                          <span className="text-gray-300 capitalize">{svc.frequency?.replace(/_/g, ' ') || svc.serviceType}</span>
+                        </td>
+                        <td className="py-2 text-right font-medium text-white">
+                          {formatCurrency(svc.monthlyPrice)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-white/10">
+                      <td className="pt-2 font-medium text-white">Total</td>
+                      <td className="pt-2 text-right text-gray-300">
+                        {proposal.proposalServices.reduce((sum, s) => sum + (s.estimatedHours || 0), 0)} hrs
+                      </td>
+                      <td />
+                      <td className="pt-2 text-right font-semibold text-emerald">
+                        {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + s.monthlyPrice, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </Card>
           )}
