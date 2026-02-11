@@ -1,7 +1,9 @@
 import api from './api';
 import type {
   Account,
+  AccountActivity,
   CreateAccountInput,
+  CreateAccountActivityInput,
   UpdateAccountInput,
   PaginatedResponse,
 } from '../types/crm';
@@ -48,4 +50,20 @@ export async function restoreAccount(id: string): Promise<Account> {
 
 export async function deleteAccount(id: string): Promise<void> {
   await api.delete(`/accounts/${id}`);
+}
+
+export async function listAccountActivities(
+  accountId: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedResponse<AccountActivity>> {
+  const response = await api.get(`/accounts/${accountId}/activities`, { params });
+  return response.data;
+}
+
+export async function createAccountActivity(
+  accountId: string,
+  data: CreateAccountActivityInput
+): Promise<AccountActivity> {
+  const response = await api.post(`/accounts/${accountId}/activities`, data);
+  return response.data.data;
 }

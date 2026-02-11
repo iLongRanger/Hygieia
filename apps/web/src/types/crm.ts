@@ -182,6 +182,25 @@ export interface Account {
   };
 }
 
+export type AccountActivityEntryType = 'note' | 'request' | 'complaint';
+
+export interface AccountActivity {
+  id: string;
+  entryType: AccountActivityEntryType;
+  note: string;
+  createdAt: string;
+  performedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+export interface CreateAccountActivityInput {
+  entryType?: AccountActivityEntryType;
+  note: string;
+}
+
 export interface CreateAccountInput {
   name: string;
   type: string;
