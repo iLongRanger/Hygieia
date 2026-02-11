@@ -2,7 +2,6 @@ import { prisma } from '../../lib/prisma';
 import { getDefaultPricingSettings, getPricingSettingsById } from '../pricingSettingsService';
 import type {
   FloorTypeMultipliers,
-  FrequencyMultipliers,
   ConditionMultipliers,
   TaskComplexityAddOns,
   TrafficMultipliers,
@@ -34,6 +33,7 @@ export interface PerHourAreaContext {
 
 export interface PerHourTaskContext {
   id: string;
+  cleaningFrequency: string;
   baseMinutes: number;
   perSqftMinutes: number;
   perUnitMinutes: number;
@@ -99,20 +99,26 @@ export async function calculatePerHourPricing(
     },
   });
 
-  const hourlyRate = Number(pricingSettings.hourlyRate);
-  const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
+  // Extract full cost settings (same as sqft strategy)
+  const laborCostPerHour = Number(pricingSettings.laborCostPerHour);
+  const laborBurdenPct = Number(pricingSettings.laborBurdenPercentage);
+  const insurancePct = Number(pricingSettings.insurancePercentage);
+  const adminOverheadPct = Number(pricingSettings.adminOverheadPercentage);
+  const equipmentPct = Number(pricingSettings.equipmentPercentage);
+  const supplyCostPct = Number(pricingSettings.supplyCostPercentage);
+  const supplyCostPerSqFt = pricingSettings.supplyCostPerSqFt ? Number(pricingSettings.supplyCostPerSqFt) : null;
+  const travelCostPerVisit = Number(pricingSettings.travelCostPerVisit);
+  const targetProfitMargin = Number(pricingSettings.targetProfitMargin);
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const trafficMultipliers = pricingSettings.trafficMultipliers as TrafficMultipliers;
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
-
-  const difficultyMultiplier = 1.0;
-
-  const buildingType = facility.buildingType || 'other';
-  const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
-  const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
   const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
+  const buildingType = facility.buildingType || 'other';
+  const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
+
+  // Group tasks by area
   const tasksByArea = new Map<string | null, typeof facilityTasks>();
   for (const task of facilityTasks) {
     const areaId = task.areaId ?? null;
@@ -144,6 +150,7 @@ export async function calculatePerHourPricing(
     };
   });
 
+  // Handle facility-wide tasks (not assigned to any area)
   const facilityWideTasks = tasksByArea.get(null) ?? [];
   if (facilityWideTasks.length > 0) {
     const totalSquareFeet = facility.areas.reduce((sum, area) => {
@@ -167,10 +174,16 @@ export async function calculatePerHourPricing(
     });
   }
 
+  // Calculate per-area costs with full overhead stack
   const areaBreakdowns: AreaCostBreakdown[] = [];
   let totalSquareFeet = 0;
-  let totalLaborHours = 0;
   let totalLaborCost = 0;
+  let totalLaborHours = 0;
+  let totalInsuranceCost = 0;
+  let totalAdminOverheadCost = 0;
+  let totalEquipmentCost = 0;
+  let totalSupplyCost = 0;
+  let highestMonthlyVisits = 0;
 
   for (const area of areaContexts) {
     const totalAreaSqFt = area.squareFeet * area.quantity;
@@ -183,32 +196,72 @@ export async function calculatePerHourPricing(
     const conditionMultiplier = conditionMultipliers[area.conditionLevel as keyof ConditionMultipliers] ?? 1.0;
     const trafficMultiplier = trafficMultipliers?.[area.trafficLevel as keyof TrafficMultipliers] ?? 1.0;
 
-    let totalMinutes = 0;
+    // Calculate monthly minutes per task using each task's own cleaning frequency
+    let areaMonthlyMinutes = 0;
+    let areaHighestMonthlyVisits = 0;
+
     for (const task of area.tasks) {
-      let taskMinutes = task.baseMinutes;
-      taskMinutes += task.perSqftMinutes * totalAreaSqFt;
-      taskMinutes += task.perUnitMinutes * totalUnitCount;
-      taskMinutes += task.perRoomMinutes * totalRoomCount;
+      let taskMinutesPerOccurrence = task.baseMinutes;
+      taskMinutesPerOccurrence += task.perSqftMinutes * totalAreaSqFt;
+      taskMinutesPerOccurrence += task.perUnitMinutes * totalUnitCount;
+      taskMinutesPerOccurrence += task.perRoomMinutes * totalRoomCount;
 
       for (const fixture of area.fixtures) {
         const minutesPerFixture = task.fixtureMinutes[fixture.fixtureTypeId] ?? 0;
-        taskMinutes += minutesPerFixture * (fixture.count * area.quantity);
+        taskMinutesPerOccurrence += minutesPerFixture * (fixture.count * area.quantity);
       }
 
-      totalMinutes += taskMinutes;
+      const taskMonthlyVisits = getMonthlyVisits(task.cleaningFrequency);
+      areaMonthlyMinutes += taskMinutesPerOccurrence * taskMonthlyVisits;
+
+      if (taskMonthlyVisits > areaHighestMonthlyVisits) {
+        areaHighestMonthlyVisits = taskMonthlyVisits;
+      }
     }
 
+    // Add fixture base minutes (minutesPerItem) at the highest task frequency
     const itemMinutes = area.fixtures.reduce((sum, fixture) => {
       return sum + fixture.minutesPerItem * (fixture.count * area.quantity);
     }, 0);
-    totalMinutes += itemMinutes;
+    areaMonthlyMinutes += itemMinutes * areaHighestMonthlyVisits;
 
-    const areaHours = totalMinutes / 60;
-    const laborCostBase = areaHours * hourlyRate;
-    const adjustedLaborCost = laborCostBase * floorMultiplier * conditionMultiplier * trafficMultiplier;
+    if (areaHighestMonthlyVisits > highestMonthlyVisits) {
+      highestMonthlyVisits = areaHighestMonthlyVisits;
+    }
 
-    totalLaborHours += areaHours;
-    totalLaborCost += adjustedLaborCost;
+    const areaMonthlyHours = areaMonthlyMinutes / 60;
+
+    // Apply multipliers to HOURS (not dollars) — industry-standard approach
+    const adjustedMonthlyHours = areaMonthlyHours * floorMultiplier * conditionMultiplier * trafficMultiplier;
+
+    // Cost stack (same as sqft strategy)
+    const laborCostBase = adjustedMonthlyHours * laborCostPerHour;
+    const laborBurden = laborCostBase * laborBurdenPct;
+    const areaLaborCost = laborCostBase + laborBurden;
+    const insuranceCost = areaLaborCost * insurancePct;
+    const adminOverheadCost = areaLaborCost * adminOverheadPct;
+    const equipmentCost = areaLaborCost * equipmentPct;
+
+    let supplyCost: number;
+    if (supplyCostPerSqFt !== null) {
+      supplyCost = totalAreaSqFt * supplyCostPerSqFt;
+    } else {
+      const laborPlusOverhead = areaLaborCost + insuranceCost + adminOverheadCost + equipmentCost;
+      supplyCost = laborPlusOverhead * supplyCostPct;
+    }
+
+    const areaMonthlyCost = areaLaborCost + insuranceCost + adminOverheadCost + equipmentCost + supplyCost;
+
+    // Accumulate totals
+    totalLaborHours += adjustedMonthlyHours;
+    totalLaborCost += areaLaborCost;
+    totalInsuranceCost += insuranceCost;
+    totalAdminOverheadCost += adminOverheadCost;
+    totalEquipmentCost += equipmentCost;
+    totalSupplyCost += supplyCost;
+
+    // Area monthly price with profit margin applied
+    const areaMonthlyPrice = areaMonthlyCost / (1 - targetProfitMargin);
 
     areaBreakdowns.push({
       areaId: area.id,
@@ -218,36 +271,40 @@ export async function calculatePerHourPricing(
       floorType: area.floorType,
       conditionLevel: area.conditionLevel,
       quantity: area.quantity,
-      laborHours: roundToTwo(areaHours),
+      laborHours: roundToTwo(adjustedMonthlyHours),
       laborCostBase: roundToTwo(laborCostBase),
-      laborBurden: 0,
-      totalLaborCost: roundToTwo(adjustedLaborCost),
-      insuranceCost: 0,
-      adminOverheadCost: 0,
-      equipmentCost: 0,
-      supplyCost: 0,
-      totalCostPerVisit: roundToTwo(adjustedLaborCost),
+      laborBurden: roundToTwo(laborBurden),
+      totalLaborCost: roundToTwo(areaLaborCost),
+      insuranceCost: roundToTwo(insuranceCost),
+      adminOverheadCost: roundToTwo(adminOverheadCost),
+      equipmentCost: roundToTwo(equipmentCost),
+      supplyCost: roundToTwo(supplyCost),
+      totalCostPerVisit: roundToTwo(areaHighestMonthlyVisits > 0 ? areaMonthlyCost / areaHighestMonthlyVisits : areaMonthlyCost),
       floorMultiplier,
       conditionMultiplier,
-      pricePerVisit: roundToTwo(adjustedLaborCost),
-      monthlyVisits: getMonthlyVisits(serviceFrequency),
-      monthlyPrice: roundToTwo(adjustedLaborCost * getMonthlyVisits(serviceFrequency)),
+      pricePerVisit: roundToTwo(areaHighestMonthlyVisits > 0 ? areaMonthlyPrice / areaHighestMonthlyVisits : areaMonthlyPrice),
+      monthlyVisits: areaHighestMonthlyVisits,
+      monthlyPrice: roundToTwo(areaMonthlyPrice),
     });
   }
 
-  let perVisitSubtotal = totalLaborCost * difficultyMultiplier;
-  perVisitSubtotal *= frequencyMultiplier;
+  // Add travel cost (flat per visit, not per area)
+  const totalMonthlyCost = totalLaborCost + totalInsuranceCost + totalAdminOverheadCost +
+    totalEquipmentCost + totalSupplyCost + (travelCostPerVisit * highestMonthlyVisits);
 
-  const taskComplexityAmount = perVisitSubtotal * taskAddOn;
-  let perVisitTotal = perVisitSubtotal + taskComplexityAmount;
+  const totalCostPerVisit = highestMonthlyVisits > 0
+    ? totalMonthlyCost / highestMonthlyVisits
+    : totalMonthlyCost;
 
-  const monthlyVisits = getMonthlyVisits(serviceFrequency);
-  let monthlyTotal = perVisitTotal * monthlyVisits;
+  // Apply profit margin: Final Price = Cost / (1 - Margin)
+  let subtotal = totalMonthlyCost / (1 - targetProfitMargin);
+  const profitAmount = subtotal - totalMonthlyCost;
 
-  if (workerCount > 1) {
-    monthlyTotal *= workerCount;
-  }
+  // Apply task complexity add-on
+  const taskComplexityAmount = subtotal * taskAddOn;
+  let monthlyTotal = subtotal + taskComplexityAmount;
 
+  // Apply minimum charge if needed
   const minimumApplied = monthlyTotal < minimumMonthlyCharge;
   if (minimumApplied) {
     monthlyTotal = minimumMonthlyCharge;
@@ -257,6 +314,10 @@ export async function calculatePerHourPricing(
   const subcontractorPercentage = options.subcontractorPercentageOverride ?? Number(pricingSettings.subcontractorPercentage ?? 0.60);
   const subcontractorPayout = roundToTwo(monthlyTotal * subcontractorPercentage);
   const companyRevenue = roundToTwo(monthlyTotal - subcontractorPayout);
+
+  // Use the highest monthly visits for the facility-level value
+  // (serviceFrequency is still passed through for backward compat / display)
+  const monthlyVisits = highestMonthlyVisits || getMonthlyVisits(serviceFrequency);
 
   return {
     facilityId: facility.id,
@@ -268,20 +329,20 @@ export async function calculatePerHourPricing(
     costBreakdown: {
       totalLaborCost: roundToTwo(totalLaborCost),
       totalLaborHours: roundToTwo(totalLaborHours),
-      totalInsuranceCost: 0,
-      totalAdminOverheadCost: 0,
-      totalEquipmentCost: 0,
-      totalTravelCost: 0,
-      totalSupplyCost: 0,
-      totalCostPerVisit: roundToTwo(perVisitTotal),
+      totalInsuranceCost: roundToTwo(totalInsuranceCost),
+      totalAdminOverheadCost: roundToTwo(totalAdminOverheadCost),
+      totalEquipmentCost: roundToTwo(totalEquipmentCost),
+      totalTravelCost: roundToTwo(travelCostPerVisit * highestMonthlyVisits),
+      totalSupplyCost: roundToTwo(totalSupplyCost),
+      totalCostPerVisit: roundToTwo(totalCostPerVisit),
     },
     monthlyVisits,
-    monthlyCostBeforeProfit: roundToTwo(perVisitTotal * monthlyVisits),
-    profitAmount: 0,
-    profitMarginApplied: 0,
+    monthlyCostBeforeProfit: roundToTwo(totalMonthlyCost),
+    profitAmount: roundToTwo(profitAmount),
+    profitMarginApplied: targetProfitMargin,
     taskComplexityAddOn: taskAddOn,
     taskComplexityAmount: roundToTwo(taskComplexityAmount),
-    subtotal: roundToTwo(perVisitTotal),
+    subtotal: roundToTwo(subtotal),
     monthlyTotal: roundToTwo(monthlyTotal),
     minimumApplied,
     subcontractorPercentage,
@@ -321,6 +382,7 @@ function buildPerHourTasks(tasks: any[]): PerHourTaskContext[] {
 
     return {
       id: task.id,
+      cleaningFrequency: task.cleaningFrequency || 'daily',
       baseMinutes: Number(baseMinutes) || 0,
       perSqftMinutes: Number(perSqftMinutes) || 0,
       perUnitMinutes: Number(perUnitMinutes) || 0,

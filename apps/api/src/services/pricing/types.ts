@@ -39,6 +39,14 @@ export interface PricingSettingsSnapshot {
   baseRatePerSqFt: number;
   minimumMonthlyCharge: number;
   hourlyRate?: number;
+  laborCostPerHour?: number;
+  laborBurdenPercentage?: number;
+  insurancePercentage?: number;
+  adminOverheadPercentage?: number;
+  equipmentPercentage?: number;
+  supplyCostPercentage?: number;
+  travelCostPerVisit?: number;
+  targetProfitMargin?: number;
   floorTypeMultipliers: Record<string, number>;
   frequencyMultipliers: Record<string, number>;
   conditionMultipliers: Record<string, number>;

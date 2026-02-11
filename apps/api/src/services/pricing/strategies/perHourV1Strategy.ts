@@ -50,6 +50,14 @@ export class PerHourV1Strategy implements PricingStrategy {
       baseRatePerSqFt: Number(pricingSettings.baseRatePerSqFt),
       minimumMonthlyCharge: Number(pricingSettings.minimumMonthlyCharge),
       hourlyRate: Number(pricingSettings.hourlyRate),
+      laborCostPerHour: Number(pricingSettings.laborCostPerHour),
+      laborBurdenPercentage: Number(pricingSettings.laborBurdenPercentage),
+      insurancePercentage: Number(pricingSettings.insurancePercentage),
+      adminOverheadPercentage: Number(pricingSettings.adminOverheadPercentage),
+      equipmentPercentage: Number(pricingSettings.equipmentPercentage),
+      supplyCostPercentage: Number(pricingSettings.supplyCostPercentage),
+      travelCostPerVisit: Number(pricingSettings.travelCostPerVisit),
+      targetProfitMargin: Number(pricingSettings.targetProfitMargin),
       floorTypeMultipliers: pricingSettings.floorTypeMultipliers as Record<string, number>,
       frequencyMultipliers: pricingSettings.frequencyMultipliers as Record<string, number>,
       conditionMultipliers: pricingSettings.conditionMultipliers as Record<string, number>,
@@ -105,7 +113,7 @@ export class PerHourV1Strategy implements PricingStrategy {
       );
     }
 
-    const totalAreaCost = pricing.areas.reduce((sum, area) => sum + area.totalLaborCost, 0);
+    const totalAreaCost = pricing.areas.reduce((sum, area) => sum + area.monthlyPrice, 0);
     const frequencyLabel = getFrequencyLabel(serviceFrequency);
 
     if (pricing.areas.length === 0) {
@@ -164,7 +172,7 @@ export class PerHourV1Strategy implements PricingStrategy {
       }
 
       const allTasks = areaTasks?.tasks.map((t) => t.name) || [];
-      const areaShare = totalAreaCost > 0 ? area.totalLaborCost / totalAreaCost : 0;
+      const areaShare = totalAreaCost > 0 ? area.monthlyPrice / totalAreaCost : 0;
       const areaMonthlyPrice = roundToTwo(pricing.monthlyTotal * areaShare);
 
       return {
