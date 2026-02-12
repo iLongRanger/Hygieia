@@ -69,6 +69,7 @@ interface ProposalForPdf {
     description?: string | null;
     includedTasks?: string[] | any;
   }>;
+  pricingSnapshot?: any | null;
 }
 
 export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buffer> {
@@ -264,6 +265,242 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         margin: [0, 0, 0, 0] as [number, number, number, number],
       });
     }
+  }
+
+  // Pricing Breakdown (from pricingSnapshot)
+  if (proposal.pricingSnapshot) {
+    const snap = proposal.pricingSnapshot;
+    const isHourly = snap.pricingType === 'hourly' || snap.strategyKey === 'per_hour_v1';
+
+    content.push({ text: 'Pricing Breakdown', style: 'sectionHeader' });
+
+    // Strategy & Rates header row
+    const strategyInfoCols: any[] = [
+      {
+        stack: [
+          { text: 'Strategy', fontSize: 8, color: COLORS.lightText },
+          { text: snap.pricingPlanName || (isHourly ? 'Per Hour v1' : 'Per Sq Ft v1'), fontSize: 10, bold: true, color: COLORS.text },
+        ],
+        width: '*',
+      },
+    ];
+
+    if (isHourly && snap.settingsSnapshot?.hourlyRate) {
+      strategyInfoCols.push({
+        stack: [
+          { text: 'Hourly Rate', fontSize: 8, color: COLORS.lightText },
+          { text: formatCurrency(snap.settingsSnapshot.hourlyRate) + '/hr', fontSize: 10, bold: true, color: COLORS.text },
+        ],
+        width: '*',
+      });
+    }
+
+    if (snap.settingsSnapshot?.targetProfitMargin != null) {
+      strategyInfoCols.push({
+        stack: [
+          { text: 'Profit Margin', fontSize: 8, color: COLORS.lightText },
+          { text: `${(Number(snap.settingsSnapshot.targetProfitMargin) * 100).toFixed(1)}%`, fontSize: 10, bold: true, color: COLORS.text },
+        ],
+        width: '*',
+      });
+    } else if (snap.profitMarginApplied != null) {
+      strategyInfoCols.push({
+        stack: [
+          { text: 'Profit Margin', fontSize: 8, color: COLORS.lightText },
+          { text: `${(Number(snap.profitMarginApplied) * 100).toFixed(1)}%`, fontSize: 10, bold: true, color: COLORS.text },
+        ],
+        width: '*',
+      });
+    }
+
+    content.push({
+      columns: strategyInfoCols,
+      margin: [0, 5, 0, 10] as [number, number, number, number],
+    });
+
+    // Cost Stack table (hourly only)
+    if (isHourly && snap.settingsSnapshot?.laborCostPerHour) {
+      const ss = snap.settingsSnapshot;
+      const laborRate = Number(ss.laborCostPerHour);
+
+      const costRows: TableCell[][] = [
+        [
+          { text: 'Component', style: 'tableHeader' },
+          { text: 'Rate', style: 'tableHeader', alignment: 'right' as const },
+        ],
+        [
+          { text: 'Labor Cost', fontSize: 9 },
+          { text: formatCurrency(laborRate) + '/hr', alignment: 'right' as const, fontSize: 9 },
+        ],
+      ];
+
+      const components: [string, string, number][] = [
+        ['Labor Burden', 'laborBurdenPercentage', ss.laborBurdenPercentage],
+        ['Insurance', 'insurancePercentage', ss.insurancePercentage],
+        ['Admin Overhead', 'adminOverheadPercentage', ss.adminOverheadPercentage],
+        ['Equipment', 'equipmentPercentage', ss.equipmentPercentage],
+        ['Supplies', 'supplyCostPercentage', ss.supplyCostPercentage],
+      ];
+
+      let loadedRate = laborRate;
+
+      for (const [label, , pct] of components) {
+        if (pct && Number(pct) > 0) {
+          const amount = laborRate * Number(pct);
+          loadedRate += amount;
+          costRows.push([
+            { text: `${label} (${(Number(pct) * 100).toFixed(0)}%)`, fontSize: 9 },
+            { text: formatCurrency(amount) + '/hr', alignment: 'right' as const, fontSize: 9 },
+          ]);
+        }
+      }
+
+      if (ss.travelCostPerVisit && Number(ss.travelCostPerVisit) > 0) {
+        costRows.push([
+          { text: 'Travel (per visit)', fontSize: 9 },
+          { text: formatCurrency(ss.travelCostPerVisit), alignment: 'right' as const, fontSize: 9 },
+        ]);
+      }
+
+      // Loaded Rate total row
+      costRows.push([
+        { text: 'Loaded Rate', fontSize: 9, bold: true },
+        { text: formatCurrency(loadedRate) + '/hr', alignment: 'right' as const, fontSize: 9, bold: true },
+      ]);
+
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: ['*', 100],
+          body: costRows,
+        },
+        layout: {
+          hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+          vLineWidth: () => 0,
+          hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 5,
+          paddingBottom: () => 5,
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
+        },
+        margin: [0, 0, 0, 15] as [number, number, number, number],
+      });
+    }
+
+    // Sqft strategy info
+    if (!isHourly && snap.settingsSnapshot) {
+      const ss = snap.settingsSnapshot;
+      const infoRows: TableCell[][] = [
+        [
+          { text: 'Parameter', style: 'tableHeader' },
+          { text: 'Value', style: 'tableHeader', alignment: 'right' as const },
+        ],
+      ];
+
+      if (ss.baseRatePerSqFt != null) {
+        infoRows.push([
+          { text: 'Base Rate per Sq Ft', fontSize: 9 },
+          { text: formatCurrency(ss.baseRatePerSqFt), alignment: 'right' as const, fontSize: 9 },
+        ]);
+      }
+      if (ss.minimumMonthlyCharge != null && Number(ss.minimumMonthlyCharge) > 0) {
+        infoRows.push([
+          { text: 'Minimum Monthly Charge', fontSize: 9 },
+          { text: formatCurrency(ss.minimumMonthlyCharge), alignment: 'right' as const, fontSize: 9 },
+        ]);
+      }
+
+      // Show key multipliers if present
+      if (ss.floorTypeMultipliers && typeof ss.floorTypeMultipliers === 'object') {
+        for (const [type, mult] of Object.entries(ss.floorTypeMultipliers)) {
+          if (Number(mult) !== 1) {
+            infoRows.push([
+              { text: `Floor Type: ${type}`, fontSize: 9 },
+              { text: `${Number(mult).toFixed(2)}x`, alignment: 'right' as const, fontSize: 9 },
+            ]);
+          }
+        }
+      }
+
+      if (infoRows.length > 1) {
+        content.push({
+          table: {
+            headerRows: 1,
+            widths: ['*', 100],
+            body: infoRows,
+          },
+          layout: {
+            hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+            vLineWidth: () => 0,
+            hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
+            paddingLeft: () => 8,
+            paddingRight: () => 8,
+            paddingTop: () => 5,
+            paddingBottom: () => 5,
+            fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
+          },
+          margin: [0, 0, 0, 15] as [number, number, number, number],
+        });
+      }
+    }
+  }
+
+  // Areas Summary
+  if (proposal.proposalServices.length > 0) {
+    content.push({ text: 'Areas Summary', style: 'sectionHeader' });
+
+    const areasBody: TableCell[][] = [
+      [
+        { text: 'Area', style: 'tableHeader' },
+        { text: 'Hours', style: 'tableHeader', alignment: 'right' as const },
+        { text: 'Frequency', style: 'tableHeader' },
+        { text: 'Monthly Price', style: 'tableHeader', alignment: 'right' as const },
+      ],
+    ];
+
+    let totalHours = 0;
+    let totalMonthly = 0;
+
+    for (const service of proposal.proposalServices) {
+      const hours = service.estimatedHours ? Number(service.estimatedHours) : 0;
+      totalHours += hours;
+      totalMonthly += Number(service.monthlyPrice);
+
+      areasBody.push([
+        { text: service.serviceName, fontSize: 9 },
+        { text: hours > 0 ? `${hours} hrs` : '-', alignment: 'right' as const, fontSize: 9 },
+        { text: service.frequency.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), fontSize: 9 },
+        { text: formatCurrency(service.monthlyPrice), alignment: 'right' as const, fontSize: 9 },
+      ]);
+    }
+
+    // Total row
+    areasBody.push([
+      { text: 'Total', bold: true, fontSize: 9 },
+      { text: totalHours > 0 ? `${totalHours} hrs` : '', alignment: 'right' as const, bold: true, fontSize: 9 },
+      { text: '', fontSize: 9 },
+      { text: formatCurrency(totalMonthly), alignment: 'right' as const, bold: true, fontSize: 9 },
+    ]);
+
+    content.push({
+      table: {
+        headerRows: 1,
+        widths: ['*', 60, 80, 90],
+        body: areasBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length - 1 ? COLORS.accent : COLORS.border),
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+        fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
+    });
   }
 
   // Line Items Table
