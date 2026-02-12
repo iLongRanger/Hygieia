@@ -12,12 +12,16 @@ const publicContractSelect = {
   endDate: true,
   serviceFrequency: true,
   monthlyValue: true,
+  totalValue: true,
   billingCycle: true,
   paymentTerms: true,
   termsAndConditions: true,
+  specialInstructions: true,
   signedByName: true,
+  signedByEmail: true,
   signedDate: true,
   sentAt: true,
+  createdAt: true,
   account: {
     select: {
       name: true,
@@ -27,6 +31,12 @@ const publicContractSelect = {
     select: {
       name: true,
       address: true,
+    },
+  },
+  createdByUser: {
+    select: {
+      fullName: true,
+      email: true,
     },
   },
 } as const;
