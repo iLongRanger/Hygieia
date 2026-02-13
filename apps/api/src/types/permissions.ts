@@ -49,18 +49,6 @@ export const PERMISSIONS = {
   CONTRACTS_READ: 'contracts_read',
   CONTRACTS_WRITE: 'contracts_write',
   CONTRACTS_ADMIN: 'contracts_admin',
-  JOBS_READ: 'jobs_read',
-  JOBS_WRITE: 'jobs_write',
-  JOBS_ADMIN: 'jobs_admin',
-  INSPECTIONS_READ: 'inspections_read',
-  INSPECTIONS_WRITE: 'inspections_write',
-  INSPECTIONS_ADMIN: 'inspections_admin',
-  TIME_TRACKING_READ: 'time_tracking_read',
-  TIME_TRACKING_WRITE: 'time_tracking_write',
-  TIME_TRACKING_APPROVE: 'time_tracking_approve',
-  INVOICES_READ: 'invoices_read',
-  INVOICES_WRITE: 'invoices_write',
-  INVOICES_ADMIN: 'invoices_admin',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

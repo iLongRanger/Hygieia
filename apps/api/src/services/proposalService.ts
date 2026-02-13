@@ -354,7 +354,7 @@ export async function createProposal(input: ProposalCreateInput) {
       createdByUserId: input.createdByUserId,
       // Pricing plan fields
       pricingPlanId: pricingPlan.id,
-      pricingSnapshot: input.pricingSnapshot ? (input.pricingSnapshot as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+      pricingSnapshot: input.pricingSnapshot ?? Prisma.JsonNull,
       pricingLocked: false,
       proposalItems: {
         create: items.map((item, index) => ({
@@ -407,7 +407,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     updateData.pricingSnapshot = Prisma.JsonNull;
   }
   if (input.pricingSnapshot !== undefined) {
-    updateData.pricingSnapshot = input.pricingSnapshot ? (input.pricingSnapshot as unknown as Prisma.InputJsonValue) : Prisma.JsonNull;
+    updateData.pricingSnapshot = input.pricingSnapshot ?? Prisma.JsonNull;
   }
 
   // If items or services are being updated, recalculate totals
@@ -815,7 +815,7 @@ export async function recalculateProposalPricing(
       taxAmount: Number(taxAmount.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
       pricingPlanId: pricing.settingsSnapshot.pricingPlanId,
-      pricingSnapshot: pricing.settingsSnapshot as unknown as Prisma.InputJsonValue,
+      pricingSnapshot: pricing.settingsSnapshot,
       pricingLocked: options?.lockAfterRecalculation ?? false,
       pricingLockedAt: options?.lockAfterRecalculation ? new Date() : null,
       // Replace all services with new calculated ones

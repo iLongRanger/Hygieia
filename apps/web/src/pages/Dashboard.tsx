@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
 import {
   DollarSign,
@@ -8,19 +7,10 @@ import {
   Send,
   Building2,
   Calendar,
-  Download,
-  Briefcase,
-  ClipboardCheck,
-  Timer,
-  Receipt,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../stores/authStore';
-import {
-  getDashboardStats,
-  exportDashboardCsv,
-} from '../lib/dashboard';
-import type { DashboardStats, TimePeriod, ExportType } from '../lib/dashboard';
+import { getDashboardStats } from '../lib/dashboard';
+import type { DashboardStats, TimePeriod } from '../lib/dashboard';
 import StatCard from '../components/dashboard/StatCard';
 import TimePeriodSelector from '../components/dashboard/TimePeriodSelector';
 import LeadFunnelChart from '../components/dashboard/LeadFunnelChart';
@@ -50,34 +40,19 @@ const SkeletonChart = () => (
   </div>
 );
 
-const EXPORT_OPTIONS: { value: ExportType; label: string }[] = [
-  { value: 'leads', label: 'Leads' },
-  { value: 'accounts', label: 'Accounts' },
-  { value: 'proposals', label: 'Proposals' },
-  { value: 'contracts', label: 'Contracts' },
-];
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [period, setPeriod] = useState<TimePeriod>('month');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
       setLoading(true);
       try {
-        const params =
-          period === 'custom' && dateFrom && dateTo
-            ? { dateFrom, dateTo }
-            : { period };
-        const data = await getDashboardStats(params);
+        const data = await getDashboardStats(period);
         if (!cancelled) setStats(data);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -89,33 +64,7 @@ const Dashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [period, dateFrom, dateTo]);
-
-  const handlePeriodChange = (newPeriod: TimePeriod) => {
-    setPeriod(newPeriod);
-    if (newPeriod !== 'custom') {
-      setDateFrom('');
-      setDateTo('');
-    }
-  };
-
-  const handleDateRangeChange = (from: string, to: string) => {
-    setDateFrom(from);
-    setDateTo(to);
-  };
-
-  const handleExport = async (type: ExportType) => {
-    setShowExportMenu(false);
-    setExporting(true);
-    try {
-      await exportDashboardCsv(type);
-      toast.success(`${type} exported successfully`);
-    } catch {
-      toast.error('Export failed');
-    } finally {
-      setExporting(false);
-    }
-  };
+  }, [period]);
 
   const groupedAppointments = useMemo(() => {
     if (!stats) return [];
@@ -144,13 +93,7 @@ const Dashboard = () => {
     val >= 1000 ? `$${(val / 1000).toFixed(1)}k` : `$${val.toLocaleString()}`;
 
   const periodLabel =
-    period === 'week'
-      ? 'this week'
-      : period === 'month'
-        ? 'this month'
-        : period === 'quarter'
-          ? 'this quarter'
-          : 'selected period';
+    period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'this quarter';
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -164,39 +107,7 @@ const Dashboard = () => {
             Here's what's happening with your cleaning operations.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <TimePeriodSelector
-            value={period}
-            onChange={handlePeriodChange}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onDateRangeChange={handleDateRangeChange}
-          />
-          <div className="relative">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              disabled={exporting}
-            >
-              <Download className="mr-1.5 h-4 w-4" />
-              Export
-            </Button>
-            {showExportMenu && (
-              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg dark:border-surface-700 dark:bg-surface-800">
-                {EXPORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleExport(opt.value)}
-                    className="block w-full px-4 py-2 text-left text-sm text-surface-700 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <TimePeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       {/* KPI Row */}
@@ -215,8 +126,6 @@ const Dashboard = () => {
             icon={DollarSign}
             color="text-success-600 dark:text-success-400"
             bg="bg-success-100 dark:bg-success-900/30"
-            change={stats.comparison.mrrChange}
-            onClick={() => navigate('/contracts?status=active')}
           />
           <StatCard
             label="Pipeline Value"
@@ -225,8 +134,6 @@ const Dashboard = () => {
             icon={TrendingUp}
             color="text-blue-600 dark:text-blue-400"
             bg="bg-blue-100 dark:bg-blue-900/30"
-            change={stats.comparison.newLeadsChange}
-            onClick={() => navigate('/leads')}
           />
           <StatCard
             label="Proposals Sent"
@@ -235,8 +142,6 @@ const Dashboard = () => {
             icon={Send}
             color="text-purple-600 dark:text-purple-400"
             bg="bg-purple-100 dark:bg-purple-900/30"
-            change={stats.comparison.proposalsSentChange}
-            onClick={() => navigate('/proposals')}
           />
           <StatCard
             label="Active Accounts"
@@ -245,8 +150,6 @@ const Dashboard = () => {
             icon={Building2}
             color="text-primary-600 dark:text-primary-400"
             bg="bg-primary-100 dark:bg-primary-900/30"
-            change={stats.comparison.newAccountsChange}
-            onClick={() => navigate('/accounts')}
           />
         </div>
       ) : null}
@@ -280,48 +183,6 @@ const Dashboard = () => {
       {/* Expiring Contracts */}
       {!loading && stats && stats.expiringContracts.length > 0 && (
         <ExpiringContractsTable data={stats.expiringContracts} />
-      )}
-
-      {/* Operations KPIs */}
-      {!loading && stats && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
-          <StatCard
-            label="Jobs Today"
-            value={stats.jobsScheduledToday}
-            subtitle={`${stats.jobsCompletedInPeriod} completed ${periodLabel}`}
-            icon={Briefcase}
-            color="text-indigo-600 dark:text-indigo-400"
-            bg="bg-indigo-100 dark:bg-indigo-900/30"
-            onClick={() => navigate('/jobs')}
-          />
-          <StatCard
-            label="Inspection Score"
-            value={stats.inspectionAvgScore != null ? `${stats.inspectionAvgScore}%` : '—'}
-            subtitle={`${stats.inspectionsCompletedInPeriod} completed ${periodLabel}`}
-            icon={ClipboardCheck}
-            color="text-teal-600 dark:text-teal-400"
-            bg="bg-teal-100 dark:bg-teal-900/30"
-            onClick={() => navigate('/inspections')}
-          />
-          <StatCard
-            label="Active Clock-ins"
-            value={stats.activeClockIns}
-            subtitle={`${stats.pendingTimesheets} pending timesheet${stats.pendingTimesheets !== 1 ? 's' : ''}`}
-            icon={Timer}
-            color="text-amber-600 dark:text-amber-400"
-            bg="bg-amber-100 dark:bg-amber-900/30"
-            onClick={() => navigate('/time-tracking')}
-          />
-          <StatCard
-            label="Outstanding AR"
-            value={formatCurrency(stats.outstandingInvoiceAmount)}
-            subtitle={`${stats.overdueInvoiceCount} overdue`}
-            icon={Receipt}
-            color="text-rose-600 dark:text-rose-400"
-            bg="bg-rose-100 dark:bg-rose-900/30"
-            onClick={() => navigate('/invoices')}
-          />
-        </div>
       )}
 
       {/* Operations Section */}

@@ -32,16 +32,6 @@ import ContractForm from './pages/contracts/ContractForm';
 import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
 import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
-import JobsList from './pages/jobs/JobsList';
-import JobDetail from './pages/jobs/JobDetail';
-import InspectionsList from './pages/inspections/InspectionsList';
-import InspectionDetail from './pages/inspections/InspectionDetail';
-import InspectionTemplatesPage from './pages/inspections/InspectionTemplatesPage';
-import TimeTrackingPage from './pages/timeTracking/TimeTrackingPage';
-import TimesheetsPage from './pages/timeTracking/TimesheetsPage';
-import InvoicesList from './pages/invoices/InvoicesList';
-import InvoiceDetail from './pages/invoices/InvoiceDetail';
-import NotificationsPage from './pages/notifications/NotificationsPage';
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
 import Unauthorized from './pages/Unauthorized';
@@ -123,16 +113,6 @@ function App() {
             <Route path="/contracts/new" element={<ContractForm />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
             <Route path="/contracts/:id/edit" element={<ContractForm />} />
-            <Route path="/jobs" element={<JobsList />} />
-            <Route path="/jobs/:id" element={<JobDetail />} />
-            <Route path="/inspections" element={<InspectionsList />} />
-            <Route path="/inspections/:id" element={<InspectionDetail />} />
-            <Route path="/inspection-templates" element={<InspectionTemplatesPage />} />
-            <Route path="/time-tracking" element={<TimeTrackingPage />} />
-            <Route path="/timesheets" element={<TimesheetsPage />} />
-            <Route path="/invoices" element={<InvoicesList />} />
-            <Route path="/invoices/:id" element={<InvoiceDetail />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/teams" element={<TeamsList />} />
             <Route
               path="/settings/global"
