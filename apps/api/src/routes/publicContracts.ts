@@ -14,6 +14,7 @@ import logger from '../lib/logger';
 import { publicSignContractSchema } from '../schemas/publicContract';
 import { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
 
@@ -125,14 +126,11 @@ router.post(
             recipientUserIds.add(admin.id);
           }
 
-          await prisma.notification.createMany({
-            data: [...recipientUserIds].map((userId) => ({
-              userId,
-              type: 'contract_signed',
-              title: `Contract ${fullContract.contractNumber} signed`,
-              body: `${fullContract.account.name} has signed contract "${fullContract.title}".`,
-              metadata: { contractId: contract.id },
-            })),
+          await createBulkNotifications([...recipientUserIds], {
+            type: 'contract_signed',
+            title: `Contract ${fullContract.contractNumber} signed`,
+            body: `${fullContract.account.name} has signed contract "${fullContract.title}".`,
+            metadata: { contractId: contract.id },
           });
 
           const branding = await getGlobalSettings().catch(() => getDefaultBranding());

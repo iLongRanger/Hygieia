@@ -17,6 +17,7 @@ import logger from '../lib/logger';
 import { publicAcceptSchema, publicRejectSchema } from '../schemas/publicProposal';
 import { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
 
@@ -126,15 +127,11 @@ router.post(
             recipientUserIds.add(admin.id);
           }
 
-          // Create in-app notifications
-          await prisma.notification.createMany({
-            data: [...recipientUserIds].map((userId) => ({
-              userId,
-              type: 'proposal_accepted',
-              title: `Proposal ${fullProposal.proposalNumber} accepted`,
-              body: `${fullProposal.account.name} has accepted proposal "${fullProposal.title}".`,
-              metadata: { proposalId: proposal.id },
-            })),
+          await createBulkNotifications([...recipientUserIds], {
+            type: 'proposal_accepted',
+            title: `Proposal ${fullProposal.proposalNumber} accepted`,
+            body: `${fullProposal.account.name} has accepted proposal "${fullProposal.title}".`,
+            metadata: { proposalId: proposal.id },
           });
 
           // Send email notifications
@@ -207,15 +204,11 @@ router.post(
             recipientUserIds.add(admin.id);
           }
 
-          // Create in-app notifications
-          await prisma.notification.createMany({
-            data: [...recipientUserIds].map((userId) => ({
-              userId,
-              type: 'proposal_rejected',
-              title: `Proposal ${fullProposal.proposalNumber} rejected`,
-              body: `${fullProposal.account.name} has rejected proposal "${fullProposal.title}".`,
-              metadata: { proposalId: proposal.id },
-            })),
+          await createBulkNotifications([...recipientUserIds], {
+            type: 'proposal_rejected',
+            title: `Proposal ${fullProposal.proposalNumber} rejected`,
+            body: `${fullProposal.account.name} has rejected proposal "${fullProposal.title}".`,
+            metadata: { proposalId: proposal.id },
           });
 
           // Send email notifications

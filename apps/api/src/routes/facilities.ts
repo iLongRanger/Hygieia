@@ -288,7 +288,7 @@ router.get(
           workerCount,
           subcontractorPercentageOverride,
         },
-        { pricingPlanId, accountId: existing.accountId }
+        { pricingPlanId, accountId: existing.account.id }
       );
 
       // Generate suggested services
@@ -299,7 +299,7 @@ router.get(
           workerCount,
           subcontractorPercentageOverride,
         },
-        { pricingPlanId, accountId: existing.accountId }
+        { pricingPlanId, accountId: existing.account.id }
       );
 
       res.json({

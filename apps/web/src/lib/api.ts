@@ -1,8 +1,15 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+function getApiBaseUrl(): string {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+}
+
+const apiBaseUrl = getApiBaseUrl();
+
 // Create axios instance with security configurations
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1',
+  baseURL: apiBaseUrl,
   timeout: 30000, // 30 second timeout
   headers: {
     'Content-Type': 'application/json',
@@ -66,7 +73,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1'}/auth/refresh`,
+      `${apiBaseUrl}/auth/refresh`,
       { refreshToken },
       { timeout: 10000 }
     );

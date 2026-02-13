@@ -123,8 +123,8 @@ const contractSelect = {
           isPrimary: true,
         },
         orderBy: [
-          { isPrimary: 'desc' },
-          { createdAt: 'asc' },
+          { isPrimary: 'desc' as const },
+          { createdAt: 'asc' as const },
         ],
       },
     },
