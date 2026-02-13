@@ -88,7 +88,7 @@ const TaskTemplateDetail = () => {
           name: data.name,
           description: data.description,
           cleaningType: data.cleaningType,
-          areaTypeId: data.areaTypeId,
+          areaTypeId: data.areaType?.id || null,
           estimatedMinutes: data.estimatedMinutes,
           baseMinutes: data.baseMinutes ? Number(data.baseMinutes) : 0,
           perSqftMinutes: data.perSqftMinutes ? Number(data.perSqftMinutes) : 0,

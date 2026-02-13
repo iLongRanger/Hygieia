@@ -1,5 +1,6 @@
 import type { User } from '../types/user';
-import type { Lead, Account, Contact, Facility, LeadSource } from '../types/crm';
+import type { Lead, Account, Contact, LeadSource } from '../types/crm';
+import type { Facility } from '../types/facility';
 
 // User Mocks
 export const mockUser = (overrides?: Partial<User>): User => ({
@@ -9,10 +10,12 @@ export const mockUser = (overrides?: Partial<User>): User => ({
   role: 'admin',
   status: 'active',
   phone: null,
+  avatarUrl: null,
+  lastLoginAt: null,
+  roles: [],
   preferences: {},
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
-  archivedAt: null,
   ...overrides,
 });
 
@@ -29,15 +32,25 @@ export const mockLead = (overrides?: Partial<Lead>): Lead => ({
   companyName: 'Acme Corp',
   primaryEmail: 'john@acme.com',
   primaryPhone: '(555) 123-4567',
-  leadSourceId: 'source-1',
   leadSource: mockLeadSource(),
   status: 'lead',
   estimatedValue: '10000',
   probability: null,
   expectedCloseDate: null,
-  assignedToUserId: null,
+  secondaryEmail: null,
+  secondaryPhone: null,
+  address: null,
   assignedToUser: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  convertedToAccountId: null,
+  convertedAt: null,
+  convertedToAccount: null,
+  convertedByUser: null,
   notes: null,
+  lostReason: null,
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
   archivedAt: null,
@@ -52,6 +65,9 @@ export const mockLeadSource = (overrides?: Partial<LeadSource>): LeadSource => (
   isActive: true,
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
+  _count: {
+    leads: 0,
+  },
   ...overrides,
 });
 
@@ -68,18 +84,26 @@ export const mockAccount = (overrides?: Partial<Account>): Account => ({
     street: '123 Main St',
     city: 'Springfield',
     state: 'IL',
-    zip: '62701',
+    postalCode: '62701',
     country: 'USA',
   },
   paymentTerms: 'NET30',
   creditLimit: '50000',
-  accountManagerId: 'user-1',
   accountManager: mockUser(),
   qboCustomerId: null,
+  taxId: null,
   notes: null,
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
   archivedAt: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  _count: {
+    contacts: 0,
+    facilities: 0,
+  },
   ...overrides,
 });
 
@@ -100,41 +124,44 @@ export const mockContact = (overrides?: Partial<Contact>): Contact => ({
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
   archivedAt: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
   ...overrides,
 });
 
 // Facility Mocks
 export const mockFacility = (overrides?: Partial<Facility>): Facility => ({
   id: 'facility-1',
-  accountId: 'account-1',
   account: mockAccount(),
   name: 'Main Office',
   address: {
     street: '123 Business Blvd',
     city: 'Springfield',
     state: 'IL',
-    zip: '62701',
+    postalCode: '62701',
     country: 'USA',
   },
   buildingType: 'office',
-  squareFootage: 50000,
-  numberOfFloors: 5,
-  operatingHours: {
-    monday: '8:00 AM - 6:00 PM',
-    tuesday: '8:00 AM - 6:00 PM',
-    wednesday: '8:00 AM - 6:00 PM',
-    thursday: '8:00 AM - 6:00 PM',
-    friday: '8:00 AM - 6:00 PM',
-    saturday: 'Closed',
-    sunday: 'Closed',
-  },
+  squareFeet: '50000',
   accessInstructions: null,
-  specialRequirements: [],
+  parkingInfo: null,
+  specialRequirements: null,
   status: 'active',
   notes: null,
   createdAt: new Date('2024-01-01').toISOString(),
   updatedAt: new Date('2024-01-01').toISOString(),
   archivedAt: null,
+  facilityManager: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  _count: {
+    areas: 0,
+    facilityTasks: 0,
+  },
   ...overrides,
 });
 

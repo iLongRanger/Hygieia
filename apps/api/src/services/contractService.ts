@@ -123,8 +123,8 @@ const contractSelect = {
           isPrimary: true,
         },
         orderBy: [
-          { isPrimary: 'desc' },
-          { createdAt: 'asc' },
+          { isPrimary: 'desc' as const },
+          { createdAt: 'asc' as const },
         ],
       },
     },
@@ -180,7 +180,7 @@ const contractSelect = {
       email: true,
     },
   },
-};
+} satisfies Prisma.ContractSelect;
 
 /**
  * Generate the next contract number in the format: CONT-YYYYMM-XXXX

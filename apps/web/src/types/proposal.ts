@@ -69,10 +69,13 @@ export interface Proposal {
   rejectedAt?: string | null;
   rejectionReason?: string | null;
   notes?: string | null;
+  termsAndConditions?: string | null;
 
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
+  pricingStrategyKey?: string | null;
+  pricingStrategyVersion?: string | null;
   // Pricing plan fields
   pricingPlanId?: string | null;
   pricingSnapshot?: any | null;
