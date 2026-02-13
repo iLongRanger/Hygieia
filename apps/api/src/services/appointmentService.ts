@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import { createNotification } from './notificationService';
 
 export interface AppointmentListParams {
   leadId?: string;
@@ -194,7 +195,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
     }
   }
 
-  return prisma.$transaction(async (tx) => {
+  const appointment = await prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.create({
       data: {
         leadId: input.leadId ?? null,
@@ -219,24 +220,24 @@ export async function createAppointment(input: AppointmentCreateInput) {
       });
     }
 
-    await tx.notification.create({
-      data: {
-        userId: input.assignedToUserId,
-        type: 'appointment_assigned',
-        title: 'New appointment assigned',
-        body: 'You have been assigned a new appointment.',
-        metadata: {
-          appointmentId: appointment.id,
-          leadId: appointment.lead?.id,
-          accountId: appointment.account?.id,
-          type: appointment.type,
-          scheduledStart: appointment.scheduledStart,
-        },
-      },
-    });
-
     return appointment;
   });
+
+  await createNotification({
+    userId: input.assignedToUserId,
+    type: 'appointment_assigned',
+    title: 'New appointment assigned',
+    body: 'You have been assigned a new appointment.',
+    metadata: {
+      appointmentId: appointment.id,
+      leadId: appointment.lead?.id,
+      accountId: appointment.account?.id,
+      type: appointment.type,
+      scheduledStart: appointment.scheduledStart.toISOString(),
+    },
+  });
+
+  return appointment;
 }
 
 export async function updateAppointment(id: string, input: AppointmentUpdateInput) {
@@ -287,7 +288,7 @@ export async function rescheduleAppointment(
     throw new BadRequestError('Cannot reschedule a completed appointment');
   }
 
-  return prisma.$transaction(async (tx) => {
+  const appointment = await prisma.$transaction(async (tx) => {
     await tx.appointment.update({
       where: { id },
       data: { status: 'rescheduled' },
@@ -311,24 +312,24 @@ export async function rescheduleAppointment(
       select: appointmentSelect,
     });
 
-    await tx.notification.create({
-      data: {
-        userId: existing.assignedToUserId,
-        type: 'appointment_rescheduled',
-        title: 'Appointment rescheduled',
-        body: 'An assigned appointment has been rescheduled.',
-        metadata: {
-          appointmentId: appointment.id,
-          leadId: appointment.lead?.id,
-          accountId: appointment.account?.id,
-          type: appointment.type,
-          scheduledStart: appointment.scheduledStart,
-        },
-      },
-    });
-
     return appointment;
   });
+
+  await createNotification({
+    userId: existing.assignedToUserId,
+    type: 'appointment_rescheduled',
+    title: 'Appointment rescheduled',
+    body: 'An assigned appointment has been rescheduled.',
+    metadata: {
+      appointmentId: appointment.id,
+      leadId: appointment.lead?.id,
+      accountId: appointment.account?.id,
+      type: appointment.type,
+      scheduledStart: appointment.scheduledStart.toISOString(),
+    },
+  });
+
+  return appointment;
 }
 
 export async function completeAppointment(
@@ -414,7 +415,7 @@ export async function completeAppointment(
 
     if (appointment.type === 'walk_through') {
       await tx.lead.update({
-        where: { id: appointment.leadId },
+        where: { id: appointment.leadId! },
         data: { status: 'walk_through_completed' },
       });
     }

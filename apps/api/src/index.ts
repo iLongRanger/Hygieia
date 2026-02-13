@@ -1,6 +1,7 @@
 import './env.js';
 
 import express, { Application } from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -35,6 +36,7 @@ import teamsRoutes from './routes/teams';
 import globalSettingsRoutes from './routes/globalSettings';
 import publicProposalsRoutes from './routes/publicProposals';
 import publicContractsRoutes from './routes/publicContracts';
+import { initializeRealtime } from './lib/realtime';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -101,7 +103,10 @@ app.use('/api/v1/public/contracts', publicContractsRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+const httpServer = http.createServer(app);
+initializeRealtime(httpServer);
+
+httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);
 });
 

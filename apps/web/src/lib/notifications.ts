@@ -9,7 +9,17 @@ export async function listNotifications(params?: {
   return response.data.data || [];
 }
 
+export async function getUnreadCount(): Promise<number> {
+  const response = await api.get('/notifications/unread-count');
+  return response.data.data.count || 0;
+}
+
 export async function markNotificationRead(id: string, read = true): Promise<Notification> {
   const response = await api.patch(`/notifications/${id}/read`, { read });
   return response.data.data;
+}
+
+export async function markAllNotificationsRead(): Promise<number> {
+  const response = await api.post('/notifications/mark-all-read');
+  return response.data.data.markedCount || 0;
 }

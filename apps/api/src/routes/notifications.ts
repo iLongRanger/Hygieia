@@ -10,6 +10,8 @@ import {
 import {
   listNotifications,
   markNotificationRead,
+  markAllNotificationsRead,
+  getUnreadCount,
 } from '../services/notificationService';
 import { NotFoundError } from '../middleware/errorHandler';
 
@@ -54,6 +56,24 @@ router.get(
   }
 );
 
+router.get(
+  '/unread-count',
+  authenticate,
+  requireAnyRole,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const count = await getUnreadCount(req.user.id);
+      res.json({ data: { count } });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.patch(
   '/:id/read',
   authenticate,
@@ -74,6 +94,24 @@ router.patch(
         throw new NotFoundError('Notification not found');
       }
       res.json({ data: notification });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/mark-all-read',
+  authenticate,
+  requireAnyRole,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const markedCount = await markAllNotificationsRead(req.user.id);
+      res.json({ data: { markedCount } });
     } catch (error) {
       next(error);
     }
