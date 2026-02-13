@@ -7,7 +7,7 @@
  */
 
 import type {
-  AreaPricingBreakdown as BaseAreaPricingBreakdown,
+  AreaCostBreakdown as BaseAreaPricingBreakdown,
   FacilityPricingResult,
 } from '../pricingCalculatorService';
 

@@ -24,6 +24,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  role?: string;
   phone: string | null;
   avatarUrl: string | null;
   status: string;

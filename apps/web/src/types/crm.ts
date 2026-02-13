@@ -21,6 +21,8 @@ export interface LeadSource {
 
 export interface Lead {
   id: string;
+  leadSourceId?: string | null;
+  assignedToUserId?: string | null;
   status: string;
   companyName: string | null;
   contactName: string;
@@ -167,6 +169,7 @@ export interface Account {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  accountManagerId?: string | null;
   accountManager: {
     id: string;
     fullName: string;
@@ -235,6 +238,7 @@ export interface UpdateAccountInput {
 
 export interface Contact {
   id: string;
+  accountId?: string | null;
   name: string;
   email: string | null;
   phone: string | null;

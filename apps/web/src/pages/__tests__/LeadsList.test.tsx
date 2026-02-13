@@ -124,7 +124,7 @@ const account: Account = {
 const facility: Facility = {
   id: 'facility-1',
   name: 'HQ',
-  address: null,
+  address: {},
   squareFeet: null,
   buildingType: null,
   accessInstructions: null,

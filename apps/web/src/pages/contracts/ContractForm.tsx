@@ -155,7 +155,9 @@ const ContractForm = () => {
               totalAmount: String(contract.monthlyValue),
               acceptedAt: '',
               account: contract.account,
-              facility: contract.facility,
+              facility: contract.facility
+                ? { id: contract.facility.id, name: contract.facility.name }
+                : null,
             });
           }
         } else {
