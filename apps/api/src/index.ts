@@ -1,6 +1,7 @@
 import './env.js';
 
 import express, { Application } from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -33,16 +34,58 @@ import contractsRoutes from './routes/contracts';
 import dashboardRoutes from './routes/dashboard';
 import teamsRoutes from './routes/teams';
 import globalSettingsRoutes from './routes/globalSettings';
+import jobsRoutes from './routes/jobs';
+import inspectionsRoutes from './routes/inspections';
+import inspectionTemplatesRoutes from './routes/inspectionTemplates';
+import timeTrackingRoutes from './routes/timeTracking';
+import invoicesRoutes from './routes/invoices';
 import publicProposalsRoutes from './routes/publicProposals';
+import publicInvoicesRoutes from './routes/publicInvoices';
 import publicContractsRoutes from './routes/publicContracts';
+import { initializeRealtime } from './lib/realtime';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
+function parseConfiguredOrigins(): string[] {
+  return (process.env.CORS_ORIGIN || 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+function isLocalDevOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const allowedOrigins = parseConfiguredOrigins();
+
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      if (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
@@ -93,15 +136,24 @@ app.use('/api/v1/contracts', contractsRoutes);
 app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/settings/global', globalSettingsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/jobs', jobsRoutes);
+app.use('/api/v1/inspections', inspectionsRoutes);
+app.use('/api/v1/inspection-templates', inspectionTemplatesRoutes);
+app.use('/api/v1/time-tracking', timeTrackingRoutes);
+app.use('/api/v1/invoices', invoicesRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
 app.use('/api/v1/public/contracts', publicContractsRoutes);
+app.use('/api/v1/public/invoices', publicInvoicesRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+const httpServer = http.createServer(app);
+initializeRealtime(httpServer);
+
+httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);
 });
 

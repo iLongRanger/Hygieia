@@ -7,7 +7,7 @@
  */
 
 import type {
-  AreaPricingBreakdown as BaseAreaPricingBreakdown,
+  AreaCostBreakdown,
   FacilityPricingResult,
 } from '../pricingCalculatorService';
 
@@ -24,9 +24,9 @@ export interface PricingContext {
 }
 
 /**
- * Re-export AreaPricingBreakdown from the pricing calculator
+ * Re-export AreaCostBreakdown from the pricing calculator
  */
-export type AreaPricingBreakdown = BaseAreaPricingBreakdown;
+export type AreaPricingBreakdown = AreaCostBreakdown;
 
 /**
  * Snapshot of pricing settings at time of calculation

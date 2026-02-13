@@ -52,6 +52,7 @@ import logger from '../lib/logger';
 import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
+import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
 
@@ -370,14 +371,11 @@ router.patch(
           const { userIds, emails } = await getContractNotificationRecipients(contract.id);
           const branding = await getBrandingSafe();
 
-          await prisma.notification.createMany({
-            data: [...userIds].map((userId) => ({
-              userId,
-              type: 'contract_activated',
-              title: `Contract ${contract.contractNumber} activated`,
-              body: `Contract "${contract.title}" for ${contract.account.name} is now active.`,
-              metadata: { contractId: contract.id },
-            })),
+          await createBulkNotifications([...userIds], {
+            type: 'contract_activated',
+            title: `Contract ${contract.contractNumber} activated`,
+            body: `Contract "${contract.title}" for ${contract.account.name} is now active.`,
+            metadata: { contractId: contract.id },
           });
 
           const html = buildContractActivatedHtmlWithBranding({
@@ -617,14 +615,11 @@ router.post(
         const { userIds, emails } = await getContractNotificationRecipients(contract.id);
         const branding = await getBrandingSafe();
 
-        await prisma.notification.createMany({
-          data: [...userIds].map((userId) => ({
-            userId,
-            type: 'contract_terminated',
-            title: `Contract ${contract.contractNumber} terminated`,
-            body: `Contract "${contract.title}" for ${contract.account.name} has been terminated.`,
-            metadata: { contractId: contract.id },
-          })),
+        await createBulkNotifications([...userIds], {
+          type: 'contract_terminated',
+          title: `Contract ${contract.contractNumber} terminated`,
+          body: `Contract "${contract.title}" for ${contract.account.name} has been terminated.`,
+          metadata: { contractId: contract.id },
         });
 
         const html = buildContractTerminatedHtmlWithBranding({
