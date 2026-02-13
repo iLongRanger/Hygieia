@@ -1,9 +1,14 @@
 import axios from 'axios';
 import type { PublicProposal, PublicProposalResponse } from '../types/publicProposal';
 
+function getApiBaseUrl(): string {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+}
+
 // Separate axios instance without auth headers
 const publicApi = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
