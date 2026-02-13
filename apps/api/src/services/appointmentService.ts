@@ -1,7 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
-import { createNotification } from './notificationService';
 
 export interface AppointmentListParams {
   leadId?: string;
@@ -18,7 +17,6 @@ export interface AppointmentCreateInput {
   leadId?: string;
   accountId?: string;
   assignedToUserId: string;
-  assignedTeamId?: string | null;
   type: string;
   status: string;
   scheduledStart: Date;
@@ -31,7 +29,6 @@ export interface AppointmentCreateInput {
 
 export interface AppointmentUpdateInput {
   assignedToUserId?: string;
-  assignedTeamId?: string | null;
   status?: string;
   scheduledStart?: Date;
   scheduledEnd?: Date;
@@ -51,8 +48,6 @@ export interface AppointmentRescheduleInput {
 export interface AppointmentCompleteInput {
   facilityId: string;
   notes?: string | null;
-  completionNotes?: string | null;
-  actualDuration?: number | null;
   userId: string;
 }
 
@@ -65,10 +60,7 @@ const appointmentSelect = {
   timezone: true,
   location: true,
   notes: true,
-  completionNotes: true,
-  actualDuration: true,
   completedAt: true,
-  reminderSentAt: true,
   rescheduledFromId: true,
   createdAt: true,
   updatedAt: true,
@@ -92,12 +84,6 @@ const appointmentSelect = {
       id: true,
       fullName: true,
       email: true,
-    },
-  },
-  assignedTeam: {
-    select: {
-      id: true,
-      name: true,
     },
   },
   createdByUser: {
@@ -208,13 +194,12 @@ export async function createAppointment(input: AppointmentCreateInput) {
     }
   }
 
-  const { appointment, shouldNotify } = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.create({
       data: {
         leadId: input.leadId ?? null,
         accountId: input.accountId ?? null,
         assignedToUserId: input.assignedToUserId,
-        assignedTeamId: input.assignedTeamId ?? null,
         type: input.type,
         status: input.status,
         scheduledStart: input.scheduledStart,
@@ -234,29 +219,24 @@ export async function createAppointment(input: AppointmentCreateInput) {
       });
     }
 
-    return {
-      appointment,
-      shouldNotify: true,
-    };
-  });
-
-  if (shouldNotify) {
-    await createNotification({
-      userId: input.assignedToUserId,
-      type: 'appointment_assigned',
-      title: 'New appointment assigned',
-      body: 'You have been assigned a new appointment.',
-      metadata: {
-        appointmentId: appointment.id,
-        leadId: appointment.lead?.id,
-        accountId: appointment.account?.id,
-        type: appointment.type,
-        scheduledStart: appointment.scheduledStart.toISOString(),
+    await tx.notification.create({
+      data: {
+        userId: input.assignedToUserId,
+        type: 'appointment_assigned',
+        title: 'New appointment assigned',
+        body: 'You have been assigned a new appointment.',
+        metadata: {
+          appointmentId: appointment.id,
+          leadId: appointment.lead?.id,
+          accountId: appointment.account?.id,
+          type: appointment.type,
+          scheduledStart: appointment.scheduledStart,
+        },
       },
     });
-  }
 
-  return appointment;
+    return appointment;
+  });
 }
 
 export async function updateAppointment(id: string, input: AppointmentUpdateInput) {
@@ -264,7 +244,6 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
     where: { id },
     data: {
       assignedToUserId: input.assignedToUserId,
-      assignedTeamId: input.assignedTeamId,
       status: input.status,
       scheduledStart: input.scheduledStart,
       scheduledEnd: input.scheduledEnd,
@@ -308,7 +287,7 @@ export async function rescheduleAppointment(
     throw new BadRequestError('Cannot reschedule a completed appointment');
   }
 
-  const appointment = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     await tx.appointment.update({
       where: { id },
       data: { status: 'rescheduled' },
@@ -332,24 +311,24 @@ export async function rescheduleAppointment(
       select: appointmentSelect,
     });
 
+    await tx.notification.create({
+      data: {
+        userId: existing.assignedToUserId,
+        type: 'appointment_rescheduled',
+        title: 'Appointment rescheduled',
+        body: 'An assigned appointment has been rescheduled.',
+        metadata: {
+          appointmentId: appointment.id,
+          leadId: appointment.lead?.id,
+          accountId: appointment.account?.id,
+          type: appointment.type,
+          scheduledStart: appointment.scheduledStart,
+        },
+      },
+    });
+
     return appointment;
   });
-
-  await createNotification({
-    userId: existing.assignedToUserId,
-    type: 'appointment_rescheduled',
-    title: 'Appointment rescheduled',
-    body: 'An assigned appointment has been rescheduled.',
-    metadata: {
-      appointmentId: appointment.id,
-      leadId: appointment.lead?.id,
-      accountId: appointment.account?.id,
-      type: appointment.type,
-      scheduledStart: appointment.scheduledStart.toISOString(),
-    },
-  });
-
-  return appointment;
 }
 
 export async function completeAppointment(
@@ -429,15 +408,13 @@ export async function completeAppointment(
         status: 'completed',
         completedAt: new Date(),
         notes: input.notes ?? undefined,
-        completionNotes: input.completionNotes ?? undefined,
-        actualDuration: input.actualDuration ?? undefined,
       },
       select: appointmentSelect,
     });
 
     if (appointment.type === 'walk_through') {
       await tx.lead.update({
-        where: { id: appointment.leadId! },
+        where: { id: appointment.leadId },
         data: { status: 'walk_through_completed' },
       });
     }
@@ -454,39 +431,4 @@ export async function canMoveLeadToProposal(leadId: string): Promise<boolean> {
   });
 
   return latest?.status === 'completed';
-}
-
-/**
- * Find appointments that need reminders sent.
- * Returns appointments within the next 24 hours that haven't had a reminder sent yet.
- */
-export async function getAppointmentsNeedingReminders() {
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-  return prisma.appointment.findMany({
-    where: {
-      status: 'scheduled',
-      reminderSentAt: null,
-      scheduledStart: {
-        gte: now,
-        lte: tomorrow,
-      },
-    },
-    select: {
-      ...appointmentSelect,
-      assignedToUserId: true,
-    },
-  });
-}
-
-/**
- * Mark an appointment as having had its reminder sent.
- */
-export async function markReminderSent(id: string) {
-  return prisma.appointment.update({
-    where: { id },
-    data: { reminderSentAt: new Date() },
-    select: { id: true },
-  });
 }

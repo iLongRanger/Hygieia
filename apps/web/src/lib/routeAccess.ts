@@ -31,62 +31,6 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     path: '/users/:id',
     requiredPermissions: [PERMISSIONS.USERS_READ],
   },
-  {
-    path: '/jobs',
-    requiredPermissions: [PERMISSIONS.JOBS_READ],
-  },
-  {
-    path: '/inspections',
-    requiredPermissions: [PERMISSIONS.INSPECTIONS_READ],
-  },
-  {
-    path: '/inspection-templates',
-    requiredPermissions: [PERMISSIONS.INSPECTIONS_ADMIN],
-  },
-  {
-    path: '/time-tracking',
-    requiredPermissions: [PERMISSIONS.TIME_TRACKING_READ],
-  },
-  {
-    path: '/timesheets',
-    requiredPermissions: [PERMISSIONS.TIME_TRACKING_APPROVE],
-  },
-  {
-    path: '/invoices',
-    requiredPermissions: [PERMISSIONS.INVOICES_READ],
-  },
-  {
-    path: '/leads',
-    requiredPermissions: [PERMISSIONS.LEADS_READ],
-  },
-  {
-    path: '/accounts',
-    requiredPermissions: [PERMISSIONS.ACCOUNTS_READ],
-  },
-  {
-    path: '/contacts',
-    requiredPermissions: [PERMISSIONS.CONTACTS_READ],
-  },
-  {
-    path: '/proposals',
-    requiredPermissions: [PERMISSIONS.PROPOSALS_READ],
-  },
-  {
-    path: '/contracts',
-    requiredPermissions: [PERMISSIONS.CONTRACTS_READ],
-  },
-  {
-    path: '/pricing',
-    requiredPermissions: [PERMISSIONS.PRICING_READ],
-  },
-  {
-    path: '/teams',
-    requiredPermissions: [PERMISSIONS.TEAMS_READ],
-  },
-  {
-    path: '/tasks',
-    requiredPermissions: [PERMISSIONS.TASK_TEMPLATES_READ],
-  },
 ];
 
 const routeAccessMap = new Map<string, RouteAccessConfig>(

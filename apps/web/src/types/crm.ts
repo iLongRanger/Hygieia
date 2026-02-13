@@ -81,10 +81,7 @@ export interface Appointment {
   timezone: string;
   location: string | null;
   notes: string | null;
-  completionNotes: string | null;
-  actualDuration: number | null;
   completedAt: string | null;
-  reminderSentAt: string | null;
   rescheduledFromId: string | null;
   lead: {
     id: string;
@@ -102,10 +99,6 @@ export interface Appointment {
     fullName: string;
     email: string;
   };
-  assignedTeam: {
-    id: string;
-    name: string;
-  } | null;
   createdByUser: {
     id: string;
     fullName: string;
@@ -119,7 +112,6 @@ export interface Notification {
   body: string | null;
   metadata: Record<string, unknown>;
   readAt: string | null;
-  emailSent: boolean;
   createdAt: string;
 }
 

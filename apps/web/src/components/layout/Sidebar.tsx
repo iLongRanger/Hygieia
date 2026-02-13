@@ -16,10 +16,6 @@ import {
   LayoutTemplate,
   Handshake,
   Settings,
-  Briefcase,
-  ClipboardCheck,
-  Timer,
-  Receipt,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
@@ -63,9 +59,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       title: 'Operations',
       items: [
         { to: '/appointments', icon: Calendar, label: 'Appointments' },
-        { to: '/jobs', icon: Briefcase, label: 'Jobs' },
-        { to: '/inspections', icon: ClipboardCheck, label: 'Inspections' },
-        { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
         { to: '/facilities', icon: Warehouse, label: 'Facilities' },
         { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
         { to: '/teams', icon: Handshake, label: 'Teams' },
@@ -76,7 +69,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       items: [
         { to: '/proposals', icon: FileText, label: 'Proposals' },
         { to: '/contracts', icon: FileSignature, label: 'Contracts' },
-        { to: '/invoices', icon: Receipt, label: 'Invoices' },
       ],
     },
     {

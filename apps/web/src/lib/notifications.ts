@@ -1,31 +1,15 @@
 import api from './api';
-import type { Notification, PaginatedResponse } from '../types/crm';
+import type { Notification } from '../types/crm';
 
-export interface NotificationListParams {
-  page?: number;
+export async function listNotifications(params?: {
   limit?: number;
   includeRead?: boolean;
-  type?: string;
-  dateFrom?: string;
-  dateTo?: string;
-}
-
-export async function listNotifications(params?: NotificationListParams): Promise<PaginatedResponse<Notification>> {
+}): Promise<Notification[]> {
   const response = await api.get('/notifications', { params });
-  return response.data;
-}
-
-export async function getUnreadCount(): Promise<number> {
-  const response = await api.get('/notifications/unread-count');
-  return response.data.data.count;
+  return response.data.data || [];
 }
 
 export async function markNotificationRead(id: string, read = true): Promise<Notification> {
   const response = await api.patch(`/notifications/${id}/read`, { read });
   return response.data.data;
-}
-
-export async function markAllNotificationsRead(): Promise<number> {
-  const response = await api.post('/notifications/mark-all-read');
-  return response.data.data.markedCount;
 }
