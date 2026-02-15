@@ -334,7 +334,7 @@ router.post(
           logger.warn('Email not configured — skipping proposal email send');
         } else {
           try {
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
             logger.info(`Generating PDF for proposal ${sent.proposalNumber}`);
@@ -635,7 +635,7 @@ router.post(
         }
 
         try {
-          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
           const publicViewUrl = proposal.publicToken
             ? `${frontendUrl}/p/${proposal.publicToken}`
             : undefined;

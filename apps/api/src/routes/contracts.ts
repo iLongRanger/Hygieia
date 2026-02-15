@@ -501,7 +501,7 @@ router.post(
           logger.warn('Email not configured — skipping contract email send');
         } else {
           try {
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
 
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
