@@ -68,7 +68,7 @@ const JobForm = () => {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [contractsRes, teamsRes, usersRes] = await Promise.all([
-        listContracts({ limit: 100 }),
+        listContracts({ status: 'active' as any, limit: 100 }),
         listTeams({ limit: 100 }),
         listUsers({ limit: 100 }),
       ]);
@@ -250,7 +250,7 @@ const JobForm = () => {
                   onChange={handleContractChange}
                   options={contracts.map((c) => ({
                     value: c.id,
-                    label: `${c.contractNumber} — ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}${c.status !== 'active' ? ` [${c.status}]` : ''}`,
+                    label: `${c.contractNumber} — ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}`,
                   }))}
                   disabled={isEditMode}
                 />
