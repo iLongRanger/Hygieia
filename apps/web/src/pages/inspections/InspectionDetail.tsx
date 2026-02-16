@@ -6,6 +6,7 @@ import {
   Play,
   CheckCircle,
   XCircle,
+  Edit2,
   Clock,
   Building2,
   User,
@@ -191,6 +192,12 @@ const InspectionDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isEditable && (
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/inspections/${id}/edit`)}>
+              <Edit2 className="mr-1.5 h-4 w-4" />
+              Edit
+            </Button>
+          )}
           {inspection.status === 'scheduled' && (
             <Button size="sm" onClick={handleStart}>
               <Play className="mr-1.5 h-4 w-4" />

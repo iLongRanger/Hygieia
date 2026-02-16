@@ -8,6 +8,12 @@ import type {
   JobNote,
   JobActivity,
 } from '../types/job';
+import type {
+  Inspection,
+  InspectionDetail,
+  InspectionItem,
+  InspectionActivity,
+} from '../types/inspection';
 
 // User Mocks
 export const mockUser = (overrides?: Partial<User>): User => ({
@@ -248,6 +254,80 @@ export const mockJobNote = (overrides?: Partial<JobNote>): JobNote => ({
 export const mockJobActivity = (overrides?: Partial<JobActivity>): JobActivity => ({
   id: 'activity-1',
   action: 'job_created',
+  metadata: {},
+  createdAt: new Date('2026-02-01').toISOString(),
+  performedByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  ...overrides,
+});
+
+// Inspection Mocks
+export const mockInspection = (overrides?: Partial<Inspection>): Inspection => ({
+  id: 'inspection-1',
+  inspectionNumber: 'INSP-202602-0001',
+  status: 'scheduled',
+  scheduledDate: '2026-02-20',
+  completedAt: null,
+  overallScore: null,
+  overallRating: null,
+  facility: { id: 'facility-1', name: 'Main Office' },
+  account: { id: 'account-1', name: 'Acme Corporation' },
+  inspectorUser: { id: 'user-1', fullName: 'Test User' },
+  template: null,
+  job: null,
+  _count: { items: 3 },
+  createdAt: new Date('2026-02-01').toISOString(),
+  ...overrides,
+});
+
+export const mockInspectionDetail = (overrides?: Partial<InspectionDetail>): InspectionDetail => ({
+  id: 'inspection-1',
+  inspectionNumber: 'INSP-202602-0001',
+  templateId: null,
+  jobId: null,
+  contractId: null,
+  facilityId: 'facility-1',
+  accountId: 'account-1',
+  inspectorUserId: 'user-1',
+  status: 'scheduled',
+  scheduledDate: '2026-02-20',
+  completedAt: null,
+  overallScore: null,
+  overallRating: null,
+  notes: null,
+  summary: null,
+  createdAt: new Date('2026-02-01').toISOString(),
+  updatedAt: new Date('2026-02-01').toISOString(),
+  template: null,
+  job: null,
+  contract: null,
+  facility: { id: 'facility-1', name: 'Main Office' },
+  account: { id: 'account-1', name: 'Acme Corporation' },
+  inspectorUser: { id: 'user-1', fullName: 'Test User' },
+  items: [],
+  activities: [],
+  ...overrides,
+});
+
+export const mockInspectionItem = (overrides?: Partial<InspectionItem>): InspectionItem => ({
+  id: 'item-1',
+  templateItemId: null,
+  category: 'General',
+  itemText: 'Floors are clean',
+  score: null,
+  rating: null,
+  notes: null,
+  photoUrl: null,
+  sortOrder: 1,
+  ...overrides,
+});
+
+export const mockInspectionActivity = (overrides?: Partial<InspectionActivity>): InspectionActivity => ({
+  id: 'insp-activity-1',
+  action: 'inspection_created',
+  performedByUserId: 'user-1',
   metadata: {},
   createdAt: new Date('2026-02-01').toISOString(),
   performedByUser: {

@@ -37,6 +37,7 @@ import JobDetail from './pages/jobs/JobDetail';
 import JobForm from './pages/jobs/JobForm';
 import InspectionsList from './pages/inspections/InspectionsList';
 import InspectionDetail from './pages/inspections/InspectionDetail';
+import InspectionForm from './pages/inspections/InspectionForm';
 import InspectionTemplatesPage from './pages/inspections/InspectionTemplatesPage';
 import TimeTrackingPage from './pages/timeTracking/TimeTrackingPage';
 import TimesheetsPage from './pages/timeTracking/TimesheetsPage';
@@ -129,6 +130,8 @@ function App() {
             <Route path="/jobs/:id/edit" element={<JobForm />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/inspections" element={<InspectionsList />} />
+            <Route path="/inspections/new" element={<InspectionForm />} />
+            <Route path="/inspections/:id/edit" element={<InspectionForm />} />
             <Route path="/inspections/:id" element={<InspectionDetail />} />
             <Route path="/inspection-templates" element={<InspectionTemplatesPage />} />
             <Route path="/time-tracking" element={<TimeTrackingPage />} />
