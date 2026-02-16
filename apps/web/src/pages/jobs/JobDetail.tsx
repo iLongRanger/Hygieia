@@ -15,6 +15,7 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
+  Edit2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -224,6 +225,12 @@ const JobDetail = () => {
             >
               <CheckCircle className="mr-1.5 h-4 w-4" />
               Complete
+            </Button>
+          )}
+          {['scheduled', 'in_progress'].includes(job.status) && (
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/jobs/${id}/edit`)}>
+              <Edit2 className="mr-1.5 h-4 w-4" />
+              Edit
             </Button>
           )}
           {['scheduled', 'in_progress'].includes(job.status) && (

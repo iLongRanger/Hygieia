@@ -1,6 +1,13 @@
 import type { User } from '../types/user';
 import type { Lead, Account, Contact, LeadSource } from '../types/crm';
 import type { Facility } from '../types/facility';
+import type {
+  Job,
+  JobDetail,
+  JobTask,
+  JobNote,
+  JobActivity,
+} from '../types/job';
 
 // User Mocks
 export const mockUser = (overrides?: Partial<User>): User => ({
@@ -161,6 +168,91 @@ export const mockFacility = (overrides?: Partial<Facility>): Facility => ({
   _count: {
     areas: 0,
     facilityTasks: 0,
+  },
+  ...overrides,
+});
+
+// Job Mocks
+export const mockJob = (overrides?: Partial<Job>): Job => ({
+  id: 'job-1',
+  jobNumber: 'JOB-202602-0001',
+  status: 'scheduled',
+  scheduledDate: '2026-02-15',
+  scheduledStartTime: null,
+  scheduledEndTime: null,
+  actualStartTime: null,
+  actualEndTime: null,
+  estimatedHours: '4.0',
+  actualHours: null,
+  notes: null,
+  completionNotes: null,
+  createdAt: new Date('2026-02-01').toISOString(),
+  updatedAt: new Date('2026-02-01').toISOString(),
+  contract: {
+    id: 'contract-1',
+    contractNumber: 'CONT-202602-0001',
+    title: 'Monthly Cleaning',
+  },
+  facility: {
+    id: 'facility-1',
+    name: 'Main Office',
+  },
+  account: {
+    id: 'account-1',
+    name: 'Acme Corporation',
+  },
+  assignedTeam: null,
+  assignedToUser: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  ...overrides,
+});
+
+export const mockJobDetail = (overrides?: Partial<JobDetail>): JobDetail => ({
+  ...mockJob(),
+  tasks: [],
+  notes_: [],
+  activities: [],
+  ...overrides,
+});
+
+export const mockJobTask = (overrides?: Partial<JobTask>): JobTask => ({
+  id: 'task-1',
+  taskName: 'Vacuum floors',
+  description: null,
+  status: 'pending',
+  estimatedMinutes: 30,
+  actualMinutes: null,
+  notes: null,
+  completedAt: null,
+  completedByUser: null,
+  facilityTask: null,
+  ...overrides,
+});
+
+export const mockJobNote = (overrides?: Partial<JobNote>): JobNote => ({
+  id: 'note-1',
+  noteType: 'general',
+  content: 'Everything went well',
+  photoUrl: null,
+  createdAt: new Date('2026-02-01').toISOString(),
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
+  },
+  ...overrides,
+});
+
+export const mockJobActivity = (overrides?: Partial<JobActivity>): JobActivity => ({
+  id: 'activity-1',
+  action: 'job_created',
+  metadata: {},
+  createdAt: new Date('2026-02-01').toISOString(),
+  performedByUser: {
+    id: 'user-1',
+    fullName: 'Test User',
   },
   ...overrides,
 });

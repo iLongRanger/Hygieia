@@ -34,6 +34,7 @@ import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
 import JobsList from './pages/jobs/JobsList';
 import JobDetail from './pages/jobs/JobDetail';
+import JobForm from './pages/jobs/JobForm';
 import InspectionsList from './pages/inspections/InspectionsList';
 import InspectionDetail from './pages/inspections/InspectionDetail';
 import InspectionTemplatesPage from './pages/inspections/InspectionTemplatesPage';
@@ -124,6 +125,8 @@ function App() {
             <Route path="/contracts/:id" element={<ContractDetail />} />
             <Route path="/contracts/:id/edit" element={<ContractForm />} />
             <Route path="/jobs" element={<JobsList />} />
+            <Route path="/jobs/new" element={<JobForm />} />
+            <Route path="/jobs/:id/edit" element={<JobForm />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/inspections" element={<InspectionsList />} />
             <Route path="/inspections/:id" element={<InspectionDetail />} />
