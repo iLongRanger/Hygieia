@@ -68,7 +68,7 @@ const JobForm = () => {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [contractsRes, teamsRes, usersRes] = await Promise.all([
-        listContracts({ status: 'active' as any, limit: 100 }),
+        listContracts({ limit: 100 }),
         listTeams({ limit: 100 }),
         listUsers({ limit: 100 }),
       ]);
@@ -146,6 +146,16 @@ const JobForm = () => {
       toast.error('Please select a scheduled date');
       return;
     }
+    if (!formData.facilityId) {
+      toast.error('Selected contract has no facility assigned');
+      return;
+    }
+
+    // Combine time inputs with scheduledDate to create valid ISO strings
+    const toDateTime = (time: string | null) => {
+      if (!time) return null;
+      return `${formData.scheduledDate}T${time}:00`;
+    };
 
     setSaving(true);
     try {
@@ -154,15 +164,20 @@ const JobForm = () => {
           assignedTeamId: formData.assignedTeamId || null,
           assignedToUserId: formData.assignedToUserId || null,
           scheduledDate: formData.scheduledDate,
-          scheduledStartTime: formData.scheduledStartTime || null,
-          scheduledEndTime: formData.scheduledEndTime || null,
+          scheduledStartTime: toDateTime(formData.scheduledStartTime as string | null),
+          scheduledEndTime: toDateTime(formData.scheduledEndTime as string | null),
           estimatedHours: formData.estimatedHours || null,
           notes: formData.notes || null,
         };
         await updateJob(id, updateData);
         toast.success('Job updated successfully');
       } else {
-        await createJob(formData);
+        const createData: CreateJobInput = {
+          ...formData,
+          scheduledStartTime: toDateTime(formData.scheduledStartTime as string | null),
+          scheduledEndTime: toDateTime(formData.scheduledEndTime as string | null),
+        };
+        await createJob(createData);
         toast.success('Job created successfully');
       }
       navigate('/jobs');
@@ -235,7 +250,7 @@ const JobForm = () => {
                   onChange={handleContractChange}
                   options={contracts.map((c) => ({
                     value: c.id,
-                    label: `${c.contractNumber} — ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}`,
+                    label: `${c.contractNumber} — ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}${c.status !== 'active' ? ` [${c.status}]` : ''}`,
                   }))}
                   disabled={isEditMode}
                 />
