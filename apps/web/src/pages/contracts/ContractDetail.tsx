@@ -55,6 +55,7 @@ import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
+import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
 import type { Contract, ContractStatus, RenewContractInput, SendContractInput } from '../../types/contract';
 import type { Team } from '../../types/team';
 
@@ -141,7 +142,7 @@ const ContractDetail = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [assigningTeam, setAssigningTeam] = useState(false);
-  const [subPct, setSubPct] = useState('60.0');
+  const [selectedTier, setSelectedTier] = useState('premium');
 
   // T&C inline editing state
   const [editingTerms, setEditingTerms] = useState(false);
@@ -190,7 +191,7 @@ const ContractDetail = () => {
       const data = await getContract(contractId);
       setContract(data);
       setSelectedTeamId(data.assignedTeam?.id || '');
-      setSubPct(data.subcontractorPercentage != null ? (Number(data.subcontractorPercentage) * 100).toFixed(1) : '60.0');
+      setSelectedTier(data.subcontractorTier || 'premium');
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -215,11 +216,10 @@ const ContractDetail = () => {
 
     try {
       setAssigningTeam(true);
-      const pctValue = parseFloat(subPct) / 100;
       const updatedContract = await assignContractTeam(
         contract.id,
         selectedTeamId || null,
-        selectedTeamId ? pctValue : undefined
+        selectedTeamId ? selectedTier : undefined
       );
       setContract(updatedContract);
       setActivityRefresh((n) => n + 1);
@@ -664,20 +664,20 @@ const ContractDetail = () => {
               }
             />
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Subcontractor %"
-                type="number"
-                value={subPct}
-                onChange={(e) => setSubPct(e.target.value)}
+              <Select
+                label="Subcontractor Tier"
+                value={selectedTier}
+                onChange={setSelectedTier}
                 disabled={contract.status !== 'active' || !canAdminContracts}
-                min={0}
-                max={100}
-                step={0.1}
+                options={SUBCONTRACTOR_TIER_OPTIONS}
               />
               <div>
                 <div className="text-sm text-gray-400 mb-1">Subcontract Pay</div>
                 <div className="text-lg font-semibold text-teal-400">
-                  ${(Number(contract.monthlyValue) * (parseFloat(subPct) || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                  ${(Number(contract.monthlyValue) * tierToPercentage(selectedTier)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {(tierToPercentage(selectedTier) * 100).toFixed(0)}% of monthly value
                 </div>
               </div>
             </div>

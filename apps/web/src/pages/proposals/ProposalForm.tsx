@@ -61,6 +61,7 @@ import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBr
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTemplates } from '../../lib/proposalTemplates';
 import type { ProposalTemplate } from '../../types/proposalTemplate';
+import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -91,10 +92,7 @@ const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
 
 const SUBCONTRACTOR_TIERS = [
   { value: '', label: 'Plan Default', description: 'Uses the percentage configured in the pricing plan' },
-  { value: 'labor_only', label: 'Labor Only (Sub 40%)', description: 'Sub provides labor only; company supplies all equipment, chemicals, and consumables' },
-  { value: 'standard', label: 'Standard (Sub 50%)', description: 'Sub uses company-provided supplies and equipment' },
-  { value: 'premium', label: 'Premium (Sub 60%)', description: 'Sub provides some of their own supplies and small equipment' },
-  { value: 'independent', label: 'Independent (Sub 70%)', description: 'Sub provides own equipment, supplies, and vehicles' },
+  ...SUBCONTRACTOR_TIER_OPTIONS,
 ];
 
 // Helper to format currency

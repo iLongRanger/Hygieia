@@ -891,7 +891,7 @@ model Contract {
   totalValue   Decimal? @map("total_value") @db.Decimal(12, 2)
   billingCycle String   @default("monthly") @map("billing_cycle") @db.VarChar(20)
   paymentTerms String   @default("Net 30") @map("payment_terms") @db.VarChar(50)
-  subcontractorPercentage Decimal? @map("subcontractor_percentage") @db.Decimal(5, 4)
+  subcontractorTier String? @map("subcontractor_tier") @db.VarChar(20)
 
   // Contract Details
   termsAndConditions  String? @map("terms_and_conditions") @db.Text

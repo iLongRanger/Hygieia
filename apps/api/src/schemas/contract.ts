@@ -121,7 +121,7 @@ export const updateContractStatusSchema = z.object({
 
 export const assignContractTeamSchema = z.object({
   teamId: z.string().uuid().nullable(),
-  subcontractorPercentage: z.number().min(0).max(1).optional(),
+  subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
 });
 
 // Sign Contract Schema

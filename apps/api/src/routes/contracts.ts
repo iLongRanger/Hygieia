@@ -56,6 +56,7 @@ import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 import { createBulkNotifications } from '../services/notificationService';
+import { tierToPercentage } from '../lib/subcontractorTiers';
 
 const router: Router = Router();
 
@@ -421,14 +422,14 @@ router.patch(
       const contract = await assignContractTeam(
         req.params.id,
         parsed.data.teamId,
-        parsed.data.subcontractorPercentage
+        parsed.data.subcontractorTier
       );
 
       await logContractActivity({
         contractId: contract.id,
         action: 'team_assigned',
         performedByUserId: req.user?.id,
-        metadata: { teamId: parsed.data.teamId, subcontractorPercentage: parsed.data.subcontractorPercentage },
+        metadata: { teamId: parsed.data.teamId, subcontractorTier: parsed.data.subcontractorTier },
       });
 
       // Send notification when a team is assigned (not unassigned)
@@ -441,7 +442,7 @@ router.patch(
               : [];
 
             const monthlyValue = Number(notifData.monthlyValue);
-            const subPct = Number(notifData.subcontractorPercentage ?? 0.60);
+            const subPct = tierToPercentage(notifData.subcontractorTier);
             const subcontractPay = monthlyValue * subPct;
 
             const facilityAddress = notifData.facility?.address as Record<string, any> | null;

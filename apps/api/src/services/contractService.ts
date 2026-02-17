@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { generateContractTerms } from './contractTemplateService';
+import { tierToPercentage, percentageToTier } from '../lib/subcontractorTiers';
 
 export interface ContractListParams {
   page?: number;
@@ -33,7 +34,7 @@ export interface ContractCreateInput {
   paymentTerms?: string;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
-  subcontractorPercentage?: number | null;
+  subcontractorTier?: string | null;
   createdByUserId: string;
 }
 
@@ -53,7 +54,7 @@ export interface ContractUpdateInput {
   paymentTerms?: string;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
-  subcontractorPercentage?: number | null;
+  subcontractorTier?: string | null;
 }
 
 export interface ContractSignInput {
@@ -91,7 +92,7 @@ const contractSelect = {
   totalValue: true,
   billingCycle: true,
   paymentTerms: true,
-  subcontractorPercentage: true,
+  subcontractorTier: true,
   termsAndConditions: true,
   specialInstructions: true,
   signedDocumentUrl: true,
@@ -428,10 +429,12 @@ export async function createContractFromProposal(
   const monthlyValue = Number(proposal.totalAmount);
   const contractNumber = await generateContractNumber();
 
-  // Get default subcontractor percentage from pricing settings
-  const pricingSettings = await prisma.pricingSettings.findFirst({
-    select: { subcontractorPercentage: true },
-  });
+  // Reverse-lookup subcontractor tier from proposal's pricing snapshot
+  const snapshot = proposal.pricingSnapshot as Record<string, any> | null;
+  const snapshotPct = snapshot?.subcontractorPercentage;
+  const subcontractorTier = snapshotPct != null
+    ? percentageToTier(Number(snapshotPct))
+    : 'premium';
 
   const contractData: Prisma.ContractCreateInput = {
     contractNumber,
@@ -454,7 +457,7 @@ export async function createContractFromProposal(
     termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions || null,
     specialInstructions: overrides?.specialInstructions || proposal.notes,
     includesInitialClean: true,
-    subcontractorPercentage: Number(pricingSettings?.subcontractorPercentage ?? 0.60),
+    subcontractorTier,
     createdByUser: { connect: { id: createdByUserId } },
   };
 
@@ -545,7 +548,7 @@ export async function sendContract(id: string) {
 export async function assignContractTeam(
   contractId: string,
   teamId: string | null,
-  subcontractorPercentage?: number
+  subcontractorTier?: string
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -579,8 +582,8 @@ export async function assignContractTeam(
   }
 
   const data: any = { assignedTeamId: teamId };
-  if (subcontractorPercentage !== undefined) {
-    data.subcontractorPercentage = subcontractorPercentage;
+  if (subcontractorTier !== undefined) {
+    data.subcontractorTier = subcontractorTier;
   }
 
   return prisma.contract.update({
@@ -958,7 +961,7 @@ export async function getTeamAssignmentNotificationData(contractId: string) {
       contractNumber: true,
       title: true,
       monthlyValue: true,
-      subcontractorPercentage: true,
+      subcontractorTier: true,
       startDate: true,
       serviceFrequency: true,
       facility: {

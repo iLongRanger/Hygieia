@@ -30,15 +30,9 @@ import {
 } from '../schemas/facility';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
+import { SUBCONTRACTOR_TIER_MAP } from '../lib/subcontractorTiers';
 
 const router: Router = Router();
-
-const SUBCONTRACTOR_TIER_MAP: Record<string, number> = {
-  labor_only: 0.40,
-  standard: 0.50,
-  premium: 0.60,
-  independent: 0.70,
-};
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];

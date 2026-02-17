@@ -48,7 +48,7 @@ export interface Contract {
   totalValue?: number | null;
   billingCycle: BillingCycle;
   paymentTerms: string;
-  subcontractorPercentage?: number | null;
+  subcontractorTier?: string | null;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
   sentAt?: string | null;
