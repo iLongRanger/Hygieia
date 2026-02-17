@@ -100,9 +100,10 @@ export async function restoreContract(id: string): Promise<Contract> {
 
 export async function assignContractTeam(
   id: string,
-  teamId: string | null
+  teamId: string | null,
+  subcontractorPercentage?: number
 ): Promise<Contract> {
-  const response = await api.patch(`/contracts/${id}/team`, { teamId });
+  const response = await api.patch(`/contracts/${id}/team`, { teamId, subcontractorPercentage });
   return response.data.data;
 }
 

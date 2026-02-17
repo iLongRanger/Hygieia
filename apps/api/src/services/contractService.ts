@@ -33,6 +33,7 @@ export interface ContractCreateInput {
   paymentTerms?: string;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
+  subcontractorPercentage?: number | null;
   createdByUserId: string;
 }
 
@@ -52,6 +53,7 @@ export interface ContractUpdateInput {
   paymentTerms?: string;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
+  subcontractorPercentage?: number | null;
 }
 
 export interface ContractSignInput {
@@ -89,6 +91,7 @@ const contractSelect = {
   totalValue: true,
   billingCycle: true,
   paymentTerms: true,
+  subcontractorPercentage: true,
   termsAndConditions: true,
   specialInstructions: true,
   signedDocumentUrl: true,
@@ -425,6 +428,11 @@ export async function createContractFromProposal(
   const monthlyValue = Number(proposal.totalAmount);
   const contractNumber = await generateContractNumber();
 
+  // Get default subcontractor percentage from pricing settings
+  const pricingSettings = await prisma.pricingSettings.findFirst({
+    select: { subcontractorPercentage: true },
+  });
+
   const contractData: Prisma.ContractCreateInput = {
     contractNumber,
     title: overrides?.title || proposal.title,
@@ -446,6 +454,7 @@ export async function createContractFromProposal(
     termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions || null,
     specialInstructions: overrides?.specialInstructions || proposal.notes,
     includesInitialClean: true,
+    subcontractorPercentage: Number(pricingSettings?.subcontractorPercentage ?? 0.60),
     createdByUser: { connect: { id: createdByUserId } },
   };
 
@@ -533,7 +542,11 @@ export async function sendContract(id: string) {
 /**
  * Assign or unassign a team from an active contract.
  */
-export async function assignContractTeam(contractId: string, teamId: string | null) {
+export async function assignContractTeam(
+  contractId: string,
+  teamId: string | null,
+  subcontractorPercentage?: number
+) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     select: {
@@ -565,11 +578,14 @@ export async function assignContractTeam(contractId: string, teamId: string | nu
     }
   }
 
+  const data: any = { assignedTeamId: teamId };
+  if (subcontractorPercentage !== undefined) {
+    data.subcontractorPercentage = subcontractorPercentage;
+  }
+
   return prisma.contract.update({
     where: { id: contractId },
-    data: {
-      assignedTeamId: teamId,
-    },
+    data,
     select: contractSelect,
   });
 }
@@ -924,5 +940,86 @@ export async function completeInitialClean(contractId: string, completedByUserId
       initialCleanCompletedByUserId: completedByUserId,
     },
     select: contractSelect,
+  });
+}
+
+// ============================================================
+// Notification Helpers
+// ============================================================
+
+/**
+ * Fetch contract data needed for team assignment notifications
+ */
+export async function getTeamAssignmentNotificationData(contractId: string) {
+  return prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      contractNumber: true,
+      title: true,
+      monthlyValue: true,
+      subcontractorPercentage: true,
+      startDate: true,
+      serviceFrequency: true,
+      facility: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          buildingType: true,
+        },
+      },
+      proposal: {
+        select: {
+          proposalServices: {
+            select: {
+              serviceName: true,
+              frequency: true,
+              description: true,
+            },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      },
+      assignedTeam: {
+        select: {
+          id: true,
+          name: true,
+          contactName: true,
+          contactEmail: true,
+          contactPhone: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Fetch facility tasks for contract notification emails
+ */
+export async function getFacilityTasksForContract(facilityId: string) {
+  return prisma.facilityTask.findMany({
+    where: {
+      facilityId,
+      archivedAt: null,
+    },
+    select: {
+      taskTemplate: {
+        select: {
+          name: true,
+        },
+      },
+      customName: true,
+      area: {
+        select: {
+          name: true,
+        },
+      },
+      cleaningFrequency: true,
+    },
+    orderBy: [
+      { area: { name: 'asc' } },
+      { priority: 'asc' },
+    ],
   });
 }

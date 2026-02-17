@@ -141,6 +141,7 @@ const ContractDetail = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [assigningTeam, setAssigningTeam] = useState(false);
+  const [subPct, setSubPct] = useState('60.0');
 
   // T&C inline editing state
   const [editingTerms, setEditingTerms] = useState(false);
@@ -189,6 +190,7 @@ const ContractDetail = () => {
       const data = await getContract(contractId);
       setContract(data);
       setSelectedTeamId(data.assignedTeam?.id || '');
+      setSubPct(data.subcontractorPercentage != null ? (Number(data.subcontractorPercentage) * 100).toFixed(1) : '60.0');
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -213,10 +215,16 @@ const ContractDetail = () => {
 
     try {
       setAssigningTeam(true);
-      const updatedContract = await assignContractTeam(contract.id, selectedTeamId || null);
+      const pctValue = parseFloat(subPct) / 100;
+      const updatedContract = await assignContractTeam(
+        contract.id,
+        selectedTeamId || null,
+        selectedTeamId ? pctValue : undefined
+      );
       setContract(updatedContract);
       setActivityRefresh((n) => n + 1);
-      toast.success(selectedTeamId ? 'Team assigned successfully' : 'Team unassigned successfully');
+      const teamName = teams.find((t) => t.id === selectedTeamId)?.name;
+      toast.success(selectedTeamId ? `${teamName || 'Team'} assigned successfully` : 'Team unassigned successfully');
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'Failed to assign team');
     } finally {
@@ -655,6 +663,24 @@ const ContractDetail = () => {
                   : undefined
               }
             />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Subcontractor %"
+                type="number"
+                value={subPct}
+                onChange={(e) => setSubPct(e.target.value)}
+                disabled={contract.status !== 'active' || !canAdminContracts}
+                min={0}
+                max={100}
+                step={0.1}
+              />
+              <div>
+                <div className="text-sm text-gray-400 mb-1">Subcontract Pay</div>
+                <div className="text-lg font-semibold text-teal-400">
+                  ${(Number(contract.monthlyValue) * (parseFloat(subPct) || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                </div>
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-400">
                 Current: {contract.assignedTeam?.name || 'No team assigned'}

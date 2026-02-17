@@ -21,6 +21,8 @@ import {
   canRenewContract,
   completeInitialClean,
   getExpiringContracts,
+  getTeamAssignmentNotificationData,
+  getFacilityTasksForContract,
 } from '../services/contractService';
 import { generatePublicToken } from '../services/contractPublicService';
 import { isEmailConfigured } from '../config/email';
@@ -47,6 +49,7 @@ import { sendNotificationEmail } from '../services/emailService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import { buildContractActivatedHtmlWithBranding, buildContractActivatedSubject } from '../templates/contractActivated';
 import { buildContractTerminatedHtmlWithBranding, buildContractTerminatedSubject } from '../templates/contractTerminated';
+import { buildContractTeamAssignedHtmlWithBranding, buildContractTeamAssignedSubject } from '../templates/contractTeamAssigned';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { BadRequestError } from '../middleware/errorHandler';
@@ -415,14 +418,83 @@ router.patch(
         throw handleZodError(parsed.error);
       }
 
-      const contract = await assignContractTeam(req.params.id, parsed.data.teamId);
+      const contract = await assignContractTeam(
+        req.params.id,
+        parsed.data.teamId,
+        parsed.data.subcontractorPercentage
+      );
 
       await logContractActivity({
         contractId: contract.id,
         action: 'team_assigned',
         performedByUserId: req.user?.id,
-        metadata: { teamId: parsed.data.teamId },
+        metadata: { teamId: parsed.data.teamId, subcontractorPercentage: parsed.data.subcontractorPercentage },
       });
+
+      // Send notification when a team is assigned (not unassigned)
+      if (parsed.data.teamId) {
+        try {
+          const notifData = await getTeamAssignmentNotificationData(contract.id);
+          if (notifData && notifData.assignedTeam) {
+            const facilityTasks = notifData.facility?.id
+              ? await getFacilityTasksForContract(notifData.facility.id)
+              : [];
+
+            const monthlyValue = Number(notifData.monthlyValue);
+            const subPct = Number(notifData.subcontractorPercentage ?? 0.60);
+            const subcontractPay = monthlyValue * subPct;
+
+            const facilityAddress = notifData.facility?.address as Record<string, any> | null;
+            const addressStr = typeof facilityAddress === 'object' && facilityAddress
+              ? [facilityAddress.street, facilityAddress.city, facilityAddress.state, facilityAddress.zip].filter(Boolean).join(', ')
+              : String(facilityAddress || '');
+
+            const emailData = {
+              contractNumber: notifData.contractNumber,
+              title: notifData.title,
+              monthlyValue: `$${monthlyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              subcontractPay: `$${subcontractPay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              startDate: new Date(notifData.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+              serviceFrequency: notifData.serviceFrequency || 'As scheduled',
+              facilityName: notifData.facility?.name || 'N/A',
+              facilityAddress: addressStr || 'N/A',
+              buildingType: notifData.facility?.buildingType || 'N/A',
+              teamName: notifData.assignedTeam.name,
+              proposalServices: notifData.proposal?.proposalServices || [],
+              facilityTasks: facilityTasks.map((ft: any) => ({
+                name: ft.taskTemplate?.name || ft.customName || 'Unnamed task',
+                area: ft.area?.name,
+                frequency: ft.cleaningFrequency,
+              })),
+            };
+
+            const branding = await getBrandingSafe();
+            const html = buildContractTeamAssignedHtmlWithBranding(emailData, branding);
+            const subject = buildContractTeamAssignedSubject(notifData.contractNumber, notifData.assignedTeam.name);
+
+            // In-app + email to internal admins
+            const { userIds, emails } = await getContractNotificationRecipients(contract.id);
+            if (userIds.size > 0) {
+              await createBulkNotifications([...userIds], {
+                type: 'contract_team_assigned',
+                title: subject,
+                body: `${notifData.assignedTeam.name} has been assigned to contract ${notifData.contractNumber}. Subcontract pay: ${emailData.subcontractPay}/month.`,
+                metadata: { contractId: contract.id },
+              });
+            }
+            for (const email of emails) {
+              await sendNotificationEmail(email, subject, html);
+            }
+
+            // Email-only to team contact (no user account)
+            if (notifData.assignedTeam.contactEmail) {
+              await sendNotificationEmail(notifData.assignedTeam.contactEmail, subject, html);
+            }
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send team assignment notifications:', notifyError);
+        }
+      }
 
       res.json({ data: contract });
     } catch (error) {
