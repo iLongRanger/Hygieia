@@ -8,6 +8,7 @@ jest.mock('../../lib/prisma', () => ({
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
@@ -15,6 +16,7 @@ jest.mock('../../lib/prisma', () => ({
 describe('notificationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.notification.count as jest.Mock).mockResolvedValue(0);
   });
 
   it('listNotifications should filter unread by default', async () => {

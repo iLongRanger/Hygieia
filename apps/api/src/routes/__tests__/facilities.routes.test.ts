@@ -167,7 +167,10 @@ describe('Facility Routes', () => {
   });
 
   it('GET /:id/proposal-template should return template', async () => {
-    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      account: { id: 'account-1' },
+    });
     (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
     (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 100 });
     (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([{ serviceName: 'Weekly' }]);
@@ -181,7 +184,10 @@ describe('Facility Routes', () => {
   });
 
   it('GET /:id/proposal-template should pass subcontractorPercentageOverride for known tier', async () => {
-    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      account: { id: 'account-1' },
+    });
     (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
     (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
     (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
@@ -201,7 +207,10 @@ describe('Facility Routes', () => {
   });
 
   it('GET /:id/proposal-template should not pass override when no tier specified', async () => {
-    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      account: { id: 'account-1' },
+    });
     (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
     (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
     (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
@@ -217,7 +226,10 @@ describe('Facility Routes', () => {
   });
 
   it('GET /:id/proposal-template should map all tier keys correctly', async () => {
-    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      account: { id: 'account-1' },
+    });
     (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
     (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
     (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);
@@ -231,7 +243,10 @@ describe('Facility Routes', () => {
 
     for (const [tier, expectedPct] of tierMap) {
       jest.clearAllMocks();
-      (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1', accountId: 'account-1' });
+      (facilityService.getFacilityById as jest.Mock).mockResolvedValue({
+        id: 'facility-1',
+        account: { id: 'account-1' },
+      });
       (pricingCalculatorService.isFacilityReadyForPricing as jest.Mock).mockResolvedValue({ isReady: true });
       (pricingService.calculatePricing as jest.Mock).mockResolvedValue({ monthlyTotal: 200 });
       (pricingService.generateProposalServices as jest.Mock).mockResolvedValue([]);

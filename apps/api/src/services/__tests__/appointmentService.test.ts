@@ -33,6 +33,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     notification: {
       create: jest.fn(),
+      count: jest.fn(),
     },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
@@ -44,6 +45,7 @@ describe('appointmentService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
+    (prisma.notification.count as jest.Mock).mockResolvedValue(0);
   });
 
   it('listAppointments should default to future appointments when includePast is false', async () => {

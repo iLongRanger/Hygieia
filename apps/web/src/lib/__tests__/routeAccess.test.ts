@@ -11,7 +11,7 @@ describe('routeAccess', () => {
   });
 
   it('allows unrestricted routes', () => {
-    expect(canAccessRoute('/proposals', { role: 'cleaner' })).toBe(true);
+    expect(canAccessRoute('/unlisted-route', { role: 'cleaner' })).toBe(true);
   });
 
   it('enforces permission checks for restricted routes', () => {

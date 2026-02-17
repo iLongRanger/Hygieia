@@ -14,12 +14,30 @@ jest.mock('../../lib/prisma', () => ({
     accountActivity: { findMany: jest.fn() },
     user: { count: jest.fn() },
     team: { count: jest.fn() },
+    job: { count: jest.fn() },
+    inspection: { aggregate: jest.fn(), count: jest.fn() },
+    timeEntry: { count: jest.fn() },
+    timesheet: { count: jest.fn() },
+    invoice: { aggregate: jest.fn(), count: jest.fn() },
   },
 }));
 
 describe('dashboardService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.lead.count as jest.Mock).mockResolvedValue(0);
+    (prisma.account.count as jest.Mock).mockResolvedValue(0);
+    (prisma.contract.count as jest.Mock).mockResolvedValue(0);
+    (prisma.proposal.count as jest.Mock).mockResolvedValue(0);
+    (prisma.user.count as jest.Mock).mockResolvedValue(0);
+    (prisma.team.count as jest.Mock).mockResolvedValue(0);
+    (prisma.job.count as jest.Mock).mockResolvedValue(0);
+    (prisma.inspection.aggregate as jest.Mock).mockResolvedValue({ _avg: { overallScore: null } });
+    (prisma.inspection.count as jest.Mock).mockResolvedValue(0);
+    (prisma.timeEntry.count as jest.Mock).mockResolvedValue(0);
+    (prisma.timesheet.count as jest.Mock).mockResolvedValue(0);
+    (prisma.invoice.aggregate as jest.Mock).mockResolvedValue({ _sum: { balanceDue: 0 } });
+    (prisma.invoice.count as jest.Mock).mockResolvedValue(0);
   });
 
   it('getDashboardStats should aggregate counts', async () => {

@@ -28,9 +28,9 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getByText('Users')).toBeInTheDocument();
-    expect(screen.queryByText('Global Settings')).not.toBeInTheDocument();
-    expect(screen.getByText('Area Templates')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Area Templates' }).length).toBeGreaterThan(0);
   });
 
   it('shows route when explicit user permissions grant access', () => {
@@ -50,6 +50,6 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getByText('Users')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0);
   });
 });
