@@ -18,6 +18,7 @@ export interface PublicProposal {
   };
   facility: {
     name: string;
+    address: string | null;
   } | null;
   proposalItems: Array<{
     itemType: string;

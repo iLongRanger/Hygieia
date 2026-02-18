@@ -20,6 +20,8 @@ export interface AreaCreateInput {
   areaTypeId: string;
   name?: string | null;
   quantity?: number;
+  length?: number | null;
+  width?: number | null;
   squareFeet?: number | null;
   floorType?: string;
   conditionLevel?: string;
@@ -38,6 +40,8 @@ export interface AreaUpdateInput {
   areaTypeId?: string;
   name?: string | null;
   quantity?: number;
+  length?: number | null;
+  width?: number | null;
   squareFeet?: number | null;
   floorType?: string;
   conditionLevel?: string;
@@ -62,6 +66,8 @@ const areaSelect = {
   id: true,
   name: true,
   quantity: true,
+  length: true,
+  width: true,
   squareFeet: true,
   floorType: true,
   conditionLevel: true,
@@ -234,14 +240,21 @@ export async function createArea(input: AreaCreateInput) {
           minutesPerItem: item.minutesPerItem,
         })) || [];
 
-    // 3. Create the area with fixtures
+    // 3. Auto-compute squareFeet from length × width if both provided
+    const computedSqft = (input.length != null && input.width != null)
+      ? input.length * input.width
+      : null;
+
+    // 4. Create the area with fixtures
     const area = await tx.area.create({
       data: {
         facilityId: input.facilityId,
         areaTypeId: input.areaTypeId,
         name: normalizedName,
         quantity: input.quantity ?? 1,
-        squareFeet: input.squareFeet ?? template?.defaultSquareFeet ?? null,
+        length: input.length ?? null,
+        width: input.width ?? null,
+        squareFeet: input.squareFeet ?? computedSqft ?? template?.defaultSquareFeet ?? null,
         floorType: input.floorType ?? 'vct',
         conditionLevel: input.conditionLevel ?? 'standard',
         roomCount: input.roomCount ?? 0,
@@ -320,7 +333,13 @@ export async function updateArea(id: string, input: AreaUpdateInput) {
     updateData.name = normalizedName ? normalizedName : null;
   }
   if (input.quantity !== undefined) updateData.quantity = input.quantity;
+  if (input.length !== undefined) updateData.length = input.length;
+  if (input.width !== undefined) updateData.width = input.width;
   if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
+  // Auto-compute squareFeet if length and width are both provided and squareFeet wasn't explicitly set
+  if (input.length != null && input.width != null && input.squareFeet === undefined) {
+    updateData.squareFeet = input.length * input.width;
+  }
   if (input.floorType !== undefined) updateData.floorType = input.floorType;
   if (input.conditionLevel !== undefined)
     updateData.conditionLevel = input.conditionLevel;

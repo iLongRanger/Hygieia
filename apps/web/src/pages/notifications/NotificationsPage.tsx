@@ -126,6 +126,12 @@ const NotificationsPage = () => {
       navigate(`/proposals/${meta.proposalId}`);
     } else if (meta?.contractId) {
       navigate(`/contracts/${meta.contractId}`);
+    } else if (meta?.leadId) {
+      navigate(`/leads/${meta.leadId}`);
+    } else if (meta?.facilityId) {
+      navigate(`/facilities/${meta.facilityId}`);
+    } else if (meta?.inspectionId) {
+      navigate(`/inspections/${meta.inspectionId}`);
     } else if (meta?.appointmentId) {
       navigate('/appointments');
     } else if (meta?.jobId) {

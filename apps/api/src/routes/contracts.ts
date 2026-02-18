@@ -580,9 +580,11 @@ router.post(
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
             const pdfBuffer = await generateContractPdf(sent as any);
 
+            const isRenewal = sent.contractSource === 'renewal';
             const emailSubject = parsed.data.emailSubject || buildContractSentSubject(
               sent.contractNumber,
-              sent.title
+              sent.title,
+              isRenewal
             );
             const branding = await getBrandingSafe();
             const emailHtml = buildContractSentHtmlWithBranding({
@@ -594,6 +596,8 @@ router.post(
               recipientName: recipientFirstName || sent.account.name,
               customMessage: parsed.data.emailBody,
               publicViewUrl,
+              isRenewal,
+              renewalNumber: sent.renewalNumber || undefined,
             }, branding);
 
             logger.info(`Sending contract email to ${emailTo}`);

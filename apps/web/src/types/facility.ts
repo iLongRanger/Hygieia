@@ -123,6 +123,8 @@ export interface Area {
   id: string;
   name: string | null;
   quantity: number;
+  length: string | null;
+  width: string | null;
   squareFeet: string | null;
   floorType: FloorType;
   conditionLevel: ConditionLevel;
@@ -158,7 +160,8 @@ export interface CreateAreaInput {
   facilityId: string;
   areaTypeId: string;
   name?: string | null;
-  quantity?: number;
+  length?: number | null;
+  width?: number | null;
   squareFeet?: number | null;
   floorType?: FloorType;
   conditionLevel?: ConditionLevel;
@@ -175,7 +178,8 @@ export interface CreateAreaInput {
 export interface UpdateAreaInput {
   areaTypeId?: string;
   name?: string | null;
-  quantity?: number;
+  length?: number | null;
+  width?: number | null;
   squareFeet?: number | null;
   floorType?: FloorType;
   conditionLevel?: ConditionLevel;

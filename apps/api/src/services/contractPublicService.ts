@@ -20,6 +20,8 @@ const publicContractSelect = {
   signedByName: true,
   signedByEmail: true,
   signedDate: true,
+  contractSource: true,
+  renewalNumber: true,
   sentAt: true,
   createdAt: true,
   account: {

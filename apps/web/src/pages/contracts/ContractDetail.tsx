@@ -489,14 +489,20 @@ const ContractDetail = () => {
             </Button>
           )}
           {contract.status === 'active' && canWriteContracts && (
-            <Button
-              variant="secondary"
-              onClick={handleTerminate}
-              className="text-red-400 hover:text-red-300"
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Terminate
-            </Button>
+            <>
+              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
+                <Mail className="mr-2 h-4 w-4" />
+                Resend
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleTerminate}
+                className="text-red-400 hover:text-red-300"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Terminate
+              </Button>
+            </>
           )}
           {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
             <Button
@@ -793,6 +799,31 @@ const ContractDetail = () => {
                 {formatDate(contract.createdAt)}
               </div>
             </div>
+            {contract.publicToken && (
+              <div>
+                <div className="text-sm text-gray-400 mb-1">Public Link</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate rounded bg-white/5 px-2 py-1 text-xs text-gray-300">
+                    {`${window.location.origin}/c/${contract.publicToken}`}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const url = `${window.location.origin}/c/${contract.publicToken}`;
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        toast.success('Link copied');
+                      } catch {
+                        prompt('Copy this link:', url);
+                      }
+                    }}
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </div>

@@ -8,6 +8,11 @@ import {
   Building2,
   Calendar,
   DollarSign,
+  MapPin,
+  Clock,
+  Phone,
+  Mail,
+  Globe,
 } from 'lucide-react';
 import {
   getPublicProposal,
@@ -239,6 +244,10 @@ const PublicProposalView: React.FC = () => {
               <Calendar className="h-4 w-4" />
               Valid until {formatDate(proposal.validUntil)}
             </span>
+            <span className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              Prepared {formatDate(proposal.sentAt || proposal.createdAt)}
+            </span>
           </div>
         </div>
 
@@ -250,16 +259,142 @@ const PublicProposalView: React.FC = () => {
           </div>
         )}
 
-        {/* Services */}
+        {/* Facility Info */}
+        {proposal.facility && (
+          <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Facility</h3>
+            <div className="flex items-start gap-3">
+              <Building2 className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+              <div>
+                <div className="font-medium text-gray-900">{proposal.facility.name}</div>
+                {proposal.facility.address && (
+                  <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    {proposal.facility.address}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Services & Areas Breakdown */}
         {proposal.proposalServices.length > 0 && (
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Services</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Services & Areas</h3>
+
+            {/* Services detail cards */}
+            <div className="space-y-4 mb-4">
+              {proposal.proposalServices.map((service, idx) => {
+                // Parse description: first line is area info, remaining are "Frequency: task1, task2"
+                const lines = service.description?.split('\n') || [];
+                const areaInfo = lines[0] || '';
+                const taskGroups: { label: string; tasks: string[] }[] = [];
+                for (let i = 1; i < lines.length; i++) {
+                  const match = lines[i].match(/^(.+?):\s*(.+)$/);
+                  if (match) {
+                    taskGroups.push({
+                      label: match[1].trim(),
+                      tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
+                    });
+                  }
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-lg border border-gray-200 p-5"
+                  >
+                    {/* Service header */}
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-base">{service.serviceName}</h4>
+                        {areaInfo && (
+                          <p className="text-sm text-gray-500 mt-0.5">{areaInfo}</p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <div className="text-lg font-semibold" style={{ color: primaryColor }}>
+                          {formatCurrency(Number(service.monthlyPrice) || 0)}
+                          <span className="text-sm font-normal text-gray-500">/mo</span>
+                        </div>
+                        {service.estimatedHours != null && Number(service.estimatedHours) > 0 && service.hourlyRate != null && Number(service.hourlyRate) > 0 && (
+                          <div className="text-sm text-gray-400 flex items-center justify-end gap-1 mt-0.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {service.estimatedHours} hrs @ {formatCurrency(Number(service.hourlyRate) || 0)}/hr
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Frequency badge */}
+                    <div className="mb-3">
+                      <span
+                        className="inline-block text-xs font-medium px-2.5 py-1 rounded-full"
+                        style={{ backgroundColor: `${accentColor}20`, color: primaryColor }}
+                      >
+                        {frequencyLabels[service.frequency] || service.frequency}
+                      </span>
+                    </div>
+
+                    {/* Tasks grouped by frequency */}
+                    {taskGroups.length > 0 && (
+                      <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                        {taskGroups.map((group, gIdx) => (
+                          <div key={gIdx}>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                              {group.label}
+                            </p>
+                            <ul className="space-y-1 ml-1">
+                              {group.tasks.map((task, tIdx) => (
+                                <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-600">
+                                  <span
+                                    className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: accentColor }}
+                                  />
+                                  {task}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Included tasks (flat list) */}
+                    {taskGroups.length === 0 && service.includedTasks && service.includedTasks.length > 0 && (
+                      <div className="mt-3 border-t border-gray-100 pt-3">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                          Included Tasks
+                        </p>
+                        <ul className="space-y-1 ml-1">
+                          {service.includedTasks.map((task, tIdx) => (
+                            <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-600">
+                              <span
+                                className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: accentColor }}
+                              />
+                              {task}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Services summary table */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead style={{ backgroundColor: `${primaryColor}08` }}>
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Frequency</th>
+                    {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hours</th>
+                    )}
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monthly</th>
                   </tr>
                 </thead>
@@ -268,19 +403,37 @@ const PublicProposalView: React.FC = () => {
                     <tr key={idx}>
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{service.serviceName}</div>
-                        {service.description && (
-                          <div className="text-sm text-gray-500 mt-0.5">{service.description}</div>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {frequencyLabels[service.frequency] || service.frequency}
                       </td>
+                      {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
+                        <td className="px-4 py-3 text-right text-sm text-gray-600">
+                          {service.estimatedHours != null && Number(service.estimatedHours) > 0
+                            ? `${service.estimatedHours} hrs`
+                            : '-'}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right font-medium text-gray-900">
-                        {formatCurrency(service.monthlyPrice)}
+                        {formatCurrency(Number(service.monthlyPrice) || 0)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-200" style={{ backgroundColor: `${primaryColor}05` }}>
+                    <td className="px-4 py-3 font-semibold text-gray-900">Total</td>
+                    <td className="px-4 py-3" />
+                    {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
+                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                        {proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0)} hrs
+                      </td>
+                    )}
+                    <td className="px-4 py-3 text-right font-bold" style={{ color: primaryColor }}>
+                      {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.monthlyPrice) || 0), 0))}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -305,8 +458,8 @@ const PublicProposalView: React.FC = () => {
                     <tr key={idx}>
                       <td className="px-4 py-3 text-gray-900">{item.description}</td>
                       <td className="px-4 py-3 text-right text-gray-600">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(item.totalPrice)}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{formatCurrency(Number(item.unitPrice) || 0)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(Number(item.totalPrice) || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -315,22 +468,59 @@ const PublicProposalView: React.FC = () => {
           </div>
         )}
 
-        {/* Pricing Summary */}
-        <div className="mb-8 flex justify-end">
-            <div className="w-72 bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-500">Subtotal</span>
-              <span className="text-gray-900">{formatCurrency(proposal.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm mb-3">
-              <span className="text-gray-500">Tax ({(Number(proposal.taxRate) * 100).toFixed(1)}%)</span>
-              <span className="text-gray-900">{formatCurrency(proposal.taxAmount)}</span>
-            </div>
-            <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-              <span className="text-lg font-bold text-gray-900">Total</span>
-              <span className="text-lg font-bold" style={{ color: primaryColor }}>{formatCurrency(proposal.totalAmount)}</span>
+        {/* Financial Summary */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            <span className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" style={{ color: accentColor }} />
+              Financial Summary
+            </span>
+          </h3>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="p-5">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-500">Monthly Subtotal</span>
+                <span className="text-gray-900 font-medium">{formatCurrency(Number(proposal.subtotal) || 0)}</span>
+              </div>
+              {(Number(proposal.taxRate) || 0) > 0 && (
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-500">Tax ({((Number(proposal.taxRate) || 0) * 100).toFixed(1)}%)</span>
+                  <span className="text-gray-900 font-medium">{formatCurrency(Number(proposal.taxAmount) || 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-gray-200">
+                <span className="text-xl font-bold text-gray-900">Monthly Total</span>
+                <span className="text-xl font-bold" style={{ color: primaryColor }}>
+                  {formatCurrency(Number(proposal.totalAmount) || 0)}
+                </span>
+              </div>
+              {(Number(proposal.totalAmount) || 0) > 0 && (
+                <div className="flex justify-between text-sm text-gray-400 mt-1">
+                  <span>Annual Estimate</span>
+                  <span>{formatCurrency((Number(proposal.totalAmount) || 0) * 12)}</span>
+                </div>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Terms & Conditions */}
+        <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms</h3>
+          <ul className="space-y-2 text-sm text-gray-600">
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+              This proposal is valid until <strong>{formatDate(proposal.validUntil)}</strong>.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+              All prices shown are monthly recurring charges unless otherwise noted.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+              Acceptance of this proposal constitutes agreement to the services and pricing described herein.
+            </li>
+          </ul>
         </div>
 
         {/* Action Buttons */}
@@ -433,8 +623,35 @@ const PublicProposalView: React.FC = () => {
 
       {/* Footer */}
       <footer className="bg-gray-100 border-t border-gray-200 mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 text-center text-sm text-gray-400">
-          <p>Powered by {branding?.companyName || 'Hygieia'}</p>
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="font-medium text-gray-700">{branding?.companyName || 'Hygieia'}</p>
+              {branding?.companyAddress && (
+                <p className="text-sm text-gray-400 mt-0.5">{branding.companyAddress}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-400">
+              {branding?.companyPhone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" />
+                  {branding.companyPhone}
+                </span>
+              )}
+              {branding?.companyEmail && (
+                <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-1 hover:text-gray-600 transition-colors">
+                  <Mail className="h-3.5 w-3.5" />
+                  {branding.companyEmail}
+                </a>
+              )}
+              {branding?.companyWebsite && (
+                <a href={branding.companyWebsite.startsWith('http') ? branding.companyWebsite : `https://${branding.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-gray-600 transition-colors">
+                  <Globe className="h-3.5 w-3.5" />
+                  {branding.companyWebsite.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </footer>
     </div>

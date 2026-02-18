@@ -150,6 +150,23 @@ async function main() {
 
   console.log(`Created ${fixtureTypes.count} commercial fixture types`)
 
+  // Seed common lead sources
+  const leadSources = await prisma.leadSource.createMany({
+    data: [
+      { name: 'Website', color: '#3B82F6' },
+      { name: 'Referral', color: '#10B981' },
+      { name: 'Cold Call', color: '#F59E0B' },
+      { name: 'Google Ads', color: '#EF4444' },
+      { name: 'Social Media', color: '#8B5CF6' },
+      { name: 'Door-to-Door', color: '#EC4899' },
+      { name: 'Trade Show', color: '#06B6D4' },
+      { name: 'Other', color: '#6B7280' },
+    ],
+    skipDuplicates: true,
+  })
+
+  console.log(`Created ${leadSources.count} lead sources`)
+
   // Create default super admin user
   const defaultPassword = 'Admin@123'
   const hashedPassword = await bcrypt.hash(defaultPassword, 10)

@@ -203,6 +203,16 @@ const PublicContractView: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
+        {/* Renewal Banner */}
+        {(contract as any).contractSource === 'renewal' && (
+          <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
+            <p className="font-semibold text-yellow-800">
+              Contract Renewal{(contract as any).renewalNumber ? ` #${(contract as any).renewalNumber}` : ''}
+            </p>
+            <p className="text-sm text-yellow-700">This is a renewal of your existing service agreement.</p>
+          </div>
+        )}
+
         {/* Title & Meta */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold" style={{ color: textColor }}>{contract.title}</h2>

@@ -241,7 +241,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
 }
 
 export async function updateAppointment(id: string, input: AppointmentUpdateInput) {
-  return prisma.appointment.update({
+  const appointment = await prisma.appointment.update({
     where: { id },
     data: {
       assignedToUserId: input.assignedToUserId,
@@ -254,6 +254,23 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
     },
     select: appointmentSelect,
   });
+
+  // Notify assigned user about the update
+  if (appointment.assignedToUser?.id) {
+    createNotification({
+      userId: appointment.assignedToUser.id,
+      type: 'appointment_updated',
+      title: 'Appointment updated',
+      body: `Your ${appointment.type} appointment has been updated.`,
+      metadata: {
+        appointmentId: appointment.id,
+        type: appointment.type,
+        scheduledStart: appointment.scheduledStart,
+      },
+    }).catch(() => {});
+  }
+
+  return appointment;
 }
 
 export async function deleteAppointment(id: string) {

@@ -410,6 +410,8 @@ model Area {
   areaTypeId      String    @map("area_type_id") @db.Uuid
   name            String?   @db.VarChar(255)
   quantity        Int       @default(1)
+  length          Decimal?  @db.Decimal(10, 2)
+  width           Decimal?  @db.Decimal(10, 2)
   squareFeet      Decimal?  @map("square_feet") @db.Decimal(10, 2)
   floorType       String    @default("vct") @map("floor_type") @db.VarChar(20)
   conditionLevel  String    @default("standard") @map("condition_level") @db.VarChar(20)

@@ -856,23 +856,78 @@ const AppointmentsPage = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="Start"
-              type="datetime-local"
-              value={formData.scheduledStart}
-              onChange={(e) => setFormData({ ...formData, scheduledStart: e.target.value })}
+              label="Start Date"
+              type="date"
+              value={formData.scheduledStart?.split('T')[0] || ''}
+              onChange={(e) => {
+                const time = formData.scheduledStart?.split('T')[1] || '09:00';
+                setFormData({ ...formData, scheduledStart: `${e.target.value}T${time}` });
+              }}
             />
-            <Input
-              label="End"
-              type="datetime-local"
-              value={formData.scheduledEnd}
-              onChange={(e) => setFormData({ ...formData, scheduledEnd: e.target.value })}
+            <Select
+              label="Start Time"
+              options={(() => {
+                const times = [];
+                for (let h = 6; h <= 22; h++) {
+                  for (let m = 0; m < 60; m += 30) {
+                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    times.push({ value: hour24, label: hour12 });
+                  }
+                }
+                return times;
+              })()}
+              value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
+              onChange={(value) => {
+                const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledStart: `${date}T${value}` });
+              }}
             />
           </div>
 
-          <Input
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="End Date"
+              type="date"
+              value={formData.scheduledEnd?.split('T')[0] || ''}
+              onChange={(e) => {
+                const time = formData.scheduledEnd?.split('T')[1] || '10:00';
+                setFormData({ ...formData, scheduledEnd: `${e.target.value}T${time}` });
+              }}
+            />
+            <Select
+              label="End Time"
+              options={(() => {
+                const times = [];
+                for (let h = 6; h <= 22; h++) {
+                  for (let m = 0; m < 60; m += 30) {
+                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    times.push({ value: hour24, label: hour12 });
+                  }
+                }
+                return times;
+              })()}
+              value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
+              onChange={(value) => {
+                const date = formData.scheduledEnd?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledEnd: `${date}T${value}` });
+              }}
+            />
+          </div>
+
+          <Select
             label="Timezone"
-            value={formData.timezone}
-            onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+            options={[
+              { value: 'America/New_York', label: 'Eastern (ET)' },
+              { value: 'America/Chicago', label: 'Central (CT)' },
+              { value: 'America/Denver', label: 'Mountain (MT)' },
+              { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
+              { value: 'America/Anchorage', label: 'Alaska (AKT)' },
+              { value: 'Pacific/Honolulu', label: 'Hawaii (HT)' },
+            ]}
+            value={formData.timezone || 'America/New_York'}
+            onChange={(value) => setFormData({ ...formData, timezone: value })}
           />
 
           <Input
@@ -958,23 +1013,78 @@ const AppointmentsPage = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="Start"
-              type="datetime-local"
-              value={formData.scheduledStart}
-              onChange={(e) => setFormData({ ...formData, scheduledStart: e.target.value })}
+              label="Start Date"
+              type="date"
+              value={formData.scheduledStart?.split('T')[0] || ''}
+              onChange={(e) => {
+                const time = formData.scheduledStart?.split('T')[1] || '09:00';
+                setFormData({ ...formData, scheduledStart: `${e.target.value}T${time}` });
+              }}
             />
-            <Input
-              label="End"
-              type="datetime-local"
-              value={formData.scheduledEnd}
-              onChange={(e) => setFormData({ ...formData, scheduledEnd: e.target.value })}
+            <Select
+              label="Start Time"
+              options={(() => {
+                const times = [];
+                for (let h = 6; h <= 22; h++) {
+                  for (let m = 0; m < 60; m += 30) {
+                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    times.push({ value: hour24, label: hour12 });
+                  }
+                }
+                return times;
+              })()}
+              value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
+              onChange={(value) => {
+                const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledStart: `${date}T${value}` });
+              }}
             />
           </div>
 
-          <Input
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="End Date"
+              type="date"
+              value={formData.scheduledEnd?.split('T')[0] || ''}
+              onChange={(e) => {
+                const time = formData.scheduledEnd?.split('T')[1] || '10:00';
+                setFormData({ ...formData, scheduledEnd: `${e.target.value}T${time}` });
+              }}
+            />
+            <Select
+              label="End Time"
+              options={(() => {
+                const times = [];
+                for (let h = 6; h <= 22; h++) {
+                  for (let m = 0; m < 60; m += 30) {
+                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    times.push({ value: hour24, label: hour12 });
+                  }
+                }
+                return times;
+              })()}
+              value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
+              onChange={(value) => {
+                const date = formData.scheduledEnd?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledEnd: `${date}T${value}` });
+              }}
+            />
+          </div>
+
+          <Select
             label="Timezone"
-            value={formData.timezone}
-            onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+            options={[
+              { value: 'America/New_York', label: 'Eastern (ET)' },
+              { value: 'America/Chicago', label: 'Central (CT)' },
+              { value: 'America/Denver', label: 'Mountain (MT)' },
+              { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
+              { value: 'America/Anchorage', label: 'Alaska (AKT)' },
+              { value: 'Pacific/Honolulu', label: 'Hawaii (HT)' },
+            ]}
+            value={formData.timezone || 'America/New_York'}
+            onChange={(value) => setFormData({ ...formData, timezone: value })}
           />
 
           <Input

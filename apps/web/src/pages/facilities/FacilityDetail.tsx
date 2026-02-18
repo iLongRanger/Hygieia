@@ -153,7 +153,8 @@ const FacilityDetail = () => {
     facilityId: id || '',
     areaTypeId: '',
     name: '',
-    quantity: 1,
+    length: null,
+    width: null,
     squareFeet: null,
     floorType: 'vct',
     conditionLevel: 'standard',
@@ -474,7 +475,8 @@ const FacilityDetail = () => {
       facilityId: id || '',
       areaTypeId: '',
       name: '',
-      quantity: 1,
+      length: null,
+      width: null,
       squareFeet: null,
       floorType: 'vct',
       conditionLevel: 'standard',
@@ -770,7 +772,8 @@ const FacilityDetail = () => {
     setAreaForm({
       areaTypeId: area.areaType.id,
       name: area.name,
-      quantity: area.quantity,
+      length: area.length ? Number(area.length) : null,
+      width: area.width ? Number(area.width) : null,
       squareFeet: area.squareFeet ? Number(area.squareFeet) : null,
       floorType: area.floorType || 'vct',
       conditionLevel: area.conditionLevel || 'standard',
@@ -1114,6 +1117,11 @@ const FacilityDetail = () => {
           <div className="flex items-center justify-between border-b border-white/10 bg-navy-dark/30 p-4">
             <h2 className="text-lg font-semibold text-white">
               Areas ({areas.filter((a) => !a.archivedAt).length})
+              {totalSquareFeetFromAreas > 0 && (
+                <span className="text-sm font-normal text-gray-400 ml-2">
+                  {totalSquareFeetFromAreas.toLocaleString()} sq ft total
+                </span>
+              )}
             </h2>
             <Button
               size="sm"
@@ -1364,30 +1372,17 @@ const FacilityDetail = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Building Type"
-              options={BUILDING_TYPES}
-              value={facilityForm.buildingType || ''}
-              onChange={(value) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  buildingType: value || null,
-                })
-              }
-            />
-            <Input
-              label="Square Feet"
-              type="number"
-              value={facilityForm.squareFeet || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  squareFeet: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </div>
+          <Select
+            label="Building Type"
+            options={BUILDING_TYPES}
+            value={facilityForm.buildingType || ''}
+            onChange={(value) =>
+              setFacilityForm({
+                ...facilityForm,
+                buildingType: value || null,
+              })
+            }
+          />
 
           <Textarea
             label="Access Instructions"
@@ -1475,24 +1470,46 @@ const FacilityDetail = () => {
             }
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Quantity"
+              label="Length (ft)"
               type="number"
-              min={1}
-              value={areaForm.quantity || 1}
-              onChange={(e) =>
+              min={0}
+              step="0.01"
+              placeholder="Length"
+              value={(areaForm as CreateAreaInput).length || ''}
+              onChange={(e) => {
+                const length = e.target.value ? Number(e.target.value) : null;
+                const width = (areaForm as CreateAreaInput).width ? Number((areaForm as CreateAreaInput).width) : null;
                 setAreaForm({
                   ...areaForm,
-                  quantity: Number(e.target.value) || 1,
-                })
-              }
+                  length,
+                  squareFeet: length && width ? Math.round(length * width) : areaForm.squareFeet,
+                });
+              }}
             />
             <Input
-              label="Square Feet (per area)"
+              label="Width (ft)"
               type="number"
-              placeholder="Per area"
-              hint="Total square feet is calculated as quantity × per-area."
+              min={0}
+              step="0.01"
+              placeholder="Width"
+              value={(areaForm as CreateAreaInput).width || ''}
+              onChange={(e) => {
+                const width = e.target.value ? Number(e.target.value) : null;
+                const length = (areaForm as CreateAreaInput).length ? Number((areaForm as CreateAreaInput).length) : null;
+                setAreaForm({
+                  ...areaForm,
+                  width,
+                  squareFeet: length && width ? Math.round(length * width) : areaForm.squareFeet,
+                });
+              }}
+            />
+            <Input
+              label="Square Feet"
+              type="number"
+              min={0}
+              placeholder="Auto or manual"
               value={areaForm.squareFeet || ''}
               onChange={(e) =>
                 setAreaForm({

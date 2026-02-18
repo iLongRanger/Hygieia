@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
+import { createNotification } from './notificationService';
 
 export interface LeadListParams {
   page?: number;
@@ -208,7 +209,7 @@ export async function getLeadById(id: string) {
 }
 
 export async function createLead(input: LeadCreateInput) {
-  return prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       leadSourceId: input.leadSourceId,
       companyName: input.companyName,
@@ -227,6 +228,19 @@ export async function createLead(input: LeadCreateInput) {
     },
     select: leadSelect,
   });
+
+  // Notify assigned user if different from creator
+  if (input.assignedToUserId && input.assignedToUserId !== input.createdByUserId) {
+    createNotification({
+      userId: input.assignedToUserId,
+      type: 'lead_assigned',
+      title: 'New lead assigned to you',
+      body: `Lead "${input.contactName}" has been assigned to you.`,
+      metadata: { leadId: lead.id },
+    }).catch(() => {}); // fire-and-forget
+  }
+
+  return lead;
 }
 
 export async function updateLead(id: string, input: LeadUpdateInput) {
@@ -278,11 +292,37 @@ export async function updateLead(id: string, input: LeadUpdateInput) {
       : { disconnect: true };
   }
 
-  return prisma.lead.update({
+  // Check if assignment changed before updating
+  let previousAssignee: string | null = null;
+  if (input.assignedToUserId !== undefined) {
+    const existing = await prisma.lead.findUnique({
+      where: { id },
+      select: { assignedToUserId: true, contactName: true },
+    });
+    previousAssignee = existing?.assignedToUserId ?? null;
+  }
+
+  const lead = await prisma.lead.update({
     where: { id },
     data: updateData,
     select: leadSelect,
   });
+
+  // Notify new assignee if assignment changed
+  if (
+    input.assignedToUserId &&
+    input.assignedToUserId !== previousAssignee
+  ) {
+    createNotification({
+      userId: input.assignedToUserId,
+      type: 'lead_assigned',
+      title: 'Lead assigned to you',
+      body: `Lead "${lead.contactName}" has been assigned to you.`,
+      metadata: { leadId: lead.id },
+    }).catch(() => {});
+  }
+
+  return lead;
 }
 
 export async function archiveLead(id: string) {

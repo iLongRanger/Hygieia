@@ -610,7 +610,7 @@ const ProposalDetail = () => {
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-emerald">
-                            {formatCurrency(service.monthlyPrice)}/month
+                            {formatCurrency(Number(service.monthlyPrice) || 0)}/month
                           </div>
                           {service.estimatedHours && service.hourlyRate && (
                             <div className="text-sm text-gray-400">
@@ -753,12 +753,12 @@ const ProposalDetail = () => {
                 <div className="rounded-lg bg-white/5 p-3 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Monthly Subtotal</span>
-                    <span className="text-white font-medium">{formatCurrency(proposal.subtotal)}</span>
+                    <span className="text-white font-medium">{formatCurrency(Number(proposal.subtotal) || 0)}</span>
                   </div>
-                  {proposal.pricingSnapshot.minimumMonthlyCharge > 0 && (
+                  {(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0) > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-gray-400">Minimum Monthly Charge</span>
-                      <span className="text-white">{formatCurrency(proposal.pricingSnapshot.minimumMonthlyCharge)}</span>
+                      <span className="text-white">{formatCurrency(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0)}</span>
                     </div>
                   )}
                 </div>
@@ -871,46 +871,57 @@ const ProposalDetail = () => {
               </div>
 
               {/* Areas table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="pb-2 text-left text-xs font-medium text-gray-400 uppercase">Area</th>
-                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Hours</th>
-                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Frequency</th>
-                      <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Monthly</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {proposal.proposalServices.map((svc, idx) => (
-                      <tr key={idx} className="hover:bg-white/5">
-                        <td className="py-2 text-gray-300">{svc.serviceName}</td>
-                        <td className="py-2 text-right text-gray-300">
-                          {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
-                        </td>
-                        <td className="py-2 text-right">
-                          <span className="text-gray-300 capitalize">{svc.frequency?.replace(/_/g, ' ') || svc.serviceType}</span>
-                        </td>
-                        <td className="py-2 text-right font-medium text-white">
-                          {formatCurrency(svc.monthlyPrice)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-white/10">
-                      <td className="pt-2 font-medium text-white">Total</td>
-                      <td className="pt-2 text-right text-gray-300">
-                        {proposal.proposalServices.reduce((sum, s) => sum + (s.estimatedHours || 0), 0)} hrs
-                      </td>
-                      <td />
-                      <td className="pt-2 text-right font-semibold text-emerald">
-                        {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + s.monthlyPrice, 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+              {(() => {
+                const isHourlyPricing = proposal.pricingSnapshot?.pricingType !== 'square_foot';
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="pb-2 text-left text-xs font-medium text-gray-400 uppercase">Area</th>
+                          {isHourlyPricing && (
+                            <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Hours</th>
+                          )}
+                          <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Frequency</th>
+                          <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Monthly</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {proposal.proposalServices.map((svc, idx) => (
+                          <tr key={idx} className="hover:bg-white/5">
+                            <td className="py-2 text-gray-300">{svc.serviceName}</td>
+                            {isHourlyPricing && (
+                              <td className="py-2 text-right text-gray-300">
+                                {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
+                              </td>
+                            )}
+                            <td className="py-2 text-right">
+                              <span className="text-gray-300 capitalize">{svc.frequency?.replace(/_/g, ' ') || svc.serviceType}</span>
+                            </td>
+                            <td className="py-2 text-right font-medium text-white">
+                              {formatCurrency(Number(svc.monthlyPrice) || 0)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-white/10">
+                          <td className="pt-2 font-medium text-white">Total</td>
+                          {isHourlyPricing && (
+                            <td className="pt-2 text-right text-gray-300">
+                              {proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0)} hrs
+                            </td>
+                          )}
+                          <td />
+                          <td className="pt-2 text-right font-semibold text-emerald">
+                            {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.monthlyPrice) || 0), 0))}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                );
+              })()}
             </Card>
           )}
 
@@ -935,20 +946,20 @@ const ProposalDetail = () => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Subtotal:</span>
                 <span className="text-white font-medium">
-                  {formatCurrency(proposal.subtotal)}
+                  {formatCurrency(Number(proposal.subtotal) || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">
-                  Tax ({(proposal.taxRate * 100).toFixed(1)}%):
+                  Tax ({((Number(proposal.taxRate) || 0) * 100).toFixed(1)}%):
                 </span>
                 <span className="text-white font-medium">
-                  {formatCurrency(proposal.taxAmount)}
+                  {formatCurrency(Number(proposal.taxAmount) || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-xl font-bold border-t border-white/10 pt-3">
                 <span className="text-white">Total:</span>
-                <span className="text-emerald">{formatCurrency(proposal.totalAmount)}</span>
+                <span className="text-emerald">{formatCurrency(Number(proposal.totalAmount) || 0)}</span>
               </div>
             </div>
           </Card>
