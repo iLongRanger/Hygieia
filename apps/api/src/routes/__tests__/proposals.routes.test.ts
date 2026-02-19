@@ -5,8 +5,11 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as proposalService from '../../services/proposalService';
 import * as proposalActivityService from '../../services/proposalActivityService';
 import * as proposalVersionService from '../../services/proposalVersionService';
+import * as proposalPublicService from '../../services/proposalPublicService';
 import * as pdfService from '../../services/pdfService';
 import * as emailService from '../../services/emailService';
+import * as emailConfig from '../../config/email';
+import { prisma } from '../../lib/prisma';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -248,6 +251,45 @@ describe('Proposal Routes', () => {
     expect(response.body.data.id).toBe('proposal-1');
   });
 
+  it('POST /:id/send should lock pricing, snapshot version, and generate token', async () => {
+    const draftProposal = {
+      id: 'proposal-1',
+      status: 'draft',
+      pricingLocked: false,
+      proposalNumber: 'PROP-001',
+      title: 'Test',
+      account: { id: 'acc-1', name: 'Test Account' },
+      totalAmount: '100',
+      validUntil: null,
+    };
+
+    (proposalService.getProposalById as jest.Mock)
+      .mockResolvedValueOnce(draftProposal)
+      .mockResolvedValueOnce({ ...draftProposal, status: 'sent' });
+    (proposalService.lockProposalPricing as jest.Mock).mockResolvedValue({
+      ...draftProposal,
+      pricingLocked: true,
+    });
+    (proposalService.sendProposal as jest.Mock).mockResolvedValue({
+      ...draftProposal,
+      status: 'sent',
+    });
+
+    await request(app)
+      .post('/api/v1/proposals/proposal-1/send')
+      .send({ emailTo: 'test@example.com' })
+      .expect(200);
+
+    expect(proposalService.lockProposalPricing).toHaveBeenCalledWith('proposal-1');
+    expect(proposalVersionService.createVersion).toHaveBeenCalledWith(
+      'proposal-1',
+      'user-1',
+      'Proposal sent'
+    );
+    expect(proposalPublicService.generatePublicToken).toHaveBeenCalledWith('proposal-1');
+    expect(proposalService.sendProposal).toHaveBeenCalledWith('proposal-1');
+  });
+
   it('POST /:id/send should return 422 if not draft', async () => {
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
@@ -335,6 +377,44 @@ describe('Proposal Routes', () => {
       .expect(422);
 
     expect(emailService.sendProposalEmail).not.toHaveBeenCalled();
+  });
+
+  it('POST /:id/remind should send reminder email using primary contact fallback', async () => {
+    (emailConfig.isEmailConfigured as jest.Mock).mockReturnValue(true);
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'sent',
+      proposalNumber: 'PROP-001',
+      title: 'Test Proposal',
+      totalAmount: '1200',
+      validUntil: null,
+      publicToken: 'public-token-1',
+      account: { id: 'acc-1', name: 'Acme Corp' },
+    });
+    (prisma.contact.findMany as jest.Mock).mockResolvedValue([
+      { email: 'primary@acme.com', isPrimary: true },
+      { email: 'secondary@acme.com', isPrimary: false },
+    ]);
+    (pdfService.generateProposalPdf as jest.Mock).mockResolvedValue(Buffer.from('pdf'));
+    (emailService.sendProposalEmail as jest.Mock).mockResolvedValue(true);
+
+    await request(app)
+      .post('/api/v1/proposals/proposal-1/remind')
+      .send({})
+      .expect(200);
+
+    const [to, cc, subject, _html, pdf, proposalNumber] = (emailService.sendProposalEmail as jest.Mock).mock.calls[0];
+    expect(to).toBe('primary@acme.com');
+    expect(cc).toEqual(['secondary@acme.com']);
+    expect(subject).toContain('Reminder');
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(proposalNumber).toBe('PROP-001');
+    expect(proposalActivityService.logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        proposalId: 'proposal-1',
+        action: 'reminder_sent',
+      })
+    );
   });
 
   it('GET /:id/pdf should return proposal PDF', async () => {

@@ -3,6 +3,10 @@ import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractService from '../../services/contractService';
+import * as contractPublicService from '../../services/contractPublicService';
+import * as emailService from '../../services/emailService';
+import * as emailConfig from '../../config/email';
+import { prisma } from '../../lib/prisma';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -31,7 +35,16 @@ jest.mock('../../services/pdfService', () => ({
 }));
 
 jest.mock('../../services/emailService', () => ({
+  sendEmail: jest.fn().mockResolvedValue(true),
   sendNotificationEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../services/contractPublicService', () => ({
+  generatePublicToken: jest.fn().mockResolvedValue('contract-public-token'),
+}));
+
+jest.mock('../../config/email', () => ({
+  isEmailConfigured: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../services/globalSettingsService', () => ({
@@ -49,9 +62,17 @@ jest.mock('../../templates/contractTerminated', () => ({
   buildContractTerminatedSubject: jest.fn().mockReturnValue('Subject'),
 }));
 
+jest.mock('../../templates/contractSent', () => ({
+  buildContractSentHtmlWithBranding: jest.fn().mockReturnValue('<html></html>'),
+  buildContractSentSubject: jest.fn().mockReturnValue('Subject'),
+}));
+
 jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: { findUnique: jest.fn().mockResolvedValue(null) },
+    account: { findUnique: jest.fn().mockResolvedValue(null) },
+    facility: { findUnique: jest.fn().mockResolvedValue(null) },
+    contact: { findMany: jest.fn().mockResolvedValue([]) },
     notification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
     userRole: { findMany: jest.fn().mockResolvedValue([]) },
   },
@@ -195,7 +216,58 @@ describe('Contract Routes', () => {
     expect(response.body.data.id).toBe('contract-1');
     expect(contractService.assignContractTeam).toHaveBeenCalledWith(
       'contract-1',
-      '11111111-1111-1111-1111-111111111111'
+      '11111111-1111-1111-1111-111111111111',
+      undefined
+    );
+  });
+
+  it('POST /:id/send should return 422 for non-sendable statuses', async () => {
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'terminated',
+    });
+
+    await request(app)
+      .post('/api/v1/contracts/contract-1/send')
+      .send({})
+      .expect(422);
+  });
+
+  it('POST /:id/send should generate token and send email when configured', async () => {
+    const contract = {
+      id: 'contract-1',
+      status: 'draft',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+      contractSource: 'proposal',
+      renewalNumber: null,
+      monthlyValue: '2500',
+      startDate: '2026-02-01',
+      account: { id: 'account-1', name: 'Acme Corp' },
+    };
+    (emailConfig.isEmailConfigured as jest.Mock).mockReturnValue(true);
+    (contractService.getContractById as jest.Mock)
+      .mockResolvedValueOnce(contract)
+      .mockResolvedValueOnce({ ...contract, status: 'sent' });
+    (contractService.sendContract as jest.Mock).mockResolvedValue({
+      ...contract,
+      status: 'sent',
+    });
+    (prisma.contact.findMany as jest.Mock).mockResolvedValue([
+      { name: 'Jane Client', email: 'jane@acme.com', isPrimary: true },
+    ]);
+
+    await request(app)
+      .post('/api/v1/contracts/contract-1/send')
+      .send({})
+      .expect(200);
+
+    expect(contractPublicService.generatePublicToken).toHaveBeenCalledWith('contract-1');
+    expect(contractService.sendContract).toHaveBeenCalledWith('contract-1');
+    expect(emailService.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jane@acme.com',
+      })
     );
   });
 

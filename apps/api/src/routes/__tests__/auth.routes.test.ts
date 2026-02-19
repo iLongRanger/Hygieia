@@ -4,6 +4,22 @@ import { Application } from 'express';
 import * as authService from '../../services/authService';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 
+let mockAuthUser: { id: string; role: string } | null = { id: 'user-1', role: 'owner' };
+
+jest.mock('../../middleware/auth', () => ({
+  authenticate: (req: any, res: any, next: any) => {
+    if (!mockAuthUser) {
+      return res.status(401).json({ error: { message: 'Unauthorized' } });
+    }
+    req.user = mockAuthUser;
+    next();
+  },
+}));
+
+jest.mock('../../middleware/rateLimiter', () => ({
+  authRateLimiter: (_req: any, _res: any, next: any) => next(),
+}));
+
 jest.mock('../../services/authService');
 
 describe('Auth Routes', () => {
@@ -11,6 +27,7 @@ describe('Auth Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockAuthUser = { id: 'user-1', role: 'owner' };
     app = createTestApp();
     const authRoutes = (await import('../auth')).default;
     setupTestRoutes(app, authRoutes, '/api/v1/auth');
@@ -100,6 +117,43 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /logout', () => {
+    it('should logout current session when refresh token is provided', async () => {
+      (authService.logout as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/v1/auth/logout')
+        .send({ refreshToken: 'refresh-token-1' })
+        .expect(200);
+
+      expect(response.body.data.message).toBe('Logged out successfully');
+      expect(authService.logout).toHaveBeenCalledWith('refresh-token-1');
+    });
+
+    it('should succeed without refresh token payload', async () => {
+      await request(app)
+        .post('/api/v1/auth/logout')
+        .send({})
+        .expect(200);
+
+      expect(authService.logout).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /logout-all', () => {
+    it('should revoke all user sessions', async () => {
+      (authService.logoutAll as jest.Mock).mockResolvedValue(3);
+
+      const response = await request(app)
+        .post('/api/v1/auth/logout-all')
+        .send({})
+        .expect(200);
+
+      expect(response.body.data.sessionsRevoked).toBe(3);
+      expect(authService.logoutAll).toHaveBeenCalledWith('user-1');
+    });
+  });
+
   describe('POST /dev/create-user', () => {
     it('should create dev user successfully', async () => {
       const mockResult = {
@@ -147,7 +201,32 @@ describe('Auth Routes', () => {
   });
 
   describe('GET /me', () => {
+    it('should return authenticated user profile', async () => {
+      (authService.getUserById as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'owner@example.com',
+        fullName: 'Owner User',
+        role: 'owner',
+      });
+
+      const response = await request(app)
+        .get('/api/v1/auth/me')
+        .expect(200);
+
+      expect(response.body.data.user.id).toBe('user-1');
+      expect(authService.getUserById).toHaveBeenCalledWith('user-1');
+    });
+
     it('should return 401 without authentication', async () => {
+      mockAuthUser = null;
+      await request(app)
+        .get('/api/v1/auth/me')
+        .expect(401);
+    });
+
+    it('should return 401 when user cannot be loaded', async () => {
+      (authService.getUserById as jest.Mock).mockResolvedValue(null);
+
       await request(app)
         .get('/api/v1/auth/me')
         .expect(401);
