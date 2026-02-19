@@ -17,6 +17,7 @@ import {
   restoreProposal,
   deleteProposal,
   getProposalsAvailableForContract,
+  updateProposalServiceTasks,
   lockProposalPricing,
   unlockProposalPricing,
   changeProposalPricingPlan,
@@ -41,6 +42,7 @@ import {
   sendProposalSchema,
   acceptProposalSchema,
   rejectProposalSchema,
+  updateServiceTasksSchema,
   changePricingPlanSchema,
   recalculatePricingSchema,
   pricingPreviewQuerySchema,
@@ -713,6 +715,39 @@ router.delete(
 
       await deleteProposal(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Update service tasks (quick-edit)
+router.patch(
+  '/:proposalId/services/:serviceId/tasks',
+  authenticate,
+  requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = updateServiceTasksSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const updated = await updateProposalServiceTasks(
+        req.params.proposalId,
+        req.params.serviceId,
+        parsed.data.includedTasks
+      );
+
+      await logActivity({
+        proposalId: req.params.proposalId,
+        action: 'service_tasks_updated',
+        performedByUserId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { serviceId: req.params.serviceId },
+      });
+
+      res.json({ data: updated });
     } catch (error) {
       next(error);
     }

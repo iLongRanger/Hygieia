@@ -26,6 +26,8 @@ export interface AppointmentCreateInput {
   location?: string | null;
   notes?: string | null;
   createdByUserId: string;
+  inspectionId?: string | null;
+  skipAutoCreate?: boolean;
 }
 
 export interface AppointmentUpdateInput {
@@ -63,8 +65,16 @@ const appointmentSelect = {
   notes: true,
   completedAt: true,
   rescheduledFromId: true,
+  inspectionId: true,
   createdAt: true,
   updatedAt: true,
+  inspection: {
+    select: {
+      id: true,
+      inspectionNumber: true,
+      status: true,
+    },
+  },
   lead: {
     select: {
       id: true,
@@ -209,6 +219,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
         location: input.location ?? null,
         notes: input.notes ?? null,
         createdByUserId: input.createdByUserId,
+        inspectionId: input.inspectionId ?? null,
       },
       select: appointmentSelect,
     });
@@ -222,6 +233,36 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     return appointment;
   });
+
+  // Auto-create inspection for inspection-type appointments
+  if (input.type === 'inspection' && !input.skipAutoCreate && !input.inspectionId && input.accountId) {
+    try {
+      const { createInspection } = await import('./inspectionService');
+      // Find a facility for this account
+      const facility = await prisma.facility.findFirst({
+        where: { accountId: input.accountId, archivedAt: null },
+        select: { id: true },
+      });
+      if (facility) {
+        const inspection = await createInspection({
+          facilityId: facility.id,
+          accountId: input.accountId,
+          inspectorUserId: input.assignedToUserId,
+          scheduledDate: input.scheduledStart,
+          createdByUserId: input.createdByUserId,
+          skipAutoCreate: true,
+        });
+        // Link inspection to appointment
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { inspectionId: inspection.id },
+        });
+      }
+    } catch (e) {
+      // Don't fail appointment creation if inspection auto-create fails
+      console.error('Failed to auto-create inspection for appointment:', e);
+    }
+  }
 
   await createNotification({
     userId: input.assignedToUserId,

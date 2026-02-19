@@ -202,6 +202,9 @@ const JobDetail = () => {
               <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
                 {job.jobNumber}
               </h1>
+              <Badge variant={job.jobType === 'special_job' ? 'warning' : 'default'}>
+                {job.jobType === 'special_job' ? 'Special Job' : 'Scheduled Service'}
+              </Badge>
               <Badge variant={getStatusVariant(job.status)}>
                 {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </Badge>

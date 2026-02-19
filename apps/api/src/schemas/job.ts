@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
+export const jobTypeSchema = z.enum(['scheduled_service', 'special_job']);
+
 export const jobListQuerySchema = z.object({
   contractId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
   assignedTeamId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
+  jobType: jobTypeSchema.optional(),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled', 'missed']).optional(),
   dateFrom: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
   dateTo: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
@@ -23,6 +26,7 @@ export const createJobSchema = z.object({
   contractId: z.string().uuid(),
   facilityId: z.string().uuid(),
   accountId: z.string().uuid(),
+  jobType: jobTypeSchema.optional().default('special_job'),
   assignedTeamId: z.string().uuid().nullable().optional(),
   assignedToUserId: z.string().uuid().nullable().optional(),
   scheduledDate: z.string().transform((v) => new Date(v)),

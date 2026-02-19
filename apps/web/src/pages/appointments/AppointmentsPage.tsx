@@ -1101,6 +1101,24 @@ const AppointmentsPage = () => {
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           />
 
+          {selectedAppointment?.inspection && (
+            <div className="rounded-lg bg-primary-50 dark:bg-primary-900/20 p-3 flex items-center justify-between">
+              <div className="text-sm">
+                <span className="text-surface-500 dark:text-surface-400">Linked Inspection: </span>
+                <span className="font-medium text-surface-900 dark:text-surface-100">
+                  {selectedAppointment.inspection.inspectionNumber}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/inspections/${selectedAppointment.inspection!.id}`)}
+              >
+                View
+              </Button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>
               Cancel

@@ -21,8 +21,14 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { listJobs, startJob, completeJob, cancelJob } from '../../lib/jobs';
-import type { Job, JobStatus } from '../../types/job';
+import type { Job, JobStatus, JobType } from '../../types/job';
 import type { Pagination } from '../../types/crm';
+
+const JOB_TYPES = [
+  { value: '', label: 'All Types' },
+  { value: 'special_job', label: 'Special Jobs' },
+  { value: 'scheduled_service', label: 'Scheduled Service' },
+];
 
 const JOB_STATUSES = [
   { value: '', label: 'All Statuses' },
@@ -64,6 +70,7 @@ const JobsList = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const page = parseInt(searchParams.get('page') || '1', 10);
+  const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
   const dateFrom = searchParams.get('dateFrom') || '';
   const dateTo = searchParams.get('dateTo') || '';
@@ -72,6 +79,7 @@ const JobsList = () => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = { page, limit: 25 };
+      if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
@@ -84,7 +92,7 @@ const JobsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, dateFrom, dateTo]);
+  }, [page, jobTypeFilter, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchJobs();
@@ -146,6 +154,14 @@ const JobsList = () => {
         >
           {job.jobNumber}
         </button>
+      ),
+    },
+    {
+      header: 'Type',
+      cell: (job: Job) => (
+        <Badge variant={job.jobType === 'special_job' ? 'warning' : 'default'}>
+          {job.jobType === 'special_job' ? 'Special' : 'Service'}
+        </Badge>
       ),
     },
     {
@@ -264,6 +280,14 @@ const JobsList = () => {
       {showFilters && (
         <Card>
           <div className="flex flex-wrap items-end gap-4 p-4">
+            <div className="w-48">
+              <Select
+                label="Job Type"
+                options={JOB_TYPES}
+                value={jobTypeFilter}
+                onChange={(val) => updateFilter('jobType', val)}
+              />
+            </div>
             <div className="w-48">
               <Select
                 label="Status"

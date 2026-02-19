@@ -14,6 +14,7 @@ export interface InspectionTemplateCreateInput {
   name: string;
   description?: string | null;
   facilityTypeFilter?: string | null;
+  contractId?: string | null;
   createdByUserId: string;
   items: InspectionTemplateItemInput[];
 }
@@ -39,10 +40,14 @@ const templateSelect = {
   name: true,
   description: true,
   facilityTypeFilter: true,
+  contractId: true,
   createdByUserId: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
+  contract: {
+    select: { id: true, contractNumber: true, title: true },
+  },
   items: {
     select: {
       id: true,
@@ -66,8 +71,12 @@ const templateListSelect = {
   name: true,
   description: true,
   facilityTypeFilter: true,
+  contractId: true,
   createdAt: true,
   archivedAt: true,
+  contract: {
+    select: { id: true, contractNumber: true },
+  },
   createdByUser: {
     select: { id: true, fullName: true },
   },
@@ -123,6 +132,7 @@ export async function createInspectionTemplate(input: InspectionTemplateCreateIn
       name: input.name,
       description: input.description,
       facilityTypeFilter: input.facilityTypeFilter,
+      contractId: input.contractId ?? null,
       createdByUserId: input.createdByUserId,
       items: {
         create: input.items.map((item, index) => ({
@@ -187,5 +197,81 @@ export async function restoreInspectionTemplate(id: string) {
   await prisma.inspectionTemplate.update({
     where: { id },
     data: { archivedAt: null },
+  });
+}
+
+/**
+ * Auto-create an inspection template from a contract's proposal services/tasks
+ * Called when a contract is activated
+ */
+export async function autoCreateInspectionTemplate(contractId: string, createdByUserId: string) {
+  // Guard: skip if template already exists for this contract
+  const existing = await prisma.inspectionTemplate.findFirst({
+    where: { contractId, archivedAt: null },
+    select: { id: true },
+  });
+  if (existing) return null;
+
+  // Fetch contract with proposal services
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      title: true,
+      account: { select: { name: true } },
+      facility: { select: { name: true } },
+      proposal: {
+        select: {
+          proposalServices: {
+            select: {
+              serviceName: true,
+              includedTasks: true,
+            },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      },
+    },
+  });
+
+  if (!contract?.proposal) return null;
+
+  const services = contract.proposal.proposalServices;
+  if (services.length === 0) return null;
+
+  // Build template items from proposal services + their tasks
+  const items: InspectionTemplateItemInput[] = [];
+  let sortOrder = 0;
+
+  for (const service of services) {
+    const tasks = Array.isArray(service.includedTasks) ? (service.includedTasks as string[]) : [];
+    if (tasks.length > 0) {
+      for (const task of tasks) {
+        items.push({
+          category: service.serviceName,
+          itemText: task,
+          sortOrder: sortOrder++,
+          weight: 1,
+        });
+      }
+    } else {
+      // No specific tasks - add a generic check item for this service
+      items.push({
+        category: service.serviceName,
+        itemText: `${service.serviceName} - Quality Check`,
+        sortOrder: sortOrder++,
+        weight: 1,
+      });
+    }
+  }
+
+  const templateName = `${contract.account.name} - ${contract.facility?.name || contract.title} Inspection`;
+
+  return createInspectionTemplate({
+    name: templateName,
+    description: `Auto-generated from contract activation`,
+    contractId,
+    createdByUserId,
+    items,
   });
 }

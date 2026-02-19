@@ -178,6 +178,13 @@ export const pricingPreviewQuerySchema = z.object({
   workerCount: z.coerce.number().int().min(1).optional(),
 });
 
+// Update service tasks (quick-edit from detail page)
+export const updateServiceTasksSchema = z.object({
+  includedTasks: z.array(z.string().max(500)).max(100),
+});
+
+export type UpdateServiceTasksInput = z.infer<typeof updateServiceTasksSchema>;
+
 // Export types
 export type CreateProposalInput = z.infer<typeof createProposalSchema>;
 export type UpdateProposalInput = z.infer<typeof updateProposalSchema>;

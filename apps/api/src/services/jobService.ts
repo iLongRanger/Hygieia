@@ -11,6 +11,7 @@ export interface JobListParams {
   accountId?: string;
   assignedTeamId?: string;
   assignedToUserId?: string;
+  jobType?: string;
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;
@@ -22,6 +23,7 @@ export interface JobCreateInput {
   contractId: string;
   facilityId: string;
   accountId: string;
+  jobType?: string;
   assignedTeamId?: string | null;
   assignedToUserId?: string | null;
   scheduledDate: Date;
@@ -81,6 +83,7 @@ export interface GenerateJobsInput {
 const jobSelect = {
   id: true,
   jobNumber: true,
+  jobType: true,
   status: true,
   scheduledDate: true,
   scheduledStartTime: true,
@@ -213,6 +216,7 @@ export async function listJobs(params: JobListParams) {
     accountId,
     assignedTeamId,
     assignedToUserId,
+    jobType,
     status,
     dateFrom,
     dateTo,
@@ -227,6 +231,7 @@ export async function listJobs(params: JobListParams) {
   if (accountId) where.accountId = accountId;
   if (assignedTeamId) where.assignedTeamId = assignedTeamId;
   if (assignedToUserId) where.assignedToUserId = assignedToUserId;
+  if (jobType) where.jobType = jobType;
   if (status) where.status = status;
 
   if (dateFrom || dateTo) {
@@ -286,6 +291,7 @@ export async function createJob(input: JobCreateInput) {
         contractId: input.contractId,
         facilityId: input.facilityId,
         accountId: input.accountId,
+        jobType: input.jobType || 'special_job',
         assignedTeamId: input.assignedTeamId ?? null,
         assignedToUserId: input.assignedToUserId ?? null,
         status: 'scheduled',
@@ -605,6 +611,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         contractId: input.contractId,
         facilityId: contract.facilityId,
         accountId: contract.accountId,
+        jobType: 'scheduled_service',
         assignedTeamId: contract.assignedTeamId ?? null,
         status: 'scheduled',
         scheduledDate: date,

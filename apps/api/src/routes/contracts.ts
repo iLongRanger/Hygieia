@@ -56,6 +56,7 @@ import { BadRequestError } from '../middleware/errorHandler';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 import { createBulkNotifications } from '../services/notificationService';
+import { autoCreateInspectionTemplate } from '../services/inspectionTemplateService';
 import { tierToPercentage } from '../lib/subcontractorTiers';
 
 const router: Router = Router();
@@ -397,6 +398,13 @@ router.patch(
           );
         } catch (notifyError) {
           logger.error('Failed to send contract activation notifications:', notifyError);
+        }
+
+        // Auto-create inspection template from contract tasks
+        try {
+          await autoCreateInspectionTemplate(contract.id, req.user!.id);
+        } catch (templateError) {
+          logger.error('Failed to auto-create inspection template:', templateError);
         }
       }
 

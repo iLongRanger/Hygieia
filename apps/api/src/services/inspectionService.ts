@@ -29,6 +29,7 @@ export interface InspectionCreateInput {
   scheduledDate: Date;
   notes?: string | null;
   createdByUserId: string;
+  skipAutoCreate?: boolean;
 }
 
 export interface InspectionUpdateInput {
@@ -119,6 +120,15 @@ const inspectionDetailSelect = {
       sortOrder: true,
     },
     orderBy: { sortOrder: 'asc' as const },
+  },
+  appointment: {
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      scheduledStart: true,
+      scheduledEnd: true,
+    },
   },
   activities: {
     select: {
@@ -310,6 +320,33 @@ export async function createInspection(input: InspectionCreateInput) {
     },
     select: inspectionDetailSelect,
   });
+
+  // Auto-create linked appointment
+  if (!input.skipAutoCreate) {
+    try {
+      const { createAppointment } = await import('./appointmentService');
+      const scheduledStart = new Date(input.scheduledDate);
+      scheduledStart.setHours(9, 0, 0, 0);
+      const scheduledEnd = new Date(scheduledStart);
+      scheduledEnd.setHours(10, 0, 0, 0);
+
+      await createAppointment({
+        accountId: input.accountId,
+        assignedToUserId: input.inspectorUserId,
+        type: 'inspection',
+        status: 'scheduled',
+        scheduledStart,
+        scheduledEnd,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+        notes: `Auto-created for inspection ${inspectionNumber}`,
+        createdByUserId: input.createdByUserId,
+        inspectionId: inspection.id,
+        skipAutoCreate: true,
+      });
+    } catch (e) {
+      console.error('Failed to auto-create appointment for inspection:', e);
+    }
+  }
 
   return inspection;
 }

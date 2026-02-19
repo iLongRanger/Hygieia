@@ -342,12 +342,18 @@ const InspectionTemplatesPage = () => {
                     <div>
                       <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
                         {template.name}
+                        {(template as any).contractId && (
+                          <Badge variant="info" size="sm" className="ml-2">Auto-generated</Badge>
+                        )}
                         {template.archivedAt && (
                           <Badge variant="default" size="sm" className="ml-2">Archived</Badge>
                         )}
                       </p>
                       <p className="text-xs text-surface-500 dark:text-surface-400">
                         {template._count.items} items &middot; Used {template._count.inspections} times
+                        {(template as any).contract && (
+                          <span> &middot; Contract {(template as any).contract.contractNumber}</span>
+                        )}
                       </p>
                     </div>
                   </div>

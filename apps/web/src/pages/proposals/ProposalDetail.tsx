@@ -26,6 +26,8 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
+  Plus,
+  Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -36,6 +38,8 @@ import { PERMISSIONS } from '../../lib/permissions';
 import ProposalTimeline from '../../components/proposals/ProposalTimeline';
 import ProposalVersionHistory from '../../components/proposals/ProposalVersionHistory';
 import SendProposalModal from '../../components/proposals/SendProposalModal';
+import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
 import {
   getProposal,
   sendProposal,
@@ -46,6 +50,7 @@ import {
   restoreProposal,
   deleteProposal,
   downloadProposalPdf,
+  updateProposalServiceTasks,
 } from '../../lib/proposals';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
 
@@ -116,6 +121,11 @@ const ProposalDetail = () => {
   const canAdminProposals = hasPermission(PERMISSIONS.PROPOSALS_ADMIN);
   const canDeleteProposals = hasPermission(PERMISSIONS.PROPOSALS_DELETE);
 
+  // Task quick-edit state
+  const [editingService, setEditingService] = useState<{ id: string; serviceName: string } | null>(null);
+  const [editTasks, setEditTasks] = useState<string[]>([]);
+  const [savingTasks, setSavingTasks] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetchProposal(id);
@@ -141,6 +151,28 @@ const ProposalDetail = () => {
       navigate('/proposals');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openTaskEditor = (service: { id: string; serviceName: string; includedTasks?: string[] | unknown }) => {
+    setEditingService(service);
+    const tasks = Array.isArray(service.includedTasks) ? service.includedTasks as string[] : [];
+    setEditTasks(tasks.length > 0 ? [...tasks] : ['']);
+  };
+
+  const handleSaveTasks = async () => {
+    if (!proposal || !editingService) return;
+    try {
+      setSavingTasks(true);
+      const cleanTasks = editTasks.map((t) => t.trim()).filter(Boolean);
+      await updateProposalServiceTasks(proposal.id, editingService.id, cleanTasks);
+      toast.success('Tasks updated');
+      setEditingService(null);
+      fetchProposal(proposal.id);
+    } catch {
+      toast.error('Failed to update tasks');
+    } finally {
+      setSavingTasks(false);
     }
   };
 
@@ -581,17 +613,20 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-white mb-4">Services</h2>
               <div className="space-y-6">
                 {proposal.proposalServices.map((service, idx) => {
-                  // Parse description: first line is area info, remaining are "Frequency: task1, task2"
+                  // Prefer includedTasks array; fall back to parsing description
+                  const hasIncludedTasks = Array.isArray(service.includedTasks) && (service.includedTasks as string[]).length > 0;
                   const lines = service.description?.split('\n') || [];
                   const areaInfo = lines[0] || '';
                   const taskGroups: { label: string; tasks: string[] }[] = [];
-                  for (let i = 1; i < lines.length; i++) {
-                    const match = lines[i].match(/^(.+?):\s*(.+)$/);
-                    if (match) {
-                      taskGroups.push({
-                        label: match[1].trim(),
-                        tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
-                      });
+                  if (!hasIncludedTasks) {
+                    for (let i = 1; i < lines.length; i++) {
+                      const match = lines[i].match(/^(.+?):\s*(.+)$/);
+                      if (match) {
+                        taskGroups.push({
+                          label: match[1].trim(),
+                          tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
+                        });
+                      }
                     }
                   }
 
@@ -602,10 +637,16 @@ const ProposalDetail = () => {
                     >
                       {/* Area header */}
                       <div className="flex justify-between items-start mb-2">
-                        <div>
+                        <div className="flex items-center gap-2">
                           <h3 className="font-medium text-white text-base">{service.serviceName}</h3>
-                          {areaInfo && (
-                            <p className="text-sm text-gray-400 mt-1">{areaInfo}</p>
+                          {canWriteProposals && (
+                            <button
+                              onClick={() => openTaskEditor(service)}
+                              className="text-gray-500 hover:text-gray-300 transition-colors"
+                              title="Edit tasks"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
                           )}
                         </div>
                         <div className="text-right">
@@ -621,8 +662,29 @@ const ProposalDetail = () => {
                         </div>
                       </div>
 
-                      {/* Tasks grouped by frequency */}
-                      {taskGroups.length > 0 && (
+                      {areaInfo && (
+                        <p className="text-sm text-gray-400 mt-1">{areaInfo}</p>
+                      )}
+
+                      {/* Prefer includedTasks array */}
+                      {hasIncludedTasks && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                            Included Tasks
+                          </p>
+                          <ul className="space-y-1 ml-1">
+                            {(service.includedTasks as string[]).map((task, tIdx) => (
+                              <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-300">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
+                                {task}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Fallback: Tasks grouped by frequency from description */}
+                      {!hasIncludedTasks && taskGroups.length > 0 && (
                         <div className="mt-3 space-y-3">
                           {taskGroups.map((group, gIdx) => (
                             <div key={gIdx}>
@@ -1085,6 +1147,51 @@ const ProposalDetail = () => {
           onSend={handleSend}
         />
       )}
+
+      {/* Task Quick-Edit Modal */}
+      <Modal
+        isOpen={!!editingService}
+        onClose={() => setEditingService(null)}
+        title={`Edit Tasks - ${editingService?.serviceName || ''}`}
+        size="lg"
+      >
+        <div className="space-y-3">
+          {editTasks.map((task, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Input
+                value={task}
+                onChange={(e) => {
+                  const updated = [...editTasks];
+                  updated[idx] = e.target.value;
+                  setEditTasks(updated);
+                }}
+                placeholder={`Task ${idx + 1}`}
+              />
+              <button
+                onClick={() => setEditTasks(editTasks.filter((_, i) => i !== idx))}
+                className="shrink-0 text-surface-400 hover:text-danger-500"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => setEditTasks([...editTasks, ''])}
+            className="flex items-center gap-1.5 text-sm text-primary-500 hover:text-primary-400"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Task
+          </button>
+          <div className="flex justify-end gap-3 pt-4 border-t border-surface-200 dark:border-surface-700">
+            <Button variant="secondary" onClick={() => setEditingService(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTasks} isLoading={savingTasks}>
+              Save Tasks
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

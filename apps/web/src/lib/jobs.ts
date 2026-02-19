@@ -19,6 +19,7 @@ export interface JobListParams {
   accountId?: string;
   assignedTeamId?: string;
   assignedToUserId?: string;
+  jobType?: string;
   status?: string;
   dateFrom?: string;
   dateTo?: string;

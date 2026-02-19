@@ -44,8 +44,12 @@ import TimesheetsPage from './pages/timeTracking/TimesheetsPage';
 import InvoicesList from './pages/invoices/InvoicesList';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import NotificationsPage from './pages/notifications/NotificationsPage';
+import QuotationsList from './pages/quotations/QuotationsList';
+import QuotationDetail from './pages/quotations/QuotationDetail';
+import QuotationForm from './pages/quotations/QuotationForm';
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
+import PublicQuotationView from './pages/public/PublicQuotationView';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -96,6 +100,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/p/:token" element={<PublicProposalView />} />
           <Route path="/c/:token" element={<PublicContractView />} />
+          <Route path="/q/:token" element={<PublicQuotationView />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
@@ -121,6 +126,10 @@ function App() {
             <Route path="/proposals/new" element={<ProposalForm />} />
             <Route path="/proposals/:id" element={<ProposalDetail />} />
             <Route path="/proposals/:id/edit" element={<ProposalForm />} />
+            <Route path="/quotations" element={<QuotationsList />} />
+            <Route path="/quotations/new" element={<QuotationForm />} />
+            <Route path="/quotations/:id" element={<QuotationDetail />} />
+            <Route path="/quotations/:id/edit" element={<QuotationForm />} />
             <Route path="/contracts" element={<ContractsList />} />
             <Route path="/contracts/new" element={<ContractForm />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />

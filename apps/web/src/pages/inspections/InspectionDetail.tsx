@@ -254,6 +254,20 @@ const InspectionDetail = () => {
                   </button>
                 </div>
               )}
+              {(inspection as any).appointment && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-surface-400" />
+                  <button
+                    className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                    onClick={() => navigate('/appointments')}
+                  >
+                    Linked Appointment
+                  </button>
+                  <Badge variant="info" className="text-xs">
+                    {(inspection as any).appointment.status}
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
         </Card>

@@ -80,6 +80,10 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     invoices_read: true,
     invoices_write: true,
     invoices_admin: true,
+    quotations_read: true,
+    quotations_write: true,
+    quotations_admin: true,
+    quotations_delete: true,
   },
   admin: {
     crm: true,
@@ -148,6 +152,9 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     invoices_read: true,
     invoices_write: true,
     invoices_admin: true,
+    quotations_read: true,
+    quotations_write: true,
+    quotations_admin: true,
   },
   manager: {
     estimates: true,
@@ -194,6 +201,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     time_tracking_approve: true,
     invoices_read: true,
     invoices_write: true,
+    quotations_read: true,
+    quotations_write: true,
   },
   cleaner: {
     work_orders: true,

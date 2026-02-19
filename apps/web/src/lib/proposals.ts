@@ -141,6 +141,19 @@ export async function getProposalVersion(
   return response.data.data;
 }
 
+// Update service tasks (quick-edit)
+export async function updateProposalServiceTasks(
+  proposalId: string,
+  serviceId: string,
+  includedTasks: string[]
+): Promise<{ id: string; serviceName: string; includedTasks: string[] }> {
+  const response = await api.patch(
+    `/proposals/${proposalId}/services/${serviceId}/tasks`,
+    { includedTasks }
+  );
+  return response.data.data;
+}
+
 // Resend / remind
 export async function remindProposal(id: string, data?: SendProposalInput): Promise<void> {
   await api.post(`/proposals/${id}/remind`, data || {});

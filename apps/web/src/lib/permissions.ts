@@ -61,6 +61,10 @@ export const PERMISSIONS = {
   INVOICES_READ: 'invoices_read',
   INVOICES_WRITE: 'invoices_write',
   INVOICES_ADMIN: 'invoices_admin',
+  QUOTATIONS_READ: 'quotations_read',
+  QUOTATIONS_WRITE: 'quotations_write',
+  QUOTATIONS_ADMIN: 'quotations_admin',
+  QUOTATIONS_DELETE: 'quotations_delete',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -137,6 +141,9 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     invoices_read: true,
     invoices_write: true,
     invoices_admin: true,
+    quotations_read: true,
+    quotations_write: true,
+    quotations_admin: true,
   },
   manager: {
     users_read: true,
@@ -178,6 +185,8 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     time_tracking_approve: true,
     invoices_read: true,
     invoices_write: true,
+    quotations_read: true,
+    quotations_write: true,
   },
   cleaner: {
     facilities_read: true,

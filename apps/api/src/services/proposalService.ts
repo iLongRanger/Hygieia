@@ -622,6 +622,44 @@ export async function getProposalsAvailableForContract(accountId?: string) {
 }
 
 // ============================================================
+// SERVICE TASK QUICK-EDIT
+// ============================================================
+
+export async function updateProposalServiceTasks(
+  proposalId: string,
+  serviceId: string,
+  includedTasks: string[]
+) {
+  // Verify proposal exists
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: { id: true, status: true },
+  });
+  if (!proposal) {
+    throw new Error('Proposal not found');
+  }
+
+  // Verify the service belongs to this proposal
+  const service = await prisma.proposalService.findFirst({
+    where: { id: serviceId, proposalId },
+    select: { id: true },
+  });
+  if (!service) {
+    throw new Error('Proposal service not found');
+  }
+
+  return prisma.proposalService.update({
+    where: { id: serviceId },
+    data: { includedTasks },
+    select: {
+      id: true,
+      serviceName: true,
+      includedTasks: true,
+    },
+  });
+}
+
+// ============================================================
 // PRICING STRATEGY FUNCTIONS
 // ============================================================
 

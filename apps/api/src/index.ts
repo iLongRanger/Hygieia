@@ -42,6 +42,8 @@ import invoicesRoutes from './routes/invoices';
 import publicProposalsRoutes from './routes/publicProposals';
 import publicInvoicesRoutes from './routes/publicInvoices';
 import publicContractsRoutes from './routes/publicContracts';
+import quotationsRoutes from './routes/quotations';
+import publicQuotationsRoutes from './routes/publicQuotations';
 import { initializeRealtime } from './lib/realtime';
 
 const app: Application = express();
@@ -141,11 +143,13 @@ app.use('/api/v1/inspections', inspectionsRoutes);
 app.use('/api/v1/inspection-templates', inspectionTemplatesRoutes);
 app.use('/api/v1/time-tracking', timeTrackingRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
+app.use('/api/v1/quotations', quotationsRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
 app.use('/api/v1/public/contracts', publicContractsRoutes);
 app.use('/api/v1/public/invoices', publicInvoicesRoutes);
+app.use('/api/v1/public/quotations', publicQuotationsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -73,6 +73,7 @@ const navSections: NavSection[] = [
     icon: FileText,
     items: [
       { to: '/proposals', icon: FileText, label: 'Proposals' },
+      { to: '/quotations', icon: FileText, label: 'Quotations' },
       { to: '/contracts', icon: FileSignature, label: 'Contracts' },
       { to: '/invoices', icon: Receipt, label: 'Invoices' },
     ],

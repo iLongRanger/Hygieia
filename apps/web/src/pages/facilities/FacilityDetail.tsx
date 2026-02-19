@@ -225,7 +225,6 @@ const FacilityDetail = () => {
           name: data.name,
           address: data.address,
           buildingType: data.buildingType,
-          squareFeet: data.squareFeet ? Number(data.squareFeet) : null,
           status: data.status,
           notes: data.notes,
           accessInstructions: data.accessInstructions,

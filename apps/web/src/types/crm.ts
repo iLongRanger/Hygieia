@@ -112,6 +112,12 @@ export interface Appointment {
     id: string;
     fullName: string;
   };
+  inspectionId: string | null;
+  inspection: {
+    id: string;
+    inspectionNumber: string;
+    status: string;
+  } | null;
 }
 
 export interface Notification {
