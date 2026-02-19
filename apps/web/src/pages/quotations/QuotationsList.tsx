@@ -168,7 +168,7 @@ const QuotationsList = () => {
   const columns = [
     {
       header: 'Number',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <button
           onClick={() => navigate(`/quotations/${q.id}`)}
           className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
@@ -179,19 +179,19 @@ const QuotationsList = () => {
     },
     {
       header: 'Title',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <span className="text-sm text-surface-900 dark:text-surface-100">{q.title}</span>
       ),
     },
     {
       header: 'Account',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <span className="text-sm text-surface-600 dark:text-surface-400">{q.account?.name}</span>
       ),
     },
     {
       header: 'Status',
-      accessor: (q: Quotation) => {
+      cell: (q: Quotation) => {
         const StatusIcon = getStatusIcon(q.status);
         return (
           <Badge variant={getStatusVariant(q.status)} size="sm">
@@ -203,7 +203,7 @@ const QuotationsList = () => {
     },
     {
       header: 'Amount',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <span className="text-sm font-medium text-surface-900 dark:text-surface-100">
           {formatCurrency(Number(q.totalAmount))}
         </span>
@@ -211,13 +211,13 @@ const QuotationsList = () => {
     },
     {
       header: 'Valid Until',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <span className="text-sm text-surface-500">{formatDate(q.validUntil)}</span>
       ),
     },
     {
       header: 'Created',
-      accessor: (q: Quotation) => (
+      cell: (q: Quotation) => (
         <span className="text-sm text-surface-500">{formatDate(q.createdAt)}</span>
       ),
     },
@@ -225,7 +225,7 @@ const QuotationsList = () => {
       ? [
           {
             header: '',
-            accessor: (q: Quotation) => (
+            cell: (q: Quotation) => (
               <div className="flex items-center gap-1">
                 {q.archivedAt ? (
                   <button

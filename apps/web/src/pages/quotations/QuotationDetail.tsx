@@ -545,6 +545,7 @@ const QuotationDetail = () => {
       {/* Send Modal */}
       {showSendModal && (
         <Modal
+          isOpen={showSendModal}
           title="Send Quotation"
           onClose={() => setShowSendModal(false)}
         >
@@ -575,6 +576,7 @@ const QuotationDetail = () => {
       {/* Reject Modal */}
       {showRejectModal && (
         <Modal
+          isOpen={showRejectModal}
           title="Reject Quotation"
           onClose={() => setShowRejectModal(false)}
         >
