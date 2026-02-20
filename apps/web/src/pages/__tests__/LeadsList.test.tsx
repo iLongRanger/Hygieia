@@ -191,6 +191,32 @@ describe('LeadsList', () => {
     );
   });
 
+  it('captures custom source when Others is selected', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<LeadsList />);
+
+    await userEventInstance.click(screen.getByRole('button', { name: /add new lead/i }));
+    await userEventInstance.type(await screen.findByLabelText(/contact name/i), 'Jane Prospect');
+
+    await userEventInstance.selectOptions(
+      screen.getByLabelText(/lead source/i),
+      'others'
+    );
+    await userEventInstance.type(
+      screen.getByLabelText(/where did this lead come from/i),
+      'Neighborhood event'
+    );
+    await userEventInstance.click(screen.getByRole('button', { name: /create lead/i }));
+
+    expect(createLeadMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactName: 'Jane Prospect',
+        leadSourceId: null,
+        notes: expect.stringContaining('Neighborhood event'),
+      })
+    );
+  });
+
   it('opens create modal when loading /leads/new directly', async () => {
     render(<LeadsList />, { initialRoute: '/leads/new' });
 

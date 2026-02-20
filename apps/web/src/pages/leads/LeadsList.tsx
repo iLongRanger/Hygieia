@@ -53,6 +53,21 @@ const LEAD_STATUSES = [
   { value: 'reopened', label: 'Reopened' },
 ];
 
+const CREATE_LEAD_SOURCE_OPTIONS = [
+  { value: 'Website', label: 'Website' },
+  { value: 'Referral', label: 'Referral' },
+  { value: 'Cold Call', label: 'Cold Call' },
+  { value: 'Google Ads', label: 'Google Ads' },
+  { value: 'Social Media', label: 'Social Media' },
+  { value: 'Email Campaign', label: 'Email Campaign' },
+  { value: 'Walk-In', label: 'Walk-In' },
+  { value: 'others', label: 'Others' },
+];
+
+const OTHER_LEAD_SOURCE_VALUE = 'others';
+
+const normalizeLeadSourceName = (value: string) => value.trim().toLowerCase();
+
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
   { value: 'residential', label: 'Residential' },
@@ -71,6 +86,8 @@ const LeadsList = () => {
   const [search, setSearch] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [createLeadSourceOption, setCreateLeadSourceOption] = useState('');
+  const [otherLeadSource, setOtherLeadSource] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -222,9 +239,39 @@ const LeadsList = () => {
       return;
     }
 
+    if (createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE && !otherLeadSource.trim()) {
+      toast.error('Please enter where the lead came from');
+      return;
+    }
+
+    const selectedSourceName = createLeadSourceOption
+      && createLeadSourceOption !== OTHER_LEAD_SOURCE_VALUE
+      ? createLeadSourceOption
+      : null;
+    const sourceIdByName = new Map(
+      leadSources.map((source) => [normalizeLeadSourceName(source.name), source.id])
+    );
+    const mappedLeadSourceId = selectedSourceName
+      ? (sourceIdByName.get(normalizeLeadSourceName(selectedSourceName)) ?? null)
+      : null;
+
+    const notesParts: string[] = [];
+    if (createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE) {
+      notesParts.push(`Lead source (other): ${otherLeadSource.trim()}`);
+    } else if (selectedSourceName && !mappedLeadSourceId) {
+      notesParts.push(`Lead source: ${selectedSourceName}`);
+    }
+    if (formData.notes?.trim()) {
+      notesParts.push(formData.notes.trim());
+    }
+
     try {
       setCreating(true);
-      await createLead(formData);
+      await createLead({
+        ...formData,
+        leadSourceId: mappedLeadSourceId,
+        notes: notesParts.join('\n') || null,
+      });
       toast.success('Lead created successfully');
       navigate('/leads', { replace: true });
       resetForm();
@@ -256,6 +303,8 @@ const LeadsList = () => {
       assignedToUserId: null,
       notes: null,
     });
+    setCreateLeadSourceOption('');
+    setOtherLeadSource('');
   };
 
   const clearFilters = () => {
@@ -267,6 +316,7 @@ const LeadsList = () => {
   };
 
   const closeCreateModal = () => {
+    resetForm();
     navigate('/leads');
   };
 
@@ -726,14 +776,9 @@ const LeadsList = () => {
             <Select
               label="Lead Source"
               placeholder="Select source"
-              options={leadSources.map((s) => ({
-                value: s.id,
-                label: s.name,
-              }))}
-              value={formData.leadSourceId || ''}
-              onChange={(value) =>
-                setFormData({ ...formData, leadSourceId: value || null })
-              }
+              options={CREATE_LEAD_SOURCE_OPTIONS}
+              value={createLeadSourceOption}
+              onChange={setCreateLeadSourceOption}
             />
             <Select
               label="Status"
@@ -742,6 +787,16 @@ const LeadsList = () => {
               onChange={(value) => setFormData({ ...formData, status: value })}
             />
           </div>
+
+          {createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE && (
+            <Input
+              label="Where did this lead come from?"
+              placeholder="Type lead source"
+              value={otherLeadSource}
+              onChange={(e) => setOtherLeadSource(e.target.value)}
+              maxLength={maxLengths.companyName}
+            />
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
