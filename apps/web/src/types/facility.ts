@@ -34,6 +34,10 @@ export interface Facility {
     id: string;
     fullName: string;
   };
+  areas: {
+    squareFeet: string | null;
+    quantity: number;
+  }[];
   _count: {
     areas: number;
     facilityTasks: number;

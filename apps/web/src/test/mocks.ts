@@ -171,6 +171,7 @@ export const mockFacility = (overrides?: Partial<Facility>): Facility => ({
     id: 'user-1',
     fullName: 'Test User',
   },
+  areas: [],
   _count: {
     areas: 0,
     facilityTasks: 0,

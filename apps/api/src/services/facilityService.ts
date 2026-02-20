@@ -86,6 +86,13 @@ const facilitySelect = {
       fullName: true,
     },
   },
+  areas: {
+    where: { archivedAt: null },
+    select: {
+      squareFeet: true,
+      quantity: true,
+    },
+  },
   _count: {
     select: {
       areas: true,

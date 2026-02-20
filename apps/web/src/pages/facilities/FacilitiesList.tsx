@@ -250,13 +250,17 @@ const FacilitiesList = () => {
     },
     {
       header: 'Size',
-      cell: (item: Facility) => (
-        <span className="text-gray-300">
-          {item.squareFeet
-            ? `${Number(item.squareFeet).toLocaleString()} sq ft`
-            : '-'}
-        </span>
-      ),
+      cell: (item: Facility) => {
+        const totalSqft = item.areas.reduce((sum, area) => {
+          const sqft = area.squareFeet ? Number(area.squareFeet) : 0;
+          return sum + sqft * area.quantity;
+        }, 0);
+        return (
+          <span className="text-gray-300">
+            {totalSqft > 0 ? `${totalSqft.toLocaleString()} sq ft` : '-'}
+          </span>
+        );
+      },
     },
     {
       header: 'Areas',
