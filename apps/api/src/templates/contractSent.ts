@@ -47,7 +47,10 @@ export function buildContractSentHtmlWithBranding(
         Dear ${escapeHtml(recipientName)},
       </p>
       <p style="color: #333; font-size: 14px; line-height: 1.6;">
-        Please find the attached contract for your review. You can also review the full contract details and sign online using the button below.
+        ${data.isRenewal
+          ? 'Please find the attached renewal contract for your review.'
+          : 'Please find the attached contract for your review.'}
+        You can also review the full contract details and sign online using the button below.
       </p>`;
 
   return `
