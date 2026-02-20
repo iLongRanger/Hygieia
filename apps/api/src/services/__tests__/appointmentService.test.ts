@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as appointmentService from '../appointmentService';
 import { prisma } from '../../lib/prisma';
+import { createNotification } from '../notificationService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -39,6 +40,10 @@ jest.mock('../../lib/prisma', () => ({
   },
 }));
 
+jest.mock('../notificationService', () => ({
+  createNotification: jest.fn(),
+}));
+
 describe('appointmentService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
@@ -46,6 +51,7 @@ describe('appointmentService', () => {
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
+    (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
   });
 
   it('listAppointments should default to future appointments when includePast is false', async () => {
@@ -141,5 +147,35 @@ describe('appointmentService', () => {
         userId: 'user-1',
       })
     ).rejects.toThrow('Add at least one task before completing walkthrough');
+  });
+
+  it('updateAppointment should notify assigned user with serialized schedule metadata', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      assignedToUserId: 'user-1',
+    });
+    (prisma.appointment.update as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      assignedToUser: { id: 'user-1', fullName: 'Rep', email: 'rep@example.com' },
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+    });
+
+    await appointmentService.updateAppointment('appt-1', {
+      notes: 'Updated instructions',
+    });
+
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        type: 'appointment_updated',
+        metadata: expect.objectContaining({
+          appointmentId: 'appt-1',
+          scheduledStart: '2026-02-05T10:00:00.000Z',
+          scheduledEnd: '2026-02-05T11:00:00.000Z',
+        }),
+      })
+    );
   });
 });
