@@ -11,6 +11,11 @@ import {
   cancelInspectionSchema,
   addInspectionItemSchema,
   updateInspectionItemSchema,
+  createInspectionCorrectiveActionSchema,
+  updateInspectionCorrectiveActionSchema,
+  verifyInspectionCorrectiveActionSchema,
+  createInspectionSignoffSchema,
+  createReinspectionSchema,
 } from '../schemas/inspection';
 import {
   listInspections,
@@ -23,6 +28,13 @@ import {
   addInspectionItem,
   updateInspectionItem,
   deleteInspectionItem,
+  listInspectionCorrectiveActions,
+  createInspectionCorrectiveAction,
+  updateInspectionCorrectiveAction,
+  verifyInspectionCorrectiveAction,
+  listInspectionSignoffs,
+  createInspectionSignoff,
+  createReinspection,
   listInspectionActivities,
 } from '../services/inspectionService';
 
@@ -116,6 +128,9 @@ router.post(
   async (req: Request, res: Response) => {
     const inspection = await completeInspection(req.params.id, {
       ...req.body,
+      defaultActionDueDate: req.body.defaultActionDueDate
+        ? new Date(req.body.defaultActionDueDate)
+        : undefined,
       userId: req.user!.id,
     });
     res.json({ data: inspection });
@@ -166,6 +181,108 @@ router.delete(
   async (req: Request, res: Response) => {
     await deleteInspectionItem(req.params.itemId);
     res.status(204).send();
+  }
+);
+
+// List corrective actions
+router.get(
+  '/:id/actions',
+  requirePermission(PERMISSIONS.INSPECTIONS_READ),
+  async (req: Request, res: Response) => {
+    const actions = await listInspectionCorrectiveActions(req.params.id);
+    res.json({ data: actions });
+  }
+);
+
+// Add corrective action
+router.post(
+  '/:id/actions',
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
+  validate(createInspectionCorrectiveActionSchema),
+  async (req: Request, res: Response) => {
+    const action = await createInspectionCorrectiveAction(
+      req.params.id,
+      {
+        ...req.body,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : req.body.dueDate,
+      },
+      req.user!.id
+    );
+    res.status(201).json({ data: action });
+  }
+);
+
+// Update corrective action
+router.patch(
+  '/:id/actions/:actionId',
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
+  validate(updateInspectionCorrectiveActionSchema),
+  async (req: Request, res: Response) => {
+    const action = await updateInspectionCorrectiveAction(
+      req.params.id,
+      req.params.actionId,
+      {
+        ...req.body,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : req.body.dueDate,
+      },
+      req.user!.id
+    );
+    res.json({ data: action });
+  }
+);
+
+// Verify corrective action
+router.post(
+  '/:id/actions/:actionId/verify',
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
+  validate(verifyInspectionCorrectiveActionSchema),
+  async (req: Request, res: Response) => {
+    const action = await verifyInspectionCorrectiveAction(
+      req.params.id,
+      req.params.actionId,
+      req.user!.id,
+      req.body.notes
+    );
+    res.json({ data: action });
+  }
+);
+
+// List signoffs
+router.get(
+  '/:id/signoffs',
+  requirePermission(PERMISSIONS.INSPECTIONS_READ),
+  async (req: Request, res: Response) => {
+    const signoffs = await listInspectionSignoffs(req.params.id);
+    res.json({ data: signoffs });
+  }
+);
+
+// Add signoff
+router.post(
+  '/:id/signoffs',
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
+  validate(createInspectionSignoffSchema),
+  async (req: Request, res: Response) => {
+    const signoff = await createInspectionSignoff(req.params.id, req.body, req.user!.id);
+    res.status(201).json({ data: signoff });
+  }
+);
+
+// Create reinspection from failed items
+router.post(
+  '/:id/reinspect',
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
+  validate(createReinspectionSchema),
+  async (req: Request, res: Response) => {
+    const inspection = await createReinspection(
+      req.params.id,
+      {
+        ...req.body,
+        scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate) : undefined,
+      },
+      req.user!.id
+    );
+    res.status(201).json({ data: inspection });
   }
 );
 

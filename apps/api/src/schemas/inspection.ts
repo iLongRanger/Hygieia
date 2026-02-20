@@ -89,6 +89,8 @@ export const completeInspectionSchema = z.object({
   body: z.object({
     summary: z.string().max(5000).optional().nullable(),
     items: z.array(itemScoreSchema),
+    autoCreateCorrectiveActions: z.boolean().optional(),
+    defaultActionDueDate: z.string().optional(),
   }),
 });
 
@@ -117,5 +119,55 @@ export const updateInspectionItemSchema = z.object({
     rating: z.number().int().min(1).max(5).optional().nullable(),
     notes: z.string().max(1000).optional().nullable(),
     photoUrl: z.string().max(2000).optional().nullable(),
+  }),
+});
+
+const correctiveActionSeveritySchema = z.enum(['critical', 'major', 'minor']);
+const correctiveActionStatusSchema = z.enum(['open', 'in_progress', 'resolved', 'verified', 'canceled']);
+
+export const createInspectionCorrectiveActionSchema = z.object({
+  body: z.object({
+    inspectionItemId: z.string().uuid().optional().nullable(),
+    title: z.string().min(1).max(255),
+    description: z.string().max(5000).optional().nullable(),
+    severity: correctiveActionSeveritySchema.optional(),
+    dueDate: z.string().optional().nullable(),
+    assigneeUserId: z.string().uuid().optional().nullable(),
+  }),
+});
+
+export const updateInspectionCorrectiveActionSchema = z.object({
+  body: z.object({
+    status: correctiveActionStatusSchema.optional(),
+    title: z.string().min(1).max(255).optional(),
+    description: z.string().max(5000).optional().nullable(),
+    severity: correctiveActionSeveritySchema.optional(),
+    dueDate: z.string().optional().nullable(),
+    assigneeUserId: z.string().uuid().optional().nullable(),
+    resolutionNotes: z.string().max(5000).optional().nullable(),
+  }),
+});
+
+export const verifyInspectionCorrectiveActionSchema = z.object({
+  body: z.object({
+    notes: z.string().max(5000).optional().nullable(),
+  }),
+});
+
+export const createInspectionSignoffSchema = z.object({
+  body: z.object({
+    signerType: z.enum(['supervisor', 'client']),
+    signerName: z.string().min(1).max(255),
+    signerTitle: z.string().max(255).optional().nullable(),
+    comments: z.string().max(5000).optional().nullable(),
+  }),
+});
+
+export const createReinspectionSchema = z.object({
+  body: z.object({
+    scheduledDate: z.string().optional(),
+    inspectorUserId: z.string().uuid().optional(),
+    notes: z.string().max(2000).optional().nullable(),
+    actionIds: z.array(z.string().uuid()).optional(),
   }),
 });

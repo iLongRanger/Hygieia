@@ -277,7 +277,10 @@ export const mockInspection = (overrides?: Partial<Inspection>): Inspection => (
   inspectorUser: { id: 'user-1', fullName: 'Test User' },
   template: null,
   job: null,
-  _count: { items: 3 },
+  openCorrectiveActions: 0,
+  overdueCorrectiveActions: 0,
+  signoffCount: 0,
+  _count: { items: 3, correctiveActions: 0, signoffs: 0 },
   createdAt: new Date('2026-02-01').toISOString(),
   ...overrides,
 });
@@ -306,8 +309,11 @@ export const mockInspectionDetail = (overrides?: Partial<InspectionDetail>): Ins
   facility: { id: 'facility-1', name: 'Main Office' },
   account: { id: 'account-1', name: 'Acme Corporation' },
   inspectorUser: { id: 'user-1', fullName: 'Test User' },
+  appointment: null,
   items: [],
   activities: [],
+  correctiveActions: [],
+  signoffs: [],
   ...overrides,
 });
 

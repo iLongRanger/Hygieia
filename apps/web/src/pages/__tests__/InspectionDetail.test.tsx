@@ -20,12 +20,22 @@ const getInspectionMock = vi.fn();
 const startInspectionMock = vi.fn();
 const completeInspectionMock = vi.fn();
 const cancelInspectionMock = vi.fn();
+const createReinspectionMock = vi.fn();
+const createInspectionCorrectiveActionMock = vi.fn();
+const updateInspectionCorrectiveActionMock = vi.fn();
+const verifyInspectionCorrectiveActionMock = vi.fn();
+const createInspectionSignoffMock = vi.fn();
 
 vi.mock('../../lib/inspections', () => ({
   getInspection: (...args: unknown[]) => getInspectionMock(...args),
   startInspection: (...args: unknown[]) => startInspectionMock(...args),
   completeInspection: (...args: unknown[]) => completeInspectionMock(...args),
   cancelInspection: (...args: unknown[]) => cancelInspectionMock(...args),
+  createReinspection: (...args: unknown[]) => createReinspectionMock(...args),
+  createInspectionCorrectiveAction: (...args: unknown[]) => createInspectionCorrectiveActionMock(...args),
+  updateInspectionCorrectiveAction: (...args: unknown[]) => updateInspectionCorrectiveActionMock(...args),
+  verifyInspectionCorrectiveAction: (...args: unknown[]) => verifyInspectionCorrectiveActionMock(...args),
+  createInspectionSignoff: (...args: unknown[]) => createInspectionSignoffMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({

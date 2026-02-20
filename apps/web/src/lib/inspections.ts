@@ -8,9 +8,15 @@ import type {
   CreateInspectionInput,
   UpdateInspectionInput,
   CompleteInspectionInput,
+  CreateInspectionCorrectiveActionInput,
+  UpdateInspectionCorrectiveActionInput,
+  CreateInspectionSignoffInput,
+  CreateReinspectionInput,
   CreateInspectionTemplateInput,
   UpdateInspectionTemplateInput,
   InspectionActivity,
+  InspectionCorrectiveAction,
+  InspectionSignoff,
 } from '../types/inspection';
 
 // ==================== Templates ====================
@@ -133,5 +139,61 @@ export async function listInspectionActivities(
   inspectionId: string
 ): Promise<InspectionActivity[]> {
   const response = await api.get(`/inspections/${inspectionId}/activities`);
+  return response.data.data;
+}
+
+export async function listInspectionCorrectiveActions(
+  inspectionId: string
+): Promise<InspectionCorrectiveAction[]> {
+  const response = await api.get(`/inspections/${inspectionId}/actions`);
+  return response.data.data;
+}
+
+export async function createInspectionCorrectiveAction(
+  inspectionId: string,
+  input: CreateInspectionCorrectiveActionInput
+): Promise<InspectionCorrectiveAction> {
+  const response = await api.post(`/inspections/${inspectionId}/actions`, input);
+  return response.data.data;
+}
+
+export async function updateInspectionCorrectiveAction(
+  inspectionId: string,
+  actionId: string,
+  input: UpdateInspectionCorrectiveActionInput
+): Promise<InspectionCorrectiveAction> {
+  const response = await api.patch(`/inspections/${inspectionId}/actions/${actionId}`, input);
+  return response.data.data;
+}
+
+export async function verifyInspectionCorrectiveAction(
+  inspectionId: string,
+  actionId: string,
+  notes?: string | null
+): Promise<InspectionCorrectiveAction> {
+  const response = await api.post(`/inspections/${inspectionId}/actions/${actionId}/verify`, { notes });
+  return response.data.data;
+}
+
+export async function listInspectionSignoffs(
+  inspectionId: string
+): Promise<InspectionSignoff[]> {
+  const response = await api.get(`/inspections/${inspectionId}/signoffs`);
+  return response.data.data;
+}
+
+export async function createInspectionSignoff(
+  inspectionId: string,
+  input: CreateInspectionSignoffInput
+): Promise<InspectionSignoff> {
+  const response = await api.post(`/inspections/${inspectionId}/signoffs`, input);
+  return response.data.data;
+}
+
+export async function createReinspection(
+  inspectionId: string,
+  input: CreateReinspectionInput = {}
+): Promise<InspectionDetail> {
+  const response = await api.post(`/inspections/${inspectionId}/reinspect`, input);
   return response.data.data;
 }

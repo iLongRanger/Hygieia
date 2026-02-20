@@ -28,7 +28,20 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    inspectionCorrectiveAction: {
+      createMany: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     inspectionActivity: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+    inspectionSignoff: {
+      create: jest.fn(),
       findMany: jest.fn(),
     },
   },
@@ -40,7 +53,9 @@ describe('inspectionService', () => {
   });
 
   it('listInspections applies date and score filters with pagination', async () => {
-    (prisma.inspection.findMany as jest.Mock).mockResolvedValue([{ id: 'ins-1' }]);
+    (prisma.inspection.findMany as jest.Mock).mockResolvedValue([
+      { id: 'ins-1', correctiveActions: [], signoffs: [] },
+    ]);
     (prisma.inspection.count as jest.Mock).mockResolvedValue(3);
 
     const result = await listInspections({
@@ -144,22 +159,33 @@ describe('inspectionService', () => {
   });
 
   it('completeInspection computes weighted overall score and rating', async () => {
-    (prisma.inspection.findUnique as jest.Mock).mockResolvedValue({
-      id: 'ins-1',
-      status: 'in_progress',
-      templateId: 'template-1',
-      items: [{ id: 'item-1' }, { id: 'item-2' }],
-    });
+    (prisma.inspection.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'ins-1',
+        status: 'in_progress',
+        templateId: 'template-1',
+        inspectorUserId: 'inspector-1',
+        items: [
+          { id: 'item-1', templateItemId: 'template-item-1', category: 'Floor', itemText: 'Floors clean', sortOrder: 0 },
+          { id: 'item-2', templateItemId: 'template-item-2', category: 'Trash', itemText: 'Bins emptied', sortOrder: 1 },
+        ],
+      })
+      .mockResolvedValueOnce({
+        id: 'ins-1',
+        items: [],
+        activities: [],
+        correctiveActions: [],
+        signoffs: [],
+      });
     (prisma.inspectionTemplate.findUnique as jest.Mock).mockResolvedValue({
       items: [
         { id: 'template-item-1', weight: 2 },
         { id: 'template-item-2', weight: 1 },
       ],
     });
-    (prisma.inspectionItem.findUnique as jest.Mock)
-      .mockResolvedValueOnce({ templateItemId: 'template-item-1' })
-      .mockResolvedValueOnce({ templateItemId: 'template-item-2' });
     (prisma.inspectionItem.update as jest.Mock).mockResolvedValue({});
+    (prisma.inspectionCorrectiveAction.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.inspectionActivity.create as jest.Mock).mockResolvedValue({});
     (prisma.inspection.update as jest.Mock).mockResolvedValue({ id: 'ins-1' });
 
     await completeInspection('ins-1', {
@@ -172,6 +198,7 @@ describe('inspectionService', () => {
     });
 
     expect(prisma.inspectionItem.update).toHaveBeenCalledTimes(2);
+    expect(prisma.inspectionCorrectiveAction.createMany).toHaveBeenCalledTimes(1);
 
     const updateArg = (prisma.inspection.update as jest.Mock).mock.calls[0][0];
     expect(updateArg.data.status).toBe('completed');
@@ -180,6 +207,8 @@ describe('inspectionService', () => {
     expect(updateArg.data.activities.create.metadata).toEqual({
       overallScore: 66.67,
       overallRating: 'fair',
+      failedItems: 1,
+      correctiveActionsAutoCreated: 1,
     });
   });
 

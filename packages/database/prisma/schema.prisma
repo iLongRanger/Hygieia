@@ -64,6 +64,11 @@ model User {
   createdInspectionTemplates InspectionTemplate[] @relation("CreatedInspectionTemplates")
   inspectorInspections     Inspection[]      @relation("InspectorInspections")
   inspectionActivities     InspectionActivity[] @relation("InspectionActivities")
+  createdInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("CreatedInspectionCorrectiveActions")
+  assignedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("AssignedInspectionCorrectiveActions")
+  resolvedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("ResolvedInspectionCorrectiveActions")
+  verifiedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("VerifiedInspectionCorrectiveActions")
+  inspectionSignoffs       InspectionSignoff[] @relation("InspectionSignoffs")
   timeEntries              TimeEntry[]          @relation("UserTimeEntries")
   approvedTimeEntries      TimeEntry[]          @relation("ApprovedTimeEntries")
   editedTimeEntries        TimeEntry[]          @relation("EditedTimeEntries")
@@ -1189,6 +1194,8 @@ model Inspection {
 
   items             InspectionItem[]
   activities        InspectionActivity[]
+  correctiveActions InspectionCorrectiveAction[]
+  signoffs          InspectionSignoff[]
   appointment       Appointment?   @relation("AppointmentInspection")
 
   @@index([inspectionNumber])
@@ -1216,6 +1223,7 @@ model InspectionItem {
   sortOrder        Int      @default(0) @map("sort_order")
 
   inspection       Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  correctiveActions InspectionCorrectiveAction[]
 
   @@index([inspectionId])
   @@map("inspection_items")
@@ -1236,6 +1244,61 @@ model InspectionActivity {
   @@index([action])
   @@index([createdAt])
   @@map("inspection_activities")
+}
+
+model InspectionCorrectiveAction {
+  id                  String    @id @default(uuid()) @db.Uuid
+  inspectionId        String    @map("inspection_id") @db.Uuid
+  inspectionItemId    String?   @map("inspection_item_id") @db.Uuid
+  title               String    @db.VarChar(255)
+  description         String?   @db.Text
+  severity            String    @default("major") @db.VarChar(20)
+  status              String    @default("open") @db.VarChar(30)
+  dueDate             DateTime? @map("due_date") @db.Date
+  assigneeUserId      String?   @map("assignee_user_id") @db.Uuid
+  createdByUserId     String    @map("created_by_user_id") @db.Uuid
+  resolvedByUserId    String?   @map("resolved_by_user_id") @db.Uuid
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolutionNotes     String?   @map("resolution_notes") @db.Text
+  verifiedByUserId    String?   @map("verified_by_user_id") @db.Uuid
+  verifiedAt          DateTime? @map("verified_at") @db.Timestamptz(6)
+  followUpInspectionId String?  @map("follow_up_inspection_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  inspection          Inspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  inspectionItem      InspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  assigneeUser        User?           @relation("AssignedInspectionCorrectiveActions", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  createdByUser       User            @relation("CreatedInspectionCorrectiveActions", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  resolvedByUser      User?           @relation("ResolvedInspectionCorrectiveActions", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  verifiedByUser      User?           @relation("VerifiedInspectionCorrectiveActions", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([inspectionId])
+  @@index([inspectionItemId])
+  @@index([status])
+  @@index([severity])
+  @@index([dueDate])
+  @@map("inspection_corrective_actions")
+}
+
+model InspectionSignoff {
+  id             String   @id @default(uuid()) @db.Uuid
+  inspectionId   String   @map("inspection_id") @db.Uuid
+  signerType     String   @map("signer_type") @db.VarChar(20)
+  signerName     String   @map("signer_name") @db.VarChar(255)
+  signerTitle    String?  @map("signer_title") @db.VarChar(255)
+  comments       String?  @db.Text
+  signedByUserId String?  @map("signed_by_user_id") @db.Uuid
+  signedAt       DateTime @default(now()) @map("signed_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  signedByUser User?      @relation("InspectionSignoffs", fields: [signedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([inspectionId])
+  @@index([signerType])
+  @@index([signedAt])
+  @@map("inspection_signoffs")
 }
 
 // ============================================================

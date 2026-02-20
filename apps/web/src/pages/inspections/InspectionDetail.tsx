@@ -23,8 +23,21 @@ import {
   startInspection,
   completeInspection,
   cancelInspection,
+  createReinspection,
+  createInspectionCorrectiveAction,
+  updateInspectionCorrectiveAction,
+  verifyInspectionCorrectiveAction,
+  createInspectionSignoff,
 } from '../../lib/inspections';
-import type { InspectionDetail as InspectionDetailType, InspectionItem, InspectionStatus, InspectionScore } from '../../types/inspection';
+import type {
+  InspectionDetail as InspectionDetailType,
+  InspectionItem,
+  InspectionStatus,
+  InspectionScore,
+  InspectionCorrectiveActionSeverity,
+  InspectionCorrectiveActionStatus,
+  InspectionSignerType,
+} from '../../types/inspection';
 
 const getStatusVariant = (status: InspectionStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<InspectionStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -45,6 +58,24 @@ const getRatingColor = (rating: string | null) => {
   return 'text-red-600 dark:text-red-400';
 };
 
+const getActionStatusVariant = (
+  status: InspectionCorrectiveActionStatus
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  if (status === 'verified') return 'success';
+  if (status === 'resolved') return 'info';
+  if (status === 'in_progress') return 'warning';
+  if (status === 'canceled') return 'default';
+  return 'error';
+};
+
+const getSeverityVariant = (
+  severity: InspectionCorrectiveActionSeverity
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  if (severity === 'critical') return 'error';
+  if (severity === 'major') return 'warning';
+  return 'info';
+};
+
 const InspectionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -53,6 +84,31 @@ const InspectionDetail = () => {
   const [completing, setCompleting] = useState(false);
   const [itemScores, setItemScores] = useState<Record<string, { score: InspectionScore; rating: number | null; notes: string }>>({});
   const [completionSummary, setCompletionSummary] = useState('');
+  const [actionSaving, setActionSaving] = useState(false);
+  const [signoffSaving, setSignoffSaving] = useState(false);
+  const [reinspectionSaving, setReinspectionSaving] = useState(false);
+  const [newAction, setNewAction] = useState<{
+    title: string;
+    description: string;
+    severity: InspectionCorrectiveActionSeverity;
+    dueDate: string;
+  }>({
+    title: '',
+    description: '',
+    severity: 'major',
+    dueDate: '',
+  });
+  const [signoffForm, setSignoffForm] = useState<{
+    signerType: InspectionSignerType;
+    signerName: string;
+    signerTitle: string;
+    comments: string;
+  }>({
+    signerType: 'supervisor',
+    signerName: '',
+    signerTitle: '',
+    comments: '',
+  });
 
   const fetchInspection = useCallback(async () => {
     if (!id) return;
@@ -121,6 +177,86 @@ const InspectionDetail = () => {
       toast.success('Inspection canceled');
     } catch {
       toast.error('Failed to cancel inspection');
+    }
+  };
+
+  const handleCreateAction = async () => {
+    if (!id || !newAction.title.trim()) {
+      toast.error('Action title is required');
+      return;
+    }
+    try {
+      setActionSaving(true);
+      await createInspectionCorrectiveAction(id, {
+        title: newAction.title.trim(),
+        description: newAction.description.trim() || null,
+        severity: newAction.severity,
+        dueDate: newAction.dueDate || null,
+      });
+      setNewAction({ title: '', description: '', severity: 'major', dueDate: '' });
+      await fetchInspection();
+      toast.success('Corrective action created');
+    } catch {
+      toast.error('Failed to create corrective action');
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const handleUpdateActionStatus = async (actionId: string, status: InspectionCorrectiveActionStatus) => {
+    if (!id) return;
+    try {
+      if (status === 'verified') {
+        await verifyInspectionCorrectiveAction(id, actionId);
+      } else {
+        await updateInspectionCorrectiveAction(id, actionId, { status });
+      }
+      await fetchInspection();
+      toast.success('Corrective action updated');
+    } catch {
+      toast.error('Failed to update corrective action');
+    }
+  };
+
+  const handleCreateSignoff = async () => {
+    if (!id || !signoffForm.signerName.trim()) {
+      toast.error('Signer name is required');
+      return;
+    }
+    try {
+      setSignoffSaving(true);
+      await createInspectionSignoff(id, {
+        signerType: signoffForm.signerType,
+        signerName: signoffForm.signerName.trim(),
+        signerTitle: signoffForm.signerTitle.trim() || null,
+        comments: signoffForm.comments.trim() || null,
+      });
+      setSignoffForm({
+        signerType: 'supervisor',
+        signerName: '',
+        signerTitle: '',
+        comments: '',
+      });
+      await fetchInspection();
+      toast.success('Signoff added');
+    } catch {
+      toast.error('Failed to add signoff');
+    } finally {
+      setSignoffSaving(false);
+    }
+  };
+
+  const handleCreateReinspection = async () => {
+    if (!id) return;
+    try {
+      setReinspectionSaving(true);
+      const reinspection = await createReinspection(id, {});
+      toast.success(`Reinspection ${reinspection.inspectionNumber} created`);
+      navigate(`/inspections/${reinspection.id}`);
+    } catch {
+      toast.error('Failed to create reinspection');
+    } finally {
+      setReinspectionSaving(false);
     }
   };
 
@@ -214,6 +350,11 @@ const InspectionDetail = () => {
               Complete
             </Button>
           )}
+          {inspection.status === 'completed' && inspection.items.some((item) => item.score === 'fail') && (
+            <Button variant="secondary" size="sm" onClick={handleCreateReinspection} isLoading={reinspectionSaving}>
+              Reinspect Failed Items
+            </Button>
+          )}
           {isEditable && (
             <Button variant="danger" size="sm" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
@@ -254,17 +395,17 @@ const InspectionDetail = () => {
                   </button>
                 </div>
               )}
-              {(inspection as any).appointment && (
+              {inspection.appointment && (
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-surface-400" />
                   <button
                     className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    onClick={() => navigate('/appointments')}
+                    onClick={() => navigate(`/appointments/${inspection.appointment!.id}`)}
                   >
                     Linked Appointment
                   </button>
                   <Badge variant="info" className="text-xs">
-                    {(inspection as any).appointment.status}
+                    {inspection.appointment.status}
                   </Badge>
                 </div>
               )}
@@ -481,6 +622,195 @@ const InspectionDetail = () => {
           </div>
         </Card>
       )}
+
+      {/* Corrective actions */}
+      <Card>
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">
+              Corrective Actions ({inspection.correctiveActions.length})
+            </h3>
+            {inspection.overallScore && (
+              <span className="text-xs text-surface-500 dark:text-surface-400">
+                Open: {inspection.correctiveActions.filter((action) => action.status === 'open' || action.status === 'in_progress').length}
+              </span>
+            )}
+          </div>
+
+          {inspection.status !== 'canceled' && (
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 md:grid-cols-4">
+              <input
+                type="text"
+                value={newAction.title}
+                onChange={(e) => setNewAction((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="Action title"
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-2"
+              />
+              <select
+                value={newAction.severity}
+                onChange={(e) =>
+                  setNewAction((prev) => ({ ...prev, severity: e.target.value as InspectionCorrectiveActionSeverity }))
+                }
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              >
+                <option value="critical">Critical</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+              </select>
+              <input
+                type="date"
+                value={newAction.dueDate}
+                onChange={(e) => setNewAction((prev) => ({ ...prev, dueDate: e.target.value }))}
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              />
+              <textarea
+                value={newAction.description}
+                onChange={(e) => setNewAction((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Description (optional)"
+                rows={2}
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-3"
+              />
+              <div className="flex items-end justify-end">
+                <Button size="sm" onClick={handleCreateAction} isLoading={actionSaving}>
+                  Add Action
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {inspection.correctiveActions.length === 0 ? (
+            <p className="text-sm text-surface-400">No corrective actions</p>
+          ) : (
+            <div className="space-y-2">
+              {inspection.correctiveActions.map((action) => (
+                <div key={action.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{action.title}</p>
+                      {action.description && (
+                        <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">{action.description}</p>
+                      )}
+                      {action.inspectionItem && (
+                        <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                          Item: {action.inspectionItem.category} - {action.inspectionItem.itemText}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getSeverityVariant(action.severity)} size="sm">
+                        {action.severity}
+                      </Badge>
+                      <Badge variant={getActionStatusVariant(action.status)} size="sm">
+                        {action.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-surface-500 dark:text-surface-400">
+                      Due: {action.dueDate ? new Date(action.dueDate).toLocaleDateString() : 'No due date'}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {action.status === 'open' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'in_progress')}>
+                          Start
+                        </Button>
+                      )}
+                      {action.status === 'in_progress' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'resolved')}>
+                          Resolve
+                        </Button>
+                      )}
+                      {action.status === 'resolved' && (
+                        <Button size="sm" onClick={() => handleUpdateActionStatus(action.id, 'verified')}>
+                          Verify
+                        </Button>
+                      )}
+                      {(action.status === 'resolved' || action.status === 'verified' || action.status === 'canceled') && (
+                        <Button size="sm" variant="ghost" onClick={() => handleUpdateActionStatus(action.id, 'open')}>
+                          Reopen
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Signoffs */}
+      <Card>
+        <div className="p-4 space-y-4">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">
+            Signoffs ({inspection.signoffs.length})
+          </h3>
+
+          {inspection.status === 'completed' && (
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 md:grid-cols-4">
+              <select
+                value={signoffForm.signerType}
+                onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerType: e.target.value as InspectionSignerType }))}
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              >
+                <option value="supervisor">Supervisor</option>
+                <option value="client">Client</option>
+              </select>
+              <input
+                type="text"
+                value={signoffForm.signerName}
+                onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerName: e.target.value }))}
+                placeholder="Signer name"
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              />
+              <input
+                type="text"
+                value={signoffForm.signerTitle}
+                onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerTitle: e.target.value }))}
+                placeholder="Signer title (optional)"
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              />
+              <div className="flex items-end justify-end">
+                <Button size="sm" onClick={handleCreateSignoff} isLoading={signoffSaving}>
+                  Add Signoff
+                </Button>
+              </div>
+              <textarea
+                value={signoffForm.comments}
+                onChange={(e) => setSignoffForm((prev) => ({ ...prev, comments: e.target.value }))}
+                placeholder="Comments (optional)"
+                rows={2}
+                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-4"
+              />
+            </div>
+          )}
+
+          {inspection.signoffs.length === 0 ? (
+            <p className="text-sm text-surface-400">No signoffs recorded</p>
+          ) : (
+            <div className="space-y-2">
+              {inspection.signoffs.map((signoff) => (
+                <div key={signoff.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{signoff.signerName}</p>
+                      <p className="text-xs text-surface-500 dark:text-surface-400">
+                        {signoff.signerType} {signoff.signerTitle ? `- ${signoff.signerTitle}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-xs text-surface-500 dark:text-surface-400">
+                      {new Date(signoff.signedAt).toLocaleString()}
+                    </span>
+                  </div>
+                  {signoff.comments && (
+                    <p className="mt-2 text-xs text-surface-600 dark:text-surface-300">{signoff.comments}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Activity timeline */}
       {inspection.activities.length > 0 && (

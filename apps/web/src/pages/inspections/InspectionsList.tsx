@@ -156,6 +156,25 @@ const InspectionsList = () => {
         <span className="text-sm text-surface-500">{row._count.items}</span>
       ),
     },
+    {
+      header: 'Actions',
+      cell: (row: Inspection) => (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium text-surface-700 dark:text-surface-300">{row.openCorrectiveActions}</span>
+          {row.overdueCorrectiveActions > 0 && (
+            <Badge variant="error" size="sm">
+              {row.overdueCorrectiveActions} overdue
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: 'Signoffs',
+      cell: (row: Inspection) => (
+        <span className="text-sm text-surface-500">{row.signoffCount}</span>
+      ),
+    },
   ];
 
   return (
