@@ -698,7 +698,12 @@ const AppointmentsPage = () => {
             )}
           </div>
 
-          <Table data={filteredAppointments} columns={columns} isLoading={loading} />
+          <Table
+            data={filteredAppointments}
+            columns={columns}
+            isLoading={loading}
+            onRowClick={(item) => navigate(`/appointments/${item.id}`)}
+          />
         </Card>
       ) : (
         <div className="space-y-4">

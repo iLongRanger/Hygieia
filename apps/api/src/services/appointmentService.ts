@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
+import logger from '../lib/logger';
 
 export interface AppointmentListParams {
   leadId?: string;
@@ -63,6 +64,8 @@ const appointmentSelect = {
   timezone: true,
   location: true,
   notes: true,
+  completionNotes: true,
+  actualDuration: true,
   completedAt: true,
   rescheduledFromId: true,
   inspectionId: true,
@@ -95,6 +98,12 @@ const appointmentSelect = {
       id: true,
       fullName: true,
       email: true,
+    },
+  },
+  assignedTeam: {
+    select: {
+      id: true,
+      name: true,
     },
   },
   createdByUser: {
@@ -282,6 +291,18 @@ export async function createAppointment(input: AppointmentCreateInput) {
 }
 
 export async function updateAppointment(id: string, input: AppointmentUpdateInput) {
+  const existing = await prisma.appointment.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      assignedToUserId: true,
+    },
+  });
+
+  if (!existing) {
+    throw new NotFoundError('Appointment not found');
+  }
+
   const appointment = await prisma.appointment.update({
     where: { id },
     data: {
@@ -298,17 +319,32 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
 
   // Notify assigned user about the update
   if (appointment.assignedToUser?.id) {
-    createNotification({
-      userId: appointment.assignedToUser.id,
-      type: 'appointment_updated',
-      title: 'Appointment updated',
-      body: `Your ${appointment.type} appointment has been updated.`,
-      metadata: {
+    const assignmentChanged =
+      input.assignedToUserId !== undefined &&
+      input.assignedToUserId !== existing.assignedToUserId;
+
+    try {
+      await createNotification({
+        userId: appointment.assignedToUser.id,
+        type: assignmentChanged ? 'appointment_assigned' : 'appointment_updated',
+        title: assignmentChanged ? 'Appointment assigned to you' : 'Appointment updated',
+        body: assignmentChanged
+          ? `You have been assigned a ${appointment.type} appointment.`
+          : `Your ${appointment.type} appointment has been updated.`,
+        metadata: {
+          appointmentId: appointment.id,
+          type: appointment.type,
+          scheduledStart: appointment.scheduledStart.toISOString(),
+          scheduledEnd: appointment.scheduledEnd.toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to create appointment update notification', {
         appointmentId: appointment.id,
-        type: appointment.type,
-        scheduledStart: appointment.scheduledStart,
-      },
-    }).catch(() => {});
+        assignedToUserId: appointment.assignedToUser.id,
+        error,
+      });
+    }
   }
 
   return appointment;

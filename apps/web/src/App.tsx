@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import LeadsList from './pages/leads/LeadsList';
 import LeadDetail from './pages/leads/LeadDetail';
 import AppointmentsPage from './pages/appointments/AppointmentsPage';
+import AppointmentDetail from './pages/appointments/AppointmentDetail';
 import AccountsList from './pages/accounts/AccountsList';
 import AccountDetail from './pages/accounts/AccountDetail';
 import ContactsList from './pages/contacts/ContactsList';
@@ -109,6 +110,7 @@ function App() {
             <Route path="/leads/new" element={<LeadsList />} />
             <Route path="/leads/:id" element={<LeadDetail />} />
             <Route path="/appointments" element={<AppointmentsPage />} />
+            <Route path="/appointments/:id" element={<AppointmentDetail />} />
             <Route path="/accounts" element={<AccountsList />} />
             <Route path="/accounts/:id" element={<AccountDetail />} />
             <Route path="/contacts" element={<ContactsList />} />

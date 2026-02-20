@@ -118,6 +118,8 @@ export interface Appointment {
     inspectionNumber: string;
     status: string;
   } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {
