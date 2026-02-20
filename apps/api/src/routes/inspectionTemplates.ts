@@ -15,6 +15,7 @@ import {
   updateInspectionTemplate,
   archiveInspectionTemplate,
   restoreInspectionTemplate,
+  getOrCreateTemplateForContract,
 } from '../services/inspectionTemplateService';
 
 const router = Router();
@@ -37,6 +38,19 @@ router.get(
     });
 
     res.json(result);
+  }
+);
+
+// Get or create template for a contract
+router.get(
+  '/by-contract/:contractId',
+  requirePermission(PERMISSIONS.INSPECTIONS_READ),
+  async (req: Request, res: Response) => {
+    const template = await getOrCreateTemplateForContract(
+      req.params.contractId,
+      req.user!.id
+    );
+    res.json({ data: template });
   }
 );
 

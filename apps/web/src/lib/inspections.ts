@@ -57,6 +57,13 @@ export async function restoreInspectionTemplate(id: string): Promise<void> {
   await api.post(`/inspection-templates/${id}/restore`);
 }
 
+export async function getTemplateForContract(
+  contractId: string
+): Promise<{ id: string; name: string } | null> {
+  const response = await api.get(`/inspection-templates/by-contract/${contractId}`);
+  return response.data.data;
+}
+
 // ==================== Inspections ====================
 
 export interface InspectionListParams {

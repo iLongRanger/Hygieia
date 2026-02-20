@@ -218,6 +218,7 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
     select: {
       id: true,
       title: true,
+      renewedFromContractId: true,
       account: { select: { name: true } },
       facility: { select: { name: true } },
       proposal: {
@@ -234,9 +235,36 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
     },
   });
 
-  if (!contract?.proposal) return null;
+  if (!contract) return null;
 
-  const services = contract.proposal.proposalServices;
+  // If no direct proposal, walk the renewal chain to find the original contract's proposal
+  let proposalServices = contract.proposal?.proposalServices;
+  if (!proposalServices) {
+    let currentContractId = contract.renewedFromContractId;
+    while (currentContractId && !proposalServices) {
+      const parent = await prisma.contract.findUnique({
+        where: { id: currentContractId },
+        select: {
+          renewedFromContractId: true,
+          proposal: {
+            select: {
+              proposalServices: {
+                select: { serviceName: true, includedTasks: true },
+                orderBy: { sortOrder: 'asc' },
+              },
+            },
+          },
+        },
+      });
+      if (!parent) break;
+      proposalServices = parent.proposal?.proposalServices;
+      currentContractId = parent.renewedFromContractId;
+    }
+  }
+
+  if (!proposalServices) return null;
+
+  const services = proposalServices;
   if (services.length === 0) return null;
 
   // Build template items from proposal services + their tasks
@@ -274,4 +302,21 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
     createdByUserId,
     items,
   });
+}
+
+/**
+ * Find the existing inspection template for a contract, or auto-create one.
+ * Returns { id, name } or null if the contract has no proposal tasks.
+ */
+export async function getOrCreateTemplateForContract(contractId: string, createdByUserId: string) {
+  const existing = await prisma.inspectionTemplate.findFirst({
+    where: { contractId, archivedAt: null },
+    select: { id: true, name: true },
+  });
+  if (existing) return existing;
+
+  const created = await autoCreateInspectionTemplate(contractId, createdByUserId);
+  if (!created) return null;
+
+  return { id: created.id, name: created.name };
 }
