@@ -129,7 +129,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     else if (meta?.leadId)        navigate(`/leads/${meta.leadId}`);
     else if (meta?.jobId)         navigate(`/jobs/${meta.jobId}`);
     else if (meta?.facilityId)    navigate(`/facilities/${meta.facilityId}`);
-    else if (meta?.appointmentId) navigate('/appointments');
+    else if (meta?.appointmentId) navigate(`/appointments/${meta.appointmentId}`);
 
     setIsOpen(false);
   };

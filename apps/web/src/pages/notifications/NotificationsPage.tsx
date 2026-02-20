@@ -143,7 +143,7 @@ const NotificationsPage = () => {
     } else if (meta?.facilityId) {
       navigate(`/facilities/${meta.facilityId}`);
     } else if (meta?.appointmentId) {
-      navigate('/appointments');
+      navigate(`/appointments/${meta.appointmentId}`);
     }
   };
 
