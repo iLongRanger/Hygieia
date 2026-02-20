@@ -52,7 +52,7 @@ describe('Public Contract Routes', () => {
     setupTestRoutes(app, routes, '/api/v1/public/contracts');
   });
 
-  it('POST /:token/sign should mention renewal in notifications and email', async () => {
+  it('POST /:token/sign should send notifications and email', async () => {
     (contractPublicService.signContractPublic as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'pending_signature',
@@ -60,9 +60,8 @@ describe('Public Contract Routes', () => {
 
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       contractNumber: 'CONT-202602-0001',
-      title: 'Janitorial Renewal',
-      contractSource: 'renewal',
-      renewalNumber: 2,
+      title: 'Janitorial Services',
+      renewalNumber: 0,
       monthlyValue: '2500',
       account: { name: 'Acme Corp' },
       createdByUser: { id: 'creator-1', email: 'owner@acme.test' },
@@ -79,15 +78,14 @@ describe('Public Contract Routes', () => {
     expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
       expect.any(Array),
       expect.objectContaining({
-        title: expect.stringContaining('Contract Renewal #2 CONT-202602-0001 signed'),
-        body: expect.stringContaining('renewal contract'),
+        title: expect.stringContaining('Contract CONT-202602-0001 signed'),
       })
     );
 
     expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('Contract Renewal #2 CONT-202602-0001 signed'),
-      expect.stringContaining('renewal contract')
+      expect.stringContaining('CONT-202602-0001 signed'),
+      expect.stringContaining('contract')
     );
   });
 });

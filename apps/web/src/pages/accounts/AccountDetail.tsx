@@ -106,7 +106,6 @@ const CONTRACT_STATUS_VARIANTS: Record<
   active: 'success',
   expired: 'default',
   terminated: 'error',
-  renewed: 'info',
 };
 
 const PROPOSAL_STATUS_VARIANTS: Record<

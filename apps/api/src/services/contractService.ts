@@ -7,7 +7,6 @@ export interface ContractListParams {
   page?: number;
   limit?: number;
   status?: string;
-  contractSource?: string;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -79,8 +78,6 @@ const contractSelect = {
   contractNumber: true,
   title: true,
   status: true,
-  contractSource: true,
-  renewedFromContractId: true,
   renewalNumber: true,
   startDate: true,
   endDate: true,
@@ -156,20 +153,6 @@ const contractSelect = {
       contactPhone: true,
     },
   },
-  renewedFromContract: {
-    select: {
-      id: true,
-      contractNumber: true,
-      title: true,
-    },
-  },
-  renewedToContract: {
-    select: {
-      id: true,
-      contractNumber: true,
-      title: true,
-    },
-  },
   approvedByUser: {
     select: {
       id: true,
@@ -227,7 +210,6 @@ export async function listContracts(
     page = 1,
     limit = 10,
     status,
-    contractSource,
     accountId,
     facilityId,
     proposalId,
@@ -241,10 +223,6 @@ export async function listContracts(
 
   if (status) {
     where.status = status;
-  }
-
-  if (contractSource) {
-    where.contractSource = contractSource;
   }
 
   if (accountId) {
@@ -381,7 +359,6 @@ export async function createContract(data: ContractCreateInput) {
       ...data,
       termsAndConditions,
       status: 'draft',
-      contractSource: 'proposal',
       includesInitialClean: true,
     },
     select: contractSelect,
@@ -440,7 +417,6 @@ export async function createContractFromProposal(
     contractNumber,
     title: overrides?.title || proposal.title,
     status: 'draft',
-    contractSource: 'proposal',
     account: { connect: { id: proposal.accountId } },
     ...(proposal.facilityId && { facility: { connect: { id: proposal.facilityId } } }),
     proposal: { connect: { id: proposalId } },
@@ -661,7 +637,7 @@ export async function restoreContract(id: string) {
 // ============================================================
 
 export interface RenewContractInput {
-  startDate: Date;
+  startDate?: Date;
   endDate?: Date | null;
   monthlyValue?: number;
   serviceFrequency?: string | null;
@@ -675,90 +651,51 @@ export interface RenewContractInput {
 }
 
 /**
- * Renew a contract by creating a new contract linked to the original
+ * Renew a contract by updating it in place with new dates/terms
  */
 export async function renewContract(
   contractId: string,
   input: RenewContractInput,
-  createdByUserId: string
+  _createdByUserId: string
 ) {
-  // Get the original contract
-  const originalContract = await prisma.contract.findUnique({
+  const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     select: {
       id: true,
-      title: true,
       status: true,
-      contractSource: true,
-      accountId: true,
-      facilityId: true,
-      monthlyValue: true,
-      serviceFrequency: true,
-      serviceSchedule: true,
-      autoRenew: true,
-      renewalNoticeDays: true,
-      billingCycle: true,
-      paymentTerms: true,
-      termsAndConditions: true,
-      specialInstructions: true,
       renewalNumber: true,
-      renewedToContract: {
-        select: { id: true },
-      },
     },
   });
 
-  if (!originalContract) {
+  if (!contract) {
     throw new Error('Contract not found');
   }
 
-  // Only active or expired contracts can be renewed
-  if (originalContract.status !== 'active' && originalContract.status !== 'expired') {
+  if (contract.status !== 'active' && contract.status !== 'expired') {
     throw new Error('Only active or expired contracts can be renewed');
   }
 
-  // Check if already renewed
-  if (originalContract.renewedToContract) {
-    throw new Error('This contract has already been renewed');
-  }
+  // Build update data from provided fields only
+  const updateData: Prisma.ContractUpdateInput = {
+    renewalNumber: contract.renewalNumber + 1,
+  };
 
-  const contractNumber = await generateContractNumber();
+  if (input.startDate !== undefined) updateData.startDate = input.startDate;
+  if (input.endDate !== undefined) updateData.endDate = input.endDate;
+  if (input.monthlyValue !== undefined) updateData.monthlyValue = input.monthlyValue;
+  if (input.serviceFrequency !== undefined) updateData.serviceFrequency = input.serviceFrequency;
+  if (input.serviceSchedule !== undefined) updateData.serviceSchedule = input.serviceSchedule;
+  if (input.autoRenew !== undefined) updateData.autoRenew = input.autoRenew;
+  if (input.renewalNoticeDays !== undefined) updateData.renewalNoticeDays = input.renewalNoticeDays;
+  if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
+  if (input.paymentTerms !== undefined) updateData.paymentTerms = input.paymentTerms;
+  if (input.termsAndConditions !== undefined) updateData.termsAndConditions = input.termsAndConditions;
+  if (input.specialInstructions !== undefined) updateData.specialInstructions = input.specialInstructions;
 
-  return prisma.$transaction(async (tx) => {
-    // Create renewal contract
-    const renewalContract = await tx.contract.create({
-      data: {
-        contractNumber,
-        title: originalContract.title,
-        status: 'draft',
-        contractSource: 'renewal',
-        accountId: originalContract.accountId,
-        facilityId: originalContract.facilityId,
-        renewedFromContractId: originalContract.id,
-        renewalNumber: originalContract.renewalNumber + 1,
-        startDate: input.startDate,
-        endDate: input.endDate || null,
-        serviceFrequency: input.serviceFrequency ?? originalContract.serviceFrequency,
-        serviceSchedule: input.serviceSchedule ?? originalContract.serviceSchedule,
-        autoRenew: input.autoRenew ?? originalContract.autoRenew,
-        renewalNoticeDays: input.renewalNoticeDays ?? originalContract.renewalNoticeDays,
-        monthlyValue: input.monthlyValue ?? Number(originalContract.monthlyValue),
-        billingCycle: input.billingCycle ?? originalContract.billingCycle,
-        paymentTerms: input.paymentTerms ?? originalContract.paymentTerms,
-        termsAndConditions: input.termsAndConditions ?? originalContract.termsAndConditions,
-        specialInstructions: input.specialInstructions ?? originalContract.specialInstructions,
-        createdByUserId,
-      },
-      select: contractSelect,
-    });
-
-    // Update original contract status to 'renewed'
-    await tx.contract.update({
-      where: { id: originalContract.id },
-      data: { status: 'renewed' },
-    });
-
-    return renewalContract;
+  return prisma.contract.update({
+    where: { id: contractId },
+    data: updateData,
+    select: contractSelect,
   });
 }
 
@@ -774,9 +711,6 @@ export async function canRenewContract(contractId: string): Promise<{
     select: {
       id: true,
       status: true,
-      renewedToContract: {
-        select: { id: true },
-      },
     },
   });
 
@@ -788,10 +722,6 @@ export async function canRenewContract(contractId: string): Promise<{
     return { canRenew: false, reason: 'Only active or expired contracts can be renewed' };
   }
 
-  if (contract.renewedToContract) {
-    return { canRenew: false, reason: 'Contract has already been renewed' };
-  }
-
   return { canRenew: true };
 }
 
@@ -801,7 +731,6 @@ export async function canRenewContract(contractId: string): Promise<{
 
 export interface StandaloneContractCreateInput {
   title: string;
-  contractSource: 'imported' | 'legacy';
   accountId: string;
   facilityId?: string | null;
   startDate: Date;
@@ -857,7 +786,6 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       contractNumber,
       title: data.title,
       status: 'draft',
-      contractSource: data.contractSource,
       accountId: data.accountId,
       facilityId: data.facilityId,
       startDate: data.startDate,

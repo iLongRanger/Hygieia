@@ -139,10 +139,6 @@ const PublicContractView: React.FC = () => {
   if (!contract) return null;
 
   const canSign = ['sent', 'viewed'].includes(contract.status);
-  const isRenewal = contract.contractSource === 'renewal';
-  const renewalLabel = isRenewal
-    ? `Contract Renewal${contract.renewalNumber ? ` #${contract.renewalNumber}` : ''}`
-    : 'Contract';
 
   const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
   const accentColor = branding?.themeAccentColor || '#d4af37';
@@ -181,9 +177,9 @@ const PublicContractView: React.FC = () => {
           <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 flex items-center gap-3">
             <CheckCircle className="h-6 w-6 text-green-500" />
             <div>
-              <p className="font-medium text-green-800">{renewalLabel} Signed</p>
+              <p className="font-medium text-green-800">Contract Signed</p>
               <p className="text-sm text-green-600">
-                Thank you for signing this {isRenewal ? 'renewal contract' : 'contract'}.
+                Thank you for signing this contract.
               </p>
             </div>
           </div>
@@ -197,7 +193,7 @@ const PublicContractView: React.FC = () => {
             <CheckCircle className="h-6 w-6 text-green-500" />
             <div>
               <p className="font-medium text-green-800">
-                This {isRenewal ? 'renewal contract' : 'contract'} has been signed
+                This contract has been signed
               </p>
               {contract.signedByName && (
                 <p className="text-sm text-green-600">
@@ -211,16 +207,6 @@ const PublicContractView: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
-        {/* Renewal Banner */}
-        {isRenewal && (
-          <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
-            <p className="font-semibold text-yellow-800">
-              {renewalLabel}
-            </p>
-            <p className="text-sm text-yellow-700">This is a renewal of your existing service agreement.</p>
-          </div>
-        )}
-
         {/* Title & Meta */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold" style={{ color: textColor }}>{contract.title}</h2>
@@ -335,7 +321,7 @@ const PublicContractView: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Sign Contract</h3>
             <p className="text-sm text-gray-600 mb-4">
-              By signing, you agree to the terms and conditions outlined in this {isRenewal ? 'renewal contract' : 'contract'}.
+              By signing, you agree to the terms and conditions outlined in this contract.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">

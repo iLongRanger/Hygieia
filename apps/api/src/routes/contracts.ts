@@ -18,7 +18,6 @@ import {
   archiveContract,
   restoreContract,
   renewContract,
-  canRenewContract,
   completeInitialClean,
   getExpiringContracts,
   getTeamAssignmentNotificationData,
@@ -588,11 +587,9 @@ router.post(
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
             const pdfBuffer = await generateContractPdf(sent as any);
 
-            const isRenewal = sent.contractSource === 'renewal';
             const emailSubject = parsed.data.emailSubject || buildContractSentSubject(
               sent.contractNumber,
-              sent.title,
-              isRenewal
+              sent.title
             );
             const branding = await getBrandingSafe();
             const emailHtml = buildContractSentHtmlWithBranding({
@@ -604,8 +601,6 @@ router.post(
               recipientName: recipientFirstName || sent.account.name,
               customMessage: parsed.data.emailBody,
               publicViewUrl,
-              isRenewal,
-              renewalNumber: sent.renewalNumber || undefined,
             }, branding);
 
             logger.info(`Sending contract email to ${emailTo}`);
@@ -778,21 +773,6 @@ router.post(
 // Contract Renewal Routes
 // ============================================================
 
-/** Check if a contract can be renewed */
-router.get(
-  '/:id/can-renew',
-  authenticate,
-  requirePermission(PERMISSIONS.CONTRACTS_READ),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const result = await canRenewContract(req.params.id);
-      res.json({ data: result });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
 /** Renew a contract */
 router.post(
   '/:id/renew',
@@ -809,12 +789,6 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
-      // Check if contract can be renewed
-      const canRenew = await canRenewContract(req.params.id);
-      if (!canRenew.canRenew) {
-        throw new BadRequestError(canRenew.reason || 'Contract cannot be renewed');
-      }
-
       const contract = await renewContract(
         req.params.id,
         parsed.data,
@@ -823,19 +797,12 @@ router.post(
 
       await logContractActivity({
         contractId: contract.id,
-        action: 'created',
-        performedByUserId: req.user.id,
-        metadata: { source: 'renewal', renewedFromContractId: req.params.id },
-      });
-
-      await logContractActivity({
-        contractId: req.params.id,
         action: 'renewed',
         performedByUserId: req.user.id,
-        metadata: { renewedToContractId: contract.id },
+        metadata: { renewalNumber: contract.renewalNumber },
       });
 
-      res.status(201).json({ data: contract });
+      res.json({ data: contract });
     } catch (error) {
       next(error);
     }
@@ -871,7 +838,7 @@ router.post(
         contractId: contract.id,
         action: 'created',
         performedByUserId: req.user.id,
-        metadata: { source: parsed.data.contractSource },
+        metadata: { source: 'standalone' },
       });
 
       res.status(201).json({ data: contract });

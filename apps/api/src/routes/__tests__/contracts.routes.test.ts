@@ -239,7 +239,6 @@ describe('Contract Routes', () => {
       status: 'draft',
       contractNumber: 'CONT-001',
       title: 'Main Service Agreement',
-      contractSource: 'proposal',
       renewalNumber: null,
       monthlyValue: '2500',
       startDate: '2026-02-01',
@@ -317,35 +316,15 @@ describe('Contract Routes', () => {
     expect(response.body.data.id).toBe('contract-1');
   });
 
-  it('GET /:id/can-renew should return renewal eligibility', async () => {
-    (contractService.canRenewContract as jest.Mock).mockResolvedValue({ canRenew: true });
-
-    const response = await request(app)
-      .get('/api/v1/contracts/contract-1/can-renew')
-      .expect(200);
-
-    expect(response.body.data.canRenew).toBe(true);
-  });
-
-  it('POST /:id/renew should renew contract when eligible', async () => {
-    (contractService.canRenewContract as jest.Mock).mockResolvedValue({ canRenew: true });
+  it('POST /:id/renew should renew contract', async () => {
     (contractService.renewContract as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 
     const response = await request(app)
       .post('/api/v1/contracts/contract-1/renew')
       .send({ startDate: '2026-02-01' })
-      .expect(201);
+      .expect(200);
 
     expect(response.body.data.id).toBe('contract-1');
-  });
-
-  it('POST /:id/renew should return 400 when not eligible', async () => {
-    (contractService.canRenewContract as jest.Mock).mockResolvedValue({ canRenew: false, reason: 'Too early' });
-
-    await request(app)
-      .post('/api/v1/contracts/contract-1/renew')
-      .send({ startDate: '2026-02-01' })
-      .expect(400);
   });
 
   it('POST /standalone should create standalone contract', async () => {
@@ -355,7 +334,6 @@ describe('Contract Routes', () => {
       .post('/api/v1/contracts/standalone')
       .send({
         title: 'Standalone',
-        contractSource: 'imported',
         accountId: '11111111-1111-1111-1111-111111111111',
         startDate: '2026-01-01',
         monthlyValue: 1000,

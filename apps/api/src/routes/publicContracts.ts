@@ -43,7 +43,6 @@ async function getContractNotificationRecipients(contractId: string) {
     select: {
       contractNumber: true,
       title: true,
-      contractSource: true,
       renewalNumber: true,
       monthlyValue: true,
       account: { select: { name: true } },
@@ -120,11 +119,6 @@ router.post(
       try {
         const { contract: fullContract, adminUsers } = await getContractNotificationRecipients(contract.id);
         if (fullContract) {
-          const isRenewal = fullContract.contractSource === 'renewal';
-          const renewalLabel = isRenewal
-            ? `Contract Renewal${fullContract.renewalNumber ? ` #${fullContract.renewalNumber}` : ''}`
-            : 'Contract';
-
           const recipientUserIds = new Set<string>();
           if (fullContract.createdByUser) {
             recipientUserIds.add(fullContract.createdByUser.id);
@@ -135,8 +129,8 @@ router.post(
 
           await createBulkNotifications([...recipientUserIds], {
             type: 'contract_signed',
-            title: `${renewalLabel} ${fullContract.contractNumber} signed`,
-            body: `${fullContract.account.name} has signed ${isRenewal ? 'renewal contract' : 'contract'} "${fullContract.title}".`,
+            title: `Contract ${fullContract.contractNumber} signed`,
+            body: `${fullContract.account.name} has signed contract "${fullContract.title}".`,
             metadata: { contractId: contract.id },
           });
 
@@ -149,8 +143,8 @@ router.post(
             emailRecipients.add(branding.companyEmail);
           }
 
-          const subject = `${renewalLabel} ${fullContract.contractNumber} signed by ${parsed.data.signedByName}`;
-          const html = `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) has signed ${isRenewal ? 'renewal contract' : 'contract'} <strong>${fullContract.contractNumber}: ${fullContract.title}</strong> for ${fullContract.account.name}.</p>`;
+          const subject = `Contract ${fullContract.contractNumber} signed by ${parsed.data.signedByName}`;
+          const html = `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) has signed contract <strong>${fullContract.contractNumber}: ${fullContract.title}</strong> for ${fullContract.account.name}.</p>`;
 
           await Promise.allSettled(
             [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))

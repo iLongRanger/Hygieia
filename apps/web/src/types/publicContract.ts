@@ -3,7 +3,6 @@ export interface PublicContract {
   contractNumber: string;
   title: string;
   status: string;
-  contractSource?: 'proposal' | 'imported' | 'legacy' | 'renewal';
   renewalNumber?: number | null;
   startDate: string;
   endDate?: string | null;

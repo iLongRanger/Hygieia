@@ -8,8 +8,6 @@ const baseContract: Contract = {
   contractNumber: 'CONT-202602-0001',
   title: 'Office Cleaning Agreement',
   status: 'draft',
-  contractSource: 'proposal',
-  renewedFromContractId: null,
   renewalNumber: 0,
   startDate: '2026-02-01',
   endDate: null,
@@ -48,8 +46,6 @@ const baseContract: Contract = {
   facility: null,
   proposal: null,
   assignedTeam: null,
-  renewedFromContract: null,
-  renewedToContract: null,
   approvedByUser: null,
   createdByUser: {
     id: 'user-1',

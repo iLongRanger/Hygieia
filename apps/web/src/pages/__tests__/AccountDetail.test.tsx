@@ -174,8 +174,6 @@ const contract: Contract = {
   contractNumber: 'CONT-001',
   title: 'Cleaning Contract',
   status: 'draft',
-  contractSource: 'proposal',
-  renewedFromContractId: null,
   renewalNumber: 0,
   startDate: new Date().toISOString(),
   endDate: null,
@@ -208,8 +206,6 @@ const contract: Contract = {
   },
   facility: null,
   proposal: null,
-  renewedFromContract: null,
-  renewedToContract: null,
   approvedByUser: null,
   createdByUser: {
     id: 'admin-1',

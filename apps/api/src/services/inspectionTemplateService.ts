@@ -218,7 +218,6 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
     select: {
       id: true,
       title: true,
-      renewedFromContractId: true,
       account: { select: { name: true } },
       facility: { select: { name: true } },
       proposal: {
@@ -237,31 +236,7 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
 
   if (!contract) return null;
 
-  // If no direct proposal, walk the renewal chain to find the original contract's proposal
-  let proposalServices = contract.proposal?.proposalServices;
-  if (!proposalServices) {
-    let currentContractId = contract.renewedFromContractId;
-    while (currentContractId && !proposalServices) {
-      const parent = await prisma.contract.findUnique({
-        where: { id: currentContractId },
-        select: {
-          renewedFromContractId: true,
-          proposal: {
-            select: {
-              proposalServices: {
-                select: { serviceName: true, includedTasks: true },
-                orderBy: { sortOrder: 'asc' },
-              },
-            },
-          },
-        },
-      });
-      if (!parent) break;
-      proposalServices = parent.proposal?.proposalServices;
-      currentContractId = parent.renewedFromContractId;
-    }
-  }
-
+  const proposalServices = contract.proposal?.proposalServices;
   if (!proposalServices) return null;
 
   const services = proposalServices;

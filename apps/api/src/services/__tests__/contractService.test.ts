@@ -86,7 +86,6 @@ describe('contractService', () => {
         data: expect.objectContaining({
           proposalId: 'proposal-1',
           status: 'draft',
-          contractSource: 'proposal',
         }),
       })
     );
@@ -118,51 +117,25 @@ describe('contractService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           title: 'Proposal A',
-          contractSource: 'proposal',
           monthlyValue: 2500,
+          proposal: { connect: { id: 'proposal-1' } },
+          account: { connect: { id: 'account-1' } },
         }),
       })
     );
   });
 
-  it('canRenewContract should return false when already renewed', async () => {
+  it('renewContract should update existing contract renewal fields in place', async () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'active',
-      renewedToContract: { id: 'contract-2' },
-    });
-
-    const result = await contractService.canRenewContract('contract-1');
-
-    expect(result).toEqual({
-      canRenew: false,
-      reason: 'Contract has already been renewed',
-    });
-  });
-
-  it('renewContract should create renewal and mark original as renewed', async () => {
-    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
-      id: 'contract-1',
-      title: 'Current Contract',
-      status: 'active',
-      contractSource: 'proposal',
-      accountId: 'account-1',
-      facilityId: 'facility-1',
-      monthlyValue: '1000',
-      serviceFrequency: 'monthly',
-      serviceSchedule: null,
-      autoRenew: false,
-      renewalNoticeDays: 30,
-      billingCycle: 'monthly',
-      paymentTerms: 'Net 30',
-      termsAndConditions: null,
-      specialInstructions: null,
       renewalNumber: 0,
-      renewedToContract: null,
     });
-    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
-    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-renewal-1' });
-    (prisma.contract.update as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'renewed' });
+    (prisma.contract.update as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      renewalNumber: 1,
+      startDate: new Date('2026-03-01'),
+    });
 
     const result = await contractService.renewContract(
       'contract-1',
@@ -172,11 +145,19 @@ describe('contractService', () => {
       'user-1'
     );
 
-    expect(result).toEqual({ id: 'contract-renewal-1' });
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-1',
+        renewalNumber: 1,
+      })
+    );
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },
-        data: { status: 'renewed' },
+        data: expect.objectContaining({
+          renewalNumber: 1,
+          startDate: new Date('2026-03-01'),
+        }),
       })
     );
   });

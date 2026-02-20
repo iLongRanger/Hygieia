@@ -18,7 +18,6 @@ import {
   PlayCircle,
   AlertTriangle,
   RefreshCw,
-  ArrowRight,
   Link as LinkIcon,
   Download,
   Sparkles,
@@ -43,7 +42,6 @@ import {
   terminateContract,
   archiveContract,
   restoreContract,
-  canRenewContract,
   renewContract,
   assignContractTeam,
   completeInitialClean as completeInitialCleanApi,
@@ -83,7 +81,6 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
     active: 'success',
     expired: 'default',
     terminated: 'error',
-    renewed: 'info',
   };
   return variants[status];
 };
@@ -97,7 +94,6 @@ const getStatusIcon = (status: ContractStatus) => {
     active: CheckCircle,
     expired: Calendar,
     terminated: XCircle,
-    renewed: RotateCcw,
   };
   return icons[status];
 };
@@ -307,17 +303,11 @@ const ContractDetail = () => {
     }
   };
 
-  const openRenewModal = async () => {
+  const openRenewModal = () => {
     if (!contract) return;
 
-    try {
-      const result = await canRenewContract(contract.id);
-      if (!result.canRenew) {
-        toast.error(result.reason || 'This contract cannot be renewed');
-        return;
-      }
-    } catch (error) {
-      toast.error('Failed to check renewal eligibility');
+    if (contract.status !== 'active' && contract.status !== 'expired') {
+      toast.error('Only active or expired contracts can be renewed');
       return;
     }
 
@@ -351,11 +341,10 @@ const ContractDetail = () => {
 
     try {
       setRenewing(true);
-      const renewedContract = await renewContract(contract.id, renewalFormData);
+      await renewContract(contract.id, renewalFormData);
       toast.success('Contract renewed successfully');
       setShowRenewModal(false);
-      // Navigate to the new contract
-      navigate(`/contracts/${renewedContract.id}`);
+      refreshAll(contract.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to renew contract');
     } finally {
@@ -482,7 +471,7 @@ const ContractDetail = () => {
               Activate
             </Button>
           )}
-          {(contract.status === 'active' || contract.status === 'expired') && !contract.renewedToContract && canWriteContracts && (
+          {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
             <Button onClick={openRenewModal}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Renew
@@ -559,51 +548,10 @@ const ContractDetail = () => {
                 </button>
               </div>
             )}
-            {/* Contract Source */}
-            <div>
-              <div className="text-sm text-gray-400">Contract Source</div>
-              <Badge variant="default" className="capitalize">
-                {contract.contractSource}
-              </Badge>
-              {contract.renewalNumber > 0 && (
-                <span className="ml-2 text-sm text-gray-400">
-                  (Renewal #{contract.renewalNumber})
-                </span>
-              )}
-            </div>
-            {/* Renewal Chain */}
-            {(contract.renewedFromContract || contract.renewedToContract) && (
+            {contract.renewalNumber > 0 && (
               <div>
-                <div className="text-sm text-gray-400 mb-2">
-                  <LinkIcon className="inline h-4 w-4 mr-1" />
-                  Renewal Chain
-                </div>
-                <div className="space-y-2">
-                  {contract.renewedFromContract && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="h-4 w-4 text-gray-500 rotate-180" />
-                      <span className="text-gray-400">Previous:</span>
-                      <button
-                        onClick={() => navigate(`/contracts/${contract.renewedFromContract?.id}`)}
-                        className="text-gold hover:underline"
-                      >
-                        {contract.renewedFromContract.contractNumber}
-                      </button>
-                    </div>
-                  )}
-                  {contract.renewedToContract && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <ArrowRight className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-400">Renewed to:</span>
-                      <button
-                        onClick={() => navigate(`/contracts/${contract.renewedToContract?.id}`)}
-                        className="text-gold hover:underline"
-                      >
-                        {contract.renewedToContract.contractNumber}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <div className="text-sm text-gray-400">Renewal</div>
+                <div className="text-white">Renewal #{contract.renewalNumber}</div>
               </div>
             )}
           </div>
@@ -1134,7 +1082,7 @@ const ContractDetail = () => {
             </Button>
             <Button onClick={handleRenew} isLoading={renewing}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Create Renewal Contract
+              Renew Contract
             </Button>
           </div>
         </div>

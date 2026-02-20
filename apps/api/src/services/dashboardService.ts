@@ -310,7 +310,7 @@ export async function getDashboardStats(
     // Active contracts for revenue trend
     prisma.contract.findMany({
       where: {
-        status: { in: ['active', 'expired', 'terminated', 'renewed'] },
+        status: { in: ['active', 'expired', 'terminated'] },
         startDate: { lte: now },
         OR: [{ endDate: null }, { endDate: { gte: sixMonthsAgo } }],
       },

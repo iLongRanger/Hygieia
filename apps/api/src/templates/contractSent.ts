@@ -9,8 +9,6 @@ interface ContractSentEmailData {
   recipientName?: string;
   customMessage?: string;
   publicViewUrl?: string;
-  isRenewal?: boolean;
-  renewalNumber?: number;
 }
 
 function escapeHtml(value: string): string {
@@ -47,9 +45,7 @@ export function buildContractSentHtmlWithBranding(
         Dear ${escapeHtml(recipientName)},
       </p>
       <p style="color: #333; font-size: 14px; line-height: 1.6;">
-        ${data.isRenewal
-          ? 'Please find the attached renewal contract for your review.'
-          : 'Please find the attached contract for your review.'}
+        Please find the attached contract for your review.
         You can also review the full contract details and sign online using the button below.
       </p>`;
 
@@ -76,10 +72,6 @@ export function buildContractSentHtmlWithBranding(
           <!-- Body -->
           <tr>
             <td style="padding: 30px;">
-              ${data.isRenewal ? `
-              <div style="background-color: #EAB308; color: #422006; padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; font-weight: bold;">
-                Contract Renewal${data.renewalNumber ? ` #${data.renewalNumber}` : ''}
-              </div>` : ''}
               <h2 style="color: ${branding.themePrimaryColor}; margin: 0 0 10px 0; font-size: 20px;">Contract: ${data.title}</h2>
               <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">${data.contractNumber}</p>
 
@@ -126,8 +118,6 @@ export function buildContractSentHtmlWithBranding(
 </html>`;
 }
 
-export function buildContractSentSubject(contractNumber: string, title: string, isRenewal?: boolean): string {
-  return isRenewal
-    ? `Contract Renewal: ${contractNumber} - ${title}`
-    : `Contract ${contractNumber}: ${title}`;
+export function buildContractSentSubject(contractNumber: string, title: string): string {
+  return `Contract ${contractNumber}: ${title}`;
 }

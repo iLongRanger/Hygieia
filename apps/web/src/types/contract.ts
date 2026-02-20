@@ -5,10 +5,7 @@ export type ContractStatus =
   | 'pending_signature'
   | 'active'
   | 'expired'
-  | 'terminated'
-  | 'renewed';
-
-export type ContractSource = 'proposal' | 'imported' | 'legacy' | 'renewal';
+  | 'terminated';
 
 export type ServiceFrequency =
   | 'daily'
@@ -35,8 +32,6 @@ export interface Contract {
   contractNumber: string;
   title: string;
   status: ContractStatus;
-  contractSource: ContractSource;
-  renewedFromContractId?: string | null;
   renewalNumber: number;
   startDate: string;
   endDate?: string | null;
@@ -95,16 +90,6 @@ export interface Contract {
     contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
-  } | null;
-  renewedFromContract?: {
-    id: string;
-    contractNumber: string;
-    title: string;
-  } | null;
-  renewedToContract?: {
-    id: string;
-    contractNumber: string;
-    title: string;
   } | null;
   approvedByUser?: {
     id: string;
@@ -193,7 +178,6 @@ export interface ListContractsParams {
   page?: number;
   limit?: number;
   status?: ContractStatus;
-  contractSource?: ContractSource;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -205,7 +189,7 @@ export interface ListContractsParams {
 
 // Renewal types
 export interface RenewContractInput {
-  startDate: string;
+  startDate?: string;
   endDate?: string | null;
   monthlyValue?: number;
   serviceFrequency?: ServiceFrequency | null;
@@ -218,15 +202,9 @@ export interface RenewContractInput {
   specialInstructions?: string | null;
 }
 
-export interface CanRenewContractResult {
-  canRenew: boolean;
-  reason?: string;
-}
-
 // Standalone contract creation (imported/legacy)
 export interface CreateStandaloneContractInput {
   title: string;
-  contractSource: 'imported' | 'legacy';
   accountId: string;
   facilityId?: string | null;
   startDate: string;

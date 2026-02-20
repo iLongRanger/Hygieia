@@ -23,7 +23,6 @@ const signContractMock = vi.fn();
 const terminateContractMock = vi.fn();
 const archiveContractMock = vi.fn();
 const restoreContractMock = vi.fn();
-const canRenewContractMock = vi.fn();
 const renewContractMock = vi.fn();
 const assignContractTeamMock = vi.fn();
 const getContractActivitiesMock = vi.fn();
@@ -36,7 +35,6 @@ vi.mock('../../lib/contracts', () => ({
   terminateContract: (...args: unknown[]) => terminateContractMock(...args),
   archiveContract: (...args: unknown[]) => archiveContractMock(...args),
   restoreContract: (...args: unknown[]) => restoreContractMock(...args),
-  canRenewContract: (...args: unknown[]) => canRenewContractMock(...args),
   renewContract: (...args: unknown[]) => renewContractMock(...args),
   assignContractTeam: (...args: unknown[]) => assignContractTeamMock(...args),
   getContractActivities: (...args: unknown[]) => getContractActivitiesMock(...args),
@@ -58,8 +56,6 @@ const draftContract: Contract = {
   contractNumber: 'CONT-202602-0001',
   title: 'Office Cleaning Agreement',
   status: 'draft',
-  contractSource: 'proposal',
-  renewedFromContractId: null,
   renewalNumber: 0,
   startDate: '2026-02-01',
   endDate: null,
@@ -88,8 +84,6 @@ const draftContract: Contract = {
   account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
   facility: null,
   proposal: { id: 'proposal-1', proposalNumber: 'PROP-001', title: 'Proposal Title' },
-  renewedFromContract: null,
-  renewedToContract: null,
   approvedByUser: null,
   createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
 };

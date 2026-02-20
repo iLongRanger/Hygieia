@@ -8,14 +8,6 @@ export const contractStatusSchema = z.enum([
   'active',
   'expired',
   'terminated',
-  'renewed',
-]);
-
-export const contractSourceSchema = z.enum([
-  'proposal',
-  'imported',
-  'legacy',
-  'renewal',
 ]);
 
 export const serviceFrequencySchema = z.enum([
@@ -140,7 +132,7 @@ export const terminateContractSchema = z.object({
 // Renew Contract Schema
 export const renewContractSchema = z
   .object({
-    startDate: z.coerce.date(),
+    startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional().nullable(),
     monthlyValue: z.coerce.number().positive().optional(),
     serviceFrequency: serviceFrequencySchema.optional().nullable(),
@@ -153,7 +145,7 @@ export const renewContractSchema = z
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
-    (data) => !data.endDate || data.endDate > data.startDate,
+    (data) => !data.endDate || !data.startDate || data.endDate > data.startDate,
     {
       message: 'End date must be after start date',
       path: ['endDate'],
@@ -164,7 +156,6 @@ export const renewContractSchema = z
 export const createStandaloneContractSchema = z
   .object({
     title: z.string().min(1, 'Contract title is required').max(255),
-    contractSource: z.enum(['imported', 'legacy']),
     accountId: z.string().uuid(),
     facilityId: z.string().uuid().optional().nullable(),
     startDate: z.coerce.date(),
@@ -193,7 +184,6 @@ export const listContractsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   status: contractStatusSchema.optional(),
-  contractSource: contractSourceSchema.optional(),
   accountId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   proposalId: z.string().uuid().optional(),

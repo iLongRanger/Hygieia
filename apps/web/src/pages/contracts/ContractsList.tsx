@@ -9,7 +9,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertCircle,
   AlertTriangle,
   Archive,
   RotateCcw,
@@ -43,7 +42,6 @@ const CONTRACT_STATUSES = [
   { value: 'active', label: 'Active' },
   { value: 'expired', label: 'Expired' },
   { value: 'terminated', label: 'Terminated' },
-  { value: 'renewed', label: 'Renewed' },
 ];
 
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
@@ -55,7 +53,6 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
     active: 'success',
     expired: 'default',
     terminated: 'error',
-    renewed: 'info',
   };
   return variants[status];
 };
@@ -69,7 +66,6 @@ const getStatusIcon = (status: ContractStatus) => {
     active: CheckCircle,
     expired: Clock,
     terminated: XCircle,
-    renewed: AlertCircle,
   };
   return icons[status];
 };

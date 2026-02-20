@@ -47,8 +47,6 @@ const draftContract: Contract = {
   contractNumber: 'CONT-202602-0001',
   title: 'Existing Draft Contract',
   status: 'draft',
-  contractSource: 'proposal',
-  renewedFromContractId: null,
   renewalNumber: 0,
   startDate: '2026-02-01',
   endDate: null,
@@ -77,8 +75,6 @@ const draftContract: Contract = {
   account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
   facility: null,
   proposal: { id: 'proposal-1', proposalNumber: 'PROP-001', title: 'Accepted Proposal' },
-  renewedFromContract: null,
-  renewedToContract: null,
   approvedByUser: null,
   createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
 };

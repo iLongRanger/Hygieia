@@ -109,19 +109,4 @@ describe('PublicContractView', () => {
     );
   });
 
-  it('shows renewal messaging for renewal contracts', async () => {
-    getPublicContractMock.mockResolvedValue({
-      ...response,
-      data: {
-        ...response.data,
-        contractSource: 'renewal',
-        renewalNumber: 2,
-      },
-    });
-
-    render(<PublicContractView />);
-
-    expect(await screen.findByText('Contract Renewal #2')).toBeInTheDocument();
-    expect(screen.getByText('This is a renewal of your existing service agreement.')).toBeInTheDocument();
-  });
 });

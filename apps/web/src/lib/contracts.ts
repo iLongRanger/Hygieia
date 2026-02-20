@@ -9,7 +9,6 @@ import type {
   SendContractInput,
   TerminateContractInput,
   RenewContractInput,
-  CanRenewContractResult,
   ListContractsParams,
 } from '../types/contract';
 
@@ -108,11 +107,6 @@ export async function assignContractTeam(
 }
 
 // Contract Renewal
-
-export async function canRenewContract(id: string): Promise<CanRenewContractResult> {
-  const response = await api.get(`/contracts/${id}/can-renew`);
-  return response.data.data;
-}
 
 export async function renewContract(
   id: string,
