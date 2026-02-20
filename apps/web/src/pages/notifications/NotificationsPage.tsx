@@ -30,6 +30,12 @@ const NOTIFICATION_TYPES = [
   { value: 'contract_expiring', label: 'Contract Expiring' },
   { value: 'contract_signed', label: 'Contract Signed' },
   { value: 'job_assigned', label: 'Job Assigned' },
+  { value: 'lead_assigned', label: 'Lead Assigned' },
+  { value: 'inspection_assigned', label: 'Inspection Assigned' },
+  { value: 'quotation_accepted', label: 'Quotation Accepted' },
+  { value: 'quotation_rejected', label: 'Quotation Rejected' },
+  { value: 'appointment_updated', label: 'Appointment Updated' },
+  { value: 'contract_team_assigned', label: 'Contract Team Assigned' },
 ];
 
 const FILTER_OPTIONS = [
@@ -122,20 +128,22 @@ const NotificationsPage = () => {
       handleMarkRead(notification.id, true);
     }
     const meta = notification.metadata;
-    if (meta?.proposalId) {
+    if (meta?.inspectionId) {
+      navigate(`/inspections/${meta.inspectionId}`);
+    } else if (meta?.proposalId) {
       navigate(`/proposals/${meta.proposalId}`);
     } else if (meta?.contractId) {
       navigate(`/contracts/${meta.contractId}`);
+    } else if (meta?.quotationId) {
+      navigate(`/quotations/${meta.quotationId}`);
     } else if (meta?.leadId) {
       navigate(`/leads/${meta.leadId}`);
-    } else if (meta?.facilityId) {
-      navigate(`/facilities/${meta.facilityId}`);
-    } else if (meta?.inspectionId) {
-      navigate(`/inspections/${meta.inspectionId}`);
-    } else if (meta?.appointmentId) {
-      navigate('/appointments');
     } else if (meta?.jobId) {
       navigate(`/jobs/${meta.jobId}`);
+    } else if (meta?.facilityId) {
+      navigate(`/facilities/${meta.facilityId}`);
+    } else if (meta?.appointmentId) {
+      navigate('/appointments');
     }
   };
 

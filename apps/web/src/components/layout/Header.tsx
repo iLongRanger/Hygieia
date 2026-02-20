@@ -121,17 +121,15 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     }
 
     const meta = notification.metadata as Record<string, unknown> | undefined;
-    const proposalId = typeof meta?.proposalId === 'string' ? meta.proposalId : undefined;
-    const contractId = typeof meta?.contractId === 'string' ? meta.contractId : undefined;
-    const appointmentId = typeof meta?.appointmentId === 'string' ? meta.appointmentId : undefined;
 
-    if (proposalId) {
-      navigate(`/proposals/${proposalId}`);
-    } else if (contractId) {
-      navigate(`/contracts/${contractId}`);
-    } else if (appointmentId) {
-      navigate('/appointments');
-    }
+    if (meta?.inspectionId)       navigate(`/inspections/${meta.inspectionId}`);
+    else if (meta?.proposalId)    navigate(`/proposals/${meta.proposalId}`);
+    else if (meta?.contractId)    navigate(`/contracts/${meta.contractId}`);
+    else if (meta?.quotationId)   navigate(`/quotations/${meta.quotationId}`);
+    else if (meta?.leadId)        navigate(`/leads/${meta.leadId}`);
+    else if (meta?.jobId)         navigate(`/jobs/${meta.jobId}`);
+    else if (meta?.facilityId)    navigate(`/facilities/${meta.facilityId}`);
+    else if (meta?.appointmentId) navigate('/appointments');
 
     setIsOpen(false);
   };

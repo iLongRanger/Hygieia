@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import { createNotification } from './notificationService';
 
 // ==================== Interfaces ====================
 
@@ -346,6 +347,17 @@ export async function createInspection(input: InspectionCreateInput) {
     } catch (e) {
       console.error('Failed to auto-create appointment for inspection:', e);
     }
+  }
+
+  // Notify the assigned inspector
+  if (input.inspectorUserId !== input.createdByUserId) {
+    createNotification({
+      userId: input.inspectorUserId,
+      type: 'inspection_assigned',
+      title: `Inspection ${inspectionNumber} assigned to you`,
+      body: `Scheduled for ${input.scheduledDate.toLocaleDateString()}`,
+      metadata: { inspectionId: inspection.id, facilityId: input.facilityId },
+    }).catch(() => {});
   }
 
   return inspection;
