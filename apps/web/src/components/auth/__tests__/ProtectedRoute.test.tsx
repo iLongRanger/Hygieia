@@ -12,6 +12,7 @@ const loggerWarnMock = vi.fn();
 const loggerErrorMock = vi.fn();
 
 let mockPathname = '/protected';
+let mockSearch = '';
 
 vi.mock('../../../lib/auth', () => ({
   verifyToken: (...args: unknown[]) => verifyTokenMock(...args),
@@ -33,7 +34,7 @@ vi.mock('react-router-dom', async () => {
 
   return {
     ...actual,
-    useLocation: () => ({ pathname: mockPathname }),
+    useLocation: () => ({ pathname: mockPathname, search: mockSearch }),
     Navigate: ({ to, state }: any) => (
       <div
         data-testid="navigate"
@@ -50,6 +51,7 @@ describe('ProtectedRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname = '/protected';
+    mockSearch = '';
     useAuthStore.setState({
       user: null,
       token: null,
@@ -76,6 +78,37 @@ describe('ProtectedRoute', () => {
       expect(screen.getByTestId('navigate')).toHaveAttribute('data-to', '/login');
     });
     expect(screen.queryByText('Secret Content')).not.toBeInTheDocument();
+  });
+
+  it('redirects legacy public proposal path to /p/:token', async () => {
+    const token = 'a'.repeat(64);
+    mockPathname = `/proposals/${token}`;
+
+    render(
+      <ProtectedRoute>
+        <div>Secret Content</div>
+      </ProtectedRoute>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('navigate')).toHaveAttribute('data-to', `/p/${token}`);
+    });
+  });
+
+  it('redirects legacy public proposal query token to /p/:token', async () => {
+    const token = 'b'.repeat(64);
+    mockPathname = '/proposals';
+    mockSearch = `?token=${token}`;
+
+    render(
+      <ProtectedRoute>
+        <div>Secret Content</div>
+      </ProtectedRoute>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('navigate')).toHaveAttribute('data-to', `/p/${token}`);
+    });
   });
 
   it('renders children when authenticated, token valid, and permissions satisfied', async () => {

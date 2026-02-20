@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Plus,
@@ -63,12 +63,12 @@ const ACCOUNT_TYPES = [
 
 const LeadsList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
@@ -114,6 +114,8 @@ const LeadsList = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWriteLeads = hasPermission(PERMISSIONS.LEADS_WRITE);
   const canAdminLeads = hasPermission(PERMISSIONS.LEADS_ADMIN);
+  const isCreateRoute = location.pathname === '/leads/new';
+  const isCreateModalOpen = canWriteLeads && isCreateRoute;
 
   const [formData, setFormData] = useState<CreateLeadInput>({
     contactName: '',
@@ -224,7 +226,7 @@ const LeadsList = () => {
       setCreating(true);
       await createLead(formData);
       toast.success('Lead created successfully');
-      setShowCreateModal(false);
+      navigate('/leads', { replace: true });
       resetForm();
       fetchLeads(page, search, {
         status: statusFilter,
@@ -262,6 +264,10 @@ const LeadsList = () => {
     setAssignedToFilter('');
     setIncludeArchived(false);
     setPage(1);
+  };
+
+  const closeCreateModal = () => {
+    navigate('/leads');
   };
 
   const hasActiveFilters = statusFilter || leadSourceFilter || assignedToFilter || includeArchived;
@@ -536,7 +542,7 @@ const LeadsList = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Leads</h1>
         {canWriteLeads && (
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={() => navigate('/leads/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add New Lead
           </Button>
@@ -657,8 +663,8 @@ const LeadsList = () => {
       </Card>
 
       <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        isOpen={isCreateModalOpen}
+        onClose={closeCreateModal}
         title="Add New Lead"
         size="lg"
       >
@@ -806,7 +812,7 @@ const LeadsList = () => {
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="secondary"
-              onClick={() => setShowCreateModal(false)}
+              onClick={closeCreateModal}
             >
               Cancel
             </Button>

@@ -106,6 +106,7 @@ function App() {
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/leads" element={<LeadsList />} />
+            <Route path="/leads/new" element={<LeadsList />} />
             <Route path="/leads/:id" element={<LeadDetail />} />
             <Route path="/appointments" element={<AppointmentsPage />} />
             <Route path="/accounts" element={<AccountsList />} />

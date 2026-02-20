@@ -191,6 +191,13 @@ describe('LeadsList', () => {
     );
   });
 
+  it('opens create modal when loading /leads/new directly', async () => {
+    render(<LeadsList />, { initialRoute: '/leads/new' });
+
+    expect(await screen.findByLabelText(/contact name/i)).toBeInTheDocument();
+    expect(listLeadSourcesMock).toHaveBeenCalledWith({ isActive: true });
+  });
+
   it('archives a lead from row action', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadsList />);

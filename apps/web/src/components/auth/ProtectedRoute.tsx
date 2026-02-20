@@ -10,6 +10,28 @@ interface ProtectedRouteProps {
   requiredPermissions?: Permission[];
 }
 
+const LEGACY_PUBLIC_PROPOSAL_TOKEN = /^\/proposals\/([a-f0-9]{64})\/?$/i;
+
+function getLegacyPublicProposalToken(
+  pathname: string,
+  search: string
+): string | null {
+  const tokenInPath = pathname.match(LEGACY_PUBLIC_PROPOSAL_TOKEN)?.[1];
+  if (tokenInPath) {
+    return tokenInPath;
+  }
+
+  if (pathname === '/proposals' || pathname === '/proposals/') {
+    const params = new URLSearchParams(search);
+    const token = params.get('token') || params.get('publicToken');
+    if (token && /^[a-f0-9]{64}$/i.test(token)) {
+      return token;
+    }
+  }
+
+  return null;
+}
+
 /**
  * ProtectedRoute component that:
  * 1. Checks if user is authenticated
@@ -94,6 +116,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to login if not authenticated or token invalid
   if (!isAuthenticated || !isValid) {
+    const legacyPublicToken = getLegacyPublicProposalToken(
+      location.pathname,
+      location.search
+    );
+    if (legacyPublicToken) {
+      logger.debug('Redirecting legacy public proposal URL', {
+        component: 'ProtectedRoute',
+        path: location.pathname,
+      });
+      return <Navigate to={`/p/${legacyPublicToken}`} replace />;
+    }
+
     logger.debug('Redirecting to login - not authenticated', {
       component: 'ProtectedRoute',
       path: location.pathname,

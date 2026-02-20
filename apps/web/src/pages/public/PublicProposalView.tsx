@@ -44,6 +44,21 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatAddress = (
+  address: NonNullable<PublicProposal['facility']>['address']
+): string => {
+  if (!address) return '';
+  if (typeof address === 'string') return address;
+
+  const lines: string[] = [];
+  if (address.street) lines.push(address.street);
+  const cityLine = [address.city, address.state, address.postalCode]
+    .filter(Boolean)
+    .join(', ');
+  if (cityLine) lines.push(cityLine);
+  return lines.join(', ');
+};
+
 const PublicProposalView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [proposal, setProposal] = useState<PublicProposal | null>(null);
@@ -270,7 +285,7 @@ const PublicProposalView: React.FC = () => {
                 {proposal.facility.address && (
                   <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
                     <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    {proposal.facility.address}
+                    {formatAddress(proposal.facility.address)}
                   </div>
                 )}
               </div>

@@ -42,7 +42,7 @@ const baseResponse = {
     signatureName: null,
     signatureDate: null,
     account: { name: 'Acme Corp' },
-    facility: { name: 'HQ' },
+    facility: { name: 'HQ', address: null },
     proposalItems: [],
     proposalServices: [
       {
@@ -118,5 +118,27 @@ describe('PublicProposalView', () => {
     render(<PublicProposalView />);
 
     expect(await screen.findByText(/proposal not available/i)).toBeInTheDocument();
+  });
+
+  it('renders object facility address safely', async () => {
+    getPublicProposalMock.mockResolvedValueOnce({
+      ...baseResponse,
+      data: {
+        ...baseResponse.data,
+        facility: {
+          name: 'HQ',
+          address: {
+            street: '123 Main St',
+            city: 'Austin',
+            state: 'TX',
+            postalCode: '78701',
+          },
+        },
+      },
+    });
+
+    render(<PublicProposalView />);
+
+    expect(await screen.findByText('123 Main St, Austin, TX, 78701')).toBeInTheDocument();
   });
 });

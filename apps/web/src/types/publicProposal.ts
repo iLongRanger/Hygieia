@@ -1,3 +1,5 @@
+import type { Address } from './facility';
+
 export interface PublicProposal {
   id: string;
   proposalNumber: string;
@@ -18,7 +20,7 @@ export interface PublicProposal {
   };
   facility: {
     name: string;
-    address: string | null;
+    address: string | Address | null;
   } | null;
   proposalItems: Array<{
     itemType: string;
