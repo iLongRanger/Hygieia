@@ -68,6 +68,32 @@ const OTHER_LEAD_SOURCE_VALUE = 'others';
 
 const normalizeLeadSourceName = (value: string) => value.trim().toLowerCase();
 
+const getLeadSourceFromNotes = (notes: string | null | undefined): string | null => {
+  if (!notes) return null;
+
+  const lines = notes.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const otherMatch = /^Lead source \(other\):\s*(.+)$/i.exec(line);
+    if (otherMatch?.[1]) {
+      return otherMatch[1].trim();
+    }
+
+    const sourceMatch = /^Lead source:\s*(.+)$/i.exec(line);
+    if (sourceMatch?.[1]) {
+      return sourceMatch[1].trim();
+    }
+  }
+
+  return null;
+};
+
+const getLeadSourceDisplay = (lead: Lead): string => {
+  return lead.leadSource?.name || getLeadSourceFromNotes(lead.notes) || 'Unknown';
+};
+
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
   { value: 'residential', label: 'Residential' },
@@ -488,18 +514,21 @@ const LeadsList = () => {
     },
     {
       header: 'Source',
-      cell: (item: Lead) => (
-        <Badge
-          variant="default"
-          style={
-            item.leadSource
-              ? { backgroundColor: `${item.leadSource.color}20`, color: item.leadSource.color }
-              : undefined
-          }
-        >
-          {item.leadSource?.name || 'Unknown'}
-        </Badge>
-      ),
+      cell: (item: Lead) => {
+        const sourceDisplay = getLeadSourceDisplay(item);
+        return (
+          <Badge
+            variant="default"
+            style={
+              item.leadSource
+                ? { backgroundColor: `${item.leadSource.color}20`, color: item.leadSource.color }
+                : undefined
+            }
+          >
+            {sourceDisplay}
+          </Badge>
+        );
+      },
     },
     {
       header: 'Value',

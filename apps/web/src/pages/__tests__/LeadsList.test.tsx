@@ -217,6 +217,28 @@ describe('LeadsList', () => {
     );
   });
 
+  it('shows source from notes when leadSource relation is missing', async () => {
+    listLeadsMock.mockResolvedValueOnce({
+      data: [
+        {
+          ...lead,
+          id: 'lead-2',
+          contactName: 'No Source Contact',
+          leadSource: null,
+          notes: 'Lead source: Website',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    render(<LeadsList />);
+
+    const contactName = await screen.findByText('No Source Contact');
+    const row = contactName.closest('tr');
+    expect(row).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('Website')).toBeInTheDocument();
+  });
+
   it('opens create modal when loading /leads/new directly', async () => {
     render(<LeadsList />, { initialRoute: '/leads/new' });
 
