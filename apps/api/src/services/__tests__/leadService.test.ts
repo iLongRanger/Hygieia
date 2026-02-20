@@ -2,6 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as leadService from '../leadService';
 import { prisma } from '../../lib/prisma';
 import { createTestLead, mockPaginatedResult } from '../../test/helpers';
+import { createNotification } from '../notificationService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -14,6 +15,10 @@ jest.mock('../../lib/prisma', () => ({
       count: jest.fn(),
     },
   },
+}));
+
+jest.mock('../notificationService', () => ({
+  createNotification: jest.fn(),
 }));
 
 describe('leadService', () => {
@@ -251,6 +256,13 @@ describe('leadService', () => {
         select: expect.any(Object),
       });
       expect(result).toEqual(mockLead);
+      expect(createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-123',
+          type: 'lead_assigned',
+          metadata: { leadId: mockLead.id },
+        })
+      );
     });
 
     it('should create lead with minimal required fields', async () => {
@@ -267,6 +279,7 @@ describe('leadService', () => {
 
       expect(prisma.lead.create).toHaveBeenCalled();
       expect(result).toEqual(mockLead);
+      expect(createNotification).not.toHaveBeenCalled();
     });
 
     it('should default probability to 0 if not provided', async () => {
@@ -286,6 +299,28 @@ describe('leadService', () => {
           data: expect.objectContaining({
             probability: 0,
           }),
+        })
+      );
+      expect(createNotification).not.toHaveBeenCalled();
+    });
+
+    it('should notify assignee even when creator is assignee', async () => {
+      const input: leadService.LeadCreateInput = {
+        contactName: 'Self Assigned',
+        assignedToUserId: 'creator-123',
+        createdByUserId: 'creator-123',
+      };
+      const mockLead = createTestLead({ ...input, id: 'lead-self' });
+
+      (prisma.lead.create as jest.Mock).mockResolvedValue(mockLead);
+      (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
+
+      await leadService.createLead(input);
+
+      expect(createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'creator-123',
+          metadata: { leadId: 'lead-self' },
         })
       );
     });

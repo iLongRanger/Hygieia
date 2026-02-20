@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
+import logger from '../lib/logger';
 
 export interface LeadListParams {
   page?: number;
@@ -229,15 +230,23 @@ export async function createLead(input: LeadCreateInput) {
     select: leadSelect,
   });
 
-  // Notify assigned user if different from creator
-  if (input.assignedToUserId && input.assignedToUserId !== input.createdByUserId) {
-    createNotification({
-      userId: input.assignedToUserId,
-      type: 'lead_assigned',
-      title: 'New lead assigned to you',
-      body: `Lead "${input.contactName}" has been assigned to you.`,
-      metadata: { leadId: lead.id },
-    }).catch(() => {}); // fire-and-forget
+  // Notify assigned user whenever a lead is created with an assignee.
+  if (input.assignedToUserId) {
+    try {
+      await createNotification({
+        userId: input.assignedToUserId,
+        type: 'lead_assigned',
+        title: 'New lead assigned to you',
+        body: `Lead "${input.contactName}" has been assigned to you.`,
+        metadata: { leadId: lead.id },
+      });
+    } catch (error) {
+      logger.error('Failed to create lead assignment notification', {
+        leadId: lead.id,
+        assignedToUserId: input.assignedToUserId,
+        error,
+      });
+    }
   }
 
   return lead;
@@ -313,13 +322,21 @@ export async function updateLead(id: string, input: LeadUpdateInput) {
     input.assignedToUserId &&
     input.assignedToUserId !== previousAssignee
   ) {
-    createNotification({
-      userId: input.assignedToUserId,
-      type: 'lead_assigned',
-      title: 'Lead assigned to you',
-      body: `Lead "${lead.contactName}" has been assigned to you.`,
-      metadata: { leadId: lead.id },
-    }).catch(() => {});
+    try {
+      await createNotification({
+        userId: input.assignedToUserId,
+        type: 'lead_assigned',
+        title: 'Lead assigned to you',
+        body: `Lead "${lead.contactName}" has been assigned to you.`,
+        metadata: { leadId: lead.id },
+      });
+    } catch (error) {
+      logger.error('Failed to create lead reassignment notification', {
+        leadId: lead.id,
+        assignedToUserId: input.assignedToUserId,
+        error,
+      });
+    }
   }
 
   return lead;
