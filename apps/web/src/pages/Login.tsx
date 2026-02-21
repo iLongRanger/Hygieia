@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { Button } from '../components/ui/Button';
@@ -16,6 +16,8 @@ const Login = () => {
   const login = useAuthStore((state) => state.login);
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('reason') === 'inactivity';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +58,12 @@ const Login = () => {
             Sign in to manage your cleaning operations
           </p>
         </div>
+
+        {sessionExpired && (
+          <div className="rounded-lg bg-warning-50 p-3 text-center text-sm text-warning-700 border border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800">
+            You were logged out due to inactivity.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">

@@ -6,11 +6,13 @@ import { ToastContainer } from '../ui/Toast';
 import { useAuthStore } from '../../stores/authStore';
 import { useToastStore } from '../../stores/toastStore';
 import { cn } from '../../lib/utils';
+import { useInactivityTimeout } from '../../hooks/useInactivityTimeout';
 
 const SIDEBAR_EXPANDED_KEY = 'sidebar-expanded';
 
 const AdminLayout = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  useInactivityTimeout();
   const { toasts, removeToast } = useToastStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
