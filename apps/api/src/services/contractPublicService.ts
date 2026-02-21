@@ -126,8 +126,7 @@ export async function signContractPublic(
   return prisma.contract.update({
     where: { id: contract.id },
     data: {
-      // Don't regress an active contract to pending_signature
-      ...(contract.status !== 'active' && { status: 'pending_signature' }),
+      status: 'active',
       signedByName,
       signedByEmail,
       signedDate: new Date(),
