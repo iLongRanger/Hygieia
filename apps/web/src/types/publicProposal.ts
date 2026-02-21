@@ -22,6 +22,22 @@ export interface PublicProposal {
     name: string;
     address: string | Address | null;
   } | null;
+  pricingSnapshot?: {
+    pricingType?: string;
+    pricingBasis?: 'sqft_price_with_derived_hours' | 'hourly_task_minutes';
+    operationalEstimate?: {
+      monthlyLaborHours: number;
+      monthlyVisits: number;
+      hoursPerVisit: number;
+      recommendedCrewSize: number;
+      durationHoursPerVisit: number;
+      durationRangePerVisit: {
+        minHours: number;
+        maxHours: number;
+      };
+      variabilityPercentage: number;
+    };
+  } | null;
   proposalItems: Array<{
     itemType: string;
     description: string;

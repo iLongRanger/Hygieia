@@ -41,7 +41,7 @@ import {
   listPricingSettings,
   type PricingSettings,
   type FacilityPricingReadiness,
-  type FacilityPricingResult,
+  type PricingBreakdown,
   type FacilityProposalTemplate,
 } from '../../lib/pricing';
 import type {
@@ -193,7 +193,7 @@ const ProposalForm = () => {
   const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
-  const [pricingBreakdown, setPricingBreakdown] = useState<FacilityPricingResult | null>(null);
+  const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
 
   // Pricing plan states
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
@@ -638,11 +638,15 @@ const ProposalForm = () => {
         const updateData: UpdateProposalInput = {
           ...formData,
           validUntil: formData.validUntil || null,
+          pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
         };
         await updateProposal(id, updateData);
         toast.success('Proposal updated successfully');
       } else {
-        await createProposal(formData);
+        await createProposal({
+          ...formData,
+          pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
+        });
         toast.success('Proposal created successfully');
       }
       navigate('/proposals');

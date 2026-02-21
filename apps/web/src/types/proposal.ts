@@ -122,6 +122,7 @@ export interface CreateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan (optional - will use defaults if not provided)
   pricingPlanId?: string | null;
+  pricingSnapshot?: any | null;
 }
 
 export interface UpdateProposalInput {
@@ -138,6 +139,7 @@ export interface UpdateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan
   pricingPlanId?: string | null;
+  pricingSnapshot?: any | null;
 }
 
 export interface ListProposalsParams {

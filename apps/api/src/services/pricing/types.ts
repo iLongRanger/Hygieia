@@ -55,6 +55,19 @@ export interface PricingSettingsSnapshot {
   taskComplexityAddOns: Record<string, number>;
   capturedAt: string; // ISO timestamp
   workerCount?: number;
+  pricingBasis?: 'sqft_price_with_derived_hours' | 'hourly_task_minutes';
+  operationalEstimate?: {
+    monthlyLaborHours: number;
+    monthlyVisits: number;
+    hoursPerVisit: number;
+    recommendedCrewSize: number;
+    durationHoursPerVisit: number;
+    durationRangePerVisit: {
+      minHours: number;
+      maxHours: number;
+    };
+    variabilityPercentage: number;
+  };
 }
 
 /**

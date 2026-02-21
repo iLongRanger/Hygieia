@@ -44,6 +44,11 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatHours = (hours: number | null | undefined): string => {
+  if (hours == null || Number.isNaN(Number(hours))) return '-';
+  return `${Number(hours).toFixed(1)} hrs`;
+};
+
 const formatAddress = (
   address: NonNullable<PublicProposal['facility']>['address']
 ): string => {
@@ -290,6 +295,37 @@ const PublicProposalView: React.FC = () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {proposal.pricingSnapshot?.operationalEstimate && (
+          <div className="mb-8 bg-blue-50 rounded-lg border border-blue-200 p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Estimated Time On Site</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-blue-700 font-semibold">Duration Per Visit</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.minHours)}
+                  {' - '}
+                  {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.maxHours)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-blue-700 font-semibold">Crew Size</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {proposal.pricingSnapshot.operationalEstimate.recommendedCrewSize || 1} cleaners
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-blue-700 font-semibold">Labor Hours / Visit</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {formatHours(proposal.pricingSnapshot.operationalEstimate.hoursPerVisit)}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-blue-800 mt-3">
+              On-site duration is an estimate and may vary based on condition and access on service day.
+            </p>
           </div>
         )}
 

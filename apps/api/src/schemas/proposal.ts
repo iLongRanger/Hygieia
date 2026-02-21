@@ -79,6 +79,7 @@ export const createProposalSchema = z.object({
   proposalItems: z.array(proposalItemSchema).optional().default([]),
   proposalServices: z.array(proposalServiceSchema).optional().default([]),
   pricingPlanId: z.string().uuid().optional().nullable(),
+  pricingSnapshot: z.record(z.any()).optional().nullable(),
 });
 
 // Update Proposal Schema
@@ -95,6 +96,7 @@ export const updateProposalSchema = z.object({
   proposalItems: z.array(proposalItemUpdateSchema).optional(),
   proposalServices: z.array(proposalServiceUpdateSchema).optional(),
   pricingPlanId: z.string().uuid().optional().nullable(),
+  pricingSnapshot: z.record(z.any()).optional().nullable(),
 });
 
 // List Proposals Query Schema

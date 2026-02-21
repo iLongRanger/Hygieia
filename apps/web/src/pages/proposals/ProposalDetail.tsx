@@ -107,6 +107,11 @@ const formatPercent = (val: number | undefined | null) => {
   return `${(val * 100).toFixed(1)}%`;
 };
 
+const formatHours = (val: number | undefined | null) => {
+  if (val == null || Number.isNaN(Number(val))) return '-';
+  return `${Number(val).toFixed(1)} hrs`;
+};
+
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -641,7 +646,14 @@ const ProposalDetail = () => {
                           <h3 className="font-medium text-white text-base">{service.serviceName}</h3>
                           {canWriteProposals && (
                             <button
-                              onClick={() => openTaskEditor(service)}
+                              onClick={() => {
+                                if (!service.id) return;
+                                openTaskEditor({
+                                  id: service.id,
+                                  serviceName: service.serviceName,
+                                  includedTasks: service.includedTasks,
+                                });
+                              }}
                               className="text-gray-500 hover:text-gray-300 transition-colors"
                               title="Edit tasks"
                             >
@@ -720,7 +732,11 @@ const ProposalDetail = () => {
                 <div>
                   <div className="text-xs text-gray-400">Strategy</div>
                   <div className="text-sm font-medium text-white">
-                    {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Per Hour v1' : 'Per Sq Ft v1'}
+                    {proposal.pricingSnapshot.pricingBasis === 'sqft_price_with_derived_hours'
+                      ? 'Per Sq Ft + Derived Hours'
+                      : proposal.pricingSnapshot.pricingType === 'hourly'
+                        ? 'Per Hour v1'
+                        : 'Per Sq Ft v1'}
                   </div>
                 </div>
                 {proposal.pricingSnapshot.hourlyRate != null && (
@@ -740,6 +756,37 @@ const ProposalDetail = () => {
                   </div>
                 )}
               </div>
+
+              {proposal.pricingSnapshot.operationalEstimate && (
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 mb-4">
+                  <div className="text-sm font-semibold text-blue-200 mb-2">Client Service Time Estimate</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-blue-200/80">Estimated Time On Site</div>
+                      <div className="text-white font-medium">
+                        {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.minHours)}
+                        {' - '}
+                        {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.maxHours)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200/80">Crew Size Assumption</div>
+                      <div className="text-white font-medium">
+                        {proposal.pricingSnapshot.operationalEstimate.recommendedCrewSize || 1} cleaners
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200/80">Labor Hours / Visit</div>
+                      <div className="text-white font-medium">
+                        {formatHours(proposal.pricingSnapshot.operationalEstimate.hoursPerVisit)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-blue-100/80 mt-2">
+                    Duration is an operational estimate and may vary by site conditions.
+                  </div>
+                </div>
+              )}
 
               {/* Cost stack */}
               {proposal.pricingSnapshot.pricingType === 'hourly' && (
@@ -934,14 +981,16 @@ const ProposalDetail = () => {
 
               {/* Areas table */}
               {(() => {
-                const isHourlyPricing = proposal.pricingSnapshot?.pricingType !== 'square_foot';
+                const showHoursColumn = proposal.proposalServices.some(
+                  (service) => service.estimatedHours != null && Number(service.estimatedHours) > 0
+                );
                 return (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-white/10">
                           <th className="pb-2 text-left text-xs font-medium text-gray-400 uppercase">Area</th>
-                          {isHourlyPricing && (
+                          {showHoursColumn && (
                             <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Hours</th>
                           )}
                           <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Frequency</th>
@@ -952,7 +1001,7 @@ const ProposalDetail = () => {
                         {proposal.proposalServices.map((svc, idx) => (
                           <tr key={idx} className="hover:bg-white/5">
                             <td className="py-2 text-gray-300">{svc.serviceName}</td>
-                            {isHourlyPricing && (
+                            {showHoursColumn && (
                               <td className="py-2 text-right text-gray-300">
                                 {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
                               </td>
@@ -969,7 +1018,7 @@ const ProposalDetail = () => {
                       <tfoot>
                         <tr className="border-t border-white/10">
                           <td className="pt-2 font-medium text-white">Total</td>
-                          {isHourlyPricing && (
+                          {showHoursColumn && (
                             <td className="pt-2 text-right text-gray-300">
                               {proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0)} hrs
                             </td>

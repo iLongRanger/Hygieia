@@ -29,7 +29,14 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId, subcontractorPercentageOverride } = context;
+    const {
+      facilityId,
+      serviceFrequency,
+      taskComplexity = 'standard',
+      pricingPlanId,
+      subcontractorPercentageOverride,
+      workerCount = 1,
+    } = context;
 
     // Use the existing pricing calculator
     const pricingResult = await calculateFacilityPricing({
@@ -48,6 +55,13 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       throw new Error('No pricing plan found');
     }
 
+    const monthlyLaborHours = Number(pricingResult.costBreakdown?.totalLaborHours || 0);
+    const monthlyVisits = Number(pricingResult.monthlyVisits || 0);
+    const hoursPerVisit = monthlyVisits > 0 ? monthlyLaborHours / monthlyVisits : monthlyLaborHours;
+    const recommendedCrewSize = Math.max(1, Math.floor(workerCount));
+    const durationHoursPerVisit = hoursPerVisit / recommendedCrewSize;
+    const variabilityPercentage = 0.2;
+
     // Create settings snapshot for audit trail
     const settingsSnapshot: PricingSettingsSnapshot = {
       pricingPlanId: pricingSettings.id,
@@ -63,6 +77,20 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       sqftPerLaborHour: pricingSettings.sqftPerLaborHour as Record<string, number>,
       taskComplexityAddOns: pricingSettings.taskComplexityAddOns as Record<string, number>,
       capturedAt: new Date().toISOString(),
+      workerCount: recommendedCrewSize,
+      pricingBasis: 'sqft_price_with_derived_hours',
+      operationalEstimate: {
+        monthlyLaborHours: roundToTwo(monthlyLaborHours),
+        monthlyVisits: roundToTwo(monthlyVisits),
+        hoursPerVisit: roundToTwo(hoursPerVisit),
+        recommendedCrewSize,
+        durationHoursPerVisit: roundToTwo(durationHoursPerVisit),
+        durationRangePerVisit: {
+          minHours: roundToTwo(durationHoursPerVisit * (1 - variabilityPercentage)),
+          maxHours: roundToTwo(durationHoursPerVisit * (1 + variabilityPercentage)),
+        },
+        variabilityPercentage,
+      },
     };
 
     // Extend the pricing result with strategy info
@@ -92,3 +120,7 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
 
 // Export a singleton instance
 export const sqftSettingsV1Strategy = new SqftSettingsV1Strategy();
+
+function roundToTwo(num: number): number {
+  return Math.round(num * 100) / 100;
+}

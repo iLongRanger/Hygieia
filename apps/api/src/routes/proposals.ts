@@ -173,6 +173,7 @@ router.post(
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
         pricingPlanId: parsed.data.pricingPlanId,
+        pricingSnapshot: parsed.data.pricingSnapshot as any,
         createdByUserId: req.user.id,
       });
 
@@ -230,6 +231,7 @@ router.patch(
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
+        pricingSnapshot: parsed.data.pricingSnapshot,
       };
 
       if (parsed.data.proposalItems !== undefined) {

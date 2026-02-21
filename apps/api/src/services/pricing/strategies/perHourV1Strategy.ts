@@ -36,6 +36,13 @@ export class PerHourV1Strategy implements PricingStrategy {
       subcontractorPercentageOverride,
     });
 
+    const monthlyLaborHours = Number(pricingResult.costBreakdown?.totalLaborHours || 0);
+    const monthlyVisits = Number(pricingResult.monthlyVisits || 0);
+    const hoursPerVisit = monthlyVisits > 0 ? monthlyLaborHours / monthlyVisits : monthlyLaborHours;
+    const recommendedCrewSize = Math.max(1, Math.floor(workerCount));
+    const durationHoursPerVisit = hoursPerVisit / recommendedCrewSize;
+    const variabilityPercentage = 0.2;
+
     const pricingSettings = pricingPlanId
       ? await getPricingSettingsById(pricingPlanId)
       : await getDefaultPricingSettings();
@@ -65,7 +72,20 @@ export class PerHourV1Strategy implements PricingStrategy {
       sqftPerLaborHour: pricingSettings.sqftPerLaborHour as Record<string, number>,
       taskComplexityAddOns: pricingSettings.taskComplexityAddOns as Record<string, number>,
       capturedAt: new Date().toISOString(),
-      workerCount,
+      workerCount: recommendedCrewSize,
+      pricingBasis: 'hourly_task_minutes',
+      operationalEstimate: {
+        monthlyLaborHours: roundToTwo(monthlyLaborHours),
+        monthlyVisits: roundToTwo(monthlyVisits),
+        hoursPerVisit: roundToTwo(hoursPerVisit),
+        recommendedCrewSize,
+        durationHoursPerVisit: roundToTwo(durationHoursPerVisit),
+        durationRangePerVisit: {
+          minHours: roundToTwo(durationHoursPerVisit * (1 - variabilityPercentage)),
+          maxHours: roundToTwo(durationHoursPerVisit * (1 + variabilityPercentage)),
+        },
+        variabilityPercentage,
+      },
     };
 
     return {
