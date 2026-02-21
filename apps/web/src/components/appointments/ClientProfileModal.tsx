@@ -39,7 +39,7 @@ const CONTRACT_STATUS_VARIANTS: Record<
   draft: 'default',
   sent: 'info',
   viewed: 'info',
-  pending_signature: 'warning',
+  pending_signature: 'success',
   active: 'success',
   expired: 'default',
   terminated: 'error',
@@ -418,7 +418,7 @@ export const ClientProfileModal = ({
                         {formatCurrency(contract.monthlyValue)}/mo
                       </span>
                       <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]}>
-                        {contract.status.replace('_', ' ')}
+                        {contract.status === 'pending_signature' ? 'signed' : contract.status.replace('_', ' ')}
                       </Badge>
                     </div>
                   </div>

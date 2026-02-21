@@ -72,12 +72,22 @@ const formatAddress = (address: any): string => {
   return lines.length > 0 ? lines.join(', ') : '';
 };
 
+const STATUS_LABELS: Record<ContractStatus, string> = {
+  draft: 'DRAFT',
+  sent: 'SENT',
+  viewed: 'VIEWED',
+  pending_signature: 'SIGNED',
+  active: 'ACTIVE',
+  expired: 'EXPIRED',
+  terminated: 'TERMINATED',
+};
+
 const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
     sent: 'info',
     viewed: 'info',
-    pending_signature: 'warning',
+    pending_signature: 'success',
     active: 'success',
     expired: 'default',
     terminated: 'error',
@@ -90,7 +100,7 @@ const getStatusIcon = (status: ContractStatus) => {
     draft: FileText,
     sent: Send,
     viewed: Eye,
-    pending_signature: FileSignature,
+    pending_signature: CheckCircle,
     active: CheckCircle,
     expired: Calendar,
     terminated: XCircle,
@@ -413,7 +423,7 @@ const ContractDetail = () => {
             <h1 className="text-2xl font-bold text-white">{contract.contractNumber}</h1>
             <Badge variant={getStatusVariant(contract.status)}>
               <StatusIcon className="mr-1 h-3 w-3" />
-              {contract.status.replace('_', ' ').toUpperCase()}
+              {STATUS_LABELS[contract.status] || contract.status.replace('_', ' ').toUpperCase()}
             </Badge>
             {contract.status === 'active' && contract.endDate && (() => {
               const daysLeft = Math.ceil(

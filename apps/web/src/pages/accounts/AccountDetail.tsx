@@ -102,7 +102,7 @@ const CONTRACT_STATUS_VARIANTS: Record<
   draft: 'default',
   sent: 'info',
   viewed: 'info',
-  pending_signature: 'warning',
+  pending_signature: 'success',
   active: 'success',
   expired: 'default',
   terminated: 'error',
@@ -874,7 +874,7 @@ const AccountDetail = () => {
                         </div>
                       </div>
                       <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]}>
-                        {contract.status.replace('_', ' ')}
+                        {contract.status === 'pending_signature' ? 'signed' : contract.status.replace('_', ' ')}
                       </Badge>
                     </div>
                   </div>

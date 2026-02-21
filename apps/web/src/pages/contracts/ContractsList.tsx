@@ -38,7 +38,7 @@ const CONTRACT_STATUSES = [
   { value: 'draft', label: 'Draft' },
   { value: 'sent', label: 'Sent' },
   { value: 'viewed', label: 'Viewed' },
-  { value: 'pending_signature', label: 'Pending Signature' },
+  { value: 'pending_signature', label: 'Signed' },
   { value: 'active', label: 'Active' },
   { value: 'expired', label: 'Expired' },
   { value: 'terminated', label: 'Terminated' },
@@ -49,7 +49,7 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
     draft: 'default',
     sent: 'info',
     viewed: 'info',
-    pending_signature: 'warning',
+    pending_signature: 'success',
     active: 'success',
     expired: 'default',
     terminated: 'error',
@@ -62,12 +62,22 @@ const getStatusIcon = (status: ContractStatus) => {
     draft: FileText,
     sent: Send,
     viewed: Eye,
-    pending_signature: FileSignature,
+    pending_signature: CheckCircle,
     active: CheckCircle,
     expired: Clock,
     terminated: XCircle,
   };
   return icons[status];
+};
+
+const STATUS_LABELS: Record<ContractStatus, string> = {
+  draft: 'DRAFT',
+  sent: 'SENT',
+  viewed: 'VIEWED',
+  pending_signature: 'SIGNED',
+  active: 'ACTIVE',
+  expired: 'EXPIRED',
+  terminated: 'TERMINATED',
 };
 
 const formatCurrency = (amount: number) => {
@@ -228,7 +238,7 @@ const ContractsList = () => {
           <div className="flex items-center gap-2">
             <Badge variant={getStatusVariant(contract.status)}>
               <StatusIcon className="mr-1 h-3 w-3" />
-              {contract.status.replace('_', ' ').toUpperCase()}
+              {STATUS_LABELS[contract.status] || contract.status.replace('_', ' ').toUpperCase()}
             </Badge>
             {daysLeft !== null && daysLeft <= 30 && daysLeft > 0 && (
               <Badge variant="warning">
