@@ -1158,6 +1158,9 @@ export async function updateInspectionItem(
     include: { inspection: { select: { status: true } } },
   });
   if (!existing) throw new NotFoundError('Inspection item not found');
+  if (existing.inspection.status === 'completed') {
+    throw new BadRequestError('Cannot modify a completed inspection');
+  }
 
   const item = await prisma.inspectionItem.update({
     where: { id: itemId },

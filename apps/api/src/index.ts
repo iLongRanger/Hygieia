@@ -45,6 +45,7 @@ import publicContractsRoutes from './routes/publicContracts';
 import quotationsRoutes from './routes/quotations';
 import publicQuotationsRoutes from './routes/publicQuotations';
 import { initializeRealtime } from './lib/realtime';
+import { startReminderScheduler } from './services/reminderScheduler';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -156,6 +157,7 @@ app.use(errorHandler);
 
 const httpServer = http.createServer(app);
 initializeRealtime(httpServer);
+startReminderScheduler();
 
 httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);

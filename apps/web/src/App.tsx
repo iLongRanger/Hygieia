@@ -106,52 +106,55 @@ function App() {
 
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/leads" element={<LeadsList />} />
-            <Route path="/leads/new" element={<LeadsList />} />
-            <Route path="/leads/:id" element={<LeadDetail />} />
+            <Route path="/leads" element={withRouteGuard('/leads', <LeadsList />)} />
+            <Route path="/leads/new" element={withRouteGuard('/leads', <LeadsList />)} />
+            <Route path="/leads/:id" element={withRouteGuard('/leads', <LeadDetail />)} />
             <Route path="/appointments" element={<AppointmentsPage />} />
             <Route path="/appointments/:id" element={<AppointmentDetail />} />
-            <Route path="/accounts" element={<AccountsList />} />
-            <Route path="/accounts/:id" element={<AccountDetail />} />
-            <Route path="/contacts" element={<ContactsList />} />
-            <Route path="/contacts/:id" element={<ContactDetail />} />
+            <Route path="/accounts" element={withRouteGuard('/accounts', <AccountsList />)} />
+            <Route path="/accounts/:id" element={withRouteGuard('/accounts', <AccountDetail />)} />
+            <Route path="/contacts" element={withRouteGuard('/contacts', <ContactsList />)} />
+            <Route path="/contacts/:id" element={withRouteGuard('/contacts', <ContactDetail />)} />
             <Route path="/facilities" element={<FacilitiesList />} />
             <Route path="/facilities/:id" element={<FacilityDetail />} />
-            <Route path="/tasks" element={<TaskTemplatesList />} />
-            <Route path="/tasks/:id" element={<TaskTemplateDetail />} />
+            <Route path="/tasks" element={withRouteGuard('/tasks', <TaskTemplatesList />)} />
+            <Route path="/tasks/:id" element={withRouteGuard('/tasks', <TaskTemplateDetail />)} />
             <Route
               path="/area-templates"
               element={withRouteGuard('/area-templates', <AreaTemplatesPage />)}
             />
-            <Route path="/pricing" element={<PricingSettingsPage />} />
-            <Route path="/pricing/settings" element={<PricingSettingsPage />} />
-            <Route path="/proposals" element={<ProposalsList />} />
-            <Route path="/proposals/new" element={<ProposalForm />} />
-            <Route path="/proposals/:id" element={<ProposalDetail />} />
-            <Route path="/proposals/:id/edit" element={<ProposalForm />} />
-            <Route path="/quotations" element={<QuotationsList />} />
-            <Route path="/quotations/new" element={<QuotationForm />} />
-            <Route path="/quotations/:id" element={<QuotationDetail />} />
-            <Route path="/quotations/:id/edit" element={<QuotationForm />} />
-            <Route path="/contracts" element={<ContractsList />} />
-            <Route path="/contracts/new" element={<ContractForm />} />
-            <Route path="/contracts/:id" element={<ContractDetail />} />
-            <Route path="/contracts/:id/edit" element={<ContractForm />} />
-            <Route path="/jobs" element={<JobsList />} />
-            <Route path="/jobs/new" element={<JobForm />} />
-            <Route path="/jobs/:id/edit" element={<JobForm />} />
-            <Route path="/jobs/:id" element={<JobDetail />} />
-            <Route path="/inspections" element={<InspectionsList />} />
-            <Route path="/inspections/new" element={<InspectionForm />} />
-            <Route path="/inspections/:id/edit" element={<InspectionForm />} />
-            <Route path="/inspections/:id" element={<InspectionDetail />} />
-            <Route path="/inspection-templates" element={<InspectionTemplatesPage />} />
-            <Route path="/time-tracking" element={<TimeTrackingPage />} />
-            <Route path="/timesheets" element={<TimesheetsPage />} />
-            <Route path="/invoices" element={<InvoicesList />} />
-            <Route path="/invoices/:id" element={<InvoiceDetail />} />
+            <Route path="/pricing" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
+            <Route path="/pricing/settings" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
+            <Route path="/proposals" element={withRouteGuard('/proposals', <ProposalsList />)} />
+            <Route path="/proposals/new" element={withRouteGuard('/proposals', <ProposalForm />)} />
+            <Route path="/proposals/:id" element={withRouteGuard('/proposals', <ProposalDetail />)} />
+            <Route path="/proposals/:id/edit" element={withRouteGuard('/proposals', <ProposalForm />)} />
+            <Route path="/quotations" element={withRouteGuard('/quotations', <QuotationsList />)} />
+            <Route path="/quotations/new" element={withRouteGuard('/quotations', <QuotationForm />)} />
+            <Route path="/quotations/:id" element={withRouteGuard('/quotations', <QuotationDetail />)} />
+            <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
+            <Route path="/contracts" element={withRouteGuard('/contracts', <ContractsList />)} />
+            <Route path="/contracts/new" element={withRouteGuard('/contracts', <ContractForm />)} />
+            <Route path="/contracts/:id" element={withRouteGuard('/contracts', <ContractDetail />)} />
+            <Route path="/contracts/:id/edit" element={withRouteGuard('/contracts', <ContractForm />)} />
+            <Route path="/jobs" element={withRouteGuard('/jobs', <JobsList />)} />
+            <Route path="/jobs/new" element={withRouteGuard('/jobs', <JobForm />)} />
+            <Route path="/jobs/:id/edit" element={withRouteGuard('/jobs', <JobForm />)} />
+            <Route path="/jobs/:id" element={withRouteGuard('/jobs', <JobDetail />)} />
+            <Route path="/inspections" element={withRouteGuard('/inspections', <InspectionsList />)} />
+            <Route path="/inspections/new" element={withRouteGuard('/inspections', <InspectionForm />)} />
+            <Route path="/inspections/:id/edit" element={withRouteGuard('/inspections', <InspectionForm />)} />
+            <Route path="/inspections/:id" element={withRouteGuard('/inspections', <InspectionDetail />)} />
+            <Route
+              path="/inspection-templates"
+              element={withRouteGuard('/inspection-templates', <InspectionTemplatesPage />)}
+            />
+            <Route path="/time-tracking" element={withRouteGuard('/time-tracking', <TimeTrackingPage />)} />
+            <Route path="/timesheets" element={withRouteGuard('/timesheets', <TimesheetsPage />)} />
+            <Route path="/invoices" element={withRouteGuard('/invoices', <InvoicesList />)} />
+            <Route path="/invoices/:id" element={withRouteGuard('/invoices', <InvoiceDetail />)} />
             <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/teams" element={<TeamsList />} />
+            <Route path="/teams" element={withRouteGuard('/teams', <TeamsList />)} />
             <Route
               path="/settings/global"
               element={withRouteGuard('/settings/global', <GlobalSettingsPage />)}

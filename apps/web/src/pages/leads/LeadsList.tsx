@@ -284,7 +284,7 @@ const LeadsList = () => {
     const notesParts: string[] = [];
     if (createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE) {
       notesParts.push(`Lead source (other): ${otherLeadSource.trim()}`);
-    } else if (selectedSourceName && !mappedLeadSourceId) {
+    } else if (selectedSourceName) {
       notesParts.push(`Lead source: ${selectedSourceName}`);
     }
     if (formData.notes?.trim()) {
