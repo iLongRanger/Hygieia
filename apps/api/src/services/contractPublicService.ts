@@ -119,14 +119,15 @@ export async function signContractPublic(
     throw new Error('This contract link has expired');
   }
 
-  if (!['sent', 'viewed'].includes(contract.status)) {
+  if (!['sent', 'viewed', 'active'].includes(contract.status)) {
     throw new Error('This contract can no longer be signed');
   }
 
   return prisma.contract.update({
     where: { id: contract.id },
     data: {
-      status: 'pending_signature',
+      // Don't regress an active contract to pending_signature
+      ...(contract.status !== 'active' && { status: 'pending_signature' }),
       signedByName,
       signedByEmail,
       signedDate: new Date(),
