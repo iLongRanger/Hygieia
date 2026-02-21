@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Link as LinkIcon,
   Download,
+  MoreHorizontal,
   Sparkles,
   Send,
   Eye,
@@ -156,7 +157,8 @@ const ContractDetail = () => {
   const [savingTerms, setSavingTerms] = useState(false);
   const [generatingTerms, setGeneratingTerms] = useState(false);
 
-  // Send modal state
+  // Menu & send modal state
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
@@ -185,6 +187,14 @@ const ContractDetail = () => {
       fetchTeams();
     }
   }, [id]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = () => setMenuOpen(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [menuOpen]);
 
   const refreshAll = (contractId: string) => {
     fetchContract(contractId);
@@ -439,11 +449,8 @@ const ContractDetail = () => {
           </div>
           <p className="text-gray-400">{contract.title}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleDownloadPdf}>
-            <Download className="mr-2 h-4 w-4" />
-            PDF
-          </Button>
+        <div className="flex items-center gap-2">
+          {/* Primary actions based on status */}
           {contract.status === 'draft' && canWriteContracts && (
             <>
               <Button
@@ -453,27 +460,17 @@ const ContractDetail = () => {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
               </Button>
-              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
+              <Button onClick={() => setShowSendModal(true)}>
                 <Send className="mr-2 h-4 w-4" />
                 Send
-              </Button>
-              <Button onClick={handleActivate}>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Activate
               </Button>
             </>
           )}
           {(contract.status === 'sent' || contract.status === 'viewed') && canWriteContracts && (
-            <>
-              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
-                <Mail className="mr-2 h-4 w-4" />
-                Resend
-              </Button>
-              <Button onClick={handleActivate}>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Activate
-              </Button>
-            </>
+            <Button onClick={handleActivate}>
+              <PlayCircle className="mr-2 h-4 w-4" />
+              Activate
+            </Button>
           )}
           {contract.status === 'pending_signature' && canWriteContracts && (
             <Button onClick={handleActivate}>
@@ -487,38 +484,86 @@ const ContractDetail = () => {
               Renew
             </Button>
           )}
-          {contract.status === 'active' && canWriteContracts && (
-            <>
-              <Button variant="secondary" onClick={() => setShowSendModal(true)}>
-                <Mail className="mr-2 h-4 w-4" />
-                Resend
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={handleTerminate}
-                className="text-red-400 hover:text-red-300"
-              >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Terminate
-              </Button>
-            </>
-          )}
-          {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
-            <Button
-              variant="secondary"
-              onClick={handleArchive}
-              className="text-orange-400 hover:text-orange-300"
-            >
-              <Archive className="mr-2 h-4 w-4" />
-              Archive
-            </Button>
-          )}
           {contract.archivedAt && canAdminContracts && (
             <Button variant="secondary" onClick={handleRestore}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Restore
             </Button>
           )}
+
+          {/* More actions dropdown */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <button
+                  onClick={handleDownloadPdf}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                >
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </button>
+                {contract.publicToken && (
+                  <button
+                    onClick={async () => {
+                      const url = `${window.location.origin}/c/${contract.publicToken}`;
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        toast.success('Link copied');
+                      } catch {
+                        prompt('Copy this link:', url);
+                      }
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                    Copy Public Link
+                  </button>
+                )}
+                {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
+                  <button
+                    onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Resend Email
+                  </button>
+                )}
+                {contract.status === 'active' && canWriteContracts && (
+                  <>
+                    <div className="my-1 border-t border-white/10" />
+                    <button
+                      onClick={() => { setMenuOpen(false); handleTerminate(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Terminate
+                    </button>
+                  </>
+                )}
+                {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
+                  <>
+                    <div className="my-1 border-t border-white/10" />
+                    <button
+                      onClick={() => { setMenuOpen(false); handleArchive(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                    >
+                      <Archive className="h-4 w-4" />
+                      Archive
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
