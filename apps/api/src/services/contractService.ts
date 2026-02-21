@@ -511,9 +511,20 @@ export async function updateContractStatus(
  * Mark contract as sent
  */
 export async function sendContract(id: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+
+  // Don't regress an active contract back to 'sent'
+  const data: { status?: string; sentAt: Date } = { sentAt: new Date() };
+  if (contract?.status !== 'active') {
+    data.status = 'sent';
+  }
+
   return prisma.contract.update({
     where: { id },
-    data: { status: 'sent', sentAt: new Date() },
+    data,
     select: contractSelect,
   });
 }

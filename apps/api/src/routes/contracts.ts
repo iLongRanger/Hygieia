@@ -528,8 +528,8 @@ router.post(
         throw new NotFoundError('Contract not found');
       }
 
-      if (!['draft', 'sent', 'viewed'].includes(contract.status)) {
-        throw new ValidationError('Only draft, sent, or viewed contracts can be sent');
+      if (!['draft', 'sent', 'viewed', 'active'].includes(contract.status)) {
+        throw new ValidationError('Only draft, sent, viewed, or active contracts can be sent');
       }
 
       // 1. Generate public token (regenerate on resend)
