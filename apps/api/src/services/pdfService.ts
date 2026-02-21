@@ -38,6 +38,12 @@ function formatDate(date: string | Date | null | undefined): string {
   });
 }
 
+function formatWholeHours(hours: number | string | null | undefined): string {
+  const parsed = Number(hours);
+  if (!Number.isFinite(parsed) || parsed <= 0) return '-';
+  return `${Math.round(parsed)} hrs`;
+}
+
 interface ProposalForPdf {
   proposalNumber: string;
   title: string;
@@ -184,9 +190,9 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     });
   }
 
-  // Services (Areas with tasks by frequency)
+  // Services & Areas
   if (proposal.proposalServices.length > 0) {
-    content.push({ text: 'Services', style: 'sectionHeader' });
+    content.push({ text: 'Services & Areas', style: 'sectionHeader' });
 
     for (const service of proposal.proposalServices) {
       // Parse description: first line is area info, remaining are "Frequency: task1, task2"
@@ -227,7 +233,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       // Hours breakdown if available
       if (service.estimatedHours && service.hourlyRate) {
         areaStack.push({
-          text: `${service.estimatedHours} hrs x ${formatCurrency(service.hourlyRate)}/hr`,
+          text: `${formatWholeHours(service.estimatedHours)} @ ${formatCurrency(service.hourlyRate)}/hr`,
           fontSize: 8,
           color: COLORS.lightText,
           margin: [0, 0, 0, 4] as [number, number, number, number],
@@ -267,197 +273,54 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     }
   }
 
-  // Pricing Breakdown (from pricingSnapshot)
-  if (proposal.pricingSnapshot) {
-    const snap = proposal.pricingSnapshot;
-    const isHourly = snap.pricingType === 'hourly' || snap.strategyKey === 'per_hour_v1';
-
-    content.push({ text: 'Pricing Breakdown', style: 'sectionHeader' });
-
-    // Strategy & Rates header row
-    const strategyInfoCols: any[] = [
-      {
-        stack: [
-          { text: 'Strategy', fontSize: 8, color: COLORS.lightText },
-          { text: snap.pricingPlanName || (isHourly ? 'Per Hour v1' : 'Per Sq Ft v1'), fontSize: 10, bold: true, color: COLORS.text },
-        ],
-        width: '*',
-      },
-    ];
-
-    if (isHourly && snap.settingsSnapshot?.hourlyRate) {
-      strategyInfoCols.push({
-        stack: [
-          { text: 'Hourly Rate', fontSize: 8, color: COLORS.lightText },
-          { text: formatCurrency(snap.settingsSnapshot.hourlyRate) + '/hr', fontSize: 10, bold: true, color: COLORS.text },
-        ],
-        width: '*',
-      });
-    }
-
-    if (snap.settingsSnapshot?.targetProfitMargin != null) {
-      strategyInfoCols.push({
-        stack: [
-          { text: 'Profit Margin', fontSize: 8, color: COLORS.lightText },
-          { text: `${(Number(snap.settingsSnapshot.targetProfitMargin) * 100).toFixed(1)}%`, fontSize: 10, bold: true, color: COLORS.text },
-        ],
-        width: '*',
-      });
-    } else if (snap.profitMarginApplied != null) {
-      strategyInfoCols.push({
-        stack: [
-          { text: 'Profit Margin', fontSize: 8, color: COLORS.lightText },
-          { text: `${(Number(snap.profitMarginApplied) * 100).toFixed(1)}%`, fontSize: 10, bold: true, color: COLORS.text },
-        ],
-        width: '*',
-      });
-    }
-
+  // Estimated Time On Site
+  if (proposal.pricingSnapshot?.operationalEstimate) {
+    const estimate = proposal.pricingSnapshot.operationalEstimate;
+    content.push({ text: 'Estimated Time On Site', style: 'sectionHeader' });
     content.push({
-      columns: strategyInfoCols,
-      margin: [0, 5, 0, 10] as [number, number, number, number],
+      columns: [
+        {
+          stack: [
+            { text: 'Duration Per Visit', fontSize: 8, color: COLORS.lightText },
+            {
+              text: `${formatWholeHours(estimate.durationRangePerVisit?.minHours)} - ${formatWholeHours(estimate.durationRangePerVisit?.maxHours)}`,
+              fontSize: 10,
+              bold: true,
+              color: COLORS.text,
+            },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Crew Size', fontSize: 8, color: COLORS.lightText },
+            { text: `${estimate.recommendedCrewSize || 1} cleaners`, fontSize: 10, bold: true, color: COLORS.text },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Labor Hours / Visit', fontSize: 8, color: COLORS.lightText },
+            { text: formatWholeHours(estimate.hoursPerVisit), fontSize: 10, bold: true, color: COLORS.text },
+          ],
+          width: '*',
+        },
+      ],
+      margin: [0, 5, 0, 12] as [number, number, number, number],
     });
-
-    // Cost Stack table (hourly only)
-    if (isHourly && snap.settingsSnapshot?.laborCostPerHour) {
-      const ss = snap.settingsSnapshot;
-      const laborRate = Number(ss.laborCostPerHour);
-
-      const costRows: TableCell[][] = [
-        [
-          { text: 'Component', style: 'tableHeader' },
-          { text: 'Rate', style: 'tableHeader', alignment: 'right' as const },
-        ],
-        [
-          { text: 'Labor Cost', fontSize: 9 },
-          { text: formatCurrency(laborRate) + '/hr', alignment: 'right' as const, fontSize: 9 },
-        ],
-      ];
-
-      const components: [string, string, number][] = [
-        ['Labor Burden', 'laborBurdenPercentage', ss.laborBurdenPercentage],
-        ['Insurance', 'insurancePercentage', ss.insurancePercentage],
-        ['Admin Overhead', 'adminOverheadPercentage', ss.adminOverheadPercentage],
-        ['Equipment', 'equipmentPercentage', ss.equipmentPercentage],
-        ['Supplies', 'supplyCostPercentage', ss.supplyCostPercentage],
-      ];
-
-      let loadedRate = laborRate;
-
-      for (const [label, , pct] of components) {
-        if (pct && Number(pct) > 0) {
-          const amount = laborRate * Number(pct);
-          loadedRate += amount;
-          costRows.push([
-            { text: `${label} (${(Number(pct) * 100).toFixed(0)}%)`, fontSize: 9 },
-            { text: formatCurrency(amount) + '/hr', alignment: 'right' as const, fontSize: 9 },
-          ]);
-        }
-      }
-
-      if (ss.travelCostPerVisit && Number(ss.travelCostPerVisit) > 0) {
-        costRows.push([
-          { text: 'Travel (per visit)', fontSize: 9 },
-          { text: formatCurrency(ss.travelCostPerVisit), alignment: 'right' as const, fontSize: 9 },
-        ]);
-      }
-
-      // Loaded Rate total row
-      costRows.push([
-        { text: 'Loaded Rate', fontSize: 9, bold: true },
-        { text: formatCurrency(loadedRate) + '/hr', alignment: 'right' as const, fontSize: 9, bold: true },
-      ]);
-
-      content.push({
-        table: {
-          headerRows: 1,
-          widths: ['*', 100],
-          body: costRows,
-        },
-        layout: {
-          hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
-          vLineWidth: () => 0,
-          hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
-          paddingLeft: () => 8,
-          paddingRight: () => 8,
-          paddingTop: () => 5,
-          paddingBottom: () => 5,
-          fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
-        },
-        margin: [0, 0, 0, 15] as [number, number, number, number],
-      });
-    }
-
-    // Sqft strategy info
-    if (!isHourly && snap.settingsSnapshot) {
-      const ss = snap.settingsSnapshot;
-      const infoRows: TableCell[][] = [
-        [
-          { text: 'Parameter', style: 'tableHeader' },
-          { text: 'Value', style: 'tableHeader', alignment: 'right' as const },
-        ],
-      ];
-
-      if (ss.baseRatePerSqFt != null) {
-        infoRows.push([
-          { text: 'Base Rate per Sq Ft', fontSize: 9 },
-          { text: formatCurrency(ss.baseRatePerSqFt), alignment: 'right' as const, fontSize: 9 },
-        ]);
-      }
-      if (ss.minimumMonthlyCharge != null && Number(ss.minimumMonthlyCharge) > 0) {
-        infoRows.push([
-          { text: 'Minimum Monthly Charge', fontSize: 9 },
-          { text: formatCurrency(ss.minimumMonthlyCharge), alignment: 'right' as const, fontSize: 9 },
-        ]);
-      }
-
-      // Show key multipliers if present
-      if (ss.floorTypeMultipliers && typeof ss.floorTypeMultipliers === 'object') {
-        for (const [type, mult] of Object.entries(ss.floorTypeMultipliers)) {
-          if (Number(mult) !== 1) {
-            infoRows.push([
-              { text: `Floor Type: ${type}`, fontSize: 9 },
-              { text: `${Number(mult).toFixed(2)}x`, alignment: 'right' as const, fontSize: 9 },
-            ]);
-          }
-        }
-      }
-
-      if (infoRows.length > 1) {
-        content.push({
-          table: {
-            headerRows: 1,
-            widths: ['*', 100],
-            body: infoRows,
-          },
-          layout: {
-            hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
-            vLineWidth: () => 0,
-            hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
-            paddingLeft: () => 8,
-            paddingRight: () => 8,
-            paddingTop: () => 5,
-            paddingBottom: () => 5,
-            fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
-          },
-          margin: [0, 0, 0, 15] as [number, number, number, number],
-        });
-      }
-    }
   }
 
-  // Areas Summary
+  // Services summary table
   if (proposal.proposalServices.length > 0) {
-    content.push({ text: 'Areas Summary', style: 'sectionHeader' });
-
-    const areasBody: TableCell[][] = [
-      [
-        { text: 'Area', style: 'tableHeader' },
-        { text: 'Hours', style: 'tableHeader', alignment: 'right' as const },
-        { text: 'Frequency', style: 'tableHeader' },
-        { text: 'Monthly Price', style: 'tableHeader', alignment: 'right' as const },
-      ],
-    ];
+    const hasAnyHours = proposal.proposalServices.some(
+      (service) => service.estimatedHours != null && Number(service.estimatedHours) > 0
+    );
+    const areasBody: TableCell[][] = [[
+      { text: 'Service', style: 'tableHeader' },
+      { text: 'Frequency', style: 'tableHeader' },
+      ...(hasAnyHours ? [{ text: 'Hours', style: 'tableHeader', alignment: 'right' as const }] : []),
+      { text: 'Monthly', style: 'tableHeader', alignment: 'right' as const },
+    ]];
 
     let totalHours = 0;
     let totalMonthly = 0;
@@ -469,8 +332,8 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
       areasBody.push([
         { text: service.serviceName, fontSize: 9 },
-        { text: hours > 0 ? `${hours} hrs` : '-', alignment: 'right' as const, fontSize: 9 },
         { text: service.frequency.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), fontSize: 9 },
+        ...(hasAnyHours ? [{ text: hours > 0 ? formatWholeHours(hours) : '-', alignment: 'right' as const, fontSize: 9 }] : []),
         { text: formatCurrency(service.monthlyPrice), alignment: 'right' as const, fontSize: 9 },
       ]);
     }
@@ -478,17 +341,17 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     // Total row
     areasBody.push([
       { text: 'Total', bold: true, fontSize: 9 },
-      { text: totalHours > 0 ? `${totalHours} hrs` : '', alignment: 'right' as const, bold: true, fontSize: 9 },
       { text: '', fontSize: 9 },
+      ...(hasAnyHours ? [{ text: totalHours > 0 ? formatWholeHours(totalHours) : '', alignment: 'right' as const, bold: true, fontSize: 9 }] : []),
       { text: formatCurrency(totalMonthly), alignment: 'right' as const, bold: true, fontSize: 9 },
     ]);
 
     content.push({
-      table: {
-        headerRows: 1,
-        widths: ['*', 60, 80, 90],
-        body: areasBody,
-      },
+        table: {
+          headerRows: 1,
+          widths: hasAnyHours ? ['*', 100, 60, 90] : ['*', 130, 90],
+          body: areasBody,
+        },
       layout: {
         hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length ? 1 : 0.5),
         vLineWidth: () => 0,
@@ -503,13 +366,12 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     });
   }
 
-  // Line Items Table
+  // Line Items
   if (proposal.proposalItems.length > 0) {
     content.push({ text: 'Line Items', style: 'sectionHeader' });
 
     const itemsBody: TableCell[][] = [
       [
-        { text: 'Type', style: 'tableHeader' },
         { text: 'Description', style: 'tableHeader' },
         { text: 'Qty', style: 'tableHeader', alignment: 'right' as const },
         { text: 'Unit Price', style: 'tableHeader', alignment: 'right' as const },
@@ -519,7 +381,6 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
     for (const item of proposal.proposalItems) {
       itemsBody.push([
-        { text: item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1), fontSize: 9 },
         { text: item.description },
         { text: String(item.quantity), alignment: 'right' as const },
         { text: formatCurrency(item.unitPrice), alignment: 'right' as const },
@@ -530,7 +391,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     content.push({
       table: {
         headerRows: 1,
-        widths: [60, '*', 40, 80, 80],
+        widths: ['*', 50, 90, 90],
         body: itemsBody,
       },
       layout: {
@@ -547,7 +408,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     });
   }
 
-  // Pricing Summary
+  // Financial Summary
   content.push({
     columns: [
       { width: '*', text: '' },
@@ -557,7 +418,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
           widths: ['*', 100],
           body: [
             [
-              { text: 'Subtotal', alignment: 'right' as const, color: COLORS.lightText },
+              { text: 'Monthly Subtotal', alignment: 'right' as const, color: COLORS.lightText },
               { text: formatCurrency(proposal.subtotal), alignment: 'right' as const },
             ],
             [
@@ -570,7 +431,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
             ],
             [
               {
-                text: 'Total',
+                text: 'Monthly Total',
                 alignment: 'right' as const,
                 bold: true,
                 fontSize: 14,
@@ -582,6 +443,10 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
                 fontSize: 14,
                 color: COLORS.primary,
               },
+            ],
+            [
+              { text: 'Annual Estimate', alignment: 'right' as const, color: COLORS.lightText },
+              { text: formatCurrency(Number(proposal.totalAmount) * 12), alignment: 'right' as const, color: COLORS.lightText },
             ],
           ],
         },
@@ -597,39 +462,17 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     margin: [0, 10, 0, 25] as [number, number, number, number],
   });
 
-
-
-  // Signature Lines
+  // Terms (aligned with public Review & Sign page)
+  content.push({ text: 'Terms', style: 'sectionHeader' });
   content.push({
-    columns: [
-      {
-        stack: [
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Client Signature', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-          { text: '\n', fontSize: 6 },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-          { text: '\n', fontSize: 6 },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-        ],
-        width: '*',
-      },
-      {
-        stack: [
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Company Representative', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-          { text: '\n', fontSize: 6 },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-          { text: '\n', fontSize: 6 },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border }] },
-          { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
-        ],
-        width: '*',
-      },
+    ul: [
+      `This proposal is valid until ${formatDate(proposal.validUntil)}.`,
+      'All prices shown are monthly recurring charges unless otherwise noted.',
+      'Acceptance of this proposal constitutes agreement to the services and pricing described herein.',
     ],
-    margin: [0, 30, 0, 0] as [number, number, number, number],
+    margin: [0, 4, 0, 0] as [number, number, number, number],
+    fontSize: 9,
+    color: COLORS.text,
   });
 
   const docDefinition: TDocumentDefinitions = {

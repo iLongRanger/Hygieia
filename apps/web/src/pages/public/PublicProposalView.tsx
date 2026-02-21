@@ -46,7 +46,7 @@ const formatDate = (date: string | null | undefined) => {
 
 const formatHours = (hours: number | null | undefined): string => {
   if (hours == null || Number.isNaN(Number(hours))) return '-';
-  return `${Number(hours).toFixed(1)} hrs`;
+  return `${Math.round(Number(hours))} hrs`;
 };
 
 const formatAddress = (
@@ -372,7 +372,7 @@ const PublicProposalView: React.FC = () => {
                         {service.estimatedHours != null && Number(service.estimatedHours) > 0 && service.hourlyRate != null && Number(service.hourlyRate) > 0 && (
                           <div className="text-sm text-gray-400 flex items-center justify-end gap-1 mt-0.5">
                             <Clock className="h-3.5 w-3.5" />
-                            {service.estimatedHours} hrs @ {formatCurrency(Number(service.hourlyRate) || 0)}/hr
+                            {formatHours(Number(service.estimatedHours) || 0)} @ {formatCurrency(Number(service.hourlyRate) || 0)}/hr
                           </div>
                         )}
                       </div>
@@ -461,7 +461,7 @@ const PublicProposalView: React.FC = () => {
                       {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
                         <td className="px-4 py-3 text-right text-sm text-gray-600">
                           {service.estimatedHours != null && Number(service.estimatedHours) > 0
-                            ? `${service.estimatedHours} hrs`
+                            ? formatHours(Number(service.estimatedHours) || 0)
                             : '-'}
                         </td>
                       )}
@@ -477,7 +477,7 @@ const PublicProposalView: React.FC = () => {
                     <td className="px-4 py-3" />
                     {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
                       <td className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                        {proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0)} hrs
+                        {formatHours(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0))}
                       </td>
                     )}
                     <td className="px-4 py-3 text-right font-bold" style={{ color: primaryColor }}>
