@@ -55,9 +55,10 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       throw new Error('No pricing plan found');
     }
 
-    const monthlyLaborHours = Number(pricingResult.costBreakdown?.totalLaborHours || 0);
+    // In sqft pricing, totalLaborHours is tracked per visit in costBreakdown.
+    const hoursPerVisit = Number(pricingResult.costBreakdown?.totalLaborHours || 0);
     const monthlyVisits = Number(pricingResult.monthlyVisits || 0);
-    const hoursPerVisit = monthlyVisits > 0 ? monthlyLaborHours / monthlyVisits : monthlyLaborHours;
+    const monthlyLaborHours = hoursPerVisit * monthlyVisits;
     const recommendedCrewSize = Math.max(1, Math.floor(workerCount));
     const durationHoursPerVisit = hoursPerVisit / recommendedCrewSize;
     const variabilityPercentage = 0.2;
