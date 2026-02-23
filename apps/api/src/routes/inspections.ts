@@ -90,7 +90,7 @@ router.post(
   async (req: Request, res: Response) => {
     const inspection = await createInspection({
       ...req.body,
-      scheduledDate: new Date(req.body.scheduledDate),
+      scheduledDate: new Date(req.body.scheduledDate + 'T12:00:00'),
       createdByUserId: req.user!.id,
     });
     res.status(201).json({ data: inspection });
@@ -104,7 +104,7 @@ router.patch(
   validate(updateInspectionSchema),
   async (req: Request, res: Response) => {
     const input = { ...req.body };
-    if (input.scheduledDate) input.scheduledDate = new Date(input.scheduledDate);
+    if (input.scheduledDate) input.scheduledDate = new Date(input.scheduledDate + 'T12:00:00');
     const inspection = await updateInspection(req.params.id, input);
     res.json({ data: inspection });
   }
@@ -278,7 +278,7 @@ router.post(
       req.params.id,
       {
         ...req.body,
-        scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate) : undefined,
+        scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate + 'T12:00:00') : undefined,
       },
       req.user!.id
     );

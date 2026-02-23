@@ -425,7 +425,7 @@ const InspectionDetail = () => {
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-surface-400" />
                 <span className="text-surface-700 dark:text-surface-300">
-                  {new Date(inspection.scheduledDate).toLocaleDateString()}
+                  {new Date(inspection.scheduledDate + 'T00:00:00').toLocaleDateString()}
                 </span>
               </div>
               {inspection.job && (
