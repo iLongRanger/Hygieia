@@ -78,3 +78,6 @@ uploads/
 .cache/
 .eslintcache
 .turbo
+
+# Worktrees
+.worktrees/
