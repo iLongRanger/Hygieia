@@ -228,7 +228,7 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
             where: { archivedAt: null },
             select: {
               name: true,
-              areaType: { select: { name: true } },
+              areaType: { select: { name: true, guidanceItems: true } },
             },
             orderBy: { createdAt: 'asc' },
           },
