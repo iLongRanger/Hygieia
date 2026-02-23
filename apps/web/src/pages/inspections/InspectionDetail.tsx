@@ -28,7 +28,9 @@ import {
   updateInspectionCorrectiveAction,
   verifyInspectionCorrectiveAction,
   createInspectionSignoff,
+  getAreaGuidance,
 } from '../../lib/inspections';
+import { InspectorGuidance } from '../../components/inspections/InspectorGuidance';
 import type {
   InspectionDetail as InspectionDetailType,
   InspectionItem,
@@ -98,6 +100,8 @@ const InspectionDetail = () => {
     severity: 'major',
     dueDate: '',
   });
+  const [areaGuidance, setAreaGuidance] = useState<Record<string, string[]>>({});
+
   const [signoffForm, setSignoffForm] = useState<{
     signerType: InspectionSignerType;
     signerName: string;
@@ -136,6 +140,18 @@ const InspectionDetail = () => {
   useEffect(() => {
     fetchInspection();
   }, [fetchInspection]);
+
+  // Fetch area guidance when entering completion mode
+  useEffect(() => {
+    if (!completing || !inspection) return;
+    const categories = [...new Set(inspection.items.map((item) => item.category))];
+    if (categories.length === 0) return;
+    getAreaGuidance(categories)
+      .then(setAreaGuidance)
+      .catch(() => {
+        // Guidance is non-critical — silently fail
+      });
+  }, [completing, inspection]);
 
   const handleStart = async () => {
     if (!id) return;
@@ -528,47 +544,69 @@ const InspectionDetail = () => {
                 {(() => {
                   const areaState = getAreaAggregate(items);
                   return (
-                    <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
-                      <span className="flex-1 min-w-[240px] text-sm text-surface-700 dark:text-surface-300">
-                        Hygieia Standard: clean, maintained, stocked, and safe.
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {(['pass', 'fail', 'na'] as InspectionScore[]).map((score) => (
-                          <button
-                            key={score}
-                            onClick={() => updateAreaScores(items, 'score', score)}
-                            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                              areaState.score === score
-                                ? score === 'pass'
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                  : score === 'fail'
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                    : 'bg-surface-200 text-surface-600 dark:bg-surface-700 dark:text-surface-400'
-                                : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-500 dark:hover:bg-surface-700'
-                            }`}
-                          >
-                            {score.toUpperCase()}
-                          </button>
-                        ))}
+                    <>
+                      <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <span className="flex-1 min-w-[240px] text-sm text-surface-700 dark:text-surface-300">
+                          Hygieia Standard: clean, maintained, stocked, and safe.
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {(['pass', 'fail', 'na'] as InspectionScore[]).map((score) => (
+                            <button
+                              key={score}
+                              onClick={() => updateAreaScores(items, 'score', score)}
+                              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                                areaState.score === score
+                                  ? score === 'pass'
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                    : score === 'fail'
+                                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      : 'bg-surface-200 text-surface-600 dark:bg-surface-700 dark:text-surface-400'
+                                  : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-500 dark:hover:bg-surface-700'
+                              }`}
+                            >
+                              {score.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((r) => (
+                            <button
+                              key={r}
+                              onClick={() =>
+                                updateAreaScores(items, 'rating', areaState.rating === r ? null : r)
+                              }
+                              className={`w-7 h-7 text-xs font-medium rounded-full transition-colors ${
+                                areaState.rating === r
+                                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                                  : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
+                              }`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((r) => (
-                          <button
-                            key={r}
-                            onClick={() =>
-                              updateAreaScores(items, 'rating', areaState.rating === r ? null : r)
-                            }
-                            className={`w-7 h-7 text-xs font-medium rounded-full transition-colors ${
-                              areaState.rating === r
-                                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                                : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
-                            }`}
-                          >
-                            {r}
-                          </button>
-                        ))}
+                      {/* Inspector guidance accordion */}
+                      {areaGuidance[category] && areaGuidance[category].length > 0 && (
+                        <div className="mt-2 px-2">
+                          <InspectorGuidance
+                            category={category}
+                            guidanceItems={areaGuidance[category]}
+                          />
+                        </div>
+                      )}
+                      {/* Per-area notes */}
+                      <div className="mt-2 px-2">
+                        <textarea
+                          className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                          rows={2}
+                          value={areaState.notes}
+                          onChange={(e) => updateAreaScores(items, 'notes', e.target.value)}
+                          placeholder={`Notes for ${category}...`}
+                        />
                       </div>
-                    </div>
+                      {/* TODO: Add PhotoUploader component here for per-area photo capture (Cloudflare R2) */}
+                    </>
                   );
                 })()}
               </div>
@@ -616,34 +654,37 @@ const InspectionDetail = () => {
                   {(() => {
                     const areaState = getAreaAggregate(items);
                     return (
-                      <div className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {areaState.score === 'pass' ? (
-                            <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-                          ) : areaState.score === 'fail' ? (
-                            <XCircle className="h-4 w-4 shrink-0 text-red-500" />
-                          ) : areaState.score === 'na' ? (
-                            <Minus className="h-4 w-4 shrink-0 text-surface-400" />
-                          ) : (
-                            <Clock className="h-4 w-4 shrink-0 text-surface-400" />
-                          )}
-                          <span className="text-sm text-surface-700 dark:text-surface-300 truncate">
-                            Hygieia Standard area check
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {areaState.rating && (
-                            <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
-                              {areaState.rating}/5
+                      <>
+                        <div className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {areaState.score === 'pass' ? (
+                              <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+                            ) : areaState.score === 'fail' ? (
+                              <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                            ) : areaState.score === 'na' ? (
+                              <Minus className="h-4 w-4 shrink-0 text-surface-400" />
+                            ) : (
+                              <Clock className="h-4 w-4 shrink-0 text-surface-400" />
+                            )}
+                            <span className="text-sm text-surface-700 dark:text-surface-300 truncate">
+                              Hygieia Standard area check
                             </span>
-                          )}
-                          {areaState.notes && (
-                            <span className="text-xs text-surface-400 truncate max-w-[120px]" title={areaState.notes}>
-                              {areaState.notes}
-                            </span>
-                          )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {areaState.rating && (
+                              <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+                                {areaState.rating}/5
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                        {areaState.notes && (
+                          <div className="mt-1 px-3 py-1.5 bg-surface-50 dark:bg-surface-800/40 rounded text-xs text-surface-600 dark:text-surface-400">
+                            {areaState.notes}
+                          </div>
+                        )}
+                        {/* TODO: Show photo thumbnails here when photo upload is implemented */}
+                      </>
                     );
                   })()}
                 </div>
