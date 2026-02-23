@@ -13,6 +13,7 @@ import {
   createAreaType,
   updateAreaType,
   deleteAreaType,
+  getAreaTypeGuidance,
 } from '../services/areaTypeService';
 import {
   createAreaTypeSchema,
@@ -48,6 +49,26 @@ router.get(
 
       const result = await listAreaTypes(parsed.data);
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/guidance',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const names = ((req.query.names as string) || '')
+        .split(',')
+        .filter(Boolean);
+      if (names.length === 0) {
+        res.json({ data: {} });
+        return;
+      }
+      const result = await getAreaTypeGuidance(names);
+      res.json({ data: result });
     } catch (error) {
       next(error);
     }

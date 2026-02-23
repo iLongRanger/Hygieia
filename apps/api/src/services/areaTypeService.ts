@@ -146,3 +146,17 @@ export async function deleteAreaType(id: string) {
     select: { id: true },
   });
 }
+
+export async function getAreaTypeGuidance(
+  names: string[]
+): Promise<Record<string, string[]>> {
+  const areaTypes = await prisma.areaType.findMany({
+    where: { name: { in: names } },
+    select: { name: true, guidanceItems: true },
+  });
+  const result: Record<string, string[]> = {};
+  for (const at of areaTypes) {
+    result[at.name] = (at.guidanceItems as string[]) || [];
+  }
+  return result;
+}

@@ -19,6 +19,17 @@ import type {
   InspectionSignoff,
 } from '../types/inspection';
 
+// ==================== Area Guidance ====================
+
+export async function getAreaGuidance(
+  areaNames: string[]
+): Promise<Record<string, string[]>> {
+  const response = await api.get('/area-types/guidance', {
+    params: { names: areaNames.join(',') },
+  });
+  return response.data.data;
+}
+
 // ==================== Templates ====================
 
 export interface InspectionTemplateListParams {
