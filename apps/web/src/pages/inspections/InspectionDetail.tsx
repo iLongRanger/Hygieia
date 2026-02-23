@@ -181,8 +181,8 @@ const InspectionDetail = () => {
       setInspection(data);
       setShowReviewModal(false);
       toast.success(`Inspection completed — Score: ${data.overallScore ? parseFloat(data.overallScore).toFixed(0) : 0}%`);
-    } catch {
-      toast.error('Failed to complete inspection');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to complete inspection');
     }
   };
 
@@ -887,72 +887,105 @@ const InspectionDetail = () => {
 
       {/* Review modal */}
       <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Review Inspection" size="lg">
-        <div className="space-y-4">
-          {Object.entries(groupedItems).map(([category, items]) => {
-            const agg = getAreaAggregate(items);
-            return (
-              <div key={category} className="flex items-center justify-between py-2 border-b border-surface-200 dark:border-surface-700 last:border-0">
-                <span className="text-sm font-medium text-surface-700 dark:text-surface-300">{category}</span>
-                <div className="flex items-center gap-3">
-                  {agg.score ? (
-                    <Badge
-                      variant={agg.score === 'pass' ? 'success' : agg.score === 'fail' ? 'error' : 'default'}
-                      size="sm"
-                    >
-                      {agg.score.toUpperCase()}
-                    </Badge>
-                  ) : (
-                    <Badge variant="default" size="sm">UNSCORED</Badge>
+        {(() => {
+          const areasWithoutNotes = Object.entries(groupedItems).filter(
+            ([, items]) => !getAreaAggregate(items).notes
+          );
+          const areasUnscored = Object.entries(groupedItems).filter(
+            ([, items]) => !getAreaAggregate(items).score
+          );
+          const missingSummary = !completionSummary.trim();
+          const canSubmit = areasWithoutNotes.length === 0 && missingSummary === false;
+
+          return (
+            <div className="space-y-4">
+              {Object.entries(groupedItems).map(([category, items]) => {
+                const agg = getAreaAggregate(items);
+                const missingNotes = !agg.notes;
+                return (
+                  <div
+                    key={category}
+                    className={`flex items-center justify-between py-2 border-b border-surface-200 dark:border-surface-700 last:border-0 ${missingNotes ? 'bg-red-50 dark:bg-red-900/10 -mx-2 px-2 rounded' : ''}`}
+                  >
+                    <span className="text-sm font-medium text-surface-700 dark:text-surface-300">{category}</span>
+                    <div className="flex items-center gap-3">
+                      {agg.score ? (
+                        <Badge
+                          variant={agg.score === 'pass' ? 'success' : agg.score === 'fail' ? 'error' : 'default'}
+                          size="sm"
+                        >
+                          {agg.score.toUpperCase()}
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">UNSCORED</Badge>
+                      )}
+                      {agg.rating && (
+                        <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+                          {agg.rating}/5
+                        </span>
+                      )}
+                      {agg.notes ? (
+                        <span className="text-xs text-surface-500 dark:text-surface-400 max-w-[200px] truncate">
+                          {agg.notes}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-500 font-medium">Notes required</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Validation warnings */}
+              {(areasWithoutNotes.length > 0 || areasUnscored.length > 0) && (
+                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 space-y-1">
+                  {areasWithoutNotes.length > 0 && (
+                    <p className="text-sm text-red-700 dark:text-red-400">
+                      {areasWithoutNotes.length} area{areasWithoutNotes.length > 1 ? 's' : ''} missing notes: {areasWithoutNotes.map(([cat]) => cat).join(', ')}
+                    </p>
                   )}
-                  {agg.rating && (
-                    <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
-                      {agg.rating}/5
-                    </span>
-                  )}
-                  {agg.notes && (
-                    <span className="text-xs text-surface-500 dark:text-surface-400 max-w-[200px] truncate">
-                      {agg.notes}
-                    </span>
+                  {areasUnscored.length > 0 && (
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                      {areasUnscored.length} area{areasUnscored.length > 1 ? 's' : ''} not scored — will default to "Pass".
+                    </p>
                   )}
                 </div>
+              )}
+
+              {/* Summary textarea */}
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                  Summary <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className={`w-full rounded-lg border px-3 py-2 text-sm dark:bg-surface-800 dark:text-surface-100 ${
+                    missingSummary
+                      ? 'border-red-300 dark:border-red-700'
+                      : 'border-surface-300 dark:border-surface-600'
+                  } bg-white`}
+                  rows={3}
+                  value={completionSummary}
+                  onChange={(e) => setCompletionSummary(e.target.value)}
+                  placeholder="Overall inspection summary (required)..."
+                />
+                {missingSummary && (
+                  <p className="mt-1 text-xs text-red-500">A summary is required to complete the inspection.</p>
+                )}
               </div>
-            );
-          })}
 
-          {/* Warning if any areas are unscored */}
-          {Object.entries(groupedItems).some(([, items]) => !getAreaAggregate(items).score) && (
-            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
-              <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                Some areas have not been scored. They will default to "Pass" if submitted.
-              </p>
+              {/* Footer buttons */}
+              <div className="flex justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
+                <Button variant="secondary" size="sm" onClick={() => setShowReviewModal(false)}>
+                  Back to Scoring
+                </Button>
+                <Button size="sm" onClick={handleComplete} disabled={!canSubmit}>
+                  <CheckCircle className="mr-1.5 h-4 w-4" />
+                  Submit Inspection
+                </Button>
+              </div>
             </div>
-          )}
-
-          {/* Summary textarea */}
-          <div>
-            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
-              Summary
-            </label>
-            <textarea
-              className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-              rows={3}
-              value={completionSummary}
-              onChange={(e) => setCompletionSummary(e.target.value)}
-              placeholder="Overall inspection summary..."
-            />
-          </div>
-
-          {/* Footer buttons */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
-            <Button variant="secondary" size="sm" onClick={() => setShowReviewModal(false)}>
-              Back to Scoring
-            </Button>
-            <Button size="sm" onClick={handleComplete}>
-              <CheckCircle className="mr-1.5 h-4 w-4" />
-              Submit Inspection
-            </Button>
-          </div>
-        </div>
+          );
+        })()}
       </Modal>
     </div>
   );

@@ -595,6 +595,26 @@ export async function completeInspection(id: string, input: InspectionCompleteIn
     throw new BadRequestError('Inspection can only be completed from scheduled or in_progress status');
   }
 
+  // Require a summary
+  if (!input.summary?.trim()) {
+    throw new BadRequestError('A summary is required to complete the inspection');
+  }
+
+  // Require notes on every item
+  const itemsById = new Map(input.items.map((i) => [i.id, i]));
+  const categoriesMissingNotes = new Set<string>();
+  for (const existingItem of existing.items) {
+    const scored = itemsById.get(existingItem.id);
+    if (!scored?.notes?.trim()) {
+      categoriesMissingNotes.add(existingItem.category);
+    }
+  }
+  if (categoriesMissingNotes.size > 0) {
+    throw new BadRequestError(
+      `Notes are required for all areas. Missing: ${[...categoriesMissingNotes].join(', ')}`
+    );
+  }
+
   // Get template weights if available
   const templateWeights = new Map<string, number>();
   if (existing.templateId) {

@@ -87,7 +87,7 @@ const itemScoreSchema = z.object({
 
 export const completeInspectionSchema = z.object({
   body: z.object({
-    summary: z.string().max(5000).optional().nullable(),
+    summary: z.string().min(1, 'Summary is required').max(5000),
     items: z.array(itemScoreSchema),
     autoCreateCorrectiveActions: z.boolean().optional(),
     defaultActionDueDate: z.string().optional(),
