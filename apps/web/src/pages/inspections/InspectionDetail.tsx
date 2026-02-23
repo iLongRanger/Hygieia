@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
 import {
   getInspection,
   startInspection,
@@ -83,7 +84,7 @@ const InspectionDetail = () => {
   const navigate = useNavigate();
   const [inspection, setInspection] = useState<InspectionDetailType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [completing, setCompleting] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [itemScores, setItemScores] = useState<Record<string, { score: InspectionScore; rating: number | null; notes: string }>>({});
   const [completionSummary, setCompletionSummary] = useState('');
   const [actionSaving, setActionSaving] = useState(false);
@@ -141,9 +142,9 @@ const InspectionDetail = () => {
     fetchInspection();
   }, [fetchInspection]);
 
-  // Fetch area guidance when entering completion mode
+  // Fetch area guidance when inspection is in progress
   useEffect(() => {
-    if (!completing || !inspection) return;
+    if (inspection?.status !== 'in_progress') return;
     const categories = [...new Set(inspection.items.map((item) => item.category))];
     if (categories.length === 0) return;
     getAreaGuidance(categories)
@@ -151,7 +152,7 @@ const InspectionDetail = () => {
       .catch(() => {
         // Guidance is non-critical — silently fail
       });
-  }, [completing, inspection]);
+  }, [inspection]);
 
   const handleStart = async () => {
     if (!id) return;
@@ -178,7 +179,7 @@ const InspectionDetail = () => {
         items,
       });
       setInspection(data);
-      setCompleting(false);
+      setShowReviewModal(false);
       toast.success(`Inspection completed — Score: ${data.overallScore ? parseFloat(data.overallScore).toFixed(0) : 0}%`);
     } catch {
       toast.error('Failed to complete inspection');
@@ -383,11 +384,11 @@ const InspectionDetail = () => {
               Start
             </Button>
           )}
-          {isEditable && !completing && (
+          {inspection.status === 'in_progress' && (
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setCompleting(true)}
+              onClick={() => setShowReviewModal(true)}
             >
               <CheckCircle className="mr-1.5 h-4 w-4" />
               Complete
@@ -529,13 +530,10 @@ const InspectionDetail = () => {
         </Card>
       )}
 
-      {/* Completion form */}
-      {completing && (
+      {/* Scoring form (inline when in progress) */}
+      {inspection.status === 'in_progress' && (
         <Card>
-          <div className="p-4 space-y-4 border-2 border-primary-200 dark:border-primary-800 rounded-xl">
-            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">Complete Inspection</h3>
-            <p className="text-sm text-surface-500">Score each area below using Hygieia Standard, then click Submit.</p>
-
+          <div className="p-4 space-y-4">
             {Object.entries(groupedItems).map(([category, items]) => (
               <div key={category} className="space-y-2">
                 <h4 className="text-sm font-semibold text-surface-700 dark:text-surface-300 border-b border-surface-200 dark:border-surface-700 pb-1">
@@ -611,35 +609,12 @@ const InspectionDetail = () => {
                 })()}
               </div>
             ))}
-
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
-                Summary
-              </label>
-              <textarea
-                className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-                rows={3}
-                value={completionSummary}
-                onChange={(e) => setCompletionSummary(e.target.value)}
-                placeholder="Overall inspection summary..."
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleComplete}>
-                <CheckCircle className="mr-1.5 h-4 w-4" />
-                Submit
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setCompleting(false)}>
-                Cancel
-              </Button>
-            </div>
           </div>
         </Card>
       )}
 
-      {/* Area checklist (read-only when completed) */}
-      {!completing && inspection.items.length > 0 && (
+      {/* Area checklist (read-only when not in progress) */}
+      {inspection.status !== 'in_progress' && inspection.items.length > 0 && (
         <Card>
           <div className="p-4">
             <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
@@ -909,6 +884,76 @@ const InspectionDetail = () => {
           </div>
         </Card>
       )}
+
+      {/* Review modal */}
+      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Review Inspection" size="lg">
+        <div className="space-y-4">
+          {Object.entries(groupedItems).map(([category, items]) => {
+            const agg = getAreaAggregate(items);
+            return (
+              <div key={category} className="flex items-center justify-between py-2 border-b border-surface-200 dark:border-surface-700 last:border-0">
+                <span className="text-sm font-medium text-surface-700 dark:text-surface-300">{category}</span>
+                <div className="flex items-center gap-3">
+                  {agg.score ? (
+                    <Badge
+                      variant={agg.score === 'pass' ? 'success' : agg.score === 'fail' ? 'error' : 'default'}
+                      size="sm"
+                    >
+                      {agg.score.toUpperCase()}
+                    </Badge>
+                  ) : (
+                    <Badge variant="default" size="sm">UNSCORED</Badge>
+                  )}
+                  {agg.rating && (
+                    <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+                      {agg.rating}/5
+                    </span>
+                  )}
+                  {agg.notes && (
+                    <span className="text-xs text-surface-500 dark:text-surface-400 max-w-[200px] truncate">
+                      {agg.notes}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Warning if any areas are unscored */}
+          {Object.entries(groupedItems).some(([, items]) => !getAreaAggregate(items).score) && (
+            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3">
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                Some areas have not been scored. They will default to "Pass" if submitted.
+              </p>
+            </div>
+          )}
+
+          {/* Summary textarea */}
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+              Summary
+            </label>
+            <textarea
+              className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+              rows={3}
+              value={completionSummary}
+              onChange={(e) => setCompletionSummary(e.target.value)}
+              placeholder="Overall inspection summary..."
+            />
+          </div>
+
+          {/* Footer buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
+            <Button variant="secondary" size="sm" onClick={() => setShowReviewModal(false)}>
+              Back to Scoring
+            </Button>
+            <Button size="sm" onClick={handleComplete}>
+              <CheckCircle className="mr-1.5 h-4 w-4" />
+              Submit Inspection
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
