@@ -260,14 +260,41 @@ const InspectionDetail = () => {
     }
   };
 
-  const updateItemScore = (itemId: string, field: string, value: InspectionScore | number | string | null) => {
-    setItemScores((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        [field]: value,
-      },
-    }));
+  const updateAreaScores = (
+    items: InspectionItem[],
+    field: 'score' | 'rating' | 'notes',
+    value: InspectionScore | number | string | null
+  ) => {
+    setItemScores((prev) => {
+      const next = { ...prev };
+      for (const item of items) {
+        next[item.id] = {
+          ...next[item.id],
+          [field]: value,
+        };
+      }
+      return next;
+    });
+  };
+
+  const getAreaAggregate = (items: InspectionItem[]) => {
+    const scores = items.map((item) => itemScores[item.id]?.score).filter(Boolean) as InspectionScore[];
+    const ratings = items
+      .map((item) => itemScores[item.id]?.rating)
+      .filter((rating): rating is number => rating !== null && rating !== undefined);
+    const notes = items
+      .map((item) => itemScores[item.id]?.notes)
+      .find((note) => Boolean(note)) || '';
+
+    let score: InspectionScore | null = null;
+    if (scores.includes('fail')) score = 'fail';
+    else if (scores.includes('pass')) score = 'pass';
+    else if (scores.includes('na')) score = 'na';
+
+    const rating =
+      ratings.length > 0 ? Math.round((ratings.reduce((sum, value) => sum + value, 0) / ratings.length) * 10) / 10 : null;
+
+    return { score, rating, notes };
   };
 
   // Group items by category
@@ -491,56 +518,59 @@ const InspectionDetail = () => {
         <Card>
           <div className="p-4 space-y-4 border-2 border-primary-200 dark:border-primary-800 rounded-xl">
             <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">Complete Inspection</h3>
-            <p className="text-sm text-surface-500">Score each item below then click Submit.</p>
+            <p className="text-sm text-surface-500">Score each area below using Hygieia Standard, then click Submit.</p>
 
             {Object.entries(groupedItems).map(([category, items]) => (
               <div key={category} className="space-y-2">
                 <h4 className="text-sm font-semibold text-surface-700 dark:text-surface-300 border-b border-surface-200 dark:border-surface-700 pb-1">
                   {category}
                 </h4>
-                {items.map((item) => (
-                  <div key={item.id} className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
-                    <span className="flex-1 min-w-[200px] text-sm text-surface-700 dark:text-surface-300">
-                      {item.itemText}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {(['pass', 'fail', 'na'] as InspectionScore[]).map((score) => (
-                        <button
-                          key={score}
-                          onClick={() => updateItemScore(item.id, 'score', score)}
-                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                            itemScores[item.id]?.score === score
-                              ? score === 'pass'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : score === 'fail'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-surface-200 text-surface-600 dark:bg-surface-700 dark:text-surface-400'
-                              : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-500 dark:hover:bg-surface-700'
-                          }`}
-                        >
-                          {score.toUpperCase()}
-                        </button>
-                      ))}
+                {(() => {
+                  const areaState = getAreaAggregate(items);
+                  return (
+                    <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                      <span className="flex-1 min-w-[240px] text-sm text-surface-700 dark:text-surface-300">
+                        Hygieia Standard: clean, maintained, stocked, and safe.
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {(['pass', 'fail', 'na'] as InspectionScore[]).map((score) => (
+                          <button
+                            key={score}
+                            onClick={() => updateAreaScores(items, 'score', score)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                              areaState.score === score
+                                ? score === 'pass'
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : score === 'fail'
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    : 'bg-surface-200 text-surface-600 dark:bg-surface-700 dark:text-surface-400'
+                                : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-500 dark:hover:bg-surface-700'
+                            }`}
+                          >
+                            {score.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((r) => (
+                          <button
+                            key={r}
+                            onClick={() =>
+                              updateAreaScores(items, 'rating', areaState.rating === r ? null : r)
+                            }
+                            className={`w-7 h-7 text-xs font-medium rounded-full transition-colors ${
+                              areaState.rating === r
+                                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                                : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
+                            }`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((r) => (
-                        <button
-                          key={r}
-                          onClick={() =>
-                            updateItemScore(item.id, 'rating', itemScores[item.id]?.rating === r ? null : r)
-                          }
-                          className={`w-7 h-7 text-xs font-medium rounded-full transition-colors ${
-                            itemScores[item.id]?.rating === r
-                              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                              : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
-                          }`}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })()}
               </div>
             ))}
 
@@ -570,12 +600,12 @@ const InspectionDetail = () => {
         </Card>
       )}
 
-      {/* Checklist items (read-only when completed) */}
+      {/* Area checklist (read-only when completed) */}
       {!completing && inspection.items.length > 0 && (
         <Card>
           <div className="p-4">
             <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
-              Checklist Items ({inspection.items.length})
+              Hygieia Area Checklist ({Object.keys(groupedItems).length} areas)
             </h3>
             {Object.entries(groupedItems).map(([category, items]) => (
               <div key={category} className="mb-4">
@@ -583,39 +613,39 @@ const InspectionDetail = () => {
                   {category}
                 </h4>
                 <div className="space-y-1">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {item.score === 'pass' ? (
-                          <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-                        ) : item.score === 'fail' ? (
-                          <XCircle className="h-4 w-4 shrink-0 text-red-500" />
-                        ) : item.score === 'na' ? (
-                          <Minus className="h-4 w-4 shrink-0 text-surface-400" />
-                        ) : (
-                          <Clock className="h-4 w-4 shrink-0 text-surface-400" />
-                        )}
-                        <span className="text-sm text-surface-700 dark:text-surface-300 truncate">
-                          {item.itemText}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.rating && (
-                          <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
-                            {item.rating}/5
+                  {(() => {
+                    const areaState = getAreaAggregate(items);
+                    return (
+                      <div className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {areaState.score === 'pass' ? (
+                            <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+                          ) : areaState.score === 'fail' ? (
+                            <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                          ) : areaState.score === 'na' ? (
+                            <Minus className="h-4 w-4 shrink-0 text-surface-400" />
+                          ) : (
+                            <Clock className="h-4 w-4 shrink-0 text-surface-400" />
+                          )}
+                          <span className="text-sm text-surface-700 dark:text-surface-300 truncate">
+                            Hygieia Standard area check
                           </span>
-                        )}
-                        {item.notes && (
-                          <span className="text-xs text-surface-400 truncate max-w-[120px]" title={item.notes}>
-                            {item.notes}
-                          </span>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {areaState.rating && (
+                            <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+                              {areaState.rating}/5
+                            </span>
+                          )}
+                          {areaState.notes && (
+                            <span className="text-xs text-surface-400 truncate max-w-[120px]" title={areaState.notes}>
+                              {areaState.notes}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
                 </div>
               </div>
             ))}

@@ -206,7 +206,7 @@ const InspectionForm = () => {
     }));
     setSelectedTemplateDetail(null);
 
-    // Auto-generate template from contract's proposal tasks
+    // Auto-generate area-first template from contract/facility data
     if (contractId) {
       setLoadingTemplate(true);
       try {
@@ -216,7 +216,7 @@ const InspectionForm = () => {
           setFormData((prev) => ({ ...prev, templateId: template.id }));
           await fetchTemplateDetail(template.id);
         } else {
-          toast.error('No tasks found on this contract\'s proposal. The inspection checklist could not be generated.');
+          toast.error('No service areas found for this contract/facility. The Hygieia checklist could not be generated.');
         }
       } catch (err) {
         console.error('Failed to load template for contract:', err);
@@ -289,15 +289,11 @@ const InspectionForm = () => {
     }
   };
 
-  // Group template items by category for display
-  const groupedTemplateItems = selectedTemplateDetail?.items.reduce<Record<string, typeof selectedTemplateDetail.items>>(
-    (acc, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
-      return acc;
-    },
-    {}
-  );
+  const templateAreas = selectedTemplateDetail
+    ? Array.from(new Set(selectedTemplateDetail.items.map((item) => item.category))).sort((a, b) =>
+        a.localeCompare(b)
+      )
+    : [];
 
   if (loading) {
     return (
@@ -429,46 +425,35 @@ const InspectionForm = () => {
             </div>
           </Card>
 
-          {/* Inspection Task List — auto-generated from contract */}
+          {/* Inspection Areas — area-first Hygieia strategy */}
           {loadingTemplate && (
             <Card>
               <div className="flex items-center gap-2 text-sm text-surface-400 dark:text-surface-500">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
-                Generating inspection checklist from contract tasks...
+                Generating Hygieia area checklist...
               </div>
             </Card>
           )}
-          {!loadingTemplate && selectedTemplateDetail && groupedTemplateItems && Object.keys(groupedTemplateItems).length > 0 && (
+          {!loadingTemplate && selectedTemplateDetail && templateAreas.length > 0 && (
             <Card>
               <h3 className="mb-4 text-sm font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
                 <ClipboardCheck className="h-4 w-4 text-primary-500" />
-                Inspection Task List
+                Hygieia Standard Inspection Areas
                 <span className="ml-auto text-xs font-normal text-surface-500 dark:text-surface-400">
-                  {selectedTemplateDetail.items.length} items
+                  {templateAreas.length} areas
                 </span>
               </h3>
               <p className="mb-4 text-xs text-surface-500 dark:text-surface-400">
-                These tasks will be used as the inspection checklist. Generated from the contract's proposal.
+                Area-first inspection: each area is scored against Hygieia standards for cleanliness, maintenance, stocking, and safety.
               </p>
-              <div className="space-y-4">
-                {Object.entries(groupedTemplateItems).map(([category, items]) => (
-                  <div key={category}>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400 mb-2">
-                      {category}
-                    </h4>
-                    <div className="space-y-1">
-                      {items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-2 rounded-md px-3 py-2 bg-surface-50 dark:bg-surface-800/50"
-                        >
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-surface-300 dark:text-surface-600" />
-                          <span className="text-sm text-surface-700 dark:text-surface-300">
-                            {item.itemText}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {templateAreas.map((area) => (
+                  <div
+                    key={area}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 bg-surface-50 dark:bg-surface-800/50"
+                  >
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-surface-300 dark:text-surface-600" />
+                    <span className="text-sm text-surface-700 dark:text-surface-300">{area}</span>
                   </div>
                 ))}
               </div>
@@ -538,7 +523,7 @@ const InspectionForm = () => {
                   <div>
                     <span className="text-surface-500 dark:text-surface-400">Checklist</span>
                     <p className="font-medium text-surface-900 dark:text-surface-100">
-                      {selectedTemplateDetail.items.length} tasks
+                      {templateAreas.length} areas (Hygieia Standard)
                     </p>
                   </div>
                 )}

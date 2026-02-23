@@ -33,6 +33,10 @@ export interface InspectionTemplateItemInput {
   weight?: number;
 }
 
+const HYGIEIA_STANDARD_LABEL = 'Hygieia Standard Area Care';
+const HYGIEIA_STANDARD_PROMISE =
+  'Area is clean, maintained, stocked, and safe per Hygieia Standard.';
+
 // ==================== Select objects ====================
 
 const templateSelect = {
@@ -205,12 +209,10 @@ export async function restoreInspectionTemplate(id: string) {
  * Called when a contract is activated
  */
 export async function autoCreateInspectionTemplate(contractId: string, createdByUserId: string) {
-  // Guard: skip if template already exists for this contract
   const existing = await prisma.inspectionTemplate.findFirst({
     where: { contractId, archivedAt: null },
-    select: { id: true },
+    select: { id: true, description: true },
   });
-  if (existing) return null;
 
   // Fetch contract with proposal services
   const contract = await prisma.contract.findUnique({
@@ -219,13 +221,24 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
       id: true,
       title: true,
       account: { select: { name: true } },
-      facility: { select: { name: true } },
+      facility: {
+        select: {
+          name: true,
+          areas: {
+            where: { archivedAt: null },
+            select: {
+              name: true,
+              areaType: { select: { name: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      },
       proposal: {
         select: {
           proposalServices: {
             select: {
               serviceName: true,
-              includedTasks: true,
             },
             orderBy: { sortOrder: 'asc' },
           },
@@ -236,43 +249,43 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
 
   if (!contract) return null;
 
-  const proposalServices = contract.proposal?.proposalServices;
-  if (!proposalServices) return null;
+  const areaNamesFromFacility = (contract.facility?.areas || [])
+    .map((area) => area.name || area.areaType?.name || 'Unspecified Area')
+    .filter((name): name is string => Boolean(name));
+  const areaNamesFromProposal = (contract.proposal?.proposalServices || [])
+    .map((service) => service.serviceName)
+    .filter((name): name is string => Boolean(name));
+  const uniqueAreaNames = Array.from(new Set([...areaNamesFromFacility, ...areaNamesFromProposal]));
+  if (uniqueAreaNames.length === 0) return null;
 
-  const services = proposalServices;
-  if (services.length === 0) return null;
-
-  // Build template items from proposal services + their tasks
-  const items: InspectionTemplateItemInput[] = [];
-  let sortOrder = 0;
-
-  for (const service of services) {
-    const tasks = Array.isArray(service.includedTasks) ? (service.includedTasks as string[]) : [];
-    if (tasks.length > 0) {
-      for (const task of tasks) {
-        items.push({
-          category: service.serviceName,
-          itemText: task,
-          sortOrder: sortOrder++,
-          weight: 1,
-        });
-      }
-    } else {
-      // No specific tasks - add a generic check item for this service
-      items.push({
-        category: service.serviceName,
-        itemText: `${service.serviceName} - Quality Check`,
-        sortOrder: sortOrder++,
-        weight: 1,
-      });
-    }
-  }
+  // Area-first Hygieia strategy: one standardized inspection item per area.
+  const items: InspectionTemplateItemInput[] = uniqueAreaNames.map((areaName, index) => ({
+    category: areaName,
+    itemText: HYGIEIA_STANDARD_PROMISE,
+    sortOrder: index,
+    weight: 2,
+  }));
 
   const templateName = `${contract.account.name} - ${contract.facility?.name || contract.title} Inspection`;
+  const templateDescription =
+    `${HYGIEIA_STANDARD_LABEL}. Area-first workflow focused on cleanliness, maintenance, stocking, and safety.`;
+
+  // Preserve manually curated templates; refresh only auto-generated templates.
+  if (existing && existing.description && !existing.description.includes(HYGIEIA_STANDARD_LABEL)) {
+    return null;
+  }
+
+  if (existing) {
+    return updateInspectionTemplate(existing.id, {
+      name: templateName,
+      description: templateDescription,
+      items,
+    });
+  }
 
   return createInspectionTemplate({
     name: templateName,
-    description: `Auto-generated from contract activation`,
+    description: templateDescription,
     contractId,
     createdByUserId,
     items,
@@ -286,9 +299,24 @@ export async function autoCreateInspectionTemplate(contractId: string, createdBy
 export async function getOrCreateTemplateForContract(contractId: string, createdByUserId: string) {
   const existing = await prisma.inspectionTemplate.findFirst({
     where: { contractId, archivedAt: null },
-    select: { id: true, name: true },
+    select: { id: true, name: true, description: true },
   });
-  if (existing) return existing;
+  if (existing) {
+    const description = existing.description || '';
+    const isAutoGenerated =
+      description.includes(HYGIEIA_STANDARD_LABEL)
+      || description.includes('Auto-generated from contract activation');
+
+    if (!isAutoGenerated) {
+      return { id: existing.id, name: existing.name };
+    }
+
+    const refreshed = await autoCreateInspectionTemplate(contractId, createdByUserId);
+    if (refreshed) {
+      return { id: refreshed.id, name: refreshed.name };
+    }
+    return { id: existing.id, name: existing.name };
+  }
 
   const created = await autoCreateInspectionTemplate(contractId, createdByUserId);
   if (!created) return null;

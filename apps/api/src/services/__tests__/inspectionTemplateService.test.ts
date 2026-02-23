@@ -110,32 +110,45 @@ describe('inspectionTemplateService', () => {
     expect(prisma.inspectionTemplate.update).toHaveBeenCalled();
   });
 
-  it('autoCreateInspectionTemplate returns null when active template already exists', async () => {
-    (prisma.inspectionTemplate.findFirst as jest.Mock).mockResolvedValue({ id: 'tpl-existing' });
+  it('autoCreateInspectionTemplate preserves manual templates when one exists', async () => {
+    (prisma.inspectionTemplate.findFirst as jest.Mock).mockResolvedValue({
+      id: 'tpl-existing',
+      description: 'Custom manual checklist',
+    });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      title: 'Main Contract',
+      account: { name: 'Acme Corp' },
+      facility: {
+        name: 'HQ Tower',
+        areas: [{ name: 'Lobby', areaType: { name: 'Lobby' } }],
+      },
+      proposal: { proposalServices: [] },
+    });
 
     const result = await autoCreateInspectionTemplate('contract-1', 'user-1');
 
     expect(result).toBeNull();
-    expect(prisma.contract.findUnique).not.toHaveBeenCalled();
+    expect(prisma.inspectionTemplate.update).not.toHaveBeenCalled();
   });
 
-  it('autoCreateInspectionTemplate builds items from proposal services', async () => {
+  it('autoCreateInspectionTemplate builds area-first Hygieia items', async () => {
     (prisma.inspectionTemplate.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       title: 'Main Contract',
       account: { name: 'Acme Corp' },
-      facility: { name: 'HQ Tower' },
+      facility: {
+        name: 'HQ Tower',
+        areas: [
+          { name: 'Lobby', areaType: { name: 'Lobby' } },
+          { name: 'Restroom', areaType: { name: 'Restroom' } },
+        ],
+      },
       proposal: {
         proposalServices: [
-          {
-            serviceName: 'General Cleaning',
-            includedTasks: ['Dust shelves', 'Vacuum carpet'],
-          },
-          {
-            serviceName: 'Restroom',
-            includedTasks: [],
-          },
+          { serviceName: 'Lobby' },
+          { serviceName: 'Breakroom' },
         ],
       },
     });
@@ -146,10 +159,10 @@ describe('inspectionTemplateService', () => {
     const createArg = (prisma.inspectionTemplate.create as jest.Mock).mock.calls[0][0];
     expect(createArg.data.name).toBe('Acme Corp - HQ Tower Inspection');
     expect(createArg.data.items.create).toHaveLength(3);
-    expect(createArg.data.items.create[2]).toEqual(
+    expect(createArg.data.items.create[0]).toEqual(
       expect.objectContaining({
-        category: 'Restroom',
-        itemText: 'Restroom - Quality Check',
+        itemText: 'Area is clean, maintained, stocked, and safe per Hygieia Standard.',
+        weight: 2,
       })
     );
   });
