@@ -360,6 +360,7 @@ model AreaType {
   description             String?  @db.Text
   defaultSquareFeet       Decimal? @map("default_square_feet") @db.Decimal(10, 2)
   baseCleaningTimeMinutes Int?     @map("base_cleaning_time_minutes")
+  guidanceItems           Json?    @map("guidance_items") @db.JsonB
   createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
