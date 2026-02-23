@@ -97,6 +97,115 @@ async function main() {
 
   console.log(`Created ${areaTypes.count} commercial area types`)
 
+  // Seed inspector guidance checklists per area type
+  const areaTypeGuidance: Record<string, string[]> = {
+    Washroom: [
+      'Toilets/urinals sanitized',
+      'Sinks/faucets clean',
+      'Mirrors streak-free',
+      'Dispensers stocked',
+      'Floors mopped no standing water',
+      'Trash emptied',
+      'Partitions clean',
+      'Air freshener working',
+    ],
+    Lobby: [
+      'Floors clean',
+      'Entry mats placed',
+      'Glass streak-free',
+      'Furniture dusted',
+      'Reception clean',
+      'Trash emptied',
+      'Lights working',
+    ],
+    'Break Room': [
+      'Counters sanitized',
+      'Sink clean',
+      'Microwave clean',
+      'Fridge exterior clean',
+      'Floors mopped',
+      'Trash/recycling emptied',
+    ],
+    Office: [
+      'Desks dusted',
+      'Trash emptied',
+      'Floors vacuumed',
+      'Glass clean',
+      'Handles sanitized',
+    ],
+    'Conference Room': [
+      'Table wiped',
+      'Chairs arranged',
+      'Whiteboard clean',
+      'Floors vacuumed',
+      'Trash emptied',
+      'AV equipment dusted',
+    ],
+    Kitchen: [
+      'Counters sanitized',
+      'Sink/drain clear',
+      'Appliances wiped',
+      'Floors mopped',
+      'Trash emptied',
+      'Supplies stocked',
+    ],
+    Hallway: [
+      'Floors clean',
+      'Walls free of marks',
+      'Light fixtures working',
+      'Fire extinguishers accessible',
+    ],
+    Corridor: [
+      'Floors clean',
+      'Walls free of marks',
+      'Light fixtures working',
+      'Fire extinguishers accessible',
+    ],
+    Stairwell: [
+      'Steps swept',
+      'Handrails wiped',
+      'No debris on landings',
+      'Lights working',
+    ],
+    'Elevator Lobby': [
+      'Floor clean',
+      'Call buttons wiped',
+      'Walls free of marks',
+      'Lights working',
+    ],
+    Gym: [
+      'Equipment wiped',
+      'Floors mopped',
+      'Mirrors clean',
+      'Trash emptied',
+      'Supplies stocked',
+    ],
+  }
+
+  // Generic guidance for all remaining area types
+  const genericGuidance = [
+    'Floors clean',
+    'Trash emptied',
+    'Surfaces dusted',
+    'No spills',
+    'Lights working',
+  ]
+
+  // Get all area type names to apply generic guidance to those not explicitly listed
+  const allAreaTypeRows = await prisma.areaType.findMany({
+    select: { name: true },
+  })
+
+  for (const row of allAreaTypeRows) {
+    const guidance = areaTypeGuidance[row.name] || genericGuidance
+    await prisma.areaType.update({
+      where: { name: row.name },
+      data: { guidanceItems: guidance },
+    })
+  }
+
+  console.log(`Updated guidance items for ${allAreaTypeRows.length} area types`)
+
   // Seed commercial fixture and furniture types
   const fixtureTypes = await prisma.fixtureType.createMany({
     data: [
