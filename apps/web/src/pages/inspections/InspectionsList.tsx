@@ -130,7 +130,7 @@ const InspectionsList = () => {
       header: 'Date',
       cell: (row: Inspection) => (
         <span className="text-sm text-surface-600 dark:text-surface-400">
-          {new Date(row.scheduledDate + 'T00:00:00').toLocaleDateString()}
+          {new Date(row.scheduledDate.split('T')[0] + 'T00:00:00').toLocaleDateString()}
         </span>
       ),
     },
