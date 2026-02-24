@@ -117,6 +117,7 @@ export async function calculatePerHourPricing(
 
   const buildingType = facility.buildingType || 'other';
   const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
+  const selectedMonthlyVisits = getMonthlyVisits(serviceFrequency);
 
   // Group tasks by area
   const tasksByArea = new Map<string | null, typeof facilityTasks>();
@@ -183,7 +184,7 @@ export async function calculatePerHourPricing(
   let totalAdminOverheadCost = 0;
   let totalEquipmentCost = 0;
   let totalSupplyCost = 0;
-  let highestMonthlyVisits = 0;
+  let highestMonthlyVisits = selectedMonthlyVisits;
 
   for (const area of areaContexts) {
     const totalAreaSqFt = area.squareFeet * area.quantity;
@@ -198,7 +199,7 @@ export async function calculatePerHourPricing(
 
     // Calculate monthly minutes per task using each task's own cleaning frequency
     let areaMonthlyMinutes = 0;
-    let areaHighestMonthlyVisits = 0;
+    let areaHighestMonthlyVisits = selectedMonthlyVisits;
 
     for (const task of area.tasks) {
       let taskMinutesPerOccurrence = task.baseMinutes;
@@ -211,7 +212,7 @@ export async function calculatePerHourPricing(
         taskMinutesPerOccurrence += minutesPerFixture * (fixture.count * area.quantity);
       }
 
-      const taskMonthlyVisits = getMonthlyVisits(task.cleaningFrequency);
+      const taskMonthlyVisits = getTaskMonthlyVisits(task.cleaningFrequency, serviceFrequency);
       areaMonthlyMinutes += taskMinutesPerOccurrence * taskMonthlyVisits;
 
       if (taskMonthlyVisits > areaHighestMonthlyVisits) {
@@ -315,9 +316,9 @@ export async function calculatePerHourPricing(
   const subcontractorPayout = roundToTwo(monthlyTotal * subcontractorPercentage);
   const companyRevenue = roundToTwo(monthlyTotal - subcontractorPayout);
 
-  // Use the highest monthly visits for the facility-level value
-  // (serviceFrequency is still passed through for backward compat / display)
-  const monthlyVisits = highestMonthlyVisits || getMonthlyVisits(serviceFrequency);
+  // Facility-level visit cadence is driven by selected service frequency,
+  // with less-frequent tasks layered in (monthly/quarterly/annual).
+  const monthlyVisits = highestMonthlyVisits;
 
   return {
     facilityId: facility.id,
@@ -411,4 +412,22 @@ function getMonthlyVisits(frequency: string): number {
     quarterly: 0.33,
   };
   return visitsMap[frequency] || 4.33;
+}
+
+function getTaskMonthlyVisits(taskFrequency: string, selectedServiceFrequency: string): number {
+  const normalized = taskFrequency.toLowerCase();
+
+  // Task frequencies at or above baseline service cadence should follow
+  // the proposal-selected cadence so 2x/week does not price as daily.
+  if (
+    normalized === 'daily' ||
+    normalized === 'weekly' ||
+    normalized === 'biweekly' ||
+    normalized === 'bi_weekly'
+  ) {
+    return getMonthlyVisits(selectedServiceFrequency);
+  }
+
+  // Lower-frequency work stays lower-frequency.
+  return getMonthlyVisits(normalized);
 }

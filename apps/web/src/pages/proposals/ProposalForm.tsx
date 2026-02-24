@@ -841,7 +841,7 @@ const ProposalForm = () => {
           title: prev.title || `Cleaning Services - ${template.facility.name}`,
         };
       });
-      setScheduleTouchedByUser(false);
+      setScheduleTouchedByUser(true);
 
       // Store the full pricing breakdown for internal view
       setPricingBreakdown(template.pricing);

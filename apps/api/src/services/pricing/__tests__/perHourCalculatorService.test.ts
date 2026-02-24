@@ -140,7 +140,7 @@ describe('calculatePerHourPricing', () => {
     expect(result.monthlyTotal).toBe(resultSingle.monthlyTotal);
   });
 
-  it('uses per-task cleaning frequency instead of global service frequency', async () => {
+  it('uses selected service frequency as baseline instead of defaulting daily tasks to 30 visits', async () => {
     (pricingSettingsService.getDefaultPricingSettings as jest.Mock).mockResolvedValue(basePricingSettings);
 
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
@@ -206,24 +206,15 @@ describe('calculatePerHourPricing', () => {
       serviceFrequency: '5x_week',
     });
 
-    // Daily task: 60 min * 30 visits = 1800 min/month
+    // Daily/weekly/biweekly tasks follow selected service cadence (5x/week = 21.67 visits/month).
+    // Daily task: 60 min * 21.67 visits = 1300.2 min/month
     // Monthly task: 120 min * 1 visit = 120 min/month
-    // Total: 1920 min = 32 hours
-    // Labor: 32 * 18 = 576
-    // Burden: 576 * 0.25 = 144
-    // Total labor: 720
-    // Insurance: 720 * 0.08 = 57.6
-    // Admin: 720 * 0.12 = 86.4
-    // Equipment: 720 * 0.05 = 36
-    // Supply: (720+57.6+86.4+36) * 0.04 = 36
-    // Area cost: 936
-    // Travel: 15 * 30 = 450
-    // Total: 1386
-    // / 0.75 = 1848
-    expect(result.areas[0].laborHours).toBeCloseTo(32, 0);
-    expect(result.monthlyTotal).toBeGreaterThan(1500);
-    // Highest frequency is daily (30 visits)
-    expect(result.areas[0].monthlyVisits).toBe(30);
+    // Total: 1420.2 min = 23.67 hours
+    expect(result.areas[0].laborHours).toBeCloseTo(23.67, 1);
+    expect(result.monthlyTotal).toBeGreaterThan(1000);
+    // Baseline cadence follows selected frequency, not 30 daily visits.
+    expect(result.areas[0].monthlyVisits).toBeCloseTo(21.67, 2);
+    expect(result.monthlyVisits).toBeCloseTo(21.67, 2);
   });
 
   it('uses subcontractorPercentageOverride when provided', async () => {
