@@ -49,8 +49,11 @@ export async function updateJob(id: string, input: UpdateJobInput): Promise<Job>
   return response.data.data;
 }
 
-export async function startJob(id: string): Promise<Job> {
-  const response = await api.post(`/jobs/${id}/start`);
+export async function startJob(
+  id: string,
+  options: { managerOverride?: boolean; overrideReason?: string | null } = {}
+): Promise<Job> {
+  const response = await api.post(`/jobs/${id}/start`, options);
   return response.data.data;
 }
 

@@ -50,6 +50,52 @@ const BILLING_CYCLES = [
   { value: 'annual', label: 'Annual' },
 ];
 
+const mapProposalFrequencyToContractFrequency = (value?: string | null): ServiceFrequency => {
+  switch ((value || '').toLowerCase()) {
+    case '1x_week':
+    case 'weekly':
+      return 'weekly';
+    case '2x_week':
+    case '3x_week':
+    case '4x_week':
+    case '5x_week':
+      return 'custom';
+    case '7x_week':
+      return 'daily';
+    case 'biweekly':
+    case 'bi_weekly':
+      return 'bi_weekly';
+    case 'daily':
+      return 'daily';
+    case 'monthly':
+      return 'monthly';
+    case 'quarterly':
+      return 'quarterly';
+    default:
+      return 'monthly';
+  }
+};
+
+const PROPOSAL_DAY_LABELS: Record<string, string> = {
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+  saturday: 'Sat',
+  sunday: 'Sun',
+};
+
+const formatTime24h = (value: string): string => {
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+};
+
 interface ContractFormData {
   title: string;
   proposalId: string;
@@ -81,6 +127,9 @@ const ContractForm = () => {
   // Available proposals for contract creation
   const [availableProposals, setAvailableProposals] = useState<ProposalForContract[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<ProposalForContract | null>(null);
+  const [selectedProposalSchedule, setSelectedProposalSchedule] = useState<Record<string, unknown> | null>(null);
+  const [selectedProposalFrequency, setSelectedProposalFrequency] = useState<ServiceFrequency | null>(null);
+  const [serviceFrequencyTouched, setServiceFrequencyTouched] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState<ContractFormData>({
@@ -191,6 +240,9 @@ const ContractForm = () => {
 
     if (!proposal) {
       setSelectedProposal(null);
+      setSelectedProposalSchedule(null);
+      setSelectedProposalFrequency(null);
+      setServiceFrequencyTouched(false);
       setFormData(prev => ({
         ...prev,
         proposalId: '',
@@ -205,17 +257,25 @@ const ContractForm = () => {
     // Fetch full proposal details for terms and conditions
     try {
       const fullProposal = await getProposal(proposalId);
+      const mappedFrequency = mapProposalFrequencyToContractFrequency(fullProposal.serviceFrequency);
+      setSelectedProposalSchedule((fullProposal.serviceSchedule as Record<string, unknown> | null) || null);
+      setSelectedProposalFrequency(mappedFrequency);
+      setServiceFrequencyTouched(false);
 
       setFormData(prev => ({
         ...prev,
         proposalId,
         title: proposal.title,
         monthlyValue: Number(proposal.totalAmount),
+        serviceFrequency: mappedFrequency,
         termsAndConditions: fullProposal.termsAndConditions || null,
         specialInstructions: fullProposal.notes || null,
       }));
     } catch (error) {
       // If we can't get full details, use what we have
+      setSelectedProposalSchedule(null);
+      setSelectedProposalFrequency(null);
+      setServiceFrequencyTouched(false);
       setFormData(prev => ({
         ...prev,
         proposalId,
@@ -309,10 +369,14 @@ const ContractForm = () => {
       } else {
         // Create new contract from proposal
         await createContractFromProposal(formData.proposalId, {
+          // Sync from proposal unless user explicitly changed it in this form.
+          serviceFrequency: serviceFrequencyTouched
+            ? formData.serviceFrequency
+            : (selectedProposalFrequency || formData.serviceFrequency),
           title: formData.title,
           startDate: formData.startDate,
           endDate: formData.endDate,
-          serviceFrequency: formData.serviceFrequency,
+          serviceSchedule: selectedProposalSchedule as any,
           autoRenew: formData.autoRenew,
           renewalNoticeDays: formData.renewalNoticeDays,
           totalValue: formData.totalValue,
@@ -339,6 +403,19 @@ const ContractForm = () => {
       currency: 'USD',
     }).format(Number(value));
   };
+
+  const selectedScheduleDays = Array.isArray(selectedProposalSchedule?.days)
+    ? selectedProposalSchedule.days
+        .filter((day): day is string => typeof day === 'string')
+        .map((day) => day.toLowerCase())
+        .filter((day) => PROPOSAL_DAY_LABELS[day])
+    : [];
+
+  const selectedScheduleWindow =
+    typeof selectedProposalSchedule?.allowedWindowStart === 'string'
+    && typeof selectedProposalSchedule?.allowedWindowEnd === 'string'
+      ? `${formatTime24h(selectedProposalSchedule.allowedWindowStart)} to ${formatTime24h(selectedProposalSchedule.allowedWindowEnd)}`
+      : null;
 
   if (loading) {
     return (
@@ -438,6 +515,20 @@ const ContractForm = () => {
                           {formatCurrency(selectedProposal.totalAmount)}
                         </span>
                       </div>
+                      {selectedScheduleDays.length > 0 && (
+                        <div>
+                          <span className="text-gray-400">Scheduled Days:</span>
+                          <span className="ml-2 text-white">
+                            {selectedScheduleDays.map((day) => PROPOSAL_DAY_LABELS[day] || day).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                      {selectedScheduleWindow && (
+                        <div>
+                          <span className="text-gray-400">Allowed Window:</span>
+                          <span className="ml-2 text-white">{selectedScheduleWindow}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -517,9 +608,10 @@ const ContractForm = () => {
                 <Select
                   label="Service Frequency"
                   value={formData.serviceFrequency}
-                  onChange={(value) =>
-                    handleChange('serviceFrequency', value as ServiceFrequency)
-                  }
+                  onChange={(value) => {
+                    setServiceFrequencyTouched(true);
+                    handleChange('serviceFrequency', value as ServiceFrequency);
+                  }}
                   options={SERVICE_FREQUENCIES}
                 />
 
@@ -637,6 +729,7 @@ const ContractForm = () => {
                               billingCycle: formData.billingCycle,
                               paymentTerms: formData.paymentTerms,
                               serviceFrequency: formData.serviceFrequency,
+                              serviceSchedule: selectedProposalSchedule as any,
                               autoRenew: formData.autoRenew,
                               renewalNoticeDays: formData.renewalNoticeDays,
                               title: formData.title,

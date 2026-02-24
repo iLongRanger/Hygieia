@@ -10,6 +10,7 @@ import {
   completeJobSchema,
   cancelJobSchema,
   assignJobSchema,
+  startJobSchema,
   generateJobsSchema,
   createJobTaskSchema,
   updateJobTaskSchema,
@@ -151,7 +152,14 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const job = await startJob(req.params.id, req.user!.id);
+      const parsed = startJobSchema.safeParse(req.body || {});
+      if (!parsed.success) throw handleZodError(parsed.error);
+
+      const job = await startJob(req.params.id, req.user!.id, {
+        managerOverride: parsed.data.managerOverride,
+        overrideReason: parsed.data.overrideReason ?? null,
+        userRole: req.user?.role,
+      });
       res.json({ data: job });
     } catch (error) {
       next(error);

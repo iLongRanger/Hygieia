@@ -211,7 +211,6 @@ const InspectionForm = () => {
       setLoadingTemplate(true);
       try {
         const template = await getTemplateForContract(contractId);
-        console.log('Template for contract:', template);
         if (template) {
           setFormData((prev) => ({ ...prev, templateId: template.id }));
           await fetchTemplateDetail(template.id);
@@ -272,9 +271,7 @@ const InspectionForm = () => {
         await updateInspection(id, updateData);
         toast.success('Inspection updated successfully');
       } else {
-        console.log('Creating inspection with:', formData);
-        const result = await createInspection(formData);
-        console.log('Inspection created:', result);
+        await createInspection(formData);
         toast.success('Inspection created successfully');
       }
       navigate('/inspections');

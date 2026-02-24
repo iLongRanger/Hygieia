@@ -57,6 +57,26 @@ const formatAddress = (address: any): string => {
   return lines.join(', ');
 };
 
+const PUBLIC_DAY_LABELS: Record<string, string> = {
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+  saturday: 'Sat',
+  sunday: 'Sun',
+};
+
+const formatTime24h = (value: string): string => {
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+};
+
 const PublicContractView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [contract, setContract] = useState<PublicContract | null>(null);
@@ -139,6 +159,17 @@ const PublicContractView: React.FC = () => {
   if (!contract) return null;
 
   const canSign = ['sent', 'viewed'].includes(contract.status);
+  const scheduleDays = (contract.serviceSchedule?.days || [])
+    .map((day) => day.toLowerCase())
+    .filter((day) => PUBLIC_DAY_LABELS[day]);
+  const scheduleWindow =
+    contract.serviceSchedule?.allowedWindowStart && contract.serviceSchedule?.allowedWindowEnd
+      ? `${formatTime24h(contract.serviceSchedule.allowedWindowStart)} to ${formatTime24h(contract.serviceSchedule.allowedWindowEnd)}`
+      : null;
+  const facilityTimezone =
+    (contract.facility?.address?.timezone as string | undefined) ||
+    (contract.facility?.address?.timeZone as string | undefined) ||
+    null;
 
   const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
   const accentColor = branding?.themeAccentColor || '#d4af37';
@@ -245,6 +276,28 @@ const PublicContractView: React.FC = () => {
                   <div className="text-sm text-gray-500">Service Frequency</div>
                   <div className="font-medium text-gray-900">
                     {frequencyLabels[contract.serviceFrequency] || contract.serviceFrequency}
+                  </div>
+                </div>
+              )}
+              {scheduleDays.length > 0 && (
+                <div>
+                  <div className="text-sm text-gray-500">Scheduled Days</div>
+                  <div className="font-medium text-gray-900">
+                    {scheduleDays.map((day) => PUBLIC_DAY_LABELS[day] || day).join(', ')}
+                  </div>
+                </div>
+              )}
+              {scheduleWindow && (
+                <div>
+                  <div className="text-sm text-gray-500">Allowed Service Window</div>
+                  <div className="font-medium text-gray-900">{scheduleWindow}</div>
+                </div>
+              )}
+              {(facilityTimezone || scheduleWindow) && (
+                <div>
+                  <div className="text-sm text-gray-500">Timezone / Anchor</div>
+                  <div className="font-medium text-gray-900">
+                    {(facilityTimezone || 'Facility timezone')} (start day anchor)
                   </div>
                 </div>
               )}

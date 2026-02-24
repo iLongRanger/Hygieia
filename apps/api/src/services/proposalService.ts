@@ -9,6 +9,7 @@ import {
   type PricingBreakdown,
   type PricingSettingsSnapshot,
 } from './pricing';
+import { normalizeServiceSchedule } from './serviceScheduleService';
 
 export interface ProposalListParams {
   page?: number;
@@ -51,6 +52,8 @@ export interface ProposalCreateInput {
   validUntil?: Date | null;
   taxRate?: number;
   notes?: string | null;
+  serviceFrequency?: string;
+  serviceSchedule?: Record<string, unknown> | null;
   createdByUserId: string;
   proposalItems?: ProposalItemInput[];
   proposalServices?: ProposalServiceInput[];
@@ -68,6 +71,8 @@ export interface ProposalUpdateInput {
   validUntil?: Date | null;
   taxRate?: number;
   notes?: string | null;
+  serviceFrequency?: string;
+  serviceSchedule?: Record<string, unknown> | null;
   proposalItems?: (ProposalItemInput & { id?: string })[];
   proposalServices?: (ProposalServiceInput & { id?: string })[];
   // Pricing plan fields
@@ -102,6 +107,8 @@ const proposalSelect = {
   rejectedAt: true,
   rejectionReason: true,
   notes: true,
+  serviceFrequency: true,
+  serviceSchedule: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -322,6 +329,11 @@ export async function getProposalByNumber(proposalNumber: string) {
 export async function createProposal(input: ProposalCreateInput) {
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;
+  const serviceFrequency = input.serviceFrequency || '5x_week';
+  const serviceSchedule = normalizeServiceSchedule(
+    input.serviceSchedule ?? null,
+    serviceFrequency
+  );
 
   const items = input.proposalItems ?? [];
   const services = input.proposalServices ?? [];
@@ -349,6 +361,9 @@ export async function createProposal(input: ProposalCreateInput) {
       totalAmount: totals.totalAmount,
       validUntil: input.validUntil,
       notes: input.notes,
+      serviceFrequency,
+      serviceSchedule:
+        (serviceSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       accountId: input.accountId,
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
@@ -401,6 +416,15 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
   if (input.description !== undefined) updateData.description = input.description;
   if (input.validUntil !== undefined) updateData.validUntil = input.validUntil;
   if (input.notes !== undefined) updateData.notes = input.notes;
+  if (input.serviceFrequency !== undefined) updateData.serviceFrequency = input.serviceFrequency;
+  if (input.serviceSchedule !== undefined || input.serviceFrequency !== undefined) {
+    const normalized = normalizeServiceSchedule(
+      input.serviceSchedule,
+      input.serviceFrequency
+    );
+    updateData.serviceSchedule =
+      (normalized as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull;
+  }
   if (input.pricingPlanId !== undefined) {
     updateData.pricingPlan = input.pricingPlanId
       ? { connect: { id: input.pricingPlanId } }

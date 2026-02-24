@@ -53,10 +53,13 @@ import type {
   ProposalItemType,
   ServiceType,
   ServiceFrequency,
+  ProposalScheduleFrequency,
+  ProposalServiceSchedule,
+  ServiceScheduleDay,
 } from '../../types/proposal';
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
-import type { Area, FacilityTask } from '../../types/facility';
+import type { Area, FacilityTask, CleaningFrequency } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTemplates } from '../../lib/proposalTemplates';
@@ -89,6 +92,248 @@ const SERVICE_FREQUENCIES: { value: ServiceFrequency; label: string }[] = [
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'annually', label: 'Annually' },
 ];
+
+const SCHEDULE_FREQUENCIES: { value: ProposalScheduleFrequency; label: string }[] = [
+  { value: '1x_week', label: '1x per Week' },
+  { value: '2x_week', label: '2x per Week' },
+  { value: '3x_week', label: '3x per Week' },
+  { value: '4x_week', label: '4x per Week' },
+  { value: '5x_week', label: '5x per Week' },
+  { value: '7x_week', label: '7x per Week (Daily)' },
+  { value: 'daily', label: 'Daily (Weekdays)' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+];
+
+const SCHEDULE_DAY_OPTIONS: { value: ServiceScheduleDay; label: string }[] = [
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+  { value: 'sunday', label: 'Sun' },
+];
+
+const DAY_ORDER = SCHEDULE_DAY_OPTIONS.map((day) => day.value);
+const BUSINESS_DAY_ORDER = DAY_ORDER.filter((day) =>
+  ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day)
+) as ServiceScheduleDay[];
+
+const expectedDaysForFrequency = (frequency: ProposalScheduleFrequency): number => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'biweekly':
+    case 'monthly':
+    case 'quarterly':
+      return 1;
+    case '2x_week':
+      return 2;
+    case '3x_week':
+      return 3;
+    case '4x_week':
+      return 4;
+    case '5x_week':
+    case 'daily':
+      return 5;
+    case '7x_week':
+      return 7;
+  }
+};
+
+const defaultDaysForFrequency = (frequency: ProposalScheduleFrequency): ServiceScheduleDay[] => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'biweekly':
+    case 'monthly':
+    case 'quarterly':
+      return ['monday'];
+    case '2x_week':
+      return ['monday', 'thursday'];
+    case '3x_week':
+      return ['monday', 'wednesday', 'friday'];
+    case '4x_week':
+      return ['monday', 'tuesday', 'thursday', 'friday'];
+    case '7x_week':
+      return [...DAY_ORDER];
+    case '5x_week':
+    case 'daily':
+    default:
+      return [...BUSINESS_DAY_ORDER];
+  }
+};
+
+const TIME_24H_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const DAY_ALIAS_MAP: Record<string, ServiceScheduleDay> = {
+  monday: 'monday',
+  mon: 'monday',
+  tuesday: 'tuesday',
+  tue: 'tuesday',
+  tues: 'tuesday',
+  wednesday: 'wednesday',
+  wed: 'wednesday',
+  thursday: 'thursday',
+  thu: 'thursday',
+  thur: 'thursday',
+  thurs: 'thursday',
+  friday: 'friday',
+  fri: 'friday',
+  saturday: 'saturday',
+  sat: 'saturday',
+  sunday: 'sunday',
+  sun: 'sunday',
+};
+
+const FACILITY_TASK_TO_SCHEDULE_FREQUENCY: Record<CleaningFrequency, ProposalScheduleFrequency | null> = {
+  daily: '7x_week',
+  weekly: '1x_week',
+  biweekly: 'biweekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  annual: 'quarterly',
+  as_needed: null,
+};
+
+const mapPricingFrequencyToScheduleFrequency = (
+  frequency: string
+): ProposalScheduleFrequency => {
+  if (frequency === 'daily') return '7x_week';
+  return (SCHEDULE_FREQUENCIES.some((opt) => opt.value === frequency)
+    ? frequency
+    : '5x_week') as ProposalScheduleFrequency;
+};
+
+const mapScheduleFrequencyToPricingFrequency = (
+  frequency: ProposalScheduleFrequency
+): string => (frequency === '7x_week' ? 'daily' : frequency);
+
+const parseServiceScheduleDay = (value: unknown): ServiceScheduleDay | null => {
+  if (typeof value !== 'string') return null;
+  return DAY_ALIAS_MAP[value.trim().toLowerCase()] || null;
+};
+
+const parseScheduleDaysInput = (value: unknown): ServiceScheduleDay[] => {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set<ServiceScheduleDay>();
+  for (const raw of value) {
+    const parsed = parseServiceScheduleDay(raw);
+    if (parsed) unique.add(parsed);
+  }
+  return Array.from(unique);
+};
+
+const parseTimeValue = (value: unknown, fallback: string): string => {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return TIME_24H_REGEX.test(trimmed) ? trimmed : fallback;
+};
+
+const extractFacilityAddressSchedule = (
+  facility: Facility | undefined
+): {
+  frequency?: ProposalScheduleFrequency;
+  days?: ServiceScheduleDay[];
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+} | null => {
+  const address = facility?.address as Record<string, unknown> | undefined;
+  if (!address) return null;
+
+  const scheduleObj =
+    (address.serviceSchedule as Record<string, unknown> | undefined) ||
+    (address.schedule as Record<string, unknown> | undefined) ||
+    (address.clientServiceSchedule as Record<string, unknown> | undefined) ||
+    null;
+
+  const frequencyRaw =
+    (scheduleObj?.frequency as string | undefined) ||
+    (address.serviceFrequency as string | undefined) ||
+    (address.cleaningFrequency as string | undefined);
+
+  const normalizedFrequency = (() => {
+    if (!frequencyRaw) return undefined;
+    const key = frequencyRaw.trim().toLowerCase();
+    if (key === 'daily') return '7x_week' as ProposalScheduleFrequency;
+    if (SCHEDULE_FREQUENCIES.some((option) => option.value === key)) {
+      return key as ProposalScheduleFrequency;
+    }
+    return undefined;
+  })();
+
+  const days = parseScheduleDaysInput(
+    scheduleObj?.days ||
+      scheduleObj?.daysOfWeek ||
+      address.serviceDays ||
+      address.daysOfWeek
+  );
+
+  const allowedWindowStart = parseTimeValue(
+    scheduleObj?.allowedWindowStart ||
+      scheduleObj?.windowStart ||
+      scheduleObj?.startTime ||
+      address.allowedWindowStart ||
+      address.serviceWindowStart ||
+      address.startTime,
+    '18:00'
+  );
+
+  const allowedWindowEnd = parseTimeValue(
+    scheduleObj?.allowedWindowEnd ||
+      scheduleObj?.windowEnd ||
+      scheduleObj?.endTime ||
+      address.allowedWindowEnd ||
+      address.serviceWindowEnd ||
+      address.endTime,
+    '06:00'
+  );
+
+  if (!normalizedFrequency && days.length === 0 && !scheduleObj) return null;
+
+  return {
+    ...(normalizedFrequency ? { frequency: normalizedFrequency } : {}),
+    ...(days.length > 0 ? { days } : {}),
+    allowedWindowStart,
+    allowedWindowEnd,
+  };
+};
+
+const deriveScheduleFrequencyFromFacilityTasks = (
+  tasks: FacilityTask[]
+): ProposalScheduleFrequency | null => {
+  const counts = new Map<ProposalScheduleFrequency, number>();
+  for (const task of tasks) {
+    const mapped = FACILITY_TASK_TO_SCHEDULE_FREQUENCY[task.cleaningFrequency];
+    if (!mapped) continue;
+    counts.set(mapped, (counts.get(mapped) || 0) + 1);
+  }
+
+  if (!counts.size) return null;
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    [0][0];
+};
+
+const normalizeScheduleDays = (
+  days: ServiceScheduleDay[],
+  frequency: ProposalScheduleFrequency
+): ServiceScheduleDay[] => {
+  const unique = Array.from(new Set(days)).filter((day): day is ServiceScheduleDay => DAY_ORDER.includes(day));
+  const sorted = [...unique].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+  const expected = expectedDaysForFrequency(frequency);
+
+  if (sorted.length === expected) return sorted;
+  if (sorted.length < expected) {
+    const fallback = defaultDaysForFrequency(frequency).filter((day) => !sorted.includes(day));
+    return [...sorted, ...fallback].slice(0, expected);
+  }
+  return sorted.slice(0, expected);
+};
 
 const SUBCONTRACTOR_TIERS = [
   { value: '', label: 'Plan Default', description: 'Uses the percentage configured in the pricing plan' },
@@ -126,6 +371,16 @@ const createEmptyService = (sortOrder: number): ProposalService => ({
   sortOrder,
 });
 
+const createDefaultSchedule = (
+  frequency: ProposalScheduleFrequency = '5x_week'
+): ProposalServiceSchedule => ({
+  days: defaultDaysForFrequency(frequency),
+  allowedWindowStart: '18:00',
+  allowedWindowEnd: '06:00',
+  windowAnchor: 'start_day',
+  timezoneSource: 'facility',
+});
+
 const ProposalForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -149,6 +404,8 @@ const ProposalForm = () => {
     validUntil: null,
     taxRate: 0,
     notes: null,
+    serviceFrequency: '5x_week',
+    serviceSchedule: createDefaultSchedule('5x_week'),
     proposalItems: [],
     proposalServices: [],
     pricingPlanId: null,
@@ -194,6 +451,7 @@ const ProposalForm = () => {
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
+  const [scheduleTouchedByUser, setScheduleTouchedByUser] = useState(false);
 
   // Pricing plan states
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
@@ -214,6 +472,10 @@ const ProposalForm = () => {
 
   const selectedPricingPlan = pricingPlans.find((plan) => plan.id === selectedPricingPlanId);
   const isHourlyPlan = selectedPricingPlan?.pricingType === 'hourly';
+  const selectedFacility = useMemo(
+    () => facilities.find((facility) => facility.id === formData.facilityId),
+    [facilities, formData.facilityId]
+  );
 
   // Calculate totals whenever items, services, or tax rate change
   useEffect(() => {
@@ -315,6 +577,9 @@ const ProposalForm = () => {
   const fetchProposal = useCallback(async (proposalId: string) => {
     try {
       const proposal = await getProposal(proposalId);
+      const scheduleFrequency = proposal.serviceFrequency || '5x_week';
+      const incomingSchedule = proposal.serviceSchedule || createDefaultSchedule(scheduleFrequency);
+      const normalizedDays = normalizeScheduleDays(incomingSchedule.days || [], scheduleFrequency);
       setFormData({
         accountId: proposal.account.id,
         title: proposal.title,
@@ -325,10 +590,22 @@ const ProposalForm = () => {
           : null,
         taxRate: proposal.taxRate,
         notes: proposal.notes || null,
+        serviceFrequency: scheduleFrequency,
+        serviceSchedule: {
+          days: normalizedDays,
+          allowedWindowStart: incomingSchedule.allowedWindowStart || '18:00',
+          allowedWindowEnd: incomingSchedule.allowedWindowEnd || '06:00',
+          windowAnchor: 'start_day',
+          timezoneSource: 'facility',
+        },
         proposalItems: proposal.proposalItems || [],
         proposalServices: proposal.proposalServices || [],
         pricingPlanId: proposal.pricingPlanId || null,
       });
+      setSelectedFrequency(
+        mapScheduleFrequencyToPricingFrequency(scheduleFrequency as ProposalScheduleFrequency)
+      );
+      setScheduleTouchedByUser(true);
       // Set pricing plan from proposal
       if (proposal.pricingPlanId) {
         setSelectedPricingPlanId(proposal.pricingPlanId);
@@ -378,8 +655,11 @@ const ProposalForm = () => {
           listAreas({ facilityId, limit: 100, includeArchived: false }),
           listFacilityTasks({ facilityId, limit: 100, includeArchived: false }),
         ]);
-        setFacilityAreas(areasResponse?.data || []);
-        setFacilityTasks(tasksResponse?.data || []);
+        const areasData = areasResponse?.data || [];
+        const tasksData = tasksResponse?.data || [];
+        setFacilityAreas(areasData);
+        setFacilityTasks(tasksData);
+        syncClientScheduleFromFacility(tasksData);
       } catch (error) {
         console.error('Failed to load facility review data:', error);
         setFacilityAreas([]);
@@ -390,7 +670,7 @@ const ProposalForm = () => {
     };
 
     loadFacilityReviewData();
-  }, [formData.facilityId]);
+  }, [formData.facilityId, isEditMode, scheduleTouchedByUser, selectedFacility]);
 
   const facilityReview = useMemo(() => {
     const activeAreas = facilityAreas.filter((area) => !area.archivedAt);
@@ -453,6 +733,50 @@ const ProposalForm = () => {
     setPricingBreakdown(null);
   }, [formData.facilityId, selectedFrequency, selectedPricingPlanId, workerCount, selectedSubcontractorTier]);
 
+  const syncClientScheduleFromFacility = useCallback(
+    (tasks: FacilityTask[]) => {
+      if (isEditMode || scheduleTouchedByUser || !formData.facilityId) return;
+
+      const derivedTaskFrequency = deriveScheduleFrequencyFromFacilityTasks(tasks);
+      const addressDefaults = extractFacilityAddressSchedule(selectedFacility);
+      const preferredFrequency =
+        addressDefaults?.frequency ||
+        derivedTaskFrequency ||
+        ((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
+      setSelectedFrequency(mapScheduleFrequencyToPricingFrequency(preferredFrequency));
+
+      setFormData((prev) => {
+        const currentFrequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
+        const nextFrequency =
+          addressDefaults?.frequency ||
+          derivedTaskFrequency ||
+          currentFrequency;
+
+        const currentSchedule = prev.serviceSchedule || createDefaultSchedule(nextFrequency);
+        const seedDays = addressDefaults?.days || currentSchedule.days || [];
+
+        return {
+          ...prev,
+          serviceFrequency: nextFrequency,
+          serviceSchedule: {
+            days: normalizeScheduleDays(seedDays, nextFrequency),
+            allowedWindowStart:
+              addressDefaults?.allowedWindowStart ||
+              currentSchedule.allowedWindowStart ||
+              '18:00',
+            allowedWindowEnd:
+              addressDefaults?.allowedWindowEnd ||
+              currentSchedule.allowedWindowEnd ||
+              '06:00',
+            windowAnchor: 'start_day',
+            timezoneSource: 'facility',
+          },
+        };
+      });
+    },
+    [formData.facilityId, isEditMode, scheduleTouchedByUser, selectedFacility]
+  );
+
   // Auto-populate services from facility pricing
   const handleAutoPopulateFromFacility = async () => {
     if (!formData.facilityId) {
@@ -498,13 +822,26 @@ const ProposalForm = () => {
       }));
 
       // Update form with auto-populated data
-      setFormData((prev) => ({
-        ...prev,
-        proposalServices: newServices,
-        proposalItems: newItems.length > 0 ? newItems : prev.proposalItems,
-        // Auto-set title if empty
-        title: prev.title || `Cleaning Services - ${template.facility.name}`,
-      }));
+      const scheduleFrequency = mapPricingFrequencyToScheduleFrequency(selectedFrequency);
+      setFormData((prev) => {
+        const currentSchedule = prev.serviceSchedule || createDefaultSchedule(scheduleFrequency);
+        return {
+          ...prev,
+          proposalServices: newServices,
+          proposalItems: newItems.length > 0 ? newItems : prev.proposalItems,
+          serviceFrequency: scheduleFrequency,
+          serviceSchedule: {
+            days: normalizeScheduleDays(currentSchedule.days || [], scheduleFrequency),
+            allowedWindowStart: currentSchedule.allowedWindowStart || '18:00',
+            allowedWindowEnd: currentSchedule.allowedWindowEnd || '06:00',
+            windowAnchor: 'start_day',
+            timezoneSource: 'facility',
+          },
+          // Auto-set title if empty
+          title: prev.title || `Cleaning Services - ${template.facility.name}`,
+        };
+      });
+      setScheduleTouchedByUser(false);
 
       // Store the full pricing breakdown for internal view
       setPricingBreakdown(template.pricing);
@@ -526,13 +863,70 @@ const ProposalForm = () => {
       if (field === 'accountId') {
         updated.facilityId = null;
         setPricingBreakdown(null);
+        setScheduleTouchedByUser(false);
       }
       // Clear breakdown when facility changes
       if (field === 'facilityId') {
         setPricingBreakdown(null);
+        setScheduleTouchedByUser(false);
       }
       return updated;
     });
+  };
+
+  const updateServiceSchedule = (patch: Partial<ProposalServiceSchedule>) => {
+    setScheduleTouchedByUser(true);
+    setFormData((prev) => {
+      const frequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
+      const currentSchedule = prev.serviceSchedule || createDefaultSchedule(frequency);
+      const merged: ProposalServiceSchedule = {
+        ...currentSchedule,
+        ...patch,
+      };
+      return { ...prev, serviceSchedule: merged };
+    });
+  };
+
+  const handleScheduleFrequencyChange = (value: string) => {
+    setScheduleTouchedByUser(true);
+    const frequency = value as ProposalScheduleFrequency;
+    setSelectedFrequency(mapScheduleFrequencyToPricingFrequency(frequency));
+    setFormData((prev) => {
+      const currentSchedule = prev.serviceSchedule || createDefaultSchedule(frequency);
+      return {
+        ...prev,
+        serviceFrequency: frequency,
+        serviceSchedule: {
+          ...currentSchedule,
+          days: normalizeScheduleDays(currentSchedule.days || [], frequency),
+          allowedWindowStart: currentSchedule.allowedWindowStart || '18:00',
+          allowedWindowEnd: currentSchedule.allowedWindowEnd || '06:00',
+          windowAnchor: 'start_day',
+          timezoneSource: 'facility',
+        },
+      };
+    });
+  };
+
+  const toggleScheduleDay = (day: ServiceScheduleDay) => {
+    setScheduleTouchedByUser(true);
+    const frequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
+    const expectedDays = expectedDaysForFrequency(frequency);
+    const currentDays = formData.serviceSchedule?.days || defaultDaysForFrequency(frequency);
+    const hasDay = currentDays.includes(day);
+
+    let nextDays = hasDay
+      ? currentDays.filter((value) => value !== day)
+      : [...currentDays, day];
+
+    nextDays = normalizeScheduleDays(nextDays, frequency);
+
+    if (!hasDay && currentDays.length >= expectedDays) {
+      const withoutOldest = currentDays.slice(1);
+      nextDays = normalizeScheduleDays([...withoutOldest, day], frequency);
+    }
+
+    updateServiceSchedule({ days: nextDays });
   };
 
   // --- Proposal Items Management ---
@@ -619,6 +1013,25 @@ const ProposalForm = () => {
       toast.error('Please select a pricing plan');
       return;
     }
+    const scheduleFrequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
+    const serviceSchedule = formData.serviceSchedule || createDefaultSchedule(scheduleFrequency);
+    const expectedDays = expectedDaysForFrequency(scheduleFrequency);
+
+    if (!serviceSchedule.allowedWindowStart || !serviceSchedule.allowedWindowEnd) {
+      toast.error('Set the allowed service start and end time');
+      return;
+    }
+
+    if (serviceSchedule.allowedWindowStart === serviceSchedule.allowedWindowEnd) {
+      toast.error('Allowed window start and end times cannot be the same');
+      return;
+    }
+
+    if ((serviceSchedule.days || []).length !== expectedDays) {
+      toast.error(`${scheduleFrequency} requires exactly ${expectedDays} service day(s)`);
+      return;
+    }
+
     if (requiresFacilityReview && loadingFacilityReview) {
       toast.error('Please wait for facility review checks to finish');
       return;
@@ -637,6 +1050,8 @@ const ProposalForm = () => {
       if (isEditMode) {
         const updateData: UpdateProposalInput = {
           ...formData,
+          serviceFrequency: scheduleFrequency,
+          serviceSchedule,
           validUntil: formData.validUntil || null,
           pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
         };
@@ -645,6 +1060,8 @@ const ProposalForm = () => {
       } else {
         await createProposal({
           ...formData,
+          serviceFrequency: scheduleFrequency,
+          serviceSchedule,
           pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
         });
         toast.success('Proposal created successfully');
@@ -771,6 +1188,67 @@ const ProposalForm = () => {
                 value={formData.validUntil || ''}
                 onChange={(e) => handleChange('validUntil', e.target.value || null)}
               />
+
+              <div className="md:col-span-2">
+                <div className="rounded-xl border border-white/10 bg-navy-dark/40 p-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-gold" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">Client Service Schedule</h3>
+                      <p className="text-xs text-gray-400">
+                        Select exact service days (Mon-Sun) and allowed arrival window.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <Select
+                      label="Cleaning Frequency"
+                      value={formData.serviceFrequency || '5x_week'}
+                      onChange={handleScheduleFrequencyChange}
+                      options={SCHEDULE_FREQUENCIES}
+                    />
+                    <Input
+                      label="Allowed Start Time"
+                      type="time"
+                      value={formData.serviceSchedule?.allowedWindowStart || '18:00'}
+                      onChange={(e) => updateServiceSchedule({ allowedWindowStart: e.target.value || '00:00' })}
+                    />
+                    <Input
+                      label="Allowed End Time"
+                      type="time"
+                      value={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
+                      onChange={(e) => updateServiceSchedule({ allowedWindowEnd: e.target.value || '23:59' })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-400">
+                      Required days: {expectedDaysForFrequency((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency)}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {SCHEDULE_DAY_OPTIONS.map((option) => {
+                        const selectedDays = formData.serviceSchedule?.days || defaultDaysForFrequency((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
+                        const selected = selectedDays.includes(option.value);
+                        return (
+                          <Button
+                            key={option.value}
+                            type="button"
+                            size="sm"
+                            variant={selected ? 'primary' : 'secondary'}
+                            onClick={() => toggleScheduleDay(option.value)}
+                          >
+                            {option.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Window anchor: start day. Example: 6:00 PM to 6:00 AM on Monday runs overnight into Tuesday morning.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Auto-populate from facility */}
               {formData.facilityId && (

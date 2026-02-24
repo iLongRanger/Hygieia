@@ -230,6 +230,7 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
     '3x_week': 2.5,
     '4x_week': 3.2,
     '5x_week': 4.0,
+    '7x_week': 5.6,
     daily: 4.33,
     weekly: 1.0,
     biweekly: 0.5,

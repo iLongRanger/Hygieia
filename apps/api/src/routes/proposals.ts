@@ -170,6 +170,8 @@ router.post(
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
+        serviceFrequency: parsed.data.serviceFrequency,
+        serviceSchedule: parsed.data.serviceSchedule as Record<string, unknown> | null | undefined,
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
         pricingPlanId: parsed.data.pricingPlanId,
@@ -231,6 +233,8 @@ router.patch(
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
+        serviceFrequency: parsed.data.serviceFrequency,
+        serviceSchedule: parsed.data.serviceSchedule,
         pricingSnapshot: parsed.data.pricingSnapshot,
       };
 

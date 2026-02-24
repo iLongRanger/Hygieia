@@ -7,6 +7,13 @@ export interface PublicContract {
   startDate: string;
   endDate?: string | null;
   serviceFrequency?: string | null;
+  serviceSchedule?: {
+    days?: string[];
+    allowedWindowStart?: string;
+    allowedWindowEnd?: string;
+    windowAnchor?: string;
+    timezoneSource?: string;
+  } | null;
   monthlyValue: number;
   billingCycle: string;
   paymentTerms: string;

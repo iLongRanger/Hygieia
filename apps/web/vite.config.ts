@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      host: '127.0.0.1',
+      host: true,
       port: 5173,
       headers: securityHeaders,
       proxy: {
@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     preview: {
+      host: true,
       headers: securityHeaders
     }
   }

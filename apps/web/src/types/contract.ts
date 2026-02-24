@@ -22,7 +22,26 @@ export type BillingCycle =
   | 'annual';
 
 export interface ServiceSchedule {
-  days?: string[];
+  days?: (
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday'
+    | 'Monday'
+    | 'Tuesday'
+    | 'Wednesday'
+    | 'Thursday'
+    | 'Friday'
+    | 'Saturday'
+    | 'Sunday'
+  )[];
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  windowAnchor?: 'start_day';
+  timezoneSource?: 'facility';
   time?: string;
   customDetails?: string;
 }

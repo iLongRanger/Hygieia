@@ -72,6 +72,8 @@ export interface ClockInInput {
   facilityId?: string | null;
   notes?: string | null;
   geoLocation?: Record<string, unknown> | null;
+  managerOverride?: boolean;
+  overrideReason?: string | null;
 }
 
 export interface ManualEntryInput {

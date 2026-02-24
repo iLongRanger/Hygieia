@@ -2,6 +2,11 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { generateContractTerms } from './contractTemplateService';
 import { tierToPercentage, percentageToTier } from '../lib/subcontractorTiers';
+import {
+  extractFacilityTimezone,
+  mapProposalFrequencyToContractFrequency,
+  normalizeServiceSchedule,
+} from './serviceScheduleService';
 
 export interface ContractListParams {
   page?: number;
@@ -325,6 +330,10 @@ export async function createContract(data: ContractCreateInput) {
   }
 
   const contractNumber = await generateContractNumber();
+  const normalizedSchedule = normalizeServiceSchedule(
+    data.serviceSchedule,
+    data.serviceFrequency
+  );
 
   // Auto-generate terms if not provided
   let termsAndConditions = data.termsAndConditions;
@@ -340,7 +349,7 @@ export async function createContract(data: ContractCreateInput) {
       title: data.title,
       accountName: account?.name || 'Client',
       facilityName: facility?.name,
-      facilityAddress: facility?.address as string | null | undefined,
+      facilityAddress: facility?.address,
       startDate: data.startDate,
       endDate: data.endDate,
       monthlyValue: data.monthlyValue,
@@ -348,8 +357,10 @@ export async function createContract(data: ContractCreateInput) {
       billingCycle: data.billingCycle,
       paymentTerms: data.paymentTerms,
       serviceFrequency: data.serviceFrequency,
+      serviceSchedule: normalizedSchedule,
       autoRenew: data.autoRenew,
       renewalNoticeDays: data.renewalNoticeDays,
+      facilityTimezone: facility ? extractFacilityTimezone(facility.address) : null,
     });
   }
 
@@ -357,6 +368,8 @@ export async function createContract(data: ContractCreateInput) {
     data: {
       contractNumber,
       ...data,
+      serviceSchedule:
+        (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       termsAndConditions,
       status: 'draft',
       includesInitialClean: true,
@@ -405,6 +418,24 @@ export async function createContractFromProposal(
   // Calculate total value based on proposal and contract duration
   const monthlyValue = Number(proposal.totalAmount);
   const contractNumber = await generateContractNumber();
+  const mappedProposalFrequency = mapProposalFrequencyToContractFrequency(
+    proposal.serviceFrequency
+  );
+  const normalizedProposalSchedule = normalizeServiceSchedule(
+    proposal.serviceSchedule,
+    proposal.serviceFrequency || mappedProposalFrequency || 'weekly'
+  );
+  const normalizedOverrideSchedule = normalizeServiceSchedule(
+    overrides?.serviceSchedule,
+    overrides?.serviceFrequency || mappedProposalFrequency || proposal.serviceFrequency
+  );
+  const resolvedServiceFrequency =
+    overrides?.serviceFrequency ||
+    mappedProposalFrequency ||
+    proposal.serviceFrequency ||
+    'monthly';
+  const resolvedServiceSchedule =
+    normalizedOverrideSchedule || normalizedProposalSchedule;
 
   // Reverse-lookup subcontractor tier from proposal's pricing snapshot
   const snapshot = proposal.pricingSnapshot as Record<string, any> | null;
@@ -422,8 +453,9 @@ export async function createContractFromProposal(
     proposal: { connect: { id: proposalId } },
     startDate: overrides?.startDate || new Date(),
     endDate: overrides?.endDate || null,
-    serviceFrequency: overrides?.serviceFrequency || 'monthly',
-    serviceSchedule: overrides?.serviceSchedule || null,
+    serviceFrequency: resolvedServiceFrequency,
+    serviceSchedule:
+      (resolvedServiceSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
     autoRenew: overrides?.autoRenew ?? false,
     renewalNoticeDays: overrides?.renewalNoticeDays ?? 30,
     monthlyValue,
@@ -444,15 +476,19 @@ export async function createContractFromProposal(
       title: contractData.title as string,
       accountName: proposal.account.name,
       facilityName: proposal.facility?.name,
-      facilityAddress: proposal.facility?.address as string | null | undefined,
+      facilityAddress: proposal.facility?.address,
       startDate: contractData.startDate as Date,
       endDate: contractData.endDate as Date | null,
       monthlyValue,
       billingCycle: contractData.billingCycle as string,
       paymentTerms: contractData.paymentTerms as string,
       serviceFrequency: contractData.serviceFrequency as string | null,
+      serviceSchedule: contractData.serviceSchedule as Record<string, unknown> | null,
       autoRenew: contractData.autoRenew as boolean,
       renewalNoticeDays: contractData.renewalNoticeDays as number | null,
+      facilityTimezone: proposal.facility
+        ? extractFacilityTimezone(proposal.facility.address)
+        : null,
     });
   }
 
@@ -468,9 +504,20 @@ export async function createContractFromProposal(
  * Update contract
  */
 export async function updateContract(id: string, data: ContractUpdateInput) {
+  const { serviceSchedule, ...rest } = data;
+  const updateData: Prisma.ContractUpdateInput = {
+    ...rest,
+  };
+
+  if (serviceSchedule !== undefined || data.serviceFrequency !== undefined) {
+    const normalized = normalizeServiceSchedule(serviceSchedule, data.serviceFrequency);
+    updateData.serviceSchedule =
+      (normalized as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull;
+  }
+
   const contract = await prisma.contract.update({
     where: { id },
-    data,
+    data: updateData,
     select: contractSelect,
   });
 
@@ -695,7 +742,11 @@ export async function renewContract(
   if (input.endDate !== undefined) updateData.endDate = input.endDate;
   if (input.monthlyValue !== undefined) updateData.monthlyValue = input.monthlyValue;
   if (input.serviceFrequency !== undefined) updateData.serviceFrequency = input.serviceFrequency;
-  if (input.serviceSchedule !== undefined) updateData.serviceSchedule = input.serviceSchedule;
+  if (input.serviceSchedule !== undefined || input.serviceFrequency !== undefined) {
+    const normalized = normalizeServiceSchedule(input.serviceSchedule, input.serviceFrequency);
+    updateData.serviceSchedule =
+      (normalized as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull;
+  }
   if (input.autoRenew !== undefined) updateData.autoRenew = input.autoRenew;
   if (input.renewalNoticeDays !== undefined) updateData.renewalNoticeDays = input.renewalNoticeDays;
   if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
@@ -764,6 +815,10 @@ export interface StandaloneContractCreateInput {
  */
 export async function createStandaloneContract(data: StandaloneContractCreateInput) {
   const contractNumber = await generateContractNumber();
+  const normalizedSchedule = normalizeServiceSchedule(
+    data.serviceSchedule,
+    data.serviceFrequency
+  );
 
   // Auto-generate terms if not provided
   let termsAndConditions = data.termsAndConditions;
@@ -779,7 +834,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       title: data.title,
       accountName: account?.name || 'Client',
       facilityName: facility?.name,
-      facilityAddress: facility?.address as string | null | undefined,
+      facilityAddress: facility?.address,
       startDate: data.startDate,
       endDate: data.endDate,
       monthlyValue: data.monthlyValue,
@@ -787,8 +842,10 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       billingCycle: data.billingCycle ?? 'monthly',
       paymentTerms: data.paymentTerms ?? 'Net 30',
       serviceFrequency: data.serviceFrequency,
+      serviceSchedule: normalizedSchedule,
       autoRenew: data.autoRenew,
       renewalNoticeDays: data.renewalNoticeDays ?? 30,
+      facilityTimezone: facility ? extractFacilityTimezone(facility.address) : null,
     });
   }
 
@@ -802,7 +859,8 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       startDate: data.startDate,
       endDate: data.endDate,
       serviceFrequency: data.serviceFrequency,
-      serviceSchedule: data.serviceSchedule,
+      serviceSchedule:
+        (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       autoRenew: data.autoRenew ?? false,
       renewalNoticeDays: data.renewalNoticeDays ?? 30,
       monthlyValue: data.monthlyValue,

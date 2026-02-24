@@ -1,6 +1,11 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import {
+  extractFacilityTimezone,
+  normalizeServiceSchedule,
+  validateServiceWindow,
+} from './serviceScheduleService';
 
 // ==================== Interfaces ====================
 
@@ -23,6 +28,9 @@ export interface ClockInInput {
   facilityId?: string | null;
   notes?: string | null;
   geoLocation?: Record<string, unknown> | null;
+  managerOverride?: boolean;
+  overrideReason?: string | null;
+  userRole?: string;
 }
 
 export interface ManualEntryInput {
@@ -152,6 +160,98 @@ export async function clockIn(input: ClockInInput) {
   });
   if (active) throw new BadRequestError('Already clocked in. Please clock out first.');
 
+  const managerRoles = new Set(['owner', 'admin', 'manager']);
+  let scheduleOverrideMeta: Record<string, unknown> | null = null;
+
+  if (input.jobId || input.contractId) {
+    const linkedJob = input.jobId
+      ? await prisma.job.findUnique({
+          where: { id: input.jobId },
+          select: {
+            contractId: true,
+            facilityId: true,
+            contract: {
+              select: {
+                serviceFrequency: true,
+                serviceSchedule: true,
+                facility: { select: { address: true } },
+              },
+            },
+            facility: { select: { address: true } },
+          },
+        })
+      : null;
+
+    const linkedContract = !linkedJob && input.contractId
+      ? await prisma.contract.findUnique({
+          where: { id: input.contractId },
+          select: {
+            serviceFrequency: true,
+            serviceSchedule: true,
+            facility: { select: { address: true } },
+          },
+        })
+      : null;
+
+    const scheduleSource = linkedJob?.contract || linkedContract;
+    const hasExplicitSchedule =
+      scheduleSource?.serviceSchedule !== null &&
+      scheduleSource?.serviceSchedule !== undefined;
+
+    const schedule = hasExplicitSchedule
+      ? normalizeServiceSchedule(
+          scheduleSource?.serviceSchedule,
+          scheduleSource?.serviceFrequency
+        )
+      : null;
+
+    if (schedule) {
+      const timezone = extractFacilityTimezone(
+        scheduleSource?.facility?.address ?? linkedJob?.facility?.address
+      );
+      if (!timezone) {
+        throw new BadRequestError('Facility timezone is required for schedule enforcement');
+      }
+
+      const scheduleCheck = validateServiceWindow(schedule, timezone, new Date());
+      if (!scheduleCheck.allowed) {
+        const canOverride = input.managerOverride && managerRoles.has(input.userRole || '');
+        if (!canOverride) {
+          throw new BadRequestError('Outside allowed service window', {
+            code: 'OUTSIDE_SERVICE_WINDOW',
+            timezone,
+            localTime: scheduleCheck.localTime,
+            localDate: scheduleCheck.localDate,
+            reason: scheduleCheck.reason,
+            allowedWindowStart: schedule.allowedWindowStart,
+            allowedWindowEnd: schedule.allowedWindowEnd,
+            allowedDays: schedule.days,
+            managerOverrideAllowed: true,
+          });
+        }
+
+        if (!input.overrideReason?.trim()) {
+          throw new BadRequestError(
+            'Manager override reason is required when clocking in outside service window'
+          );
+        }
+
+        scheduleOverrideMeta = {
+          managerOverride: true,
+          overrideReason: input.overrideReason,
+          timezone,
+          localTime: scheduleCheck.localTime,
+          localDate: scheduleCheck.localDate,
+        };
+      }
+    }
+  }
+
+  const geoLocationData: Record<string, unknown> = {
+    ...(input.geoLocation || {}),
+    ...(scheduleOverrideMeta ? { scheduleOverride: scheduleOverrideMeta } : {}),
+  };
+
   const entry = await prisma.timeEntry.create({
     data: {
       userId: input.userId,
@@ -162,7 +262,10 @@ export async function clockIn(input: ClockInInput) {
       clockIn: new Date(),
       notes: input.notes,
       status: 'active',
-      geoLocation: (input.geoLocation as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+      geoLocation:
+        Object.keys(geoLocationData).length > 0
+          ? (geoLocationData as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
     },
     select: timeEntryDetailSelect,
   });

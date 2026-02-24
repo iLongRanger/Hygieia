@@ -11,6 +11,7 @@ const publicContractSelect = {
   startDate: true,
   endDate: true,
   serviceFrequency: true,
+  serviceSchedule: true,
   monthlyValue: true,
   totalValue: true,
   billingCycle: true,

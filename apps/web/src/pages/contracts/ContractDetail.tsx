@@ -125,6 +125,45 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const DAY_LABELS: Record<string, string> = {
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+  saturday: 'Sat',
+  sunday: 'Sun',
+};
+
+const formatTime24h = (value: string) => {
+  const [hourRaw, minuteRaw] = value.split(':');
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+};
+
+const getScheduleDays = (schedule: unknown): string[] => {
+  if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return [];
+  const raw = schedule as Record<string, unknown>;
+  if (!Array.isArray(raw.days)) return [];
+  return raw.days
+    .filter((day): day is string => typeof day === 'string')
+    .map((day) => day.toLowerCase())
+    .filter((day) => DAY_LABELS[day]);
+};
+
+const getScheduleTimeWindow = (schedule: unknown): string | null => {
+  if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return null;
+  const raw = schedule as Record<string, unknown>;
+  if (typeof raw.allowedWindowStart !== 'string' || typeof raw.allowedWindowEnd !== 'string') {
+    return null;
+  }
+  return `${formatTime24h(raw.allowedWindowStart)} to ${formatTime24h(raw.allowedWindowEnd)}`;
+};
+
 const SERVICE_FREQUENCIES = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
@@ -420,6 +459,12 @@ const ContractDetail = () => {
   }
 
   const StatusIcon = getStatusIcon(contract.status);
+  const scheduleDays = getScheduleDays(contract.serviceSchedule);
+  const scheduleWindow = getScheduleTimeWindow(contract.serviceSchedule);
+  const facilityTimezone =
+    (contract.facility?.address?.timezone as string | undefined) ||
+    (contract.facility?.address?.timeZone as string | undefined) ||
+    null;
 
   return (
     <div className="space-y-6">
@@ -727,6 +772,28 @@ const ContractDetail = () => {
                 <div className="text-sm text-gray-400">Service Frequency</div>
                 <div className="text-white capitalize">
                   {contract.serviceFrequency.replace('_', ' ')}
+                </div>
+              </div>
+            )}
+            {scheduleDays.length > 0 && (
+              <div>
+                <div className="text-sm text-gray-400">Scheduled Days</div>
+                <div className="text-white">
+                  {scheduleDays.map((day) => DAY_LABELS[day] || day).join(', ')}
+                </div>
+              </div>
+            )}
+            {scheduleWindow && (
+              <div>
+                <div className="text-sm text-gray-400">Allowed Service Window</div>
+                <div className="text-white">{scheduleWindow}</div>
+              </div>
+            )}
+            {(facilityTimezone || scheduleWindow) && (
+              <div>
+                <div className="text-sm text-gray-400">Timezone / Anchor</div>
+                <div className="text-white">
+                  {(facilityTimezone || 'Facility timezone')} (start day anchor)
                 </div>
               </div>
             )}

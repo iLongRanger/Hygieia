@@ -1,10 +1,16 @@
 import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
+import {
+  extractFacilityTimezone,
+  formatTimeLabel,
+  formatWeekdayList,
+  normalizeServiceSchedule,
+} from './serviceScheduleService';
 
 export interface ContractTemplateData {
   contractNumber?: string;
   title?: string;
   accountName: string;
-  facilityAddress?: string | null;
+  facilityAddress?: unknown;
   facilityName?: string | null;
   startDate: Date | string;
   endDate?: Date | string | null;
@@ -13,6 +19,8 @@ export interface ContractTemplateData {
   billingCycle?: string;
   paymentTerms?: string;
   serviceFrequency?: string | null;
+  serviceSchedule?: unknown;
+  facilityTimezone?: string | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   scopeDescription?: string | null;
@@ -33,12 +41,35 @@ function formatFrequency(freq: string | null | undefined): string {
   const map: Record<string, string> = {
     daily: 'Daily',
     weekly: 'Weekly',
+    bi_weekly: 'Bi-Weekly',
     biweekly: 'Bi-Weekly',
     monthly: 'Monthly',
     quarterly: 'Quarterly',
     annually: 'Annually',
   };
   return freq ? map[freq] || freq : 'As agreed upon';
+}
+
+function formatAddress(value: unknown): string {
+  if (!value) return '[Facility Address]';
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'object' || Array.isArray(value)) return '[Facility Address]';
+
+  const address = value as Record<string, unknown>;
+  const line1 = [address.street, address.line1].find((entry) => typeof entry === 'string');
+  const city = [address.city, address.town].find((entry) => typeof entry === 'string');
+  const state = [address.state, address.province].find((entry) => typeof entry === 'string');
+  const postal = [address.postalCode, address.zip, address.zipCode]
+    .find((entry) => typeof entry === 'string');
+  const country = typeof address.country === 'string' ? address.country : null;
+
+  const parts = [
+    line1 as string | undefined,
+    [city, state, postal].filter(Boolean).join(', '),
+    country || undefined,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(', ') : '[Facility Address]';
 }
 
 function formatBillingCycle(cycle: string | null | undefined): string {
@@ -70,12 +101,20 @@ export async function generateContractTerms(data: ContractTemplateData): Promise
   const companyEmail = branding.companyEmail || '[Company Email]';
 
   const accountName = data.accountName;
-  const facilityAddress = data.facilityAddress || '[Facility Address]';
+  const facilityAddress = formatAddress(data.facilityAddress);
   const facilityName = data.facilityName || 'the designated facility';
   const startDate = formatDate(data.startDate);
   const endDate = formatDate(data.endDate);
   const monthlyValue = formatCurrency(data.monthlyValue);
   const frequency = formatFrequency(data.serviceFrequency);
+  const normalizedSchedule = normalizeServiceSchedule(data.serviceSchedule, data.serviceFrequency);
+  const scheduleDays = normalizedSchedule
+    ? formatWeekdayList(normalizedSchedule.days)
+    : 'Not specified';
+  const scheduleWindow = normalizedSchedule
+    ? `${formatTimeLabel(normalizedSchedule.allowedWindowStart)} to ${formatTimeLabel(normalizedSchedule.allowedWindowEnd)}`
+    : 'Mutually agreed time window';
+  const facilityTimezone = data.facilityTimezone || extractFacilityTimezone(data.facilityAddress) || '[Facility timezone]';
   const billingCycle = formatBillingCycle(data.billingCycle);
   const paymentTerms = data.paymentTerms || 'Net 30';
   const contractNumber = data.contractNumber || '[To Be Assigned]';
@@ -127,9 +166,11 @@ ${renewalText}`);
   // 4. SERVICE SCHEDULE
   sections.push(`## 4. SERVICE SCHEDULE
 
-Services shall be performed at a frequency of ${frequency.toLowerCase()} at mutually agreed-upon times. The Client shall provide reasonable access to the premises for the Service Provider to perform the contracted services.
+Services shall be performed at a frequency of ${frequency.toLowerCase()} on the following service day(s): ${scheduleDays}.
 
-Key and access arrangements, including alarm codes and security protocols, shall be agreed upon separately and documented in writing. The Service Provider shall ensure the secure handling of all access credentials and return them promptly upon termination of this Agreement.`);
+Approved service window: ${scheduleWindow} (${facilityTimezone}, start-day anchor). Any service activity outside this approved window requires prior written authorization from the Client or an authorized manager.
+
+The Client shall provide reasonable access to the premises for the Service Provider to perform the contracted services. Key and access arrangements, including alarm codes and security protocols, shall be agreed upon separately and documented in writing. The Service Provider shall ensure the secure handling of all access credentials and return them promptly upon termination of this Agreement.`);
 
   // 5. COMPENSATION AND PAYMENT
   sections.push(`## 5. COMPENSATION AND PAYMENT

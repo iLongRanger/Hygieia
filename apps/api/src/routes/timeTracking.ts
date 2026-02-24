@@ -85,6 +85,7 @@ router.post(
     const entry = await clockIn({
       userId: req.user!.id,
       ...req.body,
+      userRole: req.user?.role,
     });
     res.status(201).json({ data: entry });
   }

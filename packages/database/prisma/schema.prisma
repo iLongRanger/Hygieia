@@ -742,6 +742,8 @@ model Proposal {
   rejectionReason    String?   @map("rejection_reason") @db.Text
   notes              String?   @db.Text
   termsAndConditions String?   @map("terms_and_conditions") @db.Text
+  serviceFrequency   String?   @map("service_frequency") @db.VarChar(30)
+  serviceSchedule    Json?     @map("service_schedule") @db.JsonB
   createdByUserId    String    @map("created_by_user_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)

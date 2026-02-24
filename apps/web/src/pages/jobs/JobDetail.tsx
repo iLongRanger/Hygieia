@@ -33,6 +33,7 @@ import {
   createJobNote,
 } from '../../lib/jobs';
 import type { JobDetail as JobDetailType, JobStatus, JobTask, JobNote } from '../../types/job';
+import { useAuthStore } from '../../stores/authStore';
 
 const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<JobStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -63,6 +64,7 @@ const JobDetail = () => {
   // Complete form
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
+  const userRole = useAuthStore((state) => state.user?.role);
 
   const fetchJob = async () => {
     if (!id) return;
@@ -88,8 +90,27 @@ const JobDetail = () => {
       await startJob(id);
       toast.success('Job started');
       fetchJob();
-    } catch {
-      toast.error('Failed to start job');
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
+      if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
+        const confirmed = confirm(
+          `Outside allowed service window (${details.allowedWindowStart}-${details.allowedWindowEnd}, ` +
+          `${details.timezone}). Apply manager override?`
+        );
+        if (confirmed) {
+          await startJob(id, {
+            managerOverride: true,
+            overrideReason: 'Manager override from Job detail',
+          });
+          toast.success('Job started with manager override');
+          fetchJob();
+          return;
+        }
+      }
+      toast.error(details?.code === 'OUTSIDE_SERVICE_WINDOW'
+        ? 'Outside allowed service window'
+        : 'Failed to start job');
     }
   };
 
@@ -290,6 +311,7 @@ const JobDetail = () => {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
+                    timeZone: 'UTC',
                   })}
                 </p>
               </div>

@@ -349,7 +349,7 @@ describe('ProposalForm', () => {
     await waitFor(() => {
       expect(getFacilityProposalTemplateMock).toHaveBeenCalledWith(
         'facility-1',
-        '5x_week',
+        'daily',
         'pricing-1',
         undefined,
         undefined

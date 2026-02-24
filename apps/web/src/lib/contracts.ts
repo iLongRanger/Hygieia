@@ -134,6 +134,7 @@ export interface GenerateTermsParams {
   billingCycle?: string;
   paymentTerms?: string;
   serviceFrequency?: string | null;
+  serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   title?: string;

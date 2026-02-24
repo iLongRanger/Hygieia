@@ -29,6 +29,36 @@ export type ServiceFrequency =
   | 'quarterly'
   | 'annually';
 
+export type ProposalScheduleFrequency =
+  | '1x_week'
+  | '2x_week'
+  | '3x_week'
+  | '4x_week'
+  | '5x_week'
+  | '7x_week'
+  | 'daily'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  | 'quarterly';
+
+export type ServiceScheduleDay =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
+
+export interface ProposalServiceSchedule {
+  days: ServiceScheduleDay[];
+  allowedWindowStart: string;
+  allowedWindowEnd: string;
+  windowAnchor: 'start_day';
+  timezoneSource: 'facility';
+}
+
 export interface ProposalItem {
   id?: string;
   itemType: ProposalItemType;
@@ -70,6 +100,8 @@ export interface Proposal {
   rejectionReason?: string | null;
   notes?: string | null;
   termsAndConditions?: string | null;
+  serviceFrequency?: ProposalScheduleFrequency;
+  serviceSchedule?: ProposalServiceSchedule | null;
 
   createdAt: string;
   updatedAt: string;
@@ -117,6 +149,8 @@ export interface CreateProposalInput {
   validUntil?: string | null;
   taxRate?: number;
   notes?: string | null;
+  serviceFrequency?: ProposalScheduleFrequency;
+  serviceSchedule?: ProposalServiceSchedule | null;
 
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];
@@ -134,6 +168,8 @@ export interface UpdateProposalInput {
   validUntil?: string | null;
   taxRate?: number;
   notes?: string | null;
+  serviceFrequency?: ProposalScheduleFrequency;
+  serviceSchedule?: ProposalServiceSchedule | null;
 
   proposalItems?: ProposalItem[];
   proposalServices?: ProposalService[];

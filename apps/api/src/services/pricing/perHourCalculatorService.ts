@@ -403,6 +403,7 @@ function getMonthlyVisits(frequency: string): number {
     '3x_week': 13,
     '4x_week': 17.33,
     '5x_week': 21.67,
+    '7x_week': 30.33,
     daily: 30,
     weekly: 4.33,
     biweekly: 2.17,

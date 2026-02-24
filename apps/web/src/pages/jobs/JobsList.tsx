@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Briefcase,
-  Search,
   Filter,
   Plus,
   Play,
@@ -15,14 +14,17 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import { listJobs, startJob, completeJob, cancelJob } from '../../lib/jobs';
-import type { Job, JobStatus, JobType } from '../../types/job';
+import { Modal } from '../../components/ui/Modal';
+import { listJobs, startJob, completeJob, cancelJob, generateJobs } from '../../lib/jobs';
+import { listContracts } from '../../lib/contracts';
+import type { Job, JobStatus } from '../../types/job';
+import type { Contract } from '../../types/contract';
 import type { Pagination } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
 
 const JOB_TYPES = [
   { value: '', label: 'All Types' },
@@ -61,13 +63,34 @@ const getStatusIcon = (status: JobStatus) => {
   return icons[status];
 };
 
+const toDateInputValue = (date: Date): string => {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
+};
+
 const JobsList = () => {
   const navigate = useNavigate();
+  const userRole = useAuthStore((state) => state.user?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateForm, setGenerateForm] = useState(() => {
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setDate(today.getDate() + 30);
+
+    return {
+      contractId: '',
+      dateFrom: toDateInputValue(today),
+      dateTo: toDateInputValue(nextMonth),
+    };
+  });
 
   const page = parseInt(searchParams.get('page') || '1', 10);
   const jobTypeFilter = searchParams.get('jobType') || '';
@@ -113,13 +136,87 @@ const JobsList = () => {
     setSearchParams({});
   };
 
+  const openGenerateModal = async () => {
+    setShowGenerateModal(true);
+
+    if (contracts.length > 0 || contractsLoading) return;
+
+    try {
+      setContractsLoading(true);
+      const result = await listContracts({ status: 'active', limit: 100 });
+      setContracts(result.data || []);
+    } catch {
+      toast.error('Failed to load active contracts');
+    } finally {
+      setContractsLoading(false);
+    }
+  };
+
+  const handleGenerateRecurringJobs = async () => {
+    if (!generateForm.contractId) {
+      toast.error('Please select a contract');
+      return;
+    }
+
+    if (!generateForm.dateFrom || !generateForm.dateTo) {
+      toast.error('Please select a valid date range');
+      return;
+    }
+
+    if (new Date(generateForm.dateFrom) > new Date(generateForm.dateTo)) {
+      toast.error('Date From must be before Date To');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      const result = await generateJobs({
+        contractId: generateForm.contractId,
+        dateFrom: generateForm.dateFrom,
+        dateTo: generateForm.dateTo,
+      });
+
+      if (result.created > 0) {
+        toast.success(`Generated ${result.created} recurring job${result.created === 1 ? '' : 's'}`);
+      } else {
+        toast.success('No new jobs needed for this date range');
+      }
+
+      setShowGenerateModal(false);
+      await fetchJobs();
+    } catch {
+      toast.error('Failed to generate recurring jobs');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleStart = async (id: string) => {
     try {
       await startJob(id);
       toast.success('Job started');
       fetchJobs();
-    } catch {
-      toast.error('Failed to start job');
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
+      if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
+        const confirmed = confirm(
+          `Outside allowed service window (${details.allowedWindowStart}-${details.allowedWindowEnd}, ` +
+          `${details.timezone}). Apply manager override?`
+        );
+        if (confirmed) {
+          await startJob(id, {
+            managerOverride: true,
+            overrideReason: 'Manager override from Jobs list',
+          });
+          toast.success('Job started with manager override');
+          fetchJobs();
+          return;
+        }
+      }
+      toast.error(details?.code === 'OUTSIDE_SERVICE_WINDOW'
+        ? 'Outside allowed service window'
+        : 'Failed to start job');
     }
   };
 
@@ -184,6 +281,7 @@ const JobsList = () => {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
+            timeZone: 'UTC',
           })}
         </span>
       ),
@@ -268,6 +366,10 @@ const JobsList = () => {
           >
             <Filter className="mr-1.5 h-4 w-4" />
             Filters
+          </Button>
+          <Button variant="secondary" size="sm" onClick={openGenerateModal}>
+            <Zap className="mr-1.5 h-4 w-4" />
+            Generate Recurring
           </Button>
           <Button size="sm" onClick={() => navigate('/jobs/new')}>
             <Plus className="mr-1.5 h-4 w-4" />
@@ -381,6 +483,82 @@ const JobsList = () => {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        title="Generate Recurring Jobs"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Contract *"
+            placeholder={contractsLoading ? 'Loading active contracts...' : 'Select an active contract'}
+            value={generateForm.contractId}
+            onChange={(value) =>
+              setGenerateForm((prev) => ({ ...prev, contractId: value }))
+            }
+            options={contracts.map((contract) => ({
+              value: contract.id,
+              label: `${contract.contractNumber} — ${contract.account.name}${contract.facility ? ` (${contract.facility.name})` : ''}`,
+            }))}
+            disabled={contractsLoading || generating}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-300">
+                Date From *
+              </label>
+              <input
+                type="date"
+                value={generateForm.dateFrom}
+                onChange={(e) =>
+                  setGenerateForm((prev) => ({ ...prev, dateFrom: e.target.value }))
+                }
+                className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                disabled={generating}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-300">
+                Date To *
+              </label>
+              <input
+                type="date"
+                value={generateForm.dateTo}
+                onChange={(e) =>
+                  setGenerateForm((prev) => ({ ...prev, dateTo: e.target.value }))
+                }
+                className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                disabled={generating}
+              />
+            </div>
+          </div>
+
+          {!contractsLoading && contracts.length === 0 && (
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              No active contracts found.
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowGenerateModal(false)}
+              disabled={generating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGenerateRecurringJobs}
+              isLoading={generating}
+              disabled={contractsLoading || contracts.length === 0}
+            >
+              Generate Jobs
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

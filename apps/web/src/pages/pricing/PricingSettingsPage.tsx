@@ -41,7 +41,7 @@ import {
 
 // Default multiplier keys
 const DEFAULT_FLOOR_TYPES = ['vct', 'carpet', 'hardwood', 'tile', 'concrete', 'epoxy'];
-const DEFAULT_FREQUENCIES = ['1x_week', '2x_week', '3x_week', '4x_week', '5x_week', 'daily', 'monthly'];
+const DEFAULT_FREQUENCIES = ['1x_week', '2x_week', '3x_week', '4x_week', '5x_week', '7x_week', 'daily', 'monthly'];
 const DEFAULT_CONDITIONS = ['standard', 'medium', 'hard'];
 const DEFAULT_TRAFFIC_LEVELS = ['low', 'medium', 'high'];
 const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'educational', 'warehouse', 'residential', 'mixed', 'other'];
@@ -62,6 +62,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
   '3x_week': '3x per Week',
   '4x_week': '4x per Week',
   '5x_week': '5x per Week',
+  '7x_week': '7x per Week',
   daily: 'Daily (7x)',
   monthly: 'Monthly',
 };

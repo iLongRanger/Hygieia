@@ -21,6 +21,8 @@ export const clockInSchema = z.object({
     facilityId: z.string().uuid().optional().nullable(),
     notes: z.string().max(1000).optional().nullable(),
     geoLocation: z.record(z.unknown()).optional().nullable(),
+    managerOverride: z.boolean().optional().default(false),
+    overrideReason: z.string().max(500).optional().nullable(),
   }),
 });
 

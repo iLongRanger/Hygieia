@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  proposalScheduleFrequencySchema,
+  serviceScheduleSchema,
+  expectedDaysForScheduleFrequency,
+} from './serviceSchedule';
 
 export const proposalStatusSchema = z.enum([
   'draft',
@@ -67,37 +72,65 @@ export const proposalServiceUpdateSchema = proposalServiceSchema.extend({
 });
 
 // Create Proposal Schema
-export const createProposalSchema = z.object({
-  accountId: z.string().uuid(),
-  facilityId: z.string().uuid().optional().nullable(),
-  title: z.string().min(1, 'Proposal title is required').max(255),
-  description: z.string().max(10000).optional().nullable(),
-  validUntil: z.coerce.date().optional().nullable(),
-  taxRate: z.coerce.number().min(0).max(1).optional().default(0),
-  notes: z.string().max(10000).optional().nullable(),
+export const createProposalSchema = z
+  .object({
+    accountId: z.string().uuid(),
+    facilityId: z.string().uuid().optional().nullable(),
+    title: z.string().min(1, 'Proposal title is required').max(255),
+    description: z.string().max(10000).optional().nullable(),
+    validUntil: z.coerce.date().optional().nullable(),
+    taxRate: z.coerce.number().min(0).max(1).optional().default(0),
+    notes: z.string().max(10000).optional().nullable(),
+    serviceFrequency: proposalScheduleFrequencySchema.optional().default('5x_week'),
+    serviceSchedule: serviceScheduleSchema.optional().nullable(),
 
-  proposalItems: z.array(proposalItemSchema).optional().default([]),
-  proposalServices: z.array(proposalServiceSchema).optional().default([]),
-  pricingPlanId: z.string().uuid().optional().nullable(),
-  pricingSnapshot: z.record(z.any()).optional().nullable(),
-});
+    proposalItems: z.array(proposalItemSchema).optional().default([]),
+    proposalServices: z.array(proposalServiceSchema).optional().default([]),
+    pricingPlanId: z.string().uuid().optional().nullable(),
+    pricingSnapshot: z.record(z.any()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.serviceSchedule) return;
+    const expected = expectedDaysForScheduleFrequency(data.serviceFrequency);
+    if (data.serviceSchedule.days.length !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${data.serviceFrequency} requires exactly ${expected} day(s)`,
+        path: ['serviceSchedule', 'days'],
+      });
+    }
+  });
 
 // Update Proposal Schema
-export const updateProposalSchema = z.object({
-  accountId: z.string().uuid().optional(),
-  facilityId: z.string().uuid().optional().nullable(),
-  title: z.string().min(1).max(255).optional(),
-  status: proposalStatusSchema.optional(),
-  description: z.string().max(10000).optional().nullable(),
-  validUntil: z.coerce.date().optional().nullable(),
-  taxRate: z.coerce.number().min(0).max(1).optional(),
-  notes: z.string().max(10000).optional().nullable(),
+export const updateProposalSchema = z
+  .object({
+    accountId: z.string().uuid().optional(),
+    facilityId: z.string().uuid().optional().nullable(),
+    title: z.string().min(1).max(255).optional(),
+    status: proposalStatusSchema.optional(),
+    description: z.string().max(10000).optional().nullable(),
+    validUntil: z.coerce.date().optional().nullable(),
+    taxRate: z.coerce.number().min(0).max(1).optional(),
+    notes: z.string().max(10000).optional().nullable(),
+    serviceFrequency: proposalScheduleFrequencySchema.optional(),
+    serviceSchedule: serviceScheduleSchema.optional().nullable(),
 
-  proposalItems: z.array(proposalItemUpdateSchema).optional(),
-  proposalServices: z.array(proposalServiceUpdateSchema).optional(),
-  pricingPlanId: z.string().uuid().optional().nullable(),
-  pricingSnapshot: z.record(z.any()).optional().nullable(),
-});
+    proposalItems: z.array(proposalItemUpdateSchema).optional(),
+    proposalServices: z.array(proposalServiceUpdateSchema).optional(),
+    pricingPlanId: z.string().uuid().optional().nullable(),
+    pricingSnapshot: z.record(z.any()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.serviceSchedule || !data.serviceFrequency) return;
+    const expected = expectedDaysForScheduleFrequency(data.serviceFrequency);
+    if (data.serviceSchedule.days.length !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${data.serviceFrequency} requires exactly ${expected} day(s)`,
+        path: ['serviceSchedule', 'days'],
+      });
+    }
+  });
 
 // List Proposals Query Schema
 export const listProposalsQuerySchema = z.object({
@@ -148,18 +181,7 @@ export const rejectProposalSchema = z.object({
 // ============================================================
 
 // Extended frequency schema for pricing calculations
-export const pricingFrequencySchema = z.enum([
-  '1x_week',
-  '2x_week',
-  '3x_week',
-  '4x_week',
-  '5x_week',
-  'daily',
-  'weekly',
-  'biweekly',
-  'monthly',
-  'quarterly',
-]);
+export const pricingFrequencySchema = proposalScheduleFrequencySchema;
 
 // Change pricing plan
 export const changePricingPlanSchema = z.object({

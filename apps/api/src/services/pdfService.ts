@@ -3,6 +3,12 @@ import PdfPrinter from 'pdfmake/src/printer.js';
 import type { TDocumentDefinitions, Content, TableCell } from 'pdfmake/interfaces';
 import { getDefaultBranding, getGlobalSettings } from './globalSettingsService';
 import type { GlobalBranding } from '../types/branding';
+import {
+  extractFacilityTimezone,
+  formatTimeLabel,
+  formatWeekdayList,
+  normalizeServiceSchedule,
+} from './serviceScheduleService';
 
 // Use standard PDF fonts (no font files needed)
 const printer = new PdfPrinter({
@@ -608,6 +614,7 @@ interface ContractForPdf {
   billingCycle: string;
   paymentTerms: string;
   serviceFrequency?: string | null;
+  serviceSchedule?: Record<string, unknown> | null;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
   signedByName?: string | null;
@@ -716,6 +723,33 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     termsBody.push([
       { text: 'Service Frequency', style: 'tableHeader' },
       { text: contract.serviceFrequency.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) },
+    ]);
+  }
+
+  const normalizedSchedule = normalizeServiceSchedule(
+    contract.serviceSchedule,
+    contract.serviceFrequency
+  );
+  if (normalizedSchedule) {
+    termsBody.push([
+      { text: 'Scheduled Days', style: 'tableHeader' },
+      { text: formatWeekdayList(normalizedSchedule.days) },
+    ]);
+    termsBody.push([
+      { text: 'Allowed Window', style: 'tableHeader' },
+      {
+        text:
+          `${formatTimeLabel(normalizedSchedule.allowedWindowStart)} to ` +
+          `${formatTimeLabel(normalizedSchedule.allowedWindowEnd)}`,
+      },
+    ]);
+    termsBody.push([
+      { text: 'Timezone / Anchor', style: 'tableHeader' },
+      {
+        text:
+          `${extractFacilityTimezone(contract.facility?.address) || 'Facility timezone'} ` +
+          '(start day anchor)',
+      },
     ]);
   }
 

@@ -29,6 +29,7 @@ import {
 } from '../../lib/timeTracking';
 import type { TimeEntry, TimeEntryStatus } from '../../types/timeTracking';
 import type { Pagination } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
 
 const STATUSES = [
   { value: '', label: 'All Statuses' },
@@ -74,6 +75,7 @@ const TimeTrackingPage = () => {
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [clockingIn, setClockingIn] = useState(false);
+  const userRole = useAuthStore((state) => state.user?.role);
 
   const page = Number(searchParams.get('page') || '1');
   const status = searchParams.get('status') || '';
@@ -120,9 +122,31 @@ const TimeTrackingPage = () => {
       setActiveEntry(entry);
       toast.success('Clocked in!');
       fetchEntries();
-    } catch (err: unknown) {
+    } catch (err: any) {
+      const details = err?.response?.data?.error?.details;
+      const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
+      if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
+        const confirmed = confirm(
+          `Outside allowed service window (${details.allowedWindowStart}-${details.allowedWindowEnd}, ` +
+          `${details.timezone}). Apply manager override?`
+        );
+        if (confirmed) {
+          const entry = await clockIn({
+            managerOverride: true,
+            overrideReason: 'Manager override from Time Tracking',
+          });
+          setActiveEntry(entry);
+          toast.success('Clocked in with manager override');
+          fetchEntries();
+          return;
+        }
+      }
       const message = err instanceof Error ? err.message : 'Failed to clock in';
-      toast.error(message);
+      toast.error(
+        details?.code === 'OUTSIDE_SERVICE_WINDOW'
+          ? 'Outside allowed service window'
+          : message
+      );
     } finally {
       setClockingIn(false);
     }

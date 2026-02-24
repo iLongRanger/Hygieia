@@ -2,6 +2,12 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
+import {
+  extractFacilityTimezone,
+  normalizeServiceSchedule,
+  type ServiceWeekday,
+  validateServiceWindow,
+} from './serviceScheduleService';
 
 // ==================== Interfaces ====================
 
@@ -76,6 +82,12 @@ export interface GenerateJobsInput {
   dateFrom: Date;
   dateTo: Date;
   createdByUserId: string;
+}
+
+export interface StartJobOptions {
+  managerOverride?: boolean;
+  overrideReason?: string | null;
+  userRole?: string;
 }
 
 // ==================== Select Objects ====================
@@ -205,6 +217,37 @@ async function generateJobNumber(): Promise<string> {
   }
 
   return `${prefix}${String(seq).padStart(4, '0')}`;
+}
+
+const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+
+const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
+  0: 'sunday',
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
+};
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function iterateDateRange(from: Date, to: Date): string[] {
+  const startIso = toIsoDate(from);
+  const endIso = toIsoDate(to);
+  const cursor = new Date(`${startIso}T00:00:00.000Z`);
+  const end = new Date(`${endIso}T00:00:00.000Z`);
+  const dates: string[] = [];
+
+  while (cursor <= end) {
+    dates.push(toIsoDate(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
 }
 
 // ==================== CRUD Operations ====================
@@ -358,14 +401,81 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
   return job;
 }
 
-export async function startJob(id: string, userId: string) {
+export async function startJob(id: string, userId: string, options: StartJobOptions = {}) {
   const existing = await prisma.job.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      contract: {
+        select: {
+          id: true,
+          serviceFrequency: true,
+          serviceSchedule: true,
+          facility: {
+            select: {
+              address: true,
+            },
+          },
+        },
+      },
+      facility: {
+        select: {
+          address: true,
+        },
+      },
+    },
   });
   if (!existing) throw new NotFoundError('Job not found');
   if (existing.status !== 'scheduled') {
     throw new BadRequestError('Only scheduled jobs can be started');
+  }
+
+  const hasExplicitSchedule =
+    existing.contract?.serviceSchedule !== null &&
+    existing.contract?.serviceSchedule !== undefined;
+  const normalizedSchedule = hasExplicitSchedule
+    ? normalizeServiceSchedule(
+        existing.contract?.serviceSchedule,
+        existing.contract?.serviceFrequency
+      )
+    : null;
+  if (normalizedSchedule) {
+    const timezone = extractFacilityTimezone(
+      existing.contract?.facility?.address ?? existing.facility?.address
+    );
+    if (!timezone) {
+      throw new BadRequestError(
+        'Facility timezone is required for schedule enforcement'
+      );
+    }
+
+    const scheduleCheck = validateServiceWindow(normalizedSchedule, timezone, new Date());
+    if (!scheduleCheck.allowed) {
+      const canOverride = options.managerOverride && MANAGER_ROLES.has(options.userRole || '');
+      if (!canOverride) {
+        throw new BadRequestError(
+          'Outside allowed service window',
+          {
+            code: 'OUTSIDE_SERVICE_WINDOW',
+            timezone,
+            localTime: scheduleCheck.localTime,
+            localDate: scheduleCheck.localDate,
+            reason: scheduleCheck.reason,
+            allowedWindowStart: normalizedSchedule.allowedWindowStart,
+            allowedWindowEnd: normalizedSchedule.allowedWindowEnd,
+            allowedDays: normalizedSchedule.days,
+            managerOverrideAllowed: true,
+          }
+        );
+      }
+
+      if (!options.overrideReason?.trim()) {
+        throw new BadRequestError(
+          'Manager override reason is required when starting outside service window'
+        );
+      }
+    }
   }
 
   return prisma.$transaction(async (tx) => {
@@ -383,7 +493,12 @@ export async function startJob(id: string, userId: string) {
         jobId: id,
         action: 'started',
         performedByUserId: userId,
-        metadata: {},
+        metadata: options.managerOverride
+          ? {
+              managerOverride: true,
+              overrideReason: options.overrideReason || null,
+            }
+          : {},
       },
     });
 
@@ -533,6 +648,11 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
       assignedTeamId: true,
       serviceFrequency: true,
       serviceSchedule: true,
+      facility: {
+        select: {
+          address: true,
+        },
+      },
     },
   });
 
@@ -544,35 +664,100 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
     throw new BadRequestError('Contract must have a facility assigned');
   }
 
-  // Determine dates based on frequency
-  const frequency = contract.serviceFrequency || 'weekly';
-  const dates: Date[] = [];
-  const current = new Date(input.dateFrom);
-  const end = new Date(input.dateTo);
+  const hasExplicitSchedule =
+    contract.serviceSchedule !== null && contract.serviceSchedule !== undefined;
+  const normalizedSchedule = normalizeServiceSchedule(
+    contract.serviceSchedule,
+    contract.serviceFrequency || 'weekly'
+  );
+  if (!normalizedSchedule) {
+    throw new BadRequestError('Contract service schedule is not configured');
+  }
 
-  while (current <= end) {
-    dates.push(new Date(current));
-    switch (frequency) {
-      case 'daily':
-        current.setDate(current.getDate() + 1);
-        break;
-      case '2x_week':
-        current.setDate(current.getDate() + 3); // approx 2x/week
-        break;
-      case '3x_week':
-        current.setDate(current.getDate() + 2); // approx 3x/week
-        break;
-      case 'weekly':
-        current.setDate(current.getDate() + 7);
-        break;
-      case 'biweekly':
-        current.setDate(current.getDate() + 14);
-        break;
-      case 'monthly':
-        current.setMonth(current.getMonth() + 1);
-        break;
-      default:
-        current.setDate(current.getDate() + 7);
+  const facilityTimezone = extractFacilityTimezone(contract.facility?.address);
+  if (hasExplicitSchedule && !facilityTimezone) {
+    throw new BadRequestError(
+      'Facility timezone is required before generating recurring jobs'
+    );
+  }
+  const effectiveTimezone = facilityTimezone || 'UTC';
+
+  const frequency = (contract.serviceFrequency || 'weekly').toLowerCase();
+  let datesToGenerate: string[] = [];
+
+  if (!hasExplicitSchedule) {
+    const current = new Date(`${toIsoDate(input.dateFrom)}T00:00:00.000Z`);
+    const end = new Date(`${toIsoDate(input.dateTo)}T00:00:00.000Z`);
+
+    while (current <= end) {
+      datesToGenerate.push(toIsoDate(current));
+      switch (frequency) {
+        case 'daily':
+        case '7x_week':
+          current.setUTCDate(current.getUTCDate() + 1);
+          break;
+        case '2x_week':
+          current.setUTCDate(current.getUTCDate() + 3);
+          break;
+        case '3x_week':
+          current.setUTCDate(current.getUTCDate() + 2);
+          break;
+        case 'weekly':
+        case '1x_week':
+          current.setUTCDate(current.getUTCDate() + 7);
+          break;
+        case 'biweekly':
+        case 'bi_weekly':
+          current.setUTCDate(current.getUTCDate() + 14);
+          break;
+        case 'monthly':
+          current.setUTCMonth(current.getUTCMonth() + 1);
+          break;
+        case 'quarterly':
+          current.setUTCMonth(current.getUTCMonth() + 3);
+          break;
+        default:
+          current.setUTCDate(current.getUTCDate() + 7);
+      }
+    }
+  } else {
+    const allDateCandidates = iterateDateRange(input.dateFrom, input.dateTo)
+      .filter((isoDate) => {
+        const day = new Date(`${isoDate}T12:00:00.000Z`).getUTCDay();
+        const weekday = JS_WEEKDAY_TO_SERVICE_DAY[day];
+        return Boolean(weekday && normalizedSchedule.days.includes(weekday));
+      });
+
+    const startAnchor = new Date(`${toIsoDate(input.dateFrom)}T00:00:00.000Z`);
+    let lastMonthlyKey: string | null = null;
+    let lastQuarterKey: string | null = null;
+
+    for (const isoDate of allDateCandidates) {
+      const date = new Date(`${isoDate}T00:00:00.000Z`);
+
+      if (frequency === 'biweekly' || frequency === 'bi_weekly') {
+        const diffDays = Math.floor(
+          (date.getTime() - startAnchor.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const weekIndex = Math.floor(diffDays / 7);
+        if (weekIndex % 2 !== 0) continue;
+      }
+
+      if (frequency === 'monthly') {
+        const monthKey = isoDate.slice(0, 7);
+        if (monthKey === lastMonthlyKey) continue;
+        lastMonthlyKey = monthKey;
+      }
+
+      if (frequency === 'quarterly') {
+        const month = Number(isoDate.slice(5, 7));
+        const quarter = Math.floor((month - 1) / 3) + 1;
+        const quarterKey = `${isoDate.slice(0, 4)}-Q${quarter}`;
+        if (quarterKey === lastQuarterKey) continue;
+        lastQuarterKey = quarterKey;
+      }
+
+      datesToGenerate.push(isoDate);
     }
   }
 
@@ -593,9 +778,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
     existingJobs.map((j) => j.scheduledDate.toISOString().slice(0, 10))
   );
 
-  const newDates = dates.filter(
-    (d) => !existingDates.has(d.toISOString().slice(0, 10))
-  );
+  const newDates = datesToGenerate.filter((dateIso) => !existingDates.has(dateIso));
 
   if (newDates.length === 0) {
     return { created: 0, message: 'All dates already have jobs scheduled' };
@@ -603,7 +786,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
 
   // Batch create jobs
   const jobs = [];
-  for (const date of newDates) {
+  for (const dateIso of newDates) {
     const jobNumber = await generateJobNumber();
     const job = await prisma.job.create({
       data: {
@@ -614,7 +797,12 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         jobType: 'scheduled_service',
         assignedTeamId: contract.assignedTeamId ?? null,
         status: 'scheduled',
-        scheduledDate: date,
+        scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
+        notes: hasExplicitSchedule
+          ?
+          `Allowed window ${normalizedSchedule.allowedWindowStart}-${normalizedSchedule.allowedWindowEnd} ` +
+          `(${effectiveTimezone}, start-day anchor)`
+          : null,
         createdByUserId: input.createdByUserId,
       },
       select: { id: true, jobNumber: true, scheduledDate: true },

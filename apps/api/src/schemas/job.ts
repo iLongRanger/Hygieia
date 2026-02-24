@@ -60,6 +60,11 @@ export const assignJobSchema = z.object({
   assignedToUserId: z.string().uuid().nullable().optional(),
 });
 
+export const startJobSchema = z.object({
+  managerOverride: z.boolean().optional().default(false),
+  overrideReason: z.string().max(500).nullable().optional(),
+});
+
 export const generateJobsSchema = z.object({
   contractId: z.string().uuid(),
   dateFrom: z.string().transform((v) => new Date(v)),
