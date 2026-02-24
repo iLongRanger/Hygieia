@@ -124,6 +124,8 @@ export interface GenerateJobsInput {
   contractId: string;
   dateFrom: string;
   dateTo: string;
+  assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
 }
 
 export interface CreateJobTaskInput {

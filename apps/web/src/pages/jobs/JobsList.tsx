@@ -21,8 +21,12 @@ import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { listJobs, startJob, completeJob, cancelJob, generateJobs } from '../../lib/jobs';
 import { listContracts } from '../../lib/contracts';
+import { listTeams } from '../../lib/teams';
+import { listUsers } from '../../lib/users';
 import type { Job, JobStatus } from '../../types/job';
 import type { Contract } from '../../types/contract';
+import type { Team } from '../../types/team';
+import type { User } from '../../types/user';
 import type { Pagination } from '../../types/crm';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -85,6 +89,8 @@ const toDateInputValue = (date: Date): string => {
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
 };
 
+type GenerateAssignmentMode = 'contract_default' | 'subcontractor_team' | 'internal_employee';
+
 const JobsList = () => {
   const navigate = useNavigate();
   const userRole = useAuthStore((state) => state.user?.role);
@@ -96,6 +102,9 @@ const JobsList = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [contractsLoading, setContractsLoading] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [assignmentOptionsLoading, setAssignmentOptionsLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateForm, setGenerateForm] = useState(() => {
     const today = new Date();
@@ -106,6 +115,9 @@ const JobsList = () => {
       contractId: '',
       dateFrom: toDateInputValue(today),
       dateTo: toDateInputValue(nextMonth),
+      assignmentMode: 'contract_default' as GenerateAssignmentMode,
+      assignedTeamId: '',
+      assignedToUserId: '',
     };
   });
 
@@ -156,16 +168,24 @@ const JobsList = () => {
   const openGenerateModal = async () => {
     setShowGenerateModal(true);
 
-    if (contracts.length > 0 || contractsLoading) return;
+    if ((contracts.length > 0 && teams.length > 0 && users.length > 0) || contractsLoading || assignmentOptionsLoading) return;
 
     try {
       setContractsLoading(true);
-      const result = await listContracts({ status: 'active', limit: 100 });
-      setContracts(result.data || []);
+      setAssignmentOptionsLoading(true);
+      const [contractsResult, teamsResult, usersResult] = await Promise.all([
+        listContracts({ status: 'active', limit: 100 }),
+        listTeams({ limit: 100, isActive: true }),
+        listUsers({ limit: 100, status: 'active' }),
+      ]);
+      setContracts(contractsResult.data || []);
+      setTeams(teamsResult.data || []);
+      setUsers(usersResult.data || []);
     } catch {
-      toast.error('Failed to load active contracts');
+      toast.error('Failed to load generate options');
     } finally {
       setContractsLoading(false);
+      setAssignmentOptionsLoading(false);
     }
   };
 
@@ -187,10 +207,29 @@ const JobsList = () => {
 
     try {
       setGenerating(true);
-      const result = await generateJobs({
+      const payload = {
         contractId: generateForm.contractId,
         dateFrom: generateForm.dateFrom,
         dateTo: generateForm.dateTo,
+        ...(generateForm.assignmentMode === 'subcontractor_team' && generateForm.assignedTeamId
+          ? { assignedTeamId: generateForm.assignedTeamId, assignedToUserId: null }
+          : {}),
+        ...(generateForm.assignmentMode === 'internal_employee' && generateForm.assignedToUserId
+          ? { assignedToUserId: generateForm.assignedToUserId, assignedTeamId: null }
+          : {}),
+      };
+
+      if (generateForm.assignmentMode === 'subcontractor_team' && !generateForm.assignedTeamId) {
+        toast.error('Please select a subcontractor team');
+        return;
+      }
+      if (generateForm.assignmentMode === 'internal_employee' && !generateForm.assignedToUserId) {
+        toast.error('Please select an internal employee');
+        return;
+      }
+
+      const result = await generateJobs({
+        ...payload,
       });
 
       if (result.created > 0) {
@@ -532,6 +571,57 @@ const JobsList = () => {
             }))}
             disabled={contractsLoading || generating}
           />
+
+          <Select
+            label="Assignment"
+            value={generateForm.assignmentMode}
+            onChange={(value) =>
+              setGenerateForm((prev) => ({
+                ...prev,
+                assignmentMode: value as GenerateAssignmentMode,
+                assignedTeamId: '',
+                assignedToUserId: '',
+              }))
+            }
+            options={[
+              { value: 'contract_default', label: 'Use contract default' },
+              { value: 'subcontractor_team', label: 'Override: Subcontractor team' },
+              { value: 'internal_employee', label: 'Override: Internal employee' },
+            ]}
+            disabled={generating || assignmentOptionsLoading}
+          />
+
+          {generateForm.assignmentMode === 'subcontractor_team' && (
+            <Select
+              label="Subcontractor Team *"
+              placeholder={assignmentOptionsLoading ? 'Loading teams...' : 'Select a subcontractor team'}
+              value={generateForm.assignedTeamId}
+              onChange={(value) =>
+                setGenerateForm((prev) => ({ ...prev, assignedTeamId: value }))
+              }
+              options={[
+                { value: '', label: 'Select a team' },
+                ...teams.map((team) => ({ value: team.id, label: team.name })),
+              ]}
+              disabled={generating || assignmentOptionsLoading}
+            />
+          )}
+
+          {generateForm.assignmentMode === 'internal_employee' && (
+            <Select
+              label="Internal Employee *"
+              placeholder={assignmentOptionsLoading ? 'Loading users...' : 'Select an internal employee'}
+              value={generateForm.assignedToUserId}
+              onChange={(value) =>
+                setGenerateForm((prev) => ({ ...prev, assignedToUserId: value }))
+              }
+              options={[
+                { value: '', label: 'Select an employee' },
+                ...users.map((user) => ({ value: user.id, label: user.fullName })),
+              ]}
+              disabled={generating || assignmentOptionsLoading}
+            />
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

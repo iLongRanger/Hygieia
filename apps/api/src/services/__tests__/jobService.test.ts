@@ -244,4 +244,43 @@ describe('jobService', () => {
     );
     expect(result.created).toBe(1);
   });
+
+  it('generateJobsFromContract supports internal employee override assignment', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: 'team-1',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValueOnce({
+      jobNumber: `WO-${year}-0005`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-6',
+      jobNumber: `WO-${year}-0006`,
+      scheduledDate: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    await generateJobsFromContract({
+      contractId: 'contract-1',
+      dateFrom: new Date('2026-01-01T00:00:00.000Z'),
+      dateTo: new Date('2026-01-01T00:00:00.000Z'),
+      assignedToUserId: 'user-2',
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assignedTeamId: null,
+          assignedToUserId: 'user-2',
+        }),
+      })
+    );
+  });
 });

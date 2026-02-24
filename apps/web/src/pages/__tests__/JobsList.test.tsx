@@ -20,6 +20,8 @@ const completeJobMock = vi.fn();
 const cancelJobMock = vi.fn();
 const generateJobsMock = vi.fn();
 const listContractsMock = vi.fn();
+const listTeamsMock = vi.fn();
+const listUsersMock = vi.fn();
 
 vi.mock('../../lib/jobs', () => ({
   listJobs: (...args: unknown[]) => listJobsMock(...args),
@@ -31,6 +33,14 @@ vi.mock('../../lib/jobs', () => ({
 
 vi.mock('../../lib/contracts', () => ({
   listContracts: (...args: unknown[]) => listContractsMock(...args),
+}));
+
+vi.mock('../../lib/teams', () => ({
+  listTeams: (...args: unknown[]) => listTeamsMock(...args),
+}));
+
+vi.mock('../../lib/users', () => ({
+  listUsers: (...args: unknown[]) => listUsersMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -57,6 +67,14 @@ describe('JobsList', () => {
           facility: { name: 'HQ' },
         },
       ],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+    listTeamsMock.mockResolvedValue({
+      data: [{ id: 'team-1', name: 'Sub Team A' }],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+    listUsersMock.mockResolvedValue({
+      data: [{ id: 'user-1', fullName: 'Alice Employee' }],
       pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
     });
   });
@@ -132,6 +150,12 @@ describe('JobsList', () => {
 
     await waitFor(() => {
       expect(listContractsMock).toHaveBeenCalledWith({ status: 'active', limit: 100 });
+    });
+    await waitFor(() => {
+      expect(listTeamsMock).toHaveBeenCalledWith({ limit: 100, isActive: true });
+    });
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenCalledWith({ limit: 100, status: 'active' });
     });
 
     await user.selectOptions(screen.getByLabelText(/contract/i), 'contract-1');

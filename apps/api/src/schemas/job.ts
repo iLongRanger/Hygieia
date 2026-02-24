@@ -93,6 +93,16 @@ export const generateJobsSchema = z.object({
   contractId: z.string().uuid(),
   dateFrom: z.string().transform((v) => new Date(v)),
   dateTo: z.string().transform((v) => new Date(v)),
+  assignedTeamId: z.string().uuid().nullable().optional(),
+  assignedToUserId: z.string().uuid().nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.assignedTeamId && data.assignedToUserId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Assign either a subcontractor team or an internal employee, not both',
+      path: ['assignedTeamId'],
+    });
+  }
 });
 
 export const createJobTaskSchema = z.object({

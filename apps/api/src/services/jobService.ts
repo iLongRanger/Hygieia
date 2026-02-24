@@ -81,6 +81,8 @@ export interface GenerateJobsInput {
   contractId: string;
   dateFrom: Date;
   dateTo: Date;
+  assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
   createdByUserId: string;
 }
 
@@ -680,6 +682,8 @@ export async function assignJob(
 // ==================== Generate Jobs From Contract ====================
 
 export async function generateJobsFromContract(input: GenerateJobsInput) {
+  assertSingleWorkforceAssignment(input);
+
   const contract = await prisma.contract.findUnique({
     where: { id: input.contractId },
     select: {
@@ -821,6 +825,13 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
     return { created: 0, message: 'All dates already have jobs scheduled' };
   }
 
+  const resolvedAssignedTeamId =
+    input.assignedToUserId
+      ? null
+      : (input.assignedTeamId !== undefined ? input.assignedTeamId : contract.assignedTeamId) ?? null;
+  const resolvedAssignedToUserId =
+    input.assignedToUserId !== undefined ? input.assignedToUserId : null;
+
   // Batch create jobs
   const jobs = [];
   for (const dateIso of newDates) {
@@ -832,7 +843,8 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         facilityId: contract.facilityId,
         accountId: contract.accountId,
         jobType: 'scheduled_service',
-        assignedTeamId: contract.assignedTeamId ?? null,
+        assignedTeamId: resolvedAssignedTeamId,
+        assignedToUserId: resolvedAssignedToUserId,
         status: 'scheduled',
         scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
         notes: hasExplicitSchedule
