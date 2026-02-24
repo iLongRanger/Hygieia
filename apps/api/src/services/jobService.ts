@@ -675,11 +675,6 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
   }
 
   const facilityTimezone = extractFacilityTimezone(contract.facility?.address);
-  if (hasExplicitSchedule && !facilityTimezone) {
-    throw new BadRequestError(
-      'Facility timezone is required before generating recurring jobs'
-    );
-  }
   const effectiveTimezone = facilityTimezone || 'UTC';
 
   const frequency = (contract.serviceFrequency || 'weekly').toLowerCase();
@@ -801,7 +796,8 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         notes: hasExplicitSchedule
           ?
           `Allowed window ${normalizedSchedule.allowedWindowStart}-${normalizedSchedule.allowedWindowEnd} ` +
-          `(${effectiveTimezone}, start-day anchor)`
+          `(${effectiveTimezone}, start-day anchor)` +
+          (!facilityTimezone ? ' [timezone fallback: UTC]' : '')
           : null,
         createdByUserId: input.createdByUserId,
       },

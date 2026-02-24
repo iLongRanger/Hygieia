@@ -184,8 +184,12 @@ const JobsList = () => {
 
       setShowGenerateModal(false);
       await fetchJobs();
-    } catch {
-      toast.error('Failed to generate recurring jobs');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.error ||
+        'Failed to generate recurring jobs';
+      toast.error(message);
     } finally {
       setGenerating(false);
     }
