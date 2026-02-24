@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { geocodeAddressIfNeeded } from './geocodingService';
 
 export interface FacilityListParams {
   page?: number;
@@ -181,11 +182,13 @@ export async function getFacilityById(id: string) {
 }
 
 export async function createFacility(input: FacilityCreateInput) {
+  const normalizedAddress = await geocodeAddressIfNeeded(input.address);
+
   return prisma.facility.create({
     data: {
       accountId: input.accountId,
       name: input.name,
-      address: input.address as Prisma.InputJsonValue,
+      address: normalizedAddress as Prisma.InputJsonValue,
       squareFeet: input.squareFeet,
       buildingType: input.buildingType,
       accessInstructions: input.accessInstructions,
@@ -205,7 +208,8 @@ export async function updateFacility(id: string, input: FacilityUpdateInput) {
 
   if (input.name !== undefined) updateData.name = input.name;
   if (input.address !== undefined) {
-    updateData.address = input.address as Prisma.InputJsonValue;
+    const normalizedAddress = await geocodeAddressIfNeeded(input.address);
+    updateData.address = normalizedAddress as Prisma.InputJsonValue;
   }
   if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
   if (input.buildingType !== undefined)

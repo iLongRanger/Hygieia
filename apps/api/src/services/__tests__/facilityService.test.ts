@@ -2,6 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as facilityService from '../facilityService';
 import { prisma } from '../../lib/prisma';
 import { createTestFacility } from '../../test/helpers';
+import { geocodeAddressIfNeeded } from '../geocodingService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -14,6 +15,10 @@ jest.mock('../../lib/prisma', () => ({
       count: jest.fn(),
     },
   },
+}));
+
+jest.mock('../geocodingService', () => ({
+  geocodeAddressIfNeeded: jest.fn(async (address) => address),
 }));
 
 describe('facilityService', () => {
@@ -124,6 +129,7 @@ describe('facilityService', () => {
       const result = await facilityService.createFacility(input);
 
       expect(result).toEqual(mockFacility);
+      expect(geocodeAddressIfNeeded).toHaveBeenCalled();
     });
 
     it('should default status to active', async () => {
@@ -148,6 +154,34 @@ describe('facilityService', () => {
         })
       );
     });
+
+    it('should save geocoded coordinates when address has no lat/lng', async () => {
+      const input: facilityService.FacilityCreateInput = {
+        accountId: 'account-123',
+        name: 'Geocoded Building',
+        address: { street: '123 Main St', city: 'Toronto' },
+        createdByUserId: 'user-123',
+      };
+      (geocodeAddressIfNeeded as jest.Mock).mockResolvedValue({
+        ...input.address,
+        latitude: 43.70011,
+        longitude: -79.4163,
+      });
+      (prisma.facility.create as jest.Mock).mockResolvedValue(createTestFacility(input));
+
+      await facilityService.createFacility(input);
+
+      expect(prisma.facility.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            address: expect.objectContaining({
+              latitude: 43.70011,
+              longitude: -79.4163,
+            }),
+          }),
+        })
+      );
+    });
   });
 
   describe('updateFacility', () => {
@@ -164,6 +198,31 @@ describe('facilityService', () => {
       const result = await facilityService.updateFacility('facility-123', input);
 
       expect(result).toEqual(mockFacility);
+    });
+
+    it('should geocode updated address when coordinates are missing', async () => {
+      const input: facilityService.FacilityUpdateInput = {
+        address: { street: '456 King St', city: 'Toronto' },
+      };
+      (geocodeAddressIfNeeded as jest.Mock).mockResolvedValue({
+        ...input.address,
+        latitude: 43.64,
+        longitude: -79.38,
+      });
+      (prisma.facility.update as jest.Mock).mockResolvedValue(createTestFacility({ id: 'facility-123' }));
+
+      await facilityService.updateFacility('facility-123', input);
+
+      expect(prisma.facility.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            address: expect.objectContaining({
+              latitude: 43.64,
+              longitude: -79.38,
+            }),
+          }),
+        })
+      );
     });
 
     it('should disconnect facility manager when set to null', async () => {
