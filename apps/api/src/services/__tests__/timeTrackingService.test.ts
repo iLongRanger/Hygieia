@@ -12,6 +12,15 @@ import {
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
+    job: {
+      findUnique: jest.fn(),
+    },
+    contract: {
+      findUnique: jest.fn(),
+    },
+    facility: {
+      findUnique: jest.fn(),
+    },
     timeEntry: {
       findMany: jest.fn(),
       count: jest.fn(),
@@ -42,6 +51,37 @@ describe('timeTrackingService', () => {
     await expect(clockIn({ userId: 'user-1' })).rejects.toThrow(
       'Already clocked in. Please clock out first.'
     );
+  });
+
+  it('clockIn rejects when no linked facility is provided', async () => {
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(clockIn({ userId: 'user-1' })).rejects.toThrow(
+      'Clock-in requires a linked facility for location verification'
+    );
+  });
+
+  it('clockIn rejects when user is outside facility geofence', async () => {
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      address: {
+        latitude: 43.70011,
+        longitude: -79.4163,
+        geofenceRadiusMeters: 100,
+      },
+    });
+
+    await expect(
+      clockIn({
+        userId: 'user-1',
+        facilityId: 'facility-1',
+        geoLocation: {
+          latitude: 43.751,
+          longitude: -79.5,
+          accuracy: 10,
+        },
+      })
+    ).rejects.toThrow('You are outside the allowed facility check-in radius');
   });
 
   it('clockOut computes totalHours using elapsed time and break minutes', async () => {

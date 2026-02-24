@@ -20,6 +20,9 @@ const clockOutMock = vi.fn();
 const startBreakMock = vi.fn();
 const endBreakMock = vi.fn();
 const approveTimeEntryMock = vi.fn();
+const listJobsMock = vi.fn();
+const getJobMock = vi.fn();
+const completeJobMock = vi.fn();
 
 vi.mock('../../lib/timeTracking', () => ({
   listTimeEntries: (...args: unknown[]) => listTimeEntriesMock(...args),
@@ -29,6 +32,12 @@ vi.mock('../../lib/timeTracking', () => ({
   startBreak: (...args: unknown[]) => startBreakMock(...args),
   endBreak: (...args: unknown[]) => endBreakMock(...args),
   approveTimeEntry: (...args: unknown[]) => approveTimeEntryMock(...args),
+}));
+
+vi.mock('../../lib/jobs', () => ({
+  listJobs: (...args: unknown[]) => listJobsMock(...args),
+  getJob: (...args: unknown[]) => getJobMock(...args),
+  completeJob: (...args: unknown[]) => completeJobMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -73,6 +82,35 @@ describe('TimeTrackingPage', () => {
     startBreakMock.mockResolvedValue(entry);
     endBreakMock.mockResolvedValue(entry);
     approveTimeEntryMock.mockResolvedValue({ ...entry, status: 'approved' });
+    listJobsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'job-1',
+          jobNumber: 'WO-2026-0001',
+          facility: { id: 'facility-1', name: 'HQ' },
+          assignedToUser: { id: 'user-1', fullName: 'Jane Worker', email: 'jane@example.com' },
+          assignedTeam: null,
+        },
+      ],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+    getJobMock.mockResolvedValue({ id: 'job-1', status: 'in_progress' });
+    completeJobMock.mockResolvedValue({ id: 'job-1', status: 'completed' });
+
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              latitude: 43.7,
+              longitude: -79.4,
+              accuracy: 15,
+            } as GeolocationCoordinates,
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -95,6 +133,9 @@ describe('TimeTrackingPage', () => {
 
     await screen.findByText('Not Clocked In');
     await user.click(screen.getByRole('button', { name: /clock in/i }));
+    await screen.findByRole('heading', { name: /clock in/i });
+    await user.selectOptions(screen.getByLabelText(/job/i), 'job-1');
+    await user.click(screen.getByRole('button', { name: /confirm clock in/i }));
 
     await waitFor(() => {
       expect(clockInMock).toHaveBeenCalled();

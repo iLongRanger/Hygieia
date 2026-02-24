@@ -6,7 +6,14 @@ export const addressSchema = z.object({
   state: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
-});
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
+  lat: z.coerce.number().optional(),
+  lng: z.coerce.number().optional(),
+  geofenceRadiusMeters: z.coerce.number().positive().optional(),
+  timezone: z.string().optional(),
+  timeZone: z.string().optional(),
+}).passthrough();
 
 export const facilityStatusSchema = z.enum(['active', 'inactive', 'pending']);
 

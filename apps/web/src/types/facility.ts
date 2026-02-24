@@ -4,6 +4,14 @@ export interface Address {
   state?: string;
   postalCode?: string;
   country?: string;
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
+  geofenceRadiusMeters?: number;
+  timezone?: string;
+  timeZone?: string;
+  [key: string]: unknown;
 }
 
 export interface Facility {
