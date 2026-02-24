@@ -90,6 +90,11 @@ export interface StartJobOptions {
   userRole?: string;
 }
 
+type WorkforceAssignmentType =
+  | 'unassigned'
+  | 'internal_employee'
+  | 'subcontractor_team';
+
 // ==================== Select Objects ====================
 
 const jobSelect = {
@@ -231,6 +236,36 @@ const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
   6: 'saturday',
 };
 
+function assertSingleWorkforceAssignment(input: {
+  assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
+}) {
+  if (input.assignedTeamId && input.assignedToUserId) {
+    throw new BadRequestError(
+      'Assign either a subcontractor team or an internal employee, not both'
+    );
+  }
+}
+
+function deriveWorkforceAssignmentType(job: {
+  assignedTeam?: { id: string } | null;
+  assignedToUser?: { id: string } | null;
+}): WorkforceAssignmentType {
+  if (job.assignedToUser?.id) return 'internal_employee';
+  if (job.assignedTeam?.id) return 'subcontractor_team';
+  return 'unassigned';
+}
+
+function withWorkforceMetadata<T extends {
+  assignedTeam?: { id: string } | null;
+  assignedToUser?: { id: string } | null;
+}>(job: T): T & { workforceAssignmentType: WorkforceAssignmentType } {
+  return {
+    ...job,
+    workforceAssignmentType: deriveWorkforceAssignmentType(job),
+  };
+}
+
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -297,7 +332,7 @@ export async function listJobs(params: JobListParams) {
   ]);
 
   return {
-    data,
+    data: data.map((job) => withWorkforceMetadata(job)),
     pagination: {
       page,
       limit,
@@ -308,13 +343,15 @@ export async function listJobs(params: JobListParams) {
 }
 
 export async function getJobById(id: string) {
-  return prisma.job.findUnique({
+  const job = await prisma.job.findUnique({
     where: { id },
     select: jobDetailSelect,
   });
+  return job ? withWorkforceMetadata(job) : null;
 }
 
 export async function createJob(input: JobCreateInput) {
+  assertSingleWorkforceAssignment(input);
   // Validate contract exists and is active
   const contract = await prisma.contract.findUnique({
     where: { id: input.contractId },
@@ -357,11 +394,12 @@ export async function createJob(input: JobCreateInput) {
       },
     });
 
-    return job;
+    return withWorkforceMetadata(job);
   });
 }
 
 export async function updateJob(id: string, input: JobUpdateInput, userId: string) {
+  assertSingleWorkforceAssignment(input);
   const existing = await prisma.job.findUnique({
     where: { id },
     select: { id: true, status: true },
@@ -398,7 +436,7 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
     return job;
   });
 
-  return job;
+  return withWorkforceMetadata(job);
 }
 
 export async function startJob(id: string, userId: string, options: StartJobOptions = {}) {
@@ -502,7 +540,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
       },
     });
 
-    return job;
+    return withWorkforceMetadata(job);
   });
 }
 
@@ -547,7 +585,7 @@ export async function completeJob(id: string, input: JobCompleteInput) {
       },
     });
 
-    return job;
+    return withWorkforceMetadata(job);
   });
 }
 
@@ -580,7 +618,7 @@ export async function cancelJob(id: string, reason: string | null, userId: strin
       },
     });
 
-    return job;
+    return withWorkforceMetadata(job);
   });
 }
 
@@ -590,6 +628,10 @@ export async function assignJob(
   userId: string | null,
   performedByUserId: string
 ) {
+  assertSingleWorkforceAssignment({
+    assignedTeamId: teamId,
+    assignedToUserId: userId,
+  });
   const existing = await prisma.job.findUnique({
     where: { id },
     select: { id: true, status: true },
@@ -632,7 +674,7 @@ export async function assignJob(
     });
   }
 
-  return job;
+  return withWorkforceMetadata(job);
 }
 
 // ==================== Generate Jobs From Contract ====================

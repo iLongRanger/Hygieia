@@ -135,7 +135,7 @@ describe('jobService', () => {
     );
   });
 
-  it('assignJob sends notification when user assignment is present', async () => {
+  it('assignJob sends notification when internal user assignment is present', async () => {
     (prisma.job.findUnique as jest.Mock).mockResolvedValue({
       id: 'job-1',
       status: 'scheduled',
@@ -146,14 +146,14 @@ describe('jobService', () => {
       facility: { name: 'HQ' },
     });
 
-    await assignJob('job-1', 'team-1', 'user-7', 'admin-1');
+    await assignJob('job-1', null, 'user-7', 'admin-1');
 
     expect(prisma.jobActivity.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: 'assigned',
           metadata: {
-            assignedTeamId: 'team-1',
+            assignedTeamId: null,
             assignedToUserId: 'user-7',
           },
         }),

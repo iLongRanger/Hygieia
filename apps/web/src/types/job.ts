@@ -2,6 +2,7 @@ export type JobType = 'scheduled_service' | 'special_job';
 export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'canceled' | 'missed';
 export type JobTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type JobNoteType = 'general' | 'issue' | 'photo';
+export type WorkforceAssignmentType = 'unassigned' | 'internal_employee' | 'subcontractor_team';
 
 export interface Job {
   id: string;
@@ -41,6 +42,7 @@ export interface Job {
     fullName: string;
     email: string;
   } | null;
+  workforceAssignmentType?: WorkforceAssignmentType;
   createdByUser: {
     id: string;
     fullName: string;

@@ -132,7 +132,23 @@ const JobForm = () => {
   };
 
   const handleChange = (field: keyof CreateJobInput, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      if (field === 'assignedTeamId') {
+        return {
+          ...prev,
+          assignedTeamId: (value as string | null) || null,
+          assignedToUserId: (value as string | null) ? null : prev.assignedToUserId,
+        };
+      }
+      if (field === 'assignedToUserId') {
+        return {
+          ...prev,
+          assignedToUserId: (value as string | null) || null,
+          assignedTeamId: (value as string | null) ? null : prev.assignedTeamId,
+        };
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,6 +164,10 @@ const JobForm = () => {
     }
     if (!formData.facilityId) {
       toast.error('Selected contract has no facility assigned');
+      return;
+    }
+    if (formData.assignedTeamId && formData.assignedToUserId) {
+      toast.error('Assign either a subcontractor team or an internal employee');
       return;
     }
 
@@ -256,8 +276,8 @@ const JobForm = () => {
                 />
               </div>
               <Select
-                label="Assigned Team"
-                placeholder="Select a team (optional)"
+                label="Subcontractor Team"
+                placeholder="Select subcontractor team (optional)"
                 value={formData.assignedTeamId || ''}
                 onChange={(val) =>
                   handleChange('assignedTeamId', val || null)
@@ -268,8 +288,8 @@ const JobForm = () => {
                 ]}
               />
               <Select
-                label="Assigned To"
-                placeholder="Select a user (optional)"
+                label="Internal Employee"
+                placeholder="Select internal employee (optional)"
                 value={formData.assignedToUserId || ''}
                 onChange={(val) =>
                   handleChange('assignedToUserId', val || null)
@@ -282,6 +302,9 @@ const JobForm = () => {
                   })),
                 ]}
               />
+              <div className="md:col-span-2 text-xs text-surface-500 dark:text-surface-400">
+                Choose one assignment mode: subcontractor team or internal employee.
+              </div>
             </div>
           </Card>
 

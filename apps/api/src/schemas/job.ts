@@ -34,6 +34,14 @@ export const createJobSchema = z.object({
   scheduledEndTime: z.string().nullable().optional().transform((v) => (v ? new Date(v) : null)),
   estimatedHours: z.number().positive().nullable().optional(),
   notes: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.assignedTeamId && data.assignedToUserId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Assign either a subcontractor team or an internal employee, not both',
+      path: ['assignedTeamId'],
+    });
+  }
 });
 
 export const updateJobSchema = z.object({
@@ -44,6 +52,14 @@ export const updateJobSchema = z.object({
   scheduledEndTime: z.string().nullable().optional().transform((v) => (v ? new Date(v) : null)),
   estimatedHours: z.number().positive().nullable().optional(),
   notes: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.assignedTeamId && data.assignedToUserId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Assign either a subcontractor team or an internal employee, not both',
+      path: ['assignedTeamId'],
+    });
+  }
 });
 
 export const completeJobSchema = z.object({
@@ -58,6 +74,14 @@ export const cancelJobSchema = z.object({
 export const assignJobSchema = z.object({
   assignedTeamId: z.string().uuid().nullable().optional(),
   assignedToUserId: z.string().uuid().nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.assignedTeamId && data.assignedToUserId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Assign either a subcontractor team or an internal employee, not both',
+      path: ['assignedTeamId'],
+    });
+  }
 });
 
 export const startJobSchema = z.object({

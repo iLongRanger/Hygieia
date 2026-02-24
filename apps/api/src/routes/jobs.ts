@@ -58,7 +58,12 @@ router.get(
       const parsed = jobListQuerySchema.safeParse(req.query);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const result = await listJobs(parsed.data);
+      const scopedParams = { ...parsed.data };
+      if (req.user?.role === 'cleaner') {
+        scopedParams.assignedToUserId = req.user.id;
+      }
+
+      const result = await listJobs(scopedParams);
       res.json(result);
     } catch (error) {
       next(error);
@@ -98,6 +103,9 @@ router.get(
       if (!job) {
         res.status(404).json({ error: 'Job not found' });
         return;
+      }
+      if (req.user?.role === 'cleaner' && job.assignedToUser?.id !== req.user.id) {
+        throw new ValidationError('Insufficient permissions');
       }
       res.json({ data: job });
     } catch (error) {

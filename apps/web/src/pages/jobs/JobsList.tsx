@@ -63,6 +63,23 @@ const getStatusIcon = (status: JobStatus) => {
   return icons[status];
 };
 
+const getWorkforceIndicator = (job: Job): {
+  label: string;
+  badgeVariant: 'default' | 'info' | 'warning';
+} => {
+  const assignmentType =
+    job.workforceAssignmentType ||
+    (job.assignedToUser ? 'internal_employee' : job.assignedTeam ? 'subcontractor_team' : 'unassigned');
+
+  if (assignmentType === 'internal_employee') {
+    return { label: 'Internal Employee', badgeVariant: 'info' };
+  }
+  if (assignmentType === 'subcontractor_team') {
+    return { label: 'Subcontractor Team', badgeVariant: 'warning' };
+  }
+  return { label: 'Unassigned', badgeVariant: 'default' };
+};
+
 const toDateInputValue = (date: Date): string => {
   const tzOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
@@ -303,11 +320,19 @@ const JobsList = () => {
     },
     {
       header: 'Assigned To',
-      cell: (job: Job) => (
-        <span className="text-sm">
-          {job.assignedToUser?.fullName || job.assignedTeam?.name || '-'}
-        </span>
-      ),
+      cell: (job: Job) => {
+        const workforce = getWorkforceIndicator(job);
+        return (
+          <div>
+            <div className="text-sm">
+              {job.assignedToUser?.fullName || job.assignedTeam?.name || '-'}
+            </div>
+            <div className="mt-1">
+              <Badge variant={workforce.badgeVariant}>{workforce.label}</Badge>
+            </div>
+          </div>
+        );
+      },
     },
     {
       header: 'Hours',

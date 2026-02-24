@@ -46,6 +46,23 @@ const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' 
   return map[status];
 };
 
+const getWorkforceIndicator = (job: JobDetailType): {
+  label: string;
+  badgeVariant: 'default' | 'info' | 'warning';
+} => {
+  const assignmentType =
+    job.workforceAssignmentType ||
+    (job.assignedToUser ? 'internal_employee' : job.assignedTeam ? 'subcontractor_team' : 'unassigned');
+
+  if (assignmentType === 'internal_employee') {
+    return { label: 'Internal Employee', badgeVariant: 'info' };
+  }
+  if (assignmentType === 'subcontractor_team') {
+    return { label: 'Subcontractor Team', badgeVariant: 'warning' };
+  }
+  return { label: 'Unassigned', badgeVariant: 'default' };
+};
+
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -206,6 +223,7 @@ const JobDetail = () => {
 
   const tasksDone = job.tasks.filter((t) => t.status === 'completed').length;
   const tasksTotal = job.tasks.length;
+  const workforce = getWorkforceIndicator(job);
 
   return (
     <div className="space-y-6">
@@ -229,6 +247,7 @@ const JobDetail = () => {
               <Badge variant={getStatusVariant(job.status)}>
                 {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </Badge>
+              <Badge variant={workforce.badgeVariant}>{workforce.label}</Badge>
             </div>
             <p className="text-sm text-surface-500 dark:text-surface-400">
               {job.facility.name} &mdash; {job.account.name}
@@ -327,13 +346,13 @@ const JobDetail = () => {
                 </p>
               </div>
               <div>
-                <span className="text-surface-500 dark:text-surface-400">Assigned To</span>
+                <span className="text-surface-500 dark:text-surface-400">Internal Employee</span>
                 <p className="font-medium text-surface-900 dark:text-surface-100">
-                  {job.assignedToUser?.fullName || 'Unassigned'}
+                  {job.assignedToUser?.fullName || '-'}
                 </p>
               </div>
               <div>
-                <span className="text-surface-500 dark:text-surface-400">Team</span>
+                <span className="text-surface-500 dark:text-surface-400">Subcontractor Team</span>
                 <p className="font-medium text-surface-900 dark:text-surface-100">
                   {job.assignedTeam?.name || '-'}
                 </p>
