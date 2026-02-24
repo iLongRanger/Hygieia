@@ -151,12 +151,32 @@ export async function getAreaTypeGuidance(
   names: string[]
 ): Promise<Record<string, string[]>> {
   const areaTypes = await prisma.areaType.findMany({
-    where: { name: { in: names } },
     select: { name: true, guidanceItems: true },
   });
-  const result: Record<string, string[]> = {};
+
+  // Build a lookup: area type name → guidance items
+  const guidanceByType = new Map<string, string[]>();
   for (const at of areaTypes) {
-    result[at.name] = (at.guidanceItems as string[]) || [];
+    guidanceByType.set(at.name.toLowerCase(), (at.guidanceItems as string[]) || []);
+  }
+
+  // Match each requested name (e.g. "Office 1") to the best area type (e.g. "Office").
+  // Try exact match first, then prefix match (longest type name wins).
+  const sortedTypeNames = [...guidanceByType.keys()].sort((a, b) => b.length - a.length);
+
+  const result: Record<string, string[]> = {};
+  for (const name of names) {
+    const lower = name.toLowerCase();
+    // Exact match
+    if (guidanceByType.has(lower)) {
+      result[name] = guidanceByType.get(lower)!;
+      continue;
+    }
+    // Prefix match: "office 1" starts with "office"
+    const match = sortedTypeNames.find((typeName) => lower.startsWith(typeName));
+    if (match) {
+      result[name] = guidanceByType.get(match)!;
+    }
   }
   return result;
 }
