@@ -332,7 +332,7 @@ describe('ProposalForm', () => {
     });
   });
 
-  it('auto-populates services from facility pricing', async () => {
+  it('auto-populates services from facility pricing using client schedule frequency', async () => {
     const user = userEvent.setup();
     render(<ProposalForm />);
 
@@ -341,6 +341,7 @@ describe('ProposalForm', () => {
     await waitFor(() => {
       expect((screen.getByLabelText(/pricing plan/i) as HTMLSelectElement).value).toBe('pricing-1');
     });
+    await user.selectOptions(await screen.findByLabelText(/cleaning frequency/i), 'monthly');
 
     const calculateButton = await screen.findByRole('button', { name: /calculate & populate/i });
     await user.click(calculateButton);
@@ -349,7 +350,7 @@ describe('ProposalForm', () => {
     await waitFor(() => {
       expect(getFacilityProposalTemplateMock).toHaveBeenCalledWith(
         'facility-1',
-        'daily',
+        'monthly',
         'pricing-1',
         undefined,
         undefined

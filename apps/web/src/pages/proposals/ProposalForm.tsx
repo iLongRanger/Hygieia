@@ -449,7 +449,6 @@ const ProposalForm = () => {
   // Facility pricing states
   const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(false);
-  const [selectedFrequency, setSelectedFrequency] = useState<string>('5x_week');
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
   const [scheduleTouchedByUser, setScheduleTouchedByUser] = useState(false);
 
@@ -458,17 +457,6 @@ const ProposalForm = () => {
   const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
   const [workerCount, setWorkerCount] = useState<number>(1);
   const [selectedSubcontractorTier, setSelectedSubcontractorTier] = useState<string>('');
-
-  // Frequency options for auto-population
-  const PRICING_FREQUENCIES = [
-    { value: '1x_week', label: '1x per Week' },
-    { value: '2x_week', label: '2x per Week' },
-    { value: '3x_week', label: '3x per Week' },
-    { value: '4x_week', label: '4x per Week' },
-    { value: '5x_week', label: '5x per Week' },
-    { value: 'daily', label: 'Daily (7x)' },
-    { value: 'monthly', label: 'Monthly' },
-  ];
 
   const selectedPricingPlan = pricingPlans.find((plan) => plan.id === selectedPricingPlanId);
   const isHourlyPlan = selectedPricingPlan?.pricingType === 'hourly';
@@ -602,9 +590,6 @@ const ProposalForm = () => {
         proposalServices: proposal.proposalServices || [],
         pricingPlanId: proposal.pricingPlanId || null,
       });
-      setSelectedFrequency(
-        mapScheduleFrequencyToPricingFrequency(scheduleFrequency as ProposalScheduleFrequency)
-      );
       setScheduleTouchedByUser(true);
       // Set pricing plan from proposal
       if (proposal.pricingPlanId) {
@@ -731,7 +716,7 @@ const ProposalForm = () => {
   // Clear breakdown when inputs change (ensures breakdown reflects latest calculation)
   useEffect(() => {
     setPricingBreakdown(null);
-  }, [formData.facilityId, selectedFrequency, selectedPricingPlanId, workerCount, selectedSubcontractorTier]);
+  }, [formData.facilityId, formData.serviceFrequency, selectedPricingPlanId, workerCount, selectedSubcontractorTier]);
 
   const syncClientScheduleFromFacility = useCallback(
     (tasks: FacilityTask[]) => {
@@ -743,8 +728,6 @@ const ProposalForm = () => {
         addressDefaults?.frequency ||
         derivedTaskFrequency ||
         ((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
-      setSelectedFrequency(mapScheduleFrequencyToPricingFrequency(preferredFrequency));
-
       setFormData((prev) => {
         const currentFrequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
         const nextFrequency =
@@ -792,7 +775,9 @@ const ProposalForm = () => {
       setLoadingPricing(true);
       const template = await getFacilityProposalTemplate(
         formData.facilityId,
-        selectedFrequency,
+        mapScheduleFrequencyToPricingFrequency(
+          (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
+        ),
         selectedPricingPlanId || undefined,
         isHourlyPlan ? workerCount : undefined,
         selectedSubcontractorTier || undefined
@@ -822,7 +807,7 @@ const ProposalForm = () => {
       }));
 
       // Update form with auto-populated data
-      const scheduleFrequency = mapPricingFrequencyToScheduleFrequency(selectedFrequency);
+      const scheduleFrequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
       setFormData((prev) => {
         const currentSchedule = prev.serviceSchedule || createDefaultSchedule(scheduleFrequency);
         return {
@@ -890,7 +875,6 @@ const ProposalForm = () => {
   const handleScheduleFrequencyChange = (value: string) => {
     setScheduleTouchedByUser(true);
     const frequency = value as ProposalScheduleFrequency;
-    setSelectedFrequency(mapScheduleFrequencyToPricingFrequency(frequency));
     setFormData((prev) => {
       const currentSchedule = prev.serviceSchedule || createDefaultSchedule(frequency);
       return {
@@ -1278,12 +1262,6 @@ const ProposalForm = () => {
 
                     {pricingReadiness?.isReady ? (
                       <div className="flex items-center gap-3 flex-wrap">
-                        <Select
-                          placeholder="Service Frequency"
-                          value={selectedFrequency}
-                          onChange={(value) => setSelectedFrequency(value)}
-                          options={PRICING_FREQUENCIES}
-                        />
                         <div className="flex flex-col">
                           <Select
                             placeholder="Subcontractor Tier"
