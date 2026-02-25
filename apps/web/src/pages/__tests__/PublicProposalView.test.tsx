@@ -171,4 +171,31 @@ describe('PublicProposalView', () => {
     expect((screen.getAllByText('Manual')).length).toBeGreaterThan(0);
     expect((screen.getAllByText('Yearly')).length).toBeGreaterThan(0);
   });
+
+  it('hides tasks with zero quantity suffix', async () => {
+    getPublicProposalMock.mockResolvedValueOnce({
+      ...baseResponse,
+      data: {
+        ...baseResponse.data,
+        proposalServices: [
+          {
+            serviceName: 'Daily Cleaning',
+            serviceType: 'daily',
+            frequency: 'daily',
+            estimatedHours: null,
+            hourlyRate: null,
+            monthlyPrice: 1100,
+            description: 'Main area\nDaily: Desk x0, Mop floors',
+            includedTasks: ['Desk x0', 'Mop floors'],
+            sortOrder: 0,
+          },
+        ],
+      },
+    });
+
+    render(<PublicProposalView />);
+
+    expect((await screen.findAllByText('Mop floors')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
+  });
 });

@@ -141,6 +141,9 @@ const normalizeTaskGroupKey = (raw: string): string => {
   return raw.trim().toLowerCase();
 };
 
+const isZeroQuantityTask = (task: string): boolean =>
+  /\bx\s*0(?:\.0+)?\b/i.test(task.trim());
+
 const buildTaskGroups = (
   description: string | null | undefined,
   includedTasks: string[]
@@ -151,6 +154,7 @@ const buildTaskGroups = (
     if (!grouped.has(key)) grouped.set(key, new Set<string>());
     const bucket = grouped.get(key)!;
     for (const task of taskList.map((value) => value.trim()).filter(Boolean)) {
+      if (isZeroQuantityTask(task)) continue;
       bucket.add(task);
     }
   };
@@ -168,7 +172,9 @@ const buildTaskGroups = (
     if (match) {
       addTask(match[1], match[2].split(','));
     } else if (taskLine.trim()) {
-      uncategorized.push(taskLine.trim());
+      if (!isZeroQuantityTask(taskLine)) {
+        uncategorized.push(taskLine.trim());
+      }
     }
   }
 

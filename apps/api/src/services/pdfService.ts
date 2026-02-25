@@ -50,6 +50,10 @@ function formatWholeHours(hours: number | string | null | undefined): string {
   return `${Math.round(parsed)} hrs`;
 }
 
+function isZeroQuantityTask(task: string): boolean {
+  return /\bx\s*0(?:\.0+)?\b/i.test(task.trim());
+}
+
 interface ProposalForPdf {
   proposalNumber: string;
   title: string;
@@ -208,9 +212,14 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       for (let i = 1; i < lines.length; i++) {
         const match = lines[i].match(/^(.+?):\s*(.+)$/);
         if (match) {
+          const tasks = match[2]
+            .split(',')
+            .map((t) => t.trim())
+            .filter((task) => task && !isZeroQuantityTask(task));
+          if (tasks.length === 0) continue;
           taskGroups.push({
             label: match[1].trim(),
-            tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
+            tasks,
           });
         }
       }

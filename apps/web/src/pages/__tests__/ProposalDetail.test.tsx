@@ -179,4 +179,29 @@ describe('ProposalDetail', () => {
     expect(screen.getByText('Yearly')).toBeInTheDocument();
     expect(screen.getByText('Strip and wax')).toBeInTheDocument();
   });
+
+  it('hides tasks with zero quantity suffix', async () => {
+    getProposalMock.mockResolvedValueOnce({
+      ...proposal,
+      proposalServices: [
+        {
+          id: 'service-1',
+          serviceName: 'Main Floor',
+          serviceType: 'weekly',
+          frequency: 'weekly',
+          estimatedHours: null,
+          hourlyRate: null,
+          monthlyPrice: 500,
+          description: '1000 sq ft tile floor\nDaily: Desk x0, Mop floors',
+          includedTasks: ['Desk x0', 'Mop floors'],
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    render(<ProposalDetail />);
+
+    expect((await screen.findAllByText('Mop floors')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
+  });
 });
