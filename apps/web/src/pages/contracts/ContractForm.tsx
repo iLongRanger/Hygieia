@@ -128,8 +128,6 @@ const ContractForm = () => {
   const [availableProposals, setAvailableProposals] = useState<ProposalForContract[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<ProposalForContract | null>(null);
   const [selectedProposalSchedule, setSelectedProposalSchedule] = useState<Record<string, unknown> | null>(null);
-  const [selectedProposalFrequency, setSelectedProposalFrequency] = useState<ServiceFrequency | null>(null);
-  const [serviceFrequencyTouched, setServiceFrequencyTouched] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState<ContractFormData>({
@@ -241,8 +239,6 @@ const ContractForm = () => {
     if (!proposal) {
       setSelectedProposal(null);
       setSelectedProposalSchedule(null);
-      setSelectedProposalFrequency(null);
-      setServiceFrequencyTouched(false);
       setFormData(prev => ({
         ...prev,
         proposalId: '',
@@ -259,8 +255,6 @@ const ContractForm = () => {
       const fullProposal = await getProposal(proposalId);
       const mappedFrequency = mapProposalFrequencyToContractFrequency(fullProposal.serviceFrequency);
       setSelectedProposalSchedule((fullProposal.serviceSchedule as Record<string, unknown> | null) || null);
-      setSelectedProposalFrequency(mappedFrequency);
-      setServiceFrequencyTouched(false);
 
       setFormData(prev => ({
         ...prev,
@@ -274,8 +268,6 @@ const ContractForm = () => {
     } catch (error) {
       // If we can't get full details, use what we have
       setSelectedProposalSchedule(null);
-      setSelectedProposalFrequency(null);
-      setServiceFrequencyTouched(false);
       setFormData(prev => ({
         ...prev,
         proposalId,
@@ -369,14 +361,9 @@ const ContractForm = () => {
       } else {
         // Create new contract from proposal
         await createContractFromProposal(formData.proposalId, {
-          // Sync from proposal unless user explicitly changed it in this form.
-          serviceFrequency: serviceFrequencyTouched
-            ? formData.serviceFrequency
-            : (selectedProposalFrequency || formData.serviceFrequency),
           title: formData.title,
           startDate: formData.startDate,
           endDate: formData.endDate,
-          serviceSchedule: selectedProposalSchedule as any,
           autoRenew: formData.autoRenew,
           renewalNoticeDays: formData.renewalNoticeDays,
           totalValue: formData.totalValue,
@@ -608,12 +595,15 @@ const ContractForm = () => {
                 <Select
                   label="Service Frequency"
                   value={formData.serviceFrequency}
-                  onChange={(value) => {
-                    setServiceFrequencyTouched(true);
-                    handleChange('serviceFrequency', value as ServiceFrequency);
-                  }}
+                  onChange={(value) => handleChange('serviceFrequency', value as ServiceFrequency)}
                   options={SERVICE_FREQUENCIES}
+                  disabled={!isEditMode}
                 />
+                {!isEditMode && (
+                  <p className="text-xs text-gray-400 md:col-span-2 -mt-2">
+                    Service frequency is locked to the accepted proposal during contract creation.
+                  </p>
+                )}
 
                 <Input
                   label="Renewal Notice (Days)"

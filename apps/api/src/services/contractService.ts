@@ -425,17 +425,11 @@ export async function createContractFromProposal(
     proposal.serviceSchedule,
     proposal.serviceFrequency || mappedProposalFrequency || 'weekly'
   );
-  const normalizedOverrideSchedule = normalizeServiceSchedule(
-    overrides?.serviceSchedule,
-    overrides?.serviceFrequency || mappedProposalFrequency || proposal.serviceFrequency
-  );
   const resolvedServiceFrequency =
-    overrides?.serviceFrequency ||
     mappedProposalFrequency ||
     proposal.serviceFrequency ||
     'monthly';
-  const resolvedServiceSchedule =
-    normalizedOverrideSchedule || normalizedProposalSchedule;
+  const resolvedServiceSchedule = normalizedProposalSchedule;
 
   // Reverse-lookup subcontractor tier from proposal's pricing snapshot
   const snapshot = proposal.pricingSnapshot as Record<string, any> | null;

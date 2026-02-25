@@ -96,6 +96,8 @@ describe('contractService', () => {
       id: 'proposal-1',
       title: 'Proposal A',
       status: 'accepted',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
       totalAmount: '2500',
       accountId: 'account-1',
       facilityId: 'facility-1',
@@ -118,8 +120,43 @@ describe('contractService', () => {
         data: expect.objectContaining({
           title: 'Proposal A',
           monthlyValue: 2500,
+          serviceFrequency: 'weekly',
           proposal: { connect: { id: 'proposal-1' } },
           account: { connect: { id: 'account-1' } },
+        }),
+      })
+    );
+  });
+
+  it('createContractFromProposal should ignore service frequency overrides and use proposal frequency', async () => {
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      title: 'Proposal A',
+      status: 'accepted',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
+      totalAmount: '2500',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      termsAndConditions: 'Terms',
+      notes: 'Special',
+      account: {
+        paymentTerms: 'Net 30',
+      },
+      facility: { id: 'facility-1' },
+      proposalServices: [],
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-3' });
+
+    await contractService.createContractFromProposal('proposal-1', 'user-1', {
+      serviceFrequency: 'monthly',
+    } as any);
+
+    expect(prisma.contract.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceFrequency: 'weekly',
         }),
       })
     );

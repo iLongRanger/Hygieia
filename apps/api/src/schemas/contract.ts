@@ -61,8 +61,6 @@ export const createContractFromProposalSchema = z
     title: z.string().min(1).max(255).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional().nullable(),
-    serviceFrequency: serviceFrequencySchema.optional().nullable(),
-    serviceSchedule: z.any().optional().nullable(),
     autoRenew: z.boolean().optional(),
     renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
     totalValue: z.coerce.number().nonnegative().optional().nullable(),
