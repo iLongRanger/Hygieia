@@ -391,6 +391,9 @@ const ProposalDetail = () => {
   }
 
   const StatusIcon = getStatusIcon(proposal.status);
+  const visibleProposalItems = (proposal.proposalItems || []).filter(
+    (item) => Number(item.totalPrice || 0) > 0
+  );
 
   return (
     <div className="space-y-6">
@@ -640,7 +643,7 @@ const ProposalDetail = () => {
           )}
 
           {/* Proposal Items */}
-          {proposal.proposalItems && proposal.proposalItems.length > 0 && (
+          {visibleProposalItems.length > 0 && (
             <Card noPadding>
               <div className="p-6 border-b border-white/10">
                 <h2 className="text-lg font-semibold text-white">Line Items</h2>
@@ -667,7 +670,7 @@ const ProposalDetail = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {proposal.proposalItems.map((item, idx) => (
+                    {visibleProposalItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-white/5">
                         <td className="px-6 py-4">
                           <Badge variant="default">

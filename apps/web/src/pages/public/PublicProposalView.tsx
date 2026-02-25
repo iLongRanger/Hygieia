@@ -241,6 +241,9 @@ const PublicProposalView: React.FC = () => {
   if (!proposal) return null;
 
   const canAct = ['sent', 'viewed'].includes(proposal.status);
+  const visibleProposalItems = (proposal.proposalItems || []).filter(
+    (item) => Number(item.totalPrice || 0) > 0
+  );
 
   const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
   const accentColor = branding?.themeAccentColor || '#d4af37';
@@ -542,7 +545,7 @@ const PublicProposalView: React.FC = () => {
         )}
 
         {/* Line Items */}
-        {proposal.proposalItems.length > 0 && (
+        {visibleProposalItems.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Line Items</h3>
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -556,7 +559,7 @@ const PublicProposalView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {proposal.proposalItems.map((item, idx) => (
+                  {visibleProposalItems.map((item, idx) => (
                     <tr key={idx}>
                       <td className="px-4 py-3 text-gray-900">{item.description}</td>
                       <td className="px-4 py-3 text-right text-gray-600">{item.quantity}</td>

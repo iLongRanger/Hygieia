@@ -237,6 +237,10 @@ function calculateTotals(
   };
 }
 
+function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
+  return items.filter((item) => Number(item.totalPrice) > 0);
+}
+
 export async function listProposals(
   params: ProposalListParams
 ): Promise<PaginatedResult<Prisma.ProposalGetPayload<{ select: typeof proposalSelect }>>> {
@@ -335,7 +339,7 @@ export async function createProposal(input: ProposalCreateInput) {
     serviceFrequency
   );
 
-  const items = input.proposalItems ?? [];
+  const items = removeZeroValueItems(input.proposalItems ?? []);
   const services = input.proposalServices ?? [];
   const totals = calculateTotals(items, services, taxRate);
 
@@ -450,7 +454,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       throw new Error('Proposal not found');
     }
 
-    const items = input.proposalItems ?? currentProposal.proposalItems.map(item => ({
+    const rawItems = input.proposalItems ?? currentProposal.proposalItems.map(item => ({
       itemType: item.itemType,
       description: item.description,
       quantity: Number(item.quantity),
@@ -458,6 +462,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       totalPrice: Number(item.totalPrice),
       sortOrder: item.sortOrder,
     }));
+    const items = removeZeroValueItems(rawItems);
 
     const services = input.proposalServices ?? currentProposal.proposalServices.map(service => ({
       serviceName: service.serviceName,

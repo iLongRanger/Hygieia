@@ -346,6 +346,49 @@ describe('proposalService', () => {
       });
     });
 
+    it('should ignore zero-value proposal items on create', async () => {
+      const mockProposal = createTestProposal();
+      (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
+
+      await proposalService.createProposal({
+        accountId: 'account-1',
+        title: 'Test Proposal',
+        createdByUserId: 'user-1',
+        proposalItems: [
+          {
+            itemType: 'labor',
+            description: 'Zero item',
+            quantity: 1,
+            unitPrice: 0,
+            totalPrice: 0,
+          },
+          {
+            itemType: 'labor',
+            description: 'Paid item',
+            quantity: 2,
+            unitPrice: 50,
+            totalPrice: 100,
+          },
+        ],
+      });
+
+      expect(prisma.proposal.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            subtotal: 100,
+            proposalItems: {
+              create: [
+                expect.objectContaining({
+                  description: 'Paid item',
+                  totalPrice: 100,
+                }),
+              ],
+            },
+          }),
+        })
+      );
+    });
+
     it('should create proposal with services and calculate totals', async () => {
       const mockProposal = createTestProposal();
       (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
@@ -463,6 +506,52 @@ describe('proposalService', () => {
         }),
         select: expect.any(Object),
       });
+    });
+
+    it('should ignore zero-value proposal items on update', async () => {
+      const currentProposal = createTestProposal({
+        proposalItems: [],
+        proposalServices: [],
+      });
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValue(currentProposal);
+      (prisma.proposal.update as jest.Mock).mockResolvedValue(currentProposal);
+
+      await proposalService.updateProposal('proposal-1', {
+        proposalItems: [
+          {
+            itemType: 'supplies',
+            description: 'No charge',
+            quantity: 1,
+            unitPrice: 0,
+            totalPrice: 0,
+          },
+          {
+            itemType: 'materials',
+            description: 'Chargeable',
+            quantity: 1,
+            unitPrice: 250,
+            totalPrice: 250,
+          },
+        ],
+        taxRate: 0,
+      });
+
+      expect(prisma.proposal.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            subtotal: 250,
+            proposalItems: {
+              deleteMany: {},
+              create: [
+                expect.objectContaining({
+                  description: 'Chargeable',
+                  totalPrice: 250,
+                }),
+              ],
+            },
+          }),
+        })
+      );
     });
   });
 

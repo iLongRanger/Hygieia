@@ -348,6 +348,10 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+const removeZeroValueProposalItems = (
+  items: CreateProposalInput['proposalItems'] | undefined
+) => (items || []).filter((item) => Number(item.totalPrice || 0) > 0);
+
 // Empty item template
 const createEmptyItem = (sortOrder: number): ProposalItem => ({
   itemType: 'labor',
@@ -1031,9 +1035,11 @@ const ProposalForm = () => {
 
     setSaving(true);
     try {
+      const nonZeroItems = removeZeroValueProposalItems(formData.proposalItems);
       if (isEditMode) {
         const updateData: UpdateProposalInput = {
           ...formData,
+          proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
           validUntil: formData.validUntil || null,
@@ -1044,6 +1050,7 @@ const ProposalForm = () => {
       } else {
         await createProposal({
           ...formData,
+          proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
           pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,

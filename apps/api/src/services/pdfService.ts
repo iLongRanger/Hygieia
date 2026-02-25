@@ -373,7 +373,10 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
   }
 
   // Line Items
-  if (proposal.proposalItems.length > 0) {
+  const visibleProposalItems = proposal.proposalItems.filter(
+    (item) => Number(item.totalPrice || 0) > 0
+  );
+  if (visibleProposalItems.length > 0) {
     content.push({ text: 'Line Items', style: 'sectionHeader' });
 
     const itemsBody: TableCell[][] = [
@@ -385,7 +388,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       ],
     ];
 
-    for (const item of proposal.proposalItems) {
+    for (const item of visibleProposalItems) {
       itemsBody.push([
         { text: item.description },
         { text: String(item.quantity), alignment: 'right' as const },
