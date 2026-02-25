@@ -36,6 +36,7 @@ const baseResponse = {
     taxRate: 0.1,
     taxAmount: 100,
     totalAmount: 1100,
+    serviceFrequency: 'daily',
     validUntil: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     sentAt: new Date().toISOString(),
@@ -197,5 +198,32 @@ describe('PublicProposalView', () => {
 
     expect((await screen.findAllByText('Mop floors')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
+  });
+
+  it('uses proposal-level frequency label in service sections', async () => {
+    getPublicProposalMock.mockResolvedValueOnce({
+      ...baseResponse,
+      data: {
+        ...baseResponse.data,
+        serviceFrequency: '5x_week',
+        proposalServices: [
+          {
+            serviceName: 'Nightly Cleaning',
+            serviceType: 'weekly',
+            frequency: 'weekly',
+            estimatedHours: null,
+            hourlyRate: null,
+            monthlyPrice: 1100,
+            description: null,
+            includedTasks: [],
+            sortOrder: 0,
+          },
+        ],
+      },
+    });
+
+    render(<PublicProposalView />);
+
+    expect((await screen.findAllByText('5x Week')).length).toBeGreaterThan(1);
   });
 });

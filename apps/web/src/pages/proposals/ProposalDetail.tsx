@@ -112,6 +112,27 @@ const formatHours = (val: number | undefined | null) => {
   return `${Number(val).toFixed(1)} hrs`;
 };
 
+const formatFrequencyLabel = (frequency: string | null | undefined): string => {
+  if (!frequency) return '';
+  const labels: Record<string, string> = {
+    '1x_week': '1x Week',
+    '2x_week': '2x Week',
+    '3x_week': '3x Week',
+    '4x_week': '4x Week',
+    '5x_week': '5x Week',
+    '7x_week': '7x Week',
+    daily: 'Daily',
+    weekly: 'Weekly',
+    biweekly: 'Bi-Weekly',
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    annually: 'Annually',
+    annual: 'Annually',
+  };
+  const key = frequency.trim().toLowerCase();
+  return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 type TaskGroup = { key: string; label: string; tasks: string[] };
 
 const TASK_GROUP_ORDER = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'manual'];
@@ -1069,7 +1090,9 @@ const ProposalDetail = () => {
                               </td>
                             )}
                             <td className="py-2 text-right">
-                              <span className="text-gray-300 capitalize">{svc.frequency?.replace(/_/g, ' ') || svc.serviceType}</span>
+                              <span className="text-gray-300">
+                                {formatFrequencyLabel(proposal.serviceFrequency || svc.frequency || svc.serviceType)}
+                              </span>
                             </td>
                             <td className="py-2 text-right font-medium text-white">
                               {formatCurrency(Number(svc.monthlyPrice) || 0)}

@@ -27,12 +27,27 @@ const formatCurrency = (amount: number | string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
 
 const frequencyLabels: Record<string, string> = {
+  '1x_week': '1x Week',
+  '2x_week': '2x Week',
+  '3x_week': '3x Week',
+  '4x_week': '4x Week',
+  '5x_week': '5x Week',
+  '7x_week': '7x Week',
   daily: 'Daily',
   weekly: 'Weekly',
   biweekly: 'Bi-Weekly',
   monthly: 'Monthly',
   quarterly: 'Quarterly',
   annually: 'Annually',
+};
+
+const formatFrequencyLabel = (frequency: string | null | undefined): string => {
+  if (!frequency) return '';
+  const key = frequency.trim().toLowerCase();
+  return (
+    frequencyLabels[key] ||
+    key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 };
 
 const formatDate = (date: string | null | undefined) => {
@@ -463,7 +478,7 @@ const PublicProposalView: React.FC = () => {
                         className="inline-block text-xs font-medium px-2.5 py-1 rounded-full"
                         style={{ backgroundColor: `${accentColor}20`, color: primaryColor }}
                       >
-                        {frequencyLabels[service.frequency] || service.frequency}
+                        {formatFrequencyLabel(proposal.serviceFrequency || service.frequency)}
                       </span>
                     </div>
 
@@ -516,7 +531,7 @@ const PublicProposalView: React.FC = () => {
                         <div className="font-medium text-gray-900">{service.serviceName}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {frequencyLabels[service.frequency] || service.frequency}
+                        {formatFrequencyLabel(proposal.serviceFrequency || service.frequency)}
                       </td>
                       {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
                         <td className="px-4 py-3 text-right text-sm text-gray-600">

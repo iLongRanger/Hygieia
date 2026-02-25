@@ -10,6 +10,7 @@ export interface PublicProposal {
   taxRate: number;
   taxAmount: number;
   totalAmount: number;
+  serviceFrequency?: string | null;
   validUntil: string | null;
   createdAt: string;
   sentAt: string | null;

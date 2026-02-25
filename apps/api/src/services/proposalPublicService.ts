@@ -13,6 +13,7 @@ const publicProposalSelect = {
   taxRate: true,
   taxAmount: true,
   totalAmount: true,
+  serviceFrequency: true,
   validUntil: true,
   createdAt: true,
   sentAt: true,

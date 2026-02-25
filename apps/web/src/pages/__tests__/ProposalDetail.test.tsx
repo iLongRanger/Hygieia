@@ -204,4 +204,34 @@ describe('ProposalDetail', () => {
     expect((await screen.findAllByText('Mop floors')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
   });
+
+  it('uses proposal-level service frequency in services summary table', async () => {
+    getProposalMock.mockResolvedValueOnce({
+      ...proposal,
+      serviceFrequency: '5x_week',
+      facility: {
+        id: 'facility-1',
+        name: 'HQ',
+        address: null,
+      },
+      proposalServices: [
+        {
+          id: 'service-1',
+          serviceName: 'Main Floor',
+          serviceType: 'weekly',
+          frequency: 'weekly',
+          estimatedHours: null,
+          hourlyRate: null,
+          monthlyPrice: 500,
+          description: '1000 sq ft tile floor\nWeekly: Mop floors',
+          includedTasks: ['Weekly: Mop floors'],
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    render(<ProposalDetail />);
+
+    expect(await screen.findByText('5x Week')).toBeInTheDocument();
+  });
 });
