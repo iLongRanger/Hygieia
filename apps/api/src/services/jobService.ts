@@ -18,6 +18,7 @@ export interface JobListParams {
   assignedTeamId?: string;
   assignedToUserId?: string;
   jobType?: string;
+  jobCategory?: string;
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;
@@ -30,6 +31,7 @@ export interface JobCreateInput {
   facilityId: string;
   accountId: string;
   jobType?: string;
+  jobCategory?: string;
   assignedTeamId?: string | null;
   assignedToUserId?: string | null;
   scheduledDate: Date;
@@ -103,6 +105,7 @@ const jobSelect = {
   id: true,
   jobNumber: true,
   jobType: true,
+  jobCategory: true,
   status: true,
   scheduledDate: true,
   scheduledStartTime: true,
@@ -227,6 +230,7 @@ async function generateJobNumber(): Promise<string> {
 }
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+const AUTO_RECURRING_JOB_LOOKAHEAD_DAYS = 35;
 
 const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
   0: 'sunday',
@@ -297,6 +301,7 @@ export async function listJobs(params: JobListParams) {
     assignedTeamId,
     assignedToUserId,
     jobType,
+    jobCategory,
     status,
     dateFrom,
     dateTo,
@@ -312,6 +317,7 @@ export async function listJobs(params: JobListParams) {
   if (assignedTeamId) where.assignedTeamId = assignedTeamId;
   if (assignedToUserId) where.assignedToUserId = assignedToUserId;
   if (jobType) where.jobType = jobType;
+  if (jobCategory) where.jobCategory = jobCategory;
   if (status) where.status = status;
 
   if (dateFrom || dateTo) {
@@ -374,6 +380,7 @@ export async function createJob(input: JobCreateInput) {
         facilityId: input.facilityId,
         accountId: input.accountId,
         jobType: input.jobType || 'special_job',
+        jobCategory: input.jobCategory || 'one_time',
         assignedTeamId: input.assignedTeamId ?? null,
         assignedToUserId: input.assignedToUserId ?? null,
         status: 'scheduled',
@@ -843,6 +850,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         facilityId: contract.facilityId,
         accountId: contract.accountId,
         jobType: 'scheduled_service',
+        jobCategory: 'recurring',
         assignedTeamId: resolvedAssignedTeamId,
         assignedToUserId: resolvedAssignedToUserId,
         status: 'scheduled',
@@ -861,6 +869,60 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
   }
 
   return { created: jobs.length, jobs };
+}
+
+export async function autoGenerateRecurringJobsForContract(input: {
+  contractId: string;
+  createdByUserId: string;
+  assignedTeamId?: string | null;
+}) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: input.contractId },
+    select: {
+      id: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      assignedTeamId: true,
+    },
+  });
+
+  if (!contract) throw new NotFoundError('Contract not found');
+  if (contract.status !== 'active') {
+    throw new BadRequestError('Contract must be active to auto-generate recurring jobs');
+  }
+
+  const teamId = input.assignedTeamId ?? contract.assignedTeamId ?? null;
+  if (!teamId) {
+    return { created: 0, message: 'Contract has no assigned team; recurring jobs were not auto-generated' };
+  }
+
+  const todayUtc = new Date(`${toIsoDate(new Date())}T00:00:00.000Z`);
+  const contractStartUtc = new Date(`${toIsoDate(contract.startDate)}T00:00:00.000Z`);
+  const dateFrom = contractStartUtc > todayUtc ? contractStartUtc : todayUtc;
+
+  const lookaheadEnd = new Date(dateFrom);
+  lookaheadEnd.setUTCDate(lookaheadEnd.getUTCDate() + AUTO_RECURRING_JOB_LOOKAHEAD_DAYS);
+
+  let dateTo = lookaheadEnd;
+  if (contract.endDate) {
+    const contractEndUtc = new Date(`${toIsoDate(contract.endDate)}T00:00:00.000Z`);
+    if (contractEndUtc < dateTo) {
+      dateTo = contractEndUtc;
+    }
+  }
+
+  if (dateTo < dateFrom) {
+    return { created: 0, message: 'No valid auto-generation window for contract dates' };
+  }
+
+  return generateJobsFromContract({
+    contractId: input.contractId,
+    dateFrom,
+    dateTo,
+    assignedTeamId: teamId,
+    createdByUserId: input.createdByUserId,
+  });
 }
 
 // ==================== Job Tasks ====================

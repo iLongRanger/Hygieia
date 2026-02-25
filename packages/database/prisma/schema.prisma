@@ -1025,6 +1025,7 @@ model Job {
   assignedTeamId   String?   @map("assigned_team_id") @db.Uuid
   assignedToUserId String?   @map("assigned_to_user_id") @db.Uuid
   jobType          String    @default("scheduled_service") @map("job_type") @db.VarChar(30)
+  jobCategory      String    @default("one_time") @map("job_category") @db.VarChar(20)
   status           String    @default("scheduled") @db.VarChar(30)
   scheduledDate    DateTime  @map("scheduled_date") @db.Date
   scheduledStartTime DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
@@ -1059,6 +1060,7 @@ model Job {
   @@index([assignedTeamId])
   @@index([assignedToUserId])
   @@index([jobType])
+  @@index([jobCategory])
   @@index([status])
   @@index([scheduledDate])
   @@index([createdAt])

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const jobTypeSchema = z.enum(['scheduled_service', 'special_job']);
+export const jobCategorySchema = z.enum(['recurring', 'one_time']);
 
 export const jobListQuerySchema = z.object({
   contractId: z.string().uuid().optional(),
@@ -9,6 +10,7 @@ export const jobListQuerySchema = z.object({
   assignedTeamId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
   jobType: jobTypeSchema.optional(),
+  jobCategory: jobCategorySchema.optional(),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled', 'missed']).optional(),
   dateFrom: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
   dateTo: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
@@ -27,6 +29,7 @@ export const createJobSchema = z.object({
   facilityId: z.string().uuid(),
   accountId: z.string().uuid(),
   jobType: jobTypeSchema.optional().default('special_job'),
+  jobCategory: jobCategorySchema.optional().default('one_time'),
   assignedTeamId: z.string().uuid().nullable().optional(),
   assignedToUserId: z.string().uuid().nullable().optional(),
   scheduledDate: z.string().transform((v) => new Date(v)),

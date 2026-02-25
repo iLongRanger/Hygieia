@@ -322,6 +322,14 @@ const JobsList = () => {
       ),
     },
     {
+      header: 'Category',
+      cell: (job: Job) => (
+        <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>
+          {job.jobCategory === 'recurring' ? 'Recurring' : 'One-Time'}
+        </Badge>
+      ),
+    },
+    {
       header: 'Status',
       cell: (job: Job) => {
         const Icon = getStatusIcon(job.status);

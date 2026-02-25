@@ -57,6 +57,7 @@ import { PERMISSIONS } from '../types';
 import { createBulkNotifications } from '../services/notificationService';
 import { autoCreateInspectionTemplate } from '../services/inspectionTemplateService';
 import { tierToPercentage } from '../lib/subcontractorTiers';
+import { autoGenerateRecurringJobsForContract } from '../services/jobService';
 
 const router: Router = Router();
 
@@ -371,6 +372,28 @@ router.patch(
 
       // Send notifications on activation
       if (parsed.data.status === 'active') {
+        if (contract.assignedTeam?.id && req.user?.id) {
+          try {
+            const generationResult = await autoGenerateRecurringJobsForContract({
+              contractId: contract.id,
+              createdByUserId: req.user.id,
+              assignedTeamId: contract.assignedTeam.id,
+            });
+
+            await logContractActivity({
+              contractId: contract.id,
+              action: 'jobs_auto_generated',
+              performedByUserId: req.user.id,
+              metadata: {
+                created: generationResult.created,
+                source: 'status_activation',
+              },
+            });
+          } catch (generationError) {
+            logger.error('Failed to auto-generate recurring jobs on contract activation:', generationError);
+          }
+        }
+
         try {
           const { userIds, emails } = await getContractNotificationRecipients(contract.id);
           const branding = await getBrandingSafe();
@@ -441,6 +464,28 @@ router.patch(
 
       // Send notification when a team is assigned (not unassigned)
       if (parsed.data.teamId) {
+        if (req.user?.id) {
+          try {
+            const generationResult = await autoGenerateRecurringJobsForContract({
+              contractId: contract.id,
+              createdByUserId: req.user.id,
+              assignedTeamId: parsed.data.teamId,
+            });
+
+            await logContractActivity({
+              contractId: contract.id,
+              action: 'jobs_auto_generated',
+              performedByUserId: req.user.id,
+              metadata: {
+                created: generationResult.created,
+                source: 'team_assignment',
+              },
+            });
+          } catch (generationError) {
+            logger.error('Failed to auto-generate recurring jobs on team assignment:', generationError);
+          }
+        }
+
         try {
           const notifData = await getTeamAssignmentNotificationData(contract.id);
           if (notifData && notifData.assignedTeam) {

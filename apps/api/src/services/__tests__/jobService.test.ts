@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { createNotification } from '../notificationService';
 import {
   assignJob,
+  autoGenerateRecurringJobsForContract,
   createJob,
   generateJobsFromContract,
   listJobs,
@@ -119,6 +120,7 @@ describe('jobService', () => {
         data: expect.objectContaining({
           status: 'scheduled',
           jobType: 'special_job',
+          jobCategory: 'one_time',
           contractId: 'contract-1',
           facilityId: 'facility-1',
           accountId: 'account-1',
@@ -239,6 +241,7 @@ describe('jobService', () => {
           accountId: 'account-1',
           assignedTeamId: 'team-1',
           jobType: 'scheduled_service',
+          jobCategory: 'recurring',
         }),
       })
     );
@@ -282,5 +285,26 @@ describe('jobService', () => {
         }),
       })
     );
+  });
+
+  it('autoGenerateRecurringJobsForContract skips generation when no team is assigned', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      startDate: new Date('2026-02-01T00:00:00.000Z'),
+      endDate: new Date('2026-02-28T00:00:00.000Z'),
+      assignedTeamId: null,
+    });
+
+    const result = await autoGenerateRecurringJobsForContract({
+      contractId: 'contract-1',
+      createdByUserId: 'user-1',
+    });
+
+    expect(result).toEqual({
+      created: 0,
+      message: 'Contract has no assigned team; recurring jobs were not auto-generated',
+    });
+    expect(prisma.job.findMany).not.toHaveBeenCalled();
   });
 });

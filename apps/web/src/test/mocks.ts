@@ -183,6 +183,8 @@ export const mockFacility = (overrides?: Partial<Facility>): Facility => ({
 export const mockJob = (overrides?: Partial<Job>): Job => ({
   id: 'job-1',
   jobNumber: 'JOB-202602-0001',
+  jobType: 'scheduled_service',
+  jobCategory: 'recurring',
   status: 'scheduled',
   scheduledDate: '2026-02-15',
   scheduledStartTime: null,

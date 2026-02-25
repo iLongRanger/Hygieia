@@ -244,6 +244,9 @@ const JobDetail = () => {
               <Badge variant={job.jobType === 'special_job' ? 'warning' : 'default'}>
                 {job.jobType === 'special_job' ? 'Special Job' : 'Scheduled Service'}
               </Badge>
+              <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>
+                {job.jobCategory === 'recurring' ? 'Recurring' : 'One-Time'}
+              </Badge>
               <Badge variant={getStatusVariant(job.status)}>
                 {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </Badge>

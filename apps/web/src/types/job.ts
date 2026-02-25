@@ -1,4 +1,5 @@
 export type JobType = 'scheduled_service' | 'special_job';
+export type JobCategory = 'recurring' | 'one_time';
 export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'canceled' | 'missed';
 export type JobTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type JobNoteType = 'general' | 'issue' | 'photo';
@@ -8,6 +9,7 @@ export interface Job {
   id: string;
   jobNumber: string;
   jobType: JobType;
+  jobCategory: JobCategory;
   status: JobStatus;
   scheduledDate: string;
   scheduledStartTime: string | null;
