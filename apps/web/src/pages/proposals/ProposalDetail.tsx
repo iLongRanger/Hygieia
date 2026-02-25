@@ -112,6 +112,86 @@ const formatHours = (val: number | undefined | null) => {
   return `${Number(val).toFixed(1)} hrs`;
 };
 
+type TaskGroup = { key: string; label: string; tasks: string[] };
+
+const TASK_GROUP_ORDER = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'manual'];
+
+const taskGroupLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    daily: 'Daily',
+    weekly: 'Weekly',
+    biweekly: 'Bi-Weekly',
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    yearly: 'Yearly',
+    manual: 'Manual',
+  };
+  return labels[key] || key;
+};
+
+const normalizeTaskGroupKey = (raw: string): string => {
+  const key = raw.trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (key.includes('asneeded') || key.includes('manual')) return 'manual';
+  if (key.includes('annual') || key.includes('yearly')) return 'yearly';
+  if (key.includes('biweekly')) return 'biweekly';
+  if (key.includes('quarterly')) return 'quarterly';
+  if (key.includes('monthly')) return 'monthly';
+  if (key.includes('weekly')) return 'weekly';
+  if (key.includes('daily')) return 'daily';
+  return raw.trim().toLowerCase();
+};
+
+const buildTaskGroups = (
+  description: string | null | undefined,
+  includedTasks: string[]
+): TaskGroup[] => {
+  const grouped = new Map<string, Set<string>>();
+  const addTask = (rawLabel: string, taskList: string[]) => {
+    const key = normalizeTaskGroupKey(rawLabel);
+    if (!grouped.has(key)) grouped.set(key, new Set<string>());
+    const bucket = grouped.get(key)!;
+    for (const task of taskList.map((value) => value.trim()).filter(Boolean)) {
+      bucket.add(task);
+    }
+  };
+
+  const lines = description?.split('\n') || [];
+  for (const line of lines) {
+    const match = line.match(/^(.+?):\s*(.+)$/);
+    if (!match) continue;
+    addTask(match[1], match[2].split(','));
+  }
+
+  const uncategorized: string[] = [];
+  for (const taskLine of includedTasks) {
+    const match = taskLine.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      addTask(match[1], match[2].split(','));
+    } else if (taskLine.trim()) {
+      uncategorized.push(taskLine.trim());
+    }
+  }
+
+  if (uncategorized.length > 0) {
+    addTask('manual', uncategorized);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([key, tasks]) => ({
+      key,
+      label: taskGroupLabel(key),
+      tasks: Array.from(tasks),
+    }))
+    .sort((a, b) => {
+      const aIndex = TASK_GROUP_ORDER.indexOf(a.key);
+      const bIndex = TASK_GROUP_ORDER.indexOf(b.key);
+      if (aIndex === -1 && bIndex === -1) return a.label.localeCompare(b.label);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+};
+
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -618,22 +698,12 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-white mb-4">Services</h2>
               <div className="space-y-6">
                 {proposal.proposalServices.map((service, idx) => {
-                  // Prefer includedTasks array; fall back to parsing description
-                  const hasIncludedTasks = Array.isArray(service.includedTasks) && (service.includedTasks as string[]).length > 0;
+                  const includedTasks = Array.isArray(service.includedTasks)
+                    ? (service.includedTasks as string[])
+                    : [];
                   const lines = service.description?.split('\n') || [];
                   const areaInfo = lines[0] || '';
-                  const taskGroups: { label: string; tasks: string[] }[] = [];
-                  if (!hasIncludedTasks) {
-                    for (let i = 1; i < lines.length; i++) {
-                      const match = lines[i].match(/^(.+?):\s*(.+)$/);
-                      if (match) {
-                        taskGroups.push({
-                          label: match[1].trim(),
-                          tasks: match[2].split(',').map((t) => t.trim()).filter(Boolean),
-                        });
-                      }
-                    }
-                  }
+                  const taskGroups = buildTaskGroups(service.description, includedTasks);
 
                   return (
                     <div
@@ -678,25 +748,8 @@ const ProposalDetail = () => {
                         <p className="text-sm text-gray-400 mt-1">{areaInfo}</p>
                       )}
 
-                      {/* Prefer includedTasks array */}
-                      {hasIncludedTasks && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                            Included Tasks
-                          </p>
-                          <ul className="space-y-1 ml-1">
-                            {(service.includedTasks as string[]).map((task, tIdx) => (
-                              <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-300">
-                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
-                                {task}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Fallback: Tasks grouped by frequency from description */}
-                      {!hasIncludedTasks && taskGroups.length > 0 && (
+                      {/* Tasks grouped by category/frequency */}
+                      {taskGroups.length > 0 && (
                         <div className="mt-3 space-y-3">
                           {taskGroups.map((group, gIdx) => (
                             <div key={gIdx}>

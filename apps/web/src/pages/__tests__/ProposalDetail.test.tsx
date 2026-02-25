@@ -150,4 +150,33 @@ describe('ProposalDetail', () => {
     expect(navigateMock).toHaveBeenCalledWith('/proposals');
     confirmSpy.mockRestore();
   });
+
+  it('renders tasks grouped by frequency category', async () => {
+    getProposalMock.mockResolvedValueOnce({
+      ...proposal,
+      proposalServices: [
+        {
+          id: 'service-1',
+          serviceName: 'Main Floor',
+          serviceType: 'weekly',
+          frequency: 'weekly',
+          estimatedHours: null,
+          hourlyRate: null,
+          monthlyPrice: 500,
+          description:
+            '1000 sq ft tile floor\nDaily: Empty trash\nWeekly: Mop floors\nAs Needed: Spot clean walls\nAnnual: Strip and wax',
+          includedTasks: ['Daily: Empty trash', 'Weekly: Mop floors', 'As Needed: Spot clean walls', 'Annual: Strip and wax'],
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    render(<ProposalDetail />);
+
+    expect(await screen.findByText('Daily')).toBeInTheDocument();
+    expect(screen.getByText('Weekly')).toBeInTheDocument();
+    expect(screen.getByText('Manual')).toBeInTheDocument();
+    expect(screen.getByText('Yearly')).toBeInTheDocument();
+    expect(screen.getByText('Strip and wax')).toBeInTheDocument();
+  });
 });

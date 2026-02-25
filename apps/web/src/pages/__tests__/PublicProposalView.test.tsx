@@ -141,4 +141,34 @@ describe('PublicProposalView', () => {
 
     expect(await screen.findByText('123 Main St, Austin, TX, 78701')).toBeInTheDocument();
   });
+
+  it('renders task groups under frequency categories', async () => {
+    getPublicProposalMock.mockResolvedValueOnce({
+      ...baseResponse,
+      data: {
+        ...baseResponse.data,
+        proposalServices: [
+          {
+            serviceName: 'Daily Cleaning',
+            serviceType: 'daily',
+            frequency: 'daily',
+            estimatedHours: null,
+            hourlyRate: null,
+            monthlyPrice: 1100,
+            description:
+              'Main area\nDaily: Empty trash\nWeekly: Mop floors\nAs Needed: Spot clean walls\nAnnual: Strip and wax',
+            includedTasks: ['Daily: Empty trash', 'Weekly: Mop floors'],
+            sortOrder: 0,
+          },
+        ],
+      },
+    });
+
+    render(<PublicProposalView />);
+
+    expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
+    expect((screen.getAllByText('Weekly')).length).toBeGreaterThan(0);
+    expect((screen.getAllByText('Manual')).length).toBeGreaterThan(0);
+    expect((screen.getAllByText('Yearly')).length).toBeGreaterThan(0);
+  });
 });
