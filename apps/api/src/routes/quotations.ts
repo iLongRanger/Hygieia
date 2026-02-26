@@ -167,7 +167,9 @@ router.post(
 
       // Generate public token
       const token = await generatePublicToken(quotation.id);
-      const publicUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/q/${token}`;
+      const requestOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : null;
+      const frontendBaseUrl = process.env.FRONTEND_URL || requestOrigin || 'http://localhost:5173';
+      const publicUrl = `${frontendBaseUrl}/q/${token}`;
 
       await logQuotationActivity({
         quotationId: quotation.id,

@@ -14,7 +14,7 @@ export interface QuotationService {
   price: number;
   includedTasks?: string[];
   pricingMeta?: {
-    unitType?: 'per_window' | 'per_sqft' | 'fixed';
+    unitType?: string;
     quantity?: number;
     unitPrice?: number;
     standardAmount?: number;

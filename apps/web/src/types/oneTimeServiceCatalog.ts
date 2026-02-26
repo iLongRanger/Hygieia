@@ -1,5 +1,5 @@
-export type OneTimeServiceType = 'window_cleaning' | 'carpet_cleaning' | 'custom';
-export type OneTimeUnitType = 'per_window' | 'per_sqft' | 'fixed';
+export type OneTimeServiceType = string;
+export type OneTimeUnitType = string;
 
 export interface OneTimeServiceCatalogAddOn {
   id: string;

@@ -18,7 +18,7 @@ export const quotationServiceSchema = z.object({
   includedTasks: z.array(z.string()).optional().default([]),
   pricingMeta: z
     .object({
-      unitType: z.enum(['per_window', 'per_sqft', 'fixed']).optional(),
+      unitType: z.string().trim().min(1).max(30).optional(),
       quantity: z.coerce.number().nonnegative().optional(),
       unitPrice: z.coerce.number().nonnegative().optional(),
       standardAmount: z.coerce.number().nonnegative().optional(),

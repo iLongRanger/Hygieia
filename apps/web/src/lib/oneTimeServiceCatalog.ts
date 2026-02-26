@@ -7,7 +7,7 @@ import type {
 
 export async function listOneTimeServiceCatalog(params?: {
   includeInactive?: boolean;
-  serviceType?: 'window_cleaning' | 'carpet_cleaning' | 'custom';
+  serviceType?: string;
 }): Promise<OneTimeServiceCatalogItem[]> {
   const response = await api.get('/one-time-service-catalog', { params });
   return response.data.data;

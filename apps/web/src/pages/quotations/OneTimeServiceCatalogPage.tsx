@@ -14,12 +14,28 @@ import {
 } from '../../lib/oneTimeServiceCatalog';
 import type { OneTimeServiceCatalogItem } from '../../types/oneTimeServiceCatalog';
 
+const KNOWN_SERVICE_TYPES = ['window_cleaning', 'carpet_cleaning', 'custom'] as const;
+const KNOWN_UNIT_TYPES = ['per_window', 'per_sqft', 'fixed'] as const;
+
+const normalizeCatalogKey = (value: string) =>
+  value.trim().toLowerCase().replace(/\s+/g, '_');
+
+const getTypeSelectValue = (serviceType: string) =>
+  KNOWN_SERVICE_TYPES.includes(serviceType as (typeof KNOWN_SERVICE_TYPES)[number])
+    ? serviceType
+    : 'other';
+
+const getUnitSelectValue = (unitType: string) =>
+  KNOWN_UNIT_TYPES.includes(unitType as (typeof KNOWN_UNIT_TYPES)[number])
+    ? unitType
+    : 'other';
+
 const EMPTY_ITEM = {
   name: '',
   code: '',
   description: '',
-  serviceType: 'custom' as const,
-  unitType: 'fixed' as const,
+  serviceType: 'custom',
+  unitType: 'fixed',
   baseRate: 0,
   defaultQuantity: 1,
   minimumCharge: 0,
@@ -53,10 +69,20 @@ const OneTimeServiceCatalogPage = () => {
       toast.error('Name and code are required');
       return;
     }
+
+    const normalizedServiceType = normalizeCatalogKey(newItem.serviceType);
+    const normalizedUnitType = normalizeCatalogKey(newItem.unitType);
+    if (!normalizedServiceType || !normalizedUnitType) {
+      toast.error('Service type and unit are required');
+      return;
+    }
+
     setSaving(true);
     try {
       await createOneTimeServiceCatalogItem({
         ...newItem,
+        serviceType: normalizedServiceType,
+        unitType: normalizedUnitType,
         description: newItem.description || null,
         minimumCharge: Number(newItem.minimumCharge) > 0 ? Number(newItem.minimumCharge) : null,
         addOns: [],
@@ -118,10 +144,19 @@ const OneTimeServiceCatalogPage = () => {
       return;
     }
 
+    const normalizedServiceType = normalizeCatalogKey(editingItem.serviceType);
+    const normalizedUnitType = normalizeCatalogKey(editingItem.unitType);
+    if (!normalizedServiceType || !normalizedUnitType) {
+      toast.error('Service type and unit are required');
+      return;
+    }
+
     setUpdating(true);
     try {
       await updateOneTimeServiceCatalogItem(editingId, {
         ...editingItem,
+        serviceType: normalizedServiceType,
+        unitType: normalizedUnitType,
         description: editingItem.description || null,
         minimumCharge: Number(editingItem.minimumCharge) > 0 ? Number(editingItem.minimumCharge) : null,
       });
@@ -154,24 +189,62 @@ const OneTimeServiceCatalogPage = () => {
             <Input label="Code" value={newItem.code} onChange={(e) => setNewItem((prev) => ({ ...prev, code: e.target.value }))} />
             <Select
               label="Service Type"
-              value={newItem.serviceType}
-              onChange={(value) => setNewItem((prev) => ({ ...prev, serviceType: value as typeof prev.serviceType }))}
+              value={getTypeSelectValue(newItem.serviceType)}
+              onChange={(value) =>
+                setNewItem((prev) => ({
+                  ...prev,
+                  serviceType:
+                    value === 'other'
+                      ? KNOWN_SERVICE_TYPES.includes(prev.serviceType as (typeof KNOWN_SERVICE_TYPES)[number])
+                        ? ''
+                        : prev.serviceType
+                      : value,
+                }))
+              }
               options={[
                 { value: 'window_cleaning', label: 'Window Cleaning' },
                 { value: 'carpet_cleaning', label: 'Carpet Cleaning' },
                 { value: 'custom', label: 'Custom' },
+                { value: 'other', label: 'Others' },
               ]}
             />
+            {getTypeSelectValue(newItem.serviceType) === 'other' && (
+              <Input
+                label="Other Service Type"
+                value={newItem.serviceType}
+                onChange={(e) => setNewItem((prev) => ({ ...prev, serviceType: e.target.value }))}
+                placeholder="e.g., pressure_washing"
+              />
+            )}
             <Select
               label="Unit"
-              value={newItem.unitType}
-              onChange={(value) => setNewItem((prev) => ({ ...prev, unitType: value as typeof prev.unitType }))}
+              value={getUnitSelectValue(newItem.unitType)}
+              onChange={(value) =>
+                setNewItem((prev) => ({
+                  ...prev,
+                  unitType:
+                    value === 'other'
+                      ? KNOWN_UNIT_TYPES.includes(prev.unitType as (typeof KNOWN_UNIT_TYPES)[number])
+                        ? ''
+                        : prev.unitType
+                      : value,
+                }))
+              }
               options={[
                 { value: 'per_window', label: 'Per Window' },
                 { value: 'per_sqft', label: 'Per Sqft' },
                 { value: 'fixed', label: 'Fixed' },
+                { value: 'other', label: 'Others' },
               ]}
             />
+            {getUnitSelectValue(newItem.unitType) === 'other' && (
+              <Input
+                label="Other Unit"
+                value={newItem.unitType}
+                onChange={(e) => setNewItem((prev) => ({ ...prev, unitType: e.target.value }))}
+                placeholder="e.g., per_room"
+              />
+            )}
             <Input
               label="Base Rate"
               type="number"
@@ -244,28 +317,76 @@ const OneTimeServiceCatalogPage = () => {
                       />
                       <Select
                         label="Service Type"
-                        value={currentEditingItem!.serviceType}
+                        value={getTypeSelectValue(currentEditingItem!.serviceType)}
                         onChange={(value) =>
-                          setEditingItem((prev) => (prev ? { ...prev, serviceType: value as typeof prev.serviceType } : prev))
+                          setEditingItem((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  serviceType:
+                                    value === 'other'
+                                      ? KNOWN_SERVICE_TYPES.includes(
+                                          prev.serviceType as (typeof KNOWN_SERVICE_TYPES)[number]
+                                        )
+                                        ? ''
+                                        : prev.serviceType
+                                      : value,
+                                }
+                              : prev
+                          )
                         }
                         options={[
                           { value: 'window_cleaning', label: 'Window Cleaning' },
                           { value: 'carpet_cleaning', label: 'Carpet Cleaning' },
                           { value: 'custom', label: 'Custom' },
+                          { value: 'other', label: 'Others' },
                         ]}
                       />
+                      {getTypeSelectValue(currentEditingItem!.serviceType) === 'other' && (
+                        <Input
+                          label="Other Service Type"
+                          value={currentEditingItem!.serviceType}
+                          onChange={(e) =>
+                            setEditingItem((prev) => (prev ? { ...prev, serviceType: e.target.value } : prev))
+                          }
+                          placeholder="e.g., pressure_washing"
+                        />
+                      )}
                       <Select
                         label="Unit"
-                        value={currentEditingItem!.unitType}
+                        value={getUnitSelectValue(currentEditingItem!.unitType)}
                         onChange={(value) =>
-                          setEditingItem((prev) => (prev ? { ...prev, unitType: value as typeof prev.unitType } : prev))
+                          setEditingItem((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  unitType:
+                                    value === 'other'
+                                      ? KNOWN_UNIT_TYPES.includes(prev.unitType as (typeof KNOWN_UNIT_TYPES)[number])
+                                        ? ''
+                                        : prev.unitType
+                                      : value,
+                                }
+                              : prev
+                          )
                         }
                         options={[
                           { value: 'per_window', label: 'Per Window' },
                           { value: 'per_sqft', label: 'Per Sqft' },
                           { value: 'fixed', label: 'Fixed' },
+                          { value: 'other', label: 'Others' },
                         ]}
                       />
+                      {getUnitSelectValue(currentEditingItem!.unitType) === 'other' && (
+                        <Input
+                          label="Other Unit"
+                          value={currentEditingItem!.unitType}
+                          onChange={(e) =>
+                            setEditingItem((prev) => (prev ? { ...prev, unitType: e.target.value } : prev))
+                          }
+                          placeholder="e.g., per_room"
+                        />
+                      )}
                       <Input
                         label="Base Rate"
                         type="number"

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-const unitTypeSchema = z.enum(['per_window', 'per_sqft', 'fixed']);
-const serviceTypeSchema = z.enum(['window_cleaning', 'carpet_cleaning', 'custom']);
+const unitTypeSchema = z.string().trim().min(1).max(30);
+const serviceTypeSchema = z.string().trim().min(1).max(50);
 
 const addOnSchema = z.object({
   id: z.string().uuid().optional(),
