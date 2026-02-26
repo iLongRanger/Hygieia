@@ -140,7 +140,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listContracts(parsed.data);
+      const result = await listContracts(parsed.data, {
+        userRole: req.user?.role,
+        userTeamId: req.user?.teamId,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -225,6 +228,13 @@ router.get(
       if (!contract) {
         throw new NotFoundError('Contract not found');
       }
+
+      if (req.user?.role === 'subcontractor') {
+        const payout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
+        const { monthlyValue, totalValue, ...safeContract } = contract as any;
+        return res.json({ data: { ...safeContract, subcontractorPayout: payout } });
+      }
+
       res.json({ data: contract });
     } catch (error) {
       next(error);

@@ -332,7 +332,10 @@ function resolveAutoGenerationWindow(input: {
 
 // ==================== CRUD Operations ====================
 
-export async function listJobs(params: JobListParams) {
+export async function listJobs(
+  params: JobListParams,
+  options?: { userRole?: string; userTeamId?: string }
+) {
   const {
     contractId,
     quotationId,
@@ -350,6 +353,10 @@ export async function listJobs(params: JobListParams) {
   } = params;
 
   const where: Prisma.JobWhereInput = {};
+
+  if (options?.userRole === 'subcontractor' && options?.userTeamId) {
+    where.assignedTeamId = options.userTeamId;
+  }
 
   if (contractId) where.contractId = contractId;
   if (quotationId) where.quotationId = quotationId;

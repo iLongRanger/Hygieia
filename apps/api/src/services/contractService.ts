@@ -158,6 +158,14 @@ const contractSelect = {
       contactPhone: true,
     },
   },
+  assignedToUser: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      status: true,
+    },
+  },
   approvedByUser: {
     select: {
       id: true,
@@ -209,7 +217,8 @@ async function generateContractNumber(): Promise<string> {
  * List contracts with pagination and filtering
  */
 export async function listContracts(
-  params: ContractListParams
+  params: ContractListParams,
+  options?: { userRole?: string; userTeamId?: string }
 ): Promise<PaginatedResult<any>> {
   const {
     page = 1,
@@ -225,6 +234,10 @@ export async function listContracts(
   } = params;
 
   const where: Prisma.ContractWhereInput = {};
+
+  if (options?.userRole === 'subcontractor' && options?.userTeamId) {
+    where.assignedTeamId = options.userTeamId;
+  }
 
   if (status) {
     where.status = status;
@@ -426,8 +439,8 @@ export async function createContractFromProposal(
     proposal.serviceFrequency || mappedProposalFrequency || 'weekly'
   );
   const resolvedServiceFrequency =
-    mappedProposalFrequency ||
     proposal.serviceFrequency ||
+    mappedProposalFrequency ||
     'monthly';
   const resolvedServiceSchedule = normalizedProposalSchedule;
 
@@ -576,6 +589,7 @@ export async function sendContract(id: string) {
 export async function assignContractTeam(
   contractId: string,
   teamId: string | null,
+  assignedToUserId: string | null = null,
   subcontractorTier?: string
 ) {
   const contract = await prisma.contract.findUnique({
@@ -594,6 +608,10 @@ export async function assignContractTeam(
     throw new Error('Only active contracts can have team assignments');
   }
 
+  if (teamId && assignedToUserId) {
+    throw new Error('Assign either a subcontractor team or an internal employee, not both');
+  }
+
   if (teamId) {
     const team = await prisma.team.findUnique({
       where: { id: teamId },
@@ -609,7 +627,24 @@ export async function assignContractTeam(
     }
   }
 
-  const data: any = { assignedTeamId: teamId };
+  if (assignedToUserId) {
+    const user = await prisma.user.findUnique({
+      where: { id: assignedToUserId },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!user || user.status !== 'active') {
+      throw new Error('Assigned internal employee not found or inactive');
+    }
+  }
+
+  const data: any = {
+    assignedTeamId: teamId,
+    assignedToUserId: assignedToUserId,
+  };
   if (subcontractorTier !== undefined) {
     data.subcontractorTier = subcontractorTier;
   }

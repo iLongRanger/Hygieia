@@ -63,7 +63,10 @@ router.get(
         scopedParams.assignedToUserId = req.user.id;
       }
 
-      const result = await listJobs(scopedParams);
+      const result = await listJobs(scopedParams, {
+        userRole: req.user?.role,
+        userTeamId: req.user?.teamId,
+      });
       res.json(result);
     } catch (error) {
       next(error);
