@@ -195,8 +195,14 @@
   </div>
 
   <script>
-    const ROLES = ['owner', 'admin', 'manager', 'cleaner'];
-    const ROLE_COLORS = { owner: '#f59e0b', admin: '#8b5cf6', manager: '#3b82f6', cleaner: '#10b981' };
+    const ROLES = ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'];
+    const ROLE_COLORS = {
+      owner: '#f59e0b',
+      admin: '#8b5cf6',
+      manager: '#3b82f6',
+      cleaner: '#10b981',
+      subcontractor: '#f97316',
+    };
 
     const permissionGroups = [
       {
@@ -228,7 +234,7 @@
       {
         name: 'Facilities', icon: '\u{1F3ED}', color: '#3b82f6',
         permissions: [
-          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner'] },
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
           { label: 'Write', roles: ['owner', 'admin', 'manager'] },
           { label: 'Admin (delete)', roles: ['owner', 'admin'] },
         ],
@@ -277,9 +283,25 @@
       {
         name: 'Contracts', icon: '\u{1F4DC}', color: '#f97316',
         permissions: [
-          { label: 'Read (list/pdf)', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Read (list/pdf)', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
           { label: 'Write (send/sign)', roles: ['owner', 'admin', 'manager'] },
           { label: 'Admin (archive/terminate)', roles: ['owner', 'admin'] },
+        ],
+      },
+      {
+        name: 'Jobs', icon: '\u{1F4BC}', color: '#14b8a6',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+          { label: 'Admin', roles: ['owner', 'admin'] },
+        ],
+      },
+      {
+        name: 'Time Tracking', icon: '\u23F1\uFE0F', color: '#6366f1',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+          { label: 'Approve', roles: ['owner', 'admin', 'manager'] },
         ],
       },
       {
@@ -309,7 +331,7 @@
       {
         name: 'Dashboard', icon: '\u{1F4CA}', color: '#a855f7',
         permissions: [
-          { label: 'Read', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
         ],
       },
       {
@@ -335,13 +357,15 @@
       { path: '/users', roles: ['owner', 'admin'] },
       { path: '/users/:id', roles: ['owner', 'admin'] },
       { path: '/', roles: null },
-      { path: '/leads', roles: null },
-      { path: '/accounts', roles: null },
-      { path: '/contacts', roles: null },
-      { path: '/facilities', roles: null },
-      { path: '/proposals', roles: null },
-      { path: '/contracts', roles: null },
-      { path: '/teams', roles: null },
+      { path: '/leads', roles: ['owner', 'admin', 'manager'] },
+      { path: '/accounts', roles: ['owner', 'admin', 'manager'] },
+      { path: '/contacts', roles: ['owner', 'admin', 'manager'] },
+      { path: '/facilities', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/proposals', roles: ['owner', 'admin', 'manager'] },
+      { path: '/contracts', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+      { path: '/jobs', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+      { path: '/time-tracking', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/teams', roles: ['owner', 'admin', 'manager'] },
     ];
 
     let activeRole = null;
@@ -367,7 +391,7 @@
 
     function buildRoleHierarchy() {
       var container = document.getElementById('roleHierarchy');
-      var levels = { owner: 100, admin: 75, manager: 50, cleaner: 25 };
+      var levels = { owner: 100, admin: 75, manager: 50, cleaner: 25, subcontractor: 25 };
 
       ROLES.forEach(function(role, i) {
         if (i > 0) {
