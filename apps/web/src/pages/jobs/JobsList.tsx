@@ -125,7 +125,8 @@ const JobsList = () => {
   });
 
   const page = parseInt(searchParams.get('page') || '1', 10);
-  const viewMode = (searchParams.get('view') || 'schedule') as JobsViewMode;
+  const rawViewMode = searchParams.get('view');
+  const viewMode: JobsViewMode = rawViewMode === 'table' ? 'table' : 'schedule';
   const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
   const dateFrom = searchParams.get('dateFrom') || '';
@@ -167,11 +168,7 @@ const JobsList = () => {
 
   const setViewMode = (mode: JobsViewMode) => {
     const params = new URLSearchParams(searchParams);
-    if (mode === 'table') {
-      params.delete('view');
-    } else {
-      params.set('view', mode);
-    }
+    params.set('view', mode);
     setSearchParams(params);
   };
 
