@@ -13,6 +13,7 @@ import {
   type RevokeReason,
 } from './tokenService';
 import { logAuthEvent } from '../lib/logger';
+import { UnauthorizedError } from '../middleware/errorHandler';
 
 export interface LoginCredentials {
   email: string;
@@ -115,12 +116,22 @@ export async function login(
     },
   });
 
-  if (!user || !user.passwordHash) {
+  if (!user) {
     logAuthEvent('login_failed', {
       email: credentials.email,
       reason: 'user_not_found',
     });
     return null;
+  }
+
+  if (user.status === 'pending' || !user.passwordHash) {
+    logAuthEvent('login_failed', {
+      userId: user.id,
+      reason: 'pending_password_setup',
+    });
+    throw new UnauthorizedError(
+      'Please set your password using the link sent to your email before logging in.'
+    );
   }
 
   const isValidPassword = await verifyPassword(
