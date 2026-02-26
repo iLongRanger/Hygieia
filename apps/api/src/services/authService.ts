@@ -289,6 +289,66 @@ export async function getUserById(id: string): Promise<UserInfo | null> {
   };
 }
 
+export async function createSubcontractorUser(teamId: string): Promise<{ user: any; token: string } | null> {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    include: { users: true },
+  });
+
+  if (!team || !team.contactEmail) return null;
+
+  // If team already has a linked user, skip creation
+  if (team.users.length > 0) return null;
+
+  // Find or create the 'subcontractor' role
+  let subRole = await prisma.role.findUnique({ where: { key: 'subcontractor' } });
+  if (!subRole) {
+    subRole = await prisma.role.create({
+      data: {
+        key: 'subcontractor',
+        label: 'Subcontractor',
+        permissions: {
+          dashboard_read: true,
+          contracts_read: true,
+          facilities_read: true,
+          jobs_read: true,
+          jobs_write: true,
+          time_tracking_read: true,
+          time_tracking_write: true,
+        },
+        isSystemRole: true,
+      },
+    });
+  }
+
+  // Check if a user with this email already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email: team.contactEmail.toLowerCase() },
+  });
+  if (existingUser) return null;
+
+  const user = await prisma.user.create({
+    data: {
+      email: team.contactEmail.toLowerCase(),
+      fullName: team.contactName || team.name,
+      teamId: team.id,
+      status: 'pending',
+      roles: {
+        create: { roleId: subRole.id },
+      },
+    },
+  });
+
+  const passwordToken = await prisma.passwordSetToken.create({
+    data: {
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
+    },
+  });
+
+  return { user, token: passwordToken.token };
+}
+
 export async function createDevUser(
   email: string,
   fullName: string,

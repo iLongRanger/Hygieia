@@ -49,6 +49,8 @@ import { getDefaultBranding, getGlobalSettings } from '../services/globalSetting
 import { buildContractActivatedHtmlWithBranding, buildContractActivatedSubject } from '../templates/contractActivated';
 import { buildContractTerminatedHtmlWithBranding, buildContractTerminatedSubject } from '../templates/contractTerminated';
 import { buildContractTeamAssignedHtmlWithBranding, buildContractTeamAssignedSubject } from '../templates/contractTeamAssigned';
+import { buildSubcontractorWelcomeSubject, buildSubcontractorWelcomeHtml } from '../templates/subcontractorWelcome';
+import { createSubcontractorUser } from '../services/authService';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { BadRequestError } from '../middleware/errorHandler';
@@ -580,6 +582,33 @@ router.patch(
           }
         } catch (notifyError) {
           logger.error('Failed to send team assignment notifications:', notifyError);
+        }
+
+        // Auto-provision subcontractor portal access
+        try {
+          const provisioned = await createSubcontractorUser(parsed.data.teamId);
+          if (provisioned) {
+            const setPasswordUrl = `${process.env.WEB_APP_URL || 'http://localhost:5173'}/auth/set-password?token=${provisioned.token}`;
+            const branding = await getBrandingSafe();
+            const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
+            if (team?.contactEmail) {
+              if (isEmailConfigured()) {
+                await sendNotificationEmail(
+                  team.contactEmail,
+                  buildSubcontractorWelcomeSubject(),
+                  buildSubcontractorWelcomeHtml({
+                    teamName: team.name,
+                    contractNumber: contract.contractNumber,
+                    facilityName: contract.facility?.name || 'N/A',
+                    setPasswordUrl,
+                  }, branding)
+                );
+              }
+            }
+          }
+        } catch (provisionErr) {
+          logger.error('Failed to auto-provision subcontractor:', provisionErr);
+          // Don't fail the assignment if provisioning fails
         }
       }
 
