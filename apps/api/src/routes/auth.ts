@@ -6,7 +6,9 @@ import {
   createDevUser,
   logout,
   logoutAll,
+  hashPassword,
 } from '../services/authService';
+import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import {
   BadRequestError,
@@ -66,6 +68,47 @@ router.post(
       });
     } catch (error) {
       next(error);
+    }
+  }
+);
+
+router.post(
+  '/set-password',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ error: 'Token and password are required' });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
+
+      const passwordToken = await prisma.passwordSetToken.findUnique({
+        where: { token },
+        include: { user: true },
+      });
+
+      if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
+        return res.status(400).json({ error: 'Invalid or expired token' });
+      }
+
+      const passwordHash = await hashPassword(password);
+      await prisma.user.update({
+        where: { id: passwordToken.userId },
+        data: { passwordHash, status: 'active' },
+      });
+
+      await prisma.passwordSetToken.update({
+        where: { id: passwordToken.id },
+        data: { usedAt: new Date() },
+      });
+
+      return res.json({ message: 'Password set successfully. You can now log in.' });
+    } catch (err) {
+      next(err);
     }
   }
 );
