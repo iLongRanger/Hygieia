@@ -112,7 +112,31 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
-  const visibleSections = navSections
+  const isSubcontractor = user?.role === 'subcontractor';
+
+  const effectiveSections: NavSection[] = isSubcontractor
+    ? [
+        {
+          key: 'dashboard',
+          title: 'Dashboard',
+          icon: Home,
+          directLink: '/',
+          items: [{ to: '/', icon: Home, label: 'Dashboard' }],
+        },
+        {
+          key: 'work',
+          title: 'My Work',
+          icon: Briefcase,
+          items: [
+            { to: '/contracts', icon: FileSignature, label: 'My Contracts' },
+            { to: '/jobs', icon: Briefcase, label: 'My Jobs' },
+            { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
+          ],
+        },
+      ]
+    : navSections;
+
+  const visibleSections = effectiveSections
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => canAccessRoute(item.to, user)),

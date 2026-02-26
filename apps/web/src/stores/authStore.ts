@@ -9,6 +9,7 @@ interface User {
   fullName: string;
   role: string;
   permissions?: Record<string, boolean>;
+  teamId?: string | null;
 }
 
 interface AuthState {

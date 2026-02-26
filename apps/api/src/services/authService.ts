@@ -37,6 +37,7 @@ export interface UserInfo {
   email: string;
   fullName: string;
   role: UserRole;
+  teamId?: string | null;
 }
 
 const SALT_ROUNDS = 10;
@@ -171,6 +172,7 @@ export async function login(
       email: user.email,
       fullName: user.fullName,
       role: primaryRole,
+      teamId: user.teamId,
     },
   };
 }
@@ -286,6 +288,7 @@ export async function getUserById(id: string): Promise<UserInfo | null> {
     email: user.email,
     fullName: user.fullName,
     role: primaryRole,
+    teamId: user.teamId,
   };
 }
 
