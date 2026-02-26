@@ -48,6 +48,7 @@ import oneTimeServiceCatalogRoutes from './routes/oneTimeServiceCatalog';
 import { initializeRealtime } from './lib/realtime';
 import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
+import { startJobAlertScheduler } from './services/jobAlertScheduler';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -162,6 +163,7 @@ const httpServer = http.createServer(app);
 initializeRealtime(httpServer);
 startReminderScheduler();
 startRecurringJobScheduler();
+startJobAlertScheduler();
 
 httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);

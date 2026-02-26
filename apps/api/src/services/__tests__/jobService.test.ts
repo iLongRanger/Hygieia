@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { prisma } from '../../lib/prisma';
-import { createNotification } from '../notificationService';
+import { createBulkNotifications, createNotification } from '../notificationService';
 import {
   assignJob,
   autoGenerateRecurringJobsForContract,
   createJob,
   generateJobsFromContract,
   listJobs,
+  runJobNearingEndNoCheckInAlertCycle,
 } from '../jobService';
 
 jest.mock('../../lib/prisma', () => ({
@@ -25,15 +26,21 @@ jest.mock('../../lib/prisma', () => ({
     },
     user: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    timeEntry: {
+      findMany: jest.fn(),
     },
     jobActivity: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
 }));
 
 jest.mock('../notificationService', () => ({
+  createBulkNotifications: jest.fn(),
   createNotification: jest.fn(),
 }));
 
@@ -358,5 +365,95 @@ describe('jobService', () => {
         }),
       })
     );
+  });
+
+  it('runJobNearingEndNoCheckInAlertCycle notifies admins for jobs near end with no check-in', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'job-1',
+        jobNumber: 'WO-2026-0100',
+        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+        scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
+        facility: { id: 'facility-1', name: 'HQ' },
+        contract: { id: 'contract-1', contractNumber: 'CT-100' },
+        assignedToUser: { id: 'cleaner-1', fullName: 'Cleaner One', email: 'cleaner@example.com' },
+        assignedTeam: null,
+      },
+    ]);
+    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.jobActivity.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin-1' }, { id: 'owner-1' }]);
+    (createBulkNotifications as jest.Mock).mockResolvedValue([{ id: 'n-1' }, { id: 'n-2' }]);
+    (prisma.jobActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
+
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: new Date('2026-02-26T16:00:00.000Z'),
+    });
+
+    expect(createBulkNotifications).toHaveBeenCalledWith(
+      ['admin-1', 'owner-1'],
+      expect.objectContaining({
+        type: 'job_no_checkin_near_end',
+        metadata: expect.objectContaining({
+          jobId: 'job-1',
+        }),
+      })
+    );
+    expect(prisma.jobActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          jobId: 'job-1',
+          action: 'no_checkin_alert_sent',
+        }),
+      })
+    );
+    expect(result).toEqual({
+      checked: 1,
+      alerted: 1,
+      notifications: 2,
+    });
+  });
+
+  it('runJobNearingEndNoCheckInAlertCycle skips jobs with time entries or prior alert', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'job-1',
+        jobNumber: 'WO-2026-0100',
+        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+        scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
+        facility: { id: 'facility-1', name: 'HQ' },
+        contract: null,
+        assignedToUser: null,
+        assignedTeam: { id: 'team-1', name: 'Team Alpha' },
+      },
+      {
+        id: 'job-2',
+        jobNumber: 'WO-2026-0101',
+        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+        scheduledEndTime: new Date('2026-02-26T17:30:00.000Z'),
+        facility: { id: 'facility-2', name: 'Branch' },
+        contract: null,
+        assignedToUser: null,
+        assignedTeam: { id: 'team-1', name: 'Team Alpha' },
+      },
+    ]);
+    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([{ jobId: 'job-1' }]);
+    (prisma.jobActivity.findMany as jest.Mock).mockResolvedValue([{ jobId: 'job-2' }]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin-1' }]);
+
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: new Date('2026-02-26T16:00:00.000Z'),
+    });
+
+    expect(createBulkNotifications).not.toHaveBeenCalled();
+    expect(prisma.jobActivity.create).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      checked: 2,
+      alerted: 0,
+      notifications: 0,
+    });
   });
 });

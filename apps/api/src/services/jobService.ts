@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
-import { createNotification } from './notificationService';
+import { createBulkNotifications, createNotification } from './notificationService';
 import {
   extractFacilityTimezone,
   normalizeServiceSchedule,
@@ -239,6 +239,8 @@ async function generateJobNumber(): Promise<string> {
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const AUTO_RECURRING_JOB_LOOKAHEAD_DAYS = 30;
+const JOB_NO_CHECKIN_ALERT_ACTION = 'no_checkin_alert_sent';
+const JOB_NO_CHECKIN_ALERT_HOURS = 2;
 
 const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
   0: 'sunday',
@@ -1146,6 +1148,143 @@ export async function runRecurringJobsAutoRegenerationCycle(): Promise<{
   }
 
   return { checked: activeContracts.length, generatedFor, created };
+}
+
+export async function runJobNearingEndNoCheckInAlertCycle(input?: {
+  now?: Date;
+  leadHours?: number;
+}): Promise<{
+  checked: number;
+  alerted: number;
+  notifications: number;
+}> {
+  const now = input?.now ?? new Date();
+  const leadHours = input?.leadHours ?? JOB_NO_CHECKIN_ALERT_HOURS;
+  const alertThreshold = new Date(now.getTime() + leadHours * 60 * 60 * 1000);
+
+  const candidateJobs = await prisma.job.findMany({
+    where: {
+      status: { in: ['scheduled', 'in_progress'] },
+      scheduledEndTime: {
+        not: null,
+        gt: now,
+        lte: alertThreshold,
+      },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      facility: { select: { id: true, name: true } },
+      contract: { select: { id: true, contractNumber: true } },
+      assignedTeam: { select: { id: true, name: true } },
+      assignedToUser: { select: { id: true, fullName: true, email: true } },
+    },
+  });
+
+  if (candidateJobs.length === 0) {
+    return { checked: 0, alerted: 0, notifications: 0 };
+  }
+
+  const candidateJobIds = candidateJobs.map((job) => job.id);
+  const [timeTrackedJobs, alertedJobs, adminUsers] = await Promise.all([
+    prisma.timeEntry.findMany({
+      where: { jobId: { in: candidateJobIds } },
+      select: { jobId: true },
+      distinct: ['jobId'],
+    }),
+    prisma.jobActivity.findMany({
+      where: {
+        jobId: { in: candidateJobIds },
+        action: JOB_NO_CHECKIN_ALERT_ACTION,
+      },
+      select: { jobId: true },
+    }),
+    prisma.user.findMany({
+      where: {
+        status: 'active',
+        roles: {
+          some: {
+            role: {
+              key: { in: ['owner', 'admin'] },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  if (adminUsers.length === 0) {
+    return { checked: candidateJobs.length, alerted: 0, notifications: 0 };
+  }
+
+  const jobsWithTimeTracking = new Set(
+    timeTrackedJobs
+      .map((entry) => entry.jobId)
+      .filter((jobId): jobId is string => Boolean(jobId))
+  );
+  const alreadyAlertedJobIds = new Set(alertedJobs.map((activity) => activity.jobId));
+  const adminUserIds = adminUsers.map((user) => user.id);
+
+  let alerted = 0;
+  let notifications = 0;
+
+  for (const job of candidateJobs) {
+    if (jobsWithTimeTracking.has(job.id)) continue;
+    if (alreadyAlertedJobIds.has(job.id)) continue;
+    if (!job.scheduledEndTime) continue;
+
+    const assigneeLabel = job.assignedToUser?.fullName
+      ? `Assigned cleaner: ${job.assignedToUser.fullName}`
+      : job.assignedTeam?.name
+        ? `Assigned team: ${job.assignedTeam.name}`
+        : 'Assigned cleaner/team: Unassigned';
+    const body = `${job.jobNumber} at ${job.facility.name} ends at ${job.scheduledEndTime.toISOString()} and has no check-in yet. ${assigneeLabel}.`;
+
+    const created = await createBulkNotifications(adminUserIds, {
+      type: 'job_no_checkin_near_end',
+      title: `No check-in yet for ${job.jobNumber}`,
+      body,
+      metadata: {
+        jobId: job.id,
+        jobNumber: job.jobNumber,
+        facilityId: job.facility.id,
+        facilityName: job.facility.name,
+        contractId: job.contract?.id ?? null,
+        contractNumber: job.contract?.contractNumber ?? null,
+        scheduledDate: job.scheduledDate.toISOString(),
+        scheduledStartTime: job.scheduledStartTime?.toISOString() ?? null,
+        scheduledEndTime: job.scheduledEndTime.toISOString(),
+        leadHours,
+        assignedToUserId: job.assignedToUser?.id ?? null,
+        assignedTeamId: job.assignedTeam?.id ?? null,
+      },
+    });
+
+    await prisma.jobActivity.create({
+      data: {
+        jobId: job.id,
+        action: JOB_NO_CHECKIN_ALERT_ACTION,
+        metadata: {
+          leadHours,
+          alertedAdminCount: created.length,
+          scheduledEndTime: job.scheduledEndTime.toISOString(),
+        },
+      },
+    });
+
+    alerted += 1;
+    notifications += created.length;
+  }
+
+  return {
+    checked: candidateJobs.length,
+    alerted,
+    notifications,
+  };
 }
 
 // ==================== Job Tasks ====================
