@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner';
+export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner' | 'subcontractor';
 
 export interface RolePermissions {
   [key: string]: boolean;
@@ -214,6 +214,15 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     time_tracking_read: true,
     time_tracking_write: true,
   },
+  subcontractor: {
+    dashboard_read: true,
+    contracts_read: true,
+    facilities_read: true,
+    jobs_read: true,
+    jobs_write: true,
+    time_tracking_read: true,
+    time_tracking_write: true,
+  },
 };
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
@@ -221,6 +230,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 75,
   manager: 50,
   cleaner: 25,
+  subcontractor: 10,
 };
 
 export function hasPermission(role: UserRole, permission: string): boolean {
@@ -245,7 +255,7 @@ export function resolveHighestRole(roles: UserRole[]): UserRole {
   );
 }
 
-const VALID_ROLES: UserRole[] = ['owner', 'admin', 'manager', 'cleaner'];
+const VALID_ROLES: UserRole[] = ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'];
 
 export function isValidRole(role: unknown): role is UserRole {
   return typeof role === 'string' && VALID_ROLES.includes(role as UserRole);

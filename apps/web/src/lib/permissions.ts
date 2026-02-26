@@ -68,7 +68,7 @@ export const PERMISSIONS = {
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
-export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner';
+export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner' | 'subcontractor';
 export type PermissionMap = Record<string, boolean>;
 
 export interface PermissionSubject {
@@ -196,10 +196,19 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     time_tracking_read: true,
     time_tracking_write: true,
   },
+  subcontractor: {
+    dashboard_read: true,
+    contracts_read: true,
+    facilities_read: true,
+    jobs_read: true,
+    jobs_write: true,
+    time_tracking_read: true,
+    time_tracking_write: true,
+  },
 };
 
 export function isUserRole(role: string): role is UserRole {
-  return ['owner', 'admin', 'manager', 'cleaner'].includes(role);
+  return ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'].includes(role);
 }
 
 function getRolePermissions(role?: string | null): PermissionMap {
