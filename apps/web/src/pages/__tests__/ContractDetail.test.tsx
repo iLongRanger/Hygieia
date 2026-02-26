@@ -27,6 +27,7 @@ const renewContractMock = vi.fn();
 const assignContractTeamMock = vi.fn();
 const getContractActivitiesMock = vi.fn();
 const listTeamsMock = vi.fn();
+const listUsersMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
   getContract: (...args: unknown[]) => getContractMock(...args),
@@ -42,6 +43,10 @@ vi.mock('../../lib/contracts', () => ({
 
 vi.mock('../../lib/teams', () => ({
   listTeams: (...args: unknown[]) => listTeamsMock(...args),
+}));
+
+vi.mock('../../lib/users', () => ({
+  listUsers: (...args: unknown[]) => listUsersMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -98,6 +103,8 @@ describe('ContractDetail', () => {
       token: 'token',
       refreshToken: null,
       isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
     });
     getContractMock.mockResolvedValue(draftContract);
     updateContractStatusMock.mockResolvedValue({ ...draftContract, status: 'active' });
@@ -108,6 +115,10 @@ describe('ContractDetail', () => {
     });
     listTeamsMock.mockResolvedValue({
       data: [{ id: 'team-1', name: 'Alpha Team' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    listUsersMock.mockResolvedValue({
+      data: [{ id: 'user-2', fullName: 'Jane Employee', email: 'jane@example.com', status: 'active' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
     vi.stubGlobal('confirm', vi.fn(() => true));
@@ -127,6 +138,7 @@ describe('ContractDetail', () => {
   });
 
   it('activates draft contract', async () => {
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'sent' });
     const user = userEvent.setup();
     render(<ContractDetail />);
 
@@ -141,7 +153,12 @@ describe('ContractDetail', () => {
     const user = userEvent.setup();
     render(<ContractDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /archive/i }));
+    await screen.findByText('CONT-202602-0001');
+    const header = screen.getByText('Office Cleaning Agreement').closest('div.flex-1')?.parentElement;
+    const actionRow = header?.querySelector('div.flex.items-center.gap-2');
+    const actionButtons = actionRow?.querySelectorAll('button') || [];
+    await user.click(actionButtons[actionButtons.length - 1] as HTMLElement);
+    await user.click(await screen.findByText('Archive'));
 
     await waitFor(() => {
       expect(archiveContractMock).toHaveBeenCalledWith('contract-1');

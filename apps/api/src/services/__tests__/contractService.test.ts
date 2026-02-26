@@ -15,6 +15,9 @@ jest.mock('../../lib/prisma', () => ({
     team: {
       findUnique: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     proposal: {
       findUnique: jest.fn(),
     },
@@ -162,6 +165,38 @@ describe('contractService', () => {
     );
   });
 
+  it('createContractFromProposal should preserve proposal schedule frequency values', async () => {
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      title: 'Proposal A',
+      status: 'accepted',
+      serviceFrequency: '5x_week',
+      serviceSchedule: { days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] },
+      totalAmount: '2500',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      termsAndConditions: 'Terms',
+      notes: 'Special',
+      account: {
+        paymentTerms: 'Net 30',
+      },
+      facility: { id: 'facility-1' },
+      proposalServices: [],
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-4' });
+
+    await contractService.createContractFromProposal('proposal-1', 'user-1');
+
+    expect(prisma.contract.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceFrequency: '5x_week',
+        }),
+      })
+    );
+  });
+
   it('renewContract should update existing contract renewal fields in place', async () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
@@ -214,7 +249,30 @@ describe('contractService', () => {
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },
-        data: { assignedTeamId: 'team-1' },
+        data: { assignedTeamId: 'team-1', assignedToUserId: null },
+      })
+    );
+  });
+
+  it('assignContractTeam should assign an internal employee to an active contract', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'active' });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-2',
+      status: 'active',
+    });
+    (prisma.contract.update as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      assignedToUser: { id: 'user-2' },
+      assignedTeam: null,
+    });
+
+    const result = await contractService.assignContractTeam('contract-1', null, 'user-2');
+
+    expect(result).toEqual({ id: 'contract-1', assignedToUser: { id: 'user-2' }, assignedTeam: null });
+    expect(prisma.contract.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'contract-1' },
+        data: { assignedTeamId: null, assignedToUserId: 'user-2' },
       })
     );
   });

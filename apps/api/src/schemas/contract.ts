@@ -11,6 +11,12 @@ export const contractStatusSchema = z.enum([
 ]);
 
 export const serviceFrequencySchema = z.enum([
+  '1x_week',
+  '2x_week',
+  '3x_week',
+  '4x_week',
+  '5x_week',
+  '7x_week',
   'daily',
   'weekly',
   'bi_weekly',
@@ -109,10 +115,16 @@ export const updateContractStatusSchema = z.object({
   status: contractStatusSchema,
 });
 
-export const assignContractTeamSchema = z.object({
-  teamId: z.string().uuid().nullable(),
-  subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
-});
+export const assignContractTeamSchema = z
+  .object({
+    teamId: z.string().uuid().nullable().optional(),
+    assignedToUserId: z.string().uuid().nullable().optional(),
+    subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
+  })
+  .refine((data) => !(data.teamId && data.assignedToUserId), {
+    message: 'Assign either a subcontractor team or an internal employee, not both',
+    path: ['teamId'],
+  });
 
 // Sign Contract Schema
 export const signContractSchema = z.object({

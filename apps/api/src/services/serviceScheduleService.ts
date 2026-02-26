@@ -191,15 +191,19 @@ export function mapProposalFrequencyToContractFrequency(
     case '':
       return null;
     case '1x_week':
+      return '1x_week';
+    case '2x_week':
+      return '2x_week';
+    case '3x_week':
+      return '3x_week';
+    case '4x_week':
+      return '4x_week';
+    case '5x_week':
+      return '5x_week';
+    case '7x_week':
+      return '7x_week';
     case 'weekly':
       return 'weekly';
-    case '2x_week':
-    case '3x_week':
-    case '4x_week':
-    case '5x_week':
-      return 'custom';
-    case '7x_week':
-      return 'daily';
     case 'biweekly':
       return 'bi_weekly';
     case 'daily':

@@ -35,6 +35,20 @@ interface UserOption {
   email: string;
 }
 
+const toTimeInputValue = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  // Normalize API ISO values (e.g. 2026-02-27T17:59:00.000Z) to HTML time input format (HH:mm)
+  if (value.includes('T')) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toISOString().slice(11, 16);
+    }
+  }
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+  if (/^\d{2}:\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
+  return null;
+};
+
 const JobForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -96,8 +110,8 @@ const JobForm = () => {
           assignedTeamId: job.assignedTeam?.id || null,
           assignedToUserId: job.assignedToUser?.id || null,
           scheduledDate: job.scheduledDate.split('T')[0],
-          scheduledStartTime: job.scheduledStartTime || null,
-          scheduledEndTime: job.scheduledEndTime || null,
+          scheduledStartTime: toTimeInputValue(job.scheduledStartTime),
+          scheduledEndTime: toTimeInputValue(job.scheduledEndTime),
           estimatedHours: job.estimatedHours ? Number(job.estimatedHours) : null,
           notes: job.notes || null,
         });
