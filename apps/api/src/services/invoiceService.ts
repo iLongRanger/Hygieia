@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import crypto from 'crypto';
+import { extractFacilityTimezone } from './serviceScheduleService';
 
 // ==================== Interfaces ====================
 
@@ -57,6 +58,17 @@ export interface RecordPaymentInput {
   notes?: string | null;
   recordedByUserId: string;
 }
+
+interface NormalizedPeriodWindow {
+  start: Date;
+  end: Date;
+  timezone: string;
+}
+
+const MAX_BILLING_WINDOW_DAYS = 31;
+const DEFAULT_PAYMENT_TERMS_DAYS = 30;
+const batchIdempotencyLocks = new Map<string, number>();
+const BATCH_IDEMPOTENCY_TTL_MS = 10 * 60 * 1000;
 
 // ==================== Select objects ====================
 
@@ -174,6 +186,88 @@ function calculateTotals(items: InvoiceItemInput[], taxRate: number) {
   const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
   const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
   return { subtotal, taxAmount, totalAmount };
+}
+
+function assertValidDate(value: Date, label: string) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    throw new BadRequestError(`Invalid ${label}`);
+  }
+}
+
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function atUtcStartOfDay(value: Date): Date {
+  return new Date(`${toIsoDate(value)}T00:00:00.000Z`);
+}
+
+function getDateInTimezone(value: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
+}
+
+function normalizePeriodWindow(periodStart: Date, periodEnd: Date, timezone = 'UTC'): NormalizedPeriodWindow {
+  assertValidDate(periodStart, 'period start date');
+  assertValidDate(periodEnd, 'period end date');
+
+  const startLocalDate = getDateInTimezone(periodStart, timezone);
+  const endLocalDate = getDateInTimezone(periodEnd, timezone);
+  const start = new Date(`${startLocalDate}T00:00:00.000Z`);
+  const end = new Date(`${endLocalDate}T23:59:59.999Z`);
+
+  if (end < start) {
+    throw new BadRequestError('Billing period end date must be on or after period start date');
+  }
+
+  const durationDays = Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  if (durationDays > MAX_BILLING_WINDOW_DAYS) {
+    throw new BadRequestError(`Billing period cannot exceed ${MAX_BILLING_WINDOW_DAYS} days`);
+  }
+
+  return { start, end, timezone };
+}
+
+function parsePaymentTermsDays(paymentTerms?: string | null): number {
+  if (!paymentTerms) return DEFAULT_PAYMENT_TERMS_DAYS;
+  const normalized = paymentTerms.trim().toLowerCase();
+
+  const netMatch = normalized.match(/net\s*(\d{1,3})/i);
+  if (netMatch) return Number(netMatch[1]);
+
+  const numberMatch = normalized.match(/(\d{1,3})/);
+  if (numberMatch) return Number(numberMatch[1]);
+
+  return DEFAULT_PAYMENT_TERMS_DAYS;
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function runWithBatchIdempotency<T>(key: string, action: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  for (const [existingKey, expiresAt] of batchIdempotencyLocks.entries()) {
+    if (expiresAt <= now) {
+      batchIdempotencyLocks.delete(existingKey);
+    }
+  }
+
+  const active = batchIdempotencyLocks.get(key);
+  if (active && active > now) {
+    throw new BadRequestError('An invoice batch generation for this period is already in progress');
+  }
+
+  batchIdempotencyLocks.set(key, now + BATCH_IDEMPOTENCY_TTL_MS);
+  return action().finally(() => {
+    batchIdempotencyLocks.delete(key);
+  });
 }
 
 // ==================== Service ====================
@@ -475,25 +569,47 @@ export async function generateInvoiceFromContract(
       accountId: true,
       facilityId: true,
       monthlyValue: true,
+      paymentTerms: true,
+      facility: { select: { address: true } },
     },
   });
   if (!contract) throw new NotFoundError('Contract not found');
 
+  const timezone = extractFacilityTimezone(contract.facility?.address) || 'UTC';
+  const window = normalizePeriodWindow(periodStart, periodEnd, timezone);
   const monthlyValue = parseFloat(contract.monthlyValue.toString());
+  const termsDays = parsePaymentTermsDays(contract.paymentTerms);
+  const issueDate = atUtcStartOfDay(window.end);
+  const dueDate = atUtcStartOfDay(addUtcDays(issueDate, termsDays));
+
+  const overlap = await prisma.invoice.findFirst({
+    where: {
+      contractId,
+      status: { notIn: ['void', 'written_off'] },
+      periodStart: { not: null, lte: window.end },
+      periodEnd: { not: null, gte: window.start },
+    },
+    select: { id: true, invoiceNumber: true },
+  });
+  if (overlap) {
+    throw new BadRequestError(
+      `Invoice ${overlap.invoiceNumber} already covers an overlapping billing period`
+    );
+  }
 
   return createInvoice({
     contractId,
     accountId: contract.accountId,
     facilityId: contract.facilityId,
-    issueDate: new Date(),
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // NET30
-    periodStart,
-    periodEnd,
+    issueDate,
+    dueDate,
+    periodStart: window.start,
+    periodEnd: window.end,
     createdByUserId,
     items: [
       {
         itemType: 'service',
-        description: `${contract.title || contract.contractNumber} — Cleaning Services (${periodStart.toLocaleDateString()} – ${periodEnd.toLocaleDateString()})`,
+        description: `${contract.title || contract.contractNumber} - Cleaning Services (${toIsoDate(window.start)} to ${toIsoDate(window.end)})`,
         quantity: 1,
         unitPrice: monthlyValue,
       },
@@ -506,46 +622,66 @@ export async function batchGenerateInvoices(
   periodEnd: Date,
   createdByUserId: string
 ) {
-  const activeContracts = await prisma.contract.findMany({
-    where: { status: 'active' },
-    select: { id: true },
-  });
+  const normalizedWindow = normalizePeriodWindow(periodStart, periodEnd, 'UTC');
+  const batchKey = `invoice_batch:${toIsoDate(normalizedWindow.start)}:${toIsoDate(normalizedWindow.end)}:${normalizedWindow.timezone}`;
 
-  const results: { contractId: string; invoiceId?: string; error?: string }[] = [];
+  return runWithBatchIdempotency(batchKey, async () => {
+    const activeContracts = await prisma.contract.findMany({
+      where: { status: 'active' },
+      select: { id: true },
+    });
 
-  for (const contract of activeContracts) {
-    try {
-      // Check if invoice already exists for this period
-      const existing = await prisma.invoice.findFirst({
-        where: {
-          contractId: contract.id,
-          periodStart,
-          periodEnd,
-        },
-      });
-      if (existing) {
-        results.push({ contractId: contract.id, error: 'Invoice already exists' });
-        continue;
+    const results: {
+      contractId: string;
+      status: 'generated' | 'skipped_duplicate' | 'error';
+      reason?: string;
+      invoiceId?: string;
+    }[] = [];
+
+    for (const contract of activeContracts) {
+      try {
+        const existingOverlap = await prisma.invoice.findFirst({
+          where: {
+            contractId: contract.id,
+            status: { notIn: ['void', 'written_off'] },
+            periodStart: { not: null, lte: normalizedWindow.end },
+            periodEnd: { not: null, gte: normalizedWindow.start },
+          },
+          select: { id: true, invoiceNumber: true },
+        });
+
+        if (existingOverlap) {
+          results.push({
+            contractId: contract.id,
+            status: 'skipped_duplicate',
+            reason: `Overlaps with ${existingOverlap.invoiceNumber}`,
+          });
+          continue;
+        }
+
+        const invoice = await generateInvoiceFromContract(
+          contract.id,
+          normalizedWindow.start,
+          normalizedWindow.end,
+          createdByUserId
+        );
+        results.push({ contractId: contract.id, status: 'generated', invoiceId: invoice.id });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        results.push({ contractId: contract.id, status: 'error', reason: message });
       }
-
-      const invoice = await generateInvoiceFromContract(
-        contract.id,
-        periodStart,
-        periodEnd,
-        createdByUserId
-      );
-      results.push({ contractId: contract.id, invoiceId: invoice.id });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      results.push({ contractId: contract.id, error: message });
     }
-  }
 
-  return {
-    generated: results.filter((r) => r.invoiceId).length,
-    skipped: results.filter((r) => r.error).length,
-    results,
-  };
+    return {
+      periodStart: toIsoDate(normalizedWindow.start),
+      periodEnd: toIsoDate(normalizedWindow.end),
+      generated: results.filter((r) => r.status === 'generated').length,
+      skipped: results.filter((r) => r.status !== 'generated').length,
+      duplicates: results.filter((r) => r.status === 'skipped_duplicate').length,
+      errors: results.filter((r) => r.status === 'error').length,
+      results,
+    };
+  });
 }
 
 // ==================== Activity ====================
@@ -564,3 +700,4 @@ export async function listInvoiceActivities(invoiceId: string) {
     orderBy: { createdAt: 'desc' },
   });
 }
+
