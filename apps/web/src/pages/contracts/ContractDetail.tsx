@@ -52,11 +52,13 @@ import {
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
+import { listUsers } from '../../lib/users';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
 import type { Contract, ContractStatus, RenewContractInput, SendContractInput } from '../../types/contract';
 import type { Team } from '../../types/team';
+import type { User as SystemUser } from '../../types/user';
 
 // Format address object into readable string
 const formatAddress = (address: any): string => {
@@ -165,6 +167,12 @@ const getScheduleTimeWindow = (schedule: unknown): string | null => {
 };
 
 const SERVICE_FREQUENCIES = [
+  { value: '1x_week', label: '1x Week' },
+  { value: '2x_week', label: '2x Week' },
+  { value: '3x_week', label: '3x Week' },
+  { value: '4x_week', label: '4x Week' },
+  { value: '5x_week', label: '5x Week' },
+  { value: '7x_week', label: '7x Week' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'bi_weekly', label: 'Bi-Weekly' },
@@ -180,13 +188,18 @@ const BILLING_CYCLES = [
   { value: 'annual', label: 'Annual' },
 ];
 
+type AssignmentMode = 'subcontractor_team' | 'internal_employee';
+
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [contract, setContract] = useState<Contract | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<SystemUser[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('subcontractor_team');
   const [assigningTeam, setAssigningTeam] = useState(false);
   const [selectedTier, setSelectedTier] = useState('premium');
 
@@ -224,6 +237,7 @@ const ContractDetail = () => {
     if (id) {
       fetchContract(id);
       fetchTeams();
+      fetchUsers();
     }
   }, [id]);
 
@@ -245,7 +259,10 @@ const ContractDetail = () => {
       setLoading(true);
       const data = await getContract(contractId);
       setContract(data);
+      const hasAssignedUser = Boolean(data.assignedToUser?.id);
+      setAssignmentMode(hasAssignedUser ? 'internal_employee' : 'subcontractor_team');
       setSelectedTeamId(data.assignedTeam?.id || '');
+      setSelectedUserId(data.assignedToUser?.id || '');
       setSelectedTier(data.subcontractorTier || 'premium');
     } catch (error) {
       console.error('Failed to fetch contract:', error);
@@ -266,20 +283,44 @@ const ContractDetail = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await listUsers({ limit: 100, status: 'active' });
+      setUsers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast.error('Failed to load employees');
+    }
+  };
+
   const handleAssignTeam = async () => {
     if (!contract) return;
 
     try {
       setAssigningTeam(true);
+      const teamId =
+        assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
+      const assignedToUserId =
+        assignmentMode === 'internal_employee' ? selectedUserId || null : null;
       const updatedContract = await assignContractTeam(
         contract.id,
-        selectedTeamId || null,
-        selectedTeamId ? selectedTier : undefined
+        teamId,
+        assignedToUserId,
+        teamId ? selectedTier : undefined
       );
       setContract(updatedContract);
       setActivityRefresh((n) => n + 1);
       const teamName = teams.find((t) => t.id === selectedTeamId)?.name;
-      toast.success(selectedTeamId ? `${teamName || 'Team'} assigned successfully` : 'Team unassigned successfully');
+      const userName = users.find((u) => u.id === selectedUserId)?.fullName;
+      if (assignmentMode === 'internal_employee') {
+        toast.success(
+          assignedToUserId
+            ? `${userName || 'Employee'} assigned successfully`
+            : 'Employee unassigned successfully'
+        );
+      } else {
+        toast.success(teamId ? `${teamName || 'Team'} assigned successfully` : 'Team unassigned successfully');
+      }
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'Failed to assign team');
     } finally {
@@ -469,13 +510,13 @@ const ContractDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" onClick={() => navigate('/contracts')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{contract.contractNumber}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-white truncate">{contract.contractNumber}</h1>
             <Badge variant={getStatusVariant(contract.status)}>
               <StatusIcon className="mr-1 h-3 w-3" />
               {STATUS_LABELS[contract.status] || contract.status.replace('_', ' ').toUpperCase()}
@@ -693,58 +734,96 @@ const ContractDetail = () => {
           </div>
         </Card>
 
-        {/* Team Assignment */}
+        {/* Assignment */}
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
-            <h2 className="text-lg font-semibold text-white">Assigned Team</h2>
+            <h2 className="text-lg font-semibold text-white">Assignment</h2>
           </div>
           <div className="space-y-4">
             <Select
-              label="Subcontractor Team"
-              value={selectedTeamId}
-              onChange={setSelectedTeamId}
+              label="Assign To"
+              value={assignmentMode}
+              onChange={(value) => setAssignmentMode(value as AssignmentMode)}
               disabled={contract.status !== 'active' || !canAdminContracts}
               options={[
-                { value: '', label: 'Unassigned' },
-                ...teams.map((team) => ({ value: team.id, label: team.name })),
+                { value: 'subcontractor_team', label: 'Subcontractor Team' },
+                { value: 'internal_employee', label: 'Internal Employee' },
               ]}
-              hint={
-                contract.status !== 'active'
-                  ? 'Teams can only be assigned to active contracts'
-                  : !canAdminContracts
-                    ? 'You do not have permission to assign teams'
-                  : undefined
-              }
             />
-            <div className="grid grid-cols-2 gap-4">
+            {assignmentMode === 'subcontractor_team' ? (
+              <>
+                <Select
+                  label="Subcontractor Team"
+                  value={selectedTeamId}
+                  onChange={(value) => {
+                    setSelectedTeamId(value);
+                    if (value) setSelectedUserId('');
+                  }}
+                  disabled={contract.status !== 'active' || !canAdminContracts}
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...teams.map((team) => ({ value: team.id, label: team.name })),
+                  ]}
+                  hint={
+                    contract.status !== 'active'
+                      ? 'Assignments can only be changed on active contracts'
+                      : !canAdminContracts
+                        ? 'You do not have permission to update assignments'
+                        : undefined
+                  }
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Select
+                    label="Subcontractor Tier"
+                    value={selectedTier}
+                    onChange={setSelectedTier}
+                    disabled={contract.status !== 'active' || !canAdminContracts}
+                    options={SUBCONTRACTOR_TIER_OPTIONS}
+                  />
+                  <div>
+                    <div className="text-sm text-gray-400 mb-1">Subcontract Pay</div>
+                    <div className="text-lg font-semibold text-teal-400">
+                      ${(Number(contract.monthlyValue) * tierToPercentage(selectedTier)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {(tierToPercentage(selectedTier) * 100).toFixed(0)}% of monthly value
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
               <Select
-                label="Subcontractor Tier"
-                value={selectedTier}
-                onChange={setSelectedTier}
+                label="Internal Employee"
+                value={selectedUserId}
+                onChange={(value) => {
+                  setSelectedUserId(value);
+                  if (value) setSelectedTeamId('');
+                }}
                 disabled={contract.status !== 'active' || !canAdminContracts}
-                options={SUBCONTRACTOR_TIER_OPTIONS}
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...users.map((user) => ({ value: user.id, label: user.fullName })),
+                ]}
+                hint={
+                  contract.status !== 'active'
+                    ? 'Assignments can only be changed on active contracts'
+                    : !canAdminContracts
+                      ? 'You do not have permission to update assignments'
+                      : undefined
+                }
               />
-              <div>
-                <div className="text-sm text-gray-400 mb-1">Subcontract Pay</div>
-                <div className="text-lg font-semibold text-teal-400">
-                  ${(Number(contract.monthlyValue) * tierToPercentage(selectedTier)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {(tierToPercentage(selectedTier) * 100).toFixed(0)}% of monthly value
-                </div>
-              </div>
-            </div>
+            )}
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-400">
-                Current: {contract.assignedTeam?.name || 'No team assigned'}
+                Current: {contract.assignedTeam?.name || contract.assignedToUser?.fullName || 'Unassigned'}
               </div>
               <Button
                 onClick={handleAssignTeam}
                 disabled={contract.status !== 'active' || !canAdminContracts}
                 isLoading={assigningTeam}
               >
-                Save Team Assignment
+                Save Assignment
               </Button>
             </div>
           </div>

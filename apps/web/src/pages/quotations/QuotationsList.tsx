@@ -260,7 +260,7 @@ const QuotationsList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <DollarSign className="h-5 w-5 text-primary-700 dark:text-primary-400" />
@@ -311,7 +311,7 @@ const QuotationsList = () => {
 
           {showFilterPanel && (
             <div className="mt-4 flex flex-wrap items-end gap-4 border-t border-surface-100 pt-4 dark:border-surface-700">
-              <div className="w-48">
+              <div className="w-full sm:w-48">
                 <Select
                   label="Status"
                   value={statusFilter}

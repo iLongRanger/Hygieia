@@ -512,7 +512,7 @@ const PublicProposalView: React.FC = () => {
             </div>
 
             {/* Services summary table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
               <table className="w-full">
                 <thead style={{ backgroundColor: `${primaryColor}08` }}>
                   <tr>
@@ -569,7 +569,7 @@ const PublicProposalView: React.FC = () => {
         {visibleProposalItems.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Line Items</h3>
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>

@@ -35,6 +35,12 @@ import type {
 } from '../../types/contract';
 
 const SERVICE_FREQUENCIES = [
+  { value: '1x_week', label: '1x Week' },
+  { value: '2x_week', label: '2x Week' },
+  { value: '3x_week', label: '3x Week' },
+  { value: '4x_week', label: '4x Week' },
+  { value: '5x_week', label: '5x Week' },
+  { value: '7x_week', label: '7x Week' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'bi_weekly', label: 'Bi-Weekly' },
@@ -53,15 +59,19 @@ const BILLING_CYCLES = [
 const mapProposalFrequencyToContractFrequency = (value?: string | null): ServiceFrequency => {
   switch ((value || '').toLowerCase()) {
     case '1x_week':
+      return '1x_week';
+    case '2x_week':
+      return '2x_week';
+    case '3x_week':
+      return '3x_week';
+    case '4x_week':
+      return '4x_week';
+    case '5x_week':
+      return '5x_week';
+    case '7x_week':
+      return '7x_week';
     case 'weekly':
       return 'weekly';
-    case '2x_week':
-    case '3x_week':
-    case '4x_week':
-    case '5x_week':
-      return 'custom';
-    case '7x_week':
-      return 'daily';
     case 'biweekly':
     case 'bi_weekly':
       return 'bi_weekly';
@@ -758,7 +768,7 @@ const ContractForm = () => {
             </Card>
 
             {/* Form Actions */}
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <Button
                 type="button"
                 variant="secondary"

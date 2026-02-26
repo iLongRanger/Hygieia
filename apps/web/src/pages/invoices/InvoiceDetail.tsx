@@ -152,7 +152,7 @@ const InvoiceDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate('/invoices')}>
             <ArrowLeft className="h-4 w-4" />
@@ -160,9 +160,9 @@ const InvoiceDetail = () => {
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <Receipt className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50 truncate">
                 {invoice.invoiceNumber}
               </h1>
               <Badge variant={getStatusVariant(invoice.status)}>
@@ -172,7 +172,7 @@ const InvoiceDetail = () => {
             <p className="text-sm text-surface-500">{invoice.account.name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {invoice.publicToken && (
             <Button variant="secondary" size="sm" onClick={copyPublicLink}>
               <Copy className="mr-1.5 h-4 w-4" />
@@ -201,7 +201,7 @@ const InvoiceDetail = () => {
       </div>
 
       {/* Info cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <div className="p-4 text-center">
             <p className="text-xs text-surface-500">Total</p>
@@ -281,7 +281,7 @@ const InvoiceDetail = () => {
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
                 placeholder="Check #, transaction ID"
-                className="w-48"
+                className="w-full sm:w-48"
               />
               <Button size="sm" onClick={handleRecordPayment}>Record</Button>
               <Button variant="secondary" size="sm" onClick={() => setShowPaymentForm(false)}>Cancel</Button>

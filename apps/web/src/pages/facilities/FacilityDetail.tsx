@@ -995,12 +995,12 @@ const FacilityDetail = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" onClick={() => navigate('/facilities')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{facility.name}</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold text-white truncate">{facility.name}</h1>
           <p className="text-gray-400">{facility.account.name}</p>
         </div>
         <Button variant="secondary" onClick={() => setShowEditModal(true)}>

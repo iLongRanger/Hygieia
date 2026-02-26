@@ -57,7 +57,10 @@ import { PERMISSIONS } from '../types';
 import { createBulkNotifications } from '../services/notificationService';
 import { autoCreateInspectionTemplate } from '../services/inspectionTemplateService';
 import { tierToPercentage } from '../lib/subcontractorTiers';
-import { autoGenerateRecurringJobsForContract } from '../services/jobService';
+import {
+  autoGenerateRecurringJobsForContract,
+  regenerateRecurringJobsForContract,
+} from '../services/jobService';
 
 const router: Router = Router();
 
@@ -372,27 +375,7 @@ router.patch(
 
       // Send notifications on activation
       if (parsed.data.status === 'active') {
-        if (contract.assignedTeam?.id && req.user?.id) {
-          try {
-            const generationResult = await autoGenerateRecurringJobsForContract({
-              contractId: contract.id,
-              createdByUserId: req.user.id,
-              assignedTeamId: contract.assignedTeam.id,
-            });
-
-            await logContractActivity({
-              contractId: contract.id,
-              action: 'jobs_auto_generated',
-              performedByUserId: req.user.id,
-              metadata: {
-                created: generationResult.created,
-                source: 'status_activation',
-              },
-            });
-          } catch (generationError) {
-            logger.error('Failed to auto-generate recurring jobs on contract activation:', generationError);
-          }
-        }
+        const needsAssignment = !contract.assignedTeam?.id && !contract.assignedToUser?.id;
 
         try {
           const { userIds, emails } = await getContractNotificationRecipients(contract.id);
@@ -420,6 +403,25 @@ router.patch(
           );
         } catch (notifyError) {
           logger.error('Failed to send contract activation notifications:', notifyError);
+        }
+
+        if (needsAssignment) {
+          try {
+            const { userIds } = await getContractNotificationRecipients(contract.id);
+            await createBulkNotifications([...userIds], {
+              type: 'contract_assignment_required',
+              title: `Assignment required for ${contract.contractNumber}`,
+              body:
+                `Contract "${contract.title}" is active. Assign a team or internal employee ` +
+                'to start scheduled work.',
+              metadata: {
+                contractId: contract.id,
+                action: 'assign_team_or_employee',
+              },
+            });
+          } catch (assignmentNotifyError) {
+            logger.error('Failed to send contract assignment-required notifications:', assignmentNotifyError);
+          }
         }
 
         // Auto-create inspection template from contract tasks
@@ -451,7 +453,8 @@ router.patch(
 
       const contract = await assignContractTeam(
         req.params.id,
-        parsed.data.teamId,
+        parsed.data.teamId ?? null,
+        parsed.data.assignedToUserId ?? null,
         parsed.data.subcontractorTier
       );
 
@@ -459,17 +462,22 @@ router.patch(
         contractId: contract.id,
         action: 'team_assigned',
         performedByUserId: req.user?.id,
-        metadata: { teamId: parsed.data.teamId, subcontractorTier: parsed.data.subcontractorTier },
+        metadata: {
+          teamId: parsed.data.teamId,
+          assignedToUserId: parsed.data.assignedToUserId,
+          subcontractorTier: parsed.data.subcontractorTier,
+        },
       });
 
-      // Send notification when a team is assigned (not unassigned)
-      if (parsed.data.teamId) {
+      // Send notification when an assignee is set (team or internal employee)
+      if (parsed.data.teamId || parsed.data.assignedToUserId) {
         if (req.user?.id) {
           try {
             const generationResult = await autoGenerateRecurringJobsForContract({
               contractId: contract.id,
               createdByUserId: req.user.id,
-              assignedTeamId: parsed.data.teamId,
+              assignedTeamId: parsed.data.teamId ?? null,
+              assignedToUserId: parsed.data.assignedToUserId ?? null,
             });
 
             await logContractActivity({
@@ -485,7 +493,23 @@ router.patch(
             logger.error('Failed to auto-generate recurring jobs on team assignment:', generationError);
           }
         }
+      }
 
+      // Send notification when an internal employee is assigned
+      if (parsed.data.assignedToUserId) {
+        try {
+          await createBulkNotifications([parsed.data.assignedToUserId], {
+            type: 'contract_assignment_required',
+            title: 'Contract assigned to you',
+            body: `You were assigned to contract ${contract.contractNumber} (${contract.title}).`,
+            metadata: { contractId: contract.id, assignedToUserId: parsed.data.assignedToUserId },
+          });
+        } catch (notifyError) {
+          logger.error('Failed to send internal employee assignment notification:', notifyError);
+        }
+      }
+
+      if (parsed.data.teamId) {
         try {
           const notifData = await getTeamAssignmentNotificationData(contract.id);
           if (notifData && notifData.assignedTeam) {
@@ -839,6 +863,31 @@ router.post(
         parsed.data,
         req.user.id
       );
+
+      if ((parsed.data.serviceFrequency !== undefined || parsed.data.serviceSchedule !== undefined) && contract.status === 'active') {
+        try {
+          const regenerationResult = await regenerateRecurringJobsForContract({
+            contractId: contract.id,
+            createdByUserId: req.user.id,
+            assignedTeamId: contract.assignedTeam?.id || null,
+            assignedToUserId: contract.assignedToUser?.id || null,
+            reason: 'Recurring schedule updated from contract renewal',
+          });
+
+          await logContractActivity({
+            contractId: contract.id,
+            action: 'jobs_auto_generated',
+            performedByUserId: req.user.id,
+            metadata: {
+              created: regenerationResult.created,
+              canceled: regenerationResult.canceled,
+              source: 'contract_renewal_schedule_change',
+            },
+          });
+        } catch (regenerationError) {
+          logger.error('Failed to regenerate recurring jobs after contract renewal:', regenerationError);
+        }
+      }
 
       await logContractActivity({
         contractId: contract.id,

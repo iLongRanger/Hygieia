@@ -6,6 +6,8 @@ import * as contractService from '../../services/contractService';
 import * as contractPublicService from '../../services/contractPublicService';
 import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
+import * as notificationService from '../../services/notificationService';
+import * as jobService from '../../services/jobService';
 import { prisma } from '../../lib/prisma';
 
 jest.mock('../../middleware/auth', () => ({
@@ -41,6 +43,15 @@ jest.mock('../../services/emailService', () => ({
 
 jest.mock('../../services/contractPublicService', () => ({
   generatePublicToken: jest.fn().mockResolvedValue('contract-public-token'),
+}));
+
+jest.mock('../../services/notificationService', () => ({
+  createBulkNotifications: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../services/jobService', () => ({
+  autoGenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0 }),
+  regenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0, canceled: 0 }),
 }));
 
 jest.mock('../../config/email', () => ({
@@ -203,6 +214,44 @@ describe('Contract Routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.id).toBe('contract-1');
+    expect(jobService.autoGenerateRecurringJobsForContract).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id/status should notify assignment required when activating without team', async () => {
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+      account: { name: 'Acme Corp' },
+      monthlyValue: '2500',
+      startDate: '2026-02-01',
+      assignedTeam: null,
+    });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      createdByUserId: 'user-1',
+      createdByUser: { email: 'owner@example.com' },
+      account: {
+        accountManagerId: null,
+        accountManager: null,
+      },
+    });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([]);
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        type: 'contract_assignment_required',
+        metadata: expect.objectContaining({
+          contractId: 'contract-1',
+          action: 'assign_team_or_employee',
+        }),
+      })
+    );
   });
 
   it('PATCH /:id/team should assign team', async () => {
@@ -217,6 +266,25 @@ describe('Contract Routes', () => {
     expect(contractService.assignContractTeam).toHaveBeenCalledWith(
       'contract-1',
       '11111111-1111-1111-1111-111111111111',
+      null,
+      undefined
+    );
+    expect(jobService.autoGenerateRecurringJobsForContract).toHaveBeenCalled();
+  });
+
+  it('PATCH /:id/team should assign internal employee', async () => {
+    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+
+    const response = await request(app)
+      .patch('/api/v1/contracts/contract-1/team')
+      .send({ teamId: null, assignedToUserId: '22222222-2222-2222-2222-222222222222' })
+      .expect(200);
+
+    expect(response.body.data.id).toBe('contract-1');
+    expect(contractService.assignContractTeam).toHaveBeenCalledWith(
+      'contract-1',
+      null,
+      '22222222-2222-2222-2222-222222222222',
       undefined
     );
   });

@@ -361,7 +361,7 @@ const QuotationForm = () => {
           {/* Totals */}
           <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
             <div className="flex justify-end">
-              <div className="w-64 space-y-2">
+              <div className="w-full sm:w-64 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-500">Subtotal</span>
                   <span className="text-surface-900 dark:text-surface-100 font-medium">

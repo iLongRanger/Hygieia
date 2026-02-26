@@ -184,7 +184,7 @@ const GlobalSettingsPage: React.FC = () => {
           <Palette className="h-5 w-5 text-gold" />
           <h2 className="text-lg font-semibold text-white">Theme Colors</h2>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Input
             label="Primary"
             type="color"

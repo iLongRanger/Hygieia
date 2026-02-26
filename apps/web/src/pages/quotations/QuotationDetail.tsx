@@ -324,7 +324,7 @@ const QuotationDetail = () => {
               {/* Totals */}
               <div className="mt-6 border-t border-surface-100 dark:border-surface-700 pt-4">
                 <div className="flex justify-end">
-                  <div className="w-64 space-y-2">
+                  <div className="w-full sm:w-64 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-surface-500">Subtotal</span>
                       <span className="font-medium">{formatCurrency(Number(quotation.subtotal))}</span>

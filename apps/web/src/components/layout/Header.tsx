@@ -175,7 +175,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-lg border border-surface-200 bg-white shadow-lg dark:border-surface-700 dark:bg-surface-900">
+            <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-lg border border-surface-200 bg-white shadow-lg dark:border-surface-700 dark:bg-surface-900">
               <div className="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-700">
                 <span className="text-sm font-semibold text-surface-700 dark:text-surface-200">
                   Notifications

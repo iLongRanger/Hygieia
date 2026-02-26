@@ -230,7 +230,7 @@ async function generateJobNumber(): Promise<string> {
 }
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
-const AUTO_RECURRING_JOB_LOOKAHEAD_DAYS = 35;
+const AUTO_RECURRING_JOB_LOOKAHEAD_DAYS = 30;
 
 const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
   0: 'sunday',
@@ -289,6 +289,37 @@ function iterateDateRange(from: Date, to: Date): string[] {
   }
 
   return dates;
+}
+
+function atUtcStartOfDay(value: Date): Date {
+  return new Date(`${toIsoDate(value)}T00:00:00.000Z`);
+}
+
+function resolveAutoGenerationWindow(input: {
+  contractStartDate: Date;
+  contractEndDate?: Date | null;
+  anchorDate?: Date;
+}): { dateFrom: Date; dateTo: Date } | null {
+  const todayUtc = atUtcStartOfDay(input.anchorDate ?? new Date());
+  const contractStartUtc = atUtcStartOfDay(input.contractStartDate);
+  const dateFrom = contractStartUtc > todayUtc ? contractStartUtc : todayUtc;
+
+  const lookaheadEnd = new Date(dateFrom);
+  lookaheadEnd.setUTCDate(lookaheadEnd.getUTCDate() + (AUTO_RECURRING_JOB_LOOKAHEAD_DAYS - 1));
+
+  let dateTo = lookaheadEnd;
+  if (input.contractEndDate) {
+    const contractEndUtc = atUtcStartOfDay(input.contractEndDate);
+    if (contractEndUtc < dateTo) {
+      dateTo = contractEndUtc;
+    }
+  }
+
+  if (dateTo < dateFrom) {
+    return null;
+  }
+
+  return { dateFrom, dateTo };
 }
 
 // ==================== CRUD Operations ====================
@@ -842,30 +873,41 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
   // Batch create jobs
   const jobs = [];
   for (const dateIso of newDates) {
-    const jobNumber = await generateJobNumber();
-    const job = await prisma.job.create({
-      data: {
-        jobNumber,
-        contractId: input.contractId,
-        facilityId: contract.facilityId,
-        accountId: contract.accountId,
-        jobType: 'scheduled_service',
-        jobCategory: 'recurring',
-        assignedTeamId: resolvedAssignedTeamId,
-        assignedToUserId: resolvedAssignedToUserId,
-        status: 'scheduled',
-        scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
-        notes: hasExplicitSchedule
-          ?
-          `Allowed window ${normalizedSchedule.allowedWindowStart}-${normalizedSchedule.allowedWindowEnd} ` +
-          `(${effectiveTimezone}, start-day anchor)` +
-          (!facilityTimezone ? ' [timezone fallback: UTC]' : '')
-          : null,
-        createdByUserId: input.createdByUserId,
-      },
-      select: { id: true, jobNumber: true, scheduledDate: true },
-    });
-    jobs.push(job);
+    try {
+      const jobNumber = await generateJobNumber();
+      const job = await prisma.job.create({
+        data: {
+          jobNumber,
+          contractId: input.contractId,
+          facilityId: contract.facilityId,
+          accountId: contract.accountId,
+          jobType: 'scheduled_service',
+          jobCategory: 'recurring',
+          assignedTeamId: resolvedAssignedTeamId,
+          assignedToUserId: resolvedAssignedToUserId,
+          status: 'scheduled',
+          scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
+          notes: hasExplicitSchedule
+            ?
+            `Allowed window ${normalizedSchedule.allowedWindowStart}-${normalizedSchedule.allowedWindowEnd} ` +
+            `(${effectiveTimezone}, start-day anchor)` +
+            (!facilityTimezone ? ' [timezone fallback: UTC]' : '')
+            : null,
+          createdByUserId: input.createdByUserId,
+        },
+        select: { id: true, jobNumber: true, scheduledDate: true },
+      });
+      jobs.push(job);
+    } catch (error) {
+      // Concurrency-safe duplicate protection with partial unique index.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        continue;
+      }
+      throw error;
+    }
   }
 
   return { created: jobs.length, jobs };
@@ -875,7 +917,11 @@ export async function autoGenerateRecurringJobsForContract(input: {
   contractId: string;
   createdByUserId: string;
   assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
+  anchorDate?: Date;
 }) {
+  assertSingleWorkforceAssignment(input);
+
   const contract = await prisma.contract.findUnique({
     where: { id: input.contractId },
     select: {
@@ -884,6 +930,7 @@ export async function autoGenerateRecurringJobsForContract(input: {
       startDate: true,
       endDate: true,
       assignedTeamId: true,
+      assignedToUserId: true,
     },
   });
 
@@ -892,37 +939,196 @@ export async function autoGenerateRecurringJobsForContract(input: {
     throw new BadRequestError('Contract must be active to auto-generate recurring jobs');
   }
 
-  const teamId = input.assignedTeamId ?? contract.assignedTeamId ?? null;
-  if (!teamId) {
-    return { created: 0, message: 'Contract has no assigned team; recurring jobs were not auto-generated' };
+  const resolvedAssignedTeamId =
+    input.assignedToUserId
+      ? null
+      : (input.assignedTeamId !== undefined
+          ? input.assignedTeamId
+          : contract.assignedTeamId) ?? null;
+  const resolvedAssignedToUserId =
+    input.assignedToUserId !== undefined
+      ? input.assignedToUserId
+      : (contract.assignedToUserId ?? null);
+
+  if (!resolvedAssignedTeamId && !resolvedAssignedToUserId) {
+    return {
+      created: 0,
+      message: 'Contract has no assignee; recurring jobs were not auto-generated',
+    };
   }
 
-  const todayUtc = new Date(`${toIsoDate(new Date())}T00:00:00.000Z`);
-  const contractStartUtc = new Date(`${toIsoDate(contract.startDate)}T00:00:00.000Z`);
-  const dateFrom = contractStartUtc > todayUtc ? contractStartUtc : todayUtc;
-
-  const lookaheadEnd = new Date(dateFrom);
-  lookaheadEnd.setUTCDate(lookaheadEnd.getUTCDate() + AUTO_RECURRING_JOB_LOOKAHEAD_DAYS);
-
-  let dateTo = lookaheadEnd;
-  if (contract.endDate) {
-    const contractEndUtc = new Date(`${toIsoDate(contract.endDate)}T00:00:00.000Z`);
-    if (contractEndUtc < dateTo) {
-      dateTo = contractEndUtc;
-    }
-  }
-
-  if (dateTo < dateFrom) {
+  const window = resolveAutoGenerationWindow({
+    contractStartDate: contract.startDate,
+    contractEndDate: contract.endDate,
+    anchorDate: input.anchorDate,
+  });
+  if (!window) {
     return { created: 0, message: 'No valid auto-generation window for contract dates' };
   }
 
   return generateJobsFromContract({
     contractId: input.contractId,
-    dateFrom,
-    dateTo,
-    assignedTeamId: teamId,
+    dateFrom: window.dateFrom,
+    dateTo: window.dateTo,
+    assignedTeamId: resolvedAssignedTeamId,
+    assignedToUserId: resolvedAssignedToUserId,
     createdByUserId: input.createdByUserId,
   });
+}
+
+export async function regenerateRecurringJobsForContract(input: {
+  contractId: string;
+  createdByUserId: string;
+  assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
+  reason?: string;
+}) {
+  assertSingleWorkforceAssignment(input);
+
+  const contract = await prisma.contract.findUnique({
+    where: { id: input.contractId },
+    select: {
+      id: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+    },
+  });
+
+  if (!contract) throw new NotFoundError('Contract not found');
+  if (contract.status !== 'active') {
+    throw new BadRequestError('Contract must be active to regenerate recurring jobs');
+  }
+
+  const window = resolveAutoGenerationWindow({
+    contractStartDate: contract.startDate,
+    contractEndDate: contract.endDate,
+  });
+  if (!window) {
+    return { canceled: 0, created: 0, message: 'No valid auto-generation window for contract dates' };
+  }
+
+  const resolvedAssignedTeamId =
+    input.assignedToUserId
+      ? null
+      : (input.assignedTeamId !== undefined
+          ? input.assignedTeamId
+          : contract.assignedTeamId) ?? null;
+  const resolvedAssignedToUserId =
+    input.assignedToUserId !== undefined
+      ? input.assignedToUserId
+      : (contract.assignedToUserId ?? null);
+
+  if (!resolvedAssignedTeamId && !resolvedAssignedToUserId) {
+    return {
+      canceled: 0,
+      created: 0,
+      message: 'Contract has no assignee; recurring jobs were not regenerated',
+    };
+  }
+
+  const cancelResult = await prisma.job.updateMany({
+    where: {
+      contractId: input.contractId,
+      jobCategory: 'recurring',
+      status: 'scheduled',
+      scheduledDate: {
+        gte: window.dateFrom,
+      },
+    },
+    data: {
+      status: 'canceled',
+      completionNotes: input.reason || 'Recurring schedule changed; regenerated',
+    },
+  });
+
+  const generationResult = await generateJobsFromContract({
+    contractId: input.contractId,
+    dateFrom: window.dateFrom,
+    dateTo: window.dateTo,
+    assignedTeamId: resolvedAssignedTeamId,
+    assignedToUserId: resolvedAssignedToUserId,
+    createdByUserId: input.createdByUserId,
+  });
+
+  return {
+    canceled: cancelResult.count,
+    created: generationResult.created,
+    jobs: 'jobs' in generationResult ? generationResult.jobs : [],
+  };
+}
+
+export async function runRecurringJobsAutoRegenerationCycle(): Promise<{
+  checked: number;
+  generatedFor: number;
+  created: number;
+}> {
+  const todayUtc = atUtcStartOfDay(new Date());
+  const activeContracts = await prisma.contract.findMany({
+    where: {
+      status: 'active',
+      OR: [{ assignedTeamId: { not: null } }, { assignedToUserId: { not: null } }],
+    },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+    },
+  });
+
+  let generatedFor = 0;
+  let created = 0;
+  const systemUser = await prisma.user.findFirst({
+    where: { status: 'active' },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+
+  if (!systemUser) {
+    return { checked: activeContracts.length, generatedFor: 0, created: 0 };
+  }
+
+  for (const contract of activeContracts) {
+    const latestRecurring = await prisma.job.findFirst({
+      where: {
+        contractId: contract.id,
+        jobCategory: 'recurring',
+        status: { not: 'canceled' },
+      },
+      orderBy: { scheduledDate: 'desc' },
+      select: { scheduledDate: true },
+    });
+
+    if (latestRecurring) {
+      const latestDate = atUtcStartOfDay(latestRecurring.scheduledDate);
+      if (latestDate > todayUtc) {
+        continue;
+      }
+    }
+
+    const anchorDate = latestRecurring
+      ? new Date(atUtcStartOfDay(latestRecurring.scheduledDate).getTime() + 24 * 60 * 60 * 1000)
+      : todayUtc;
+
+    const result = await autoGenerateRecurringJobsForContract({
+      contractId: contract.id,
+      createdByUserId: systemUser.id,
+      assignedTeamId: contract.assignedTeamId,
+      assignedToUserId: contract.assignedToUserId,
+      anchorDate,
+    });
+
+    if (result.created > 0) {
+      generatedFor += 1;
+      created += result.created;
+    }
+  }
+
+  return { checked: activeContracts.length, generatedFor, created };
 }
 
 // ==================== Job Tasks ====================

@@ -488,7 +488,7 @@ const TimeTrackingPage = () => {
       {showFilters && (
         <Card>
           <div className="flex flex-wrap items-end gap-4 p-4">
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <Select
                 label="Status"
                 options={STATUSES}

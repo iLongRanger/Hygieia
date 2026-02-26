@@ -347,7 +347,7 @@ const InspectionDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate('/inspections')}>
             <ArrowLeft className="h-4 w-4" />
@@ -355,9 +355,9 @@ const InspectionDetail = () => {
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <ClipboardCheck className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50 truncate">
                 {inspection.inspectionNumber}
               </h1>
               <Badge variant={getStatusVariant(inspection.status)}>
@@ -544,7 +544,7 @@ const InspectionDetail = () => {
                   return (
                     <>
                       <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
-                        <span className="flex-1 min-w-[240px] text-sm text-surface-700 dark:text-surface-300">
+                        <span className="flex-1 min-w-0 text-sm text-surface-700 dark:text-surface-300">
                           Hygieia Standard: clean, maintained, stocked, and safe.
                         </span>
                         <div className="flex items-center gap-1">
@@ -684,7 +684,7 @@ const InspectionDetail = () => {
           </div>
 
           {inspection.status !== 'canceled' && (
-            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 sm:grid-cols-2 md:grid-cols-4">
               <input
                 type="text"
                 value={newAction.title}
@@ -793,7 +793,7 @@ const InspectionDetail = () => {
           </h3>
 
           {inspection.status === 'completed' && (
-            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 sm:grid-cols-2 md:grid-cols-4">
               <select
                 value={signoffForm.signerType}
                 onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerType: e.target.value as InspectionSignerType }))}

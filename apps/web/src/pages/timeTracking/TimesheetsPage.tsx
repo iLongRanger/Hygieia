@@ -338,7 +338,7 @@ const TimesheetsPage = () => {
             <div className="flex flex-wrap items-end gap-4">
               <Input
                 label="User ID"
-                className="w-64"
+                className="w-full sm:w-64"
                 value={generateUserId}
                 onChange={(e) => setGenerateUserId(e.target.value)}
                 placeholder="User UUID"

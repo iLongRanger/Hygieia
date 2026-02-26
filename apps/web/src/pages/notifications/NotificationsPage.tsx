@@ -29,6 +29,7 @@ const NOTIFICATION_TYPES = [
   { value: 'contract_terminated', label: 'Contract Terminated' },
   { value: 'contract_expiring', label: 'Contract Expiring' },
   { value: 'contract_signed', label: 'Contract Signed' },
+  { value: 'contract_assignment_required', label: 'Contract Assignment Required' },
   { value: 'job_assigned', label: 'Job Assigned' },
   { value: 'lead_assigned', label: 'Lead Assigned' },
   { value: 'inspection_assigned', label: 'Inspection Assigned' },
@@ -208,7 +209,7 @@ const NotificationsPage = () => {
       {showFilters && (
         <Card>
           <div className="flex flex-wrap items-end gap-4 p-4">
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <Select
                 label="Status"
                 options={FILTER_OPTIONS}
@@ -219,7 +220,7 @@ const NotificationsPage = () => {
                 }}
               />
             </div>
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <Select
                 label="Type"
                 options={NOTIFICATION_TYPES}

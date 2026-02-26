@@ -21,6 +21,10 @@ jest.mock('../../lib/prisma', () => ({
     },
     contract: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+    },
+    user: {
+      findFirst: jest.fn(),
     },
     jobActivity: {
       create: jest.fn(),
@@ -294,6 +298,7 @@ describe('jobService', () => {
       startDate: new Date('2026-02-01T00:00:00.000Z'),
       endDate: new Date('2026-02-28T00:00:00.000Z'),
       assignedTeamId: null,
+      assignedToUserId: null,
     });
 
     const result = await autoGenerateRecurringJobsForContract({
@@ -303,8 +308,55 @@ describe('jobService', () => {
 
     expect(result).toEqual({
       created: 0,
-      message: 'Contract has no assigned team; recurring jobs were not auto-generated',
+      message: 'Contract has no assignee; recurring jobs were not auto-generated',
     });
     expect(prisma.job.findMany).not.toHaveBeenCalled();
+  });
+
+  it('autoGenerateRecurringJobsForContract supports internal employee assignment', async () => {
+    const year = new Date().getFullYear();
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setUTCDate(startDate.getUTCDate() - 1);
+    const endDate = new Date(today);
+    endDate.setUTCDate(endDate.getUTCDate() + 40);
+
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      startDate,
+      endDate,
+      assignedTeamId: null,
+      assignedToUserId: 'user-2',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      serviceFrequency: 'daily',
+      serviceSchedule: null,
+      facility: { address: null },
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValueOnce({
+      jobNumber: `WO-${year}-0007`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-8',
+      jobNumber: `WO-${year}-0008`,
+      scheduledDate: new Date('2026-02-03T00:00:00.000Z'),
+    });
+
+    await autoGenerateRecurringJobsForContract({
+      contractId: 'contract-1',
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assignedTeamId: null,
+          assignedToUserId: 'user-2',
+          jobCategory: 'recurring',
+        }),
+      })
+    );
   });
 });

@@ -178,7 +178,7 @@ const InvoicesList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <Receipt className="h-5 w-5 text-primary-700 dark:text-primary-400" />
@@ -192,7 +192,7 @@ const InvoicesList = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="mr-1.5 h-4 w-4" />
             Filters
@@ -212,7 +212,7 @@ const InvoicesList = () => {
       {showFilters && (
         <Card>
           <div className="flex flex-wrap items-end gap-4 p-4">
-            <div className="w-48">
+            <div className="w-full sm:w-48">
               <Select
                 label="Status"
                 options={STATUSES}

@@ -1079,7 +1079,7 @@ const ProposalForm = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button
             type="button"
@@ -1089,7 +1089,7 @@ const ProposalForm = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-xl font-bold text-white sm:text-3xl">
               {isEditMode ? 'Edit Proposal' : 'New Proposal'}
             </h1>
             <p className="text-gray-400 mt-1">
@@ -1499,6 +1499,7 @@ const ProposalForm = () => {
                       />
                     </div>
                     <div className="md:col-span-2 flex items-center justify-end">
+                      <span className="text-xs text-gray-400 mr-2 md:hidden">Total:</span>
                       <span className="text-white font-medium">
                         {formatCurrency(item.totalPrice)}
                       </span>

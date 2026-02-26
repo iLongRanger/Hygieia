@@ -425,12 +425,12 @@ const ProposalDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" onClick={() => navigate('/proposals')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-white truncate">{proposal.title}</h1>
             <Badge variant={getStatusVariant(proposal.status)}>
               <StatusIcon className="w-3 h-3 mr-1" />
@@ -587,7 +587,7 @@ const ProposalDetail = () => {
                 const isCurrent = i === currentIdx && !isExpired;
                 return (
                   <React.Fragment key={step.label}>
-                    <div className="flex flex-col items-center min-w-[64px]">
+                    <div className="flex flex-col items-center min-w-[56px]">
                       {/* Circle */}
                       <div
                         className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold transition-all ${
@@ -970,7 +970,7 @@ const ProposalDetail = () => {
                   {proposal.pricingSnapshot.frequencyMultipliers && Object.keys(proposal.pricingSnapshot.frequencyMultipliers).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Frequency Multipliers</h4>
-                      <div className="grid grid-cols-2 gap-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {Object.entries(proposal.pricingSnapshot.frequencyMultipliers).map(([key, val]) => (
                           <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
                             <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
@@ -984,7 +984,7 @@ const ProposalDetail = () => {
                   {proposal.pricingSnapshot.floorTypeMultipliers && Object.keys(proposal.pricingSnapshot.floorTypeMultipliers).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Floor Type Multipliers</h4>
-                      <div className="grid grid-cols-2 gap-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {Object.entries(proposal.pricingSnapshot.floorTypeMultipliers).map(([key, val]) => (
                           <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
                             <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
@@ -998,7 +998,7 @@ const ProposalDetail = () => {
                   {proposal.pricingSnapshot.conditionMultipliers && Object.keys(proposal.pricingSnapshot.conditionMultipliers).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Condition Multipliers</h4>
-                      <div className="grid grid-cols-2 gap-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {Object.entries(proposal.pricingSnapshot.conditionMultipliers).map(([key, val]) => (
                           <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
                             <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
@@ -1012,7 +1012,7 @@ const ProposalDetail = () => {
                   {proposal.pricingSnapshot.sqftPerLaborHour && Object.keys(proposal.pricingSnapshot.sqftPerLaborHour).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Productivity (Sq Ft / Labor Hour)</h4>
-                      <div className="grid grid-cols-2 gap-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {Object.entries(proposal.pricingSnapshot.sqftPerLaborHour).map(([key, val]) => (
                           <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
                             <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
