@@ -638,24 +638,38 @@ const JobsList = () => {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {scheduleDates.map((dateKey) => {
+                {scheduleDates.map((dateKey, index) => {
                   const dateJobs = jobsByDate[dateKey];
+                  const headerToneClass =
+                    index % 2 === 0
+                      ? 'bg-primary-50 dark:bg-primary-900/20'
+                      : 'bg-secondary-50 dark:bg-secondary-900/20';
+                  const counterToneClass =
+                    index % 2 === 0
+                      ? 'border-primary-200 bg-primary-100 text-primary-700 dark:border-primary-800 dark:bg-primary-900/40 dark:text-primary-300'
+                      : 'border-secondary-200 bg-secondary-100 text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/40 dark:text-secondary-300';
                   return (
                     <div
                       key={dateKey}
                       className="rounded-xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-800"
                     >
-                      <div className="border-b border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-700/30">
-                        <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">
-                          {new Date(`${dateKey}T00:00:00.000Z`).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            timeZone: 'UTC',
-                          })}
-                        </p>
-                        <p className="text-xs text-surface-500">{dateJobs.length} jobs</p>
+                      <div className={`border-b border-surface-200 px-4 py-3 dark:border-surface-700 ${headerToneClass}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+                            {new Date(`${dateKey}T00:00:00.000Z`).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              timeZone: 'UTC',
+                            })}
+                          </p>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${counterToneClass}`}
+                          >
+                            {dateJobs.length} {dateJobs.length === 1 ? 'job' : 'jobs'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="space-y-3 p-3">
