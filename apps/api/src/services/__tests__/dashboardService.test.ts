@@ -97,6 +97,12 @@ describe('dashboardService', () => {
       { status: 'sent', count: 3, totalAmount: 3000 },
     ]);
     expect(result.contractsByStatus).toEqual([{ status: 'active', count: 3 }]);
+    expect(result.jobsTodayOverview).toEqual({
+      scheduled: 0,
+      inProgress: 0,
+      completed: 0,
+      unassigned: 0,
+    });
     expect(result.expiringContracts).toEqual([]);
     expect(result.upcomingAppointments).toEqual([]);
     expect(result.recentActivity).toEqual([]);

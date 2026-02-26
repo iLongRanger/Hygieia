@@ -74,6 +74,12 @@ export interface DashboardStats {
 
   // Operations — Jobs, Inspections, Time, Invoicing
   jobsScheduledToday: number;
+  jobsTodayOverview: {
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    unassigned: number;
+  };
   jobsCompletedInPeriod: number;
   jobsMissedInPeriod: number;
   inspectionAvgScore: number | null;

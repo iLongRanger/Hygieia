@@ -80,6 +80,12 @@ export interface DashboardStats {
 
   // Operations — Jobs, Inspections, Time, Invoicing
   jobsScheduledToday: number;
+  jobsTodayOverview: {
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    unassigned: number;
+  };
   jobsCompletedInPeriod: number;
   jobsMissedInPeriod: number;
   inspectionAvgScore: number | null;
@@ -186,6 +192,8 @@ export async function getDashboardStats(
   }
 
   const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const sixtyDaysFromNow = new Date(
     now.getFullYear(),
@@ -217,6 +225,9 @@ export async function getDashboardStats(
     activeTeams,
     comparison,
     jobsScheduledToday,
+    jobsInProgressToday,
+    jobsCompletedToday,
+    jobsUnassignedToday,
     jobsCompletedInPeriod,
     jobsMissedInPeriod,
     inspectionScoreAgg,
@@ -391,10 +402,39 @@ export async function getDashboardStats(
     prisma.job.count({
       where: {
         scheduledDate: {
-          gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-          lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+          gte: todayStart,
+          lt: todayEnd,
         },
         status: 'scheduled',
+      },
+    }),
+    prisma.job.count({
+      where: {
+        scheduledDate: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+        status: 'in_progress',
+      },
+    }),
+    prisma.job.count({
+      where: {
+        scheduledDate: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+        status: 'completed',
+      },
+    }),
+    prisma.job.count({
+      where: {
+        scheduledDate: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+        status: { in: ['scheduled', 'in_progress'] },
+        assignedTeamId: null,
+        assignedToUserId: null,
       },
     }),
     prisma.job.count({
@@ -546,6 +586,12 @@ export async function getDashboardStats(
     recentActivity,
 
     jobsScheduledToday,
+    jobsTodayOverview: {
+      scheduled: jobsScheduledToday,
+      inProgress: jobsInProgressToday,
+      completed: jobsCompletedToday,
+      unassigned: jobsUnassignedToday,
+    },
     jobsCompletedInPeriod,
     jobsMissedInPeriod,
     inspectionAvgScore: inspectionScoreAgg._avg.overallScore

@@ -288,7 +288,7 @@ const Dashboard = () => {
           <StatCard
             label="Jobs Today"
             value={stats.jobsScheduledToday}
-            subtitle={`${stats.jobsCompletedInPeriod} completed ${periodLabel}`}
+            subtitle={`${stats.jobsTodayOverview.unassigned} unassigned • ${stats.jobsTodayOverview.inProgress} in progress • ${stats.jobsTodayOverview.completed} completed`}
             icon={Briefcase}
             color="text-indigo-600 dark:text-indigo-400"
             bg="bg-indigo-100 dark:bg-indigo-900/30"

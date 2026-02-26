@@ -98,6 +98,12 @@ describe('Dashboard', () => {
       ],
       recentActivity: [],
       jobsScheduledToday: 0,
+      jobsTodayOverview: {
+        scheduled: 0,
+        inProgress: 0,
+        completed: 0,
+        unassigned: 0,
+      },
       jobsCompletedInPeriod: 0,
       jobsMissedInPeriod: 0,
       inspectionAvgScore: null,
@@ -115,6 +121,7 @@ describe('Dashboard', () => {
 
     expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('Rep One')).toBeInTheDocument();
+    expect(screen.getByText('0 unassigned • 0 in progress • 0 completed')).toBeInTheDocument();
     expect(getDashboardStatsMock).toHaveBeenCalledWith({ period: 'month' });
   });
 });
