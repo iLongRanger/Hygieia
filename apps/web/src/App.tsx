@@ -48,6 +48,7 @@ import NotificationsPage from './pages/notifications/NotificationsPage';
 import QuotationsList from './pages/quotations/QuotationsList';
 import QuotationDetail from './pages/quotations/QuotationDetail';
 import QuotationForm from './pages/quotations/QuotationForm';
+import OneTimeServiceCatalogPage from './pages/quotations/OneTimeServiceCatalogPage';
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
@@ -133,6 +134,7 @@ function App() {
             <Route path="/quotations/new" element={withRouteGuard('/quotations', <QuotationForm />)} />
             <Route path="/quotations/:id" element={withRouteGuard('/quotations', <QuotationDetail />)} />
             <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
+            <Route path="/quotations/catalog" element={withRouteGuard('/quotations', <OneTimeServiceCatalogPage />)} />
             <Route path="/contracts" element={withRouteGuard('/contracts', <ContractsList />)} />
             <Route path="/contracts/new" element={withRouteGuard('/contracts', <ContractForm />)} />
             <Route path="/contracts/:id" element={withRouteGuard('/contracts', <ContractDetail />)} />

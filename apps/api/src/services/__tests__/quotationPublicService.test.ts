@@ -100,6 +100,7 @@ describe('quotationPublicService', () => {
       scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
       scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
       scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+      pricingApprovalStatus: 'not_required',
     });
 
     await expect(
@@ -117,6 +118,7 @@ describe('quotationPublicService', () => {
         scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
         scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
         scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+        pricingApprovalStatus: 'not_required',
         generatedJob: null,
       })
       .mockResolvedValueOnce({

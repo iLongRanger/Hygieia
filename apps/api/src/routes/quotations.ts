@@ -16,6 +16,7 @@ import {
   restoreQuotation,
   deleteQuotation,
   logQuotationActivity,
+  setQuotationPricingApproval,
 } from '../services/quotationService';
 import { generatePublicToken } from '../services/quotationPublicService';
 import { sendNotificationEmail } from '../services/emailService';
@@ -30,6 +31,7 @@ import {
   sendQuotationSchema,
   acceptQuotationSchema,
   rejectQuotationSchema,
+  quotationPricingApprovalSchema,
 } from '../schemas/quotation';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
@@ -133,7 +135,10 @@ router.put(
       const parsed = updateQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const quotation = await updateQuotation(req.params.id, parsed.data);
+      const quotation = await updateQuotation(req.params.id, {
+        ...parsed.data,
+        updatedByUserId: req.user!.id,
+      });
 
       await logQuotationActivity({
         quotationId: quotation.id,
@@ -234,6 +239,36 @@ router.post(
 );
 
 // Reject quotation (internal)
+router.post(
+  '/:id/pricing-approval',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = quotationPricingApprovalSchema.safeParse(req.body);
+      if (!parsed.success) throw handleZodError(parsed.error);
+
+      const quotation = await setQuotationPricingApproval({
+        quotationId: req.params.id,
+        action: parsed.data.action,
+        reason: parsed.data.reason,
+        performedByUserId: req.user!.id,
+      });
+
+      await logQuotationActivity({
+        quotationId: quotation.id,
+        action: `pricing_approval_${parsed.data.action}`,
+        performedByUserId: req.user!.id,
+        metadata: parsed.data.reason ? { reason: parsed.data.reason } : undefined,
+      });
+
+      res.json({ data: quotation });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.post(
   '/:id/reject',
   authenticate,

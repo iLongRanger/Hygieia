@@ -315,8 +315,8 @@ const QuotationsList = () => {
                 <Select
                   label="Status"
                   value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
+                  onChange={(value) => {
+                    setStatusFilter(value);
                     setPage(1);
                   }}
                   options={[
@@ -361,16 +361,8 @@ const QuotationsList = () => {
         <Table
           columns={columns}
           data={quotations}
-          loading={loading}
-          emptyMessage="No quotations found"
-          emptyIcon={<DollarSign className="h-8 w-8 text-surface-400" />}
+          isLoading={loading}
           onRowClick={(q) => navigate(`/quotations/${q.id}`)}
-          pagination={{
-            page,
-            totalPages,
-            total,
-            onPageChange: setPage,
-          }}
         />
       </Card>
     </div>

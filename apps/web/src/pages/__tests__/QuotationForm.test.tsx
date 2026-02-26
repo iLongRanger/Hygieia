@@ -19,7 +19,7 @@ vi.mock('../../components/ui/Select', () => ({
   Select: ({ label, value, onChange, options }: any) => (
     <label>
       {label}
-      <select aria-label={label} value={value} onChange={(e) => onChange?.(e)}>
+      <select aria-label={label} value={value} onChange={(e) => onChange?.(e.target.value)}>
         {options.map((opt: any) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
@@ -119,7 +119,11 @@ describe('QuotationForm', () => {
 
     await screen.findByText('New Quotation');
     await user.selectOptions(screen.getByLabelText(/account/i), 'account-1');
+    await user.selectOptions(screen.getByLabelText(/facility/i), 'facility-1');
     await user.type(screen.getByLabelText(/title/i), 'Emergency Cleanup');
+    await user.type(screen.getByLabelText(/scheduled date/i), '2026-03-01');
+    await user.type(screen.getByLabelText(/start time/i), '09:00');
+    await user.type(screen.getByLabelText(/end time/i), '10:00');
     await user.type(screen.getByLabelText(/service name/i), 'Emergency Service');
     await user.clear(screen.getByLabelText(/price/i));
     await user.type(screen.getByLabelText(/price/i), '500');

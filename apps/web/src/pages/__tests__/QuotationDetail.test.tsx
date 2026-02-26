@@ -38,6 +38,7 @@ const rejectQuotationMock = vi.fn();
 const archiveQuotationMock = vi.fn();
 const restoreQuotationMock = vi.fn();
 const deleteQuotationMock = vi.fn();
+const setQuotationPricingApprovalMock = vi.fn();
 
 vi.mock('../../lib/quotations', () => ({
   getQuotation: (...args: unknown[]) => getQuotationMock(...args),
@@ -47,6 +48,7 @@ vi.mock('../../lib/quotations', () => ({
   archiveQuotation: (...args: unknown[]) => archiveQuotationMock(...args),
   restoreQuotation: (...args: unknown[]) => restoreQuotationMock(...args),
   deleteQuotation: (...args: unknown[]) => deleteQuotationMock(...args),
+  setQuotationPricingApproval: (...args: unknown[]) => setQuotationPricingApprovalMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({

@@ -5,6 +5,7 @@ import type {
   UpdateQuotationInput,
   ListQuotationsParams,
   SendQuotationInput,
+  QuotationPricingApprovalInput,
 } from '../types/quotation';
 
 interface PaginatedResponse<T> {
@@ -63,6 +64,14 @@ export async function rejectQuotation(
   rejectionReason: string
 ): Promise<Quotation> {
   const response = await api.post(`/quotations/${id}/reject`, { rejectionReason });
+  return response.data.data;
+}
+
+export async function setQuotationPricingApproval(
+  id: string,
+  data: QuotationPricingApprovalInput
+): Promise<Quotation> {
+  const response = await api.post(`/quotations/${id}/pricing-approval`, data);
   return response.data.data;
 }
 

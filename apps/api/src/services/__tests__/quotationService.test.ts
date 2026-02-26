@@ -6,6 +6,8 @@ import {
   getQuotationById,
   listQuotations,
   markQuotationAsViewed,
+  sendQuotation,
+  setQuotationPricingApproval,
   updateQuotation,
 } from '../quotationService';
 
@@ -94,6 +96,7 @@ describe('quotationService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'draft',
+          pricingApprovalStatus: 'not_required',
           subtotal: 150,
           taxRate: 0.1,
           taxAmount: 15,
@@ -107,6 +110,37 @@ describe('quotationService', () => {
         }),
       })
     );
+  });
+
+  it('sendQuotation blocks pending pricing approval', async () => {
+    (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
+      id: 'qt-1',
+      status: 'draft',
+      pricingApprovalStatus: 'pending',
+      facilityId: 'facility-1',
+      scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+      scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+      scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+    });
+
+    await expect(sendQuotation('qt-1')).rejects.toThrow(
+      'Pricing approval from owner/admin is required before sending this quotation'
+    );
+  });
+
+  it('setQuotationPricingApproval requires pending status', async () => {
+    (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
+      id: 'qt-1',
+      pricingApprovalStatus: 'not_required',
+    });
+
+    await expect(
+      setQuotationPricingApproval({
+        quotationId: 'qt-1',
+        action: 'approved',
+        performedByUserId: 'user-1',
+      })
+    ).rejects.toThrow('Quotation pricing is not awaiting approval');
   });
 
   it('updateQuotation rebuilds services and recalculates totals', async () => {
@@ -132,18 +166,22 @@ describe('quotationService', () => {
       data: [
         {
           quotationId: 'qt-1',
+          catalogItemId: null,
           serviceName: 'A',
           description: undefined,
           price: 80,
           includedTasks: [],
+          pricingMeta: {},
           sortOrder: 0,
         },
         {
           quotationId: 'qt-1',
+          catalogItemId: null,
           serviceName: 'B',
           description: undefined,
           price: 20,
           includedTasks: [],
+          pricingMeta: {},
           sortOrder: 1,
         },
       ],

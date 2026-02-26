@@ -8,10 +8,28 @@ export type QuotationStatus =
 
 export interface QuotationService {
   id?: string;
+  catalogItemId?: string | null;
   serviceName: string;
   description?: string | null;
   price: number;
   includedTasks?: string[];
+  pricingMeta?: {
+    unitType?: 'per_window' | 'per_sqft' | 'fixed';
+    quantity?: number;
+    unitPrice?: number;
+    standardAmount?: number;
+    finalAmount?: number;
+    discountPercent?: number;
+    discountAmount?: number;
+    overrideReason?: string | null;
+    addOns?: Array<{
+      code?: string;
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+    }>;
+  };
   sortOrder?: number;
 }
 
@@ -46,6 +64,11 @@ export interface Quotation {
   acceptedAt?: string | null;
   rejectedAt?: string | null;
   rejectionReason?: string | null;
+  pricingApprovalStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
+  pricingApprovalReason?: string | null;
+  pricingApprovalRequestedAt?: string | null;
+  pricingApprovedAt?: string | null;
+  pricingApprovalRejectedAt?: string | null;
   notes?: string | null;
   termsAndConditions?: string | null;
   publicToken?: string | null;
@@ -131,4 +154,9 @@ export interface SendQuotationInput {
   emailCc?: string[];
   emailSubject?: string;
   emailBody?: string;
+}
+
+export interface QuotationPricingApprovalInput {
+  action: 'approved' | 'rejected';
+  reason?: string | null;
 }

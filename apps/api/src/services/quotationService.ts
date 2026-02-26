@@ -17,10 +17,12 @@ export interface QuotationListParams {
 }
 
 export interface QuotationServiceInput {
+  catalogItemId?: string | null;
   serviceName: string;
   description?: string | null;
   price: number;
   includedTasks?: string[];
+  pricingMeta?: Record<string, unknown>;
   sortOrder?: number;
 }
 
@@ -54,6 +56,7 @@ export interface QuotationUpdateInput {
   notes?: string | null;
   termsAndConditions?: string | null;
   services?: (QuotationServiceInput & { id?: string })[];
+  updatedByUserId?: string;
 }
 
 // ==================== Select objects ====================
@@ -75,6 +78,10 @@ const quotationListSelect = {
   viewedAt: true,
   acceptedAt: true,
   rejectedAt: true,
+  pricingApprovalStatus: true,
+  pricingApprovalReason: true,
+  pricingApprovalRequestedAt: true,
+  pricingApprovedAt: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -113,6 +120,11 @@ const quotationDetailSelect = {
   acceptedAt: true,
   rejectedAt: true,
   rejectionReason: true,
+  pricingApprovalStatus: true,
+  pricingApprovalReason: true,
+  pricingApprovalRequestedAt: true,
+  pricingApprovedAt: true,
+  pricingApprovalRejectedAt: true,
   publicToken: true,
   signatureName: true,
   signatureDate: true,
@@ -132,10 +144,12 @@ const quotationDetailSelect = {
   services: {
     select: {
       id: true,
+      catalogItemId: true,
       serviceName: true,
       description: true,
       price: true,
       includedTasks: true,
+      pricingMeta: true,
       sortOrder: true,
     },
     orderBy: { sortOrder: 'asc' as const },
@@ -191,10 +205,59 @@ function calculateTotals(
   services: QuotationServiceInput[],
   taxRate: number
 ): { subtotal: number; taxAmount: number; totalAmount: number } {
-  const subtotal = services.reduce((sum, s) => sum + Number(s.price), 0);
-  const taxAmount = subtotal * taxRate;
-  const totalAmount = subtotal + taxAmount;
+  const subtotal = roundToCurrency(services.reduce((sum, s) => sum + Number(s.price), 0));
+  const taxAmount = roundToCurrency(subtotal * taxRate);
+  const totalAmount = roundToCurrency(subtotal + taxAmount);
   return { subtotal, taxAmount, totalAmount };
+}
+
+const DISCOUNT_APPROVAL_THRESHOLD_PERCENT = 10;
+
+function roundToCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function getPricingNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function derivePricingApproval(
+  services: QuotationServiceInput[]
+): { requiresApproval: boolean; reasonRequired: boolean } {
+  let requiresApproval = false;
+  let reasonRequired = false;
+
+  for (const service of services) {
+    const meta = service.pricingMeta ?? {};
+    const standardAmount = getPricingNumber((meta as any).standardAmount);
+    const price = roundToCurrency(Number(service.price) || 0);
+    const explicitDiscountPercent = getPricingNumber((meta as any).discountPercent);
+    const inferredDiscountPercent =
+      standardAmount && standardAmount > 0
+        ? ((standardAmount - price) / standardAmount) * 100
+        : 0;
+    const discountPercent = roundToCurrency(
+      Math.max(0, explicitDiscountPercent ?? inferredDiscountPercent)
+    );
+
+    if (discountPercent > 0) {
+      const overrideReason = (meta as any).overrideReason;
+      if (!overrideReason || typeof overrideReason !== 'string' || !overrideReason.trim()) {
+        reasonRequired = true;
+      }
+    }
+
+    if (discountPercent > DISCOUNT_APPROVAL_THRESHOLD_PERCENT) {
+      requiresApproval = true;
+    }
+  }
+
+  return { requiresApproval, reasonRequired };
 }
 
 // ==================== Service ====================
@@ -274,7 +337,15 @@ export async function createQuotation(input: QuotationCreateInput) {
   const quotationNumber = await generateQuotationNumber();
   const taxRate = input.taxRate ?? 0;
   const services = input.services ?? [];
-  const totals = calculateTotals(services, taxRate);
+  const normalizedServices = services.map((service) => ({
+    ...service,
+    price: roundToCurrency(Number(service.price) || 0),
+  }));
+  const pricingApproval = derivePricingApproval(normalizedServices);
+  if (pricingApproval.reasonRequired) {
+    throw new BadRequestError('Override reason is required when discounting standardized one-time services');
+  }
+  const totals = calculateTotals(normalizedServices, taxRate);
 
   return prisma.quotation.create({
     data: {
@@ -286,6 +357,9 @@ export async function createQuotation(input: QuotationCreateInput) {
       taxRate,
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
+      pricingApprovalStatus: pricingApproval.requiresApproval ? 'pending' : 'not_required',
+      pricingApprovalRequestedByUserId: pricingApproval.requiresApproval ? input.createdByUserId : null,
+      pricingApprovalRequestedAt: pricingApproval.requiresApproval ? new Date() : null,
       validUntil: input.validUntil,
       scheduledDate: input.scheduledDate,
       scheduledStartTime: input.scheduledStartTime,
@@ -296,11 +370,13 @@ export async function createQuotation(input: QuotationCreateInput) {
       facilityId: input.facilityId,
       createdByUserId: input.createdByUserId,
       services: {
-        create: services.map((s, index) => ({
+        create: normalizedServices.map((s, index) => ({
+          catalogItemId: s.catalogItemId,
           serviceName: s.serviceName,
           description: s.description,
           price: s.price,
           includedTasks: s.includedTasks ?? [],
+          pricingMeta: (s.pricingMeta as Prisma.InputJsonValue) ?? {},
           sortOrder: s.sortOrder ?? index,
         })),
       },
@@ -316,14 +392,25 @@ export async function updateQuotation(id: string, input: QuotationUpdateInput) {
   return prisma.$transaction(async (tx) => {
     // Rebuild services if provided
     if (input.services !== undefined) {
+      const normalizedServices = input.services.map((service) => ({
+        ...service,
+        price: roundToCurrency(Number(service.price) || 0),
+      }));
+      const pricingApproval = derivePricingApproval(normalizedServices);
+      if (pricingApproval.reasonRequired) {
+        throw new BadRequestError('Override reason is required when discounting standardized one-time services');
+      }
+
       await tx.quotationService.deleteMany({ where: { quotationId: id } });
       await tx.quotationService.createMany({
-        data: input.services.map((s, index) => ({
+        data: normalizedServices.map((s, index) => ({
           quotationId: id,
+          catalogItemId: s.catalogItemId ?? null,
           serviceName: s.serviceName,
           description: s.description,
           price: s.price,
           includedTasks: s.includedTasks ?? [],
+          pricingMeta: (s.pricingMeta as Prisma.InputJsonValue) ?? {},
           sortOrder: s.sortOrder ?? index,
         })),
       });
@@ -332,16 +419,45 @@ export async function updateQuotation(id: string, input: QuotationUpdateInput) {
     // Recalculate totals
     const taxRate = input.taxRate ?? Number(existing.taxRate);
     let subtotal: number;
+    let pricingApprovalStatus = existing.pricingApprovalStatus;
+    let pricingApprovalRequestedByUserId = existing.pricingApprovalRequestedByUserId;
+    let pricingApprovalRequestedAt = existing.pricingApprovalRequestedAt;
+    let pricingApprovedByUserId = existing.pricingApprovedByUserId;
+    let pricingApprovedAt = existing.pricingApprovedAt;
+    let pricingApprovalRejectedAt = existing.pricingApprovalRejectedAt;
+    let pricingApprovalReason = existing.pricingApprovalReason;
 
     if (input.services !== undefined) {
-      subtotal = input.services.reduce((sum, s) => sum + Number(s.price), 0);
+      const normalizedServices = input.services.map((service) => ({
+        ...service,
+        price: roundToCurrency(Number(service.price) || 0),
+      }));
+      subtotal = normalizedServices.reduce((sum, s) => sum + Number(s.price), 0);
+      const pricingApproval = derivePricingApproval(normalizedServices);
+      if (pricingApproval.requiresApproval) {
+        pricingApprovalStatus = 'pending';
+        pricingApprovalRequestedByUserId = input.updatedByUserId ?? existing.createdByUserId;
+        pricingApprovalRequestedAt = new Date();
+        pricingApprovedByUserId = null;
+        pricingApprovedAt = null;
+        pricingApprovalRejectedAt = null;
+      } else {
+        pricingApprovalStatus = 'not_required';
+        pricingApprovalRequestedByUserId = null;
+        pricingApprovalRequestedAt = null;
+        pricingApprovedByUserId = null;
+        pricingApprovedAt = null;
+        pricingApprovalRejectedAt = null;
+        pricingApprovalReason = null;
+      }
     } else {
       // Keep existing subtotal
       subtotal = Number(existing.subtotal);
     }
 
-    const taxAmount = subtotal * taxRate;
-    const totalAmount = subtotal + taxAmount;
+    subtotal = roundToCurrency(subtotal);
+    const taxAmount = roundToCurrency(subtotal * taxRate);
+    const totalAmount = roundToCurrency(subtotal + taxAmount);
 
     return tx.quotation.update({
       where: { id },
@@ -361,6 +477,13 @@ export async function updateQuotation(id: string, input: QuotationUpdateInput) {
         taxRate,
         taxAmount,
         totalAmount,
+        pricingApprovalStatus,
+        pricingApprovalRequestedByUserId,
+        pricingApprovalRequestedAt,
+        pricingApprovedByUserId,
+        pricingApprovedAt,
+        pricingApprovalRejectedAt,
+        pricingApprovalReason,
       },
       select: quotationDetailSelect,
     });
@@ -370,9 +493,25 @@ export async function updateQuotation(id: string, input: QuotationUpdateInput) {
 export async function sendQuotation(id: string) {
   const existing = await prisma.quotation.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      pricingApprovalStatus: true,
+      facilityId: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+    },
   });
   if (!existing) throw new NotFoundError('Quotation not found');
+  if (existing.pricingApprovalStatus === 'pending' || existing.pricingApprovalStatus === 'rejected') {
+    throw new BadRequestError('Pricing approval from owner/admin is required before sending this quotation');
+  }
+  if (!existing.facilityId || !existing.scheduledDate || !existing.scheduledStartTime || !existing.scheduledEndTime) {
+    throw new BadRequestError(
+      'Facility, scheduled date, start time, and end time are required before sending this quotation'
+    );
+  }
 
   return prisma.quotation.update({
     where: { id },
@@ -430,9 +569,14 @@ export async function acceptQuotation(id: string, signatureName?: string) {
       generatedJob: {
         select: { id: true },
       },
+      pricingApprovalStatus: true,
     },
   });
   if (!existing) throw new NotFoundError('Quotation not found');
+
+  if (existing.pricingApprovalStatus === 'pending' || existing.pricingApprovalStatus === 'rejected') {
+    throw new BadRequestError('Pricing approval from owner/admin is required before accepting this quotation');
+  }
 
   if (existing.status === 'accepted') {
     await ensureOneTimeJobForAcceptedQuotation(id);
@@ -465,6 +609,42 @@ export async function acceptQuotation(id: string, signatureName?: string) {
 
   await ensureOneTimeJobForAcceptedQuotation(id);
   return getQuotationById(id);
+}
+
+export async function setQuotationPricingApproval(params: {
+  quotationId: string;
+  action: 'approved' | 'rejected';
+  reason?: string | null;
+  performedByUserId: string;
+}) {
+  const quotation = await prisma.quotation.findUnique({
+    where: { id: params.quotationId },
+    select: {
+      id: true,
+      pricingApprovalStatus: true,
+    },
+  });
+  if (!quotation) throw new NotFoundError('Quotation not found');
+
+  if (quotation.pricingApprovalStatus !== 'pending') {
+    throw new BadRequestError('Quotation pricing is not awaiting approval');
+  }
+
+  if (params.action === 'rejected' && (!params.reason || !params.reason.trim())) {
+    throw new BadRequestError('Rejection reason is required');
+  }
+
+  return prisma.quotation.update({
+    where: { id: params.quotationId },
+    data: {
+      pricingApprovalStatus: params.action,
+      pricingApprovalReason: params.reason ?? null,
+      pricingApprovedByUserId: params.action === 'approved' ? params.performedByUserId : null,
+      pricingApprovedAt: params.action === 'approved' ? new Date() : null,
+      pricingApprovalRejectedAt: params.action === 'rejected' ? new Date() : null,
+    },
+    select: quotationDetailSelect,
+  });
 }
 
 export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string): Promise<{
@@ -530,6 +710,11 @@ export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string):
   });
 
   try {
+    const facilityId = quotation.facilityId!;
+    const scheduledDate = quotation.scheduledDate!;
+    const scheduledStartTime = quotation.scheduledStartTime!;
+    const scheduledEndTime = quotation.scheduledEndTime!;
+
     return await prisma.$transaction(async (tx) => {
     const year = new Date().getFullYear();
     const prefix = `WO-${year}-`;
@@ -552,14 +737,14 @@ export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string):
         jobNumber,
         contractId: null,
         quotationId: quotation.id,
-        facilityId: quotation.facilityId,
+        facilityId,
         accountId: quotation.accountId,
         jobType: 'special_job',
         jobCategory: 'one_time',
         status: 'scheduled',
-        scheduledDate: quotation.scheduledDate,
-        scheduledStartTime: quotation.scheduledStartTime,
-        scheduledEndTime: quotation.scheduledEndTime,
+        scheduledDate,
+        scheduledStartTime,
+        scheduledEndTime,
         notes:
           notesLines.length > 0
             ? `From quotation ${quotation.quotationNumber}\n${notesLines.join('\n')}`

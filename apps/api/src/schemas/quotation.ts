@@ -11,10 +11,34 @@ export const quotationStatusSchema = z.enum([
 
 // Quotation Service Schema
 export const quotationServiceSchema = z.object({
+  catalogItemId: z.string().uuid().optional().nullable(),
   serviceName: z.string().min(1, 'Service name is required').max(255),
   description: z.string().max(5000).optional().nullable(),
   price: z.coerce.number().nonnegative('Price must be non-negative'),
   includedTasks: z.array(z.string()).optional().default([]),
+  pricingMeta: z
+    .object({
+      unitType: z.enum(['per_window', 'per_sqft', 'fixed']).optional(),
+      quantity: z.coerce.number().nonnegative().optional(),
+      unitPrice: z.coerce.number().nonnegative().optional(),
+      standardAmount: z.coerce.number().nonnegative().optional(),
+      finalAmount: z.coerce.number().nonnegative().optional(),
+      discountPercent: z.coerce.number().min(0).max(100).optional(),
+      discountAmount: z.coerce.number().nonnegative().optional(),
+      overrideReason: z.string().max(1000).optional().nullable(),
+      addOns: z
+        .array(
+          z.object({
+            code: z.string().max(100).optional(),
+            name: z.string().max(255),
+            quantity: z.coerce.number().nonnegative(),
+            unitPrice: z.coerce.number().nonnegative(),
+            total: z.coerce.number().nonnegative(),
+          })
+        )
+        .optional(),
+    })
+    .optional(),
   sortOrder: z.coerce.number().int().nonnegative().optional().default(0),
 });
 
@@ -99,6 +123,11 @@ export const rejectQuotationSchema = z.object({
   rejectionReason: z.string().min(1, 'Rejection reason is required').max(5000),
 });
 
+export const quotationPricingApprovalSchema = z.object({
+  action: z.enum(['approved', 'rejected']),
+  reason: z.string().max(5000).optional().nullable(),
+});
+
 // Public schemas
 export const publicAcceptQuotationSchema = z.object({
   signatureName: z.string().min(1, 'Signature name is required').max(255),
@@ -116,3 +145,4 @@ export type SendQuotationInput = z.infer<typeof sendQuotationSchema>;
 export type AcceptQuotationInput = z.infer<typeof acceptQuotationSchema>;
 export type RejectQuotationInput = z.infer<typeof rejectQuotationSchema>;
 export type QuotationServiceInput = z.infer<typeof quotationServiceSchema>;
+export type QuotationPricingApprovalInput = z.infer<typeof quotationPricingApprovalSchema>;

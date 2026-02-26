@@ -36,6 +36,7 @@ import {
   archiveQuotation,
   restoreQuotation,
   deleteQuotation,
+  setQuotationPricingApproval,
 } from '../../lib/quotations';
 import type { Quotation, QuotationStatus } from '../../types/quotation';
 
@@ -154,6 +155,26 @@ const QuotationDetail = () => {
     }
   };
 
+  const handlePricingApproval = async (action: 'approved' | 'rejected') => {
+    if (!quotation) return;
+    const reason =
+      action === 'rejected'
+        ? window.prompt('Enter rejection reason')
+        : window.prompt('Optional approval note');
+    if (action === 'rejected' && !reason?.trim()) {
+      toast.error('Rejection reason is required');
+      return;
+    }
+
+    try {
+      await setQuotationPricingApproval(quotation.id, { action, reason: reason || null });
+      toast.success(`Pricing ${action}`);
+      fetchQuotation();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || `Failed to ${action} pricing`);
+    }
+  };
+
   const handleArchive = async () => {
     if (!quotation || !confirm('Archive this quotation?')) return;
     try {
@@ -224,6 +245,20 @@ const QuotationDetail = () => {
               <Badge variant={getStatusVariant(quotation.status)} size="sm">
                 {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
               </Badge>
+              {quotation.pricingApprovalStatus && quotation.pricingApprovalStatus !== 'not_required' && (
+                <Badge
+                  variant={
+                    quotation.pricingApprovalStatus === 'approved'
+                      ? 'success'
+                      : quotation.pricingApprovalStatus === 'rejected'
+                      ? 'error'
+                      : 'warning'
+                  }
+                  size="sm"
+                >
+                  Pricing {quotation.pricingApprovalStatus}
+                </Badge>
+              )}
               {quotation.archivedAt && (
                 <Badge variant="default" size="sm">Archived</Badge>
               )}
@@ -266,6 +301,18 @@ const QuotationDetail = () => {
               <Button variant="secondary" size="sm" onClick={() => setShowRejectModal(true)}>
                 <XCircle className="mr-1.5 h-3.5 w-3.5" />
                 Reject
+              </Button>
+            </>
+          )}
+          {canAdmin && quotation.pricingApprovalStatus === 'pending' && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => handlePricingApproval('approved')}>
+                <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                Approve Pricing
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handlePricingApproval('rejected')}>
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                Reject Pricing
               </Button>
             </>
           )}

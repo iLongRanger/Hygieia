@@ -112,6 +112,7 @@ export async function acceptQuotationPublic(
       scheduledDate: true,
       scheduledStartTime: true,
       scheduledEndTime: true,
+      pricingApprovalStatus: true,
       generatedJob: {
         select: { id: true },
       },
@@ -126,6 +127,9 @@ export async function acceptQuotationPublic(
 
   if (!['sent', 'viewed', 'accepted'].includes(quotation.status)) {
     throw new Error('This quotation can no longer be accepted');
+  }
+  if (quotation.pricingApprovalStatus === 'pending' || quotation.pricingApprovalStatus === 'rejected') {
+    throw new Error('This quotation requires owner/admin pricing approval before acceptance');
   }
   if (!quotation.facilityId) {
     throw new Error('Facility is required before accepting this quotation');
