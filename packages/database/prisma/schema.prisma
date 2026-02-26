@@ -48,6 +48,7 @@ model User {
   createdProposalTemplates ProposalTemplate[] @relation("CreatedProposalTemplates")
   proposalVersions         ProposalVersion[] @relation("ProposalVersions")
   createdContracts         Contract[]        @relation("CreatedContracts")
+  assignedContracts        Contract[]        @relation("AssignedContracts")
   createdTeams             Team[]            @relation("CreatedTeams")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
@@ -888,6 +889,7 @@ model Contract {
   facilityId     String? @map("facility_id") @db.Uuid
   proposalId     String? @map("proposal_id") @db.Uuid
   assignedTeamId String? @map("assigned_team_id") @db.Uuid
+  assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
 
   // Renewal tracking
   renewalNumber         Int     @default(0) @map("renewal_number")
@@ -947,6 +949,7 @@ model Contract {
   facility                   Facility? @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   proposal                   Proposal? @relation(fields: [proposalId], references: [id])
   assignedTeam               Team?     @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  assignedToUser             User?     @relation("AssignedContracts", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   approvedByUser             User?     @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
   createdByUser              User      @relation("CreatedContracts", fields: [createdByUserId], references: [id])
   initialCleanCompletedByUser User?    @relation("InitialCleanCompletedContracts", fields: [initialCleanCompletedByUserId], references: [id])
@@ -957,6 +960,7 @@ model Contract {
   @@index([facilityId])
   @@index([proposalId])
   @@index([assignedTeamId])
+  @@index([assignedToUserId])
   @@index([startDate])
   @@index([endDate])
   @@index([publicToken])
@@ -1019,7 +1023,8 @@ model Team {
 model Job {
   id               String    @id @default(uuid()) @db.Uuid
   jobNumber        String    @unique @map("job_number") @db.VarChar(50)
-  contractId       String    @map("contract_id") @db.Uuid
+  contractId       String?   @map("contract_id") @db.Uuid
+  quotationId      String?   @unique @map("quotation_id") @db.Uuid
   facilityId       String    @map("facility_id") @db.Uuid
   accountId        String    @map("account_id") @db.Uuid
   assignedTeamId   String?   @map("assigned_team_id") @db.Uuid
@@ -1040,7 +1045,8 @@ model Job {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  contract       Contract   @relation("ContractJobs", fields: [contractId], references: [id], onDelete: Restrict)
+  contract       Contract?  @relation("ContractJobs", fields: [contractId], references: [id], onDelete: SetNull)
+  quotation      Quotation? @relation("QuotationGeneratedJob", fields: [quotationId], references: [id], onDelete: SetNull)
   facility       Facility   @relation("FacilityJobs", fields: [facilityId], references: [id], onDelete: Restrict)
   account        Account    @relation("AccountJobs", fields: [accountId], references: [id], onDelete: Restrict)
   assignedTeam   Team?      @relation("AssignedTeamJobs", fields: [assignedTeamId], references: [id], onDelete: SetNull)
@@ -1055,6 +1061,7 @@ model Job {
 
   @@index([jobNumber])
   @@index([contractId])
+  @@index([quotationId])
   @@index([facilityId])
   @@index([accountId])
   @@index([assignedTeamId])
@@ -1489,6 +1496,9 @@ model Quotation {
   taxAmount            Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
   totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
   validUntil           DateTime? @map("valid_until") @db.Date
+  scheduledDate        DateTime? @map("scheduled_date") @db.Date
+  scheduledStartTime   DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
+  scheduledEndTime     DateTime? @map("scheduled_end_time") @db.Timestamptz(6)
   notes                String?   @db.Text
   termsAndConditions   String?   @map("terms_and_conditions") @db.Text
   sentAt               DateTime? @map("sent_at") @db.Timestamptz(6)
@@ -1512,6 +1522,7 @@ model Quotation {
   account              Account           @relation("AccountQuotations", fields: [accountId], references: [id])
   facility             Facility?         @relation("FacilityQuotations", fields: [facilityId], references: [id])
   createdByUser        User              @relation("CreatedQuotations", fields: [createdByUserId], references: [id])
+  generatedJob         Job?              @relation("QuotationGeneratedJob")
   services             QuotationService[]
   activities           QuotationActivity[]
 
@@ -1520,6 +1531,7 @@ model Quotation {
   @@index([status])
   @@index([quotationNumber])
   @@index([validUntil])
+  @@index([scheduledDate])
   @@index([sentAt])
   @@index([publicToken])
   @@map("quotations")

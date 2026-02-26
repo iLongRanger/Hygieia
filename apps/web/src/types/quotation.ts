@@ -38,6 +38,9 @@ export interface Quotation {
   taxAmount: number;
   totalAmount: number;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   sentAt?: string | null;
   viewedAt?: string | null;
   acceptedAt?: string | null;
@@ -69,6 +72,11 @@ export interface Quotation {
     email?: string;
   };
   services: QuotationService[];
+  generatedJob?: {
+    id: string;
+    jobNumber: string;
+    status: string;
+  } | null;
   activities?: QuotationActivity[];
   _count?: {
     services: number;
@@ -81,6 +89,9 @@ export interface CreateQuotationInput {
   title: string;
   description?: string | null;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   taxRate?: number;
   notes?: string | null;
   termsAndConditions?: string | null;
@@ -94,6 +105,9 @@ export interface UpdateQuotationInput {
   status?: QuotationStatus;
   description?: string | null;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   taxRate?: number;
   notes?: string | null;
   termsAndConditions?: string | null;

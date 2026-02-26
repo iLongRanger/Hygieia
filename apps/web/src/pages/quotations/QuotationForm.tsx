@@ -59,6 +59,9 @@ const QuotationForm = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledStartTime, setScheduledStartTime] = useState('');
+  const [scheduledEndTime, setScheduledEndTime] = useState('');
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState('');
   const [termsAndConditions, setTermsAndConditions] = useState('');
@@ -104,6 +107,17 @@ const QuotationForm = () => {
         setTitle(q.title);
         setDescription(q.description || '');
         setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : '');
+        setScheduledDate(q.scheduledDate ? q.scheduledDate.slice(0, 10) : '');
+        setScheduledStartTime(
+          q.scheduledStartTime
+            ? new Date(q.scheduledStartTime).toISOString().slice(11, 16)
+            : ''
+        );
+        setScheduledEndTime(
+          q.scheduledEndTime
+            ? new Date(q.scheduledEndTime).toISOString().slice(11, 16)
+            : ''
+        );
         setTaxRate(Number(q.taxRate) * 100);
         setNotes(q.notes || '');
         setTermsAndConditions(q.termsAndConditions || '');
@@ -172,6 +186,15 @@ const QuotationForm = () => {
         sortOrder: i,
       }));
 
+      const scheduledStartDateTime =
+        scheduledDate && scheduledStartTime
+          ? new Date(`${scheduledDate}T${scheduledStartTime}:00.000Z`).toISOString()
+          : null;
+      const scheduledEndDateTime =
+        scheduledDate && scheduledEndTime
+          ? new Date(`${scheduledDate}T${scheduledEndTime}:00.000Z`).toISOString()
+          : null;
+
       if (isEditing && id) {
         const data: UpdateQuotationInput = {
           accountId,
@@ -179,6 +202,9 @@ const QuotationForm = () => {
           title,
           description: description || null,
           validUntil: validUntil || null,
+          scheduledDate: scheduledDate || null,
+          scheduledStartTime: scheduledStartDateTime,
+          scheduledEndTime: scheduledEndDateTime,
           taxRate: taxRate / 100,
           notes: notes || null,
           termsAndConditions: termsAndConditions || null,
@@ -194,6 +220,9 @@ const QuotationForm = () => {
           title,
           description: description || null,
           validUntil: validUntil || null,
+          scheduledDate: scheduledDate || null,
+          scheduledStartTime: scheduledStartDateTime,
+          scheduledEndTime: scheduledEndDateTime,
           taxRate: taxRate / 100,
           notes: notes || null,
           termsAndConditions: termsAndConditions || null,
@@ -288,6 +317,24 @@ const QuotationForm = () => {
               step={0.01}
               value={taxRate}
               onChange={(e) => setTaxRate(Number(e.target.value))}
+            />
+            <Input
+              label="Scheduled Date"
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+            />
+            <Input
+              label="Start Time"
+              type="time"
+              value={scheduledStartTime}
+              onChange={(e) => setScheduledStartTime(e.target.value)}
+            />
+            <Input
+              label="End Time"
+              type="time"
+              value={scheduledEndTime}
+              onChange={(e) => setScheduledEndTime(e.target.value)}
             />
           </div>
           <Textarea

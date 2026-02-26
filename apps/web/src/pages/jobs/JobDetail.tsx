@@ -340,12 +340,31 @@ const JobDetail = () => {
               <div>
                 <span className="text-surface-500 dark:text-surface-400">Contract</span>
                 <p className="font-medium text-surface-900 dark:text-surface-100">
-                  <button
-                    onClick={() => navigate(`/contracts/${job.contract.id}`)}
-                    className="text-primary-600 hover:underline dark:text-primary-400"
-                  >
-                    {job.contract.contractNumber}
-                  </button>
+                  {job.contract ? (
+                    <button
+                      onClick={() => navigate(`/contracts/${job.contract!.id}`)}
+                      className="text-primary-600 hover:underline dark:text-primary-400"
+                    >
+                      {job.contract.contractNumber}
+                    </button>
+                  ) : (
+                    '-'
+                  )}
+                </p>
+              </div>
+              <div>
+                <span className="text-surface-500 dark:text-surface-400">Quotation</span>
+                <p className="font-medium text-surface-900 dark:text-surface-100">
+                  {job.quotation ? (
+                    <button
+                      onClick={() => navigate(`/quotations/${job.quotation!.id}`)}
+                      className="text-primary-600 hover:underline dark:text-primary-400"
+                    >
+                      {job.quotation.quotationNumber}
+                    </button>
+                  ) : (
+                    '-'
+                  )}
                 </p>
               </div>
               <div>

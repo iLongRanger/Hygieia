@@ -13,6 +13,7 @@ import {
 
 export interface JobListParams {
   contractId?: string;
+  quotationId?: string;
   facilityId?: string;
   accountId?: string;
   assignedTeamId?: string;
@@ -122,6 +123,13 @@ const jobSelect = {
     select: {
       id: true,
       contractNumber: true,
+      title: true,
+    },
+  },
+  quotation: {
+    select: {
+      id: true,
+      quotationNumber: true,
       title: true,
     },
   },
@@ -327,6 +335,7 @@ function resolveAutoGenerationWindow(input: {
 export async function listJobs(params: JobListParams) {
   const {
     contractId,
+    quotationId,
     facilityId,
     accountId,
     assignedTeamId,
@@ -343,6 +352,7 @@ export async function listJobs(params: JobListParams) {
   const where: Prisma.JobWhereInput = {};
 
   if (contractId) where.contractId = contractId;
+  if (quotationId) where.quotationId = quotationId;
   if (facilityId) where.facilityId = facilityId;
   if (accountId) where.accountId = accountId;
   if (assignedTeamId) where.assignedTeamId = assignedTeamId;

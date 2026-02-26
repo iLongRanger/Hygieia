@@ -90,7 +90,7 @@ const JobForm = () => {
           return;
         }
         setFormData({
-          contractId: job.contract.id,
+          contractId: job.contract?.id || '',
           accountId: job.account.id,
           facilityId: job.facility.id,
           assignedTeamId: job.assignedTeam?.id || null,
@@ -154,7 +154,7 @@ const JobForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.contractId) {
+    if (!isEditMode && !formData.contractId) {
       toast.error('Please select a contract');
       return;
     }

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
+import { ensureOneTimeJobForAcceptedQuotation } from './quotationService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -103,7 +104,18 @@ export async function acceptQuotationPublic(
 ) {
   const quotation = await prisma.quotation.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true },
+    select: {
+      id: true,
+      status: true,
+      publicTokenExpiresAt: true,
+      facilityId: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      generatedJob: {
+        select: { id: true },
+      },
+    },
   });
 
   if (!quotation) throw new Error('Quotation not found');
@@ -112,19 +124,38 @@ export async function acceptQuotationPublic(
     throw new Error('This quotation link has expired');
   }
 
-  if (!['sent', 'viewed'].includes(quotation.status)) {
+  if (!['sent', 'viewed', 'accepted'].includes(quotation.status)) {
     throw new Error('This quotation can no longer be accepted');
   }
+  if (!quotation.facilityId) {
+    throw new Error('Facility is required before accepting this quotation');
+  }
+  if (!quotation.scheduledDate || !quotation.scheduledStartTime || !quotation.scheduledEndTime) {
+    throw new Error(
+      'Scheduled date, start time, and end time are required before accepting this quotation'
+    );
+  }
+  if (quotation.scheduledEndTime <= quotation.scheduledStartTime) {
+    throw new Error('Scheduled end time must be after scheduled start time');
+  }
 
-  return prisma.quotation.update({
+  if (quotation.status !== 'accepted') {
+    await prisma.quotation.update({
+      where: { id: quotation.id },
+      data: {
+        status: 'accepted',
+        acceptedAt: new Date(),
+        signatureName,
+        signatureDate: new Date(),
+        signatureIp: ipAddress ?? null,
+      },
+    });
+  }
+
+  await ensureOneTimeJobForAcceptedQuotation(quotation.id);
+
+  return prisma.quotation.findUniqueOrThrow({
     where: { id: quotation.id },
-    data: {
-      status: 'accepted',
-      acceptedAt: new Date(),
-      signatureName,
-      signatureDate: new Date(),
-      signatureIp: ipAddress ?? null,
-    },
     select: publicQuotationSelect,
   });
 }

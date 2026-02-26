@@ -58,9 +58,14 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const formatDate = (date: string | null | undefined) => {
+  const formatDate = (date: string | null | undefined) => {
   if (!date) return '-';
   return new Date(date).toLocaleDateString();
+};
+
+const formatTime = (date: string | null | undefined) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 const formatDateTime = (date: string | null | undefined) => {
@@ -224,6 +229,9 @@ const QuotationDetail = () => {
               )}
             </div>
             <p className="text-sm text-surface-500 dark:text-surface-400">{quotation.title}</p>
+            <p className="text-xs text-surface-500 dark:text-surface-400">
+              Scheduled: {formatDate(quotation.scheduledDate)} {formatTime(quotation.scheduledStartTime)} - {formatTime(quotation.scheduledEndTime)}
+            </p>
           </div>
         </div>
 
@@ -419,6 +427,21 @@ const QuotationDetail = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {quotation.generatedJob && (
+            <Card>
+              <div className="p-6">
+                <h3 className="text-sm font-medium text-surface-500 mb-2">Generated Job</h3>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate(`/jobs/${quotation.generatedJob!.id}`)}
+                >
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                  {quotation.generatedJob.jobNumber}
+                </Button>
+              </div>
+            </Card>
+          )}
           <Card>
             <div className="p-6 space-y-4">
               <h3 className="text-sm font-semibold text-surface-500 uppercase tracking-wider">

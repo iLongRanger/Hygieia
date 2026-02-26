@@ -26,7 +26,12 @@ export interface Job {
     id: string;
     contractNumber: string;
     title: string;
-  };
+  } | null;
+  quotation?: {
+    id: string;
+    quotationNumber: string;
+    title: string;
+  } | null;
   facility: {
     id: string;
     name: string;

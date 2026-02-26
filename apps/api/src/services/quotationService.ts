@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
-import { NotFoundError } from '../middleware/errorHandler';
+import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 
 // ==================== Interfaces ====================
 
@@ -30,6 +30,9 @@ export interface QuotationCreateInput {
   title: string;
   description?: string | null;
   validUntil?: Date | null;
+  scheduledDate?: Date | null;
+  scheduledStartTime?: Date | null;
+  scheduledEndTime?: Date | null;
   taxRate?: number;
   notes?: string | null;
   termsAndConditions?: string | null;
@@ -44,6 +47,9 @@ export interface QuotationUpdateInput {
   status?: string;
   description?: string | null;
   validUntil?: Date | null;
+  scheduledDate?: Date | null;
+  scheduledStartTime?: Date | null;
+  scheduledEndTime?: Date | null;
   taxRate?: number;
   notes?: string | null;
   termsAndConditions?: string | null;
@@ -62,6 +68,9 @@ const quotationListSelect = {
   taxAmount: true,
   totalAmount: true,
   validUntil: true,
+  scheduledDate: true,
+  scheduledStartTime: true,
+  scheduledEndTime: true,
   sentAt: true,
   viewedAt: true,
   acceptedAt: true,
@@ -94,6 +103,9 @@ const quotationDetailSelect = {
   taxAmount: true,
   totalAmount: true,
   validUntil: true,
+  scheduledDate: true,
+  scheduledStartTime: true,
+  scheduledEndTime: true,
   notes: true,
   termsAndConditions: true,
   sentAt: true,
@@ -141,6 +153,13 @@ const quotationDetailSelect = {
     },
     orderBy: { createdAt: 'desc' as const },
     take: 50,
+  },
+  generatedJob: {
+    select: {
+      id: true,
+      jobNumber: true,
+      status: true,
+    },
   },
 };
 
@@ -268,6 +287,9 @@ export async function createQuotation(input: QuotationCreateInput) {
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
       validUntil: input.validUntil,
+      scheduledDate: input.scheduledDate,
+      scheduledStartTime: input.scheduledStartTime,
+      scheduledEndTime: input.scheduledEndTime,
       notes: input.notes,
       termsAndConditions: input.termsAndConditions,
       accountId: input.accountId,
@@ -330,6 +352,9 @@ export async function updateQuotation(id: string, input: QuotationUpdateInput) {
         ...(input.status !== undefined && { status: input.status }),
         ...(input.description !== undefined && { description: input.description }),
         ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
+        ...(input.scheduledDate !== undefined && { scheduledDate: input.scheduledDate }),
+        ...(input.scheduledStartTime !== undefined && { scheduledStartTime: input.scheduledStartTime }),
+        ...(input.scheduledEndTime !== undefined && { scheduledEndTime: input.scheduledEndTime }),
         ...(input.notes !== undefined && { notes: input.notes }),
         ...(input.termsAndConditions !== undefined && { termsAndConditions: input.termsAndConditions }),
         subtotal,
@@ -382,11 +407,51 @@ export async function markQuotationAsViewed(id: string) {
 export async function acceptQuotation(id: string, signatureName?: string) {
   const existing = await prisma.quotation.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      accountId: true,
+      facilityId: true,
+      title: true,
+      quotationNumber: true,
+      description: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      createdByUserId: true,
+      services: {
+        select: {
+          serviceName: true,
+          description: true,
+          includedTasks: true,
+        },
+        orderBy: { sortOrder: 'asc' },
+      },
+      generatedJob: {
+        select: { id: true },
+      },
+    },
   });
   if (!existing) throw new NotFoundError('Quotation not found');
 
-  return prisma.quotation.update({
+  if (existing.status === 'accepted') {
+    await ensureOneTimeJobForAcceptedQuotation(id);
+    return getQuotationById(id);
+  }
+
+  if (!existing.facilityId) {
+    throw new BadRequestError('Facility is required before accepting a quotation');
+  }
+  if (!existing.scheduledDate || !existing.scheduledStartTime || !existing.scheduledEndTime) {
+    throw new BadRequestError(
+      'Scheduled date, start time, and end time are required before accepting a quotation'
+    );
+  }
+  if (existing.scheduledEndTime <= existing.scheduledStartTime) {
+    throw new BadRequestError('Scheduled end time must be after scheduled start time');
+  }
+
+  await prisma.quotation.update({
     where: { id },
     data: {
       status: 'accepted',
@@ -396,8 +461,191 @@ export async function acceptQuotation(id: string, signatureName?: string) {
         signatureDate: new Date(),
       }),
     },
-    select: quotationDetailSelect,
   });
+
+  await ensureOneTimeJobForAcceptedQuotation(id);
+  return getQuotationById(id);
+}
+
+export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string): Promise<{
+  created: boolean;
+  jobId: string;
+  jobNumber: string;
+}> {
+  const quotation = await prisma.quotation.findUnique({
+    where: { id: quotationId },
+    select: {
+      id: true,
+      status: true,
+      quotationNumber: true,
+      title: true,
+      description: true,
+      accountId: true,
+      facilityId: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      createdByUserId: true,
+      generatedJob: {
+        select: {
+          id: true,
+          jobNumber: true,
+        },
+      },
+      services: {
+        select: {
+          serviceName: true,
+          description: true,
+          includedTasks: true,
+        },
+        orderBy: { sortOrder: 'asc' as const },
+      },
+    },
+  });
+
+  if (!quotation) throw new NotFoundError('Quotation not found');
+  if (quotation.status !== 'accepted') {
+    throw new BadRequestError('Quotation must be accepted before creating a one-time job');
+  }
+  if (!quotation.facilityId) {
+    throw new BadRequestError('Quotation must have a facility to create a one-time job');
+  }
+  if (!quotation.scheduledDate || !quotation.scheduledStartTime || !quotation.scheduledEndTime) {
+    throw new BadRequestError(
+      'Quotation must include scheduled date, start time, and end time before creating a one-time job'
+    );
+  }
+
+  if (quotation.generatedJob) {
+    return {
+      created: false,
+      jobId: quotation.generatedJob.id,
+      jobNumber: quotation.generatedJob.jobNumber,
+    };
+  }
+
+  const notesLines = quotation.services.map((service, idx) => {
+    const line = `${idx + 1}. ${service.serviceName}`;
+    return service.description ? `${line} - ${service.description}` : line;
+  });
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+    const year = new Date().getFullYear();
+    const prefix = `WO-${year}-`;
+    const latest = await tx.job.findFirst({
+      where: { jobNumber: { startsWith: prefix } },
+      orderBy: { jobNumber: 'desc' },
+      select: { jobNumber: true },
+    });
+
+    let seq = 1;
+    if (latest) {
+      const parts = latest.jobNumber.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(lastSeq)) seq = lastSeq + 1;
+    }
+    const jobNumber = `${prefix}${String(seq).padStart(4, '0')}`;
+
+    const job = await tx.job.create({
+      data: {
+        jobNumber,
+        contractId: null,
+        quotationId: quotation.id,
+        facilityId: quotation.facilityId,
+        accountId: quotation.accountId,
+        jobType: 'special_job',
+        jobCategory: 'one_time',
+        status: 'scheduled',
+        scheduledDate: quotation.scheduledDate,
+        scheduledStartTime: quotation.scheduledStartTime,
+        scheduledEndTime: quotation.scheduledEndTime,
+        notes:
+          notesLines.length > 0
+            ? `From quotation ${quotation.quotationNumber}\n${notesLines.join('\n')}`
+            : `From quotation ${quotation.quotationNumber}`,
+        createdByUserId: quotation.createdByUserId,
+      },
+      select: { id: true, jobNumber: true },
+    });
+
+    const tasks: Array<{
+      taskName: string;
+      description: string | null;
+      status: string;
+    }> = [];
+    for (const service of quotation.services) {
+      const includedTasks = Array.isArray(service.includedTasks)
+        ? (service.includedTasks as unknown[]).filter((task): task is string => typeof task === 'string')
+        : [];
+      if (includedTasks.length > 0) {
+        for (const taskName of includedTasks) {
+          tasks.push({
+            taskName,
+            description: service.serviceName,
+            status: 'pending',
+          });
+        }
+      } else {
+        tasks.push({
+          taskName: service.serviceName,
+          description: service.description ?? null,
+          status: 'pending',
+        });
+      }
+    }
+
+    if (tasks.length > 0) {
+      await tx.jobTask.createMany({
+        data: tasks.map((task) => ({
+          jobId: job.id,
+          facilityTaskId: null,
+          taskName: task.taskName,
+          description: task.description,
+          status: task.status,
+          estimatedMinutes: null,
+          actualMinutes: null,
+          notes: null,
+          completedAt: null,
+          completedByUserId: null,
+        })),
+      });
+    }
+
+    await tx.jobActivity.create({
+      data: {
+        jobId: job.id,
+        action: 'created',
+        performedByUserId: quotation.createdByUserId,
+        metadata: {
+          source: 'quotation_accepted',
+          quotationId: quotation.id,
+          quotationNumber: quotation.quotationNumber,
+        },
+      },
+    });
+
+      return { created: true, jobId: job.id, jobNumber: job.jobNumber };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const existingJob = await prisma.job.findUnique({
+        where: { quotationId: quotation.id },
+        select: { id: true, jobNumber: true },
+      });
+      if (existingJob) {
+        return {
+          created: false,
+          jobId: existingJob.id,
+          jobNumber: existingJob.jobNumber,
+        };
+      }
+    }
+    throw error;
+  }
 }
 
 export async function rejectQuotation(id: string, rejectionReason: string) {

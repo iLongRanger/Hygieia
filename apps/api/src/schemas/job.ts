@@ -5,6 +5,7 @@ export const jobCategorySchema = z.enum(['recurring', 'one_time']);
 
 export const jobListQuerySchema = z.object({
   contractId: z.string().uuid().optional(),
+  quotationId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
   assignedTeamId: z.string().uuid().optional(),

@@ -13,8 +13,22 @@ jest.mock('../../lib/prisma', () => ({
   prisma: {
     quotation: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
     },
+    job: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    jobTask: {
+      createMany: jest.fn(),
+    },
+    jobActivity: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
 }));
 
@@ -80,8 +94,12 @@ describe('quotationPublicService', () => {
   it('acceptQuotationPublic rejects non-actionable statuses', async () => {
     (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
       id: 'qt-1',
-      status: 'accepted',
+      status: 'rejected',
       publicTokenExpiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      facilityId: 'facility-1',
+      scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+      scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+      scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
     });
 
     await expect(
@@ -90,12 +108,37 @@ describe('quotationPublicService', () => {
   });
 
   it('acceptQuotationPublic updates accepted details for valid token', async () => {
-    (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
-      id: 'qt-1',
-      status: 'viewed',
-      publicTokenExpiresAt: new Date('2026-12-01T00:00:00.000Z'),
-    });
+    (prisma.quotation.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'qt-1',
+        status: 'viewed',
+        publicTokenExpiresAt: new Date('2026-12-01T00:00:00.000Z'),
+        facilityId: 'facility-1',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+        scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+        generatedJob: null,
+      })
+      .mockResolvedValueOnce({
+        id: 'qt-1',
+        status: 'accepted',
+        quotationNumber: 'QT-2026-0001',
+        title: 'Special Job',
+        description: null,
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+        scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+        createdByUserId: 'user-1',
+        generatedJob: null,
+        services: [],
+      });
     (prisma.quotation.update as jest.Mock).mockResolvedValue({ id: 'qt-1', status: 'accepted' });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({ jobNumber: 'WO-2026-0001' });
+    (prisma.job.create as jest.Mock).mockResolvedValue({ id: 'job-2', jobNumber: 'WO-2026-0002' });
+    (prisma.jobActivity.create as jest.Mock).mockResolvedValue({ id: 'a-1' });
+    (prisma.quotation.findUniqueOrThrow as jest.Mock).mockResolvedValue({ id: 'qt-1', status: 'accepted' });
 
     await acceptQuotationPublic('public-token', 'Jane Doe', '127.0.0.1');
 

@@ -6,7 +6,9 @@ import {
   acceptQuotationPublic,
   rejectQuotationPublic,
 } from '../services/quotationPublicService';
-import { logQuotationActivity } from '../services/quotationService';
+import {
+  logQuotationActivity,
+} from '../services/quotationService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import { sendNotificationEmail } from '../services/emailService';
 import { prisma } from '../lib/prisma';
@@ -105,7 +107,9 @@ router.post(
         quotationId: (quotation as any).id,
         action: 'public_accepted',
         ipAddress: req.ip,
-        metadata: { signatureName: parsed.data.signatureName },
+        metadata: {
+          signatureName: parsed.data.signatureName,
+        },
       });
 
       // Notify admins
