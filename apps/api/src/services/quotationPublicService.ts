@@ -33,6 +33,7 @@ const publicQuotationSelect = {
       description: true,
       price: true,
       includedTasks: true,
+      pricingMeta: true,
       sortOrder: true,
     },
     orderBy: { sortOrder: 'asc' as const },

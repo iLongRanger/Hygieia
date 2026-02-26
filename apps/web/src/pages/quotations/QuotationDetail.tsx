@@ -74,6 +74,23 @@ const formatDateTime = (date: string | null | undefined) => {
   return new Date(date).toLocaleString();
 };
 
+const formatUnitLabel = (unitType?: string) => {
+  if (!unitType) return 'unit';
+  if (unitType === 'per_window') return 'window';
+  if (unitType === 'per_sqft') return 'sqft';
+  if (unitType === 'fixed') return 'service';
+  return unitType.replace(/_/g, ' ');
+};
+
+const formatScope = (unitType?: string, quantity?: number) => {
+  if (quantity === undefined || Number.isNaN(quantity)) return null;
+  const unit = formatUnitLabel(unitType);
+  if (unitType === 'per_window') {
+    return `${quantity} window${quantity === 1 ? '' : 's'}`;
+  }
+  return `${quantity} ${unit}`;
+};
+
 const QuotationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -352,9 +369,47 @@ const QuotationDetail = () => {
                     className="flex items-start justify-between rounded-lg border border-surface-100 dark:border-surface-700 p-4"
                   >
                     <div className="flex-1">
+                      {(() => {
+                        const meta = service.pricingMeta;
+                        const quantity =
+                          typeof meta?.quantity === 'number' ? meta.quantity : undefined;
+                        const unitPrice =
+                          typeof meta?.unitPrice === 'number' ? meta.unitPrice : undefined;
+                        const standardAmount =
+                          typeof meta?.standardAmount === 'number' ? meta.standardAmount : undefined;
+                        const discountPercent =
+                          typeof meta?.discountPercent === 'number' ? meta.discountPercent : undefined;
+                        const scope = formatScope(meta?.unitType, quantity);
+                        const addOns = Array.isArray(meta?.addOns) ? meta!.addOns! : [];
+
+                        return (
+                          <>
                       <p className="font-medium text-surface-900 dark:text-surface-100">
                         {service.serviceName}
                       </p>
+                            {scope && (
+                              <p className="text-sm text-surface-500 mt-1">
+                                Scope: {scope}
+                                {unitPrice !== undefined && ` at ${formatCurrency(unitPrice)}/${formatUnitLabel(meta?.unitType)}`}
+                              </p>
+                            )}
+                            {standardAmount !== undefined && (
+                              <p className="text-xs text-surface-500 mt-1">
+                                Standard price: {formatCurrency(standardAmount)}
+                                {discountPercent && discountPercent > 0
+                                  ? ` (${discountPercent.toFixed(2)}% discount applied)`
+                                  : ''}
+                              </p>
+                            )}
+                            {addOns.length > 0 && (
+                              <ul className="mt-2 space-y-1">
+                                {addOns.map((addOn, addOnIdx) => (
+                                  <li key={`${addOn.name}-${addOnIdx}`} className="text-xs text-surface-500">
+                                    Add-on: {addOn.name} x{addOn.quantity} ({formatCurrency(addOn.total)})
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                       {service.description && (
                         <p className="text-sm text-surface-500 mt-1">{service.description}</p>
                       )}
@@ -368,6 +423,9 @@ const QuotationDetail = () => {
                           ))}
                         </ul>
                       )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <span className="text-lg font-semibold text-surface-900 dark:text-surface-100 ml-4">
                       {formatCurrency(Number(service.price))}

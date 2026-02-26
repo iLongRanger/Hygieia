@@ -36,6 +36,23 @@ export interface PublicQuotation {
     description: string | null;
     price: number;
     includedTasks: string[];
+    pricingMeta?: {
+      unitType?: string;
+      quantity?: number;
+      unitPrice?: number;
+      standardAmount?: number;
+      finalAmount?: number;
+      discountPercent?: number;
+      discountAmount?: number;
+      overrideReason?: string | null;
+      addOns?: Array<{
+        code?: string;
+        name: string;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+    };
     sortOrder: number;
   }[];
 }

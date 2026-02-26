@@ -30,6 +30,21 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatUnitLabel = (unitType?: string) => {
+  if (!unitType) return 'unit';
+  if (unitType === 'per_window') return 'window';
+  if (unitType === 'per_sqft') return 'sqft';
+  if (unitType === 'fixed') return 'service';
+  return unitType.replace(/_/g, ' ');
+};
+
+const formatScope = (unitType?: string, quantity?: number) => {
+  if (quantity === undefined || Number.isNaN(quantity)) return null;
+  const unit = formatUnitLabel(unitType);
+  if (unitType === 'per_window') return `${quantity} window${quantity === 1 ? '' : 's'}`;
+  return `${quantity} ${unit}`;
+};
+
 const PublicQuotationView = () => {
   const { token } = useParams<{ token: string }>();
   const [quotation, setQuotation] = useState<PublicQuotation | null>(null);
@@ -200,6 +215,47 @@ const PublicQuotationView = () => {
               <div key={i} className="flex justify-between items-start py-3 border-b border-gray-100 last:border-0">
                 <div className="flex-1">
                   <p className="font-medium text-gray-800">{service.serviceName}</p>
+                  {(() => {
+                    const meta = service.pricingMeta;
+                    const quantity =
+                      typeof meta?.quantity === 'number' ? meta.quantity : undefined;
+                    const unitPrice =
+                      typeof meta?.unitPrice === 'number' ? meta.unitPrice : undefined;
+                    const standardAmount =
+                      typeof meta?.standardAmount === 'number' ? meta.standardAmount : undefined;
+                    const discountPercent =
+                      typeof meta?.discountPercent === 'number' ? meta.discountPercent : undefined;
+                    const scope = formatScope(meta?.unitType, quantity);
+                    const addOns = Array.isArray(meta?.addOns) ? meta!.addOns! : [];
+
+                    return (
+                      <>
+                        {scope && (
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            Scope: {scope}
+                            {unitPrice !== undefined && ` at ${formatCurrency(unitPrice)}/${formatUnitLabel(meta?.unitType)}`}
+                          </p>
+                        )}
+                        {standardAmount !== undefined && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Standard price: {formatCurrency(standardAmount)}
+                            {discountPercent && discountPercent > 0
+                              ? ` (${discountPercent.toFixed(2)}% discount applied)`
+                              : ''}
+                          </p>
+                        )}
+                        {addOns.length > 0 && (
+                          <ul className="mt-1 space-y-0.5">
+                            {addOns.map((addOn, idx) => (
+                              <li key={`${addOn.name}-${idx}`} className="text-xs text-gray-500">
+                                Add-on: {addOn.name} x{addOn.quantity} ({formatCurrency(addOn.total)})
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    );
+                  })()}
                   {service.description && (
                     <p className="text-sm text-gray-500 mt-0.5">{service.description}</p>
                   )}
