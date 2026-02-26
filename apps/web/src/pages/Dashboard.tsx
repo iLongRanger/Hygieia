@@ -13,14 +13,21 @@ import {
   ClipboardCheck,
   Timer,
   Receipt,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 import { useAuthStore } from '../stores/authStore';
 import {
   getDashboardStats,
   exportDashboardCsv,
 } from '../lib/dashboard';
 import type { DashboardStats, TimePeriod, ExportType } from '../lib/dashboard';
+import { listContracts } from '../lib/contracts';
+import { listJobs } from '../lib/jobs';
+import type { Contract } from '../types/contract';
+import type { Job } from '../types/job';
 import StatCard from '../components/dashboard/StatCard';
 import TimePeriodSelector from '../components/dashboard/TimePeriodSelector';
 import LeadFunnelChart from '../components/dashboard/LeadFunnelChart';
@@ -57,7 +64,202 @@ const EXPORT_OPTIONS: { value: ExportType; label: string }[] = [
   { value: 'contracts', label: 'Contracts' },
 ];
 
-const Dashboard = () => {
+const formatCurrencyFull = (amount: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  const map: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+    scheduled: 'info',
+    in_progress: 'warning',
+    completed: 'success',
+    canceled: 'default',
+    missed: 'error',
+  };
+  return map[status] || 'default';
+};
+
+const SubcontractorDashboard = () => {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [contractRes, jobRes] = await Promise.all([
+          listContracts({ status: 'active', limit: 50 }),
+          listJobs({ limit: 20 }),
+        ]);
+        setContracts(contractRes.data || []);
+        setJobs(jobRes.data || []);
+      } catch (error) {
+        console.error('Failed to fetch subcontractor dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const activeContracts = contracts.filter((c) => c.status === 'active');
+  const totalPayout = activeContracts.reduce(
+    (sum, c) => sum + Number(c.subcontractorPayout || 0),
+    0
+  );
+  const upcomingJobs = jobs.filter(
+    (j) => j.status === 'scheduled' || j.status === 'in_progress'
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <div className="h-8 w-64 rounded bg-surface-200 dark:bg-surface-700 animate-pulse" />
+          <div className="mt-2 h-4 w-48 rounded bg-surface-200 dark:bg-surface-700 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 sm:text-3xl">
+          Welcome back, {user?.fullName?.split(' ')[0]}
+        </h1>
+        <p className="mt-1 text-surface-500 dark:text-surface-400">
+          Here's your work overview.
+        </p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+        <StatCard
+          label="Active Contracts"
+          value={activeContracts.length}
+          subtitle={`${contracts.length} total assigned`}
+          icon={FileText}
+          color="text-primary-600 dark:text-primary-400"
+          bg="bg-primary-100 dark:bg-primary-900/30"
+          onClick={() => navigate('/contracts')}
+        />
+        <StatCard
+          label="Upcoming Jobs"
+          value={upcomingJobs.length}
+          subtitle="scheduled & in progress"
+          icon={Briefcase}
+          color="text-indigo-600 dark:text-indigo-400"
+          bg="bg-indigo-100 dark:bg-indigo-900/30"
+          onClick={() => navigate('/jobs')}
+        />
+        <StatCard
+          label="Monthly Payout"
+          value={formatCurrencyFull(totalPayout)}
+          subtitle="across active contracts"
+          icon={DollarSign}
+          color="text-teal-600 dark:text-teal-400"
+          bg="bg-teal-100 dark:bg-teal-900/30"
+        />
+      </div>
+
+      {/* Upcoming Jobs */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            Upcoming Jobs
+          </h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/jobs')}>
+            View all
+          </Button>
+        </div>
+        {upcomingJobs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-700">
+              <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
+              No upcoming jobs
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {upcomingJobs.slice(0, 10).map((job) => (
+              <button
+                key={job.id}
+                onClick={() => navigate(`/jobs/${job.id}`)}
+                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+              >
+                <div>
+                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                    {job.facility.name}
+                  </div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">
+                    {job.jobNumber} &middot; {new Date(job.scheduledDate).toLocaleDateString()}
+                    {job.scheduledStartTime && ` at ${job.scheduledStartTime}`}
+                  </div>
+                </div>
+                <Badge variant={getJobStatusVariant(job.status)} size="sm">
+                  {job.status.replace('_', ' ')}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Active Contracts */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            Active Contracts
+          </h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/contracts')}>
+            View all
+          </Button>
+        </div>
+        {activeContracts.length === 0 ? (
+          <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
+            No active contracts assigned.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {activeContracts.map((contract) => (
+              <button
+                key={contract.id}
+                onClick={() => navigate(`/contracts/${contract.id}`)}
+                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+              >
+                <div>
+                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                    {contract.title}
+                  </div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">
+                    {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-teal-600 dark:text-teal-400">
+                    {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+const AdminDashboard = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -407,6 +609,17 @@ const Dashboard = () => {
       ) : null}
     </div>
   );
+};
+
+const Dashboard = () => {
+  const user = useAuthStore((state) => state.user);
+  const isSubcontractor = user?.role === 'subcontractor';
+
+  if (isSubcontractor) {
+    return <SubcontractorDashboard />;
+  }
+
+  return <AdminDashboard />;
 };
 
 export default Dashboard;
