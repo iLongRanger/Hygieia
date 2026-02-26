@@ -93,6 +93,7 @@ export async function authenticate(
       email: user.email,
       fullName: user.fullName,
       role: primaryRole,
+      teamId: user.teamId,
     };
 
     next();

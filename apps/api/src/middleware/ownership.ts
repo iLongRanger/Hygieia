@@ -150,6 +150,49 @@ export function verifyOwnership(context: OwnershipContext) {
         return next();
       }
 
+      // Subcontractor: can only access resources assigned to their team
+      if (role === 'subcontractor') {
+        const teamId = req.user.teamId;
+        if (!teamId) {
+          return next(new ForbiddenError('Subcontractor has no team assigned'));
+        }
+
+        const paramName = context.paramName || 'id';
+        const resourceId = req.params[paramName];
+
+        if (!resourceId) {
+          throw new ForbiddenError('Resource ID not provided');
+        }
+
+        let hasAccess = false;
+
+        if (context.resourceType === 'contract') {
+          const contract = await prisma.contract.findUnique({
+            where: { id: resourceId },
+            select: { assignedTeamId: true },
+          });
+          hasAccess = contract?.assignedTeamId === teamId;
+        } else if (context.resourceType === 'facility') {
+          const count = await prisma.contract.count({
+            where: { facilityId: resourceId, assignedTeamId: teamId },
+          });
+          hasAccess = count > 0;
+        }
+
+        if (!hasAccess) {
+          logSecurityEvent('idor_attempt_blocked', {
+            userId,
+            resourceType: context.resourceType,
+            resourceId,
+            path: req.path,
+            method: req.method,
+          });
+          throw new ForbiddenError('Access denied');
+        }
+
+        return next();
+      }
+
       // Manager needs ownership verification
       if (role === 'manager') {
         const paramName = context.paramName || 'id';
