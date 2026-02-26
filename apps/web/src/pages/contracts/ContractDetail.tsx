@@ -213,6 +213,8 @@ const ContractDetail = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isSubcontractor = userRole === 'subcontractor';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
@@ -236,10 +238,12 @@ const ContractDetail = () => {
   useEffect(() => {
     if (id) {
       fetchContract(id);
-      fetchTeams();
-      fetchUsers();
+      if (!isSubcontractor) {
+        fetchTeams();
+        fetchUsers();
+      }
     }
-  }, [id]);
+  }, [id, isSubcontractor]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -535,122 +539,124 @@ const ContractDetail = () => {
           </div>
           <p className="text-gray-400">{contract.title}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Primary actions based on status */}
-          {contract.status === 'draft' && canWriteContracts && (
-            <>
+        {!isSubcontractor && (
+          <div className="flex items-center gap-2">
+            {/* Primary actions based on status */}
+            {contract.status === 'draft' && canWriteContracts && (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+                >
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button onClick={() => setShowSendModal(true)}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </Button>
+              </>
+            )}
+            {(contract.status === 'sent' || contract.status === 'viewed') && canWriteContracts && (
+              <Button onClick={handleActivate}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Activate
+              </Button>
+            )}
+            {contract.status === 'pending_signature' && canWriteContracts && (
+              <Button onClick={handleActivate}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Activate
+              </Button>
+            )}
+            {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
+              <Button onClick={openRenewModal}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Renew
+              </Button>
+            )}
+            {contract.archivedAt && canAdminContracts && (
+              <Button variant="secondary" onClick={handleRestore}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restore
+              </Button>
+            )}
+
+            {/* More actions dropdown */}
+            <div className="relative">
               <Button
                 variant="secondary"
-                onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
               >
-                <Edit2 className="mr-2 h-4 w-4" />
-                Edit
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-              <Button onClick={() => setShowSendModal(true)}>
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
-            </>
-          )}
-          {(contract.status === 'sent' || contract.status === 'viewed') && canWriteContracts && (
-            <Button onClick={handleActivate}>
-              <PlayCircle className="mr-2 h-4 w-4" />
-              Activate
-            </Button>
-          )}
-          {contract.status === 'pending_signature' && canWriteContracts && (
-            <Button onClick={handleActivate}>
-              <PlayCircle className="mr-2 h-4 w-4" />
-              Activate
-            </Button>
-          )}
-          {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
-            <Button onClick={openRenewModal}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Renew
-            </Button>
-          )}
-          {contract.archivedAt && canAdminContracts && (
-            <Button variant="secondary" onClick={handleRestore}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Restore
-            </Button>
-          )}
-
-          {/* More actions dropdown */}
-          <div className="relative">
-            <Button
-              variant="secondary"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(!menuOpen);
-              }}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-            {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                <button
-                  onClick={handleDownloadPdf}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
-                >
-                  <Download className="h-4 w-4" />
-                  Download PDF
-                </button>
-                {contract.publicToken && (
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
-                    onClick={async () => {
-                      const url = `${window.location.origin}/c/${contract.publicToken}`;
-                      try {
-                        await navigator.clipboard.writeText(url);
-                        toast.success('Link copied');
-                      } catch {
-                        prompt('Copy this link:', url);
-                      }
-                    }}
+                    onClick={handleDownloadPdf}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
                   >
-                    <LinkIcon className="h-4 w-4" />
-                    Copy Public Link
+                    <Download className="h-4 w-4" />
+                    Download PDF
                   </button>
-                )}
-                {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
-                  <button
-                    onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
-                  >
-                    <Mail className="h-4 w-4" />
-                    Resend Email
-                  </button>
-                )}
-                {contract.status === 'active' && canWriteContracts && (
-                  <>
-                    <div className="my-1 border-t border-white/10" />
+                  {contract.publicToken && (
                     <button
-                      onClick={() => { setMenuOpen(false); handleTerminate(); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                      onClick={async () => {
+                        const url = `${window.location.origin}/c/${contract.publicToken}`;
+                        try {
+                          await navigator.clipboard.writeText(url);
+                          toast.success('Link copied');
+                        } catch {
+                          prompt('Copy this link:', url);
+                        }
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
                     >
-                      <AlertTriangle className="h-4 w-4" />
-                      Terminate
+                      <LinkIcon className="h-4 w-4" />
+                      Copy Public Link
                     </button>
-                  </>
-                )}
-                {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
-                  <>
-                    <div className="my-1 border-t border-white/10" />
+                  )}
+                  {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
                     <button
-                      onClick={() => { setMenuOpen(false); handleArchive(); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                      onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
                     >
-                      <Archive className="h-4 w-4" />
-                      Archive
+                      <Mail className="h-4 w-4" />
+                      Resend Email
                     </button>
-                  </>
-                )}
-              </div>
-            )}
+                  )}
+                  {contract.status === 'active' && canWriteContracts && (
+                    <>
+                      <div className="my-1 border-t border-white/10" />
+                      <button
+                        onClick={() => { setMenuOpen(false); handleTerminate(); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                        Terminate
+                      </button>
+                    </>
+                  )}
+                  {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
+                    <>
+                      <div className="my-1 border-t border-white/10" />
+                      <button
+                        onClick={() => { setMenuOpen(false); handleArchive(); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                      >
+                        <Archive className="h-4 w-4" />
+                        Archive
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -678,7 +684,7 @@ const ContractDetail = () => {
                 )}
               </div>
             )}
-            {contract.proposal && (
+            {contract.proposal && !isSubcontractor && (
               <div>
                 <div className="text-sm text-gray-400">Source Proposal</div>
                 <button
@@ -699,43 +705,72 @@ const ContractDetail = () => {
         </Card>
 
         {/* Financial Terms */}
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign className="h-5 w-5 text-green-400" />
-            <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-400">Monthly Value</div>
-              <div className="text-2xl font-bold text-green-400">
-                {formatCurrency(Number(contract.monthlyValue))}
-              </div>
+        {isSubcontractor ? (
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <DollarSign className="h-5 w-5 text-teal-400" />
+              <h2 className="text-lg font-semibold text-white">Your Payout</h2>
             </div>
-            {contract.totalValue && (
+            <div className="space-y-4">
               <div>
-                <div className="text-sm text-gray-400">Total Contract Value</div>
-                <div className="text-xl font-semibold text-white">
-                  {formatCurrency(Number(contract.totalValue))}
+                <div className="text-sm text-gray-400">Monthly Payout</div>
+                <div className="text-2xl font-bold text-teal-400">
+                  {formatCurrency(Number(contract.subcontractorPayout || 0))}
                 </div>
               </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-gray-400">Billing Cycle</div>
-                <div className="text-white capitalize">
-                  {contract.billingCycle.replace('_', ' ')}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-400">Billing Cycle</div>
+                  <div className="text-white capitalize">
+                    {contract.billingCycle.replace('_', ' ')}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Payment Terms</div>
+                  <div className="text-white">{contract.paymentTerms}</div>
                 </div>
               </div>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <DollarSign className="h-5 w-5 text-green-400" />
+              <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
+            </div>
+            <div className="space-y-4">
               <div>
-                <div className="text-sm text-gray-400">Payment Terms</div>
-                <div className="text-white">{contract.paymentTerms}</div>
+                <div className="text-sm text-gray-400">Monthly Value</div>
+                <div className="text-2xl font-bold text-green-400">
+                  {formatCurrency(Number(contract.monthlyValue))}
+                </div>
+              </div>
+              {contract.totalValue && (
+                <div>
+                  <div className="text-sm text-gray-400">Total Contract Value</div>
+                  <div className="text-xl font-semibold text-white">
+                    {formatCurrency(Number(contract.totalValue))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-400">Billing Cycle</div>
+                  <div className="text-white capitalize">
+                    {contract.billingCycle.replace('_', ' ')}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Payment Terms</div>
+                  <div className="text-white">{contract.paymentTerms}</div>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
-        {/* Assignment */}
-        <Card>
+        {/* Assignment — hidden for subcontractors */}
+        {!isSubcontractor && <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
             <h2 className="text-lg font-semibold text-white">Assignment</h2>
@@ -827,7 +862,7 @@ const ContractDetail = () => {
               </Button>
             </div>
           </div>
-        </Card>
+        </Card>}
 
         {/* Service Terms */}
         <Card>
@@ -891,8 +926,8 @@ const ContractDetail = () => {
           </div>
         </Card>
 
-        {/* Workflow & Signatures */}
-        <Card>
+        {/* Workflow & Signatures — hidden for subcontractors */}
+        {!isSubcontractor && <Card>
           <div className="flex items-center gap-2 mb-4">
             <FileSignature className="h-5 w-5 text-purple-400" />
             <h2 className="text-lg font-semibold text-white">Workflow & Signatures</h2>
@@ -974,11 +1009,11 @@ const ContractDetail = () => {
               </div>
             )}
           </div>
-        </Card>
+        </Card>}
       </div>
 
-      {/* Terms & Conditions */}
-      <Card>
+      {/* Terms & Conditions — hidden for subcontractors */}
+      {!isSubcontractor && <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
           {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && canWriteContracts && (
@@ -1075,7 +1110,7 @@ const ContractDetail = () => {
         ) : (
           <p className="text-gray-500 text-sm italic">No terms and conditions set.</p>
         )}
-      </Card>
+      </Card>}
 
       {/* Special Instructions */}
       {contract.specialInstructions && (
@@ -1087,8 +1122,8 @@ const ContractDetail = () => {
         </Card>
       )}
 
-      {/* Initial Clean */}
-      {contract.includesInitialClean && (
+      {/* Initial Clean — hidden for subcontractors */}
+      {contract.includesInitialClean && !isSubcontractor && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-5 w-5 text-emerald-400" />
@@ -1121,8 +1156,8 @@ const ContractDetail = () => {
         </Card>
       )}
 
-      {/* Activity Timeline */}
-      {contract && (
+      {/* Activity Timeline — hidden for subcontractors */}
+      {contract && !isSubcontractor && (
         <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
       )}
 

@@ -8,6 +8,12 @@ export type ContractStatus =
   | 'terminated';
 
 export type ServiceFrequency =
+  | '1x_week'
+  | '2x_week'
+  | '3x_week'
+  | '4x_week'
+  | '5x_week'
+  | '7x_week'
   | 'daily'
   | 'weekly'
   | 'bi_weekly'
@@ -63,6 +69,7 @@ export interface Contract {
   billingCycle: BillingCycle;
   paymentTerms: string;
   subcontractorTier?: string | null;
+  subcontractorPayout?: number | null;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
   sentAt?: string | null;
@@ -109,6 +116,12 @@ export interface Contract {
     contactName?: string | null;
     contactEmail?: string | null;
     contactPhone?: string | null;
+  } | null;
+  assignedToUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+    status?: string;
   } | null;
   approvedByUser?: {
     id: string;
