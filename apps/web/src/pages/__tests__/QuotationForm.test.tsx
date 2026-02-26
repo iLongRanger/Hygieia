@@ -35,6 +35,7 @@ const listFacilitiesMock = vi.fn();
 const getQuotationMock = vi.fn();
 const createQuotationMock = vi.fn();
 const updateQuotationMock = vi.fn();
+const listOneTimeServiceCatalogMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
@@ -48,6 +49,10 @@ vi.mock('../../lib/quotations', () => ({
   getQuotation: (...args: unknown[]) => getQuotationMock(...args),
   createQuotation: (...args: unknown[]) => createQuotationMock(...args),
   updateQuotation: (...args: unknown[]) => updateQuotationMock(...args),
+}));
+
+vi.mock('../../lib/oneTimeServiceCatalog', () => ({
+  listOneTimeServiceCatalog: (...args: unknown[]) => listOneTimeServiceCatalogMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -73,6 +78,7 @@ describe('QuotationForm', () => {
     });
     createQuotationMock.mockResolvedValue({ id: 'qt-1' });
     updateQuotationMock.mockResolvedValue({ id: 'qt-1' });
+    listOneTimeServiceCatalogMock.mockResolvedValue([]);
     getQuotationMock.mockResolvedValue({
       id: 'qt-1',
       account: { id: 'account-1', name: 'Acme Corp' },
@@ -80,6 +86,9 @@ describe('QuotationForm', () => {
       title: 'Deep Cleaning',
       description: 'Desc',
       validUntil: '2026-03-10T00:00:00.000Z',
+      scheduledDate: '2026-03-01T00:00:00.000Z',
+      scheduledStartTime: '2026-03-01T09:00:00.000Z',
+      scheduledEndTime: '2026-03-01T10:00:00.000Z',
       taxRate: 0.08,
       notes: null,
       termsAndConditions: null,

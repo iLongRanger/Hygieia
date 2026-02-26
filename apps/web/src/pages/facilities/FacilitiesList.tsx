@@ -251,7 +251,7 @@ const FacilitiesList = () => {
     {
       header: 'Size',
       cell: (item: Facility) => {
-        const totalSqft = item.areas.reduce((sum, area) => {
+        const totalSqft = (item.areas || []).reduce((sum, area) => {
           const sqft = area.squareFeet ? Number(area.squareFeet) : 0;
           return sum + sqft * area.quantity;
         }, 0);

@@ -16,6 +16,26 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../../components/ui/Select', () => ({
+  Select: ({ label, value, onChange, options, disabled }: any) => (
+    <label>
+      {label}
+      <select
+        aria-label={label}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+        disabled={disabled}
+      >
+        {options.map((opt: any) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  ),
+}));
+
 const listContractsMock = vi.fn();
 const listTeamsMock = vi.fn();
 const listUsersMock = vi.fn();
@@ -98,7 +118,7 @@ describe('JobForm', () => {
     render(<JobForm />);
 
     expect(await screen.findByText('New Job')).toBeInTheDocument();
-    expect(screen.getByText('Select a contract')).toBeInTheDocument();
+    expect(screen.getByLabelText(/contract \*/i)).toBeInTheDocument();
   });
 
   it('validates required fields on submit', async () => {
@@ -122,7 +142,7 @@ describe('JobForm', () => {
 
     // Select contract
     await user.selectOptions(
-      screen.getByLabelText(/contract/i),
+      screen.getByLabelText(/contract \*/i),
       'contract-1'
     );
 
