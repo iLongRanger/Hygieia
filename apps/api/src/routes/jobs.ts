@@ -192,6 +192,7 @@ router.post(
       const job = await completeJob(req.params.id, {
         ...parsed.data,
         userId: req.user!.id,
+        userRole: req.user?.role,
       });
       res.json({ data: job });
     } catch (error) {

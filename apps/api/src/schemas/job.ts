@@ -69,6 +69,14 @@ export const updateJobSchema = z.object({
 export const completeJobSchema = z.object({
   completionNotes: z.string().nullable().optional(),
   actualHours: z.number().positive().nullable().optional(),
+  geoLocation: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      accuracy: z.number().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export const cancelJobSchema = z.object({
