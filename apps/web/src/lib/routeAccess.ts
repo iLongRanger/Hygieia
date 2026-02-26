@@ -76,6 +76,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.QUOTATIONS_READ],
   },
   {
+    path: '/quotations/catalog',
+    requiredPermissions: [PERMISSIONS.QUOTATIONS_ADMIN],
+  },
+  {
     path: '/contracts',
     requiredPermissions: [PERMISSIONS.CONTRACTS_READ],
   },
