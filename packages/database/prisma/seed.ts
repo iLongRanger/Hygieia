@@ -36,6 +36,21 @@ async function main() {
         description: 'Assigned work orders only',
         isSystemRole: true,
         permissions: { work_orders: true, own_tasks_only: true }
+      },
+      {
+        key: 'subcontractor',
+        label: 'Subcontractor',
+        description: 'View assigned contracts and jobs, log time',
+        isSystemRole: true,
+        permissions: {
+          dashboard_read: true,
+          contracts_read: true,
+          facilities_read: true,
+          jobs_read: true,
+          jobs_write: true,
+          time_tracking_read: true,
+          time_tracking_write: true,
+        }
       }
     ],
     skipDuplicates: true
