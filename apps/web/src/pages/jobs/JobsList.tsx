@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   X,
   Zap,
+  CalendarDays,
+  ListOrdered,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -90,6 +92,7 @@ const toDateInputValue = (date: Date): string => {
 };
 
 type GenerateAssignmentMode = 'contract_default' | 'subcontractor_team' | 'internal_employee';
+type JobsViewMode = 'table' | 'schedule';
 
 const JobsList = () => {
   const navigate = useNavigate();
@@ -122,6 +125,7 @@ const JobsList = () => {
   });
 
   const page = parseInt(searchParams.get('page') || '1', 10);
+  const viewMode = (searchParams.get('view') || 'schedule') as JobsViewMode;
   const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
   const dateFrom = searchParams.get('dateFrom') || '';
@@ -158,6 +162,16 @@ const JobsList = () => {
       params.delete(key);
     }
     params.set('page', '1');
+    setSearchParams(params);
+  };
+
+  const setViewMode = (mode: JobsViewMode) => {
+    const params = new URLSearchParams(searchParams);
+    if (mode === 'table') {
+      params.delete('view');
+    } else {
+      params.set('view', mode);
+    }
     setSearchParams(params);
   };
 
@@ -417,6 +431,15 @@ const JobsList = () => {
     },
   ];
 
+  const scheduledJobs = jobs.filter((job) => ['scheduled', 'in_progress'].includes(job.status));
+  const jobsByDate = scheduledJobs.reduce<Record<string, Job[]>>((acc, job) => {
+    const dateKey = job.scheduledDate.slice(0, 10);
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(job);
+    return acc;
+  }, {});
+  const scheduleDates = Object.keys(jobsByDate).sort((a, b) => a.localeCompare(b));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -435,6 +458,24 @@ const JobsList = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+            <Button
+              variant={viewMode === 'schedule' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('schedule')}
+            >
+              <CalendarDays className="mr-1.5 h-4 w-4" />
+              Schedule
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+            >
+              <ListOrdered className="mr-1.5 h-4 w-4" />
+              Table
+            </Button>
+          </div>
           <Button
             variant="secondary"
             size="sm"
@@ -504,61 +545,188 @@ const JobsList = () => {
         </Card>
       )}
 
-      {/* Table */}
-      <Card noPadding>
-        {loading ? (
-          <div className="space-y-1 p-2">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-14 w-full rounded-lg skeleton" />
-            ))}
-          </div>
-        ) : jobs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
-              <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+      {/* Main view */}
+      {viewMode === 'table' ? (
+        <Card noPadding>
+          {loading ? (
+            <div className="space-y-1 p-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-14 w-full rounded-lg skeleton" />
+              ))}
             </div>
-            <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
-              No jobs found
-            </p>
-            <p className="mt-1 text-xs text-surface-400 dark:text-surface-500">
-              Generate jobs from a contract or create one manually.
-            </p>
-          </div>
-        ) : (
-          <Table
-            columns={columns}
-            data={jobs}
-            onRowClick={(job) => navigate(`/jobs/${job.id}`)}
-          />
-        )}
+          ) : jobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
+                <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
+                No jobs found
+              </p>
+              <p className="mt-1 text-xs text-surface-400 dark:text-surface-500">
+                Generate jobs from a contract or create one manually.
+              </p>
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={jobs}
+              onRowClick={(job) => navigate(`/jobs/${job.id}`)}
+            />
+          )}
 
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-surface-200 px-4 py-3 dark:border-surface-700">
-            <span className="text-xs text-surface-500">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => updateFilter('page', String(page - 1))}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page >= pagination.totalPages}
-                onClick={() => updateFilter('page', String(page + 1))}
-              >
-                Next
-              </Button>
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-surface-200 px-4 py-3 dark:border-surface-700">
+              <span className="text-xs text-surface-500">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => updateFilter('page', String(page - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page >= pagination.totalPages}
+                  onClick={() => updateFilter('page', String(page + 1))}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      ) : (
+        <Card>
+          {loading ? (
+            <div className="grid gap-4 p-1 md:grid-cols-2 xl:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-44 rounded-xl skeleton" />
+              ))}
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
+                <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
+                No jobs found
+              </p>
+            </div>
+          ) : scheduleDates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
+                <CalendarDays className="h-8 w-8 text-surface-400 dark:text-surface-500" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-surface-600 dark:text-surface-400">
+                No scheduled jobs in this page
+              </p>
+              <p className="mt-1 text-xs text-surface-400 dark:text-surface-500">
+                Try clearing status filters or switching to table view.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-700/30">
+                <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                  Scheduled Board
+                </p>
+                <p className="mt-1 text-sm text-surface-700 dark:text-surface-200">
+                  {scheduledJobs.length} active jobs grouped by scheduled date
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {scheduleDates.map((dateKey) => {
+                  const dateJobs = jobsByDate[dateKey];
+                  return (
+                    <div
+                      key={dateKey}
+                      className="rounded-xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-800"
+                    >
+                      <div className="border-b border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-700/30">
+                        <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+                          {new Date(`${dateKey}T00:00:00.000Z`).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            timeZone: 'UTC',
+                          })}
+                        </p>
+                        <p className="text-xs text-surface-500">{dateJobs.length} jobs</p>
+                      </div>
+
+                      <div className="space-y-3 p-3">
+                        {dateJobs.map((job) => {
+                          const workforce = getWorkforceIndicator(job);
+                          const StatusIcon = getStatusIcon(job.status);
+                          return (
+                            <div
+                              key={job.id}
+                              className="rounded-lg border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-800"
+                            >
+                              <div className="mb-2 flex items-start justify-between gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/jobs/${job.id}`)}
+                                  className="text-left text-sm font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                                >
+                                  {job.jobNumber}
+                                </button>
+                                <Badge variant={getStatusVariant(job.status)}>
+                                  <StatusIcon className="mr-1 h-3 w-3" />
+                                  {job.status.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+
+                              <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
+                                {job.facility.name}
+                              </p>
+                              <p className="text-xs text-surface-500">{job.account.name}</p>
+
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>
+                                  {job.jobCategory === 'recurring' ? 'Recurring' : 'One-Time'}
+                                </Badge>
+                                <Badge variant={workforce.badgeVariant}>
+                                  {job.assignedToUser?.fullName || job.assignedTeam?.name || workforce.label}
+                                </Badge>
+                              </div>
+
+                              <div className="mt-3 flex items-center gap-1">
+                                {job.status === 'scheduled' && (
+                                  <Button variant="ghost" size="sm" onClick={() => handleStart(job.id)}>
+                                    <Play className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {job.status === 'in_progress' && (
+                                  <Button variant="ghost" size="sm" onClick={() => handleComplete(job.id)}>
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {['scheduled', 'in_progress'].includes(job.status) && (
+                                  <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)}>
+                                    <XCircle className="h-3.5 w-3.5 text-danger-500" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Modal
         isOpen={showGenerateModal}
