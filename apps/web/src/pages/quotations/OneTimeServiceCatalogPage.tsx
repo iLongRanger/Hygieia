@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -31,6 +31,9 @@ const OneTimeServiceCatalogPage = () => {
   const [items, setItems] = useState<OneTimeServiceCatalogItem[]>([]);
   const [newItem, setNewItem] = useState(EMPTY_ITEM);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<typeof EMPTY_ITEM | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   const load = async () => {
     try {
@@ -85,6 +88,50 @@ const OneTimeServiceCatalogPage = () => {
       await load();
     } catch {
       toast.error('Failed to delete item');
+    }
+  };
+
+  const startEdit = (item: OneTimeServiceCatalogItem) => {
+    setEditingId(item.id);
+    setEditingItem({
+      name: item.name,
+      code: item.code,
+      description: item.description || '',
+      serviceType: item.serviceType,
+      unitType: item.unitType,
+      baseRate: Number(item.baseRate),
+      defaultQuantity: Number(item.defaultQuantity),
+      minimumCharge: Number(item.minimumCharge || 0),
+      maxDiscountPercent: Number(item.maxDiscountPercent),
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingItem(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editingItem) return;
+    if (!editingItem.name.trim() || !editingItem.code.trim()) {
+      toast.error('Name and code are required');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      await updateOneTimeServiceCatalogItem(editingId, {
+        ...editingItem,
+        description: editingItem.description || null,
+        minimumCharge: Number(editingItem.minimumCharge) > 0 ? Number(editingItem.minimumCharge) : null,
+      });
+      toast.success('One-time service standard updated');
+      cancelEdit();
+      await load();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update one-time service standard');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -154,25 +201,126 @@ const OneTimeServiceCatalogPage = () => {
         <div className="p-6 space-y-3">
           <h2 className="text-lg font-semibold">Existing Standards</h2>
           {items.length === 0 && <p className="text-sm text-surface-500">No standards yet.</p>}
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2">
-              <div>
-                <p className="font-medium text-surface-900 dark:text-surface-100">{item.name}</p>
-                <p className="text-xs text-surface-500">
-                  {item.code} | {item.unitType} | ${Number(item.baseRate).toFixed(2)} | Max discount {Number(item.maxDiscountPercent).toFixed(2)}%
-                </p>
+          {items.map((item) => {
+            const isEditing = editingId === item.id && editingItem !== null;
+            const currentEditingItem = isEditing ? editingItem : null;
+
+            return (
+              <div key={item.id} className="rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2 space-y-3">
+                {!isEditing ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-surface-900 dark:text-surface-100">{item.name}</p>
+                      <p className="text-xs text-surface-500">
+                        {item.code} | {item.unitType} | ${Number(item.baseRate).toFixed(2)} | Max discount {Number(item.maxDiscountPercent).toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => startEdit(item)}>
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => toggleActive(item)}>
+                        <Save className="mr-1 h-3.5 w-3.5" />
+                        {item.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => removeItem(item)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Input
+                        label="Name"
+                        value={currentEditingItem!.name}
+                        onChange={(e) => setEditingItem((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                      />
+                      <Input
+                        label="Code"
+                        value={currentEditingItem!.code}
+                        onChange={(e) => setEditingItem((prev) => (prev ? { ...prev, code: e.target.value } : prev))}
+                      />
+                      <Select
+                        label="Service Type"
+                        value={currentEditingItem!.serviceType}
+                        onChange={(value) =>
+                          setEditingItem((prev) => (prev ? { ...prev, serviceType: value as typeof prev.serviceType } : prev))
+                        }
+                        options={[
+                          { value: 'window_cleaning', label: 'Window Cleaning' },
+                          { value: 'carpet_cleaning', label: 'Carpet Cleaning' },
+                          { value: 'custom', label: 'Custom' },
+                        ]}
+                      />
+                      <Select
+                        label="Unit"
+                        value={currentEditingItem!.unitType}
+                        onChange={(value) =>
+                          setEditingItem((prev) => (prev ? { ...prev, unitType: value as typeof prev.unitType } : prev))
+                        }
+                        options={[
+                          { value: 'per_window', label: 'Per Window' },
+                          { value: 'per_sqft', label: 'Per Sqft' },
+                          { value: 'fixed', label: 'Fixed' },
+                        ]}
+                      />
+                      <Input
+                        label="Base Rate"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={currentEditingItem!.baseRate}
+                        onChange={(e) => setEditingItem((prev) => (prev ? { ...prev, baseRate: Number(e.target.value) } : prev))}
+                      />
+                      <Input
+                        label="Default Quantity"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={currentEditingItem!.defaultQuantity}
+                        onChange={(e) =>
+                          setEditingItem((prev) => (prev ? { ...prev, defaultQuantity: Number(e.target.value) } : prev))
+                        }
+                      />
+                      <Input
+                        label="Minimum Charge"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={currentEditingItem!.minimumCharge}
+                        onChange={(e) =>
+                          setEditingItem((prev) => (prev ? { ...prev, minimumCharge: Number(e.target.value) } : prev))
+                        }
+                      />
+                      <Input
+                        label="Max Discount %"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        value={currentEditingItem!.maxDiscountPercent}
+                        onChange={(e) =>
+                          setEditingItem((prev) => (prev ? { ...prev, maxDiscountPercent: Number(e.target.value) } : prev))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={saveEdit} disabled={updating}>
+                        <Save className="mr-1.5 h-4 w-4" />
+                        {updating ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                      <Button variant="ghost" onClick={cancelEdit} disabled={updating}>
+                        <X className="mr-1.5 h-4 w-4" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => toggleActive(item)}>
-                  <Save className="mr-1 h-3.5 w-3.5" />
-                  {item.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => removeItem(item)}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>
