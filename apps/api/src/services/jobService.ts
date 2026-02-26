@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { getCoordinatesFromAddress, validateGeofence } from '../lib/geofence';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createBulkNotifications, createNotification } from './notificationService';
 import {
@@ -93,6 +94,7 @@ export interface StartJobOptions {
   managerOverride?: boolean;
   overrideReason?: string | null;
   userRole?: string;
+  geoLocation?: { latitude: number; longitude: number; accuracy?: number } | null;
 }
 
 type WorkforceAssignmentType =
@@ -504,6 +506,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
     select: {
       id: true,
       status: true,
+      facilityId: true,
       contract: {
         select: {
           id: true,
@@ -575,6 +578,28 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
     }
   }
 
+  // Geofence validation for cleaners/subcontractors
+  const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(options.userRole || '');
+
+  let geofenceResult: { verified: true; distanceMeters: number; allowedRadiusMeters: number } | null =
+    null;
+
+  if (requiresGeofence) {
+    if (!options.geoLocation) {
+      throw new BadRequestError('Location is required to start this job', {
+        code: 'CLOCK_IN_LOCATION_REQUIRED',
+      });
+    }
+
+    const facilityAddress = existing.facility?.address ?? existing.contract?.facility?.address;
+    const facilityCoords = getCoordinatesFromAddress(facilityAddress);
+
+    if (facilityCoords) {
+      geofenceResult = validateGeofence(options.geoLocation as any, facilityCoords);
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
       where: { id },
@@ -596,6 +621,36 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
               overrideReason: options.overrideReason || null,
             }
           : {},
+      },
+    });
+
+    // Auto clock-in for the user
+    const existingEntry = await tx.timeEntry.findFirst({
+      where: { userId, status: 'active', clockOut: null },
+    });
+    if (existingEntry) {
+      throw new BadRequestError(
+        'You already have an active clock-in. Clock out first before starting a new job.',
+        { code: 'ACTIVE_CLOCK_IN_EXISTS' }
+      );
+    }
+
+    await tx.timeEntry.create({
+      data: {
+        userId,
+        jobId: id,
+        contractId: existing.contract?.id ?? null,
+        facilityId: existing.facilityId,
+        clockIn: new Date(),
+        entryType: 'clock_in',
+        status: 'active',
+        geoLocation: options.geoLocation
+          ? {
+              ...options.geoLocation,
+              source: 'job_start',
+              geofence: geofenceResult ?? undefined,
+            }
+          : undefined,
       },
     });
 
