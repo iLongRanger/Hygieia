@@ -9,6 +9,8 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { createInvoice } from '../../lib/invoices';
 import { listAccounts } from '../../lib/accounts';
+import { listContracts } from '../../lib/contracts';
+import { listFacilities } from '../../lib/facilities';
 import type { Account } from '../../types/crm';
 import type { InvoiceItemType } from '../../types/invoice';
 
@@ -31,6 +33,7 @@ const InvoiceForm = () => {
   const today = new Date().toISOString().slice(0, 10);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [loadingContractItems, setLoadingContractItems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     accountId: '',
@@ -63,6 +66,61 @@ const InvoiceForm = () => {
     () => accounts.map((a) => ({ value: a.id, label: a.name })),
     [accounts]
   );
+
+  useEffect(() => {
+    const loadAccountContractItems = async () => {
+      if (!form.accountId) {
+        setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
+        return;
+      }
+
+      setLoadingContractItems(true);
+      try {
+        const [facilitiesRes, contractsRes] = await Promise.all([
+          listFacilities({
+            accountId: form.accountId,
+            status: 'active',
+            includeArchived: false,
+            limit: 100,
+            page: 1,
+          }),
+          listContracts({
+            accountId: form.accountId,
+            status: 'active',
+            includeArchived: false,
+            limit: 100,
+            page: 1,
+            sortBy: 'startDate',
+            sortOrder: 'desc',
+          }),
+        ]);
+
+        const activeFacilityIds = new Set(facilitiesRes.data.map((facility) => facility.id));
+        const contractItems = contractsRes.data
+          .filter((contract) => contract.facility?.id && activeFacilityIds.has(contract.facility.id))
+          .map((contract) => ({
+            description: `${contract.facility?.name ?? 'Facility'} - ${contract.title}`,
+            quantity: '1',
+            unitPrice: String(contract.monthlyValue ?? 0),
+            itemType: 'service' as InvoiceItemType,
+          }));
+
+        if (contractItems.length === 0) {
+          setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
+          toast('No active facility contracts found for this account');
+          return;
+        }
+
+        setItems(contractItems);
+      } catch {
+        toast.error('Failed to load contract line items');
+      } finally {
+        setLoadingContractItems(false);
+      }
+    };
+
+    void loadAccountContractItems();
+  }, [form.accountId]);
 
   const updateItem = (index: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -108,9 +166,9 @@ const InvoiceForm = () => {
       return;
     }
 
-    const taxRate = Number(form.taxRate);
-    if (Number.isNaN(taxRate) || taxRate < 0 || taxRate > 1) {
-      toast.error('Tax rate must be between 0 and 1');
+    const taxRatePercent = Number(form.taxRate);
+    if (Number.isNaN(taxRatePercent) || taxRatePercent < 0 || taxRatePercent > 100) {
+      toast.error('Tax rate must be between 0 and 100');
       return;
     }
 
@@ -120,7 +178,7 @@ const InvoiceForm = () => {
         accountId: form.accountId,
         issueDate: form.issueDate,
         dueDate: form.dueDate,
-        taxRate,
+        taxRate: taxRatePercent / 100,
         notes: form.notes || null,
         paymentInstructions: form.paymentInstructions || null,
         items: parsedItems,
@@ -178,11 +236,11 @@ const InvoiceForm = () => {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input
-            label="Tax Rate (0-1)"
+            label="Tax Rate (%)"
             type="number"
             min="0"
-            max="1"
-            step="0.0001"
+            max="100"
+            step="0.01"
             value={form.taxRate}
             onChange={(e) => setForm((prev) => ({ ...prev, taxRate: e.target.value }))}
           />
@@ -205,11 +263,16 @@ const InvoiceForm = () => {
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Line Items</h2>
-          <Button size="sm" variant="secondary" onClick={addItem}>
+          <Button size="sm" variant="secondary" onClick={addItem} disabled={loadingContractItems}>
             <Plus className="mr-1.5 h-4 w-4" />
             Add Item
           </Button>
         </div>
+        {loadingContractItems && (
+          <p className="text-sm text-surface-500 dark:text-surface-400">
+            Loading active facility contracts...
+          </p>
+        )}
 
         {items.map((item, index) => (
           <div key={`invoice-item-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 md:grid-cols-12 dark:border-surface-700">

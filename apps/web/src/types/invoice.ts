@@ -118,9 +118,11 @@ export interface GenerateFromContractInput {
   contractId: string;
   periodStart: string;
   periodEnd: string;
+  prorate?: boolean;
 }
 
 export interface BatchGenerateInput {
   periodStart: string;
   periodEnd: string;
+  prorate?: boolean;
 }

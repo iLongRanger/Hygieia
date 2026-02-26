@@ -135,7 +135,8 @@ router.post(
       req.body.contractId,
       new Date(req.body.periodStart),
       new Date(req.body.periodEnd),
-      req.user!.id
+      req.user!.id,
+      req.body.prorate ?? true
     );
     res.status(201).json({ data: invoice });
   }
@@ -150,7 +151,8 @@ router.post(
     const result = await batchGenerateInvoices(
       new Date(req.body.periodStart),
       new Date(req.body.periodEnd),
-      req.user!.id
+      req.user!.id,
+      req.body.prorate ?? true
     );
     res.json({ data: result });
   }

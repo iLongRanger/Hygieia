@@ -251,6 +251,31 @@ function addUtcDays(date: Date, days: number): Date {
   return next;
 }
 
+function getUtcDaysInMonth(year: number, monthIndex: number): number {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+function calculateProratedAmount(monthlyValue: number, periodStart: Date, periodEnd: Date): number {
+  let total = 0;
+  let cursor = atUtcStartOfDay(periodStart);
+  const endDay = atUtcStartOfDay(periodEnd);
+
+  while (cursor.getTime() <= endDay.getTime()) {
+    const year = cursor.getUTCFullYear();
+    const monthIndex = cursor.getUTCMonth();
+    const daysInMonth = getUtcDaysInMonth(year, monthIndex);
+    const monthEnd = new Date(Date.UTC(year, monthIndex, daysInMonth));
+    const segmentEnd = monthEnd.getTime() < endDay.getTime() ? monthEnd : endDay;
+    const segmentDays =
+      Math.floor((segmentEnd.getTime() - cursor.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+    total += (monthlyValue / daysInMonth) * segmentDays;
+    cursor = addUtcDays(segmentEnd, 1);
+  }
+
+  return Math.round(total * 100) / 100;
+}
+
 function runWithBatchIdempotency<T>(key: string, action: () => Promise<T>): Promise<T> {
   const now = Date.now();
   for (const [existingKey, expiresAt] of batchIdempotencyLocks.entries()) {
@@ -558,7 +583,8 @@ export async function generateInvoiceFromContract(
   contractId: string,
   periodStart: Date,
   periodEnd: Date,
-  createdByUserId: string
+  createdByUserId: string,
+  prorate = true
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -578,6 +604,9 @@ export async function generateInvoiceFromContract(
   const timezone = extractFacilityTimezone(contract.facility?.address) || 'UTC';
   const window = normalizePeriodWindow(periodStart, periodEnd, timezone);
   const monthlyValue = parseFloat(contract.monthlyValue.toString());
+  const serviceAmount = prorate
+    ? calculateProratedAmount(monthlyValue, window.start, window.end)
+    : monthlyValue;
   const termsDays = parsePaymentTermsDays(contract.paymentTerms);
   const issueDate = atUtcStartOfDay(window.end);
   const dueDate = atUtcStartOfDay(addUtcDays(issueDate, termsDays));
@@ -611,7 +640,7 @@ export async function generateInvoiceFromContract(
         itemType: 'service',
         description: `${contract.title || contract.contractNumber} - Cleaning Services (${toIsoDate(window.start)} to ${toIsoDate(window.end)})`,
         quantity: 1,
-        unitPrice: monthlyValue,
+        unitPrice: serviceAmount,
       },
     ],
   });
@@ -620,29 +649,60 @@ export async function generateInvoiceFromContract(
 export async function batchGenerateInvoices(
   periodStart: Date,
   periodEnd: Date,
-  createdByUserId: string
+  createdByUserId: string,
+  prorate = true
 ) {
   const normalizedWindow = normalizePeriodWindow(periodStart, periodEnd, 'UTC');
-  const batchKey = `invoice_batch:${toIsoDate(normalizedWindow.start)}:${toIsoDate(normalizedWindow.end)}:${normalizedWindow.timezone}`;
+  const batchKey = `invoice_batch:${toIsoDate(normalizedWindow.start)}:${toIsoDate(normalizedWindow.end)}:${normalizedWindow.timezone}:${prorate ? 'prorate' : 'full'}`;
 
   return runWithBatchIdempotency(batchKey, async () => {
     const activeContracts = await prisma.contract.findMany({
-      where: { status: 'active' },
-      select: { id: true },
+      where: { status: 'active', archivedAt: null },
+      select: {
+        id: true,
+        contractNumber: true,
+        title: true,
+        accountId: true,
+        monthlyValue: true,
+        paymentTerms: true,
+        facility: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            archivedAt: true,
+          },
+        },
+      },
     });
 
     const results: {
-      contractId: string;
+      accountId: string;
       status: 'generated' | 'skipped_duplicate' | 'error';
       reason?: string;
       invoiceId?: string;
+      lineItems?: number;
     }[] = [];
 
+    const contractsByAccount = new Map<
+      string,
+      typeof activeContracts
+    >();
+
     for (const contract of activeContracts) {
+      if (!contract.facility || contract.facility.archivedAt || contract.facility.status !== 'active') {
+        continue;
+      }
+      const existing = contractsByAccount.get(contract.accountId) || [];
+      existing.push(contract);
+      contractsByAccount.set(contract.accountId, existing);
+    }
+
+    for (const [accountId, accountContracts] of contractsByAccount.entries()) {
       try {
         const existingOverlap = await prisma.invoice.findFirst({
           where: {
-            contractId: contract.id,
+            accountId,
             status: { notIn: ['void', 'written_off'] },
             periodStart: { not: null, lte: normalizedWindow.end },
             periodEnd: { not: null, gte: normalizedWindow.start },
@@ -652,29 +712,59 @@ export async function batchGenerateInvoices(
 
         if (existingOverlap) {
           results.push({
-            contractId: contract.id,
+            accountId,
             status: 'skipped_duplicate',
             reason: `Overlaps with ${existingOverlap.invoiceNumber}`,
           });
           continue;
         }
 
-        const invoice = await generateInvoiceFromContract(
-          contract.id,
-          normalizedWindow.start,
-          normalizedWindow.end,
-          createdByUserId
-        );
-        results.push({ contractId: contract.id, status: 'generated', invoiceId: invoice.id });
+        const issueDate = atUtcStartOfDay(normalizedWindow.end);
+        const paymentTerms = accountContracts[0]?.paymentTerms;
+        const dueDate = atUtcStartOfDay(addUtcDays(issueDate, parsePaymentTermsDays(paymentTerms)));
+
+        const items = accountContracts.map((contract) => {
+          const monthlyValue = parseFloat(contract.monthlyValue.toString());
+          const serviceAmount = prorate
+            ? calculateProratedAmount(monthlyValue, normalizedWindow.start, normalizedWindow.end)
+            : monthlyValue;
+          const label = contract.title || contract.contractNumber;
+          const facilityName = contract.facility?.name || 'Facility';
+
+          return {
+            itemType: 'service' as const,
+            description: `${facilityName} - ${label} (${toIsoDate(normalizedWindow.start)} to ${toIsoDate(normalizedWindow.end)})`,
+            quantity: 1,
+            unitPrice: serviceAmount,
+          };
+        });
+
+        const invoice = await createInvoice({
+          accountId,
+          issueDate,
+          dueDate,
+          periodStart: normalizedWindow.start,
+          periodEnd: normalizedWindow.end,
+          createdByUserId,
+          items,
+        });
+
+        results.push({
+          accountId,
+          status: 'generated',
+          invoiceId: invoice.id,
+          lineItems: items.length,
+        });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
-        results.push({ contractId: contract.id, status: 'error', reason: message });
+        results.push({ accountId, status: 'error', reason: message });
       }
     }
 
     return {
       periodStart: toIsoDate(normalizedWindow.start),
       periodEnd: toIsoDate(normalizedWindow.end),
+      prorate,
       generated: results.filter((r) => r.status === 'generated').length,
       skipped: results.filter((r) => r.status !== 'generated').length,
       duplicates: results.filter((r) => r.status === 'skipped_duplicate').length,

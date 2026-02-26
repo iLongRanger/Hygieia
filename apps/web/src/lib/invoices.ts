@@ -76,7 +76,22 @@ export async function generateFromContract(
 
 export async function batchGenerateInvoices(
   input: BatchGenerateInput
-): Promise<{ generated: number; skipped: number }> {
+): Promise<{
+  periodStart: string;
+  periodEnd: string;
+  prorate: boolean;
+  generated: number;
+  skipped: number;
+  duplicates: number;
+  errors: number;
+  results: Array<{
+    accountId: string;
+    status: 'generated' | 'skipped_duplicate' | 'error';
+    reason?: string;
+    invoiceId?: string;
+    lineItems?: number;
+  }>;
+}> {
   const response = await api.post('/invoices/batch-generate', input);
   return response.data.data;
 }

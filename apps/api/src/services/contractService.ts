@@ -182,6 +182,19 @@ const contractSelect = {
   },
 } satisfies Prisma.ContractSelect;
 
+const {
+  assignedToUser: _assignedToUserOmitted,
+  ...contractSelectWithoutAssignedUser
+} = contractSelect;
+
+function isMissingAssignedToUserColumnError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.includes('contracts.assigned_to_user_id') &&
+    error.message.includes('does not exist')
+  );
+}
+
 /**
  * Generate the next contract number in the format: CONT-YYYYMM-XXXX
  */
@@ -266,19 +279,35 @@ export async function listContracts(
     where.archivedAt = null;
   }
 
-  const [total, contracts] = await Promise.all([
-    prisma.contract.count({ where }),
-    prisma.contract.findMany({
+  const total = await prisma.contract.count({ where });
+
+  let contracts;
+  try {
+    contracts = await prisma.contract.findMany({
       where,
       select: contractSelect,
       orderBy: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
-    }),
-  ]);
+    });
+  } catch (error) {
+    if (!isMissingAssignedToUserColumnError(error)) {
+      throw error;
+    }
+
+    contracts = await prisma.contract.findMany({
+      where,
+      select: contractSelectWithoutAssignedUser,
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+  }
 
   return {
-    data: contracts,
+    data: contracts.map((contract) =>
+      'assignedToUser' in contract ? contract : { ...contract, assignedToUser: null }
+    ),
     pagination: {
       page,
       limit,

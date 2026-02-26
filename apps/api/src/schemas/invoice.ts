@@ -70,6 +70,7 @@ export const generateFromContractSchema = z.object({
     contractId: z.string().uuid(),
     periodStart: z.string(),
     periodEnd: z.string(),
+    prorate: z.boolean().optional(),
   }).refine(
     (data) => !Number.isNaN(new Date(data.periodStart).getTime()) && !Number.isNaN(new Date(data.periodEnd).getTime()),
     { message: 'periodStart and periodEnd must be valid dates' }
@@ -80,6 +81,7 @@ export const batchGenerateSchema = z.object({
   body: z.object({
     periodStart: z.string(),
     periodEnd: z.string(),
+    prorate: z.boolean().optional(),
   }).refine(
     (data) => !Number.isNaN(new Date(data.periodStart).getTime()) && !Number.isNaN(new Date(data.periodEnd).getTime()),
     { message: 'periodStart and periodEnd must be valid dates' }
