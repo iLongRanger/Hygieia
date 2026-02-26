@@ -105,4 +105,32 @@ describe('NotificationsPage', () => {
       expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1');
     });
   });
+
+  it('renders near-end no-checkin job alert type and navigates to job', async () => {
+    const user = userEvent.setup();
+    listNotificationsMock.mockResolvedValueOnce([
+      {
+        id: 'n-job-1',
+        type: 'job_no_checkin_near_end',
+        title: 'No check-in yet for WO-2026-0100',
+        body: 'Job is nearing end time with no check-in',
+        metadata: { jobId: 'job-99' },
+        readAt: null,
+        emailSent: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<NotificationsPage />);
+
+    expect(await screen.findByText('No check-in yet for WO-2026-0100')).toBeInTheDocument();
+    expect(screen.getByText('Job No Checkin Near End')).toBeInTheDocument();
+
+    await user.click(screen.getByText('No check-in yet for WO-2026-0100'));
+
+    await waitFor(() => {
+      expect(markNotificationReadMock).toHaveBeenCalledWith('n-job-1', true);
+      expect(navigateMock).toHaveBeenCalledWith('/jobs/job-99');
+    });
+  });
 });
