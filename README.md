@@ -1,13 +1,15 @@
 # Hygieia - Commercial Cleaning Management System
 
-A comprehensive single-tenant web application for managing commercial cleaning operations, customer relationships, proposals, contracts, and day-to-day facility management tasks.
+Single-tenant web application for managing commercial cleaning operations across CRM, sales, operations, inspections, time tracking, and billing.
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
+- npm 9+
 - PostgreSQL 14+
-- Docker & Docker Compose (recommended for local development)
+- Redis (recommended for local development)
+- Docker and Docker Compose (optional but recommended)
 
 ### Installation
 
@@ -15,154 +17,116 @@ A comprehensive single-tenant web application for managing commercial cleaning o
 # 1. Install dependencies
 npm install
 
-# 2. Set up environment variables
+# 2. Configure environment variables
 cp .env.example .env
+cp apps/web/.env.example apps/web/.env
 
-# 3. Set up the database
+# 3. Run database migrations
 npm run db:migrate
 
-# 4. Start development servers
+# 4. (Optional) Seed baseline data
+npm run db:seed
+
+# 5. Start API + Web
 npm run dev
 ```
 
-This will start:
-- **API Server**: http://localhost:3001
-- **Web Application**: http://localhost:3000
-- **PostgreSQL**: localhost:5432
-- **Redis**: localhost:6379
+By default this starts:
+- API: `http://localhost:3001`
+- Web: `http://localhost:5173`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
 
-## Documentation
+## Current Modules
 
-For detailed documentation, see the [Documentation/](./Documentation/) folder:
-- [Getting Started Guide](./Documentation/README.md)
-- [Development Guide](./DEVELOPMENT.md)
-- [Architecture Overview](./Documentation/ARCHITECTURE.md)
-- [Data Model](./Documentation/Complete_Data_Model.md)
-- [Testing Strategy](./Documentation/Testing_Strategy.md)
-- [User Testing Workflow](./Documentation/User_Test_Workflow.md)
-- [Security Implementation](./Documentation/Security_Implementation_Guide.md)
-- [API Error Handling](./Documentation/API_Error_Handling.md)
+- CRM: Leads, Accounts, Contacts, Appointments
+- Sales: Proposals, Quotations, Contracts
+- Operations: Jobs (recurring + one-time), Teams, Facilities, Tasks
+- Quality: Inspections + templates
+- Workforce: Time tracking + timesheets
+- Billing: Invoices (manual + bulk generation)
+- Settings: Global settings, pricing plans, area/proposal templates, users
+- Public links: Proposal, quotation, contract, and invoice public views
+- Notifications: In-app realtime + optional email
 
-## Project Structure
+## Architecture
 
-```
+### Monorepo Layout
+
+```text
 hygieia/
-├── apps/
-│   ├── api/              # Express.js backend (Node.js + TypeScript)
-│   └── web/              # React frontend (Vite + TypeScript)
-├── packages/
-│   ├── database/          # Prisma schema and database client
-│   ├── types/             # Shared TypeScript types
-│   ├── utils/             # Shared utility functions
-│   └── ui/                # Shared UI components
-├── Documentation/         # Project documentation
-├── DEVELOPMENT.md         # Development workflow guide
-├── CHANGELOG.md          # Version history
-├── docker-compose.yml      # Local development setup
-└── package.json          # Root package configuration
+  apps/
+    api/        Express + TypeScript API
+    web/        React + Vite + TypeScript app
+  packages/
+    database/   Prisma schema + migrations
+    types/      Shared TypeScript types
+    utils/      Shared utilities
+    ui/         Shared UI components
 ```
 
-## Available Scripts
+### Backend Runtime
+- Entry: `apps/api/src/index.ts`
+- Auth: JWT middleware + permission checks
+- ORM: Prisma + PostgreSQL
+- Realtime: Socket.IO user-room notifications
+- Schedulers:
+  - reminder scheduler
+  - recurring job auto-regeneration scheduler
+  - job nearing-end alert scheduler
 
-### Development
-- `npm run dev` - Start both API and Web in parallel
+### Frontend Runtime
+- Entry: `apps/web/src/main.tsx`
+- Router: `apps/web/src/App.tsx`
+- API client: Axios with access-token refresh
+- Route access control: permission-based route guards
+
+## Scripts
+
+### Root Scripts
+- `npm run dev` - Start API and web in parallel
 - `npm run dev:api` - Start API only
-- `npm run dev:web` - Start Web only
-
-### Database
-- `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed database with initial data
+- `npm run dev:web` - Start web only
+- `npm run build` - Build all workspaces
+- `npm run test` - Run workspace tests via Turbo
+- `npm run test:unit` - Run workspace unit tests via Turbo
+- `npm run test:integration` - Run workspace integration tests via Turbo
+- `npm run test:e2e` - Run Playwright tests in `tests/e2e`
+- `npm run lint` - Lint all workspaces
+- `npm run lint:fix` - Autofix lint issues
+- `npm run typecheck` - Typecheck all workspaces
+- `npm run db:migrate` - Run Prisma migrations
+- `npm run db:seed` - Seed database
 - `npm run db:studio` - Open Prisma Studio
 - `npm run db:reset` - Reset database
 
-### Testing
-- `npm run test` - Run all tests
-- `npm run test:unit` - Run unit tests only
-- `npm run test:integration` - Run integration tests
-- `npm run test:coverage` - Generate coverage report
+### Coverage Scripts
+- API coverage: `cd apps/api && npm run test:coverage`
+- Web coverage: `cd apps/web && npm run test:coverage`
 
-### Code Quality
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix linting issues
-- `npm run format` - Format code with Prettier
-- `npm run typecheck` - Type check all packages
+## Environment Notes
 
-### Build
-- `npm run build` - Build all packages
+- API defaults come from `.env.example`.
+- Web defaults come from `apps/web/.env.example`.
+- Ensure `CORS_ORIGIN` and `VITE_API_BASE_URL` match your local/prod URLs.
+- In production, set `FRONTEND_URL`/`WEB_APP_URL` so outbound public links do not fallback to localhost.
 
-## Technology Stack
+## Documentation
 
-### Frontend
-- **Framework**: React 18+ with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand or Redux Toolkit
-- **Forms**: React Hook Form with Zod validation
+Core docs live in `Documentation/` and project root:
+- [Development Guide](./DEVELOPMENT.md)
+- [Testing Guide](./TESTING.md)
+- [Production Checklist](./PRODUCTION_CHECKLIST.md)
+- [System Understanding](./SYSTEM_UNDERSTANDING.md)
 
-### Backend
-- **Runtime**: Node.js 18+
-- **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL 14+ with Prisma ORM
-- **Authentication**: JWT with bcrypt
-- **Validation**: Zod schemas
+## Project Status
 
-### Infrastructure
-- **Containerization**: Docker & Docker Compose
-- **Process Manager**: PM2 (production)
-- **CI/CD**: GitHub Actions
-
-## Development Workflow
-
-1. **Follow Documentation-Driven Development (DDD)**: All features must be documented before implementation
-2. **Use Test-Driven Development (TDD)**: Write failing tests first, implement code to pass
-3. **Commit Standards**: Use conventional commits: `feat(scope): description`
-4. **Quality Gates**: All tests must pass, minimum 90% test coverage, no type errors
-
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development guidelines.
-
-## Project Roadmap
-
-### Phase 1: Core CRM (Months 1-3)
-- [ ] User authentication and authorization
-- [ ] Lead management system
-- [ ] Customer account management
-- [ ] Contact management
-- [ ] Basic dashboard and reporting
-
-### Phase 2: Facility Management (Months 4-5)
-- [ ] Facility profiles and specifications
-- [ ] Area categorization system
-- [ ] Condition assessment tools
-- [ ] Access and requirements management
-
-### Phase 3: Operations & Tasks (Months 6-7)
-- [ ] Task template system
-- [ ] Work order generation
-- [ ] Staff assignment and tracking
-- [ ] Task completion verification
-
-### Phase 4: Estimating & Proposals (Months 8-9)
-- [ ] Automated quote generation
-- [ ] Proposal template system
-- [ ] Digital proposal delivery
-- [ ] E-signature integration
-
-### Phase 5: Advanced Features (Months 10-12)
-- [ ] Advanced reporting and analytics
-- [ ] Mobile-responsive interface
-- [ ] Email automation
-- [ ] QuickBooks integration
+This project is in active development and feature-hardening. Before production deployment:
+- keep migrations clean and applied in all environments
+- require passing tests and typechecks
+- run manual UAT on critical business flows
+- verify scheduler/notification behavior in staging
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support and questions:
-- 📖 Documentation: [Documentation/](./Documentation/)
-- 🐛 Issues: [GitHub Issues](https://github.com/iLongRanger/Hygieia/issues)
-
----
-
-**Hygieia** - Streamlining commercial cleaning operations for business growth.
+MIT
