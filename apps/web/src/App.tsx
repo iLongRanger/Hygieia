@@ -44,6 +44,7 @@ import TimeTrackingPage from './pages/timeTracking/TimeTrackingPage';
 import TimesheetsPage from './pages/timeTracking/TimesheetsPage';
 import InvoicesList from './pages/invoices/InvoicesList';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
+import InvoiceForm from './pages/invoices/InvoiceForm';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import QuotationsList from './pages/quotations/QuotationsList';
 import QuotationDetail from './pages/quotations/QuotationDetail';
@@ -156,6 +157,7 @@ function App() {
             <Route path="/time-tracking" element={withRouteGuard('/time-tracking', <TimeTrackingPage />)} />
             <Route path="/timesheets" element={withRouteGuard('/timesheets', <TimesheetsPage />)} />
             <Route path="/invoices" element={withRouteGuard('/invoices', <InvoicesList />)} />
+            <Route path="/invoices/new" element={withRouteGuard('/invoices', <InvoiceForm />)} />
             <Route path="/invoices/:id" element={withRouteGuard('/invoices', <InvoiceDetail />)} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/teams" element={withRouteGuard('/teams', <TeamsList />)} />
