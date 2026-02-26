@@ -192,8 +192,8 @@ describe('inspectionService', () => {
       userId: 'inspector-1',
       summary: 'Completed',
       items: [
-        { id: 'item-1', score: 'pass' },
-        { id: 'item-2', score: 'fail' },
+        { id: 'item-1', score: 'pass', notes: 'Floor looks good' },
+        { id: 'item-2', score: 'fail', notes: 'Trash bins were not emptied' },
       ],
     });
 
