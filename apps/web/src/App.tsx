@@ -52,6 +52,7 @@ import OneTimeServiceCatalogPage from './pages/quotations/OneTimeServiceCatalogP
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
+import SetPassword from './pages/auth/SetPassword';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -100,6 +101,7 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/set-password" element={<SetPassword />} />
           <Route path="/p/:token" element={<PublicProposalView />} />
           <Route path="/c/:token" element={<PublicContractView />} />
           <Route path="/q/:token" element={<PublicQuotationView />} />
