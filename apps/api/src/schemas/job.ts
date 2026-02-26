@@ -91,6 +91,14 @@ export const assignJobSchema = z.object({
 export const startJobSchema = z.object({
   managerOverride: z.boolean().optional().default(false),
   overrideReason: z.string().max(500).nullable().optional(),
+  geoLocation: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      accuracy: z.number().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export const generateJobsSchema = z.object({

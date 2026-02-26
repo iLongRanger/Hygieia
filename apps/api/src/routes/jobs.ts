@@ -170,6 +170,7 @@ router.post(
         managerOverride: parsed.data.managerOverride,
         overrideReason: parsed.data.overrideReason ?? null,
         userRole: req.user?.role,
+        geoLocation: parsed.data.geoLocation ?? null,
       });
       res.json({ data: job });
     } catch (error) {
