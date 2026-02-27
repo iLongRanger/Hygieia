@@ -116,7 +116,9 @@ describe('JobDetail', () => {
     await user.click(startBtn);
 
     await waitFor(() => {
-      expect(startJobMock).toHaveBeenCalledWith('job-1');
+      expect(startJobMock).toHaveBeenCalledWith('job-1', {
+        geoLocation: null,
+      });
     });
   });
 
@@ -141,6 +143,7 @@ describe('JobDetail', () => {
     await waitFor(() => {
       expect(completeJobMock).toHaveBeenCalledWith('job-1', {
         completionNotes: 'Job done',
+        geoLocation: null,
       });
     });
   });

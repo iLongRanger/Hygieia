@@ -168,7 +168,7 @@ describe('authService', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null for user without password hash', async () => {
+    it('should throw unauthorized for user without password hash', async () => {
       const credentials = {
         email: 'test@example.com',
         password: 'password123',
@@ -183,9 +183,9 @@ describe('authService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
-      const result = await authService.login(credentials);
-
-      expect(result).toBeNull();
+      await expect(authService.login(credentials)).rejects.toThrow(
+        'Please set your password using the link sent to your email before logging in.'
+      );
     });
 
     it('should return null for invalid password', async () => {
