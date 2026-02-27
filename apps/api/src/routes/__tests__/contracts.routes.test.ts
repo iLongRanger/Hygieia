@@ -10,9 +10,14 @@ import * as notificationService from '../../services/notificationService';
 import * as jobService from '../../services/jobService';
 import { prisma } from '../../lib/prisma';
 
+const mockAuthUser: { id: string; role: string; teamId?: string } = {
+  id: 'user-1',
+  role: 'owner',
+};
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = { id: 'user-1', role: 'owner' };
+    req.user = mockAuthUser;
     next();
   },
 }));
@@ -99,6 +104,8 @@ describe('Contract Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockAuthUser.role = 'owner';
+    delete mockAuthUser.teamId;
     app = createTestApp();
     const routes = (await import('../contracts')).default;
     setupTestRoutes(app, routes, '/api/v1/contracts');
@@ -116,6 +123,35 @@ describe('Contract Routes', () => {
 
     expect(response.body.data).toHaveLength(1);
     expect(contractService.listContracts).toHaveBeenCalled();
+  });
+
+  it('GET / should return subcontractor payout fields for subcontractor users', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+
+    (contractService.listContracts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'contract-1',
+          contractNumber: 'CONT-001',
+          title: 'Main Office Cleaning',
+          monthlyValue: 1000,
+          totalValue: 12000,
+          subcontractorTier: 'labor_only',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    const response = await request(app).get('/api/v1/contracts').expect(200);
+
+    expect(response.body.data[0]).toMatchObject({
+      id: 'contract-1',
+      subcontractorTier: 'labor_only',
+      subcontractorPayout: 400,
+    });
+    expect(response.body.data[0].monthlyValue).toBeUndefined();
+    expect(response.body.data[0].totalValue).toBeUndefined();
   });
 
   it('GET / should return 422 for invalid query', async () => {

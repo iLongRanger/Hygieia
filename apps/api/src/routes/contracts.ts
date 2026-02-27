@@ -146,6 +146,19 @@ router.get(
         userRole: req.user?.role,
         userTeamId: req.user?.teamId,
       });
+
+      if (req.user?.role === 'subcontractor') {
+        const safeContracts = result.data.map((contract: any) => {
+          const payout =
+            Number(contract.monthlyValue || 0) *
+            tierToPercentage(contract.subcontractorTier);
+          const { monthlyValue, totalValue, ...safeContract } = contract;
+          return { ...safeContract, subcontractorPayout: payout };
+        });
+
+        return res.json({ data: safeContracts, pagination: result.pagination });
+      }
+
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
