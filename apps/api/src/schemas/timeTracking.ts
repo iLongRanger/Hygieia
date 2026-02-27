@@ -29,6 +29,14 @@ export const clockInSchema = z.object({
 export const clockOutSchema = z.object({
   body: z.object({
     notes: z.string().max(1000).optional().nullable(),
+    geoLocation: z
+      .object({
+        latitude: z.number(),
+        longitude: z.number(),
+        accuracy: z.number().optional(),
+      })
+      .nullable()
+      .optional(),
   }),
 });
 

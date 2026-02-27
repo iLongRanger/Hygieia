@@ -96,7 +96,12 @@ router.post(
   '/clock-out',
   validate(clockOutSchema),
   async (req: Request, res: Response) => {
-    const entry = await clockOut(req.user!.id, req.body.notes);
+    const entry = await clockOut(
+      req.user!.id,
+      req.body.notes,
+      req.body.geoLocation,
+      req.user?.role
+    );
     res.json({ data: entry });
   }
 );

@@ -5,6 +5,7 @@ import {
   getCoordinatesFromAddress,
   getCoordinatesFromGeoLocation,
   calculateDistanceMeters,
+  validateGeofence,
 } from '../lib/geofence';
 import {
   extractFacilityTimezone,
@@ -349,22 +350,51 @@ export async function clockIn(input: ClockInInput) {
   return entry;
 }
 
-export async function clockOut(userId: string, notes?: string) {
+export async function clockOut(
+  userId: string,
+  notes?: string,
+  geoLocation?: { latitude: number; longitude: number; accuracy?: number } | null,
+  userRole?: string
+) {
   const active = await prisma.timeEntry.findFirst({
     where: { userId, status: 'active', clockOut: null },
+    include: {
+      job: { select: { id: true, facility: { select: { address: true } } } },
+    },
   });
   if (!active) throw new BadRequestError('No active clock-in found');
 
-  const clockOut = new Date();
-  const totalHours = computeHours(active.clockIn, clockOut, active.breakMinutes);
+  // Geofence validation on clock-out for cleaners/subcontractors when linked to a job
+  const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(userRole || '') && active.job;
 
+  let clockOutGeofence = null;
+  if (requiresGeofence) {
+    if (!geoLocation) {
+      throw new BadRequestError('Location is required to clock out', {
+        code: 'CLOCK_IN_LOCATION_REQUIRED',
+      });
+    }
+    const facilityCoords = getCoordinatesFromAddress(active.job?.facility?.address);
+    if (facilityCoords) {
+      clockOutGeofence = validateGeofence(geoLocation as any, facilityCoords);
+    }
+  }
+
+  const clockOutTime = new Date();
+  const totalHours = computeHours(active.clockIn, clockOutTime, active.breakMinutes);
+
+  const existingGeo = (active.geoLocation as Record<string, unknown>) || {};
   const entry = await prisma.timeEntry.update({
     where: { id: active.id },
     data: {
-      clockOut,
+      clockOut: clockOutTime,
       totalHours: new Prisma.Decimal(totalHours),
       status: 'completed',
       notes: notes || active.notes,
+      geoLocation: geoLocation
+        ? { ...existingGeo, clockOutLocation: { ...geoLocation, geofence: clockOutGeofence } }
+        : existingGeo,
     },
     select: timeEntryDetailSelect,
   });
