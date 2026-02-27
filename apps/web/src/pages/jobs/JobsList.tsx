@@ -297,7 +297,12 @@ const JobsList = () => {
       await completeJob(id);
       toast.success('Job completed');
       fetchJobs();
-    } catch {
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      if (details?.code === 'ACTIVE_CLOCK_IN_REQUIRED') {
+        toast.error('Clock in to this job first, then complete it.');
+        return;
+      }
       toast.error('Failed to complete job');
     }
   };

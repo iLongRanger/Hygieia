@@ -4,6 +4,7 @@ import { createBulkNotifications, createNotification } from '../notificationServ
 import {
   assignJob,
   autoGenerateRecurringJobsForContract,
+  completeJob,
   createJob,
   generateJobsFromContract,
   listJobs,
@@ -35,6 +36,9 @@ jest.mock('../../lib/prisma', () => ({
       findMany: jest.fn(),
     },
     timeEntry: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
       findMany: jest.fn(),
     },
     jobActivity: {
@@ -529,5 +533,64 @@ describe('jobService', () => {
       alerted: 0,
       notifications: 0,
     });
+  });
+
+  it('completeJob requires active clock-in for cleaners', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      status: 'in_progress',
+      actualStartTime: new Date('2026-02-26T15:00:00.000Z'),
+      facilityId: 'facility-1',
+      facility: { address: { lat: 0, lng: 0 } },
+      contract: { id: 'contract-1', facility: { address: { lat: 0, lng: 0 } } },
+    });
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      completeJob('job-1', {
+        userId: 'cleaner-1',
+        userRole: 'cleaner',
+        geoLocation: { latitude: 0, longitude: 0 },
+      })
+    ).rejects.toThrow('You must clock in to this job before completing it.');
+
+    expect(prisma.job.update).not.toHaveBeenCalled();
+  });
+
+  it('completeJob clocks out active entry linked to the same job', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      status: 'in_progress',
+      actualStartTime: new Date('2026-02-26T15:00:00.000Z'),
+      facilityId: 'facility-1',
+      facility: { address: { lat: 0, lng: 0 } },
+      contract: { id: 'contract-1', facility: { address: { lat: 0, lng: 0 } } },
+    });
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
+      id: 'entry-1',
+      clockIn: new Date('2026-02-26T15:30:00.000Z'),
+      breakMinutes: 0,
+      geoLocation: {},
+    });
+    (prisma.job.update as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      assignedTeam: null,
+      assignedToUser: { id: 'cleaner-1' },
+    });
+
+    await completeJob('job-1', {
+      userId: 'cleaner-1',
+      userRole: 'cleaner',
+      geoLocation: { latitude: 0, longitude: 0 },
+    });
+
+    expect(prisma.timeEntry.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'entry-1' },
+        data: expect.objectContaining({
+          status: 'completed',
+        }),
+      })
+    );
   });
 });

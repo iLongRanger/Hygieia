@@ -760,6 +760,18 @@ export async function completeJob(id: string, input: JobCompleteInput) {
   }
 
   return prisma.$transaction(async (tx) => {
+    // Active clock-in is required for cleaner/subcontractor completion.
+    const activeEntry = await tx.timeEntry.findFirst({
+      where: { userId: input.userId, jobId: id, status: 'active', clockOut: null },
+    });
+
+    if (requiresGeofence && !activeEntry) {
+      throw new BadRequestError(
+        'You must clock in to this job before completing it.',
+        { code: 'ACTIVE_CLOCK_IN_REQUIRED' }
+      );
+    }
+
     const job = await tx.job.update({
       where: { id },
       data: {
@@ -778,11 +790,6 @@ export async function completeJob(id: string, input: JobCompleteInput) {
         performedByUserId: input.userId,
         metadata: { actualHours },
       },
-    });
-
-    // Auto clock-out: find active time entry linked to this job
-    const activeEntry = await tx.timeEntry.findFirst({
-      where: { userId: input.userId, jobId: id, status: 'active', clockOut: null },
     });
 
     if (activeEntry) {

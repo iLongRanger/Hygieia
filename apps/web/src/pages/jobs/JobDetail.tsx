@@ -188,6 +188,10 @@ const JobDetail = () => {
         toast.error('You must be at the facility to complete this job');
         return;
       }
+      if (details?.code === 'ACTIVE_CLOCK_IN_REQUIRED') {
+        toast.error('Clock in to this job first, then complete it.');
+        return;
+      }
       toast.error('Failed to complete job');
     }
   };
