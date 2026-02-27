@@ -267,6 +267,44 @@ function assertSingleWorkforceAssignment(input: {
   }
 }
 
+async function buildJobTaskSeedData(facilityId: string, jobId: string) {
+  const facilityTasks = await prisma.facilityTask.findMany({
+    where: {
+      facilityId,
+      archivedAt: null,
+    },
+    select: {
+      id: true,
+      customName: true,
+      customInstructions: true,
+      estimatedMinutes: true,
+      taskTemplate: {
+        select: {
+          name: true,
+          estimatedMinutes: true,
+        },
+      },
+    },
+    orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  return facilityTasks
+    .map((task) => {
+      const taskName = task.customName || task.taskTemplate?.name;
+      if (!taskName) return null;
+
+      return {
+        jobId,
+        facilityTaskId: task.id,
+        taskName,
+        description: task.customInstructions ?? null,
+        status: 'pending',
+        estimatedMinutes: task.estimatedMinutes ?? task.taskTemplate?.estimatedMinutes ?? null,
+      };
+    })
+    .filter((task): task is NonNullable<typeof task> => task !== null);
+}
+
 function deriveWorkforceAssignmentType(job: {
   assignedTeam?: { id: string } | null;
   assignedToUser?: { id: string } | null;
@@ -447,6 +485,13 @@ export async function createJob(input: JobCreateInput) {
       },
       select: jobSelect,
     });
+
+    const seededTasks = await buildJobTaskSeedData(input.facilityId, job.id);
+    if (seededTasks.length > 0) {
+      await tx.jobTask.createMany({
+        data: seededTasks,
+      });
+    }
 
     await tx.jobActivity.create({
       data: {
@@ -1012,6 +1057,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
 
   // Batch create jobs
   const jobs = [];
+  const seededFacilityTasks = await buildJobTaskSeedData(contract.facilityId, '');
   for (const dateIso of newDates) {
     try {
       const jobNumber = await generateJobNumber();
@@ -1037,6 +1083,15 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         },
         select: { id: true, jobNumber: true, scheduledDate: true },
       });
+
+      if (seededFacilityTasks.length > 0) {
+        await prisma.jobTask.createMany({
+          data: seededFacilityTasks.map((task) => ({
+            ...task,
+            jobId: job.id,
+          })),
+        });
+      }
       jobs.push(job);
     } catch (error) {
       // Concurrency-safe duplicate protection with partial unique index.

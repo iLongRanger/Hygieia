@@ -20,6 +20,12 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    facilityTask: {
+      findMany: jest.fn(),
+    },
+    jobTask: {
+      createMany: jest.fn(),
+    },
     contract: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -50,6 +56,8 @@ describe('jobService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.jobTask.createMany as jest.Mock).mockResolvedValue({ count: 0 });
   });
 
   it('listJobs applies filters and pagination', async () => {
@@ -148,6 +156,51 @@ describe('jobService', () => {
     );
   });
 
+  it('createJob seeds job tasks from facility tasks', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0009`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      jobNumber: `WO-${year}-0010`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'facility-task-1',
+        customName: null,
+        customInstructions: 'Do it carefully',
+        estimatedMinutes: 25,
+        taskTemplate: { name: 'Vacuum', estimatedMinutes: 20 },
+      },
+    ]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-1',
+          facilityTaskId: 'facility-task-1',
+          taskName: 'Vacuum',
+          description: 'Do it carefully',
+          status: 'pending',
+          estimatedMinutes: 25,
+        },
+      ],
+    });
+  });
+
   it('assignJob sends notification when internal user assignment is present', async () => {
     (prisma.job.findUnique as jest.Mock).mockResolvedValue({
       id: 'job-1',
@@ -236,6 +289,15 @@ describe('jobService', () => {
       jobNumber: `WO-${year}-0002`,
       scheduledDate: new Date('2026-01-08T00:00:00.000Z'),
     });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'facility-task-1',
+        customName: 'Mop Floors',
+        customInstructions: null,
+        estimatedMinutes: null,
+        taskTemplate: { name: 'Mop', estimatedMinutes: 15 },
+      },
+    ]);
 
     const result = await generateJobsFromContract({
       contractId: 'contract-1',
@@ -257,6 +319,18 @@ describe('jobService', () => {
       })
     );
     expect(result.created).toBe(1);
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-2',
+          facilityTaskId: 'facility-task-1',
+          taskName: 'Mop Floors',
+          description: null,
+          status: 'pending',
+          estimatedMinutes: 15,
+        },
+      ],
+    });
   });
 
   it('generateJobsFromContract supports internal employee override assignment', async () => {
