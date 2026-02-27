@@ -104,6 +104,20 @@ export interface Contract {
     id: string;
     name: string;
     address: any;
+    areas?: {
+      id: string;
+      name: string | null;
+      areaType?: string | null;
+      squareFeet?: number;
+      floorType?: string | null;
+      roomCount?: number;
+      unitCount?: number;
+    }[];
+    tasks?: {
+      name: string;
+      areaName?: string | null;
+      cleaningFrequency?: string | null;
+    }[];
   } | null;
   proposal?: {
     id: string;

@@ -245,9 +245,62 @@ router.get(
       }
 
       if (req.user?.role === 'subcontractor') {
+        const facilityId = contract.facility?.id;
+        const [facilityAreas, facilityTasks] = facilityId
+          ? await Promise.all([
+              prisma.area.findMany({
+                where: {
+                  facilityId,
+                  archivedAt: null,
+                },
+                select: {
+                  id: true,
+                  name: true,
+                  squareFeet: true,
+                  floorType: true,
+                  roomCount: true,
+                  unitCount: true,
+                  areaType: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+                orderBy: { name: 'asc' },
+              }),
+              getFacilityTasksForContract(facilityId),
+            ])
+          : [[], []];
+
         const payout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
         const { monthlyValue, totalValue, ...safeContract } = contract as any;
-        return res.json({ data: { ...safeContract, subcontractorPayout: payout } });
+        const safeFacility = safeContract.facility
+          ? {
+              ...safeContract.facility,
+              areas: facilityAreas.map((area) => ({
+                id: area.id,
+                name: area.name,
+                areaType: area.areaType?.name || null,
+                squareFeet: Number(area.squareFeet || 0),
+                floorType: area.floorType,
+                roomCount: area.roomCount,
+                unitCount: area.unitCount,
+              })),
+              tasks: facilityTasks.map((task: any) => ({
+                name: task.taskTemplate?.name || task.customName || 'Unnamed task',
+                areaName: task.area?.name || null,
+                cleaningFrequency: task.cleaningFrequency,
+              })),
+            }
+          : null;
+
+        return res.json({
+          data: {
+            ...safeContract,
+            facility: safeFacility,
+            subcontractorPayout: payout,
+          },
+        });
       }
 
       res.json({ data: contract });

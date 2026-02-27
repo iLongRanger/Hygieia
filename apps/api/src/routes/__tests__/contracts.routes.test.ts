@@ -86,6 +86,7 @@ jest.mock('../../templates/contractSent', () => ({
 jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: { findUnique: jest.fn().mockResolvedValue(null) },
+    area: { findMany: jest.fn().mockResolvedValue([]) },
     account: { findUnique: jest.fn().mockResolvedValue(null) },
     facility: { findUnique: jest.fn().mockResolvedValue(null) },
     contact: { findMany: jest.fn().mockResolvedValue([]) },
@@ -168,6 +169,61 @@ describe('Contract Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('contract-1');
+  });
+
+  it('GET /:id should include facility areas and tasks for subcontractor users', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Office Cleaning',
+      monthlyValue: 2000,
+      totalValue: 24000,
+      subcontractorTier: 'standard',
+      facility: { id: 'facility-1', name: 'HQ', address: {} },
+    });
+    (prisma.area.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'area-1',
+        name: 'Lobby',
+        squareFeet: '1200',
+        floorType: 'tile',
+        roomCount: 0,
+        unitCount: 0,
+        areaType: { name: 'Common Area' },
+      },
+    ]);
+    (contractService.getFacilityTasksForContract as jest.Mock).mockResolvedValue([
+      {
+        taskTemplate: { name: 'Vacuum' },
+        customName: null,
+        area: { name: 'Lobby' },
+        cleaningFrequency: 'daily',
+      },
+    ]);
+
+    const response = await request(app).get('/api/v1/contracts/contract-1').expect(200);
+
+    expect(response.body.data.subcontractorPayout).toBe(1000);
+    expect(response.body.data.monthlyValue).toBeUndefined();
+    expect(response.body.data.totalValue).toBeUndefined();
+    expect(response.body.data.facility.areas).toEqual([
+      expect.objectContaining({
+        id: 'area-1',
+        name: 'Lobby',
+        areaType: 'Common Area',
+        squareFeet: 1200,
+      }),
+    ]);
+    expect(response.body.data.facility.tasks).toEqual([
+      expect.objectContaining({
+        name: 'Vacuum',
+        areaName: 'Lobby',
+        cleaningFrequency: 'daily',
+      }),
+    ]);
   });
 
   it('GET /:id should return 404 when not found', async () => {

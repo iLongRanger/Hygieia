@@ -127,6 +127,12 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatFrequency = (value: string | null | undefined) => {
+  if (!value) return 'as scheduled';
+  const normalized = value.replace(/_/g, ' ');
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const DAY_LABELS: Record<string, string> = {
   monday: 'Mon',
   tuesday: 'Tue',
@@ -506,6 +512,8 @@ const ContractDetail = () => {
   const StatusIcon = getStatusIcon(contract.status);
   const scheduleDays = getScheduleDays(contract.serviceSchedule);
   const scheduleWindow = getScheduleTimeWindow(contract.serviceSchedule);
+  const facilityAreas = contract.facility?.areas || [];
+  const facilityTasks = contract.facility?.tasks || [];
   const facilityTimezone =
     (contract.facility?.address?.timezone as string | undefined) ||
     (contract.facility?.address?.timeZone as string | undefined) ||
@@ -770,6 +778,92 @@ const ContractDetail = () => {
         )}
 
         {/* Assignment — hidden for subcontractors */}
+        {isSubcontractor && contract.facility && (
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <Building2 className="h-5 w-5 text-emerald-400" />
+              <h2 className="text-lg font-semibold text-white">Facility Areas & Tasks</h2>
+            </div>
+            <div className="space-y-5">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div className="text-xs uppercase tracking-wide text-emerald-300">Scope Summary</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="success" size="sm">
+                    {facilityAreas.length} area{facilityAreas.length !== 1 ? 's' : ''}
+                  </Badge>
+                  <Badge variant="info" size="sm">
+                    {facilityTasks.length} task{facilityTasks.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+              </div>
+
+              {facilityAreas.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {facilityAreas.map((area) => {
+                    const areaName = area.name || '';
+                    const areaTasks = facilityTasks.filter((task) => (task.areaName || '') === areaName);
+
+                    return (
+                      <div key={area.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <div className="font-medium text-white">{area.name || 'Unnamed area'}</div>
+                          <Badge variant="default" size="sm">
+                            {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {area.areaType || 'General area'}
+                          {area.squareFeet ? ` - ${area.squareFeet.toLocaleString()} sq ft` : ''}
+                        </div>
+                        {areaTasks.length > 0 ? (
+                          <div className="mt-3 space-y-1.5">
+                            {areaTasks.map((task, idx) => (
+                              <div
+                                key={`${area.id}-${task.name}-${idx}`}
+                                className="flex items-center justify-between rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm"
+                              >
+                                <span className="text-gray-200">{task.name}</span>
+                                <span className="text-xs text-emerald-300">
+                                  {formatFrequency(task.cleaningFrequency)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-gray-500">No tasks assigned for this area</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">No facility areas configured on this contract.</div>
+              )}
+
+              {facilityTasks.some((task) => !task.areaName) && (
+                <div className="rounded-lg border border-white/10 p-3">
+                  <div className="mb-2 text-sm font-medium text-gray-300">General Tasks</div>
+                  <div className="space-y-1.5">
+                    {facilityTasks
+                      .filter((task) => !task.areaName)
+                      .map((task, idx) => (
+                        <div
+                          key={`general-task-${task.name}-${idx}`}
+                          className="flex items-center justify-between rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm"
+                        >
+                          <span className="text-gray-200">{task.name}</span>
+                          <span className="text-xs text-emerald-300">
+                            {formatFrequency(task.cleaningFrequency)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
         {!isSubcontractor && <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />

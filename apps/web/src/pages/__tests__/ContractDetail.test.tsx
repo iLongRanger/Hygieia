@@ -164,4 +164,38 @@ describe('ContractDetail', () => {
       expect(archiveContractMock).toHaveBeenCalledWith('contract-1');
     });
   });
+
+  it('shows facility areas and tasks for subcontractor view', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    getContractMock.mockResolvedValueOnce({
+      ...draftContract,
+      facility: {
+        id: 'facility-1',
+        name: 'Main Office',
+        address: { street: '123 Main St', city: 'Austin', state: 'TX' },
+        areas: [{ id: 'area-1', name: 'Lobby', areaType: 'Common Area', squareFeet: 1200 }],
+        tasks: [{ name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' }],
+      },
+    });
+
+    render(<ContractDetail />);
+
+    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Lobby')).toBeInTheDocument();
+    expect(screen.getByText('Vacuum')).toBeInTheDocument();
+    expect(screen.getByText('Daily')).toBeInTheDocument();
+  });
 });
