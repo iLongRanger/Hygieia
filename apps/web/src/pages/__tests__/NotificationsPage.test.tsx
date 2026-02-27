@@ -133,4 +133,50 @@ describe('NotificationsPage', () => {
       expect(navigateMock).toHaveBeenCalledWith('/jobs/job-99');
     });
   });
+
+  it('navigates to contract detail for contract assignment notifications', async () => {
+    const user = userEvent.setup();
+    listNotificationsMock.mockResolvedValueOnce([
+      {
+        id: 'n-contract-1',
+        type: 'contract_assignment_required',
+        title: 'Contract assigned to you',
+        body: 'Please review in app',
+        metadata: { contractId: 'contract-1' },
+        readAt: null,
+        emailSent: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<NotificationsPage />);
+    await user.click(await screen.findByText('Contract assigned to you'));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
+    });
+  });
+
+  it('handles stringified metadata payloads when navigating', async () => {
+    const user = userEvent.setup();
+    listNotificationsMock.mockResolvedValueOnce([
+      {
+        id: 'n-contract-2',
+        type: 'contract_team_assigned',
+        title: 'Contract assigned to your team',
+        body: 'Please review in app',
+        metadata: JSON.stringify({ contract_id: 'contract-2' }),
+        readAt: null,
+        emailSent: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<NotificationsPage />);
+    await user.click(await screen.findByText('Contract assigned to your team'));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-2');
+    });
+  });
 });

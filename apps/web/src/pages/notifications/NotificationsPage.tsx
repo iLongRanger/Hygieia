@@ -9,6 +9,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../../lib/notifications';
+import { getNotificationRoute } from '../../lib/notificationRouting';
 import {
   connectNotificationsRealtime,
   subscribeNotificationAllRead,
@@ -128,23 +129,9 @@ const NotificationsPage = () => {
     if (!notification.readAt) {
       handleMarkRead(notification.id, true);
     }
-    const meta = notification.metadata;
-    if (meta?.inspectionId) {
-      navigate(`/inspections/${meta.inspectionId}`);
-    } else if (meta?.proposalId) {
-      navigate(`/proposals/${meta.proposalId}`);
-    } else if (meta?.contractId) {
-      navigate(`/contracts/${meta.contractId}`);
-    } else if (meta?.quotationId) {
-      navigate(`/quotations/${meta.quotationId}`);
-    } else if (meta?.leadId) {
-      navigate(`/leads/${meta.leadId}`);
-    } else if (meta?.jobId) {
-      navigate(`/jobs/${meta.jobId}`);
-    } else if (meta?.facilityId) {
-      navigate(`/facilities/${meta.facilityId}`);
-    } else if (meta?.appointmentId) {
-      navigate(`/appointments/${meta.appointmentId}`);
+    const route = getNotificationRoute(notification);
+    if (route) {
+      navigate(route);
     }
   };
 

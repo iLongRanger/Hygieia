@@ -111,4 +111,29 @@ describe('Header', () => {
       expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1');
     });
   });
+
+  it('navigates to contract detail for contract assignment notifications', async () => {
+    const user = userEvent.setup();
+    listNotificationsMock.mockResolvedValue([
+      {
+        id: 'n-contract-1',
+        type: 'contract_assignment_required',
+        title: 'Contract assigned to you',
+        body: null,
+        metadata: { contractId: 'contract-1' },
+        readAt: null,
+        emailSent: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<Header />);
+
+    await user.click(screen.getByRole('button', { name: /open notifications/i }));
+    await user.click(await screen.findByText('Contract assigned to you'));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
+    });
+  });
 });
