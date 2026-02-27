@@ -392,9 +392,9 @@ export async function clockOut(
       totalHours: new Prisma.Decimal(totalHours),
       status: 'completed',
       notes: notes || active.notes,
-      geoLocation: geoLocation
+      geoLocation: (geoLocation
         ? { ...existingGeo, clockOutLocation: { ...geoLocation, geofence: clockOutGeofence } }
-        : existingGeo,
+        : existingGeo) as Prisma.InputJsonValue,
     },
     select: timeEntryDetailSelect,
   });

@@ -752,7 +752,7 @@ export async function completeJob(id: string, input: JobCompleteInput) {
           clockOut: now,
           totalHours: new Prisma.Decimal(Math.max(0, totalHours)),
           status: 'completed',
-          geoLocation: input.geoLocation
+          geoLocation: (input.geoLocation
             ? {
                 ...existingGeo,
                 clockOutLocation: {
@@ -760,7 +760,7 @@ export async function completeJob(id: string, input: JobCompleteInput) {
                   geofence: geofenceResult ?? undefined,
                 },
               }
-            : existingGeo,
+            : existingGeo) as Prisma.InputJsonValue,
         },
       });
     }
