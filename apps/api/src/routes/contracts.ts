@@ -130,6 +130,21 @@ async function getContractNotificationRecipients(contractId: string) {
   return { userIds, emails };
 }
 
+async function getSubcontractorTeamUserIds(teamId: string): Promise<string[]> {
+  const teamSubcontractors = await prisma.userRole.findMany({
+    where: {
+      role: { key: 'subcontractor' },
+      user: {
+        teamId,
+        status: { in: ['active', 'pending'] },
+      },
+    },
+    select: { user: { select: { id: true } } },
+  });
+
+  return [...new Set(teamSubcontractors.map((entry) => entry.user.id))];
+}
+
 // List all contracts
 router.get(
   '/',
@@ -589,6 +604,23 @@ router.patch(
 
       if (parsed.data.teamId) {
         try {
+          const subcontractorUserIds = await getSubcontractorTeamUserIds(parsed.data.teamId);
+          if (subcontractorUserIds.length > 0) {
+            await createBulkNotifications(subcontractorUserIds, {
+              type: 'contract_team_assigned',
+              title: `Contract ${contract.contractNumber} assigned to your team`,
+              body: `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team.`,
+              metadata: {
+                contractId: contract.id,
+                teamId: parsed.data.teamId,
+              },
+            });
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send subcontractor assignment notifications:', notifyError);
+        }
+
+        try {
           const notifData = await getTeamAssignmentNotificationData(contract.id);
           if (notifData && notifData.assignedTeam) {
             const facilityTasks = notifData.facility?.id
@@ -654,6 +686,20 @@ router.patch(
         try {
           const provisioned = await createSubcontractorUser(parsed.data.teamId);
           if (provisioned) {
+            try {
+              await createBulkNotifications([provisioned.user.id], {
+                type: 'contract_team_assigned',
+                title: `Contract ${contract.contractNumber} assigned to your team`,
+                body: `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team.`,
+                metadata: {
+                  contractId: contract.id,
+                  teamId: parsed.data.teamId,
+                },
+              });
+            } catch (newUserNotifyError) {
+              logger.error('Failed to send new subcontractor assignment notification:', newUserNotifyError);
+            }
+
             const setPasswordUrl = `${process.env.WEB_APP_URL || 'http://localhost:5173'}/auth/set-password?token=${provisioned.token}`;
             const branding = await getBrandingSafe();
             const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });

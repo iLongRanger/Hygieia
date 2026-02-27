@@ -347,7 +347,14 @@ describe('Contract Routes', () => {
   });
 
   it('PATCH /:id/team should assign team', async () => {
-    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+    });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([
+      { user: { id: 'sub-user-1' } },
+    ]);
 
     const response = await request(app)
       .patch('/api/v1/contracts/contract-1/team')
@@ -362,6 +369,16 @@ describe('Contract Routes', () => {
       undefined
     );
     expect(jobService.autoGenerateRecurringJobsForContract).toHaveBeenCalled();
+    expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
+      ['sub-user-1'],
+      expect.objectContaining({
+        type: 'contract_team_assigned',
+        metadata: expect.objectContaining({
+          contractId: 'contract-1',
+          teamId: '11111111-1111-1111-1111-111111111111',
+        }),
+      })
+    );
   });
 
   it('PATCH /:id/team should assign internal employee', async () => {
