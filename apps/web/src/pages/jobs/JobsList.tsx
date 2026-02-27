@@ -97,6 +97,7 @@ type JobsViewMode = 'table' | 'schedule';
 const JobsList = () => {
   const navigate = useNavigate();
   const userRole = useAuthStore((state) => state.user?.role);
+  const isSubcontractor = userRole === 'subcontractor';
   const [searchParams, setSearchParams] = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -481,14 +482,18 @@ const JobsList = () => {
             <Filter className="mr-1.5 h-4 w-4" />
             Filters
           </Button>
-          <Button variant="secondary" size="sm" onClick={openGenerateModal}>
-            <Zap className="mr-1.5 h-4 w-4" />
-            Generate Recurring
-          </Button>
-          <Button size="sm" onClick={() => navigate('/jobs/new')}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Job
-          </Button>
+          {!isSubcontractor && (
+            <Button variant="secondary" size="sm" onClick={openGenerateModal}>
+              <Zap className="mr-1.5 h-4 w-4" />
+              Generate Recurring
+            </Button>
+          )}
+          {!isSubcontractor && (
+            <Button size="sm" onClick={() => navigate('/jobs/new')}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Job
+            </Button>
+          )}
         </div>
       </div>
 

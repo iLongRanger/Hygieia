@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobsList from '../jobs/JobsList';
 import { mockJob, mockPaginatedResponse } from '../../test/mocks';
+import { useAuthStore } from '../../stores/authStore';
 
 const navigateMock = vi.fn();
 
@@ -54,6 +55,14 @@ describe('JobsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
     startJobMock.mockResolvedValue(mockJob({ status: 'in_progress' }));
     completeJobMock.mockResolvedValue(mockJob({ status: 'completed' }));
     cancelJobMock.mockResolvedValue(mockJob({ status: 'canceled' }));
@@ -172,5 +181,28 @@ describe('JobsList', () => {
     await waitFor(() => {
       expect(listJobsMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('hides new job and generate recurring actions for subcontractor users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    listJobsMock.mockResolvedValue(mockPaginatedResponse([]));
+
+    render(<JobsList />);
+    await screen.findByText('No jobs found');
+
+    expect(screen.queryByRole('button', { name: /generate recurring/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new job/i })).not.toBeInTheDocument();
   });
 });
