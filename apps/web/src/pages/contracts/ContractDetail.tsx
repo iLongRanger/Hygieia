@@ -133,6 +133,43 @@ const formatFrequency = (value: string | null | undefined) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
+const getFrequencyOrder = (value: string | null | undefined) => {
+  const key = (value || '').toLowerCase();
+  const order: Record<string, number> = {
+    daily: 1,
+    '1x_week': 2,
+    weekly: 2,
+    '2x_week': 3,
+    '3x_week': 4,
+    '4x_week': 5,
+    '5x_week': 6,
+    '7x_week': 7,
+    bi_weekly: 8,
+    monthly: 9,
+    quarterly: 10,
+  };
+  return order[key] ?? 99;
+};
+
+const groupTasksByFrequency = <T extends { cleaningFrequency?: string | null }>(tasks: T[]) => {
+  const grouped = new Map<string, { tasks: T[]; order: number }>();
+  for (const task of tasks) {
+    const label = formatFrequency(task.cleaningFrequency);
+    const current = grouped.get(label) || {
+      tasks: [],
+      order: getFrequencyOrder(task.cleaningFrequency),
+    };
+    current.tasks.push(task);
+    grouped.set(label, current);
+  }
+  return [...grouped.entries()]
+    .sort((a, b) => {
+      if (a[1].order !== b[1].order) return a[1].order - b[1].order;
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([label, value]) => [label, value.tasks] as const);
+};
+
 const DAY_LABELS: Record<string, string> = {
   monday: 'Mon',
   tuesday: 'Tue',
@@ -802,6 +839,7 @@ const ContractDetail = () => {
                   {facilityAreas.map((area) => {
                     const areaName = area.name || '';
                     const areaTasks = facilityTasks.filter((task) => (task.areaName || '') === areaName);
+                    const tasksByFrequency = groupTasksByFrequency(areaTasks);
 
                     return (
                       <div key={area.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
@@ -816,16 +854,20 @@ const ContractDetail = () => {
                           {area.squareFeet ? ` - ${area.squareFeet.toLocaleString()} sq ft` : ''}
                         </div>
                         {areaTasks.length > 0 ? (
-                          <div className="mt-3 space-y-1.5">
-                            {areaTasks.map((task, idx) => (
-                              <div
-                                key={`${area.id}-${task.name}-${idx}`}
-                                className="flex items-center justify-between rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm"
-                              >
-                                <span className="text-gray-200">{task.name}</span>
-                                <span className="text-xs text-emerald-300">
-                                  {formatFrequency(task.cleaningFrequency)}
-                                </span>
+                          <div className="mt-3 space-y-2">
+                            {tasksByFrequency.map(([frequency, tasks]) => (
+                              <div key={`${area.id}-${frequency}`} className="space-y-1.5">
+                                <div className="text-[11px] uppercase tracking-wide text-emerald-300">
+                                  {frequency}
+                                </div>
+                                {tasks.map((task, idx) => (
+                                  <div
+                                    key={`${area.id}-${frequency}-${task.name}-${idx}`}
+                                    className="rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm text-gray-200"
+                                  >
+                                    {task.name}
+                                  </div>
+                                ))}
                               </div>
                             ))}
                           </div>
@@ -843,20 +885,24 @@ const ContractDetail = () => {
               {facilityTasks.some((task) => !task.areaName) && (
                 <div className="rounded-lg border border-white/10 p-3">
                   <div className="mb-2 text-sm font-medium text-gray-300">General Tasks</div>
-                  <div className="space-y-1.5">
-                    {facilityTasks
-                      .filter((task) => !task.areaName)
-                      .map((task, idx) => (
-                        <div
-                          key={`general-task-${task.name}-${idx}`}
-                          className="flex items-center justify-between rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm"
-                        >
-                          <span className="text-gray-200">{task.name}</span>
-                          <span className="text-xs text-emerald-300">
-                            {formatFrequency(task.cleaningFrequency)}
-                          </span>
+                  <div className="space-y-2">
+                    {groupTasksByFrequency(facilityTasks.filter((task) => !task.areaName)).map(
+                      ([frequency, tasks]) => (
+                        <div key={`general-${frequency}`} className="space-y-1.5">
+                          <div className="text-[11px] uppercase tracking-wide text-emerald-300">
+                            {frequency}
+                          </div>
+                          {tasks.map((task, idx) => (
+                            <div
+                              key={`general-task-${frequency}-${task.name}-${idx}`}
+                              className="rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm text-gray-200"
+                            >
+                              {task.name}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )
+                    )}
                   </div>
                 </div>
               )}
