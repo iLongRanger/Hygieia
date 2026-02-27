@@ -110,5 +110,6 @@ export const requireAnyRole = requireRole(
   'owner',
   'admin',
   'manager',
-  'cleaner'
+  'cleaner',
+  'subcontractor'
 );

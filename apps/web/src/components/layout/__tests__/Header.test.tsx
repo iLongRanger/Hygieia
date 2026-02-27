@@ -136,4 +136,18 @@ describe('Header', () => {
       expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
     });
   });
+
+  it('still navigates when marking notification read fails', async () => {
+    const user = userEvent.setup();
+    markNotificationReadMock.mockRejectedValueOnce(new Error('Forbidden'));
+
+    render(<Header />);
+
+    await user.click(screen.getByRole('button', { name: /open notifications/i }));
+    await user.click(await screen.findByText('Proposal accepted'));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1');
+    });
+  });
 });

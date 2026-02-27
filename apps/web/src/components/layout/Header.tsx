@@ -110,15 +110,19 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.readAt) {
-      await markNotificationRead(notification.id, true);
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item.id === notification.id
-            ? { ...item, readAt: new Date().toISOString() }
-            : item
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      try {
+        await markNotificationRead(notification.id, true);
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === notification.id
+              ? { ...item, readAt: new Date().toISOString() }
+              : item
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Failed to mark notification read:', error);
+      }
     }
 
     const route = getNotificationRoute(notification);
