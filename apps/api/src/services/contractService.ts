@@ -140,6 +140,11 @@ const contractSelect = {
       id: true,
       name: true,
       address: true,
+      buildingType: true,
+      accessInstructions: true,
+      parkingInfo: true,
+      specialRequirements: true,
+      notes: true,
     },
   },
   proposal: {

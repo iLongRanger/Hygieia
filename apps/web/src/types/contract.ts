@@ -104,6 +104,11 @@ export interface Contract {
     id: string;
     name: string;
     address: any;
+    buildingType?: string | null;
+    accessInstructions?: string | null;
+    parkingInfo?: string | null;
+    specialRequirements?: string | null;
+    notes?: string | null;
     areas?: {
       id: string;
       name: string | null;

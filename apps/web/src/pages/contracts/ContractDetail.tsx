@@ -727,6 +727,54 @@ const ContractDetail = () => {
                     <span>{formatAddress(contract.facility.address)}</span>
                   </div>
                 )}
+                {contract.facility.buildingType && (
+                  <div className="text-sm text-gray-400 mt-1 capitalize">
+                    {contract.facility.buildingType.replace(/_/g, ' ')}
+                  </div>
+                )}
+                {isSubcontractor &&
+                  (contract.facility.accessInstructions ||
+                    contract.facility.parkingInfo ||
+                    contract.facility.specialRequirements ||
+                    contract.facility.notes) && (
+                    <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2">
+                      <div className="text-xs uppercase tracking-wide text-emerald-300">
+                        Facility Notes & Access
+                      </div>
+                      {contract.facility.accessInstructions && (
+                        <div>
+                          <div className="text-xs text-gray-400">Access Instructions</div>
+                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                            {contract.facility.accessInstructions}
+                          </div>
+                        </div>
+                      )}
+                      {contract.facility.parkingInfo && (
+                        <div>
+                          <div className="text-xs text-gray-400">Parking</div>
+                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                            {contract.facility.parkingInfo}
+                          </div>
+                        </div>
+                      )}
+                      {contract.facility.specialRequirements && (
+                        <div>
+                          <div className="text-xs text-gray-400">Special Requirements</div>
+                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                            {contract.facility.specialRequirements}
+                          </div>
+                        </div>
+                      )}
+                      {contract.facility.notes && (
+                        <div>
+                          <div className="text-xs text-gray-400">Facility Notes</div>
+                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                            {contract.facility.notes}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             )}
             {contract.proposal && !isSubcontractor && (

@@ -186,6 +186,10 @@ describe('ContractDetail', () => {
         id: 'facility-1',
         name: 'Main Office',
         address: { street: '123 Main St', city: 'Austin', state: 'TX' },
+        accessInstructions: 'Use side entrance keypad',
+        parkingInfo: 'Park in rear lot',
+        specialRequirements: 'Wear PPE in production zone',
+        notes: 'Alarm code changes monthly',
         areas: [{ id: 'area-1', name: 'Lobby', areaType: 'Common Area', squareFeet: 1200 }],
         tasks: [{ name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' }],
       },
@@ -194,6 +198,11 @@ describe('ContractDetail', () => {
     render(<ContractDetail />);
 
     expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Facility Notes & Access')).toBeInTheDocument();
+    expect(screen.getByText('Use side entrance keypad')).toBeInTheDocument();
+    expect(screen.getByText('Park in rear lot')).toBeInTheDocument();
+    expect(screen.getByText('Wear PPE in production zone')).toBeInTheDocument();
+    expect(screen.getByText('Alarm code changes monthly')).toBeInTheDocument();
     expect(screen.getByText('Lobby')).toBeInTheDocument();
     expect(screen.getByText('Vacuum')).toBeInTheDocument();
     expect(screen.getByText('Daily')).toBeInTheDocument();
