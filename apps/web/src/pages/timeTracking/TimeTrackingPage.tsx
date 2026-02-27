@@ -30,6 +30,7 @@ import {
   approveTimeEntry,
 } from '../../lib/timeTracking';
 import { completeJob, getJob, listJobs } from '../../lib/jobs';
+import { requestGeolocation } from '../../lib/geolocation';
 import type { TimeEntry, TimeEntryStatus } from '../../types/timeTracking';
 import type { Pagination } from '../../types/crm';
 import type { Job } from '../../types/job';
@@ -89,6 +90,7 @@ const TimeTrackingPage = () => {
   const [clockOutNotes, setClockOutNotes] = useState('');
   const [clockingOut, setClockingOut] = useState(false);
   const userRole = useAuthStore((state) => state.user?.role);
+  const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
 
   const page = Number(searchParams.get('page') || '1');
   const status = searchParams.get('status') || '';
@@ -252,12 +254,27 @@ const TimeTrackingPage = () => {
     }
     try {
       setClockingOut(true);
-      await clockOut();
+      let geoLocation = null;
+      if (requiresGeofence && activeEntry?.job) {
+        try {
+          geoLocation = await requestGeolocation();
+        } catch (geoError: any) {
+          toast.error(geoError.message || 'Failed to get location');
+          setClockingOut(false);
+          return;
+        }
+      }
+      await clockOut(undefined, geoLocation);
       setActiveEntry(null);
       toast.success('Clocked out!');
       fetchEntries();
-    } catch {
-      toast.error('Failed to clock out');
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
+        toast.error('You must be at the facility to clock out');
+      } else {
+        toast.error('Failed to clock out');
+      }
     } finally {
       setClockingOut(false);
     }
@@ -268,18 +285,34 @@ const TimeTrackingPage = () => {
 
     try {
       setClockingOut(true);
+      let geoLocation = null;
+      if (requiresGeofence) {
+        try {
+          geoLocation = await requestGeolocation();
+        } catch (geoError: any) {
+          toast.error(geoError.message || 'Failed to get location');
+          setClockingOut(false);
+          return;
+        }
+      }
       await completeJob(activeEntry.job.id, {
         completionNotes: jobCompletionNotes || null,
+        geoLocation,
       });
-      await clockOut(clockOutNotes || undefined);
+      await clockOut(clockOutNotes || undefined, geoLocation);
       setActiveEntry(null);
       setShowClockOutCompleteModal(false);
       setJobCompletionNotes('');
       setClockOutNotes('');
       toast.success('Job completed and clocked out');
       fetchEntries();
-    } catch {
-      toast.error('Failed to complete job and clock out');
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
+        toast.error('You must be at the facility to complete this job');
+      } else {
+        toast.error('Failed to complete job and clock out');
+      }
     } finally {
       setClockingOut(false);
     }

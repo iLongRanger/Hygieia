@@ -47,8 +47,11 @@ export async function clockIn(input: ClockInInput = {}): Promise<TimeEntry> {
   return response.data.data;
 }
 
-export async function clockOut(notes?: string): Promise<TimeEntry> {
-  const response = await api.post('/time-tracking/clock-out', { notes });
+export async function clockOut(
+  notes?: string,
+  geoLocation?: { latitude: number; longitude: number; accuracy: number } | null
+): Promise<TimeEntry> {
+  const response = await api.post('/time-tracking/clock-out', { notes, geoLocation });
   return response.data.data;
 }
 
