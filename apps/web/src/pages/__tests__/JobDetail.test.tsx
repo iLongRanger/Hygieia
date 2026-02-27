@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobDetail from '../jobs/JobDetail';
 import { mockJobDetail, mockJobTask, mockJobNote, mockJobActivity } from '../../test/mocks';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = {};
 const navigateMock = vi.fn();
@@ -58,6 +59,14 @@ describe('JobDetail', () => {
     vi.clearAllMocks();
     mockParams = { id: 'job-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
     getJobMock.mockResolvedValue(scheduledJob);
     startJobMock.mockResolvedValue({});
     completeJobMock.mockResolvedValue({});
@@ -167,5 +176,29 @@ describe('JobDetail', () => {
         taskName: 'Mop floors',
       });
     });
+  });
+
+  it('hides edit controls for subcontractor users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    render(<JobDetail />);
+    await screen.findByText('JOB-202602-0001');
+
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add task/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
   });
 });

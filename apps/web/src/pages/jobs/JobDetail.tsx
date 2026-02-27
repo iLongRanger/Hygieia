@@ -83,6 +83,7 @@ const JobDetail = () => {
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const userRole = useAuthStore((state) => state.user?.role);
+  const isSubcontractor = userRole === 'subcontractor';
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
   const [gettingLocation, setGettingLocation] = useState(false);
 
@@ -330,13 +331,13 @@ const JobDetail = () => {
               Complete
             </Button>
           )}
-          {['scheduled', 'in_progress'].includes(job.status) && (
+          {!isSubcontractor && ['scheduled', 'in_progress'].includes(job.status) && (
             <Button variant="secondary" size="sm" onClick={() => navigate(`/jobs/${id}/edit`)}>
               <Edit2 className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
           )}
-          {['scheduled', 'in_progress'].includes(job.status) && (
+          {!isSubcontractor && ['scheduled', 'in_progress'].includes(job.status) && (
             <Button variant="secondary" size="sm" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
               Cancel
@@ -471,14 +472,16 @@ const JobDetail = () => {
                   </span>
                 )}
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAddTask(!showAddTask)}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                Add Task
-              </Button>
+              {!isSubcontractor && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddTask(!showAddTask)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add Task
+                </Button>
+              )}
             </div>
 
             {showAddTask && (
@@ -517,7 +520,8 @@ const JobDetail = () => {
                     className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-50 dark:hover:bg-surface-800/50"
                   >
                     <button
-                      onClick={() => handleToggleTask(task)}
+                      onClick={() => !isSubcontractor && handleToggleTask(task)}
+                      disabled={isSubcontractor}
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
                         task.status === 'completed'
                           ? 'border-success-500 bg-success-500 text-white'
@@ -542,12 +546,14 @@ const JobDetail = () => {
                         {task.estimatedMinutes}min
                       </span>
                     )}
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-surface-400 hover:text-danger-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {!isSubcontractor && (
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="text-surface-400 hover:text-danger-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 ))
               )}
@@ -560,14 +566,16 @@ const JobDetail = () => {
               <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100">
                 Notes
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAddNote(!showAddNote)}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                Add Note
-              </Button>
+              {!isSubcontractor && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddNote(!showAddNote)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add Note
+                </Button>
+              )}
             </div>
 
             {showAddNote && (

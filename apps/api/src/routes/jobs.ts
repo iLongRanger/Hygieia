@@ -37,6 +37,12 @@ import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
 
+function assertCanEditJob(req: Request): void {
+  if (req.user?.role === 'subcontractor') {
+    throw new ValidationError('Insufficient permissions');
+  }
+}
+
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
   return new ValidationError(firstError.message, {
@@ -81,6 +87,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = generateJobsSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -124,6 +131,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = createJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -145,6 +153,7 @@ router.patch(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = updateJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -208,6 +217,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = cancelJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -226,6 +236,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = assignJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -249,6 +260,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = createJobTaskSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -266,6 +278,7 @@ router.patch(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = updateJobTaskSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -286,6 +299,7 @@ router.delete(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       await deleteJobTask(req.params.taskId);
       res.json({ data: { id: req.params.taskId } });
     } catch (error) {
@@ -301,6 +315,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      assertCanEditJob(req);
       const parsed = createJobNoteSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 

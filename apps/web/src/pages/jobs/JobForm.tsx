@@ -21,6 +21,7 @@ import { createJob, updateJob, getJob } from '../../lib/jobs';
 import { listContracts } from '../../lib/contracts';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
+import { useAuthStore } from '../../stores/authStore';
 import type { Contract } from '../../types/contract';
 import type { CreateJobInput, UpdateJobInput } from '../../types/job';
 
@@ -53,6 +54,8 @@ const JobForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isSubcontractor = userRole === 'subcontractor';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -124,6 +127,12 @@ const JobForm = () => {
   );
 
   useEffect(() => {
+    if (isSubcontractor) {
+      toast.error('Subcontractors cannot edit jobs');
+      navigate('/jobs');
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
       await fetchReferenceData();
@@ -133,7 +142,7 @@ const JobForm = () => {
       setLoading(false);
     };
     loadData();
-  }, [fetchReferenceData, fetchJob, isEditMode, id]);
+  }, [fetchReferenceData, fetchJob, isEditMode, id, isSubcontractor, navigate]);
 
   const handleContractChange = (contractId: string) => {
     const contract = contracts.find((c) => c.id === contractId);

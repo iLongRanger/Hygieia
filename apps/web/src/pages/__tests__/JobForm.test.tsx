@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import JobForm from '../jobs/JobForm';
 import { mockJob, mockJobDetail, mockPaginatedResponse } from '../../test/mocks';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = {};
 const navigateMock = vi.fn();
@@ -82,6 +83,14 @@ describe('JobForm', () => {
     vi.clearAllMocks();
     mockParams = {};
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
 
     listContractsMock.mockResolvedValue(
       mockPaginatedResponse([mockContract])
@@ -199,5 +208,30 @@ describe('JobForm', () => {
       );
       expect(navigateMock).toHaveBeenCalledWith('/jobs');
     });
+  });
+
+  it('redirects subcontractor users away from job form', async () => {
+    const toast = (await import('react-hot-toast')).default;
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    render(<JobForm />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Subcontractors cannot edit jobs');
+      expect(navigateMock).toHaveBeenCalledWith('/jobs');
+    });
+    expect(listContractsMock).not.toHaveBeenCalled();
   });
 });
