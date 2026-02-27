@@ -58,6 +58,8 @@ export interface JobCompleteInput {
   completionNotes?: string | null;
   actualHours?: number | null;
   userId: string;
+  userRole?: string;
+  geoLocation?: { latitude: number; longitude: number; accuracy?: number } | null;
 }
 
 export interface JobTaskCreateInput {
@@ -661,7 +663,19 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
 export async function completeJob(id: string, input: JobCompleteInput) {
   const existing = await prisma.job.findUnique({
     where: { id },
-    select: { id: true, status: true, actualStartTime: true },
+    select: {
+      id: true,
+      status: true,
+      actualStartTime: true,
+      facilityId: true,
+      facility: { select: { address: true } },
+      contract: {
+        select: {
+          id: true,
+          facility: { select: { address: true } },
+        },
+      },
+    },
   });
   if (!existing) throw new NotFoundError('Job not found');
   if (existing.status === 'completed') {
@@ -669,6 +683,28 @@ export async function completeJob(id: string, input: JobCompleteInput) {
   }
   if (existing.status === 'canceled') {
     throw new BadRequestError('Cannot complete a canceled job');
+  }
+
+  // Geofence validation for cleaners/subcontractors
+  const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(input.userRole || '');
+
+  let geofenceResult: { verified: true; distanceMeters: number; allowedRadiusMeters: number } | null =
+    null;
+
+  if (requiresGeofence) {
+    if (!input.geoLocation) {
+      throw new BadRequestError('Location is required to complete this job', {
+        code: 'CLOCK_IN_LOCATION_REQUIRED',
+      });
+    }
+
+    const facilityAddress = existing.facility?.address ?? existing.contract?.facility?.address;
+    const facilityCoords = getCoordinatesFromAddress(facilityAddress);
+
+    if (facilityCoords) {
+      geofenceResult = validateGeofence(input.geoLocation as any, facilityCoords);
+    }
   }
 
   const now = new Date();
@@ -698,6 +734,36 @@ export async function completeJob(id: string, input: JobCompleteInput) {
         metadata: { actualHours },
       },
     });
+
+    // Auto clock-out: find active time entry linked to this job
+    const activeEntry = await tx.timeEntry.findFirst({
+      where: { userId: input.userId, jobId: id, status: 'active', clockOut: null },
+    });
+
+    if (activeEntry) {
+      const elapsed = now.getTime() - activeEntry.clockIn.getTime();
+      const breakMs = (activeEntry.breakMinutes || 0) * 60000;
+      const totalHours = Math.round(((elapsed - breakMs) / 3600000) * 100) / 100;
+
+      const existingGeo = (activeEntry.geoLocation as Record<string, unknown>) || {};
+      await tx.timeEntry.update({
+        where: { id: activeEntry.id },
+        data: {
+          clockOut: now,
+          totalHours: new Prisma.Decimal(Math.max(0, totalHours)),
+          status: 'completed',
+          geoLocation: input.geoLocation
+            ? {
+                ...existingGeo,
+                clockOutLocation: {
+                  ...input.geoLocation,
+                  geofence: geofenceResult ?? undefined,
+                },
+              }
+            : existingGeo,
+        },
+      });
+    }
 
     return withWorkforceMetadata(job);
   });
