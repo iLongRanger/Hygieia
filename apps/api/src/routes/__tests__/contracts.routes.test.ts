@@ -87,6 +87,7 @@ jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: { findUnique: jest.fn().mockResolvedValue(null) },
     area: { findMany: jest.fn().mockResolvedValue([]) },
+    user: { findUnique: jest.fn().mockResolvedValue(null) },
     account: { findUnique: jest.fn().mockResolvedValue(null) },
     facility: { findUnique: jest.fn().mockResolvedValue(null) },
     contact: { findMany: jest.fn().mockResolvedValue([]) },
@@ -353,7 +354,7 @@ describe('Contract Routes', () => {
       title: 'Main Service Agreement',
     });
     (prisma.userRole.findMany as jest.Mock).mockResolvedValue([
-      { user: { id: 'sub-user-1' } },
+      { user: { id: 'sub-user-1', email: 'sub1@example.com', fullName: 'Sub User One' } },
     ]);
 
     const response = await request(app)
@@ -379,10 +380,24 @@ describe('Contract Routes', () => {
         }),
       })
     );
+    expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+      'sub1@example.com',
+      'Contract CONT-001 assigned to your team',
+      expect.stringContaining('Please view it in the web app for full details')
+    );
   });
 
   it('PATCH /:id/team should assign internal employee', async () => {
-    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      email: 'employee@example.com',
+      fullName: 'Employee One',
+      status: 'active',
+    });
 
     const response = await request(app)
       .patch('/api/v1/contracts/contract-1/team')
@@ -395,6 +410,21 @@ describe('Contract Routes', () => {
       null,
       '22222222-2222-2222-2222-222222222222',
       undefined
+    );
+    expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
+      ['22222222-2222-2222-2222-222222222222'],
+      expect.objectContaining({
+        type: 'contract_assignment_required',
+        metadata: expect.objectContaining({
+          contractId: 'contract-1',
+          assignedToUserId: '22222222-2222-2222-2222-222222222222',
+        }),
+      })
+    );
+    expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+      'employee@example.com',
+      'Contract CONT-001 assigned to you',
+      expect.stringContaining('Please view it in the web app for full details')
     );
   });
 

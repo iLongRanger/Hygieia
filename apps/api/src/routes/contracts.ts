@@ -130,7 +130,9 @@ async function getContractNotificationRecipients(contractId: string) {
   return { userIds, emails };
 }
 
-async function getSubcontractorTeamUserIds(teamId: string): Promise<string[]> {
+async function getSubcontractorTeamUsers(
+  teamId: string
+): Promise<Array<{ id: string; email: string; fullName: string }>> {
   const teamSubcontractors = await prisma.userRole.findMany({
     where: {
       role: { key: 'subcontractor' },
@@ -139,10 +141,23 @@ async function getSubcontractorTeamUserIds(teamId: string): Promise<string[]> {
         status: { in: ['active', 'pending'] },
       },
     },
-    select: { user: { select: { id: true } } },
+    select: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+        },
+      },
+    },
   });
 
-  return [...new Set(teamSubcontractors.map((entry) => entry.user.id))];
+  const usersById = new Map<string, { id: string; email: string; fullName: string }>();
+  for (const entry of teamSubcontractors) {
+    usersById.set(entry.user.id, entry.user);
+  }
+
+  return [...usersById.values()];
 }
 
 // List all contracts
@@ -597,6 +612,25 @@ router.patch(
             body: `You were assigned to contract ${contract.contractNumber} (${contract.title}).`,
             metadata: { contractId: contract.id, assignedToUserId: parsed.data.assignedToUserId },
           });
+
+          const assignedUser = await prisma.user.findUnique({
+            where: { id: parsed.data.assignedToUserId },
+            select: { email: true, fullName: true, status: true },
+          });
+
+          if (assignedUser?.email && ['active', 'pending'].includes(assignedUser.status)) {
+            const webAppUrl = process.env.WEB_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+            const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
+            const subject = `Contract ${contract.contractNumber} assigned to you`;
+            const html = `
+              <p>Hi ${assignedUser.fullName || 'there'},</p>
+              <p>You were assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
+              <p>Please view it in the web app for full details:</p>
+              <p><a href="${contractUrl}">${contractUrl}</a></p>
+            `;
+
+            await sendNotificationEmail(assignedUser.email, subject, html);
+          }
         } catch (notifyError) {
           logger.error('Failed to send internal employee assignment notification:', notifyError);
         }
@@ -604,9 +638,11 @@ router.patch(
 
       if (parsed.data.teamId) {
         try {
-          const subcontractorUserIds = await getSubcontractorTeamUserIds(parsed.data.teamId);
-          if (subcontractorUserIds.length > 0) {
-            await createBulkNotifications(subcontractorUserIds, {
+          const subcontractorUsers = await getSubcontractorTeamUsers(parsed.data.teamId);
+          if (subcontractorUsers.length > 0) {
+            await createBulkNotifications(
+              subcontractorUsers.map((user) => user.id),
+              {
               type: 'contract_team_assigned',
               title: `Contract ${contract.contractNumber} assigned to your team`,
               body: `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team.`,
@@ -614,7 +650,28 @@ router.patch(
                 contractId: contract.id,
                 teamId: parsed.data.teamId,
               },
-            });
+              }
+            );
+
+            const webAppUrl = process.env.WEB_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+            const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
+
+            await Promise.allSettled(
+              subcontractorUsers
+                .filter((user) => Boolean(user.email))
+                .map((user) =>
+                  sendNotificationEmail(
+                    user.email,
+                    `Contract ${contract.contractNumber} assigned to your team`,
+                    `
+                      <p>Hi ${user.fullName || 'there'},</p>
+                      <p>Your team has been assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
+                      <p>Please view it in the web app for full details:</p>
+                      <p><a href="${contractUrl}">${contractUrl}</a></p>
+                    `
+                  )
+                )
+            );
           }
         } catch (notifyError) {
           logger.error('Failed to send subcontractor assignment notifications:', notifyError);
