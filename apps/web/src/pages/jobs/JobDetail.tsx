@@ -32,6 +32,7 @@ import {
   deleteJobTask,
   createJobNote,
 } from '../../lib/jobs';
+import { requestGeolocation } from '../../lib/geolocation';
 import type { JobDetail as JobDetailType, JobStatus, JobTask, JobNote } from '../../types/job';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -82,6 +83,8 @@ const JobDetail = () => {
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const userRole = useAuthStore((state) => state.user?.role);
+  const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const fetchJob = async () => {
     if (!id) return;
@@ -104,11 +107,32 @@ const JobDetail = () => {
   const handleStart = async () => {
     if (!id) return;
     try {
-      await startJob(id);
-      toast.success('Job started');
+      let geoLocation = null;
+      if (requiresGeofence) {
+        setGettingLocation(true);
+        try {
+          geoLocation = await requestGeolocation();
+        } catch (geoError: any) {
+          toast.error(geoError.message || 'Failed to get location');
+          return;
+        } finally {
+          setGettingLocation(false);
+        }
+      }
+
+      await startJob(id, { geoLocation });
+      toast.success('Job started & clocked in');
       fetchJob();
     } catch (error: any) {
       const details = error?.response?.data?.error?.details;
+      if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
+        toast.error('You must be at the facility to start this job');
+        return;
+      }
+      if (details?.code === 'ACTIVE_CLOCK_IN_EXISTS') {
+        toast.error('You already have an active clock-in. Clock out first.');
+        return;
+      }
       const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
       if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
         const confirmed = confirm(
@@ -119,26 +143,50 @@ const JobDetail = () => {
           await startJob(id, {
             managerOverride: true,
             overrideReason: 'Manager override from Job detail',
+            geoLocation: null,
           });
           toast.success('Job started with manager override');
           fetchJob();
           return;
         }
       }
-      toast.error(details?.code === 'OUTSIDE_SERVICE_WINDOW'
-        ? 'Outside allowed service window'
-        : 'Failed to start job');
+      toast.error(
+        details?.code === 'OUTSIDE_SERVICE_WINDOW'
+          ? 'Outside allowed service window'
+          : 'Failed to start job'
+      );
     }
   };
 
   const handleComplete = async () => {
     if (!id) return;
     try {
-      await completeJob(id, { completionNotes: completionNotes || null });
-      toast.success('Job completed');
+      let geoLocation = null;
+      if (requiresGeofence) {
+        setGettingLocation(true);
+        try {
+          geoLocation = await requestGeolocation();
+        } catch (geoError: any) {
+          toast.error(geoError.message || 'Failed to get location');
+          return;
+        } finally {
+          setGettingLocation(false);
+        }
+      }
+
+      await completeJob(id, {
+        completionNotes: completionNotes || null,
+        geoLocation,
+      });
+      toast.success('Job completed & clocked out');
       setShowCompleteForm(false);
       fetchJob();
-    } catch {
+    } catch (error: any) {
+      const details = error?.response?.data?.error?.details;
+      if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
+        toast.error('You must be at the facility to complete this job');
+        return;
+      }
       toast.error('Failed to complete job');
     }
   };
@@ -259,9 +307,18 @@ const JobDetail = () => {
         </div>
         <div className="flex items-center gap-2">
           {job.status === 'scheduled' && (
-            <Button size="sm" onClick={handleStart}>
-              <Play className="mr-1.5 h-4 w-4" />
-              Start Job
+            <Button size="sm" onClick={handleStart} disabled={gettingLocation}>
+              {gettingLocation ? (
+                <>
+                  <MapPin className="mr-1.5 h-4 w-4 animate-pulse" />
+                  Verifying location...
+                </>
+              ) : (
+                <>
+                  <Play className="mr-1.5 h-4 w-4" />
+                  Start Job
+                </>
+              )}
             </Button>
           )}
           {job.status === 'in_progress' && (
