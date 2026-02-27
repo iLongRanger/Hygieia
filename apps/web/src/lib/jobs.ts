@@ -52,7 +52,11 @@ export async function updateJob(id: string, input: UpdateJobInput): Promise<Job>
 
 export async function startJob(
   id: string,
-  options: { managerOverride?: boolean; overrideReason?: string | null } = {}
+  options: {
+    managerOverride?: boolean;
+    overrideReason?: string | null;
+    geoLocation?: { latitude: number; longitude: number; accuracy: number } | null;
+  } = {}
 ): Promise<Job> {
   const response = await api.post(`/jobs/${id}/start`, options);
   return response.data.data;
@@ -60,7 +64,11 @@ export async function startJob(
 
 export async function completeJob(
   id: string,
-  input: { completionNotes?: string | null; actualHours?: number | null } = {}
+  input: {
+    completionNotes?: string | null;
+    actualHours?: number | null;
+    geoLocation?: { latitude: number; longitude: number; accuracy: number } | null;
+  } = {}
 ): Promise<Job> {
   const response = await api.post(`/jobs/${id}/complete`, input);
   return response.data.data;
