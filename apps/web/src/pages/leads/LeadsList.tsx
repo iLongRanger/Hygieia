@@ -133,6 +133,18 @@ const ACCOUNT_TYPES = [
   { value: 'non_profit', label: 'Non-Profit' },
 ];
 
+const FACILITY_BUILDING_TYPE_OPTIONS = [
+  { value: 'office', label: 'Office' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'warehouse', label: 'Warehouse' },
+  { value: 'educational', label: 'Educational' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'mixed', label: 'Mixed Use' },
+  { value: 'other', label: 'Other' },
+];
+
 const hasFacilityStreetAddress = (facility: Facility | null | undefined): boolean => {
   if (!facility?.address) return false;
   const street = facility.address.street;
@@ -1115,19 +1127,20 @@ const LeadsList = () => {
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
+                    <Select
                       label="Industry"
+                      placeholder="Select industry"
+                      options={FACILITY_BUILDING_TYPE_OPTIONS}
                       value={conversionFormData.accountData?.industry || ''}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         setConversionFormData({
                           ...conversionFormData,
                           accountData: {
                             ...conversionFormData.accountData!,
-                            industry: e.target.value || null,
+                            industry: value || null,
                           },
                         })
                       }
-                      maxLength={maxLengths.industry}
                     />
                     <Input
                       label="Website"
