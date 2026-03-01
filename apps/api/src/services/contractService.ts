@@ -7,6 +7,7 @@ import {
   mapProposalFrequencyToContractFrequency,
   normalizeServiceSchedule,
 } from './serviceScheduleService';
+import { autoAdvanceLeadStatusForAccount } from './leadService';
 
 export interface ContractListParams {
   page?: number;
@@ -592,6 +593,10 @@ export async function updateContractStatus(
     select: contractSelect,
   });
 
+  if (status === 'active') {
+    await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
+  }
+
   return contract;
 }
 
@@ -601,7 +606,7 @@ export async function updateContractStatus(
 export async function sendContract(id: string) {
   const contract = await prisma.contract.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, accountId: true },
   });
 
   // Don't regress an active contract back to 'sent'
@@ -610,11 +615,17 @@ export async function sendContract(id: string) {
     data.status = 'sent';
   }
 
-  return prisma.contract.update({
+  const updatedContract = await prisma.contract.update({
     where: { id },
     data,
     select: contractSelect,
   });
+
+  if (contract?.accountId) {
+    await autoAdvanceLeadStatusForAccount(contract.accountId, 'negotiation');
+  }
+
+  return updatedContract;
 }
 
 /**
@@ -683,11 +694,17 @@ export async function assignContractTeam(
     data.subcontractorTier = subcontractorTier;
   }
 
-  return prisma.contract.update({
+  const updatedContract = await prisma.contract.update({
     where: { id: contractId },
     data,
     select: contractSelect,
   });
+
+  if (teamId || assignedToUserId) {
+    await autoAdvanceLeadStatusForAccount(updatedContract.account.id, 'won');
+  }
+
+  return updatedContract;
 }
 
 /**
@@ -703,6 +720,7 @@ export async function signContract(id: string, signData: ContractSignInput) {
     select: contractSelect,
   });
 
+  await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
   return contract;
 }
 

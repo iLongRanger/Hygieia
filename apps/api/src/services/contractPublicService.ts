@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
+import { autoAdvanceLeadStatusForAccount } from './leadService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -109,7 +110,7 @@ export async function signContractPublic(
 ) {
   const contract = await prisma.contract.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true },
+    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true },
   });
 
   if (!contract) {
@@ -124,7 +125,7 @@ export async function signContractPublic(
     throw new Error('This contract can no longer be signed');
   }
 
-  return prisma.contract.update({
+  const updatedContract = await prisma.contract.update({
     where: { id: contract.id },
     data: {
       // Don't regress an active contract; otherwise move to pending_signature (signed, awaiting admin activation)
@@ -136,4 +137,7 @@ export async function signContractPublic(
     },
     select: publicContractSelect,
   });
+
+  await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+  return updatedContract;
 }

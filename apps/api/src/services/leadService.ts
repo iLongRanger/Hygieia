@@ -5,6 +5,30 @@ import { createNotification } from './notificationService';
 import { geocodeAddressIfNeeded } from './geocodingService';
 import logger from '../lib/logger';
 
+const AUTO_LEAD_STATUS_RANK: Record<string, number> = {
+  lead: 0,
+  walk_through_booked: 1,
+  walk_through_completed: 2,
+  proposal_sent: 3,
+  negotiation: 4,
+  won: 5,
+};
+
+function shouldAutoAdvanceLeadStatus(currentStatus: string, targetStatus: string): boolean {
+  // Do not auto-override terminal/manual outcomes.
+  if (currentStatus === 'won' || currentStatus === 'lost') {
+    return false;
+  }
+
+  const currentRank = AUTO_LEAD_STATUS_RANK[currentStatus];
+  const targetRank = AUTO_LEAD_STATUS_RANK[targetStatus];
+
+  if (targetRank === undefined) return false;
+  if (currentRank === undefined) return true;
+
+  return targetRank > currentRank;
+}
+
 export interface LeadListParams {
   page?: number;
   limit?: number;
@@ -651,4 +675,44 @@ export async function canConvertLead(leadId: string): Promise<{
   }
 
   return { canConvert: true };
+}
+
+/**
+ * Auto-advance the newest active converted lead for an account.
+ * This is best-effort and must never block core workflows.
+ */
+export async function autoAdvanceLeadStatusForAccount(
+  accountId: string,
+  targetStatus: 'proposal_sent' | 'negotiation' | 'won'
+): Promise<void> {
+  try {
+    const lead = await prisma.lead.findFirst({
+      where: {
+        convertedToAccountId: accountId,
+        archivedAt: null,
+      },
+      orderBy: [
+        { convertedAt: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!lead) return;
+    if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
+
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: { status: targetStatus },
+    });
+  } catch (error) {
+    logger.warn('Failed to auto-advance lead status for account', {
+      accountId,
+      targetStatus,
+      error,
+    });
+  }
 }
