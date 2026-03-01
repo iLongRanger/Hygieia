@@ -128,6 +128,22 @@ const user: User = {
   id: 'user-1',
   email: 'admin@example.com',
   fullName: 'Admin User',
+  role: 'admin',
+  phone: null,
+  avatarUrl: null,
+  status: 'active',
+  lastLoginAt: null,
+  preferences: {},
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  roles: [],
+};
+
+const subcontractorUser: User = {
+  id: 'user-2',
+  email: 'subcontractor@example.com',
+  fullName: 'Subcontractor User',
+  role: 'subcontractor',
   phone: null,
   avatarUrl: null,
   status: 'active',
@@ -166,7 +182,10 @@ describe('LeadDetail', () => {
     getLeadMock.mockResolvedValue(lead);
     listAppointmentsMock.mockResolvedValue([appointment]);
     listLeadSourcesMock.mockResolvedValue({ data: [leadSource] });
-    listUsersMock.mockResolvedValue({ data: [user], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
+    listUsersMock.mockResolvedValue({
+      data: [user, subcontractorUser],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
+    });
     listFacilitiesMock.mockResolvedValue({ data: [facility], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     createAppointmentMock.mockResolvedValue({ id: 'appt-2' });
     rescheduleAppointmentMock.mockResolvedValue({ id: 'appt-3' });
@@ -206,6 +225,17 @@ describe('LeadDetail', () => {
         })
       );
     });
+  });
+
+  it('shows only owner admin manager in assigned rep options', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
+    const modal = await screen.findByRole('dialog', { name: /schedule walkthrough/i });
+
+    expect(within(modal).getByRole('option', { name: 'Admin User' })).toBeInTheDocument();
+    expect(within(modal).queryByRole('option', { name: 'Subcontractor User' })).not.toBeInTheDocument();
   });
 
   it('updates lead from edit modal', async () => {

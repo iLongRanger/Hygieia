@@ -557,7 +557,7 @@ const LeadDetail = () => {
           <Select
             label="Assigned Rep"
             placeholder="Select rep"
-            options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+            options={leadAssignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
             value={scheduleForm.assignedToUserId}
             onChange={(value) => setScheduleForm({ ...scheduleForm, assignedToUserId: value })}
           />
