@@ -1580,36 +1580,22 @@ const LeadsList = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
-                      label="Square Feet"
-                      type="number"
-                      value={conversionFormData.facilityData?.squareFeet || ''}
-                      onChange={(e) =>
-                        setConversionFormData({
-                          ...conversionFormData,
-                          facilityData: {
-                            ...conversionFormData.facilityData!,
-                            squareFeet: e.target.value ? Number(e.target.value) : null,
-                          },
-                        })
-                      }
-                    />
-                    <Input
-                      label="Access Instructions"
-                      value={conversionFormData.facilityData?.accessInstructions || ''}
-                      onChange={(e) =>
-                        setConversionFormData({
-                          ...conversionFormData,
-                          facilityData: {
-                            ...conversionFormData.facilityData!,
-                            accessInstructions: e.target.value || null,
-                          },
-                        })
-                      }
-                      maxLength={maxLengths.accessInstructions}
-                    />
-                  </div>
+                  <Textarea
+                    label="Notes"
+                    placeholder="Add facility notes..."
+                    value={conversionFormData.facilityData?.notes || ''}
+                    onChange={(e) =>
+                      setConversionFormData({
+                        ...conversionFormData,
+                        facilityData: {
+                          ...conversionFormData.facilityData!,
+                          notes: e.target.value || null,
+                        },
+                      })
+                    }
+                    maxLength={maxLengths.notes}
+                    showCharacterCount
+                  />
                 </div>
               )}
 
