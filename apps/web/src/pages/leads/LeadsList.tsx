@@ -1438,20 +1438,20 @@ const LeadsList = () => {
                       maxLength={maxLengths.name}
                       showCharacterCount
                     />
-                    <Input
+                    <Select
                       label="Building Type"
-                      placeholder="e.g., Office, Warehouse"
+                      placeholder="Select building type"
+                      options={FACILITY_BUILDING_TYPE_OPTIONS}
                       value={conversionFormData.facilityData?.buildingType || ''}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         setConversionFormData({
                           ...conversionFormData,
                           facilityData: {
                             ...conversionFormData.facilityData!,
-                            buildingType: e.target.value || null,
+                            buildingType: value || null,
                           },
                         })
                       }
-                      maxLength={maxLengths.buildingType}
                     />
                   </div>
                   <div>
