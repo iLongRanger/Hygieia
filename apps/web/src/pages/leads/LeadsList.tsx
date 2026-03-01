@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -158,11 +158,18 @@ const hasFacilityStreetAddress = (facility: Facility | null | undefined): boolea
   return typeof street === 'string' && street.trim().length > 0;
 };
 
+const isValidLeadStatus = (value: string | null): value is string => {
+  if (!value) return false;
+  return LEAD_STATUSES.some((status) => status.value === value);
+};
+
 const LeadsList = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [pipelineLeads, setPipelineLeads] = useState<Lead[]>([]);
+  const [pipelineLoading, setPipelineLoading] = useState(true);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
@@ -175,7 +182,11 @@ const LeadsList = () => {
   const [totalPages, setTotalPages] = useState(0);
 
   // Filter states
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const initialStatusFilter = (() => {
+    const routeStatus = new URLSearchParams(location.search).get('status');
+    return isValidLeadStatus(routeStatus) ? routeStatus : '';
+  })();
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter);
   const [leadSourceFilter, setLeadSourceFilter] = useState<string>('');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -271,6 +282,34 @@ const LeadsList = () => {
     []
   );
 
+  const fetchPipelineLeads = useCallback(async () => {
+    try {
+      setPipelineLoading(true);
+      const allLeads: Lead[] = [];
+      const limit = 200;
+      let currentPage = 1;
+      let totalPagesCount = 1;
+
+      while (currentPage <= totalPagesCount) {
+        const response = await listLeads({
+          page: currentPage,
+          limit,
+          includeArchived: false,
+        });
+        allLeads.push(...(response?.data || []));
+        totalPagesCount = response?.pagination?.totalPages || currentPage;
+        currentPage += 1;
+      }
+
+      setPipelineLeads(allLeads);
+    } catch (error) {
+      console.error('Failed to fetch pipeline leads:', error);
+      setPipelineLeads([]);
+    } finally {
+      setPipelineLoading(false);
+    }
+  }, []);
+
   const fetchLeadSources = useCallback(async () => {
     try {
       const response = await listLeadSources({ isActive: true });
@@ -321,7 +360,36 @@ const LeadsList = () => {
     fetchUsers();
     fetchAccounts();
     fetchFacilities();
-  }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities]);
+    fetchPipelineLeads();
+  }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities, fetchPipelineLeads]);
+
+  useEffect(() => {
+    const routeStatus = new URLSearchParams(location.search).get('status');
+    const nextStatus = isValidLeadStatus(routeStatus) ? routeStatus : '';
+    if (nextStatus !== statusFilter) {
+      setStatusFilter(nextStatus);
+      setPage(1);
+    }
+  }, [location.search, statusFilter]);
+
+  const setStatusFilterWithRoute = useCallback((nextStatus: string) => {
+    const params = new URLSearchParams(location.search);
+    if (nextStatus) {
+      params.set('status', nextStatus);
+    } else {
+      params.delete('status');
+    }
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString() ? `?${params.toString()}` : '',
+      },
+      { replace: true }
+    );
+    setStatusFilter(nextStatus);
+    setPage(1);
+  }, [location.pathname, location.search, navigate]);
 
   const handleCreate = async () => {
     if (!formData.contactName) {
@@ -371,6 +439,7 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
+      fetchPipelineLeads();
     } catch (error) {
       console.error('Failed to create lead:', error);
       toast.error('Failed to create lead');
@@ -398,7 +467,7 @@ const LeadsList = () => {
   };
 
   const clearFilters = () => {
-    setStatusFilter('');
+    setStatusFilterWithRoute('');
     setLeadSourceFilter('');
     setAssignedToFilter('');
     setIncludeArchived(false);
@@ -422,6 +491,7 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
+      fetchPipelineLeads();
     } catch (error) {
       console.error('Failed to archive lead:', error);
       toast.error('Failed to archive lead');
@@ -438,6 +508,7 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
+      fetchPipelineLeads();
     } catch (error) {
       console.error('Failed to restore lead:', error);
       toast.error('Failed to restore lead');
@@ -550,6 +621,7 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
+      fetchPipelineLeads();
     } catch (error) {
       console.error('Failed to convert lead:', error);
       const errorMessage = (error as { response?: { data?: { message?: string; error?: { message?: string } } } })
@@ -593,6 +665,14 @@ const LeadsList = () => {
         return 'default';
     }
   };
+
+  const pipelineStages = useMemo(
+    () => LEAD_STATUSES.map((stage) => ({
+      ...stage,
+      leads: pipelineLeads.filter((lead) => lead.status === stage.value && !lead.archivedAt),
+    })),
+    [pipelineLeads]
+  );
 
   const columns = [
     {
@@ -722,6 +802,68 @@ const LeadsList = () => {
         )}
       </div>
 
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Lead Pipeline</h2>
+          {pipelineLoading ? (
+            <span className="text-sm text-surface-500 dark:text-surface-400">Loading pipeline...</span>
+          ) : (
+            <span className="text-sm text-surface-500 dark:text-surface-400">
+              {pipelineLeads.length} active leads
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+          {pipelineStages.map((stage) => (
+            <div
+              key={stage.value}
+              className="rounded-lg border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-800/50"
+            >
+              <button
+                type="button"
+                className="mb-3 flex w-full items-center justify-between text-left"
+                onClick={() => setStatusFilterWithRoute(stage.value)}
+              >
+                <span className="text-sm font-medium text-surface-900 dark:text-surface-100">
+                  {stage.label}
+                </span>
+                <Badge variant="default">{stage.leads.length}</Badge>
+              </button>
+
+              <div className="space-y-2">
+                {stage.leads.slice(0, 6).map((lead) => (
+                  <button
+                    key={lead.id}
+                    type="button"
+                    className="w-full rounded-md border border-surface-200 bg-white p-2 text-left transition hover:border-primary-400 hover:bg-primary-50/50 dark:border-surface-700 dark:bg-surface-900 dark:hover:bg-surface-800"
+                    onClick={() => navigate(`/leads/${lead.id}`)}
+                  >
+                    <div className="truncate text-sm font-medium text-surface-900 dark:text-surface-100">
+                      {lead.companyName || lead.contactName}
+                    </div>
+                    <div className="truncate text-xs text-surface-500 dark:text-surface-400">
+                      {lead.contactName}
+                    </div>
+                  </button>
+                ))}
+                {stage.leads.length === 0 && (
+                  <p className="text-xs text-surface-500 dark:text-surface-400">No leads</p>
+                )}
+                {stage.leads.length > 6 && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+                    onClick={() => setStatusFilterWithRoute(stage.value)}
+                  >
+                    +{stage.leads.length - 6} more
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -753,7 +895,7 @@ const LeadsList = () => {
                 placeholder="All Statuses"
                 options={LEAD_STATUSES}
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={setStatusFilterWithRoute}
               />
               <Select
                 label="Lead Source"

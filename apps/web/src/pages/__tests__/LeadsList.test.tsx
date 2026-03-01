@@ -175,8 +175,22 @@ describe('LeadsList', () => {
   it('renders leads from API', async () => {
     render(<LeadsList />);
 
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
+    expect((await screen.findAllByText('Jane Smith')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Acme Corporation')).length).toBeGreaterThan(0);
+  });
+
+  it('shows pipeline stages and filters to stage when clicked', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<LeadsList />);
+
+    expect(await screen.findByText(/lead pipeline/i)).toBeInTheDocument();
+    await userEventInstance.click(screen.getByRole('button', { name: /walk through booked/i }));
+
+    await waitFor(() => {
+      expect(listLeadsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'walk_through_booked' })
+      );
+    });
   });
 
   it('creates a lead from modal', async () => {
@@ -254,8 +268,8 @@ describe('LeadsList', () => {
     const userEventInstance = userEvent.setup();
     render(<LeadsList />);
 
-    const contactName = await screen.findByText('Jane Smith');
-    const row = contactName.closest('tr');
+    const rows = await screen.findAllByRole('row');
+    const row = rows.find((candidate) => within(candidate).queryByText('Jane Smith')) || null;
     expect(row).toBeTruthy();
     const rowButtons = within(row as HTMLElement).getAllByRole('button');
     await userEventInstance.click(rowButtons[rowButtons.length - 1]);
