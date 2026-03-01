@@ -46,6 +46,38 @@ const LEAD_STATUSES = [
   { value: 'reopened', label: 'Reopened' },
 ];
 
+const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
+
+const isLeadAssignableUser = (user: User): boolean => {
+  const roleKeys = new Set<string>();
+  const primaryRole = (user as User & { role?: unknown }).role;
+
+  if (typeof primaryRole === 'string') {
+    roleKeys.add(primaryRole.toLowerCase());
+  } else if (
+    primaryRole
+    && typeof primaryRole === 'object'
+    && 'key' in primaryRole
+    && typeof (primaryRole as { key?: unknown }).key === 'string'
+  ) {
+    roleKeys.add((primaryRole as { key: string }).key.toLowerCase());
+  }
+
+  for (const userRole of user.roles ?? []) {
+    if (typeof userRole?.role?.key === 'string') {
+      roleKeys.add(userRole.role.key.toLowerCase());
+    }
+  }
+
+  for (const roleKey of roleKeys) {
+    if (LEAD_ASSIGNABLE_ROLES.has(roleKey)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const LeadDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -86,6 +118,10 @@ const LeadDetail = () => {
   const canWriteLeads = useMemo(
     () => hasPermission(PERMISSIONS.LEADS_WRITE),
     [hasPermission]
+  );
+  const leadAssignableUsers = useMemo(
+    () => users.filter(isLeadAssignableUser),
+    [users]
   );
 
   const fetchLead = useCallback(async () => {
@@ -795,7 +831,7 @@ const LeadDetail = () => {
             <Select
               label="Assigned To"
               placeholder="Select user"
-              options={users.map((u) => ({
+              options={leadAssignableUsers.map((u) => ({
                 value: u.id,
                 label: u.fullName,
               }))}
