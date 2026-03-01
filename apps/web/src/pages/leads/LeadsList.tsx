@@ -146,8 +146,14 @@ const FACILITY_BUILDING_TYPE_OPTIONS = [
 ];
 
 const OTHER_INDUSTRY_VALUE = 'other';
+const OTHER_FACILITY_BUILDING_TYPE_VALUE = 'other';
 
 const isKnownIndustryValue = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return FACILITY_BUILDING_TYPE_OPTIONS.some((option) => option.value === value);
+};
+
+const isKnownFacilityBuildingTypeValue = (value: string | null | undefined): boolean => {
   if (!value) return false;
   return FACILITY_BUILDING_TYPE_OPTIONS.some((option) => option.value === value);
 };
@@ -1442,18 +1448,45 @@ const LeadsList = () => {
                       label="Building Type"
                       placeholder="Select building type"
                       options={FACILITY_BUILDING_TYPE_OPTIONS}
-                      value={conversionFormData.facilityData?.buildingType || ''}
+                      value={
+                        isKnownFacilityBuildingTypeValue(conversionFormData.facilityData?.buildingType)
+                          ? conversionFormData.facilityData?.buildingType || ''
+                          : conversionFormData.facilityData?.buildingType
+                            ? OTHER_FACILITY_BUILDING_TYPE_VALUE
+                            : ''
+                      }
                       onChange={(value) =>
                         setConversionFormData({
                           ...conversionFormData,
                           facilityData: {
                             ...conversionFormData.facilityData!,
-                            buildingType: value || null,
+                            buildingType: value
+                              ? (value === OTHER_FACILITY_BUILDING_TYPE_VALUE ? '' : value)
+                              : null,
                           },
                         })
                       }
                     />
                   </div>
+                  {!isKnownFacilityBuildingTypeValue(conversionFormData.facilityData?.buildingType)
+                    && conversionFormData.facilityData?.buildingType !== null
+                    && (
+                      <Input
+                        label="Specify Building Type"
+                        placeholder="Type building type"
+                        value={conversionFormData.facilityData?.buildingType || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              buildingType: e.target.value || '',
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.buildingType}
+                      />
+                    )}
                   <div>
                     <h5 className="mb-3 text-sm font-medium text-gray-300">Facility Address</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
