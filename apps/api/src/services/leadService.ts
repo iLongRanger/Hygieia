@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
+import { geocodeAddressIfNeeded } from './geocodingService';
 import logger from '../lib/logger';
 
 export interface LeadListParams {
@@ -116,6 +117,15 @@ const leadSelect = {
     },
   },
 } satisfies Prisma.LeadSelect;
+
+function hasAddressCoordinates(address: unknown): boolean {
+  if (!address || typeof address !== 'object') return false;
+  const raw = address as Record<string, unknown>;
+  const lat = raw.latitude ?? raw.lat;
+  const lng = raw.longitude ?? raw.lng;
+  return typeof lat === 'number' && Number.isFinite(lat)
+    && typeof lng === 'number' && Number.isFinite(lng);
+}
 
 export async function listLeads(
   params: LeadListParams
@@ -525,12 +535,16 @@ export async function convertLead(
         throw new BadRequestError('Facility address is required before converting this lead');
       }
 
+      const normalizedAddress = await geocodeAddressIfNeeded(
+        input.facilityData.address as Record<string, unknown>
+      );
+
       // Create new facility
       const createdFacility = await tx.facility.create({
         data: {
           accountId,
           name: input.facilityData.name,
-          address: input.facilityData.address as Prisma.InputJsonValue,
+          address: normalizedAddress as Prisma.InputJsonValue,
           buildingType: input.facilityData.buildingType,
           squareFeet: input.facilityData.squareFeet,
           accessInstructions: input.facilityData.accessInstructions,
@@ -558,6 +572,17 @@ export async function convertLead(
       const facilityAddress = existingFacility as { address?: { street?: unknown } | null };
       if (typeof facilityAddress.address?.street !== 'string' || !facilityAddress.address.street.trim()) {
         throw new BadRequestError('Selected facility must have an address before converting this lead');
+      }
+
+      // Backfill coordinates when existing facility has an address but no geocode.
+      if (!hasAddressCoordinates(existingFacility.address)) {
+        const normalizedAddress = await geocodeAddressIfNeeded(
+          existingFacility.address as Record<string, unknown>
+        );
+        await tx.facility.update({
+          where: { id: input.existingFacilityId },
+          data: { address: normalizedAddress as Prisma.InputJsonValue },
+        });
       }
 
       // If using existing account, verify facility belongs to that account
