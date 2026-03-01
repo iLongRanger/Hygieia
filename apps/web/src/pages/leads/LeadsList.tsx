@@ -292,7 +292,7 @@ const LeadsList = () => {
     try {
       setPipelineLoading(true);
       const allLeads: Lead[] = [];
-      const limit = 200;
+      const limit = 100;
       let currentPage = 1;
       let totalPagesCount = 1;
 
@@ -368,6 +368,26 @@ const LeadsList = () => {
     fetchFacilities();
     fetchPipelineLeads();
   }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities, fetchPipelineLeads]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      fetchPipelineLeads();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPipelineLeads();
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchPipelineLeads]);
 
   useEffect(() => {
     const routeStatus = new URLSearchParams(location.search).get('status');
