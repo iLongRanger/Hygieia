@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
-import { autoAdvanceLeadStatusForAccount } from './leadService';
+import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -170,7 +170,7 @@ export async function rejectProposalPublic(
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true },
+    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true },
   });
 
   if (!proposal) {
@@ -185,7 +185,7 @@ export async function rejectProposalPublic(
     throw new Error('This proposal can no longer be rejected');
   }
 
-  return prisma.proposal.update({
+  const updatedProposal = await prisma.proposal.update({
     where: { id: proposal.id },
     data: {
       status: 'rejected',
@@ -194,4 +194,7 @@ export async function rejectProposalPublic(
     },
     select: publicProposalSelect,
   });
+
+  await autoSetLeadStatusForAccount(proposal.accountId, 'lost');
+  return updatedProposal;
 }

@@ -685,6 +685,26 @@ export async function autoAdvanceLeadStatusForAccount(
   accountId: string,
   targetStatus: 'proposal_sent' | 'negotiation' | 'won'
 ): Promise<void> {
+  await autoSetLeadStatusForAccount(accountId, targetStatus, { mode: 'advance' });
+}
+
+type AutoLeadStatusTarget = 'proposal_sent' | 'negotiation' | 'won' | 'lost';
+
+interface AutoLeadStatusOptions {
+  mode?: 'advance' | 'set';
+}
+
+/**
+ * Update the newest active converted lead for an account.
+ * - `advance` mode only moves forward in the pipeline.
+ * - `set` mode applies explicit target status (used for rejection/loss events).
+ * This is best-effort and must never block core workflows.
+ */
+export async function autoSetLeadStatusForAccount(
+  accountId: string,
+  targetStatus: AutoLeadStatusTarget,
+  options: AutoLeadStatusOptions = {}
+): Promise<void> {
   try {
     const lead = await prisma.lead.findFirst({
       where: {
@@ -702,7 +722,11 @@ export async function autoAdvanceLeadStatusForAccount(
     });
 
     if (!lead) return;
-    if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
+    if (options.mode === 'advance') {
+      if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
+    } else {
+      if (lead.status === targetStatus) return;
+    }
 
     await prisma.lead.update({
       where: { id: lead.id },

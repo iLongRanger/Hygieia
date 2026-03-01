@@ -10,7 +10,7 @@ import {
   type PricingSettingsSnapshot,
 } from './pricing';
 import { normalizeServiceSchedule } from './serviceScheduleService';
-import { autoAdvanceLeadStatusForAccount } from './leadService';
+import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
 
 export interface ProposalListParams {
   page?: number;
@@ -580,7 +580,7 @@ export async function acceptProposal(id: string) {
 }
 
 export async function rejectProposal(id: string, rejectionReason: string) {
-  return prisma.proposal.update({
+  const proposal = await prisma.proposal.update({
     where: { id },
     data: {
       status: 'rejected',
@@ -589,6 +589,9 @@ export async function rejectProposal(id: string, rejectionReason: string) {
     },
     select: proposalSelect,
   });
+
+  await autoSetLeadStatusForAccount(proposal.account.id, 'lost');
+  return proposal;
 }
 
 export async function archiveProposal(id: string) {

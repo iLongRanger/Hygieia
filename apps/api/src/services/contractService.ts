@@ -7,7 +7,7 @@ import {
   mapProposalFrequencyToContractFrequency,
   normalizeServiceSchedule,
 } from './serviceScheduleService';
-import { autoAdvanceLeadStatusForAccount } from './leadService';
+import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
 
 export interface ContractListParams {
   page?: number;
@@ -596,6 +596,9 @@ export async function updateContractStatus(
   if (status === 'active') {
     await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
   }
+  if (status === 'terminated') {
+    await autoSetLeadStatusForAccount(contract.account.id, 'lost');
+  }
 
   return contract;
 }
@@ -738,6 +741,7 @@ export async function terminateContract(id: string, reason: string) {
     select: contractSelect,
   });
 
+  await autoSetLeadStatusForAccount(contract.account.id, 'lost');
   return contract;
 }
 
