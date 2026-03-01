@@ -141,7 +141,13 @@ describe('Lead Routes', () => {
           name: 'Acme Corp',
           type: 'commercial',
         },
-        facilityOption: 'none',
+        facilityOption: 'new',
+        facilityData: {
+          name: 'HQ',
+          address: {
+            street: '123 Main St',
+          },
+        },
       })
       .expect(201);
 
@@ -152,5 +158,29 @@ describe('Lead Routes', () => {
         userId: 'user-1',
       })
     );
+  });
+
+  it('POST /:id/convert should return 422 when facility address is missing', async () => {
+    (leadService.canConvertLead as jest.Mock).mockResolvedValue({ canConvert: true });
+
+    await request(app)
+      .post('/api/v1/leads/lead-1/convert')
+      .send({
+        createNewAccount: true,
+        accountData: {
+          name: 'Acme Corp',
+          type: 'commercial',
+        },
+        facilityOption: 'new',
+        facilityData: {
+          name: 'HQ',
+          address: {
+            street: '',
+          },
+        },
+      })
+      .expect(422);
+
+    expect(leadService.convertLead).not.toHaveBeenCalled();
   });
 });

@@ -116,12 +116,19 @@ export const convertLeadSchema = z.object({
     })
     .optional(),
 
-  // Facility options: 'none', 'new', or 'existing'
-  facilityOption: z.enum(['none', 'new', 'existing']).default('none'),
+  // Facility options: 'new' or 'existing' (facility is required for conversion)
+  facilityOption: z.enum(['new', 'existing']).default('new'),
   existingFacilityId: z.string().uuid().optional().nullable(),
   facilityData: z
     .object({
       name: z.string().min(1, 'Facility name is required').max(255),
+      address: z.object({
+        street: z.string().min(1, 'Facility street address is required').max(200),
+        city: z.string().max(100).optional().nullable(),
+        state: z.string().max(50).optional().nullable(),
+        postalCode: z.string().max(20).optional().nullable(),
+        country: z.string().max(100).optional().nullable(),
+      }),
       buildingType: z.string().max(50).optional().nullable(),
       squareFeet: z.coerce.number().positive().optional().nullable(),
       accessInstructions: z.string().max(5000).optional().nullable(),

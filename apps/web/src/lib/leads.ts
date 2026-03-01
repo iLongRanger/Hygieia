@@ -106,10 +106,17 @@ export interface ConvertLeadInput {
     paymentTerms?: string;
     notes?: string | null;
   };
-  facilityOption: 'none' | 'new' | 'existing';
+  facilityOption: 'new' | 'existing';
   existingFacilityId?: string | null;
   facilityData?: {
     name: string;
+    address: {
+      street: string;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
+    };
     buildingType?: string | null;
     squareFeet?: number | null;
     accessInstructions?: string | null;

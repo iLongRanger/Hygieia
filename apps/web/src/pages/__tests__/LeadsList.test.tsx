@@ -17,6 +17,8 @@ const convertLeadMock = vi.fn();
 const listUsersMock = vi.fn();
 const listAccountsMock = vi.fn();
 const listFacilitiesMock = vi.fn();
+const toastSuccessMock = vi.fn();
+const toastErrorMock = vi.fn();
 
 vi.mock('../../lib/leads', () => ({
   listLeads: (...args: unknown[]) => listLeadsMock(...args),
@@ -42,8 +44,8 @@ vi.mock('../../lib/facilities', () => ({
 
 vi.mock('react-hot-toast', () => ({
   default: {
-    success: vi.fn(),
-    error: vi.fn(),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }));
 
@@ -143,6 +145,8 @@ const facility: Facility = {
 
 describe('LeadsList', () => {
   beforeEach(() => {
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
     useAuthStore.setState({
       user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
       token: 'token',
@@ -259,5 +263,20 @@ describe('LeadsList', () => {
     await waitFor(() => {
       expect(archiveLeadMock).toHaveBeenCalledWith('lead-1');
     });
+  });
+
+  it('blocks lead conversion when facility street address is missing', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<LeadsList />);
+
+    await userEventInstance.click(await screen.findByTitle(/convert to account/i));
+    const modal = await screen.findByRole('dialog', { name: /convert lead to account/i });
+    await userEventInstance.clear(within(modal).getByLabelText(/street address/i));
+    await userEventInstance.click(within(modal).getByRole('button', { name: /convert lead/i }));
+
+    expect(convertLeadMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      'Facility address is required before converting this lead'
+    );
   });
 });

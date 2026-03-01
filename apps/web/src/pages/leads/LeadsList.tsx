@@ -133,6 +133,12 @@ const ACCOUNT_TYPES = [
   { value: 'non_profit', label: 'Non-Profit' },
 ];
 
+const hasFacilityStreetAddress = (facility: Facility | null | undefined): boolean => {
+  if (!facility?.address) return false;
+  const street = facility.address.street;
+  return typeof street === 'string' && street.trim().length > 0;
+};
+
 const LeadsList = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -175,10 +181,17 @@ const LeadsList = () => {
       paymentTerms: 'Net 30',
       notes: null,
     },
-    facilityOption: 'none',
+    facilityOption: 'new',
     existingFacilityId: null,
     facilityData: {
       name: '',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      },
       buildingType: null,
       squareFeet: null,
       accessInstructions: null,
@@ -442,10 +455,17 @@ const LeadsList = () => {
         paymentTerms: 'Net 30',
         notes: null,
       },
-      facilityOption: 'none',
+      facilityOption: 'new',
       existingFacilityId: null,
       facilityData: {
         name: lead.companyName || lead.contactName,
+        address: {
+          street: lead.address?.street || '',
+          city: lead.address?.city || '',
+          state: lead.address?.state || '',
+          postalCode: lead.address?.postalCode || '',
+          country: lead.address?.country || '',
+        },
         buildingType: null,
         squareFeet: null,
         accessInstructions: null,
@@ -476,9 +496,27 @@ const LeadsList = () => {
       return;
     }
 
+    if (
+      conversionFormData.facilityOption === 'new'
+      && !conversionFormData.facilityData?.address?.street?.trim()
+    ) {
+      toast.error('Facility address is required before converting this lead');
+      return;
+    }
+
     if (conversionFormData.facilityOption === 'existing' && !conversionFormData.existingFacilityId) {
       toast.error('Please select an existing facility');
       return;
+    }
+
+    if (conversionFormData.facilityOption === 'existing') {
+      const selectedFacility = facilities.find(
+        (facility) => facility.id === conversionFormData.existingFacilityId
+      );
+      if (!hasFacilityStreetAddress(selectedFacility)) {
+        toast.error('Selected facility must have an address before converting this lead');
+        return;
+      }
     }
 
     try {
@@ -495,7 +533,12 @@ const LeadsList = () => {
       });
     } catch (error) {
       console.error('Failed to convert lead:', error);
-      toast.error('Failed to convert lead. Please try again.');
+      const errorMessage = (error as { response?: { data?: { message?: string; error?: { message?: string } } } })
+        ?.response?.data?.message
+        || (error as { response?: { data?: { message?: string; error?: { message?: string } } } })
+          ?.response?.data?.error?.message
+        || 'Failed to convert lead. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setConverting(false);
     }
@@ -1159,21 +1202,6 @@ const LeadsList = () => {
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input
                     type="radio"
-                    checked={conversionFormData.facilityOption === 'none'}
-                    onChange={() =>
-                      setConversionFormData({
-                        ...conversionFormData,
-                        facilityOption: 'none',
-                        existingFacilityId: null,
-                      })
-                    }
-                    className="text-primary-500 focus:ring-primary-500"
-                  />
-                  No Facility
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="radio"
                     checked={conversionFormData.facilityOption === 'new'}
                     onChange={() =>
                       setConversionFormData({
@@ -1237,6 +1265,99 @@ const LeadsList = () => {
                       maxLength={maxLengths.buildingType}
                     />
                   </div>
+                  <div>
+                    <h5 className="mb-3 text-sm font-medium text-gray-300">Facility Address</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Street Address"
+                        required
+                        value={conversionFormData.facilityData?.address?.street || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              address: {
+                                ...conversionFormData.facilityData?.address,
+                                street: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.street}
+                      />
+                      <Input
+                        label="City"
+                        value={conversionFormData.facilityData?.address?.city || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              address: {
+                                ...conversionFormData.facilityData?.address,
+                                city: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.city}
+                      />
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Input
+                        label="State"
+                        value={conversionFormData.facilityData?.address?.state || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              address: {
+                                ...conversionFormData.facilityData?.address,
+                                state: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.state}
+                      />
+                      <Input
+                        label="Postal Code"
+                        value={conversionFormData.facilityData?.address?.postalCode || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              address: {
+                                ...conversionFormData.facilityData?.address,
+                                postalCode: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.postalCode}
+                      />
+                      <Input
+                        label="Country"
+                        value={conversionFormData.facilityData?.address?.country || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            facilityData: {
+                              ...conversionFormData.facilityData!,
+                              address: {
+                                ...conversionFormData.facilityData?.address,
+                                country: e.target.value || null,
+                              },
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.country}
+                      />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Square Feet"
@@ -1294,6 +1415,7 @@ const LeadsList = () => {
                       existingFacilityId: value || null,
                     })
                   }
+                  hint="Selected facility must already have an address."
                 />
               )}
             </div>

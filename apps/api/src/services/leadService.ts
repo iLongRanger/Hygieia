@@ -382,10 +382,17 @@ export interface ConvertLeadInput {
     paymentTerms?: string;
     notes?: string | null;
   };
-  facilityOption: 'none' | 'new' | 'existing';
+  facilityOption: 'new' | 'existing';
   existingFacilityId?: string | null;
   facilityData?: {
     name: string;
+    address: {
+      street: string;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
+    };
     buildingType?: string | null;
     squareFeet?: number | null;
     accessInstructions?: string | null;
@@ -514,12 +521,16 @@ export async function convertLead(
     // Handle facility based on facilityOption
     let facility: { id: string; name: string } | undefined;
     if (input.facilityOption === 'new' && input.facilityData) {
+      if (!input.facilityData.address?.street?.trim()) {
+        throw new BadRequestError('Facility address is required before converting this lead');
+      }
+
       // Create new facility
       const createdFacility = await tx.facility.create({
         data: {
           accountId,
           name: input.facilityData.name,
-          address: (lead.address || {}) as Prisma.InputJsonValue,
+          address: input.facilityData.address as Prisma.InputJsonValue,
           buildingType: input.facilityData.buildingType,
           squareFeet: input.facilityData.squareFeet,
           accessInstructions: input.facilityData.accessInstructions,
@@ -537,11 +548,16 @@ export async function convertLead(
       // Use existing facility - verify it exists and belongs to the account
       const existingFacility = await tx.facility.findUnique({
         where: { id: input.existingFacilityId },
-        select: { id: true, name: true, accountId: true },
+        select: { id: true, name: true, accountId: true, address: true },
       });
 
       if (!existingFacility) {
         throw new Error('Existing facility not found');
+      }
+
+      const facilityAddress = existingFacility as { address?: { street?: unknown } | null };
+      if (typeof facilityAddress.address?.street !== 'string' || !facilityAddress.address.street.trim()) {
+        throw new BadRequestError('Selected facility must have an address before converting this lead');
       }
 
       // If using existing account, verify facility belongs to that account
