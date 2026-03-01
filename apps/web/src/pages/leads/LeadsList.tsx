@@ -12,6 +12,9 @@ import {
   ArrowRightCircle,
   Building2,
   CheckCircle,
+  Clock,
+  CalendarClock,
+  User as UserIcon,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -123,6 +126,65 @@ const getLeadSourceFromNotes = (notes: string | null | undefined): string | null
 
 const getLeadSourceDisplay = (lead: Lead): string => {
   return lead.leadSource?.name || getLeadSourceFromNotes(lead.notes) || 'Unknown';
+};
+
+const STAGE_COLORS: Record<string, { border: string; bg: string; text: string; dot: string }> = {
+  lead: { border: 'border-t-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-400' },
+  walk_through_booked: { border: 'border-t-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-400' },
+  walk_through_completed: { border: 'border-t-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10', text: 'text-violet-700 dark:text-violet-300', dot: 'bg-violet-400' },
+  proposal_sent: { border: 'border-t-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-400' },
+  negotiation: { border: 'border-t-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-400' },
+  won: { border: 'border-t-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-400' },
+  lost: { border: 'border-t-red-400', bg: 'bg-red-50 dark:bg-red-500/10', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-400' },
+  reopened: { border: 'border-t-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10', text: 'text-cyan-700 dark:text-cyan-300', dot: 'bg-cyan-400' },
+};
+
+const DEFAULT_STAGE_COLOR = { border: 'border-t-surface-400', bg: 'bg-surface-50 dark:bg-surface-800/50', text: 'text-surface-700 dark:text-surface-300', dot: 'bg-surface-400' };
+
+const formatCompactCurrency = (value: string | null) => {
+  if (!value) return '$0';
+  const num = Number(value);
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}k`;
+  return `$${num.toLocaleString()}`;
+};
+
+const getRelativeTime = (dateStr: string): string => {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return '1d ago';
+  if (diffDays < 30) return `${diffDays}d ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
+};
+
+const getStaleness = (dateStr: string): 'fresh' | 'aging' | 'stale' => {
+  const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (diffDays > 14) return 'stale';
+  if (diffDays > 7) return 'aging';
+  return 'fresh';
+};
+
+const getCloseDateUrgency = (dateStr: string | null): 'overdue' | 'soon' | 'normal' | null => {
+  if (!dateStr) return null;
+  const diffDays = Math.floor((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  if (diffDays < 0) return 'overdue';
+  if (diffDays <= 7) return 'soon';
+  return 'normal';
+};
+
+const getProbabilityColor = (probability: number | null): string => {
+  if (probability == null) return 'bg-surface-200 dark:bg-surface-700';
+  if (probability >= 70) return 'bg-emerald-400';
+  if (probability >= 40) return 'bg-amber-400';
+  return 'bg-red-400';
+};
+
+const getInitials = (name: string): string => {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 };
 
 const ACCOUNT_TYPES = [
@@ -828,65 +890,187 @@ const LeadsList = () => {
         )}
       </div>
 
-      <Card className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Lead Pipeline</h2>
-          {pipelineLoading ? (
-            <span className="text-sm text-surface-500 dark:text-surface-400">Loading pipeline...</span>
-          ) : (
-            <span className="text-sm text-surface-500 dark:text-surface-400">
-              {pipelineLeads.length} active leads
-            </span>
-          )}
+      <Card noPadding className="overflow-hidden">
+        <div className="border-b border-surface-200 bg-gradient-to-r from-surface-50 to-white p-4 dark:border-surface-700 dark:from-surface-800/60 dark:to-surface-800">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Lead Pipeline</h2>
+              <p className="text-sm text-surface-500 dark:text-surface-400">
+                {pipelineLoading ? 'Refreshing stage counts...' : `${pipelineLeads.length} active leads`}
+              </p>
+            </div>
+            {statusFilter && (
+              <Button variant="secondary" size="sm" onClick={() => setStatusFilterWithRoute('')}>
+                <X className="mr-1 h-4 w-4" />
+                Clear Stage Filter
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
-          {pipelineStages.map((stage) => (
-            <div
-              key={stage.value}
-              className="rounded-lg border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-800/50"
-            >
-              <button
-                type="button"
-                className="mb-3 flex w-full items-center justify-between text-left"
-                onClick={() => setStatusFilterWithRoute(stage.value)}
-              >
-                <span className="text-sm font-medium text-surface-900 dark:text-surface-100">
-                  {stage.label}
-                </span>
-                <Badge variant="default">{stage.leads.length}</Badge>
-              </button>
 
-              <div className="space-y-2">
-                {stage.leads.slice(0, 6).map((lead) => (
+        <div className="overflow-x-auto p-3">
+          <div className="flex min-w-max gap-3">
+            {pipelineStages.map((stage) => {
+              const isActiveStage = statusFilter === stage.value;
+              const colors = STAGE_COLORS[stage.value] || DEFAULT_STAGE_COLOR;
+              const stageTotal = stage.leads.reduce(
+                (sum, l) => sum + (l.estimatedValue ? Number(l.estimatedValue) : 0),
+                0,
+              );
+              return (
+                <section
+                  key={stage.value}
+                  className={`flex w-[270px] flex-col rounded-lg border border-t-[3px] ${colors.border} ${
+                    isActiveStage
+                      ? 'border-primary-400 bg-white/80 shadow-md dark:border-primary-500 dark:bg-surface-800/80'
+                      : 'border-surface-200 bg-surface-50/80 dark:border-surface-700 dark:bg-surface-800/40'
+                  }`}
+                  style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '360px' }}
+                >
+                  {/* Sticky column header */}
                   <button
-                    key={lead.id}
                     type="button"
-                    className="w-full rounded-md border border-surface-200 bg-white p-2 text-left transition hover:border-primary-400 hover:bg-primary-50/50 dark:border-surface-700 dark:bg-surface-900 dark:hover:bg-surface-800"
-                    onClick={() => navigate(`/leads/${lead.id}`)}
-                  >
-                    <div className="truncate text-sm font-medium text-surface-900 dark:text-surface-100">
-                      {lead.companyName || lead.contactName}
-                    </div>
-                    <div className="truncate text-xs text-surface-500 dark:text-surface-400">
-                      {lead.contactName}
-                    </div>
-                  </button>
-                ))}
-                {stage.leads.length === 0 && (
-                  <p className="text-xs text-surface-500 dark:text-surface-400">No leads</p>
-                )}
-                {stage.leads.length > 6 && (
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+                    className="sticky top-0 z-10 flex items-center justify-between rounded-t-lg px-3 py-2.5 text-left transition hover:bg-surface-100/60 dark:hover:bg-surface-700/30"
                     onClick={() => setStatusFilterWithRoute(stage.value)}
                   >
-                    +{stage.leads.length - 6} more
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${colors.dot}`} />
+                        <p className={`truncate text-sm font-semibold ${colors.text}`}>
+                          {stage.label}
+                        </p>
+                        <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface-200 px-1.5 text-[11px] font-medium text-surface-700 dark:bg-surface-700 dark:text-surface-300">
+                          {stage.leads.length}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 pl-4 text-xs font-medium text-surface-500 dark:text-surface-400">
+                        {formatCompactCurrency(String(stageTotal))} total
+                      </p>
+                    </div>
                   </button>
-                )}
-              </div>
-            </div>
-          ))}
+
+                  <div className="mx-2 border-t border-surface-200 dark:border-surface-700" />
+
+                  {/* Scrollable cards */}
+                  <div className="flex-1 space-y-2 overflow-y-auto px-2 py-2">
+                    {stage.leads.map((lead) => {
+                      const staleness = getStaleness(lead.updatedAt);
+                      const closeUrgency = getCloseDateUrgency(lead.expectedCloseDate);
+                      return (
+                        <button
+                          key={lead.id}
+                          type="button"
+                          className={`group w-full rounded-lg border bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-surface-900 ${
+                            isActiveStage
+                              ? 'border-primary-200 hover:border-primary-400 dark:border-primary-800 dark:hover:border-primary-500'
+                              : 'border-surface-200 hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600'
+                          }`}
+                          onClick={() => navigate(`/leads/${lead.id}`)}
+                        >
+                          {/* Company & contact */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-surface-900 dark:text-surface-100">
+                                {lead.companyName || lead.contactName}
+                              </p>
+                              {lead.companyName && (
+                                <p className="truncate text-xs text-surface-500 dark:text-surface-400">
+                                  {lead.contactName}
+                                </p>
+                              )}
+                            </div>
+                            {/* Lead source dot */}
+                            <span
+                              className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${colors.dot}`}
+                              title={getLeadSourceDisplay(lead)}
+                            />
+                          </div>
+
+                          {/* Value badge */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-0.5 text-xs font-semibold text-surface-800 dark:bg-surface-800 dark:text-surface-200">
+                              <DollarSign className="h-3 w-3" />
+                              {lead.estimatedValue ? Number(lead.estimatedValue).toLocaleString() : '0'}
+                            </span>
+                            <span className="text-[11px] text-surface-400 dark:text-surface-500">
+                              {getLeadSourceDisplay(lead)}
+                            </span>
+                          </div>
+
+                          {/* Meta row: activity + close date */}
+                          <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                            <span className={`inline-flex items-center gap-1 ${
+                              staleness === 'stale'
+                                ? 'text-red-500 dark:text-red-400'
+                                : staleness === 'aging'
+                                  ? 'text-amber-500 dark:text-amber-400'
+                                  : 'text-surface-400 dark:text-surface-500'
+                            }`}>
+                              <Clock className="h-3 w-3" />
+                              {getRelativeTime(lead.updatedAt)}
+                              {staleness !== 'fresh' && (
+                                <span className={`h-1.5 w-1.5 rounded-full ${staleness === 'stale' ? 'bg-red-400' : 'bg-amber-400'}`} />
+                              )}
+                            </span>
+
+                            {lead.expectedCloseDate && (
+                              <span className={`inline-flex items-center gap-1 ${
+                                closeUrgency === 'overdue'
+                                  ? 'text-red-500 dark:text-red-400'
+                                  : closeUrgency === 'soon'
+                                    ? 'text-amber-500 dark:text-amber-400'
+                                    : 'text-surface-400 dark:text-surface-500'
+                              }`}>
+                                <CalendarClock className="h-3 w-3" />
+                                {new Date(lead.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Assigned user */}
+                          <div className="mt-2 flex items-center justify-between">
+                            {lead.assignedToUser ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-[10px] font-semibold text-primary-700 dark:bg-primary-900 dark:text-primary-300">
+                                  {getInitials(lead.assignedToUser.fullName)}
+                                </span>
+                                <span className="max-w-[120px] truncate text-[11px] text-surface-600 dark:text-surface-400">
+                                  {lead.assignedToUser.fullName}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-surface-400 dark:text-surface-500">
+                                <UserIcon className="h-3 w-3" />
+                                Unassigned
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Probability bar */}
+                          <div className="mt-2">
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-100 dark:bg-surface-800">
+                              <div
+                                className={`h-full rounded-full transition-all ${getProbabilityColor(lead.probability)}`}
+                                style={{ width: `${Math.max(lead.probability ?? 0, 4)}%` }}
+                              />
+                            </div>
+                            <p className="mt-0.5 text-right text-[10px] text-surface-400 dark:text-surface-500">
+                              {lead.probability ?? 0}% probability
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {stage.leads.length === 0 && (
+                      <div className="rounded-lg border border-dashed border-surface-300 p-4 text-center text-xs text-surface-500 dark:border-surface-600 dark:text-surface-400">
+                        No leads in this stage
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       </Card>
 
