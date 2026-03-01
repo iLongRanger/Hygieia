@@ -3,7 +3,6 @@ import type { GlobalBranding } from '../types/branding';
 interface TeamAssignedEmailData {
   contractNumber: string;
   title: string;
-  monthlyValue: string;
   subcontractPay: string;
   startDate: string;
   serviceFrequency: string;
@@ -99,7 +98,6 @@ export function buildContractTeamAssignedHtmlWithBranding(
               <div style="background-color: #e0f2fe; border-radius: 8px; padding: 20px; text-align: center; margin: 0 0 24px;">
                 <div style="color: #0369a1; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Subcontract Pay</div>
                 <div style="color: #0c4a6e; font-size: 28px; font-weight: bold;">${data.subcontractPay}/month</div>
-                <div style="color: #0369a1; font-size: 12px; margin-top: 4px;">Contract Value: ${data.monthlyValue}/month</div>
               </div>
 
               <!-- Scope of Work -->

@@ -637,6 +637,12 @@ router.patch(
       }
 
       if (parsed.data.teamId) {
+        const subcontractorPayout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
+        const subcontractorPayoutLabel = `$${subcontractorPayout.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}/month`;
+
         try {
           const subcontractorUsers = await getSubcontractorTeamUsers(parsed.data.teamId);
           if (subcontractorUsers.length > 0) {
@@ -645,7 +651,9 @@ router.patch(
               {
               type: 'contract_team_assigned',
               title: `Contract ${contract.contractNumber} assigned to your team`,
-              body: `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team.`,
+              body:
+                `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team. ` +
+                `Your payout: ${subcontractorPayoutLabel}.`,
               metadata: {
                 contractId: contract.id,
                 teamId: parsed.data.teamId,
@@ -666,6 +674,7 @@ router.patch(
                     `
                       <p>Hi ${user.fullName || 'there'},</p>
                       <p>Your team has been assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
+                      <p>Your payout is <strong>${subcontractorPayoutLabel}</strong>.</p>
                       <p>Please view it in the web app for full details:</p>
                       <p><a href="${contractUrl}">${contractUrl}</a></p>
                     `
@@ -696,7 +705,6 @@ router.patch(
             const emailData = {
               contractNumber: notifData.contractNumber,
               title: notifData.title,
-              monthlyValue: `$${monthlyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
               subcontractPay: `$${subcontractPay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
               startDate: new Date(notifData.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               serviceFrequency: notifData.serviceFrequency || 'As scheduled',
@@ -747,7 +755,9 @@ router.patch(
               await createBulkNotifications([provisioned.user.id], {
                 type: 'contract_team_assigned',
                 title: `Contract ${contract.contractNumber} assigned to your team`,
-                body: `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team.`,
+                body:
+                  `Contract ${contract.contractNumber} (${contract.title}) has been assigned to your team. ` +
+                  `Your payout: ${subcontractorPayoutLabel}.`,
                 metadata: {
                   contractId: contract.id,
                   teamId: parsed.data.teamId,

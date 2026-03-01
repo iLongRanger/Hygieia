@@ -290,60 +290,68 @@ async function main() {
   console.log(`Created ${leadSources.count} lead sources`)
 
   // Create default super admin user
+  const superAdminEmail = 'admin@company.com'
+  const superAdminName = 'System Administrator'
   const defaultPassword = 'Admin@123'
   const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
-  // Check if admin user already exists
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: 'admin@company.com' }
+  const existingSuperAdmin = await prisma.user.findUnique({
+    where: { email: superAdminEmail },
+    select: { id: true }
   })
 
-  if (!existingAdmin) {
-    // Create the admin user
-    const adminUser = await prisma.user.create({
+  const seedUser = await prisma.user.upsert({
+    where: { email: superAdminEmail },
+    update: {
+      fullName: superAdminName,
+      status: 'active'
+    },
+    create: {
+      email: superAdminEmail,
+      passwordHash: hashedPassword,
+      fullName: superAdminName,
+      status: 'active'
+    }
+  })
+
+  const ownerRole = await prisma.role.findUnique({
+    where: { key: 'owner' },
+    select: { id: true }
+  })
+
+  if (!ownerRole) {
+    throw new Error('Owner role not found during seed')
+  }
+
+  const hasOwnerRole = await prisma.userRole.findFirst({
+    where: {
+      userId: seedUser.id,
+      roleId: ownerRole.id
+    },
+    select: { id: true }
+  })
+
+  if (!hasOwnerRole) {
+    await prisma.userRole.create({
       data: {
-        email: 'admin@company.com',
-        passwordHash: hashedPassword,
-        fullName: 'System Administrator',
-        status: 'active'
+        userId: seedUser.id,
+        roleId: ownerRole.id
       }
     })
+  }
 
-    // Get the owner role
-    const ownerRole = await prisma.role.findUnique({
-      where: { key: 'owner' }
-    })
-
-    if (ownerRole) {
-      // Assign owner role to admin user
-      await prisma.userRole.create({
-        data: {
-          userId: adminUser.id,
-          roleId: ownerRole.id
-        }
-      })
-
-      console.log('\n=================================================')
-      console.log('✅ Default Super Admin Created Successfully!')
-      console.log('=================================================')
-      console.log('Email:    admin@company.com')
-      console.log('Password:', defaultPassword)
-      console.log('=================================================')
-      console.log('⚠️  IMPORTANT: Change this password after first login!')
-      console.log('=================================================\n')
-    }
+  if (!existingSuperAdmin) {
+    console.log('\n=================================================')
+    console.log('Default Super Admin Created Successfully!')
+    console.log('=================================================')
+    console.log(`Email:    ${superAdminEmail}`)
+    console.log(`Password: ${defaultPassword}`)
+    console.log('=================================================')
+    console.log('IMPORTANT: Change this password after first login!')
+    console.log('=================================================\n')
   } else {
-    console.log('ℹ️  Default admin user already exists')
+    console.log('Default super admin already exists (ensured owner role)')
   }
-
-  const seedUser = await prisma.user.findUnique({
-    where: { email: 'admin@company.com' }
-  })
-
-  if (!seedUser) {
-    throw new Error('Seed user not found for task templates')
-  }
-
   const taskTemplateSeeds = [
     // Daily
     {
@@ -1339,3 +1347,4 @@ main()
     await prisma.$disconnect()
     process.exit(1)
   })
+
