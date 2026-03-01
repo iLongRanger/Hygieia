@@ -145,6 +145,13 @@ const FACILITY_BUILDING_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+const OTHER_INDUSTRY_VALUE = 'other';
+
+const isKnownIndustryValue = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return FACILITY_BUILDING_TYPE_OPTIONS.some((option) => option.value === value);
+};
+
 const hasFacilityStreetAddress = (facility: Facility | null | undefined): boolean => {
   if (!facility?.address) return false;
   const street = facility.address.street;
@@ -1131,13 +1138,21 @@ const LeadsList = () => {
                       label="Industry"
                       placeholder="Select industry"
                       options={FACILITY_BUILDING_TYPE_OPTIONS}
-                      value={conversionFormData.accountData?.industry || ''}
+                      value={
+                        isKnownIndustryValue(conversionFormData.accountData?.industry)
+                          ? conversionFormData.accountData?.industry || ''
+                          : conversionFormData.accountData?.industry
+                            ? OTHER_INDUSTRY_VALUE
+                            : ''
+                      }
                       onChange={(value) =>
                         setConversionFormData({
                           ...conversionFormData,
                           accountData: {
                             ...conversionFormData.accountData!,
-                            industry: value || null,
+                            industry: value
+                              ? (value === OTHER_INDUSTRY_VALUE ? '' : value)
+                              : null,
                           },
                         })
                       }
@@ -1157,6 +1172,25 @@ const LeadsList = () => {
                       maxLength={maxLengths.website}
                     />
                   </div>
+                  {!isKnownIndustryValue(conversionFormData.accountData?.industry)
+                    && conversionFormData.accountData?.industry !== null
+                    && (
+                      <Input
+                        label="Specify Industry"
+                        placeholder="Type industry"
+                        value={conversionFormData.accountData?.industry || ''}
+                        onChange={(e) =>
+                          setConversionFormData({
+                            ...conversionFormData,
+                            accountData: {
+                              ...conversionFormData.accountData!,
+                              industry: e.target.value || '',
+                            },
+                          })
+                        }
+                        maxLength={maxLengths.industry}
+                      />
+                    )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Billing Email"
