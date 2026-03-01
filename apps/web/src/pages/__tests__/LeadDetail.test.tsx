@@ -212,8 +212,10 @@ describe('LeadDetail', () => {
     await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
     const modal = await screen.findByRole('dialog', { name: /schedule walkthrough/i });
     await userEventInstance.selectOptions(within(modal).getByLabelText(/assigned rep/i), 'user-1');
-    await userEventInstance.type(within(modal).getByLabelText(/^start$/i), '2026-02-25T09:00');
-    await userEventInstance.type(within(modal).getByLabelText(/^end$/i), '2026-02-25T10:00');
+    await userEventInstance.clear(within(modal).getByLabelText(/^date$/i));
+    await userEventInstance.type(within(modal).getByLabelText(/^date$/i), '2026-02-25');
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/start time/i), '09:00');
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/end time/i), '10:00');
     await userEventInstance.click(within(modal).getByRole('button', { name: /^schedule$/i }));
 
     await waitFor(() => {

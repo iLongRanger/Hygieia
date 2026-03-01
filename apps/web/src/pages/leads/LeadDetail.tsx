@@ -47,6 +47,48 @@ const LEAD_STATUSES = [
 ];
 
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hour = String(Math.floor(index / 2)).padStart(2, '0');
+  const minute = index % 2 === 0 ? '00' : '30';
+  const value = `${hour}:${minute}`;
+  const labelHour = Number(hour) % 12 || 12;
+  const labelPeriod = Number(hour) < 12 ? 'AM' : 'PM';
+  return { value, label: `${labelHour}:${minute} ${labelPeriod}` };
+});
+
+const toLocalDateValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const toTimeValue = (date: Date): string => {
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${hour}:${minute}`;
+};
+
+const roundUpToNextHalfHour = (date: Date): Date => {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 30;
+  if (remainder !== 0) {
+    rounded.setMinutes(minutes + (30 - remainder));
+  }
+  return rounded;
+};
+
+const getDefaultScheduleValues = () => {
+  const start = roundUpToNextHalfHour(new Date());
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return {
+    date: toLocalDateValue(start),
+    startTime: toTimeValue(start),
+    endTime: toTimeValue(end),
+  };
+};
 
 const isLeadAssignableUser = (user: User): boolean => {
   const roleKeys = new Set<string>();
@@ -107,6 +149,9 @@ const LeadDetail = () => {
     location: '',
     notes: '',
   });
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleStartTime, setScheduleStartTime] = useState('');
+  const [scheduleEndTime, setScheduleEndTime] = useState('');
 
   const [completeForm, setCompleteForm] = useState({
     facilityId: '',
@@ -229,8 +274,19 @@ const LeadDetail = () => {
 
   const handleSchedule = async () => {
     if (!id) return;
-    if (!scheduleForm.assignedToUserId || !scheduleForm.scheduledStart || !scheduleForm.scheduledEnd) {
+    if (!scheduleForm.assignedToUserId || !scheduleDate || !scheduleStartTime || !scheduleEndTime) {
       toast.error('Please fill all required fields');
+      return;
+    }
+
+    const startDateTime = new Date(`${scheduleDate}T${scheduleStartTime}`);
+    const endDateTime = new Date(`${scheduleDate}T${scheduleEndTime}`);
+    if (
+      Number.isNaN(startDateTime.getTime())
+      || Number.isNaN(endDateTime.getTime())
+      || endDateTime <= startDateTime
+    ) {
+      toast.error('Please select a valid date and time range');
       return;
     }
 
@@ -240,8 +296,8 @@ const LeadDetail = () => {
         leadId: id,
         assignedToUserId: scheduleForm.assignedToUserId,
         type: 'walk_through',
-        scheduledStart: new Date(scheduleForm.scheduledStart).toISOString(),
-        scheduledEnd: new Date(scheduleForm.scheduledEnd).toISOString(),
+        scheduledStart: startDateTime.toISOString(),
+        scheduledEnd: endDateTime.toISOString(),
         timezone: scheduleForm.timezone,
         location: scheduleForm.location || null,
         notes: scheduleForm.notes || null,
@@ -256,6 +312,9 @@ const LeadDetail = () => {
         location: '',
         notes: '',
       });
+      setScheduleDate('');
+      setScheduleStartTime('');
+      setScheduleEndTime('');
       fetchAppointments();
       fetchLead();
     } catch (error) {
@@ -264,6 +323,14 @@ const LeadDetail = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const openScheduleModal = () => {
+    const defaults = getDefaultScheduleValues();
+    setScheduleDate(defaults.date);
+    setScheduleStartTime(defaults.startTime);
+    setScheduleEndTime(defaults.endTime);
+    setShowScheduleModal(true);
   };
 
   const handleReschedule = async () => {
@@ -394,7 +461,7 @@ const LeadDetail = () => {
             <Button variant="secondary" onClick={openEditModal}>
               Edit Lead
             </Button>
-            <Button onClick={() => setShowScheduleModal(true)}>
+            <Button onClick={openScheduleModal}>
               <Plus className="mr-2 h-4 w-4" />
               Schedule Walkthrough
             </Button>
@@ -562,18 +629,24 @@ const LeadDetail = () => {
             onChange={(value) => setScheduleForm({ ...scheduleForm, assignedToUserId: value })}
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Start"
-              type="datetime-local"
-              value={scheduleForm.scheduledStart}
-              onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledStart: e.target.value })}
+              label="Date"
+              type="date"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
             />
-            <Input
-              label="End"
-              type="datetime-local"
-              value={scheduleForm.scheduledEnd}
-              onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledEnd: e.target.value })}
+            <Select
+              label="Start Time"
+              options={TIME_OPTIONS}
+              value={scheduleStartTime}
+              onChange={setScheduleStartTime}
+            />
+            <Select
+              label="End Time"
+              options={TIME_OPTIONS}
+              value={scheduleEndTime}
+              onChange={setScheduleEndTime}
             />
           </div>
 
