@@ -32,6 +32,37 @@ export const billingCycleSchema = z.enum([
   'annual',
 ]);
 
+const ALLOWED_TERMS_DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+] as const;
+
+const termsDocumentNameSchema = z.string().max(255).optional().nullable();
+const termsDocumentMimeTypeSchema = z
+  .enum(ALLOWED_TERMS_DOCUMENT_MIME_TYPES)
+  .optional()
+  .nullable();
+const termsDocumentDataUrlSchema = z
+  .string()
+  .max(15_000_000, 'Terms document is too large')
+  .regex(
+    /^data:(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document);base64,[A-Za-z0-9+/=]+$/,
+    'Terms document must be a valid PDF, DOC, or DOCX data URL'
+  )
+  .optional()
+  .nullable();
+
+const withTermsDocumentValidation = <T extends z.ZodTypeAny>(schema: T) =>
+  schema.refine(
+    (data: any) =>
+      !data.termsDocumentDataUrl || (!!data.termsDocumentName && !!data.termsDocumentMimeType),
+    {
+      message: 'termsDocumentName and termsDocumentMimeType are required when termsDocumentDataUrl is provided',
+      path: ['termsDocumentDataUrl'],
+    }
+  );
+
 // Create Contract Schema
 export const createContractSchema = z
   .object({
@@ -50,6 +81,9 @@ export const createContractSchema = z
     billingCycle: billingCycleSchema.optional().default('monthly'),
     paymentTerms: z.string().max(50).optional().default('Net 30'),
     termsAndConditions: z.string().max(50000).optional().nullable(),
+    termsDocumentName: termsDocumentNameSchema,
+    termsDocumentMimeType: termsDocumentMimeTypeSchema,
+    termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
@@ -59,6 +93,9 @@ export const createContractSchema = z
       path: ['endDate'],
     }
   );
+
+export const createContractSchemaWithDocumentValidation =
+  withTermsDocumentValidation(createContractSchema);
 
 // Create Contract from Proposal Schema
 export const createContractFromProposalSchema = z
@@ -73,6 +110,9 @@ export const createContractFromProposalSchema = z
     billingCycle: billingCycleSchema.optional(),
     paymentTerms: z.string().max(50).optional(),
     termsAndConditions: z.string().max(50000).optional().nullable(),
+    termsDocumentName: termsDocumentNameSchema,
+    termsDocumentMimeType: termsDocumentMimeTypeSchema,
+    termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
@@ -82,6 +122,9 @@ export const createContractFromProposalSchema = z
       path: ['endDate'],
     }
   );
+
+export const createContractFromProposalSchemaWithDocumentValidation =
+  withTermsDocumentValidation(createContractFromProposalSchema);
 
 // Update Contract Schema
 export const updateContractSchema = z
@@ -100,6 +143,9 @@ export const updateContractSchema = z
     billingCycle: billingCycleSchema.optional(),
     paymentTerms: z.string().max(50).optional(),
     termsAndConditions: z.string().max(50000).optional().nullable(),
+    termsDocumentName: termsDocumentNameSchema,
+    termsDocumentMimeType: termsDocumentMimeTypeSchema,
+    termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
@@ -109,6 +155,9 @@ export const updateContractSchema = z
       path: ['endDate'],
     }
   );
+
+export const updateContractSchemaWithDocumentValidation =
+  withTermsDocumentValidation(updateContractSchema);
 
 // Update Contract Status Schema
 export const updateContractStatusSchema = z.object({
@@ -152,6 +201,9 @@ export const renewContractSchema = z
     billingCycle: billingCycleSchema.optional(),
     paymentTerms: z.string().max(50).optional(),
     termsAndConditions: z.string().max(50000).optional().nullable(),
+    termsDocumentName: termsDocumentNameSchema,
+    termsDocumentMimeType: termsDocumentMimeTypeSchema,
+    termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
@@ -161,6 +213,9 @@ export const renewContractSchema = z
       path: ['endDate'],
     }
   );
+
+export const renewContractSchemaWithDocumentValidation =
+  withTermsDocumentValidation(renewContractSchema);
 
 // Create Standalone Contract Schema (for imported/legacy contracts)
 export const createStandaloneContractSchema = z
@@ -179,6 +234,9 @@ export const createStandaloneContractSchema = z
     billingCycle: billingCycleSchema.optional().default('monthly'),
     paymentTerms: z.string().max(50).optional().default('Net 30'),
     termsAndConditions: z.string().max(50000).optional().nullable(),
+    termsDocumentName: termsDocumentNameSchema,
+    termsDocumentMimeType: termsDocumentMimeTypeSchema,
+    termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
   })
   .refine(
@@ -188,6 +246,9 @@ export const createStandaloneContractSchema = z
       path: ['endDate'],
     }
   );
+
+export const createStandaloneContractSchemaWithDocumentValidation =
+  withTermsDocumentValidation(createStandaloneContractSchema);
 
 // List Contracts Query Schema
 export const listContractsQuerySchema = z.object({

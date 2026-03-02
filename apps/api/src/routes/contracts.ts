@@ -29,15 +29,15 @@ import { sendEmail } from '../services/emailService';
 import { buildContractSentHtmlWithBranding, buildContractSentSubject } from '../templates/contractSent';
 import { generateContractTerms } from '../services/contractTemplateService';
 import {
-  createContractSchema,
-  createContractFromProposalSchema,
-  createStandaloneContractSchema,
-  updateContractSchema,
+  createContractSchemaWithDocumentValidation,
+  createContractFromProposalSchemaWithDocumentValidation,
+  createStandaloneContractSchemaWithDocumentValidation,
+  updateContractSchemaWithDocumentValidation,
   updateContractStatusSchema,
   assignContractTeamSchema,
   signContractSchema,
   terminateContractSchema,
-  renewContractSchema,
+  renewContractSchemaWithDocumentValidation,
   listContractsQuerySchema,
   sendContractSchema,
 } from '../schemas/contract';
@@ -65,6 +65,15 @@ import {
 } from '../services/jobService';
 
 const router: Router = Router();
+
+function decodeDataUrlToBuffer(dataUrl: string): Buffer {
+  const commaIndex = dataUrl.indexOf(',');
+  if (commaIndex === -1) {
+    throw new ValidationError('Invalid document format');
+  }
+  const base64 = dataUrl.slice(commaIndex + 1);
+  return Buffer.from(base64, 'base64');
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -347,7 +356,7 @@ router.post(
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = createContractSchema.safeParse(req.body);
+      const parsed = createContractSchemaWithDocumentValidation.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
@@ -381,7 +390,7 @@ router.post(
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = createContractFromProposalSchema.safeParse({
+      const parsed = createContractFromProposalSchemaWithDocumentValidation.safeParse({
         ...req.body,
         proposalId: req.params.proposalId,
       });
@@ -423,7 +432,7 @@ router.patch(
   verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = updateContractSchema.safeParse(req.body);
+      const parsed = updateContractSchemaWithDocumentValidation.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
@@ -873,6 +882,29 @@ router.post(
 
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
             const pdfBuffer = await generateContractPdf(sent as any);
+            const termsDocument = await prisma.contract.findUnique({
+              where: { id: sent.id },
+              select: {
+                termsDocumentName: true,
+                termsDocumentMimeType: true,
+                termsDocumentDataUrl: true,
+              },
+            });
+            const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+              {
+                filename: `${sent.contractNumber}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+              },
+            ];
+
+            if (termsDocument?.termsDocumentDataUrl && termsDocument.termsDocumentName && termsDocument.termsDocumentMimeType) {
+              attachments.push({
+                filename: termsDocument.termsDocumentName,
+                content: decodeDataUrlToBuffer(termsDocument.termsDocumentDataUrl),
+                contentType: termsDocument.termsDocumentMimeType,
+              });
+            }
 
             const emailSubject = parsed.data.emailSubject || buildContractSentSubject(
               sent.contractNumber,
@@ -896,11 +928,7 @@ router.post(
               cc: emailCc.length > 0 ? emailCc : undefined,
               subject: emailSubject,
               html: emailHtml,
-              attachments: [{
-                filename: `${sent.contractNumber}.pdf`,
-                content: pdfBuffer,
-                contentType: 'application/pdf',
-              }],
+              attachments,
             });
             logger.info(`Contract email result: ${emailSent ? 'sent' : 'failed'}`);
 
@@ -1067,7 +1095,7 @@ router.post(
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = renewContractSchema.safeParse(req.body);
+      const parsed = renewContractSchemaWithDocumentValidation.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
@@ -1132,7 +1160,7 @@ router.post(
   requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed = createStandaloneContractSchema.safeParse(req.body);
+      const parsed = createStandaloneContractSchemaWithDocumentValidation.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
@@ -1193,6 +1221,41 @@ router.post(
 // ============================================================
 // Contract PDF
 // ============================================================
+
+/** Download custom Terms & Conditions document */
+router.get(
+  '/:id/terms-document',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contract = await prisma.contract.findUnique({
+        where: { id: req.params.id },
+        select: {
+          contractNumber: true,
+          termsDocumentName: true,
+          termsDocumentMimeType: true,
+          termsDocumentDataUrl: true,
+        },
+      });
+
+      if (!contract || !contract.termsDocumentDataUrl || !contract.termsDocumentName || !contract.termsDocumentMimeType) {
+        throw new NotFoundError('Terms document not found');
+      }
+
+      const fileBuffer = decodeDataUrlToBuffer(contract.termsDocumentDataUrl);
+      const safeFilename = contract.termsDocumentName.replace(/"/g, '');
+
+      res.setHeader('Content-Type', contract.termsDocumentMimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      res.setHeader('Content-Length', fileBuffer.length.toString());
+      res.send(fileBuffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /** Generate and download contract PDF */
 router.get(

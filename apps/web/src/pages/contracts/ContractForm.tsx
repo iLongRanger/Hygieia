@@ -9,6 +9,8 @@ import {
   AlertCircle,
   CheckCircle,
   Sparkles,
+  Upload,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -119,6 +121,9 @@ interface ContractFormData {
   billingCycle: BillingCycle;
   paymentTerms: string;
   termsAndConditions: string | null;
+  termsDocumentName: string | null;
+  termsDocumentMimeType: string | null;
+  termsDocumentDataUrl: string | null;
   specialInstructions: string | null;
 }
 
@@ -133,6 +138,7 @@ const ContractForm = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generatingTerms, setGeneratingTerms] = useState(false);
+  const [termsDocumentTouched, setTermsDocumentTouched] = useState(false);
 
   // Available proposals for contract creation
   const [availableProposals, setAvailableProposals] = useState<ProposalForContract[]>([]);
@@ -153,6 +159,9 @@ const ContractForm = () => {
     billingCycle: 'monthly',
     paymentTerms: 'Net 30',
     termsAndConditions: null,
+    termsDocumentName: null,
+    termsDocumentMimeType: null,
+    termsDocumentDataUrl: null,
     specialInstructions: null,
   });
 
@@ -200,8 +209,12 @@ const ContractForm = () => {
             billingCycle: contract.billingCycle as BillingCycle,
             paymentTerms: contract.paymentTerms,
             termsAndConditions: contract.termsAndConditions || null,
+            termsDocumentName: contract.termsDocumentName || null,
+            termsDocumentMimeType: contract.termsDocumentMimeType || null,
+            termsDocumentDataUrl: null,
             specialInstructions: contract.specialInstructions || null,
           });
+          setTermsDocumentTouched(false);
 
           // Set selected proposal info for display
           if (contract.proposal) {
@@ -273,6 +286,9 @@ const ContractForm = () => {
         monthlyValue: Number(proposal.totalAmount),
         serviceFrequency: mappedFrequency,
         termsAndConditions: fullProposal.termsAndConditions || null,
+        termsDocumentName: null,
+        termsDocumentMimeType: null,
+        termsDocumentDataUrl: null,
         specialInstructions: fullProposal.notes || null,
       }));
     } catch (error) {
@@ -366,6 +382,11 @@ const ContractForm = () => {
           termsAndConditions: formData.termsAndConditions,
           specialInstructions: formData.specialInstructions,
         };
+        if (termsDocumentTouched) {
+          updateData.termsDocumentName = formData.termsDocumentName;
+          updateData.termsDocumentMimeType = formData.termsDocumentMimeType;
+          updateData.termsDocumentDataUrl = formData.termsDocumentDataUrl;
+        }
         await updateContract(id, updateData);
         toast.success('Contract updated successfully');
       } else {
@@ -380,6 +401,9 @@ const ContractForm = () => {
           billingCycle: formData.billingCycle,
           paymentTerms: formData.paymentTerms,
           termsAndConditions: formData.termsAndConditions,
+          termsDocumentName: formData.termsDocumentName,
+          termsDocumentMimeType: formData.termsDocumentMimeType,
+          termsDocumentDataUrl: formData.termsDocumentDataUrl,
           specialInstructions: formData.specialInstructions,
         });
         toast.success('Contract created successfully');
@@ -399,6 +423,51 @@ const ContractForm = () => {
       style: 'currency',
       currency: 'USD',
     }).format(Number(value));
+  };
+
+  const handleTermsDocumentUpload = async (file: File | null) => {
+    if (!file) return;
+    const allowedTypes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+    if (!allowedTypes.has(file.type)) {
+      toast.error('Only PDF, DOC, and DOCX files are allowed');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Document size must be 5MB or less');
+      return;
+    }
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      setFormData((prev) => ({
+        ...prev,
+        termsDocumentName: file.name,
+        termsDocumentMimeType: file.type,
+        termsDocumentDataUrl: dataUrl,
+      }));
+      setTermsDocumentTouched(true);
+      toast.success('Terms document attached');
+    } catch {
+      toast.error('Failed to read selected document');
+    }
+  };
+
+  const handleRemoveTermsDocument = () => {
+    setFormData((prev) => ({
+      ...prev,
+      termsDocumentName: null,
+      termsDocumentMimeType: null,
+      termsDocumentDataUrl: null,
+    }));
+    setTermsDocumentTouched(true);
   };
 
   const selectedScheduleDays = Array.isArray(selectedProposalSchedule?.days)
@@ -755,6 +824,40 @@ const ContractForm = () => {
                     rows={12}
                     placeholder="Enter contract terms and conditions..."
                   />
+                  <div className="mt-3 rounded-lg border border-white/10 bg-navy-darker/40 p-3">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Upload Terms Document (Optional)
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-gray-200 hover:bg-white/10">
+                        <Upload className="h-4 w-4" />
+                        {formData.termsDocumentName ? 'Replace Document' : 'Upload Document'}
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          className="hidden"
+                          onChange={(e) => handleTermsDocumentUpload(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                      {formData.termsDocumentName && (
+                        <>
+                          <span className="text-sm text-gray-300">{formData.termsDocumentName}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRemoveTermsDocument}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      Supported formats: PDF, DOC, DOCX. Max file size: 5MB.
+                    </p>
+                  </div>
                 </div>
 
                 <Textarea
@@ -790,4 +893,3 @@ const ContractForm = () => {
 };
 
 export default ContractForm;
-

@@ -18,6 +18,15 @@ import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
 
+function decodeDataUrlToBuffer(dataUrl: string): Buffer {
+  const commaIndex = dataUrl.indexOf(',');
+  if (commaIndex === -1) {
+    throw new ValidationError('Invalid document format');
+  }
+  const base64 = dataUrl.slice(commaIndex + 1);
+  return Buffer.from(base64, 'base64');
+}
+
 const publicRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
@@ -180,6 +189,47 @@ router.get(
       });
 
       res.send(pdfBuffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Download custom Terms & Conditions document via public token
+router.get(
+  '/:token/terms-document',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contract = await prisma.contract.findUnique({
+        where: { publicToken: req.params.token },
+        select: {
+          contractNumber: true,
+          publicTokenExpiresAt: true,
+          termsDocumentName: true,
+          termsDocumentMimeType: true,
+          termsDocumentDataUrl: true,
+        },
+      });
+
+      if (!contract) {
+        throw new NotFoundError('Contract not found or link has expired');
+      }
+      if (contract.publicTokenExpiresAt && new Date() > contract.publicTokenExpiresAt) {
+        throw new NotFoundError('Contract not found or link has expired');
+      }
+      if (!contract.termsDocumentDataUrl || !contract.termsDocumentName || !contract.termsDocumentMimeType) {
+        throw new NotFoundError('Terms document not found');
+      }
+
+      const fileBuffer = decodeDataUrlToBuffer(contract.termsDocumentDataUrl);
+      const safeFilename = contract.termsDocumentName.replace(/"/g, '');
+
+      res.set({
+        'Content-Type': contract.termsDocumentMimeType,
+        'Content-Disposition': `attachment; filename="${safeFilename}"`,
+        'Content-Length': fileBuffer.length.toString(),
+      });
+      res.send(fileBuffer);
     } catch (error) {
       next(error);
     }

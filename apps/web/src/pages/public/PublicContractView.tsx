@@ -13,6 +13,7 @@ import {
   getPublicContract,
   signPublicContract,
   downloadPublicContractPdf,
+  downloadPublicContractTermsDocument,
 } from '../../lib/publicContracts';
 import type { PublicContract } from '../../types/publicContract';
 import type { GlobalBranding } from '../../types/globalSettings';
@@ -136,6 +137,15 @@ const PublicContractView: React.FC = () => {
     }
   };
 
+  const handleDownloadTermsDocument = async () => {
+    if (!contract?.termsDocumentName) return;
+    try {
+      await downloadPublicContractTermsDocument(token!, contract.termsDocumentName);
+    } catch {
+      alert('Failed to download terms document');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -191,13 +201,24 @@ const PublicContractView: React.FC = () => {
               </h1>
               <p className="text-gray-300 text-sm mt-1">Contract {contract.contractNumber}</p>
             </div>
-            <button
-              onClick={handleDownloadPdf}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </button>
+            <div className="flex items-center gap-2">
+              {contract.termsDocumentName && (
+                <button
+                  onClick={handleDownloadTermsDocument}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+                >
+                  <Download className="h-4 w-4" />
+                  Terms Document
+                </button>
+              )}
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </button>
+            </div>
           </div>
         </div>
       </header>

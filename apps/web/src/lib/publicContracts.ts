@@ -46,3 +46,20 @@ export async function downloadPublicContractPdf(
   link.remove();
   window.URL.revokeObjectURL(url);
 }
+
+export async function downloadPublicContractTermsDocument(
+  token: string,
+  filename?: string
+): Promise<void> {
+  const response = await publicApi.get(`/public/contracts/${token}/terms-document`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename || 'terms-document');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}

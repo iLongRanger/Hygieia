@@ -71,6 +71,8 @@ export interface Contract {
   subcontractorTier?: string | null;
   subcontractorPayout?: number | null;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
   specialInstructions?: string | null;
   sentAt?: string | null;
   viewedAt?: string | null;
@@ -170,6 +172,9 @@ export interface CreateContractInput {
   billingCycle?: BillingCycle;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -186,6 +191,9 @@ export interface CreateContractFromProposalInput {
   billingCycle?: BillingCycle;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -204,6 +212,9 @@ export interface UpdateContractInput {
   billingCycle?: BillingCycle;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -250,6 +261,9 @@ export interface RenewContractInput {
   billingCycle?: BillingCycle;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -269,5 +283,8 @@ export interface CreateStandaloneContractInput {
   billingCycle?: BillingCycle;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }

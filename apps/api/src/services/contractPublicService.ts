@@ -18,6 +18,8 @@ const publicContractSelect = {
   billingCycle: true,
   paymentTerms: true,
   termsAndConditions: true,
+  termsDocumentName: true,
+  termsDocumentMimeType: true,
   specialInstructions: true,
   signedByName: true,
   signedByEmail: true,

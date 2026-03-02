@@ -18,6 +18,8 @@ export interface PublicContract {
   billingCycle: string;
   paymentTerms: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
   signedByName?: string | null;
   signedDate?: string | null;
   sentAt?: string | null;

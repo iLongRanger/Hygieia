@@ -173,6 +173,23 @@ export async function getContractPdfBlobUrl(id: string): Promise<string> {
   return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
 }
 
+export async function downloadContractTermsDocument(
+  id: string,
+  filename?: string
+): Promise<void> {
+  const response = await api.get(`/contracts/${id}/terms-document`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename || 'terms-document');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 // Contract Activities
 
 export async function getContractActivities(

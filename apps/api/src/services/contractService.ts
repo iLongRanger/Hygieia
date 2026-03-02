@@ -38,6 +38,9 @@ export interface ContractCreateInput {
   billingCycle?: string;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
   subcontractorTier?: string | null;
   createdByUserId: string;
@@ -58,6 +61,9 @@ export interface ContractUpdateInput {
   billingCycle?: string;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
   subcontractorTier?: string | null;
 }
@@ -97,6 +103,8 @@ const contractSelect = {
   paymentTerms: true,
   subcontractorTier: true,
   termsAndConditions: true,
+  termsDocumentName: true,
+  termsDocumentMimeType: true,
   specialInstructions: true,
   signedDocumentUrl: true,
   signedDate: true,
@@ -505,6 +513,9 @@ export async function createContractFromProposal(
     billingCycle: overrides?.billingCycle || 'monthly',
     paymentTerms: overrides?.paymentTerms || proposal.account.paymentTerms || 'Net 30',
     termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions || null,
+    termsDocumentName: overrides?.termsDocumentName ?? null,
+    termsDocumentMimeType: overrides?.termsDocumentMimeType ?? null,
+    termsDocumentDataUrl: overrides?.termsDocumentDataUrl ?? null,
     specialInstructions: overrides?.specialInstructions || proposal.notes,
     includesInitialClean: true,
     subcontractorTier,
@@ -791,6 +802,9 @@ export interface RenewContractInput {
   billingCycle?: string;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -838,6 +852,9 @@ export async function renewContract(
   if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
   if (input.paymentTerms !== undefined) updateData.paymentTerms = input.paymentTerms;
   if (input.termsAndConditions !== undefined) updateData.termsAndConditions = input.termsAndConditions;
+  if (input.termsDocumentName !== undefined) updateData.termsDocumentName = input.termsDocumentName;
+  if (input.termsDocumentMimeType !== undefined) updateData.termsDocumentMimeType = input.termsDocumentMimeType;
+  if (input.termsDocumentDataUrl !== undefined) updateData.termsDocumentDataUrl = input.termsDocumentDataUrl;
   if (input.specialInstructions !== undefined) updateData.specialInstructions = input.specialInstructions;
 
   return prisma.contract.update({
@@ -892,6 +909,9 @@ export interface StandaloneContractCreateInput {
   billingCycle?: string;
   paymentTerms?: string;
   termsAndConditions?: string | null;
+  termsDocumentName?: string | null;
+  termsDocumentMimeType?: string | null;
+  termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
   createdByUserId: string;
 }
@@ -954,6 +974,9 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       billingCycle: data.billingCycle ?? 'monthly',
       paymentTerms: data.paymentTerms ?? 'Net 30',
       termsAndConditions,
+      termsDocumentName: data.termsDocumentName ?? null,
+      termsDocumentMimeType: data.termsDocumentMimeType ?? null,
+      termsDocumentDataUrl: data.termsDocumentDataUrl ?? null,
       specialInstructions: data.specialInstructions,
       createdByUserId: data.createdByUserId,
     },

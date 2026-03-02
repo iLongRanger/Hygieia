@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Link as LinkIcon,
   Download,
+  Upload,
+  X,
   MoreHorizontal,
   Sparkles,
   Send,
@@ -47,6 +49,7 @@ import {
   assignContractTeam,
   completeInitialClean as completeInitialCleanApi,
   downloadContractPdf,
+  downloadContractTermsDocument,
   generateContractTerms,
 } from '../../lib/contracts';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
@@ -56,7 +59,13 @@ import { listUsers } from '../../lib/users';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
-import type { Contract, ContractStatus, RenewContractInput, SendContractInput } from '../../types/contract';
+import type {
+  Contract,
+  ContractStatus,
+  RenewContractInput,
+  SendContractInput,
+  UpdateContractInput,
+} from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User as SystemUser } from '../../types/user';
 
@@ -232,6 +241,7 @@ const BILLING_CYCLES = [
 ];
 
 type AssignmentMode = 'subcontractor_team' | 'internal_employee';
+type TermsDocumentAction = 'unchanged' | 'replace' | 'remove';
 
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -251,6 +261,12 @@ const ContractDetail = () => {
   const [termsText, setTermsText] = useState('');
   const [savingTerms, setSavingTerms] = useState(false);
   const [generatingTerms, setGeneratingTerms] = useState(false);
+  const [termsDocumentAction, setTermsDocumentAction] = useState<TermsDocumentAction>('unchanged');
+  const [termsDocumentUpload, setTermsDocumentUpload] = useState<{
+    name: string;
+    mimeType: string;
+    dataUrl: string;
+  } | null>(null);
 
   // Menu & send modal state
   const [menuOpen, setMenuOpen] = useState(false);
@@ -519,6 +535,50 @@ const ContractDetail = () => {
       toast.success('PDF downloaded');
     } catch (error) {
       toast.error('Failed to download PDF');
+    }
+  };
+
+  const handleDownloadTermsDocument = async () => {
+    if (!contract?.termsDocumentName) return;
+    try {
+      await downloadContractTermsDocument(contract.id, contract.termsDocumentName);
+      toast.success('Terms document downloaded');
+    } catch {
+      toast.error('Failed to download terms document');
+    }
+  };
+
+  const handleTermsDocumentUpload = async (file: File | null) => {
+    if (!file) return;
+    const allowedTypes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+    if (!allowedTypes.has(file.type)) {
+      toast.error('Only PDF, DOC, and DOCX files are allowed');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Document size must be 5MB or less');
+      return;
+    }
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      setTermsDocumentUpload({
+        name: file.name,
+        mimeType: file.type,
+        dataUrl,
+      });
+      setTermsDocumentAction('replace');
+      toast.success('Terms document attached');
+    } catch {
+      toast.error('Failed to read selected document');
     }
   };
 
@@ -1210,6 +1270,8 @@ const ContractDetail = () => {
               size="sm"
               onClick={() => {
                 setTermsText(contract.termsAndConditions || '');
+                setTermsDocumentAction('unchanged');
+                setTermsDocumentUpload(null);
                 setEditingTerms(true);
               }}
             >
@@ -1226,6 +1288,41 @@ const ContractDetail = () => {
               rows={16}
               placeholder="Enter contract terms and conditions..."
             />
+            <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-3">
+              <div className="text-sm font-medium text-gray-300 mb-2">Custom Terms Document</div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-gray-200 hover:bg-white/10">
+                  <Upload className="h-4 w-4" />
+                  {termsDocumentAction === 'replace' || contract.termsDocumentName ? 'Replace Document' : 'Upload Document'}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={(e) => handleTermsDocumentUpload(e.target.files?.[0] || null)}
+                  />
+                </label>
+                {(termsDocumentAction === 'replace' ? termsDocumentUpload?.name : contract.termsDocumentName) && (
+                  <span className="text-sm text-gray-300">
+                    {termsDocumentAction === 'replace' ? termsDocumentUpload?.name : contract.termsDocumentName}
+                  </span>
+                )}
+                {(termsDocumentAction === 'replace' || contract.termsDocumentName) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTermsDocumentUpload(null);
+                      setTermsDocumentAction('remove');
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-400">Supported formats: PDF, DOC, DOCX. Max file size: 5MB.</p>
+            </div>
             <div className="flex items-center justify-between">
               <Button
                 variant="secondary"
@@ -1274,7 +1371,17 @@ const ContractDetail = () => {
                   onClick={async () => {
                     setSavingTerms(true);
                     try {
-                      await updateContract(contract.id, { termsAndConditions: termsText || null });
+                      const updatePayload: UpdateContractInput = { termsAndConditions: termsText || null };
+                      if (termsDocumentAction === 'replace' && termsDocumentUpload) {
+                        updatePayload.termsDocumentName = termsDocumentUpload.name;
+                        updatePayload.termsDocumentMimeType = termsDocumentUpload.mimeType;
+                        updatePayload.termsDocumentDataUrl = termsDocumentUpload.dataUrl;
+                      } else if (termsDocumentAction === 'remove') {
+                        updatePayload.termsDocumentName = null;
+                        updatePayload.termsDocumentMimeType = null;
+                        updatePayload.termsDocumentDataUrl = null;
+                      }
+                      await updateContract(contract.id, updatePayload);
                       setEditingTerms(false);
                       refreshAll(contract.id);
                       toast.success('Terms updated');
@@ -1297,6 +1404,20 @@ const ContractDetail = () => {
           </div>
         ) : (
           <p className="text-gray-500 text-sm italic">No terms and conditions set.</p>
+        )}
+        {contract.termsDocumentName && !editingTerms && (
+          <div className="mt-4 rounded-lg border border-white/10 bg-navy-darker/40 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-medium text-gray-200">Custom Contract Document</div>
+                <div className="text-xs text-gray-400">{contract.termsDocumentName}</div>
+              </div>
+              <Button variant="secondary" size="sm" onClick={handleDownloadTermsDocument}>
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
+            </div>
+          </div>
         )}
       </Card>}
 

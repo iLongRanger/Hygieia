@@ -929,6 +929,9 @@ model Contract {
 
   // Contract Details
   termsAndConditions  String? @map("terms_and_conditions") @db.Text
+  termsDocumentName   String? @map("terms_document_name") @db.VarChar(255)
+  termsDocumentMimeType String? @map("terms_document_mime_type") @db.VarChar(100)
+  termsDocumentDataUrl String? @map("terms_document_data_url") @db.Text
   specialInstructions String? @map("special_instructions") @db.Text
 
   // Document Management
