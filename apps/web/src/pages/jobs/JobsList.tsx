@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Briefcase,
@@ -13,6 +13,9 @@ import {
   Zap,
   CalendarDays,
   ListOrdered,
+  Calendar,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -21,14 +24,17 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
+import { MonthCalendar, WeekCalendar, DayCalendar } from '../../components/calendar';
 import { listJobs, startJob, completeJob, cancelJob, generateJobs } from '../../lib/jobs';
 import { listContracts } from '../../lib/contracts';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
+import { getDateRange, getWeekRange, getDayRange } from '../../lib/calendar-utils';
 import type { Job, JobStatus } from '../../types/job';
 import type { Contract } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User } from '../../types/user';
+import type { Appointment, AppointmentType } from '../../types/crm';
 import type { Pagination } from '../../types/crm';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -92,7 +98,63 @@ const toDateInputValue = (date: Date): string => {
 };
 
 type GenerateAssignmentMode = 'contract_default' | 'subcontractor_team' | 'internal_employee';
-type JobsViewMode = 'table' | 'schedule';
+type JobsViewMode = 'table' | 'schedule' | 'calendar';
+type CalendarView = 'month' | 'week' | 'day';
+type CalendarLayout = 'grid' | 'list';
+
+const CALENDAR_VIEW_KEY = 'jobs_calendar_view';
+
+const JOB_STATUS_TO_APPOINTMENT_TYPE: Record<JobStatus, AppointmentType> = {
+  scheduled: 'walk_through',
+  in_progress: 'walk_through',
+  completed: 'visit',
+  canceled: 'inspection',
+  missed: 'inspection',
+};
+
+const jobToAppointment = (job: Job): Appointment => {
+  const dateBase = job.scheduledDate.slice(0, 10);
+  const startTime = job.scheduledStartTime || '08:00:00';
+  let endTime = job.scheduledEndTime;
+  if (!endTime) {
+    const hours = job.estimatedHours ? parseFloat(job.estimatedHours) : 2;
+    const [h, m] = startTime.split(':').map(Number);
+    const endMinutes = h * 60 + m + hours * 60;
+    const eh = Math.min(Math.floor(endMinutes / 60), 23);
+    const em = Math.floor(endMinutes % 60);
+    endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}:00`;
+  }
+
+  const assigneeName = job.assignedToUser?.fullName || job.assignedTeam?.name || 'Unassigned';
+  const displayName = `${job.facility.name} · ${assigneeName}`;
+
+  return {
+    id: job.id,
+    type: JOB_STATUS_TO_APPOINTMENT_TYPE[job.status],
+    status: job.status === 'in_progress' ? 'scheduled' : job.status === 'missed' ? 'no_show' : job.status as 'scheduled' | 'completed' | 'canceled',
+    scheduledStart: `${dateBase}T${startTime}`,
+    scheduledEnd: `${dateBase}T${endTime}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    location: null,
+    notes: job.notes,
+    completionNotes: job.completionNotes,
+    actualDuration: job.actualHours ? parseFloat(job.actualHours) * 60 : null,
+    completedAt: job.actualEndTime,
+    reminderSentAt: null,
+    rescheduledFromId: null,
+    lead: null,
+    account: { id: job.account.id, name: job.account.name, type: '' },
+    assignedToUser: job.assignedToUser
+      ? { id: job.assignedToUser.id, fullName: displayName, email: job.assignedToUser.email }
+      : { id: '', fullName: displayName, email: '' },
+    assignedTeam: job.assignedTeam,
+    createdByUser: job.createdByUser,
+    inspectionId: null,
+    inspection: null,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+  };
+};
 
 const JobsList = () => {
   const navigate = useNavigate();
@@ -110,6 +172,19 @@ const JobsList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [assignmentOptionsLoading, setAssignmentOptionsLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  // Calendar state
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    const saved = localStorage.getItem(CALENDAR_VIEW_KEY);
+    return (saved === 'month' || saved === 'week' || saved === 'day') ? saved : 'month';
+  });
+  const [calendarLayout, setCalendarLayout] = useState<CalendarLayout>('grid');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
+  const [calendarJobs, setCalendarJobs] = useState<Job[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+
   const [generateForm, setGenerateForm] = useState(() => {
     const today = new Date();
     const nextMonth = new Date(today);
@@ -127,7 +202,7 @@ const JobsList = () => {
 
   const page = parseInt(searchParams.get('page') || '1', 10);
   const rawViewMode = searchParams.get('view');
-  const viewMode: JobsViewMode = rawViewMode === 'table' ? 'table' : 'schedule';
+  const viewMode: JobsViewMode = rawViewMode === 'table' ? 'table' : rawViewMode === 'calendar' ? 'calendar' : 'schedule';
   const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
   const dateFrom = searchParams.get('dateFrom') || '';
@@ -152,9 +227,41 @@ const JobsList = () => {
     }
   }, [page, jobTypeFilter, statusFilter, dateFrom, dateTo]);
 
+  const fetchCalendarJobs = useCallback(async () => {
+    try {
+      setCalendarLoading(true);
+      const { dateFrom: df, dateTo: dt } =
+        calendarView === 'month'
+          ? getDateRange(calendarYear, calendarMonth)
+          : calendarView === 'week'
+            ? getWeekRange(calendarDate)
+            : getDayRange(calendarDate);
+      const params: Record<string, string | number> = { dateFrom: df, dateTo: dt, limit: 500 };
+      if (jobTypeFilter) params.jobType = jobTypeFilter;
+      if (statusFilter) params.status = statusFilter;
+      const result = await listJobs(params);
+      setCalendarJobs(result.data);
+    } catch {
+      toast.error('Failed to load calendar jobs');
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter]);
+
+  const calendarAppointments = useMemo(
+    () => calendarJobs.map(jobToAppointment),
+    [calendarJobs],
+  );
+
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
+
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      fetchCalendarJobs();
+    }
+  }, [fetchCalendarJobs, viewMode]);
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -176,6 +283,30 @@ const JobsList = () => {
   const clearFilters = () => {
     setSearchParams({});
   };
+
+  // Calendar handlers
+  const handleMonthChange = (year: number, month: number) => {
+    setCalendarYear(year);
+    setCalendarMonth(month);
+  };
+
+  const handleCalendarViewChange = (view: CalendarView) => {
+    setCalendarView(view);
+    localStorage.setItem(CALENDAR_VIEW_KEY, view);
+  };
+
+  const handleCalendarEdit = (appointment: Appointment) => {
+    navigate(`/jobs/${appointment.id}`);
+  };
+
+  const handleCalendarCustomerClick = (appointment: Appointment) => {
+    if (appointment.account?.id) {
+      navigate(`/accounts/${appointment.account.id}`);
+    }
+  };
+
+  // No-op: jobs are created from contracts, not from calendar clicks
+  const handleCalendarCreateClick = () => {};
 
   const openGenerateModal = async () => {
     setShowGenerateModal(true);
@@ -478,6 +609,14 @@ const JobsList = () => {
               <ListOrdered className="mr-1.5 h-4 w-4" />
               Table
             </Button>
+            <Button
+              variant={viewMode === 'calendar' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+            >
+              <Calendar className="mr-1.5 h-4 w-4" />
+              Calendar
+            </Button>
           </div>
           <Button
             variant="secondary"
@@ -607,7 +746,7 @@ const JobsList = () => {
             </div>
           )}
         </Card>
-      ) : (
+      ) : viewMode === 'schedule' ? (
         <Card>
           {loading ? (
             <div className="grid gap-4 p-1 md:grid-cols-2 xl:grid-cols-3">
@@ -747,7 +886,109 @@ const JobsList = () => {
             </div>
           )}
         </Card>
-      )}
+      ) : viewMode === 'calendar' ? (
+        <div className="space-y-3">
+          {/* Calendar sub-view toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+              <Button
+                variant={calendarView === 'month' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleCalendarViewChange('month')}
+              >
+                Month
+              </Button>
+              <Button
+                variant={calendarView === 'week' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleCalendarViewChange('week')}
+              >
+                Week
+              </Button>
+              <Button
+                variant={calendarView === 'day' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleCalendarViewChange('day')}
+              >
+                Day
+              </Button>
+            </div>
+
+            {calendarView !== 'month' && (
+              <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+                <Button
+                  variant={calendarLayout === 'grid' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCalendarLayout('grid')}
+                >
+                  <LayoutGrid className="mr-1 h-3.5 w-3.5" />
+                  Grid
+                </Button>
+                <Button
+                  variant={calendarLayout === 'list' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCalendarLayout('list')}
+                >
+                  <List className="mr-1 h-3.5 w-3.5" />
+                  List
+                </Button>
+              </div>
+            )}
+
+            {/* Legend */}
+            <div className="flex items-center gap-3 text-xs text-surface-500 dark:text-surface-400">
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                Scheduled
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                Completed
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+                Canceled/Missed
+              </span>
+            </div>
+          </div>
+
+          {/* Calendar component */}
+          {calendarView === 'month' ? (
+            <MonthCalendar
+              year={calendarYear}
+              month={calendarMonth}
+              appointments={calendarAppointments}
+              onMonthChange={handleMonthChange}
+              onEdit={handleCalendarEdit}
+              onCustomerClick={handleCalendarCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              isLoading={calendarLoading}
+            />
+          ) : calendarView === 'week' ? (
+            <WeekCalendar
+              date={calendarDate}
+              appointments={calendarAppointments}
+              onDateChange={setCalendarDate}
+              onEdit={handleCalendarEdit}
+              onCustomerClick={handleCalendarCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              layout={calendarLayout}
+              isLoading={calendarLoading}
+            />
+          ) : (
+            <DayCalendar
+              date={calendarDate}
+              appointments={calendarAppointments}
+              onDateChange={setCalendarDate}
+              onEdit={handleCalendarEdit}
+              onCustomerClick={handleCalendarCustomerClick}
+              onCreateClick={handleCalendarCreateClick}
+              layout={calendarLayout}
+              isLoading={calendarLoading}
+            />
+          )}
+        </div>
+      ) : null}
 
       <Modal
         isOpen={showGenerateModal}
