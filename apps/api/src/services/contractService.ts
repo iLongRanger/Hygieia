@@ -645,6 +645,7 @@ export async function assignContractTeam(
     select: {
       id: true,
       status: true,
+      accountId: true,
     },
   });
 
@@ -704,7 +705,7 @@ export async function assignContractTeam(
   });
 
   if (teamId || assignedToUserId) {
-    await autoAdvanceLeadStatusForAccount(updatedContract.account.id, 'won');
+    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
   }
 
   return updatedContract;

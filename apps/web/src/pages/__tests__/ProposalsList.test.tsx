@@ -19,6 +19,7 @@ vi.mock('../../lib/proposals', () => ({
   acceptProposal: (...args: unknown[]) => acceptProposalMock(...args),
   rejectProposal: (...args: unknown[]) => rejectProposalMock(...args),
   downloadProposalPdf: vi.fn().mockResolvedValue(undefined),
+  getProposalPdfBlobUrl: vi.fn().mockResolvedValue('blob:proposal-preview'),
   remindProposal: vi.fn().mockResolvedValue(undefined),
 }));
 

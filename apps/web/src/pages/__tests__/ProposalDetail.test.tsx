@@ -38,6 +38,7 @@ vi.mock('../../lib/proposals', () => ({
   getProposalActivities: vi.fn().mockResolvedValue({ data: [], pagination: {} }),
   remindProposal: vi.fn().mockResolvedValue(undefined),
   downloadProposalPdf: vi.fn().mockResolvedValue(undefined),
+  getProposalPdfBlobUrl: vi.fn().mockResolvedValue('blob:proposal-preview'),
 }));
 
 vi.mock('react-hot-toast', () => ({
