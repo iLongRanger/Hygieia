@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { cn } from '../../lib/utils';
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -10,6 +10,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, hint, showCharacterCount, ...props }, ref) => {
+    const textareaId = props.id ?? useId();
     const currentLength = typeof props.value === 'string' ? props.value.length : 0;
     const maxLength = props.maxLength;
     const showCounter = showCharacterCount && maxLength;
@@ -18,13 +19,17 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">
+          <label
+            htmlFor={textareaId}
+            className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300"
+          >
             {label}
             {props.required && <span className="ml-1 text-error-500">*</span>}
           </label>
         )}
         <textarea
           ref={ref}
+          id={textareaId}
           className={cn(
             'flex min-h-[100px] w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 transition-all duration-200 resize-none',
             'focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20',

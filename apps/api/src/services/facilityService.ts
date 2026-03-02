@@ -15,6 +15,7 @@ export interface FacilityListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
+  withoutProposal?: boolean;
 }
 
 export interface FacilityCreateInput {
@@ -120,6 +121,7 @@ export async function listFacilities(
     sortBy = 'createdAt',
     sortOrder = 'desc',
     includeArchived = false,
+    withoutProposal = false,
   } = params;
 
   const where: Prisma.FacilityWhereInput = {};
@@ -149,6 +151,14 @@ export async function listFacilities(
       { name: { contains: search, mode: 'insensitive' } },
       { account: { name: { contains: search, mode: 'insensitive' } } },
     ];
+  }
+
+  if (withoutProposal) {
+    where.proposals = {
+      none: {
+        archivedAt: null,
+      },
+    };
   }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'squareFeet'];
@@ -213,6 +223,7 @@ export async function updateFacility(id: string, input: FacilityUpdateInput) {
     const normalizedAddress = await geocodeAddressIfNeeded(input.address);
     updateData.address = normalizedAddress as Prisma.InputJsonValue;
   }
+
   if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
   if (input.buildingType !== undefined)
     updateData.buildingType = input.buildingType;

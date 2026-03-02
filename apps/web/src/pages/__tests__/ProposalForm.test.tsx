@@ -313,6 +313,15 @@ describe('ProposalForm', () => {
     const buttons = await screen.findAllByRole('button', { name: /create proposal/i });
     await user.click(buttons[0]);
 
+    await waitFor(() => {
+      expect(listFacilitiesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 100,
+          withoutProposal: true,
+        })
+      );
+    });
+
     expect(createProposalMock).not.toHaveBeenCalled();
   });
 

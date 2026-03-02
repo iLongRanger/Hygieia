@@ -32,6 +32,7 @@ export async function listFacilities(params?: {
   buildingType?: string;
   search?: string;
   includeArchived?: boolean;
+  withoutProposal?: boolean;
 }): Promise<PaginatedResponse<Facility>> {
   const response = await api.get('/facilities', { params });
   return response.data;
