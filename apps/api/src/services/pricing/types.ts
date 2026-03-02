@@ -68,6 +68,18 @@ export interface PricingSettingsSnapshot {
     };
     variabilityPercentage: number;
   };
+  appliedAreaMultipliers?: Array<{
+    areaId: string;
+    areaName: string;
+    squareFeet: number;
+    quantity: number;
+    floorType: string;
+    floorMultiplier: number;
+    conditionLevel: string;
+    conditionMultiplier: number;
+    trafficLevel?: string;
+    trafficMultiplier?: number;
+  }>;
 }
 
 /**

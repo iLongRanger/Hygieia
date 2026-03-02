@@ -17,6 +17,7 @@ export interface AreaCostBreakdown {
   squareFeet: number;
   floorType: string;
   conditionLevel: string;
+  trafficLevel: string;
   quantity: number;
 
   // Labor breakdown
@@ -39,6 +40,7 @@ export interface AreaCostBreakdown {
   // Multipliers applied
   floorMultiplier: number;
   conditionMultiplier: number;
+  trafficMultiplier: number;
 
   // Final pricing
   pricePerVisit: number; // With multipliers, before frequency
@@ -240,6 +242,7 @@ export async function calculateFacilityPricing(
       squareFeet: totalAreaSqFt,
       floorType,
       conditionLevel,
+      trafficLevel,
       quantity,
       laborHours: roundToTwo(adjustedLaborHours),
       laborCostBase: roundToTwo(laborCostBase),
@@ -252,6 +255,7 @@ export async function calculateFacilityPricing(
       totalCostPerVisit: roundToTwo(adjustedCostPerVisit),
       floorMultiplier,
       conditionMultiplier,
+      trafficMultiplier,
       pricePerVisit: roundToTwo(adjustedCostPerVisit / (1 - targetProfitMargin)),
       monthlyVisits,
       monthlyPrice: roundToTwo(monthlyPriceWithProfit),

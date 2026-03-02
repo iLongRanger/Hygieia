@@ -133,6 +133,42 @@ const formatFrequencyLabel = (frequency: string | null | undefined): string => {
   return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
+const getFrequencyCandidates = (frequency: string | null | undefined): string[] => {
+  if (!frequency) return [];
+  const normalized = frequency.trim().toLowerCase();
+  const candidates = new Set<string>([normalized]);
+  if (normalized === '7x_week') candidates.add('daily');
+  if (normalized === 'daily') candidates.add('7x_week');
+  if (normalized === 'annually') candidates.add('annual');
+  if (normalized === 'annual') candidates.add('annually');
+  return Array.from(candidates);
+};
+
+const findAppliedFrequencyMultiplier = (
+  frequencyMultipliers: Record<string, number> | null | undefined,
+  proposalFrequency: string | null | undefined,
+  fallbackServiceFrequency: string | null | undefined
+): { key: string; value: number } | null => {
+  if (!frequencyMultipliers || Object.keys(frequencyMultipliers).length === 0) return null;
+  const entries = Object.entries(frequencyMultipliers).map(([key, value]) => [
+    key.trim().toLowerCase(),
+    value as number,
+  ] as const);
+  const byKey = new Map(entries);
+  const candidates = [
+    ...getFrequencyCandidates(proposalFrequency),
+    ...getFrequencyCandidates(fallbackServiceFrequency),
+  ];
+
+  for (const candidate of candidates) {
+    if (byKey.has(candidate)) {
+      return { key: candidate, value: byKey.get(candidate)! };
+    }
+  }
+
+  return null;
+};
+
 type TaskGroup = { key: string; label: string; tasks: string[] };
 
 const TASK_GROUP_ORDER = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'manual'];
@@ -416,6 +452,14 @@ const ProposalDetail = () => {
   if (!proposal) {
     return <div className="text-center text-gray-400">Proposal not found</div>;
   }
+  const appliedFrequencyMultiplier = findAppliedFrequencyMultiplier(
+    proposal.pricingSnapshot?.frequencyMultipliers as Record<string, number> | undefined,
+    proposal.serviceFrequency || null,
+    proposal.proposalServices?.[0]?.frequency || null
+  );
+  const appliedAreaMultipliers = Array.isArray(proposal.pricingSnapshot?.appliedAreaMultipliers)
+    ? proposal.pricingSnapshot.appliedAreaMultipliers
+    : [];
 
   const StatusIcon = getStatusIcon(proposal.status);
   const visibleProposalItems = (proposal.proposalItems || []).filter(
@@ -956,70 +1000,88 @@ const ProposalDetail = () => {
                 </div>
               )}
 
-              {/* Collapsible Rate Card */}
+              <div className="rounded-lg border border-emerald/30 bg-emerald/10 p-3 mb-4">
+                <div className="text-sm font-semibold text-emerald-200 mb-2">Applied Multipliers</div>
+                <div className="space-y-1 text-sm">
+                  {appliedFrequencyMultiplier ? (
+                    <div className="flex justify-between">
+                      <span className="text-emerald-100/90">
+                        Frequency ({formatFrequencyLabel(appliedFrequencyMultiplier.key)})
+                      </span>
+                      <span className="text-white font-semibold">{appliedFrequencyMultiplier.value.toFixed(2)}x</span>
+                    </div>
+                  ) : (
+                    <div className="text-emerald-100/90">
+                      Frequency multiplier could not be derived from this snapshot.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Collapsible Area Multiplier Review */}
               <button
                 onClick={() => setRateCardOpen(!rateCardOpen)}
                 className="flex w-full items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
               >
-                <span>Rate Card (Multipliers)</span>
+                <span>Area Multiplier Review</span>
                 {rateCardOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
               {rateCardOpen && (
                 <div className="mt-3 space-y-4 text-sm">
-                  {/* Frequency multipliers */}
-                  {proposal.pricingSnapshot.frequencyMultipliers && Object.keys(proposal.pricingSnapshot.frequencyMultipliers).length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Frequency Multipliers</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                        {Object.entries(proposal.pricingSnapshot.frequencyMultipliers).map(([key, val]) => (
-                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
-                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-white">{(val as number).toFixed(2)}x</span>
-                          </div>
-                        ))}
-                      </div>
+                  {appliedAreaMultipliers.length === 0 ? (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                      This proposal snapshot does not include per-area multiplier usage. Recalculate pricing to generate area-level review data.
                     </div>
-                  )}
-                  {/* Floor type multipliers */}
-                  {proposal.pricingSnapshot.floorTypeMultipliers && Object.keys(proposal.pricingSnapshot.floorTypeMultipliers).length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Floor Type Multipliers</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                        {Object.entries(proposal.pricingSnapshot.floorTypeMultipliers).map(([key, val]) => (
-                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
-                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-white">{(val as number).toFixed(2)}x</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Condition multipliers */}
-                  {proposal.pricingSnapshot.conditionMultipliers && Object.keys(proposal.pricingSnapshot.conditionMultipliers).length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Condition Multipliers</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                        {Object.entries(proposal.pricingSnapshot.conditionMultipliers).map(([key, val]) => (
-                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
-                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-white">{(val as number).toFixed(2)}x</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Sqft per labor hour by building type */}
-                  {proposal.pricingSnapshot.sqftPerLaborHour && Object.keys(proposal.pricingSnapshot.sqftPerLaborHour).length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Productivity (Sq Ft / Labor Hour)</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                        {Object.entries(proposal.pricingSnapshot.sqftPerLaborHour).map(([key, val]) => (
-                          <div key={key} className="flex justify-between px-2 py-1 rounded bg-white/5">
-                            <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>
-                            <span className="text-white">{val as number} sqft/hr</span>
-                          </div>
-                        ))}
-                      </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-lg border border-white/10">
+                      <table className="w-full min-w-[700px] text-sm">
+                        <thead className="bg-white/5">
+                          <tr className="text-xs uppercase tracking-wider text-gray-400">
+                            <th className="px-3 py-2 text-left font-medium">Area</th>
+                            <th className="px-3 py-2 text-right font-medium">Sq Ft</th>
+                            <th className="px-3 py-2 text-left font-medium">Floor</th>
+                            <th className="px-3 py-2 text-left font-medium">Condition</th>
+                            <th className="px-3 py-2 text-left font-medium">Traffic</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10">
+                          {appliedAreaMultipliers.map((area: any, index: number) => (
+                            <tr key={`${area.areaId || area.areaName || 'area'}-${index}`} className="bg-white/[0.02]">
+                              <td className="px-3 py-2 text-white">
+                                {area.areaName || 'Area'}
+                                {Number(area.quantity || 1) > 1 && (
+                                  <span className="ml-1 text-xs text-gray-400">(x{Number(area.quantity)})</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right text-gray-300">{Number(area.squareFeet || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-gray-300">
+                                <span className="capitalize">{String(area.floorType || '').replace(/_/g, ' ')}</span>
+                                <span className="ml-2 inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-200">
+                                  {Number(area.floorMultiplier || 1).toFixed(2)}x
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-gray-300">
+                                <span className="capitalize">{String(area.conditionLevel || '').replace(/_/g, ' ')}</span>
+                                <span className="ml-2 inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-200">
+                                  {Number(area.conditionMultiplier || 1).toFixed(2)}x
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-gray-300">
+                                {area.trafficLevel ? (
+                                  <>
+                                    <span className="capitalize">{String(area.trafficLevel).replace(/_/g, ' ')}</span>
+                                    <span className="ml-2 inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-200">
+                                      {Number(area.trafficMultiplier || 1).toFixed(2)}x
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-500">n/a</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

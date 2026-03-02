@@ -86,6 +86,18 @@ export class PerHourV1Strategy implements PricingStrategy {
         },
         variabilityPercentage,
       },
+      appliedAreaMultipliers: pricingResult.areas.map((area) => ({
+        areaId: area.areaId,
+        areaName: area.areaName,
+        squareFeet: area.squareFeet,
+        quantity: area.quantity,
+        floorType: area.floorType,
+        floorMultiplier: area.floorMultiplier,
+        conditionLevel: area.conditionLevel,
+        conditionMultiplier: area.conditionMultiplier,
+        trafficLevel: area.trafficLevel,
+        trafficMultiplier: area.trafficMultiplier,
+      })),
     };
 
     return {

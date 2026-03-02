@@ -235,4 +235,74 @@ describe('ProposalDetail', () => {
 
     expect(await screen.findByText('5x Week')).toBeInTheDocument();
   });
+
+  it('highlights applied multiplier context in pricing breakdown', async () => {
+    const user = userEvent.setup();
+    getProposalMock.mockResolvedValueOnce({
+      ...proposal,
+      serviceFrequency: '5x_week',
+      pricingSnapshot: {
+        pricingType: 'square_foot',
+        pricingBasis: 'sqft_price_with_derived_hours',
+        frequencyMultipliers: {
+          '5x_week': 1.0,
+          weekly: 0.25,
+        },
+        floorTypeMultipliers: {
+          vct: 1.0,
+          carpet: 1.15,
+        },
+        conditionMultipliers: {
+          standard: 1.0,
+          hard: 1.2,
+        },
+        trafficMultipliers: {
+          low: 0.95,
+          medium: 1.0,
+          high: 1.2,
+        },
+        appliedAreaMultipliers: [
+          {
+            areaId: 'area-1',
+            areaName: 'Lobby',
+            squareFeet: 1500,
+            quantity: 1,
+            floorType: 'vct',
+            floorMultiplier: 1.0,
+            conditionLevel: 'standard',
+            conditionMultiplier: 1.0,
+            trafficLevel: 'high',
+            trafficMultiplier: 1.2,
+          },
+        ],
+        sqftPerLaborHour: {
+          office: 2500,
+        },
+      },
+      proposalServices: [
+        {
+          id: 'service-1',
+          serviceName: 'Main Floor',
+          serviceType: 'weekly',
+          frequency: 'weekly',
+          estimatedHours: null,
+          hourlyRate: null,
+          monthlyPrice: 500,
+          description: 'Weekly service',
+          includedTasks: [],
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    render(<ProposalDetail />);
+
+    expect(await screen.findByText('Applied Multipliers')).toBeInTheDocument();
+    expect(screen.getByText(/Frequency \(5x Week\)/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /area multiplier review/i }));
+    expect(await screen.findByText('Lobby')).toBeInTheDocument();
+    expect(screen.getByText('vct')).toBeInTheDocument();
+    expect(screen.getByText('high')).toBeInTheDocument();
+  });
 });
