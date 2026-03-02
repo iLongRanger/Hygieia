@@ -139,6 +139,41 @@ const areas: Area[] = [
   },
 ];
 
+const areaSpecificTemplate: TaskTemplate = {
+  id: 'task-template-1',
+  name: 'Dust desks',
+  description: null,
+  cleaningType: 'daily',
+  estimatedMinutes: 10,
+  baseMinutes: '0',
+  perSqftMinutes: '0',
+  perUnitMinutes: '0',
+  perRoomMinutes: '0',
+  difficultyLevel: 3,
+  requiredEquipment: [],
+  requiredSupplies: [],
+  instructions: null,
+  isGlobal: false,
+  version: 1,
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  areaType: {
+    id: 'area-type-1',
+    name: 'Office',
+  },
+  facility: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Admin User',
+  },
+  fixtureMinutes: [],
+  _count: {
+    facilityTasks: 0,
+  },
+};
+
 describe('FacilityDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'facility-1' };
@@ -197,5 +232,17 @@ describe('FacilityDetail', () => {
         })
       );
     });
+  });
+
+  it('shows area-specific default tasks as preselected when template has no tasks', async () => {
+    const user = userEvent.setup();
+    listTaskTemplatesMock.mockResolvedValue({ data: [areaSpecificTemplate] });
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /add area/i }));
+    await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
+
+    expect(await screen.findByText('Dust desks')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /include/i })).toBeChecked();
   });
 });

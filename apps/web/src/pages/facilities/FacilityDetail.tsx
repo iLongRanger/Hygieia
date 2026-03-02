@@ -144,6 +144,8 @@ const FacilityDetail = () => {
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
   const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
+  const [areaTemplateUsesBackendTemplateTasks, setAreaTemplateUsesBackendTemplateTasks] =
+    useState(false);
   const [areaTaskPipelineStep, setAreaTaskPipelineStep] = useState(0);
   const [reviewedAreaTaskFrequencies, setReviewedAreaTaskFrequencies] =
     useState<Set<CleaningFrequency>>(new Set());
@@ -327,9 +329,34 @@ const FacilityDetail = () => {
     }
   }, []);
 
+  const buildFallbackTemplateTasks = useCallback(
+    (areaTypeId: string): AreaTemplateTaskSelection[] =>
+      taskTemplates
+        .filter(
+          (template) =>
+            template.isActive && template.areaType?.id === areaTypeId
+        )
+        .map((template) => ({
+          id: `task-template-${template.id}`,
+          taskTemplateId: template.id,
+          name: template.name,
+          cleaningType: isCleaningFrequency(template.cleaningType)
+            ? template.cleaningType
+            : 'daily',
+          estimatedMinutes: template.estimatedMinutes ?? null,
+          baseMinutes: Number(template.baseMinutes) || 0,
+          perSqftMinutes: Number(template.perSqftMinutes) || 0,
+          perUnitMinutes: Number(template.perUnitMinutes) || 0,
+          perRoomMinutes: Number(template.perRoomMinutes) || 0,
+          include: true,
+        })),
+    [taskTemplates]
+  );
+
   const applyAreaTemplate = useCallback(async (areaTypeId: string) => {
     if (!areaTypeId || editingArea) {
       setAreaTemplateTasks([]);
+      setAreaTemplateUsesBackendTemplateTasks(false);
       return;
     }
     try {
@@ -356,8 +383,11 @@ const FacilityDetail = () => {
         perRoomMinutes: Number(task.taskTemplate?.perRoomMinutes ?? task.perRoomMinutes) || 0,
         include: true,
       })) || [];
+      const fallbackTasks = buildFallbackTemplateTasks(areaTypeId);
+      const tasksForSelection = templateTasks.length > 0 ? templateTasks : fallbackTasks;
 
-      setAreaTemplateTasks(templateTasks);
+      setAreaTemplateTasks(tasksForSelection);
+      setAreaTemplateUsesBackendTemplateTasks(templateTasks.length > 0);
       setAreaTaskPipelineStep(0);
       setReviewedAreaTaskFrequencies(new Set());
       setNewAreaCustomTaskName('');
@@ -376,13 +406,15 @@ const FacilityDetail = () => {
       });
     } catch (error) {
       console.error('Failed to load area template:', error);
-      setAreaTemplateTasks([]);
+      const fallbackTasks = buildFallbackTemplateTasks(areaTypeId);
+      setAreaTemplateTasks(fallbackTasks);
+      setAreaTemplateUsesBackendTemplateTasks(false);
       setAreaTaskPipelineStep(0);
       setReviewedAreaTaskFrequencies(new Set());
     } finally {
       setAreaTemplateLoading(false);
     }
-  }, [areaTypes, editingArea]);
+  }, [areaTypes, editingArea, buildFallbackTemplateTasks]);
 
   useEffect(() => {
     fetchFacility();
@@ -442,6 +474,27 @@ const FacilityDetail = () => {
           applyTemplate: true,
           excludeTaskTemplateIds,
         } as CreateAreaInput);
+
+        if (!areaTemplateUsesBackendTemplateTasks) {
+          const selectedTemplateTasks = areaTemplateTasks.filter(
+            (task) => task.include && task.taskTemplateId
+          );
+          if (selectedTemplateTasks.length > 0) {
+            await Promise.all(
+              selectedTemplateTasks.map((task) =>
+                createFacilityTask({
+                  facilityId: id,
+                  areaId: createdArea.id,
+                  taskTemplateId: task.taskTemplateId,
+                  cleaningFrequency: isCleaningFrequency(task.cleaningType)
+                    ? task.cleaningType
+                    : 'daily',
+                  priority: 3,
+                } as CreateFacilityTaskInput)
+              )
+            );
+          }
+        }
 
         // Handle legacy tasks (inline tasks without taskTemplateId) - rare case
         const selectedLegacyTasks = areaTemplateTasks.filter(
@@ -526,6 +579,7 @@ const FacilityDetail = () => {
       fixtures: [],
     });
     setAreaTemplateTasks([]);
+    setAreaTemplateUsesBackendTemplateTasks(false);
     setAreaTaskPipelineStep(0);
     setReviewedAreaTaskFrequencies(new Set());
     setNewAreaCustomTaskName('');
