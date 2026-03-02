@@ -18,6 +18,8 @@
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https: blob:;
+        frame-src 'self' blob:;
+        object-src 'none';
         connect-src 'self' http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*;
         base-uri 'self';
         form-action 'self';
