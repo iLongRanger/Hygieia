@@ -506,6 +506,25 @@ const FacilityDetail = () => {
 
   const handleSaveTask = async () => {
     if (!id) return;
+
+    const selectedAreaId = taskForm.areaId ?? selectedAreaForTask?.id ?? null;
+    const duplicateTask = findDuplicateTask({
+      areaId: selectedAreaId,
+      cleaningFrequency: taskForm.cleaningFrequency || 'daily',
+      taskTemplateId: taskForm.taskTemplateId,
+      customName: taskForm.customName,
+      excludeTaskId: editingTask?.id,
+    });
+
+    if (duplicateTask) {
+      toast.error(
+        `Duplicate task "${getTaskDisplayName(
+          duplicateTask
+        )}" already exists for this area and frequency`
+      );
+      return;
+    }
+
     try {
       setSaving(true);
       if (editingTask) {
@@ -518,7 +537,7 @@ const FacilityDetail = () => {
         await createFacilityTask({
           ...taskForm,
           facilityId: id,
-          areaId: selectedAreaForTask?.id || null,
+          areaId: selectedAreaId,
         } as CreateFacilityTaskInput);
         toast.success('Task added');
       }
@@ -549,14 +568,38 @@ const FacilityDetail = () => {
 
   const handleBulkAddTasks = async () => {
     if (!id || selectedTaskTemplateIds.size === 0) return;
+
+    const selectedAreaId = selectedAreaForTask?.id || null;
+    const selectedTemplateIds = Array.from(selectedTaskTemplateIds);
+    const duplicateTemplateIds = selectedTemplateIds.filter((taskTemplateId) =>
+      Boolean(
+        findDuplicateTask({
+          areaId: selectedAreaId,
+          cleaningFrequency: bulkFrequency as CleaningFrequency,
+          taskTemplateId,
+        })
+      )
+    );
+    const templateIdsToCreate = selectedTemplateIds.filter(
+      (taskTemplateId) => !duplicateTemplateIds.includes(taskTemplateId)
+    );
+
+    if (templateIdsToCreate.length === 0) {
+      toast.error('All selected tasks already exist for this area and frequency');
+      return;
+    }
+
     try {
       setSaving(true);
       const result = await bulkCreateFacilityTasks(
         id,
-        Array.from(selectedTaskTemplateIds),
-        selectedAreaForTask?.id || null,
+        templateIdsToCreate,
+        selectedAreaId,
         bulkFrequency
       );
+      if (duplicateTemplateIds.length > 0) {
+        toast('Skipped duplicate tasks that already exist');
+      }
       toast.success(`Added ${result.count} tasks`);
       setShowBulkTaskModal(false);
       setSelectedTaskTemplateIds(new Set());
@@ -725,6 +768,43 @@ const FacilityDetail = () => {
 
   const getTaskDisplayName = (task: FacilityTask) =>
     (task.customName || task.taskTemplate?.name || '').trim();
+
+  const normalizeTaskName = (name: string) =>
+    name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+  const findDuplicateTask = (params: {
+    areaId?: string | null;
+    cleaningFrequency: CleaningFrequency;
+    taskTemplateId?: string | null;
+    customName?: string | null;
+    excludeTaskId?: string;
+  }) => {
+    const incomingName = params.taskTemplateId
+      ? taskTemplates.find((template) => template.id === params.taskTemplateId)
+          ?.name || ''
+      : params.customName || '';
+    const normalizedIncomingName = normalizeTaskName(incomingName);
+
+    if (!normalizedIncomingName) return null;
+
+    return (
+      tasks.find((task) => {
+        if (task.archivedAt) return false;
+        if (params.excludeTaskId && task.id === params.excludeTaskId) return false;
+
+        const existingAreaId = task.area?.id || null;
+        const incomingAreaId = params.areaId || null;
+        if (existingAreaId !== incomingAreaId) return false;
+
+        if (task.cleaningFrequency !== params.cleaningFrequency) return false;
+
+        const existingTaskName = normalizeTaskName(
+          task.customName || task.taskTemplate?.name || ''
+        );
+        return existingTaskName === normalizedIncomingName;
+      }) || null
+    );
+  };
 
   const getTaskSequenceWeight = (name: string) => {
     if (!name) return 90;

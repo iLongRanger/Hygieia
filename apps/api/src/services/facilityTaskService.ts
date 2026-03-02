@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { ValidationError } from '../middleware/errorHandler';
 
 export interface FacilityTaskListParams {
   page?: number;
@@ -130,6 +131,83 @@ const facilityTaskSelect = {
   },
 } satisfies Prisma.FacilityTaskSelect;
 
+type DuplicateCandidateTask = {
+  id: string;
+  customName: string | null;
+  taskTemplate: { id: string; name: string } | null;
+};
+
+function normalizeTaskName(value: string | null | undefined): string {
+  return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getTaskDisplayName(task: DuplicateCandidateTask): string {
+  return task.customName ?? task.taskTemplate?.name ?? '';
+}
+
+async function getTaskNameFromTemplate(taskTemplateId: string): Promise<string> {
+  const template = await prisma.taskTemplate.findUnique({
+    where: { id: taskTemplateId },
+    select: { name: true },
+  });
+  if (!template) {
+    throw new ValidationError('Task template not found');
+  }
+  return template.name;
+}
+
+async function ensureNoDuplicateFacilityTask(params: {
+  facilityId: string;
+  areaId?: string | null;
+  cleaningFrequency: string;
+  taskTemplateId?: string | null;
+  customName?: string | null;
+  excludeTaskId?: string;
+}) {
+  const areaId = params.areaId ?? null;
+  const incomingTaskName = params.taskTemplateId
+    ? await getTaskNameFromTemplate(params.taskTemplateId)
+    : params.customName ?? '';
+  const normalizedIncomingName = normalizeTaskName(incomingTaskName);
+
+  if (!normalizedIncomingName) {
+    return;
+  }
+
+  const existingTasks = await prisma.facilityTask.findMany({
+    where: {
+      facilityId: params.facilityId,
+      areaId,
+      cleaningFrequency: params.cleaningFrequency,
+      archivedAt: null,
+      ...(params.excludeTaskId
+        ? { id: { not: params.excludeTaskId } }
+        : {}),
+    },
+    select: {
+      id: true,
+      customName: true,
+      taskTemplate: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  const hasDuplicate = existingTasks.some((task) => {
+    const existingName = normalizeTaskName(getTaskDisplayName(task));
+    return existingName === normalizedIncomingName;
+  });
+
+  if (hasDuplicate) {
+    throw new ValidationError(
+      `Duplicate task detected for this area and frequency: "${incomingTaskName.trim()}"`
+    );
+  }
+}
+
 export async function listFacilityTasks(
   params: FacilityTaskListParams
 ): Promise<
@@ -227,6 +305,14 @@ export async function getFacilityTaskById(id: string) {
 }
 
 export async function createFacilityTask(input: FacilityTaskCreateInput) {
+  await ensureNoDuplicateFacilityTask({
+    facilityId: input.facilityId,
+    areaId: input.areaId,
+    cleaningFrequency: input.cleaningFrequency ?? 'daily',
+    taskTemplateId: input.taskTemplateId,
+    customName: input.customName,
+  });
+
   return prisma.facilityTask.create({
     data: {
       facilityId: input.facilityId,
@@ -259,6 +345,44 @@ export async function updateFacilityTask(
   id: string,
   input: FacilityTaskUpdateInput
 ) {
+  const existingTask = await prisma.facilityTask.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      facilityId: true,
+      areaId: true,
+      taskTemplateId: true,
+      customName: true,
+      cleaningFrequency: true,
+    },
+  });
+
+  if (!existingTask) {
+    throw new ValidationError('Facility task not found');
+  }
+
+  const nextAreaId =
+    input.areaId !== undefined ? input.areaId : existingTask.areaId;
+  const nextTaskTemplateId =
+    input.taskTemplateId !== undefined
+      ? input.taskTemplateId
+      : existingTask.taskTemplateId;
+  const nextCustomName =
+    input.customName !== undefined ? input.customName : existingTask.customName;
+  const nextCleaningFrequency =
+    input.cleaningFrequency !== undefined
+      ? input.cleaningFrequency
+      : existingTask.cleaningFrequency;
+
+  await ensureNoDuplicateFacilityTask({
+    facilityId: existingTask.facilityId,
+    areaId: nextAreaId,
+    cleaningFrequency: nextCleaningFrequency,
+    taskTemplateId: nextTaskTemplateId,
+    customName: nextCustomName,
+    excludeTaskId: id,
+  });
+
   const updateData: Prisma.FacilityTaskUpdateInput = {};
 
   if (input.areaId !== undefined) {
@@ -337,24 +461,73 @@ export async function bulkCreateFacilityTasks(
   areaId?: string,
   cleaningFrequency?: string
 ) {
+  const uniqueTemplateIds = Array.from(new Set(taskTemplateIds));
+
   const templates = await prisma.taskTemplate.findMany({
-    where: { id: { in: taskTemplateIds } },
+    where: { id: { in: uniqueTemplateIds } },
     select: {
       id: true,
+      name: true,
       estimatedMinutes: true,
       cleaningType: true,
     },
   });
 
-  const tasks = templates.map((template) => ({
-    facilityId,
-    areaId: areaId || null,
-    taskTemplateId: template.id,
-    estimatedMinutes: template.estimatedMinutes,
-    // Use provided frequency, or map cleaningType to frequency, or default to daily
-    cleaningFrequency: cleaningFrequency || mapCleaningTypeToFrequency(template.cleaningType),
-    createdByUserId,
-  }));
+  const resolvedFrequency = cleaningFrequency || undefined;
+  const existingTasks = await prisma.facilityTask.findMany({
+    where: {
+      facilityId,
+      areaId: areaId ?? null,
+      cleaningFrequency: resolvedFrequency ?? undefined,
+      archivedAt: null,
+    },
+    select: {
+      id: true,
+      customName: true,
+      taskTemplate: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      cleaningFrequency: true,
+    },
+  });
+
+  const existingNameKeys = new Set(
+    existingTasks.map((task) =>
+      `${task.cleaningFrequency}::${normalizeTaskName(getTaskDisplayName(task))}`
+    )
+  );
+
+  const seenIncomingKeys = new Set<string>();
+
+  const tasks = templates
+    .map((template) => {
+      const taskFrequency =
+        cleaningFrequency || mapCleaningTypeToFrequency(template.cleaningType);
+      const nameKey = `${taskFrequency}::${normalizeTaskName(template.name)}`;
+
+      if (existingNameKeys.has(nameKey) || seenIncomingKeys.has(nameKey)) {
+        return null;
+      }
+
+      seenIncomingKeys.add(nameKey);
+      return {
+        facilityId,
+        areaId: areaId || null,
+        taskTemplateId: template.id,
+        estimatedMinutes: template.estimatedMinutes,
+        // Use provided frequency, or map cleaningType to frequency, or default to daily
+        cleaningFrequency: taskFrequency,
+        createdByUserId,
+      };
+    })
+    .filter((task): task is NonNullable<typeof task> => task !== null);
+
+  if (tasks.length === 0) {
+    return { count: 0 };
+  }
 
   return prisma.facilityTask.createMany({
     data: tasks,

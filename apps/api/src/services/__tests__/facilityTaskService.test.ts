@@ -15,6 +15,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     taskTemplate: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
     },
   },
 }));
@@ -44,6 +45,7 @@ const createTestFacilityTask = (overrides?: Partial<any>) => ({
 describe('facilityTaskService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   describe('listFacilityTasks', () => {
@@ -231,6 +233,9 @@ describe('facilityTaskService', () => {
       const mockTask = createTestFacilityTask(input);
 
       (prisma.facilityTask.create as jest.Mock).mockResolvedValue(mockTask);
+      (prisma.taskTemplate.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Vacuum',
+      });
 
       const result = await facilityTaskService.createFacilityTask(input);
 
@@ -320,6 +325,29 @@ describe('facilityTaskService', () => {
         })
       );
     });
+
+    it('should reject duplicate task names in same area and frequency', async () => {
+      const input: facilityTaskService.FacilityTaskCreateInput = {
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        customName: ' Vacuum Floor ',
+        cleaningFrequency: 'daily',
+        createdByUserId: 'user-123',
+      };
+
+      (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'existing-task',
+          customName: null,
+          taskTemplate: { id: 'template-1', name: 'vacuum floor' },
+        },
+      ]);
+
+      await expect(facilityTaskService.createFacilityTask(input)).rejects.toThrow(
+        'Duplicate task detected for this area and frequency'
+      );
+      expect(prisma.facilityTask.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateFacilityTask', () => {
@@ -332,6 +360,17 @@ describe('facilityTaskService', () => {
 
       const mockTask = createTestFacilityTask(input);
 
+      (prisma.facilityTask.findUnique as jest.Mock).mockResolvedValue({
+        id: 'task-123',
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
+        customName: 'Original Task',
+        cleaningFrequency: 'daily',
+      });
+      (prisma.taskTemplate.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Vacuum',
+      });
       (prisma.facilityTask.update as jest.Mock).mockResolvedValue(mockTask);
 
       const result = await facilityTaskService.updateFacilityTask('task-123', input);
@@ -342,6 +381,17 @@ describe('facilityTaskService', () => {
     it('should disconnect area when set to null', async () => {
       const mockTask = createTestFacilityTask({ areaId: null });
 
+      (prisma.facilityTask.findUnique as jest.Mock).mockResolvedValue({
+        id: 'task-123',
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
+        customName: 'Original Task',
+        cleaningFrequency: 'daily',
+      });
+      (prisma.taskTemplate.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Vacuum',
+      });
       (prisma.facilityTask.update as jest.Mock).mockResolvedValue(mockTask);
 
       await facilityTaskService.updateFacilityTask('task-123', { areaId: null });
@@ -358,6 +408,14 @@ describe('facilityTaskService', () => {
     it('should disconnect taskTemplate when set to null', async () => {
       const mockTask = createTestFacilityTask({ taskTemplateId: null });
 
+      (prisma.facilityTask.findUnique as jest.Mock).mockResolvedValue({
+        id: 'task-123',
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
+        customName: 'Original Task',
+        cleaningFrequency: 'daily',
+      });
       (prisma.facilityTask.update as jest.Mock).mockResolvedValue(mockTask);
 
       await facilityTaskService.updateFacilityTask('task-123', { taskTemplateId: null });
@@ -369,6 +427,32 @@ describe('facilityTaskService', () => {
           }),
         })
       );
+    });
+
+    it('should reject duplicate task name when updating', async () => {
+      (prisma.facilityTask.findUnique as jest.Mock).mockResolvedValue({
+        id: 'task-123',
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: null,
+        customName: 'Dust desks',
+        cleaningFrequency: 'daily',
+      });
+      (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'task-999',
+          customName: 'Dust Desks',
+          taskTemplate: null,
+        },
+      ]);
+
+      await expect(
+        facilityTaskService.updateFacilityTask('task-123', {
+          customName: ' dust   desks ',
+        })
+      ).rejects.toThrow('Duplicate task detected for this area and frequency');
+
+      expect(prisma.facilityTask.update).not.toHaveBeenCalled();
     });
   });
 
@@ -417,8 +501,8 @@ describe('facilityTaskService', () => {
   describe('bulkCreateFacilityTasks', () => {
     it('should create multiple facility tasks from templates', async () => {
       const mockTemplates = [
-        { id: 'template-1', estimatedMinutes: 30 },
-        { id: 'template-2', estimatedMinutes: 45 },
+        { id: 'template-1', name: 'Vacuum', estimatedMinutes: 30, cleaningType: 'daily' },
+        { id: 'template-2', name: 'Mop', estimatedMinutes: 45, cleaningType: 'daily' },
       ];
 
       (prisma.taskTemplate.findMany as jest.Mock).mockResolvedValue(mockTemplates);
@@ -434,6 +518,7 @@ describe('facilityTaskService', () => {
         where: { id: { in: ['template-1', 'template-2'] } },
         select: {
           id: true,
+          name: true,
           cleaningType: true,
           estimatedMinutes: true,
         },
@@ -461,6 +546,42 @@ describe('facilityTaskService', () => {
       });
 
       expect(result).toEqual({ count: 2 });
+    });
+
+    it('should skip duplicates by task name and frequency during bulk create', async () => {
+      (prisma.taskTemplate.findMany as jest.Mock).mockResolvedValue([
+        { id: 'template-1', name: 'Vacuum Floor', estimatedMinutes: 30, cleaningType: 'daily' },
+        { id: 'template-2', name: 'Mop Floor', estimatedMinutes: 45, cleaningType: 'daily' },
+      ]);
+      (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'existing-1',
+          customName: 'Vacuum Floor',
+          taskTemplate: null,
+          cleaningFrequency: 'daily',
+        },
+      ]);
+      (prisma.facilityTask.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+      const result = await facilityTaskService.bulkCreateFacilityTasks(
+        'facility-123',
+        ['template-1', 'template-2'],
+        'user-123'
+      );
+
+      expect(prisma.facilityTask.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            facilityId: 'facility-123',
+            taskTemplateId: 'template-2',
+            estimatedMinutes: 45,
+            createdByUserId: 'user-123',
+            areaId: null,
+            cleaningFrequency: 'daily',
+          },
+        ],
+      });
+      expect(result).toEqual({ count: 1 });
     });
   });
 });
