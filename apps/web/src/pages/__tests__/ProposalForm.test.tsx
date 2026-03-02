@@ -322,6 +322,9 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Cleaning Proposal');
+    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
 
     const createButtons = screen.getAllByRole('button', { name: /create proposal/i });
     await user.click(createButtons[0]);
@@ -364,6 +367,9 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Facility Proposal');
+    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
     await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
 
     const createButtons = await screen.findAllByRole('button', { name: /create proposal/i });
@@ -392,6 +398,9 @@ describe('ProposalForm', () => {
     await screen.findByDisplayValue('Existing Proposal');
     await user.clear(screen.getByLabelText(/proposal title/i));
     await user.type(screen.getByLabelText(/proposal title/i), 'Updated Proposal');
+    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
     const updateButtons = screen.getAllByRole('button', { name: /update proposal/i });
     await user.click(updateButtons[0]);
 
@@ -399,5 +408,19 @@ describe('ProposalForm', () => {
       expect(updateProposalMock).toHaveBeenCalledWith('proposal-1', expect.any(Object));
       expect(navigateMock).toHaveBeenCalledWith('/proposals');
     });
+  });
+
+  it('requires tax rate before create submission', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
+    await user.type(screen.getByLabelText(/proposal title/i), 'No Tax Proposal');
+
+    const createButtons = await screen.findAllByRole('button', { name: /create proposal/i });
+    expect(createButtons[0]).toBeDisabled();
+    await user.click(createButtons[0]);
+
+    expect(createProposalMock).not.toHaveBeenCalled();
   });
 });

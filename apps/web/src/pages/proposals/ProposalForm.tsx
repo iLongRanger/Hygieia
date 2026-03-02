@@ -697,7 +697,8 @@ const ProposalForm = () => {
       !facilityReview.hasBlockingIssues &&
       areasReviewed &&
       tasksReviewed);
-  const canSubmitProposal = !saving && isFacilityReviewComplete;
+  const hasRequiredTaxRate = Number(formData.taxRate || 0) > 0;
+  const canSubmitProposal = !saving && isFacilityReviewComplete && hasRequiredTaxRate;
 
   // Check pricing readiness when facility changes
   useEffect(() => {
@@ -999,6 +1000,10 @@ const ProposalForm = () => {
     }
     if (!formData.pricingPlanId) {
       toast.error('Please select a pricing plan');
+      return;
+    }
+    if (Number(formData.taxRate || 0) <= 0) {
+      toast.error('Please set a tax rate greater than 0%');
       return;
     }
     const scheduleFrequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
@@ -1754,6 +1759,7 @@ const ProposalForm = () => {
                     min="0"
                     max="100"
                     step="0.1"
+                    aria-label="Tax Rate (%)"
                     value={((formData.taxRate || 0) * 100).toFixed(1)}
                     onChange={(e) => {
                       const percent = parseFloat(e.target.value) || 0;
@@ -1769,6 +1775,11 @@ const ProposalForm = () => {
                 <span className="text-gray-400">Tax Amount:</span>
                 <span className="text-white">{formatCurrency(totals.taxAmount)}</span>
               </div>
+              {!hasRequiredTaxRate && (
+                <div className="text-xs text-amber-300">
+                  Tax rate is required before submitting this proposal.
+                </div>
+              )}
 
               <div className="flex justify-between text-xl font-bold border-t border-white/10 pt-3 mt-3">
                 <span className="text-white">Total:</span>
