@@ -4,6 +4,7 @@ import type {
   FloorTypeMultipliers,
   FrequencyMultipliers,
   ConditionMultipliers,
+  TrafficMultipliers,
   SqftPerLaborHour,
   TaskComplexityAddOns,
 } from '../schemas/pricingSettings';
@@ -152,6 +153,7 @@ export async function calculateFacilityPricing(
   const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
+  const trafficMultipliers = pricingSettings.trafficMultipliers as TrafficMultipliers;
 
   const difficultyMultiplier = 1.0;
 
@@ -191,11 +193,13 @@ export async function calculateFacilityPricing(
     const floorMultiplier = floorTypeMultipliers[floorType as keyof FloorTypeMultipliers] ?? 1.0;
     const conditionLevel = area.conditionLevel || 'standard';
     const conditionMultiplier = conditionMultipliers[conditionLevel as keyof ConditionMultipliers] ?? 1.0;
+    const trafficLevel = area.trafficLevel || 'medium';
+    const trafficMultiplier = trafficMultipliers?.[trafficLevel as keyof TrafficMultipliers] ?? 1.0;
 
     // Calculate labor hours based on square footage and productivity rate
     // Apply floor and condition multipliers to adjust labor time
     const baseLabortHours = totalAreaSqFt / sqftPerLaborHour;
-    const adjustedLaborHours = baseLabortHours * floorMultiplier * conditionMultiplier;
+    const adjustedLaborHours = baseLabortHours * floorMultiplier * conditionMultiplier * trafficMultiplier;
 
     // Calculate labor costs
     const laborCostBase = adjustedLaborHours * laborCostPerHour;
