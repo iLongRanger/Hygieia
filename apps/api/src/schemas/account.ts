@@ -82,6 +82,10 @@ export const listAccountsQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  readyForProposal: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;

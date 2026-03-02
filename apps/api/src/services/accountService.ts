@@ -10,6 +10,7 @@ export interface AccountListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
+  readyForProposal?: boolean;
 }
 
 export interface AccountCreateInput {
@@ -105,6 +106,7 @@ export async function listAccounts(
     sortBy = 'createdAt',
     sortOrder = 'desc',
     includeArchived = false,
+    readyForProposal = false,
   } = params;
 
   const where: Prisma.AccountWhereInput = {};
@@ -126,6 +128,15 @@ export async function listAccounts(
       { name: { contains: search, mode: 'insensitive' } },
       { billingEmail: { contains: search, mode: 'insensitive' } },
     ];
+  }
+
+  if (readyForProposal) {
+    where.sourceLead = {
+      is: {
+        status: 'walk_through_completed',
+        archivedAt: null,
+      },
+    };
   }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name'];

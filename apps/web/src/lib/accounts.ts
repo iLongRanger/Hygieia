@@ -15,6 +15,7 @@ export async function listAccounts(params?: {
   accountManagerId?: string;
   search?: string;
   includeArchived?: boolean;
+  readyForProposal?: boolean;
 }): Promise<PaginatedResponse<Account>> {
   const response = await api.get('/accounts', { params });
   return response.data;

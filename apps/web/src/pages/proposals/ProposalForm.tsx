@@ -533,13 +533,18 @@ const ProposalForm = () => {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [accountsRes, facilitiesRes, plansRes, templatesRes] = await Promise.all([
-        listAccounts({ limit: 100 }),
+        listAccounts({ limit: 100, readyForProposal: true }),
         listFacilities({ limit: 100 }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
       ]);
-      setAccounts(accountsRes?.data || []);
-      setFacilities(facilitiesRes?.data || []);
+      const readyAccounts = accountsRes?.data || [];
+      const readyAccountIds = new Set(readyAccounts.map((account) => account.id));
+      const facilitiesForReadyAccounts = (facilitiesRes?.data || []).filter((facility) =>
+        readyAccountIds.has(facility.account.id)
+      );
+      setAccounts(readyAccounts);
+      setFacilities(facilitiesForReadyAccounts);
       setTermsTemplates(templatesRes || []);
       const plans = plansRes?.data || [];
       setPricingPlans(plans);
@@ -622,7 +627,7 @@ const ProposalForm = () => {
   // Filter facilities by selected account
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
-    : facilities;
+    : [];
 
   useEffect(() => {
     const facilityId = formData.facilityId;
