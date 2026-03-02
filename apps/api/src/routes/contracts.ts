@@ -1269,7 +1269,20 @@ router.get(
         throw new NotFoundError('Contract not found');
       }
 
-      const pdfBuffer = await generateContractPdf(contract as any);
+      const termsDocument = await prisma.contract.findUnique({
+        where: { id: req.params.id },
+        select: {
+          termsDocumentMimeType: true,
+          termsDocumentDataUrl: true,
+        },
+      });
+
+      // If a custom contract PDF was uploaded, prefer it for preview/download.
+      const pdfBuffer =
+        termsDocument?.termsDocumentMimeType === 'application/pdf' &&
+        termsDocument.termsDocumentDataUrl
+          ? decodeDataUrlToBuffer(termsDocument.termsDocumentDataUrl)
+          : await generateContractPdf(contract as any);
 
       await logContractActivity({
         contractId: contract.id,

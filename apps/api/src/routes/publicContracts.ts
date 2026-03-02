@@ -180,7 +180,20 @@ router.get(
         throw new NotFoundError('Contract not found or link has expired');
       }
 
-      const pdfBuffer = await generateContractPdf(contract as any);
+      const contractDoc = await prisma.contract.findUnique({
+        where: { publicToken: req.params.token },
+        select: {
+          termsDocumentMimeType: true,
+          termsDocumentDataUrl: true,
+        },
+      });
+
+      // If a custom contract PDF was uploaded, prefer it for preview/download.
+      const pdfBuffer =
+        contractDoc?.termsDocumentMimeType === 'application/pdf' &&
+        contractDoc.termsDocumentDataUrl
+          ? decodeDataUrlToBuffer(contractDoc.termsDocumentDataUrl)
+          : await generateContractPdf(contract as any);
 
       res.set({
         'Content-Type': 'application/pdf',

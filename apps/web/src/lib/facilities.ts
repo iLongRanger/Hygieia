@@ -71,6 +71,23 @@ export async function deleteFacility(id: string): Promise<void> {
   await api.delete(`/facilities/${id}`);
 }
 
+export async function submitFacilityForProposal(
+  id: string,
+  notes?: string | null
+): Promise<{
+  facilityId: string;
+  leadId: string;
+  appointmentId: string;
+  appointmentStatus: 'completed';
+  leadStatus: 'walk_through_completed';
+  alreadyCompleted: boolean;
+}> {
+  const response = await api.post(`/facilities/${id}/submit-for-proposal`, {
+    notes: notes ?? null,
+  });
+  return response.data.data;
+}
+
 export async function listAreaTypes(params?: {
   page?: number;
   limit?: number;

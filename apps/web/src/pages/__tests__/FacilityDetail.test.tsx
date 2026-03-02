@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
@@ -33,6 +33,7 @@ const updateFacilityTaskMock = vi.fn();
 const deleteFacilityTaskMock = vi.fn();
 const listTaskTemplatesMock = vi.fn();
 const bulkCreateFacilityTasksMock = vi.fn();
+const submitFacilityForProposalMock = vi.fn();
 
 vi.mock('../../lib/facilities', () => ({
   getFacility: (...args: unknown[]) => getFacilityMock(...args),
@@ -52,6 +53,7 @@ vi.mock('../../lib/facilities', () => ({
   deleteFacilityTask: (...args: unknown[]) => deleteFacilityTaskMock(...args),
   listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
   bulkCreateFacilityTasks: (...args: unknown[]) => bulkCreateFacilityTasksMock(...args),
+  submitFacilityForProposal: (...args: unknown[]) => submitFacilityForProposalMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -190,6 +192,14 @@ describe('FacilityDetail', () => {
       tasks: [],
     });
     createAreaMock.mockResolvedValue({ id: 'area-2' });
+    submitFacilityForProposalMock.mockResolvedValue({
+      facilityId: 'facility-1',
+      leadId: 'lead-1',
+      appointmentId: 'appt-1',
+      appointmentStatus: 'completed',
+      leadStatus: 'walk_through_completed',
+      alreadyCompleted: false,
+    });
   });
 
   afterEach(() => {
@@ -244,5 +254,22 @@ describe('FacilityDetail', () => {
 
     expect(await screen.findByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /include/i })).toBeChecked();
+  });
+
+  it('submits facility for proposal from header action', async () => {
+    const user = userEvent.setup();
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
+    const modal = await screen.findByRole('dialog', { name: /submit facility for proposal/i });
+    await user.type(screen.getByLabelText(/review notes/i), 'Ready for proposal');
+    await user.click(within(modal).getByRole('button', { name: /submit facility/i }));
+
+    await waitFor(() => {
+      expect(submitFacilityForProposalMock).toHaveBeenCalledWith(
+        'facility-1',
+        'Ready for proposal'
+      );
+    });
   });
 });

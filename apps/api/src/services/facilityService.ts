@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { geocodeAddressIfNeeded } from './geocodingService';
+import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import { completeAppointment } from './appointmentService';
 
 export interface FacilityListParams {
   page?: number;
@@ -256,6 +258,128 @@ export async function deleteFacility(id: string) {
     where: { id },
     select: { id: true },
   });
+}
+
+export async function submitFacilityForProposal(
+  facilityId: string,
+  input: { userId: string; notes?: string | null }
+): Promise<{
+  facilityId: string;
+  leadId: string;
+  appointmentId: string;
+  appointmentStatus: 'completed';
+  leadStatus: 'walk_through_completed';
+  alreadyCompleted: boolean;
+}> {
+  const facility = await prisma.facility.findUnique({
+    where: { id: facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!facility) {
+    throw new NotFoundError('Facility not found');
+  }
+
+  if (facility.archivedAt) {
+    throw new BadRequestError('Cannot submit an archived facility');
+  }
+
+  const [areaCount, taskCount] = await Promise.all([
+    prisma.area.count({
+      where: { facilityId: facility.id, archivedAt: null },
+    }),
+    prisma.facilityTask.count({
+      where: { facilityId: facility.id, archivedAt: null },
+    }),
+  ]);
+
+  if (areaCount === 0) {
+    throw new BadRequestError('Add at least one area before submitting this facility');
+  }
+
+  if (taskCount === 0) {
+    throw new BadRequestError('Add at least one task before submitting this facility');
+  }
+
+  const lead = await prisma.lead.findFirst({
+    where: {
+      convertedToAccountId: facility.accountId,
+      archivedAt: null,
+    },
+    orderBy: [
+      { convertedAt: 'desc' },
+      { updatedAt: 'desc' },
+    ],
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!lead) {
+    throw new BadRequestError('No converted lead found for this facility account');
+  }
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      leadId: lead.id,
+      type: 'walk_through',
+    },
+    orderBy: {
+      scheduledStart: 'desc',
+    },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!appointment) {
+    throw new BadRequestError('No walkthrough appointment found for this lead');
+  }
+
+  if (appointment.status === 'canceled' || appointment.status === 'no_show') {
+    throw new BadRequestError(
+      'Latest walkthrough is not completable. Reschedule walkthrough before submitting.'
+    );
+  }
+
+  if (appointment.status === 'completed') {
+    if (lead.status !== 'walk_through_completed') {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { status: 'walk_through_completed' },
+      });
+    }
+
+    return {
+      facilityId: facility.id,
+      leadId: lead.id,
+      appointmentId: appointment.id,
+      appointmentStatus: 'completed',
+      leadStatus: 'walk_through_completed',
+      alreadyCompleted: true,
+    };
+  }
+
+  await completeAppointment(appointment.id, {
+    facilityId: facility.id,
+    notes: input.notes ?? null,
+    userId: input.userId,
+  });
+
+  return {
+    facilityId: facility.id,
+    leadId: lead.id,
+    appointmentId: appointment.id,
+    appointmentStatus: 'completed',
+    leadStatus: 'walk_through_completed',
+    alreadyCompleted: false,
+  };
 }
 
 export interface TaskTimeBreakdownItem {

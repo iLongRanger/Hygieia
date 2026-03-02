@@ -12,6 +12,7 @@ import {
   restoreFacility,
   deleteFacility,
   getTaskTimeBreakdown,
+  submitFacilityForProposal,
 } from '../services/facilityService';
 import {
   calculateFacilityPricing,
@@ -27,6 +28,7 @@ import {
   createFacilitySchema,
   updateFacilitySchema,
   listFacilitiesQuerySchema,
+  submitFacilityForProposalSchema,
 } from '../schemas/facility';
 import { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
@@ -361,6 +363,36 @@ router.get(
 
       const breakdown = await getTaskTimeBreakdown(req.params.id);
       res.json({ data: breakdown });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Submit facility as reviewed and ready for proposal creation.
+// Completes the latest walkthrough appointment and updates lead status.
+router.post(
+  '/:id/submit-for-proposal',
+  authenticate,
+  requirePermission(PERMISSIONS.FACILITIES_WRITE),
+  verifyOwnership({ resourceType: 'facility' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const parsed = submitFacilityForProposalSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const result = await submitFacilityForProposal(req.params.id, {
+        userId: req.user.id,
+        notes: parsed.data.notes ?? null,
+      });
+
+      res.json({ data: result });
     } catch (error) {
       next(error);
     }

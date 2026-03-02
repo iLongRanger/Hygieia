@@ -157,6 +157,7 @@ const LeadDetail = () => {
     facilityId: '',
     notes: '',
   });
+  const [completeStep, setCompleteStep] = useState<'details' | 'review'>('details');
 
   const [saving, setSaving] = useState(false);
 
@@ -388,6 +389,14 @@ const LeadDetail = () => {
     }
   };
 
+  const handleProceedToReview = () => {
+    if (!completeForm.facilityId) {
+      toast.error('Select a facility before continuing');
+      return;
+    }
+    setCompleteStep('review');
+  };
+
   const openEditModal = () => {
     if (!lead) return;
     setEditFormData({
@@ -587,6 +596,8 @@ const LeadDetail = () => {
                               size="sm"
                               onClick={() => {
                                 setSelectedAppointment(appointment);
+                                setCompleteStep('details');
+                                setCompleteForm({ facilityId: '', notes: '' });
                                 setShowCompleteModal(true);
                               }}
                             >
@@ -739,24 +750,68 @@ const LeadDetail = () => {
         size="lg"
       >
         <div className="space-y-4">
+          {lead.convertedToAccount && (
+            <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-3">
+              <div className="text-xs uppercase tracking-wide text-gray-400">
+                Step {completeStep === 'details' ? '1' : '2'} of 2
+              </div>
+              <div className="mt-1 text-sm text-white">
+                {completeStep === 'details' ? 'Facility Details' : 'Review and Submit'}
+              </div>
+            </div>
+          )}
           {lead.convertedToAccount ? (
             <>
-              <Select
-                label="Facility"
-                placeholder="Select facility"
-                options={facilities.map((f) => ({
-                  value: f.id,
-                  label: `${f.name} (${f._count.areas} areas, ${f._count.facilityTasks} tasks)`,
-                }))}
-                value={completeForm.facilityId}
-                onChange={(value) => setCompleteForm({ ...completeForm, facilityId: value })}
-              />
-              <Textarea
-                label="Completion Notes"
-                placeholder="Add walkthrough notes..."
-                value={completeForm.notes}
-                onChange={(e) => setCompleteForm({ ...completeForm, notes: e.target.value })}
-              />
+              {completeStep === 'details' ? (
+                <>
+                  <Select
+                    label="Facility"
+                    placeholder="Select facility"
+                    options={facilities.map((f) => ({
+                      value: f.id,
+                      label: `${f.name} (${f._count.areas} areas, ${f._count.facilityTasks} tasks)`,
+                    }))}
+                    value={completeForm.facilityId}
+                    onChange={(value) => setCompleteForm({ ...completeForm, facilityId: value })}
+                  />
+                  <Textarea
+                    label="Completion Notes"
+                    placeholder="Add walkthrough notes..."
+                    value={completeForm.notes}
+                    onChange={(e) => setCompleteForm({ ...completeForm, notes: e.target.value })}
+                  />
+                </>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
+                  {(() => {
+                    const selectedFacility = facilities.find((f) => f.id === completeForm.facilityId);
+                    return (
+                      <>
+                        <div>
+                          <div className="text-sm text-gray-400">Facility</div>
+                          <div className="text-white">{selectedFacility?.name || 'Unknown facility'}</div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-sm text-gray-400">Areas</div>
+                            <div className="text-white">{selectedFacility?._count.areas ?? 0}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-400">Tasks</div>
+                            <div className="text-white">{selectedFacility?._count.facilityTasks ?? 0}</div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-400">Walkthrough Notes</div>
+                          <div className="text-white whitespace-pre-wrap">
+                            {completeForm.notes?.trim() || 'No notes provided'}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </>
           ) : (
             <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-300">
@@ -768,13 +823,31 @@ const LeadDetail = () => {
             <Button variant="secondary" onClick={() => setShowCompleteModal(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleComplete}
-              isLoading={saving}
-              disabled={!lead.convertedToAccount}
-            >
-              Complete
-            </Button>
+            {lead.convertedToAccount && completeStep === 'review' && (
+              <Button
+                variant="secondary"
+                onClick={() => setCompleteStep('details')}
+                disabled={saving}
+              >
+                Back
+              </Button>
+            )}
+            {completeStep === 'details' ? (
+              <Button
+                onClick={handleProceedToReview}
+                disabled={!lead.convertedToAccount}
+              >
+                Review
+              </Button>
+            ) : (
+              <Button
+                onClick={handleComplete}
+                isLoading={saving}
+                disabled={!lead.convertedToAccount}
+              >
+                Submit & Complete
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

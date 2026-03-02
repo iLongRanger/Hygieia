@@ -17,6 +17,7 @@ import {
   CheckSquare,
   Square,
   ListPlus,
+  Send,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -45,6 +46,7 @@ import {
   deleteFacilityTask,
   listTaskTemplates,
   bulkCreateFacilityTasks,
+  submitFacilityForProposal,
 } from '../../lib/facilities';
 import type {
   Facility,
@@ -164,6 +166,9 @@ const FacilityDetail = () => {
   const [bulkFrequency, setBulkFrequency] = useState<string>('daily');
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
+  const [submitProposalNotes, setSubmitProposalNotes] = useState('');
+  const [submittingForProposal, setSubmittingForProposal] = useState(false);
 
   const [facilityForm, setFacilityForm] = useState<UpdateFacilityInput>({});
   const [areaForm, setAreaForm] = useState<CreateAreaInput | UpdateAreaInput>({
@@ -440,6 +445,8 @@ const FacilityDetail = () => {
       const qty = area.quantity || 1;
       return sum + sqFt * qty;
     }, 0);
+  const activeAreasCount = areas.filter((area) => !area.archivedAt).length;
+  const activeTasksCount = tasks.filter((task) => !task.archivedAt).length;
 
   const handleUpdateFacility = async () => {
     if (!id) return;
@@ -708,6 +715,30 @@ const FacilityDetail = () => {
       toast.error('Failed to add tasks');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSubmitForProposal = async () => {
+    if (!id) return;
+    try {
+      setSubmittingForProposal(true);
+      const result = await submitFacilityForProposal(id, submitProposalNotes || null);
+      setShowSubmitProposalModal(false);
+      setSubmitProposalNotes('');
+      if (result.alreadyCompleted) {
+        toast.success('Facility submitted. Walkthrough was already completed.');
+      } else {
+        toast.success('Facility submitted. Walkthrough marked completed and lead updated.');
+      }
+    } catch (error: any) {
+      console.error('Failed to submit facility for proposal:', error);
+      const message =
+        error?.response?.data?.error?.message
+        || error?.response?.data?.message
+        || 'Failed to submit facility for proposal';
+      toast.error(message);
+    } finally {
+      setSubmittingForProposal(false);
     }
   };
 
@@ -1244,10 +1275,19 @@ const FacilityDetail = () => {
           <h1 className="text-2xl font-bold text-white truncate">{facility.name}</h1>
           <p className="text-gray-400">{facility.account.name}</p>
         </div>
-        <Button variant="secondary" onClick={() => setShowEditModal(true)}>
-          <Edit2 className="mr-2 h-4 w-4" />
-          Edit Facility
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowSubmitProposalModal(true)}
+            disabled={activeAreasCount === 0 || activeTasksCount === 0}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Submit for Proposal
+          </Button>
+          <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+            <Edit2 className="mr-2 h-4 w-4" />
+            Edit Facility
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -1537,6 +1577,60 @@ const FacilityDetail = () => {
           )}
         </div>
       </Card>
+
+      <Modal
+        isOpen={showSubmitProposalModal}
+        onClose={() => {
+          if (submittingForProposal) return;
+          setShowSubmitProposalModal(false);
+        }}
+        title="Submit Facility for Proposal"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+            <div className="text-sm text-gray-400">Review Summary</div>
+            <div className="mt-2 grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-gray-500">Areas</div>
+                <div className="text-white font-medium">{activeAreasCount}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Tasks</div>
+                <div className="text-white font-medium">{activeTasksCount}</div>
+              </div>
+            </div>
+            <div className="mt-3 text-sm text-gray-300">
+              This submits the facility as reviewed and ready for proposal creation.
+              It also marks the walkthrough as completed and updates lead status.
+            </div>
+          </div>
+
+          <Textarea
+            label="Review Notes (Optional)"
+            placeholder="Add notes for proposal preparation..."
+            value={submitProposalNotes}
+            onChange={(e) => setSubmitProposalNotes(e.target.value)}
+            rows={3}
+          />
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowSubmitProposalModal(false)}
+              disabled={submittingForProposal}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitForProposal}
+              isLoading={submittingForProposal}
+              disabled={activeAreasCount === 0 || activeTasksCount === 0}
+            >
+              Submit Facility
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showEditModal}

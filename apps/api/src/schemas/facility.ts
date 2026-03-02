@@ -84,6 +84,11 @@ export const listFacilitiesQuerySchema = z.object({
     .optional(),
 });
 
+export const submitFacilityForProposalSchema = z.object({
+  notes: z.string().max(10000).optional().nullable(),
+});
+
 export type CreateFacilityInput = z.infer<typeof createFacilitySchema>;
 export type UpdateFacilityInput = z.infer<typeof updateFacilitySchema>;
 export type ListFacilitiesQuery = z.infer<typeof listFacilitiesQuerySchema>;
+export type SubmitFacilityForProposalInput = z.infer<typeof submitFacilityForProposalSchema>;

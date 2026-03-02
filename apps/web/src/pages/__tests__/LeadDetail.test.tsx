@@ -259,4 +259,39 @@ describe('LeadDetail', () => {
       );
     });
   });
+
+  it('requires review before submitting walkthrough completion', async () => {
+    const userEventInstance = userEvent.setup();
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      convertedToAccountId: 'account-1',
+      convertedAt: new Date().toISOString(),
+      convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+    });
+
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /complete walkthrough/i }));
+    const modal = await screen.findByRole('dialog', { name: /complete walkthrough/i });
+
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/facility/i), 'facility-1');
+    await userEventInstance.type(within(modal).getByLabelText(/completion notes/i), 'Reviewed facility details');
+
+    await userEventInstance.click(within(modal).getByRole('button', { name: /^review$/i }));
+
+    expect(within(modal).getByText(/step 2 of 2/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/hq/i)).toBeInTheDocument();
+
+    await userEventInstance.click(within(modal).getByRole('button', { name: /submit & complete/i }));
+
+    await waitFor(() => {
+      expect(completeAppointmentMock).toHaveBeenCalledWith(
+        'appt-1',
+        expect.objectContaining({
+          facilityId: 'facility-1',
+          notes: 'Reviewed facility details',
+        })
+      );
+    });
+  });
 });
