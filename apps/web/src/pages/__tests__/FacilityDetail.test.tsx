@@ -176,6 +176,15 @@ describe('FacilityDetail', () => {
     await screen.findByRole('option', { name: 'Office' });
     await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
 
+    // Area creation now requires reviewing each task frequency category.
+    for (let i = 0; i < 7; i += 1) {
+      await user.click(
+        await screen.findByRole('button', {
+          name: /next category|mark final category reviewed/i,
+        })
+      );
+    }
+
     const addButtons = screen.getAllByRole('button', { name: /^add area$/i });
     await user.click(addButtons[addButtons.length - 1]);
 

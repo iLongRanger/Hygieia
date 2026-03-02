@@ -105,6 +105,17 @@ const CLEANING_FREQUENCIES = [
   { value: 'as_needed', label: 'As Needed' },
 ];
 
+const CLEANING_FREQUENCY_VALUES = new Set(
+  CLEANING_FREQUENCIES.map((frequency) => frequency.value)
+);
+const ORDERED_CLEANING_FREQUENCIES = CLEANING_FREQUENCIES.map(
+  (frequency) => frequency.value
+) as CleaningFrequency[];
+
+const isCleaningFrequency = (
+  value: string
+): value is CleaningFrequency => CLEANING_FREQUENCY_VALUES.has(value);
+
 type AreaTemplateTaskSelection = {
   id: string;
   taskTemplateId: string | null;
@@ -133,6 +144,10 @@ const FacilityDetail = () => {
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
   const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
+  const [areaTaskPipelineStep, setAreaTaskPipelineStep] = useState(0);
+  const [reviewedAreaTaskFrequencies, setReviewedAreaTaskFrequencies] =
+    useState<Set<CleaningFrequency>>(new Set());
+  const [newAreaCustomTaskName, setNewAreaCustomTaskName] = useState('');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
@@ -192,6 +207,20 @@ const FacilityDetail = () => {
       taskTemplates.filter((template) => template.cleaningType === bulkFrequency),
     [taskTemplates, bulkFrequency]
   );
+
+  const currentAreaTaskFrequency =
+    ORDERED_CLEANING_FREQUENCIES[areaTaskPipelineStep] || 'daily';
+
+  const filteredAreaTemplateTasks = useMemo(
+    () =>
+      areaTemplateTasks.filter(
+        (task) => task.cleaningType === currentAreaTaskFrequency
+      ),
+    [areaTemplateTasks, currentAreaTaskFrequency]
+  );
+
+  const allAreaTaskFrequenciesReviewed =
+    reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
 
   useEffect(() => {
     if (!taskForm.taskTemplateId) return;
@@ -315,7 +344,11 @@ const FacilityDetail = () => {
         id: task.id,
         taskTemplateId: task.taskTemplate?.id || null,
         name: task.taskTemplate?.name || task.name || 'Untitled Task',
-        cleaningType: task.taskTemplate?.cleaningType || 'daily',
+        cleaningType:
+          task.taskTemplate?.cleaningType &&
+          isCleaningFrequency(task.taskTemplate.cleaningType)
+            ? task.taskTemplate.cleaningType
+            : 'daily',
         estimatedMinutes: task.taskTemplate?.estimatedMinutes ?? null,
         baseMinutes: Number(task.taskTemplate?.baseMinutes ?? task.baseMinutes) || 0,
         perSqftMinutes: Number(task.taskTemplate?.perSqftMinutes ?? task.perSqftMinutes) || 0,
@@ -325,6 +358,9 @@ const FacilityDetail = () => {
       })) || [];
 
       setAreaTemplateTasks(templateTasks);
+      setAreaTaskPipelineStep(0);
+      setReviewedAreaTaskFrequencies(new Set());
+      setNewAreaCustomTaskName('');
       setAreaForm((prev) => {
         const areaType = areaTypes.find((type) => type.id === areaTypeId);
         const defaultSquareFeet = template.defaultSquareFeet
@@ -341,6 +377,8 @@ const FacilityDetail = () => {
     } catch (error) {
       console.error('Failed to load area template:', error);
       setAreaTemplateTasks([]);
+      setAreaTaskPipelineStep(0);
+      setReviewedAreaTaskFrequencies(new Set());
     } finally {
       setAreaTemplateLoading(false);
     }
@@ -421,7 +459,9 @@ const FacilityDetail = () => {
                 perSqftMinutesOverride: task.perSqftMinutes,
                 perUnitMinutesOverride: task.perUnitMinutes,
                 perRoomMinutesOverride: task.perRoomMinutes,
-                cleaningFrequency: 'daily',
+                cleaningFrequency: isCleaningFrequency(task.cleaningType)
+                  ? task.cleaningType
+                  : 'daily',
                 priority: 3,
               } as CreateFacilityTaskInput)
             )
@@ -486,6 +526,9 @@ const FacilityDetail = () => {
       fixtures: [],
     });
     setAreaTemplateTasks([]);
+    setAreaTaskPipelineStep(0);
+    setReviewedAreaTaskFrequencies(new Set());
+    setNewAreaCustomTaskName('');
   };
 
   const resetTaskForm = () => {
@@ -844,6 +887,70 @@ const FacilityDetail = () => {
       group.sort(compareTasksByStandard)
     );
     return grouped;
+  };
+
+  const toggleAreaTemplateTaskInclude = (taskId: string, include: boolean) => {
+    setAreaTemplateTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, include } : task))
+    );
+  };
+
+  const markCurrentAreaTaskFrequencyReviewed = () => {
+    setReviewedAreaTaskFrequencies((prev) => {
+      const next = new Set(prev);
+      next.add(currentAreaTaskFrequency);
+      return next;
+    });
+  };
+
+  const goToNextAreaTaskFrequencyStep = () => {
+    markCurrentAreaTaskFrequencyReviewed();
+    setAreaTaskPipelineStep((prev) =>
+      Math.min(prev + 1, ORDERED_CLEANING_FREQUENCIES.length - 1)
+    );
+  };
+
+  const goToPreviousAreaTaskFrequencyStep = () => {
+    setAreaTaskPipelineStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const addCustomAreaTemplateTask = () => {
+    const name = newAreaCustomTaskName.trim();
+    if (!name) {
+      toast.error('Enter a task name');
+      return;
+    }
+
+    const duplicate = areaTemplateTasks.some(
+      (task) =>
+        task.cleaningType === currentAreaTaskFrequency &&
+        task.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) {
+      toast.error('Task already exists in this frequency');
+      return;
+    }
+
+    setAreaTemplateTasks((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        taskTemplateId: null,
+        name,
+        cleaningType: currentAreaTaskFrequency,
+        estimatedMinutes: null,
+        baseMinutes: 0,
+        perSqftMinutes: 0,
+        perUnitMinutes: 0,
+        perRoomMinutes: 0,
+        include: true,
+      },
+    ]);
+    setNewAreaCustomTaskName('');
+  };
+
+  const removeCustomAreaTemplateTask = (taskId: string) => {
+    setAreaTemplateTasks((prev) => prev.filter((task) => task.id !== taskId));
   };
 
   const openEditArea = (area: Area) => {
@@ -1738,55 +1845,146 @@ const FacilityDetail = () => {
               <div className="text-sm font-medium text-gray-200">Default Tasks</div>
               {areaTemplateLoading ? (
                 <div className="text-sm text-gray-500">Loading template tasks...</div>
-              ) : areaTemplateTasks.length === 0 ? (
-                <div className="text-sm text-gray-500">No template tasks found.</div>
               ) : (
-                <div className="space-y-2">
-                  {areaTemplateTasks.map((task, index) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <div className="font-medium text-white">{task.name}</div>
-                          {task.taskTemplateId ? (
-                            <Badge variant="info" className="text-xs">
-                              Template
-                            </Badge>
-                          ) : (
-                            <Badge variant="default" className="text-xs">
-                              Legacy
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {task.taskTemplateId
-                            ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
-                            : `Base ${task.baseMinutes}m - SqFt ${task.perSqftMinutes}m - Unit ${task.perUnitMinutes}m - Room ${task.perRoomMinutes}m`}
-                        </div>
+                <div className="space-y-3 rounded-lg border border-white/10 bg-navy-dark/20 p-3">
+                  <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium text-white">
+                        Step {areaTaskPipelineStep + 1} of{' '}
+                        {ORDERED_CLEANING_FREQUENCIES.length}
                       </div>
-                      <label className="flex items-center gap-2 text-sm text-gray-300">
-                        <input
-                          type="checkbox"
-                          checked={task.include}
-                          onChange={(e) =>
-                            setAreaTemplateTasks((prev) => {
-                              const updated = [...prev];
-                              updated[index] = { ...updated[index], include: e.target.checked };
-                              return updated;
-                            })
-                          }
-                          className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
-                        />
-                        Include
-                      </label>
+                      <Badge variant="info" className="text-xs">
+                        {CLEANING_FREQUENCIES.find(
+                          (f) => f.value === currentAreaTaskFrequency
+                        )?.label || 'Daily'}
+                      </Badge>
                     </div>
-                  ))}
+                    <div className="mt-2 h-1.5 rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-emerald transition-all"
+                        style={{
+                          width: `${
+                            ((areaTaskPipelineStep + 1) /
+                              ORDERED_CLEANING_FREQUENCIES.length) *
+                            100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-gray-400">
+                      Reviewed categories: {reviewedAreaTaskFrequencies.size}/
+                      {ORDERED_CLEANING_FREQUENCIES.length}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={`Add custom ${
+                        CLEANING_FREQUENCIES.find(
+                          (f) => f.value === currentAreaTaskFrequency
+                        )?.label || 'Daily'
+                      } task`}
+                      value={newAreaCustomTaskName}
+                      onChange={(e) => setNewAreaCustomTaskName(e.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addCustomAreaTemplateTask();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={addCustomAreaTemplateTask}
+                    >
+                      Add
+                    </Button>
+                  </div>
+
+                  {filteredAreaTemplateTasks.length === 0 ? (
+                    <div className="text-sm text-gray-500">
+                      No tasks for this category yet. Add one above.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredAreaTemplateTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-white">{task.name}</div>
+                              {task.taskTemplateId ? (
+                                <Badge variant="info" className="text-xs">
+                                  Template
+                                </Badge>
+                              ) : (
+                                <Badge variant="default" className="text-xs">
+                                  Custom
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {task.taskTemplateId
+                                ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
+                                : `Custom ${task.cleaningType} task`}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {!task.taskTemplateId && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeCustomAreaTemplateTask(task.id)}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                            <label className="flex items-center gap-2 text-sm text-gray-300">
+                              <input
+                                type="checkbox"
+                                checked={task.include}
+                                onChange={(e) =>
+                                  toggleAreaTemplateTaskInclude(task.id, e.target.checked)
+                                }
+                                className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                              />
+                              Include
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between border-t border-white/10 pt-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={goToPreviousAreaTaskFrequencyStep}
+                      disabled={areaTaskPipelineStep === 0}
+                    >
+                      Previous Category
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={goToNextAreaTaskFrequencyStep}
+                    >
+                      {areaTaskPipelineStep ===
+                      ORDERED_CLEANING_FREQUENCIES.length - 1
+                        ? 'Mark Final Category Reviewed'
+                        : 'Next Category'}
+                    </Button>
+                  </div>
                 </div>
               )}
               <div className="text-xs text-gray-500">
-                Add more tasks after creating the area.
+                Review each frequency category in order. `Add Area` is disabled
+                until all categories are reviewed.
               </div>
             </div>
           )}
@@ -1805,7 +2003,10 @@ const FacilityDetail = () => {
             <Button
               onClick={handleSaveArea}
               isLoading={saving}
-              disabled={!(areaForm as CreateAreaInput).areaTypeId}
+              disabled={
+                !(areaForm as CreateAreaInput).areaTypeId ||
+                (!editingArea && !allAreaTaskFrequenciesReviewed)
+              }
             >
               {editingArea ? 'Save Changes' : 'Add Area'}
             </Button>
