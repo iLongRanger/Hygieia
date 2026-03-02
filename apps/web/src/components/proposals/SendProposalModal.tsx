@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Send } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Send, FileText, AlertCircle } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
+import { getProposalPdfBlobUrl } from '../../lib/proposals';
 import type { Proposal, SendProposalInput } from '../../types/proposal';
 
 interface Props {
@@ -42,6 +43,47 @@ ${proposal.createdByUser.fullName}`;
   const [ccInput, setCcInput] = useState(ccContacts.join(', '));
   const [sending, setSending] = useState(false);
 
+  // PDF preview state
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Cleanup blob URL on close
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
+      }
+      setPdfError(false);
+      return;
+    }
+
+    // Fetch PDF when modal opens
+    let cancelled = false;
+    setPdfLoading(true);
+    setPdfError(false);
+    getProposalPdfBlobUrl(proposal.id)
+      .then((url) => {
+        if (!cancelled) {
+          setPdfUrl(url);
+          setPdfLoading(false);
+        } else {
+          URL.revokeObjectURL(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPdfError(true);
+          setPdfLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, proposal.id]);
+
   const handleSend = async () => {
     try {
       setSending(true);
@@ -62,64 +104,97 @@ ${proposal.createdByUser.fullName}`;
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Send Proposal">
-      <div className="space-y-4">
-        <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Proposal</span>
-            <span className="text-white font-medium">{proposal.proposalNumber}</span>
+    <Modal isOpen={isOpen} onClose={onClose} title="Send Proposal" size="2xl">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* PDF Preview */}
+        <div className="flex flex-col">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+            <FileText className="h-4 w-4" />
+            PDF Preview
           </div>
-          <div className="flex justify-between text-sm mt-1">
-            <span className="text-gray-400">Client</span>
-            <span className="text-white">{proposal.account.name}</span>
+          <div className="relative flex-1 overflow-hidden rounded-lg border border-surface-200 bg-surface-100 dark:border-surface-700 dark:bg-surface-900" style={{ minHeight: '500px' }}>
+            {pdfLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+                <span className="text-sm text-surface-500 dark:text-surface-400">Loading preview...</span>
+              </div>
+            )}
+            {pdfError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
+                <AlertCircle className="h-8 w-8 text-surface-400" />
+                <span className="text-sm text-surface-500 dark:text-surface-400">Failed to load PDF preview</span>
+              </div>
+            )}
+            {pdfUrl && (
+              <iframe
+                src={pdfUrl}
+                className="h-full w-full"
+                style={{ minHeight: '500px' }}
+                title="Proposal PDF Preview"
+              />
+            )}
           </div>
         </div>
 
-        <Input
-          label="Send To"
-          type="email"
-          placeholder="client@example.com"
-          value={formData.emailTo || ''}
-          onChange={(e) => setFormData({ ...formData, emailTo: e.target.value })}
-        />
+        {/* Send Form */}
+        <div className="space-y-4">
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-800/50">
+            <div className="flex justify-between text-sm">
+              <span className="text-surface-500 dark:text-surface-400">Proposal</span>
+              <span className="font-medium text-surface-900 dark:text-surface-100">{proposal.proposalNumber}</span>
+            </div>
+            <div className="mt-1 flex justify-between text-sm">
+              <span className="text-surface-500 dark:text-surface-400">Client</span>
+              <span className="text-surface-900 dark:text-surface-100">{proposal.account.name}</span>
+            </div>
+          </div>
 
-        <Input
-          label="CC (comma separated)"
-          placeholder="cc1@example.com, cc2@example.com"
-          value={ccInput}
-          onChange={(e) => setCcInput(e.target.value)}
-        />
+          <Input
+            label="Send To"
+            type="email"
+            placeholder="client@example.com"
+            value={formData.emailTo || ''}
+            onChange={(e) => setFormData({ ...formData, emailTo: e.target.value })}
+          />
 
-        <Input
-          label="Subject"
-          value={formData.emailSubject || ''}
-          onChange={(e) => setFormData({ ...formData, emailSubject: e.target.value })}
-        />
+          <Input
+            label="CC (comma separated)"
+            placeholder="cc1@example.com, cc2@example.com"
+            value={ccInput}
+            onChange={(e) => setCcInput(e.target.value)}
+          />
 
-        <Textarea
-          label="Message (optional)"
-          placeholder="Add a personal message..."
-          value={formData.emailBody || ''}
-          onChange={(e) => setFormData({ ...formData, emailBody: e.target.value })}
-          rows={4}
-        />
+          <Input
+            label="Subject"
+            value={formData.emailSubject || ''}
+            onChange={(e) => setFormData({ ...formData, emailSubject: e.target.value })}
+          />
 
-        <p className="text-xs text-gray-500">
-          A PDF of the proposal will be attached to the email, along with a link to view it online.
-        </p>
+          <Textarea
+            label="Message (optional)"
+            placeholder="Add a personal message..."
+            value={formData.emailBody || ''}
+            onChange={(e) => setFormData({ ...formData, emailBody: e.target.value })}
+            rows={4}
+          />
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose} disabled={sending}>
-            Cancel
-          </Button>
-          <Button onClick={handleSend} disabled={sending}>
-            {sending ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Send Proposal
-          </Button>
+          <p className="text-xs text-surface-500 dark:text-surface-400">
+            A PDF of the proposal will be attached to the email, along with a link to view it online.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={onClose} disabled={sending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSend} disabled={sending}>
+              {sending ? (
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Send Proposal
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

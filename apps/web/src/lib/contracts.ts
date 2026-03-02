@@ -166,6 +166,13 @@ export async function downloadContractPdf(id: string, contractNumber: string): P
   window.URL.revokeObjectURL(url);
 }
 
+export async function getContractPdfBlobUrl(id: string): Promise<string> {
+  const response = await api.get(`/contracts/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+}
+
 // Contract Activities
 
 export async function getContractActivities(

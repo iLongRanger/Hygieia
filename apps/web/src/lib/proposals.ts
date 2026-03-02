@@ -127,6 +127,13 @@ export async function downloadProposalPdf(id: string, proposalNumber: string): P
   window.URL.revokeObjectURL(url);
 }
 
+export async function getProposalPdfBlobUrl(id: string): Promise<string> {
+  const response = await api.get(`/proposals/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+}
+
 // Version history
 export async function getProposalVersions(proposalId: string): Promise<ProposalVersionSummary[]> {
   const response = await api.get(`/proposals/${proposalId}/versions`);
