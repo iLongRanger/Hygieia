@@ -67,8 +67,8 @@ export function AddFacilityModal({
             })
           }
         />
-        <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
-          <h4 className="text-sm font-medium text-surface-900 dark:text-surface-100 mb-3">Address</h4>
+        <div className="border-t border-white/10 pt-4">
+          <h4 className="text-sm font-medium text-white mb-3">Address</h4>
           <div className="space-y-4">
             <Input
               label="Street Address"

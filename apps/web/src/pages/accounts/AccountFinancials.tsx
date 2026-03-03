@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, FileText, FileSignature, CreditCard } from 'lucide-react';
+import { DollarSign, FileText, FileSignature } from 'lucide-react';
 import type { Account } from '../../types/crm';
 import type { Contract } from '../../types/contract';
 import type { Proposal } from '../../types/proposal';
