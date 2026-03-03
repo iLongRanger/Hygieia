@@ -1,33 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Building2,
-  MapPin,
-  Plus,
-  Edit2,
-  Archive,
-  RotateCcw,
-  Trash2,
-  Ruler,
-  Clock,
-  ClipboardList,
-  ChevronDown,
-  ChevronRight,
-  CheckSquare,
-  Square,
-  ListPlus,
-  Send,
-} from 'lucide-react';
+import { ArrowLeft, Edit2, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Table } from '../../components/ui/Table';
-import { Modal } from '../../components/ui/Modal';
-import { Select } from '../../components/ui/Select';
-import { Textarea } from '../../components/ui/Textarea';
 import {
   getFacility,
   updateFacility,
@@ -61,82 +36,31 @@ import type {
   TaskTemplate,
   CleaningFrequency,
   FixtureType,
-  TrafficLevel,
 } from '../../types/facility';
-
-const BUILDING_TYPES = [
-  { value: 'office', label: 'Office' },
-  { value: 'medical', label: 'Medical' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'industrial', label: 'Industrial' },
-  { value: 'warehouse', label: 'Warehouse' },
-  { value: 'educational', label: 'Educational' },
-  { value: 'residential', label: 'Residential' },
-  { value: 'mixed', label: 'Mixed Use' },
-  { value: 'other', label: 'Other' },
-];
-
-const CONDITION_LEVELS = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'medium', label: 'Medium Difficulty' },
-  { value: 'hard', label: 'Hard/Heavy Traffic' },
-];
-
-const TRAFFIC_LEVELS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
-
-const FLOOR_TYPES = [
-  { value: 'vct', label: 'VCT (Vinyl Composition Tile)' },
-  { value: 'carpet', label: 'Carpet' },
-  { value: 'hardwood', label: 'Hardwood' },
-  { value: 'tile', label: 'Ceramic/Porcelain Tile' },
-  { value: 'concrete', label: 'Concrete' },
-  { value: 'epoxy', label: 'Epoxy' },
-];
-
-const CLEANING_FREQUENCIES = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Bi-Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'annual', label: 'Yearly' },
-  { value: 'as_needed', label: 'As Needed' },
-];
-
-const CLEANING_FREQUENCY_VALUES = new Set(
-  CLEANING_FREQUENCIES.map((frequency) => frequency.value)
-);
-const ORDERED_CLEANING_FREQUENCIES = CLEANING_FREQUENCIES.map(
-  (frequency) => frequency.value
-) as CleaningFrequency[];
-
-const isCleaningFrequency = (
-  value: string
-): value is CleaningFrequency => CLEANING_FREQUENCY_VALUES.has(value);
-
-type AreaTemplateTaskSelection = {
-  id: string;
-  taskTemplateId: string | null;
-  name: string;
-  cleaningType: string;
-  estimatedMinutes: number | null;
-  baseMinutes: number;
-  perSqftMinutes: number;
-  perUnitMinutes: number;
-  perRoomMinutes: number;
-  include: boolean;
-};
-
-type AreaItemInput = NonNullable<CreateAreaInput['fixtures']>[0];
+import { FacilityOverview } from './FacilityOverview';
+import { FacilityAreas } from './FacilityAreas';
+import { FacilityAreaDetail } from './FacilityAreaDetail';
+import { EditFacilityModal } from './modals/EditFacilityModal';
+import { AreaModal } from './modals/AreaModal';
+import { TaskModal } from './modals/TaskModal';
+import { BulkTaskModal } from './modals/BulkTaskModal';
+import { SubmitProposalModal } from './modals/SubmitProposalModal';
+import {
+  isCleaningFrequency,
+  ORDERED_CLEANING_FREQUENCIES,
+  CLEANING_FREQUENCIES,
+} from './facility-constants';
+import type { AreaTemplateTaskSelection, AreaItemInput } from './facility-constants';
 
 const FacilityDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // --- Tab state ---
+  const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'area-detail'>('overview');
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
+
+  // --- Data state ---
   const [loading, setLoading] = useState(true);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -153,23 +77,22 @@ const FacilityDetail = () => {
     useState<Set<CleaningFrequency>>(new Set());
   const [newAreaCustomTaskName, setNewAreaCustomTaskName] = useState('');
 
+  // --- Modal state ---
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingTask, setEditingTask] = useState<FacilityTask | null>(null);
-  const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(
-    null
-  );
+  const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(null);
   const [selectedTaskTemplateIds, setSelectedTaskTemplateIds] = useState<Set<string>>(new Set());
   const [bulkFrequency, setBulkFrequency] = useState<string>('daily');
-  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
   const [submittingForProposal, setSubmittingForProposal] = useState(false);
 
+  // --- Form state ---
   const [facilityForm, setFacilityForm] = useState<UpdateFacilityInput>({});
   const [areaForm, setAreaForm] = useState<CreateAreaInput | UpdateAreaInput>({
     facilityId: id || '',
@@ -202,6 +125,7 @@ const FacilityDetail = () => {
     fixtureMinutes: [],
   });
 
+  // --- Memos ---
   const filteredTaskTemplates = useMemo(() => {
     const frequency = taskForm.cleaningFrequency || 'daily';
     return taskTemplates.filter(
@@ -229,6 +153,7 @@ const FacilityDetail = () => {
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
 
+  // --- Effects ---
   useEffect(() => {
     if (!taskForm.taskTemplateId) return;
     const matchesFrequency = filteredTaskTemplates.some(
@@ -250,6 +175,7 @@ const FacilityDetail = () => {
     });
   }, [filteredBulkTaskTemplates]);
 
+  // --- Data fetching ---
   const fetchFacility = useCallback(async () => {
     if (!id) return;
     try {
@@ -437,7 +363,7 @@ const FacilityDetail = () => {
     fetchFixtureTypes,
   ]);
 
-  // Calculate total square feet from all active areas
+  // --- Computed values ---
   const totalSquareFeetFromAreas = areas
     .filter((area) => !area.archivedAt)
     .reduce((sum, area) => {
@@ -447,7 +373,100 @@ const FacilityDetail = () => {
     }, 0);
   const activeAreasCount = areas.filter((area) => !area.archivedAt).length;
   const activeTasksCount = tasks.filter((task) => !task.archivedAt).length;
+  const taskFixtureTypes = fixtureTypes.filter((type) => type.category === 'fixture');
 
+  // --- Helpers used by handlers ---
+  const getTaskDisplayName = (task: FacilityTask) =>
+    (task.customName || task.taskTemplate?.name || '').trim();
+
+  const normalizeTaskName = (name: string) =>
+    name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+  const findDuplicateTask = (params: {
+    areaId?: string | null;
+    cleaningFrequency: CleaningFrequency;
+    taskTemplateId?: string | null;
+    customName?: string | null;
+    excludeTaskId?: string;
+  }) => {
+    const incomingName = params.taskTemplateId
+      ? taskTemplates.find((template) => template.id === params.taskTemplateId)
+          ?.name || ''
+      : params.customName || '';
+    const normalizedIncomingName = normalizeTaskName(incomingName);
+
+    if (!normalizedIncomingName) return null;
+
+    return (
+      tasks.find((task) => {
+        if (task.archivedAt) return false;
+        if (params.excludeTaskId && task.id === params.excludeTaskId) return false;
+
+        const existingAreaId = task.area?.id || null;
+        const incomingAreaId = params.areaId || null;
+        if (existingAreaId !== incomingAreaId) return false;
+
+        if (task.cleaningFrequency !== params.cleaningFrequency) return false;
+
+        const existingTaskName = normalizeTaskName(
+          task.customName || task.taskTemplate?.name || ''
+        );
+        return existingTaskName === normalizedIncomingName;
+      }) || null
+    );
+  };
+
+  const getTasksForArea = (areaId: string) => {
+    return tasks.filter((t) => t.area?.id === areaId && !t.archivedAt);
+  };
+
+  // --- Tab navigation ---
+  const handleSelectArea = (area: Area) => {
+    setSelectedArea(area);
+    setActiveTab('area-detail');
+  };
+
+  // --- Form resets ---
+  const resetAreaForm = () => {
+    setAreaForm({
+      facilityId: id || '',
+      areaTypeId: '',
+      name: '',
+      length: null,
+      width: null,
+      squareFeet: null,
+      floorType: 'vct',
+      conditionLevel: 'standard',
+      roomCount: 0,
+      unitCount: 0,
+      trafficLevel: 'medium',
+      notes: null,
+      fixtures: [],
+    });
+    setAreaTemplateTasks([]);
+    setAreaTemplateUsesBackendTemplateTasks(false);
+    setAreaTaskPipelineStep(0);
+    setReviewedAreaTaskFrequencies(new Set());
+    setNewAreaCustomTaskName('');
+  };
+
+  const resetTaskForm = () => {
+    setTaskForm({
+      facilityId: id || '',
+      areaId: null,
+      taskTemplateId: null,
+      customName: '',
+      cleaningFrequency: 'daily',
+      priority: 3,
+      baseMinutesOverride: null,
+      perSqftMinutesOverride: null,
+      perUnitMinutesOverride: null,
+      perRoomMinutesOverride: null,
+      fixtureMinutes: [],
+    });
+  };
+
+  // --- Handlers ---
   const handleUpdateFacility = async () => {
     if (!id) return;
     try {
@@ -469,12 +488,10 @@ const FacilityDetail = () => {
       if (editingArea) {
         await updateArea(editingArea.id, areaForm as UpdateAreaInput);
       } else {
-        // Get excluded task template IDs (unchecked tasks with taskTemplateId)
         const excludeTaskTemplateIds = areaTemplateTasks
           .filter((task) => !task.include && task.taskTemplateId)
           .map((task) => task.taskTemplateId!);
 
-        // Create area with auto-apply template - tasks are created in backend transaction
         const createdArea = await createArea({
           ...areaForm,
           facilityId: id,
@@ -503,7 +520,6 @@ const FacilityDetail = () => {
           }
         }
 
-        // Handle legacy tasks (inline tasks without taskTemplateId) - rare case
         const selectedLegacyTasks = areaTemplateTasks.filter(
           (task) => task.include && !task.taskTemplateId
         );
@@ -567,45 +583,6 @@ const FacilityDetail = () => {
     } catch (error) {
       console.error('Failed to delete area:', error);
     }
-  };
-
-  const resetAreaForm = () => {
-    setAreaForm({
-      facilityId: id || '',
-      areaTypeId: '',
-      name: '',
-      length: null,
-      width: null,
-      squareFeet: null,
-      floorType: 'vct',
-      conditionLevel: 'standard',
-      roomCount: 0,
-      unitCount: 0,
-      trafficLevel: 'medium',
-      notes: null,
-      fixtures: [],
-    });
-    setAreaTemplateTasks([]);
-    setAreaTemplateUsesBackendTemplateTasks(false);
-    setAreaTaskPipelineStep(0);
-    setReviewedAreaTaskFrequencies(new Set());
-    setNewAreaCustomTaskName('');
-  };
-
-  const resetTaskForm = () => {
-    setTaskForm({
-      facilityId: id || '',
-      areaId: null,
-      taskTemplateId: null,
-      customName: '',
-      cleaningFrequency: 'daily',
-      priority: 3,
-      baseMinutesOverride: null,
-      perSqftMinutesOverride: null,
-      perUnitMinutesOverride: null,
-      perRoomMinutesOverride: null,
-      fixtureMinutes: [],
-    });
   };
 
   const handleSaveTask = async () => {
@@ -826,154 +803,6 @@ const FacilityDetail = () => {
     });
   };
 
-  const toggleAreaExpanded = (areaId: string) => {
-    setExpandedAreas((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(areaId)) {
-        newSet.delete(areaId);
-      } else {
-        newSet.add(areaId);
-      }
-      return newSet;
-    });
-  };
-
-  const TASK_SEQUENCE_RULES = [
-    {
-      weight: 10,
-      patterns: [
-        /trash|garbage|litter|empty|liner/i,
-        /restock|refill|replenish|suppl(y|ies)|stock/i,
-        /remove expired/i,
-      ],
-    },
-    {
-      weight: 20,
-      patterns: [
-        /dust|high dust/i,
-        /vent|vents|light fixture|lights|ceiling fan/i,
-        /blinds|sill|sills|racks|shelf|shelves/i,
-      ],
-    },
-    {
-      weight: 70,
-      patterns: [
-        /deep clean|deep-clean|deep extraction|extract/i,
-        /carpet cleaning|shampoo/i,
-      ],
-    },
-    {
-      weight: 40,
-      patterns: [/disinfect|sanitize|sanitise/i],
-    },
-    {
-      weight: 30,
-      patterns: [
-        /glass|window|mirror/i,
-        /wipe|wash|clean/i,
-        /counter|desk|table|chair|appliance|fixture|door/i,
-        /toilet|urinal|sink|shower/i,
-        /furniture|wood surface|board/i,
-      ],
-    },
-    {
-      weight: 60,
-      patterns: [
-        /mop|wet mop|scrub|buff|strip|wax|refinish/i,
-        /power wash|pressure wash/i,
-        /floor.*polish|polish.*floor/i,
-      ],
-    },
-    {
-      weight: 50,
-      patterns: [/vacuum|sweep|sweeping/i],
-    },
-    {
-      weight: 80,
-      patterns: [/inspect|check|pest|organize|organise/i, /filters|ducts/i],
-    },
-  ];
-
-  const getTaskDisplayName = (task: FacilityTask) =>
-    (task.customName || task.taskTemplate?.name || '').trim();
-
-  const normalizeTaskName = (name: string) =>
-    name.trim().replace(/\s+/g, ' ').toLowerCase();
-
-  const findDuplicateTask = (params: {
-    areaId?: string | null;
-    cleaningFrequency: CleaningFrequency;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    excludeTaskId?: string;
-  }) => {
-    const incomingName = params.taskTemplateId
-      ? taskTemplates.find((template) => template.id === params.taskTemplateId)
-          ?.name || ''
-      : params.customName || '';
-    const normalizedIncomingName = normalizeTaskName(incomingName);
-
-    if (!normalizedIncomingName) return null;
-
-    return (
-      tasks.find((task) => {
-        if (task.archivedAt) return false;
-        if (params.excludeTaskId && task.id === params.excludeTaskId) return false;
-
-        const existingAreaId = task.area?.id || null;
-        const incomingAreaId = params.areaId || null;
-        if (existingAreaId !== incomingAreaId) return false;
-
-        if (task.cleaningFrequency !== params.cleaningFrequency) return false;
-
-        const existingTaskName = normalizeTaskName(
-          task.customName || task.taskTemplate?.name || ''
-        );
-        return existingTaskName === normalizedIncomingName;
-      }) || null
-    );
-  };
-
-  const getTaskSequenceWeight = (name: string) => {
-    if (!name) return 90;
-    for (const rule of TASK_SEQUENCE_RULES) {
-      if (rule.patterns.some((pattern) => pattern.test(name))) {
-        return rule.weight;
-      }
-    }
-    return 90;
-  };
-
-  const compareTasksByStandard = (a: FacilityTask, b: FacilityTask) => {
-    const aName = getTaskDisplayName(a).toLowerCase();
-    const bName = getTaskDisplayName(b).toLowerCase();
-    const weightDiff =
-      getTaskSequenceWeight(aName) - getTaskSequenceWeight(bName);
-    if (weightDiff !== 0) return weightDiff;
-    return aName.localeCompare(bName);
-  };
-
-  // Group tasks by area
-  const getTasksForArea = (areaId: string) => {
-    return tasks.filter((t) => t.area?.id === areaId && !t.archivedAt);
-  };
-
-  // Group tasks by frequency for display
-  const groupTasksByFrequency = (areaTasks: FacilityTask[]) => {
-    const grouped: Record<string, FacilityTask[]> = {};
-    for (const task of areaTasks) {
-      const freq = task.cleaningFrequency;
-      if (!grouped[freq]) {
-        grouped[freq] = [];
-      }
-      grouped[freq].push(task);
-    }
-    Object.values(grouped).forEach((group) =>
-      group.sort(compareTasksByStandard)
-    );
-    return grouped;
-  };
-
   const toggleAreaTemplateTaskInclude = (taskId: string, include: boolean) => {
     setAreaTemplateTasks((prev) =>
       prev.map((task) => (task.id === taskId ? { ...task, include } : task))
@@ -1099,160 +928,7 @@ const FacilityDetail = () => {
     });
   };
 
-  const formatAddress = (address: Facility['address']) => {
-    const lines = [];
-    if (address.street) lines.push(address.street);
-    const cityLine = [address.city, address.state, address.postalCode]
-      .filter(Boolean)
-      .join(', ');
-    if (cityLine) lines.push(cityLine);
-    if (address.country) lines.push(address.country);
-    return lines.length > 0 ? lines.join('\n') : 'No address';
-  };
-
-  const taskFixtureTypes = fixtureTypes.filter((type) => type.category === 'fixture');
-
-  const areaColumns = [
-    {
-      header: 'Area',
-      cell: (item: Area) => (
-        <div>
-          <div className="font-medium text-white">
-            {item.name || item.areaType.name}
-          </div>
-          <div className="text-sm text-gray-400">
-            {item.areaType.name} {item.quantity > 1 && `(x${item.quantity})`}
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: 'Size',
-      cell: (item: Area) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <Ruler className="h-4 w-4 text-gray-500" />
-          {item.squareFeet
-            ? `${Number(item.squareFeet).toLocaleString()} sq ft`
-            : '-'}
-        </div>
-      ),
-    },
-    {
-      header: 'Est. Time',
-      cell: (item: Area) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <Clock className="h-4 w-4 text-gray-500" />
-          {item.areaType.baseCleaningTimeMinutes
-            ? `${item.areaType.baseCleaningTimeMinutes * item.quantity} min`
-            : '-'}
-        </div>
-      ),
-    },
-    {
-      header: 'Floor Type',
-      cell: (item: Area) => {
-        const floorType = item.floorType || 'vct';
-        const floorLabel =
-          FLOOR_TYPES.find((f) => f.value === floorType)?.label || floorType;
-        return <span className="text-gray-300 capitalize">{floorLabel}</span>;
-      },
-    },
-    {
-      header: 'Condition',
-      cell: (item: Area) => (
-        <Badge
-          variant={
-            item.conditionLevel === 'standard'
-              ? 'success'
-              : item.conditionLevel === 'medium'
-                ? 'warning'
-                : 'error'
-          }
-        >
-          {CONDITION_LEVELS.find((c) => c.value === item.conditionLevel)
-            ?.label || item.conditionLevel}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Traffic',
-      cell: (item: Area) => (
-        <Badge
-          variant={
-            item.trafficLevel === 'low'
-              ? 'success'
-              : item.trafficLevel === 'medium'
-                ? 'warning'
-                : 'error'
-          }
-        >
-          {TRAFFIC_LEVELS.find((t) => t.value === item.trafficLevel)?.label || item.trafficLevel}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Status',
-      cell: (item: Area) => (
-        <Badge variant={item.archivedAt ? 'error' : 'success'}>
-          {item.archivedAt ? 'Archived' : 'Active'}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Actions',
-      cell: (item: Area) => (
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              openEditArea(item);
-            }}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
-          {item.archivedAt ? (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRestoreArea(item.id);
-                }}
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteArea(item.id);
-                }}
-                className="text-red-400 hover:text-red-300"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleArchiveArea(item.id);
-              }}
-            >
-              <Archive className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
+  // --- Early returns ---
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -1265,8 +941,10 @@ const FacilityDetail = () => {
     return <div className="text-center text-gray-400">Facility not found</div>;
   }
 
+  // --- Render ---
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button variant="ghost" onClick={() => navigate('/facilities')}>
           <ArrowLeft className="h-4 w-4" />
@@ -1290,880 +968,133 @@ const FacilityDetail = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10">
-                <Building2 className="h-6 w-6 text-emerald" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-400">Building Type</div>
-                <div className="font-medium capitalize text-white">
-                  {facility.buildingType || 'Not specified'}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10">
-                <MapPin className="h-6 w-6 text-gold" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-400">Address</div>
-                <div className="whitespace-pre-line font-medium text-white">
-                  {formatAddress(facility.address)}
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-400">Total Square Feet</div>
-                  <div className="font-medium text-white">
-                    {totalSquareFeetFromAreas > 0
-                      ? totalSquareFeetFromAreas.toLocaleString()
-                      : '-'}
-                    {totalSquareFeetFromAreas > 0 && (
-                      <span className="text-xs text-gray-500 ml-1">(from {areas.filter(a => !a.archivedAt).length} areas)</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400">Status</div>
-                  <Badge
-                    variant={
-                      facility.archivedAt
-                        ? 'error'
-                        : facility.status === 'active'
-                          ? 'success'
-                          : facility.status === 'pending'
-                            ? 'warning'
-                            : 'default'
-                    }
-                  >
-                    {facility.archivedAt ? 'Archived' : facility.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {(facility.accessInstructions ||
-              facility.parkingInfo ||
-              facility.specialRequirements) && (
-              <div className="space-y-3 border-t border-white/10 pt-4">
-                {facility.accessInstructions && (
-                  <div>
-                    <div className="text-sm text-gray-400">
-                      Access Instructions
-                    </div>
-                    <div className="text-sm text-white">
-                      {facility.accessInstructions}
-                    </div>
-                  </div>
-                )}
-                {facility.parkingInfo && (
-                  <div>
-                    <div className="text-sm text-gray-400">Parking Info</div>
-                    <div className="text-sm text-white">
-                      {facility.parkingInfo}
-                    </div>
-                  </div>
-                )}
-                {facility.specialRequirements && (
-                  <div>
-                    <div className="text-sm text-gray-400">
-                      Special Requirements
-                    </div>
-                    <div className="text-sm text-white">
-                      {facility.specialRequirements}
-                    </div>
-                  </div>
-                )}
-              </div>
+      {/* Tab Bar */}
+      <div className="flex gap-1 border-b border-white/10">
+        <button
+          className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+            activeTab === 'overview'
+              ? 'text-white'
+              : 'text-gray-400 hover:text-gray-300'
+          }`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+          {activeTab === 'overview' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+          )}
+        </button>
+        <button
+          className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+            activeTab === 'areas'
+              ? 'text-white'
+              : 'text-gray-400 hover:text-gray-300'
+          }`}
+          onClick={() => setActiveTab('areas')}
+        >
+          Areas ({activeAreasCount})
+          {activeTab === 'areas' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+          )}
+        </button>
+        {selectedArea && (
+          <button
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === 'area-detail'
+                ? 'text-white'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+            onClick={() => setActiveTab('area-detail')}
+          >
+            {selectedArea.name || selectedArea.areaType.name}
+            {activeTab === 'area-detail' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
             )}
-
-            {facility.notes && (
-              <div className="border-t border-white/10 pt-4">
-                <div className="text-sm text-gray-400">Notes</div>
-                <div className="text-sm text-white">{facility.notes}</div>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card noPadding className="lg:col-span-2 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/10 bg-navy-dark/30 p-4">
-            <h2 className="text-lg font-semibold text-white">
-              Areas ({areas.filter((a) => !a.archivedAt).length})
-              {totalSquareFeetFromAreas > 0 && (
-                <span className="text-sm font-normal text-gray-400 ml-2">
-                  {totalSquareFeetFromAreas.toLocaleString()} sq ft total
-                </span>
-              )}
-            </h2>
-            <Button
-              size="sm"
-              onClick={() => {
-                resetAreaForm();
-                setEditingArea(null);
-                setShowAreaModal(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Area
-            </Button>
-          </div>
-
-          <Table data={areas} columns={areaColumns} />
-        </Card>
+          </button>
+        )}
       </div>
 
-      {/* Tasks Section - Grouped by Area */}
-      <Card noPadding className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center gap-3">
-            <ClipboardList className="h-5 w-5 text-emerald" />
-            <h2 className="text-lg font-semibold text-white">
-              Tasks by Area ({tasks.filter((t) => !t.archivedAt).length})
-            </h2>
-          </div>
-        </div>
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <FacilityOverview
+          facility={facility}
+          totalSquareFeet={totalSquareFeetFromAreas}
+          activeAreasCount={activeAreasCount}
+          activeTasksCount={activeTasksCount}
+        />
+      )}
+      {activeTab === 'areas' && (
+        <FacilityAreas
+          areas={areas}
+          tasks={tasks}
+          onSelectArea={handleSelectArea}
+          onAddArea={() => {
+            resetAreaForm();
+            setEditingArea(null);
+            setShowAreaModal(true);
+          }}
+          onEditArea={openEditArea}
+          onArchiveArea={handleArchiveArea}
+          onRestoreArea={handleRestoreArea}
+          onDeleteArea={handleDeleteArea}
+          totalSquareFeet={totalSquareFeetFromAreas}
+        />
+      )}
+      {activeTab === 'area-detail' && selectedArea && (
+        <FacilityAreaDetail
+          area={selectedArea}
+          tasks={getTasksForArea(selectedArea.id)}
+          onBack={() => setActiveTab('areas')}
+          onEditArea={openEditArea}
+          onAddTask={openAddTaskForArea}
+          onBulkAddTasks={openBulkTaskForArea}
+          onEditTask={openEditTask}
+          onDeleteTask={handleDeleteTask}
+        />
+      )}
 
-        <div className="divide-y divide-white/5">
-          {areas.filter((a) => !a.archivedAt).length === 0 ? (
-            <div className="p-8 text-center text-gray-400">
-              Add areas to start managing tasks
-            </div>
-          ) : (
-            areas
-              .filter((a) => !a.archivedAt)
-              .map((area) => {
-                const areaTasks = getTasksForArea(area.id);
-                const tasksByFreq = groupTasksByFrequency(areaTasks);
-                const isExpanded = expandedAreas.has(area.id);
-
-                return (
-                  <div key={area.id} className="bg-navy-dark/20">
-                    {/* Area Header */}
-                    <div
-                      className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
-                      onClick={() => toggleAreaExpanded(area.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        {isExpanded ? (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-gray-400" />
-                        )}
-                        <div>
-                          <div className="font-medium text-white">
-                            {area.name || area.areaType.name}
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            {areaTasks.length} task
-                            {areaTasks.length !== 1 ? 's' : ''}
-                            {area.squareFeet &&
-                              ` • ${Number(area.squareFeet).toLocaleString()} sq ft`}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openBulkTaskForArea(area);
-                          }}
-                          title="Add multiple tasks from templates"
-                        >
-                          <ListPlus className="mr-1 h-4 w-4" />
-                          Add Tasks
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openAddTaskForArea(area);
-                          }}
-                          title="Add single custom task"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Expanded Tasks List */}
-                    {isExpanded && (
-                      <div className="border-t border-white/5 bg-navy-darker/50 px-4 pb-4">
-                        {areaTasks.length === 0 ? (
-                          <div className="py-6 text-center text-gray-500">
-                            No tasks assigned to this area yet
-                          </div>
-                        ) : (
-                          <div className="space-y-4 pt-4">
-                            {CLEANING_FREQUENCIES.map(
-                              ({ value: freq, label: freqLabel }) => {
-                                const freqTasks = tasksByFreq[freq] || [];
-                                if (freqTasks.length === 0) return null;
-
-                                return (
-                                  <div key={freq}>
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Badge
-                                        variant="default"
-                                        className="text-xs"
-                                      >
-                                        {freqLabel}
-                                      </Badge>
-                                      <span className="text-xs text-gray-500">
-                                        ({freqTasks.length})
-                                      </span>
-                                    </div>
-                                    <div className="space-y-1">
-                                      {freqTasks.map((task) => (
-                                        <div
-                                          key={task.id}
-                                          className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 group"
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-white">
-                                              {task.customName ||
-                                                task.taskTemplate?.name ||
-                                                'Unnamed Task'}
-                                            </span>
-                                            {task.estimatedMinutes && (
-                                              <span className="text-xs text-gray-500">
-                                                ({task.estimatedMinutes} min)
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => openEditTask(task)}
-                                            >
-                                              <Edit2 className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() =>
-                                                handleDeleteTask(task.id)
-                                              }
-                                              className="text-red-400 hover:text-red-300"
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-          )}
-        </div>
-      </Card>
-
-      <Modal
-        isOpen={showSubmitProposalModal}
-        onClose={() => {
-          if (submittingForProposal) return;
-          setShowSubmitProposalModal(false);
-        }}
-        title="Submit Facility for Proposal"
-      >
-        <div className="space-y-4">
-          <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-            <div className="text-sm text-gray-400">Review Summary</div>
-            <div className="mt-2 grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-gray-500">Areas</div>
-                <div className="text-white font-medium">{activeAreasCount}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Tasks</div>
-                <div className="text-white font-medium">{activeTasksCount}</div>
-              </div>
-            </div>
-            <div className="mt-3 text-sm text-gray-300">
-              This submits the facility as reviewed and ready for proposal creation.
-              It also marks the walkthrough as completed and updates lead status.
-            </div>
-          </div>
-
-          <Textarea
-            label="Review Notes (Optional)"
-            placeholder="Add notes for proposal preparation..."
-            value={submitProposalNotes}
-            onChange={(e) => setSubmitProposalNotes(e.target.value)}
-            rows={3}
-          />
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => setShowSubmitProposalModal(false)}
-              disabled={submittingForProposal}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitForProposal}
-              isLoading={submittingForProposal}
-              disabled={activeAreasCount === 0 || activeTasksCount === 0}
-            >
-              Submit Facility
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
+      {/* Modals */}
+      <EditFacilityModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        title="Edit Facility"
-        size="lg"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Facility Name"
-            value={facilityForm.name || ''}
-            onChange={(e) =>
-              setFacilityForm({ ...facilityForm, name: e.target.value })
-            }
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Street Address"
-              value={facilityForm.address?.street || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  address: { ...facilityForm.address, street: e.target.value },
-                })
-              }
-            />
-            <Input
-              label="City"
-              value={facilityForm.address?.city || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  address: { ...facilityForm.address, city: e.target.value },
-                })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Input
-              label="State/Province"
-              value={facilityForm.address?.state || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  address: { ...facilityForm.address, state: e.target.value },
-                })
-              }
-            />
-            <Input
-              label="Postal Code"
-              value={facilityForm.address?.postalCode || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  address: {
-                    ...facilityForm.address,
-                    postalCode: e.target.value,
-                  },
-                })
-              }
-            />
-            <Input
-              label="Country"
-              value={facilityForm.address?.country || ''}
-              onChange={(e) =>
-                setFacilityForm({
-                  ...facilityForm,
-                  address: { ...facilityForm.address, country: e.target.value },
-                })
-              }
-            />
-          </div>
-
-          <Select
-            label="Building Type"
-            options={BUILDING_TYPES}
-            value={facilityForm.buildingType || ''}
-            onChange={(value) =>
-              setFacilityForm({
-                ...facilityForm,
-                buildingType: value || null,
-              })
-            }
-          />
-
-          <Textarea
-            label="Access Instructions"
-            value={facilityForm.accessInstructions || ''}
-            onChange={(e) =>
-              setFacilityForm({
-                ...facilityForm,
-                accessInstructions: e.target.value || null,
-              })
-            }
-          />
-
-          <Textarea
-            label="Parking Info"
-            value={facilityForm.parkingInfo || ''}
-            onChange={(e) =>
-              setFacilityForm({
-                ...facilityForm,
-                parkingInfo: e.target.value || null,
-              })
-            }
-          />
-
-          <Textarea
-            label="Special Requirements"
-            value={facilityForm.specialRequirements || ''}
-            onChange={(e) =>
-              setFacilityForm({
-                ...facilityForm,
-                specialRequirements: e.target.value || null,
-              })
-            }
-          />
-
-          <Textarea
-            label="Notes"
-            value={facilityForm.notes || ''}
-            onChange={(e) =>
-              setFacilityForm({
-                ...facilityForm,
-                notes: e.target.value || null,
-              })
-            }
-          />
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateFacility} isLoading={saving}>
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
+        facilityForm={facilityForm}
+        setFacilityForm={setFacilityForm}
+        onSave={handleUpdateFacility}
+        saving={saving}
+      />
+      <AreaModal
         isOpen={showAreaModal}
         onClose={() => {
           setShowAreaModal(false);
           setEditingArea(null);
           resetAreaForm();
         }}
-        title={editingArea ? 'Edit Area' : 'Add Area'}
-        size="xl"
-      >
-        <div className="space-y-4">
-          <Select
-            label="Area Type"
-            placeholder="Select area type"
-            options={areaTypes.map((at) => ({ value: at.id, label: at.name }))}
-            value={(areaForm as CreateAreaInput).areaTypeId || ''}
-            onChange={(value) => {
-              setAreaForm({ ...areaForm, areaTypeId: value });
-              applyAreaTemplate(value);
-            }}
-          />
-
-          <Input
-            label="Custom Name (optional)"
-            placeholder="Leave blank to use area type name"
-            value={areaForm.name || ''}
-            onChange={(e) =>
-              setAreaForm({ ...areaForm, name: e.target.value || null })
-            }
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Length (ft)"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Length"
-              value={(areaForm as CreateAreaInput).length || ''}
-              onChange={(e) => {
-                const length = e.target.value ? Number(e.target.value) : null;
-                const width = (areaForm as CreateAreaInput).width ? Number((areaForm as CreateAreaInput).width) : null;
-                setAreaForm({
-                  ...areaForm,
-                  length,
-                  squareFeet: length && width ? Math.round(length * width) : areaForm.squareFeet,
-                });
-              }}
-            />
-            <Input
-              label="Width (ft)"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Width"
-              value={(areaForm as CreateAreaInput).width || ''}
-              onChange={(e) => {
-                const width = e.target.value ? Number(e.target.value) : null;
-                const length = (areaForm as CreateAreaInput).length ? Number((areaForm as CreateAreaInput).length) : null;
-                setAreaForm({
-                  ...areaForm,
-                  width,
-                  squareFeet: length && width ? Math.round(length * width) : areaForm.squareFeet,
-                });
-              }}
-            />
-            <Input
-              label="Square Feet"
-              type="number"
-              min={0}
-              placeholder="Auto or manual"
-              value={areaForm.squareFeet || ''}
-              onChange={(e) =>
-                setAreaForm({
-                  ...areaForm,
-                  squareFeet: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Floor Type"
-              options={FLOOR_TYPES}
-              value={areaForm.floorType || 'vct'}
-              onChange={(value) =>
-                setAreaForm({
-                  ...areaForm,
-                  floorType: value as any,
-                })
-              }
-            />
-            <Select
-              label="Condition Level"
-              options={CONDITION_LEVELS}
-              value={areaForm.conditionLevel || 'standard'}
-              onChange={(value) =>
-                setAreaForm({
-                  ...areaForm,
-                  conditionLevel: value as 'standard' | 'medium' | 'hard',
-                })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Room Count"
-              type="number"
-              min={0}
-              value={(areaForm as CreateAreaInput).roomCount ?? 0}
-              onChange={(e) =>
-                setAreaForm({
-                  ...areaForm,
-                  roomCount: Number(e.target.value) || 0,
-                })
-              }
-            />
-            <Input
-              label="Unit Count"
-              type="number"
-              min={0}
-              value={(areaForm as CreateAreaInput).unitCount ?? 0}
-              onChange={(e) =>
-                setAreaForm({
-                  ...areaForm,
-                  unitCount: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </div>
-
-          <Select
-            label="Traffic Level"
-            options={TRAFFIC_LEVELS}
-            value={(areaForm as CreateAreaInput).trafficLevel || 'medium'}
-            onChange={(value) =>
-              setAreaForm({
-                ...areaForm,
-                trafficLevel: value as TrafficLevel,
-              })
-            }
-          />
-
-          <Textarea
-            label="Notes"
-            value={areaForm.notes || ''}
-            onChange={(e) =>
-              setAreaForm({ ...areaForm, notes: e.target.value || null })
-            }
-          />
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-200">Items</div>
-              <Button variant="ghost" size="sm" onClick={addItemToArea}>
-                <Plus className="mr-1 h-4 w-4" />
-                Add Item
-              </Button>
-            </div>
-            {fixtureTypes.length === 0 ? (
-              <div className="text-sm text-gray-500">No item types available.</div>
-            ) : (areaForm as CreateAreaInput).fixtures?.length ? (
-              <div className="space-y-3">
-                {(areaForm as CreateAreaInput).fixtures?.map((item, index) => (
-                  <div
-                    key={`${item.fixtureTypeId}-${index}`}
-                    className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-3 sm:grid-cols-4"
-                  >
-                    <Select
-                      label="Item Type"
-                      options={fixtureTypes.map((type) => ({
-                        value: type.id,
-                        label: `${type.name} (${type.category})`,
-                      }))}
-                      value={item.fixtureTypeId}
-                      onChange={(value) => {
-                        const selected = fixtureTypes.find((type) => type.id === value);
-                        updateAreaItem(index, {
-                          fixtureTypeId: value,
-                          minutesPerItem: selected ? Number(selected.defaultMinutesPerItem) || 0 : item.minutesPerItem,
-                        });
-                      }}
-                    />
-                    <Input
-                      label="Count"
-                      type="number"
-                      min={0}
-                      value={item.count}
-                      onChange={(e) =>
-                        updateAreaItem(index, { count: Math.max(0, Number(e.target.value) || 0) })
-                      }
-                    />
-                    <Input
-                      label="Minutes/Item"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.minutesPerItem ?? 0}
-                      disabled
-                    />
-                    <div className="flex items-end">
-                      <Button variant="ghost" size="sm" onClick={() => removeAreaItem(index)}>
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500">No items added.</div>
-            )}
-          </div>
-
-          {!editingArea && (
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-200">Default Tasks</div>
-              {areaTemplateLoading ? (
-                <div className="text-sm text-gray-500">Loading template tasks...</div>
-              ) : (
-                <div className="space-y-3 rounded-lg border border-white/10 bg-navy-dark/20 p-3">
-                  <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-white">
-                        Step {areaTaskPipelineStep + 1} of{' '}
-                        {ORDERED_CLEANING_FREQUENCIES.length}
-                      </div>
-                      <Badge variant="info" className="text-xs">
-                        {CLEANING_FREQUENCIES.find(
-                          (f) => f.value === currentAreaTaskFrequency
-                        )?.label || 'Daily'}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-emerald transition-all"
-                        style={{
-                          width: `${
-                            ((areaTaskPipelineStep + 1) /
-                              ORDERED_CLEANING_FREQUENCIES.length) *
-                            100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-gray-400">
-                      Reviewed categories: {reviewedAreaTaskFrequencies.size}/
-                      {ORDERED_CLEANING_FREQUENCIES.length}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={`Add custom ${
-                        CLEANING_FREQUENCIES.find(
-                          (f) => f.value === currentAreaTaskFrequency
-                        )?.label || 'Daily'
-                      } task`}
-                      value={newAreaCustomTaskName}
-                      onChange={(e) => setNewAreaCustomTaskName(e.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addCustomAreaTemplateTask();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={addCustomAreaTemplateTask}
-                    >
-                      Add
-                    </Button>
-                  </div>
-
-                  {filteredAreaTemplateTasks.length === 0 ? (
-                    <div className="text-sm text-gray-500">
-                      No tasks for this category yet. Add one above.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {filteredAreaTemplateTasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-white">{task.name}</div>
-                              {task.taskTemplateId ? (
-                                <Badge variant="info" className="text-xs">
-                                  Template
-                                </Badge>
-                              ) : (
-                                <Badge variant="default" className="text-xs">
-                                  Custom
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {task.taskTemplateId
-                                ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
-                                : `Custom ${task.cleaningType} task`}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {!task.taskTemplateId && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeCustomAreaTemplateTask(task.id)}
-                              >
-                                Remove
-                              </Button>
-                            )}
-                            <label className="flex items-center gap-2 text-sm text-gray-300">
-                              <input
-                                type="checkbox"
-                                checked={task.include}
-                                onChange={(e) =>
-                                  toggleAreaTemplateTaskInclude(task.id, e.target.checked)
-                                }
-                                className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
-                              />
-                              Include
-                            </label>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between border-t border-white/10 pt-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={goToPreviousAreaTaskFrequencyStep}
-                      disabled={areaTaskPipelineStep === 0}
-                    >
-                      Previous Category
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={goToNextAreaTaskFrequencyStep}
-                    >
-                      {areaTaskPipelineStep ===
-                      ORDERED_CLEANING_FREQUENCIES.length - 1
-                        ? 'Mark Final Category Reviewed'
-                        : 'Next Category'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              <div className="text-xs text-gray-500">
-                Review each frequency category in order. `Add Area` is disabled
-                until all categories are reviewed.
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowAreaModal(false);
-                setEditingArea(null);
-                resetAreaForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveArea}
-              isLoading={saving}
-              disabled={
-                !(areaForm as CreateAreaInput).areaTypeId ||
-                (!editingArea && !allAreaTaskFrequenciesReviewed)
-              }
-            >
-              {editingArea ? 'Save Changes' : 'Add Area'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Task Modal */}
-      <Modal
+        editingArea={editingArea}
+        areaForm={areaForm}
+        setAreaForm={setAreaForm}
+        areaTypes={areaTypes}
+        fixtureTypes={fixtureTypes}
+        applyAreaTemplate={applyAreaTemplate}
+        areaTemplateLoading={areaTemplateLoading}
+        areaTemplateTasks={areaTemplateTasks}
+        filteredAreaTemplateTasks={filteredAreaTemplateTasks}
+        currentAreaTaskFrequency={currentAreaTaskFrequency}
+        areaTaskPipelineStep={areaTaskPipelineStep}
+        reviewedAreaTaskFrequencies={reviewedAreaTaskFrequencies}
+        allAreaTaskFrequenciesReviewed={allAreaTaskFrequenciesReviewed}
+        newAreaCustomTaskName={newAreaCustomTaskName}
+        setNewAreaCustomTaskName={setNewAreaCustomTaskName}
+        toggleAreaTemplateTaskInclude={toggleAreaTemplateTaskInclude}
+        addCustomAreaTemplateTask={addCustomAreaTemplateTask}
+        removeCustomAreaTemplateTask={removeCustomAreaTemplateTask}
+        goToNextAreaTaskFrequencyStep={goToNextAreaTaskFrequencyStep}
+        goToPreviousAreaTaskFrequencyStep={goToPreviousAreaTaskFrequencyStep}
+        addItemToArea={addItemToArea}
+        updateAreaItem={updateAreaItem}
+        removeAreaItem={removeAreaItem}
+        onSave={handleSaveArea}
+        saving={saving}
+      />
+      <TaskModal
         isOpen={showTaskModal}
         onClose={() => {
           setShowTaskModal(false);
@@ -2171,246 +1102,18 @@ const FacilityDetail = () => {
           setSelectedAreaForTask(null);
           resetTaskForm();
         }}
-        title={
-          editingTask
-            ? 'Edit Task'
-            : `Add Task${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`
-        }
-      >
-        <div className="space-y-4">
-          {/* Task Template or Custom */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-200">
-              Task Source
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  !taskForm.taskTemplateId
-                    ? 'border-emerald bg-emerald/10 text-white'
-                    : 'border-white/10 text-gray-400 hover:border-white/20'
-                }`}
-                onClick={() =>
-                  setTaskForm({ ...taskForm, taskTemplateId: null })
-                }
-              >
-                <div className="font-medium">Custom Task</div>
-                <div className="text-xs text-gray-500">
-                  Enter task name manually
-                </div>
-              </button>
-              <button
-                type="button"
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  taskForm.taskTemplateId
-                    ? 'border-emerald bg-emerald/10 text-white'
-                    : 'border-white/10 text-gray-400 hover:border-white/20'
-                }`}
-                onClick={() =>
-                  setTaskForm({
-                    ...taskForm,
-                    taskTemplateId: filteredTaskTemplates[0]?.id || null,
-                    customName: '',
-                  })
-                }
-              >
-                <div className="font-medium">From Template</div>
-                <div className="text-xs text-gray-500">
-                  Select predefined task
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {taskForm.taskTemplateId ? (
-            <Select
-              label="Task Template"
-              placeholder="Select a task template"
-              options={filteredTaskTemplates.map((tt) => ({
-                value: tt.id,
-                label: `${tt.name} (${tt.cleaningType})`,
-              }))}
-              value={taskForm.taskTemplateId || ''}
-              onChange={(value) =>
-                setTaskForm({ ...taskForm, taskTemplateId: value || null })
-              }
-            />
-          ) : (
-            <Input
-              label="Task Name"
-              placeholder="e.g., Vacuum floors, Empty trash"
-              value={taskForm.customName || ''}
-              onChange={(e) =>
-                setTaskForm({ ...taskForm, customName: e.target.value })
-              }
-            />
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Frequency"
-              options={CLEANING_FREQUENCIES}
-              value={taskForm.cleaningFrequency || 'daily'}
-              onChange={(value) =>
-                setTaskForm({
-                  ...taskForm,
-                  cleaningFrequency: value as CleaningFrequency,
-                })
-              }
-            />
-            <Input
-              label="Est. Minutes"
-              type="number"
-              placeholder="Optional"
-              value={taskForm.estimatedMinutes || ''}
-              onChange={(e) =>
-                setTaskForm({
-                  ...taskForm,
-                  estimatedMinutes: e.target.value
-                    ? Number(e.target.value)
-                    : null,
-                })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Base Minutes Override"
-              type="number"
-              min={0}
-              step="0.01"
-              value={(taskForm as CreateFacilityTaskInput).baseMinutesOverride ?? ''}
-              onChange={(e) =>
-                setTaskForm({
-                  ...taskForm,
-                  baseMinutesOverride: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-            <Input
-              label="Per Sq Ft Minutes Override"
-              type="number"
-              min={0}
-              step="0.0001"
-              value={(taskForm as CreateFacilityTaskInput).perSqftMinutesOverride ?? ''}
-              onChange={(e) =>
-                setTaskForm({
-                  ...taskForm,
-                  perSqftMinutesOverride: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-            <Input
-              label="Per Unit Minutes Override"
-              type="number"
-              min={0}
-              step="0.01"
-              value={(taskForm as CreateFacilityTaskInput).perUnitMinutesOverride ?? ''}
-              onChange={(e) =>
-                setTaskForm({
-                  ...taskForm,
-                  perUnitMinutesOverride: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-            <Input
-              label="Per Room Minutes Override"
-              type="number"
-              min={0}
-              step="0.01"
-              value={(taskForm as CreateFacilityTaskInput).perRoomMinutesOverride ?? ''}
-              onChange={(e) =>
-                setTaskForm({
-                  ...taskForm,
-                  perRoomMinutesOverride: e.target.value ? Number(e.target.value) : null,
-                })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-200">Fixture Minutes Overrides</div>
-            {taskFixtureTypes.length === 0 ? (
-              <div className="text-sm text-gray-500">No fixture types available.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {taskFixtureTypes.map((fixtureType) => (
-                  <Input
-                    key={fixtureType.id}
-                    label={fixtureType.name}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={getTaskFixtureMinutes(fixtureType.id)}
-                    onChange={(e) =>
-                      updateTaskFixtureMinutes(
-                        fixtureType.id,
-                        Math.max(0, Number(e.target.value) || 0)
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Select
-            label="Priority"
-            options={[
-              { value: '1', label: '1 - Highest' },
-              { value: '2', label: '2 - High' },
-              { value: '3', label: '3 - Normal' },
-              { value: '4', label: '4 - Low' },
-              { value: '5', label: '5 - Lowest' },
-            ]}
-            value={String(taskForm.priority || 3)}
-            onChange={(value) =>
-              setTaskForm({ ...taskForm, priority: Number(value) })
-            }
-          />
-
-          <Textarea
-            label="Instructions (optional)"
-            placeholder="Special instructions for this task..."
-            value={
-              (taskForm as UpdateFacilityTaskInput).customInstructions || ''
-            }
-            onChange={(e) =>
-              setTaskForm({
-                ...taskForm,
-                customInstructions: e.target.value || null,
-              } as UpdateFacilityTaskInput)
-            }
-            rows={2}
-          />
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowTaskModal(false);
-                setEditingTask(null);
-                setSelectedAreaForTask(null);
-                resetTaskForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveTask}
-              isLoading={saving}
-              disabled={!taskForm.taskTemplateId && !taskForm.customName}
-            >
-              {editingTask ? 'Save Changes' : 'Add Task'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Bulk Task Selection Modal */}
-      <Modal
+        editingTask={editingTask}
+        selectedAreaForTask={selectedAreaForTask}
+        taskForm={taskForm}
+        setTaskForm={setTaskForm}
+        filteredTaskTemplates={filteredTaskTemplates}
+        taskFixtureTypes={taskFixtureTypes}
+        getTaskFixtureMinutes={getTaskFixtureMinutes}
+        updateTaskFixtureMinutes={updateTaskFixtureMinutes}
+        onSave={handleSaveTask}
+        saving={saving}
+      />
+      <BulkTaskModal
         isOpen={showBulkTaskModal}
         onClose={() => {
           setShowBulkTaskModal(false);
@@ -2418,113 +1121,32 @@ const FacilityDetail = () => {
           setSelectedAreaForTask(null);
           setBulkFrequency('daily');
         }}
-        title={`Add Tasks${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {/* Frequency Selection */}
-          <Select
-            label="Cleaning Frequency"
-            options={CLEANING_FREQUENCIES}
-            value={bulkFrequency}
-            onChange={(value) => setBulkFrequency(value)}
-          />
-
-          {/* Selection Controls */}
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-400">
-              {selectedTaskTemplateIds.size} of {filteredBulkTaskTemplates.length} selected
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={selectAllTaskTemplates}
-              >
-                Select All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllTaskTemplates}
-              >
-                Clear All
-              </Button>
-            </div>
-          </div>
-
-          {/* Task Templates List */}
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
-            {filteredBulkTaskTemplates.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                No task templates for the selected frequency.
-              </div>
-            ) : (
-              filteredBulkTaskTemplates.map((template) => {
-                const isSelected = selectedTaskTemplateIds.has(template.id);
-                return (
-                  <div
-                    key={template.id}
-                    className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/5 ${
-                      isSelected ? 'bg-emerald/10' : ''
-                    }`}
-                    onClick={() => toggleTaskTemplateSelection(template.id)}
-                  >
-                    <div className="flex-shrink-0">
-                      {isSelected ? (
-                        <CheckSquare className="h-5 w-5 text-emerald" />
-                      ) : (
-                        <Square className="h-5 w-5 text-gray-500" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-white truncate">
-                        {template.name}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Badge variant="default" className="text-xs">
-                          {template.cleaningType}
-                        </Badge>
-                        {template.estimatedMinutes && (
-                          <span>{template.estimatedMinutes} min</span>
-                        )}
-                        {template.difficultyLevel && (
-                          <span>Level {template.difficultyLevel}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowBulkTaskModal(false);
-                setSelectedTaskTemplateIds(new Set());
-                setSelectedAreaForTask(null);
-                setBulkFrequency('daily');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleBulkAddTasks}
-              isLoading={saving}
-              disabled={selectedTaskTemplateIds.size === 0}
-            >
-              Add {selectedTaskTemplateIds.size} Task{selectedTaskTemplateIds.size !== 1 ? 's' : ''}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        selectedAreaForTask={selectedAreaForTask}
+        bulkFrequency={bulkFrequency}
+        setBulkFrequency={setBulkFrequency}
+        filteredBulkTaskTemplates={filteredBulkTaskTemplates}
+        selectedTaskTemplateIds={selectedTaskTemplateIds}
+        toggleTaskTemplateSelection={toggleTaskTemplateSelection}
+        selectAllTaskTemplates={selectAllTaskTemplates}
+        clearAllTaskTemplates={clearAllTaskTemplates}
+        onSave={handleBulkAddTasks}
+        saving={saving}
+      />
+      <SubmitProposalModal
+        isOpen={showSubmitProposalModal}
+        onClose={() => {
+          if (submittingForProposal) return;
+          setShowSubmitProposalModal(false);
+        }}
+        activeAreasCount={activeAreasCount}
+        activeTasksCount={activeTasksCount}
+        submitProposalNotes={submitProposalNotes}
+        setSubmitProposalNotes={setSubmitProposalNotes}
+        onSubmit={handleSubmitForProposal}
+        submitting={submittingForProposal}
+      />
     </div>
   );
 };
 
 export default FacilityDetail;
-
-
