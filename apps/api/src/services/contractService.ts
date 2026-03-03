@@ -14,6 +14,9 @@ export interface ContractListParams {
   limit?: number;
   status?: string;
   needsAttention?: boolean;
+  unassignedOnly?: boolean;
+  nearingRenewalOnly?: boolean;
+  renewalWindowDays?: number;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -259,6 +262,9 @@ export async function listContracts(
     limit = 10,
     status,
     needsAttention = false,
+    unassignedOnly = false,
+    nearingRenewalOnly = false,
+    renewalWindowDays = 30,
     accountId,
     facilityId,
     proposalId,
@@ -307,6 +313,22 @@ export async function listContracts(
         { assignedTeamId: null },
         { status: { in: ['sent', 'viewed'] } },
       ],
+    });
+  }
+
+  if (unassignedOnly) {
+    andConditions.push({ assignedTeamId: null });
+  }
+
+  if (nearingRenewalOnly) {
+    const renewalEndDate = new Date();
+    renewalEndDate.setDate(renewalEndDate.getDate() + renewalWindowDays);
+    andConditions.push({
+      status: 'active',
+      endDate: {
+        gte: new Date(),
+        lte: renewalEndDate,
+      },
     });
   }
 
@@ -673,6 +695,7 @@ export async function getContractsSummary(
     viewed,
     pendingSignature,
     active,
+    unassigned,
     nearingRenewal,
   ] = await Promise.all([
     prisma.contract.count({ where }),
@@ -681,6 +704,7 @@ export async function getContractsSummary(
     prisma.contract.count({ where: { ...where, status: 'viewed' } }),
     prisma.contract.count({ where: { ...where, status: 'pending_signature' } }),
     prisma.contract.count({ where: { ...where, status: 'active' } }),
+    prisma.contract.count({ where: { ...where, assignedTeamId: null } }),
     prisma.contract.count({
       where: {
         ...where,
@@ -702,6 +726,7 @@ export async function getContractsSummary(
       pendingSignature,
       active,
     },
+    unassigned,
     nearingRenewal,
     renewalWindowDays,
   };

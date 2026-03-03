@@ -241,6 +241,9 @@ export interface ListContractsParams {
   limit?: number;
   status?: ContractStatus;
   needsAttention?: boolean;
+  unassignedOnly?: boolean;
+  nearingRenewalOnly?: boolean;
+  renewalWindowDays?: number;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -259,6 +262,7 @@ export interface ContractSummary {
     pendingSignature: number;
     active: number;
   };
+  unassigned: number;
   nearingRenewal: number;
   renewalWindowDays: number;
 }

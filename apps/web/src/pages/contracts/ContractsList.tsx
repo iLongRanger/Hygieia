@@ -81,6 +81,15 @@ const STATUS_LABELS: Record<ContractStatus, string> = {
   terminated: 'TERMINATED',
 };
 
+type SummaryCardFilter =
+  | 'draft'
+  | 'sent'
+  | 'viewed'
+  | 'pending_signature'
+  | 'active'
+  | 'unassigned'
+  | 'nearing_renewal';
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -106,6 +115,7 @@ const ContractsList = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<ContractSummary | null>(null);
+  const [summaryCardFilter, setSummaryCardFilter] = useState<SummaryCardFilter | null>(null);
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -123,6 +133,9 @@ const ContractsList = () => {
         status?: string;
         includeArchived?: boolean;
         needsAttention?: boolean;
+        unassignedOnly?: boolean;
+        nearingRenewalOnly?: boolean;
+        renewalWindowDays?: number;
       }
     ) => {
       try {
@@ -134,6 +147,9 @@ const ContractsList = () => {
           status: (filters?.status && filters.status !== '' ? filters.status : undefined) as ContractStatus | undefined,
           includeArchived: filters?.includeArchived,
           needsAttention: filters?.needsAttention,
+          unassignedOnly: filters?.unassignedOnly,
+          nearingRenewalOnly: filters?.nearingRenewalOnly,
+          renewalWindowDays: filters?.renewalWindowDays,
           accountId: accountIdFilter,
         });
         setContracts(result.data);
@@ -167,8 +183,23 @@ const ContractsList = () => {
   }, [accountIdFilter, includeArchived]);
 
   useEffect(() => {
-    fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
-  }, [page, search, statusFilter, includeArchived, needsAttention, fetchContracts]);
+    const statusFromSummaryCard: ContractStatus | undefined =
+      summaryCardFilter === 'draft' ||
+      summaryCardFilter === 'sent' ||
+      summaryCardFilter === 'viewed' ||
+      summaryCardFilter === 'pending_signature' ||
+      summaryCardFilter === 'active'
+        ? summaryCardFilter
+        : undefined;
+    fetchContracts(page, search, {
+      status: statusFromSummaryCard ?? statusFilter,
+      includeArchived,
+      needsAttention,
+      unassignedOnly: summaryCardFilter === 'unassigned',
+      nearingRenewalOnly: summaryCardFilter === 'nearing_renewal',
+      renewalWindowDays: summary?.renewalWindowDays ?? 30,
+    });
+  }, [page, search, statusFilter, includeArchived, needsAttention, summaryCardFilter, summary?.renewalWindowDays, fetchContracts]);
 
   useEffect(() => {
     fetchSummary();
@@ -229,10 +260,17 @@ const ContractsList = () => {
     setStatusFilter('');
     setIncludeArchived(false);
     setNeedsAttention(false);
+    setSummaryCardFilter(null);
     setPage(1);
   };
 
-  const hasActiveFilters = statusFilter || includeArchived || needsAttention;
+  const hasActiveFilters = statusFilter || includeArchived || needsAttention || summaryCardFilter;
+
+  const handleSummaryCardClick = (filter: SummaryCardFilter) => {
+    setSummaryCardFilter((current) => (current === filter ? null : filter));
+    setNeedsAttention(false);
+    setPage(1);
+  };
 
   const columns = [
     {
@@ -382,38 +420,89 @@ const ContractsList = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('draft')}
+          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
+            summaryCardFilter === 'draft' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          }`}
+        >
           <div className="text-xs text-gray-400 uppercase tracking-wide">Draft</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.draft ?? 0)}
           </div>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('sent')}
+          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
+            summaryCardFilter === 'sent' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          }`}
+        >
           <div className="text-xs text-gray-400 uppercase tracking-wide">Sent</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.sent ?? 0)}
           </div>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('viewed')}
+          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
+            summaryCardFilter === 'viewed' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          }`}
+        >
           <div className="text-xs text-gray-400 uppercase tracking-wide">Viewed</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.viewed ?? 0)}
           </div>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('pending_signature')}
+          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
+            summaryCardFilter === 'pending_signature' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          }`}
+        >
           <div className="text-xs text-gray-400 uppercase tracking-wide">Signed</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.pendingSignature ?? 0)}
           </div>
-        </div>
-        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('active')}
+          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
+            summaryCardFilter === 'active' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          }`}
+        >
           <div className="text-xs text-gray-400 uppercase tracking-wide">Active</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.active ?? 0)}
           </div>
-        </div>
-        <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3">
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('unassigned')}
+          className={`rounded-lg border bg-rose-500/10 p-3 text-left transition ${
+            summaryCardFilter === 'unassigned' ? 'border-rose-300 ring-1 ring-rose-300/60' : 'border-rose-400/20 hover:border-rose-300/50'
+          }`}
+        >
+          <div className="text-xs text-rose-200 uppercase tracking-wide">Unassigned</div>
+          <div className="mt-1 text-xl font-semibold text-rose-100">
+            {summaryLoading ? '-' : (summary?.unassigned ?? 0)}
+          </div>
+          <div className="text-[11px] text-rose-200/80">
+            no team assigned
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSummaryCardClick('nearing_renewal')}
+          className={`rounded-lg border bg-amber-500/10 p-3 text-left transition ${
+            summaryCardFilter === 'nearing_renewal' ? 'border-amber-300 ring-1 ring-amber-300/60' : 'border-amber-400/20 hover:border-amber-300/50'
+          }`}
+        >
           <div className="text-xs text-amber-200 uppercase tracking-wide">Nearing Renewal</div>
           <div className="mt-1 text-xl font-semibold text-amber-100">
             {summaryLoading ? '-' : (summary?.nearingRenewal ?? 0)}
@@ -421,7 +510,7 @@ const ContractsList = () => {
           <div className="text-[11px] text-amber-200/80">
             next {summary?.renewalWindowDays ?? 30} days
           </div>
-        </div>
+        </button>
       </div>
 
       <Card noPadding className="overflow-hidden">
@@ -473,6 +562,13 @@ const ContractsList = () => {
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-amber-200">
               <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1">
                 Showing contracts needing attention: unassigned team or waiting for acceptance
+              </span>
+            </div>
+          )}
+          {summaryCardFilter && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-primary-200">
+              <span className="rounded-full border border-primary-300/40 bg-primary-500/10 px-3 py-1">
+                Summary filter: {summaryCardFilter === 'nearing_renewal' ? 'Nearing Renewal' : summaryCardFilter.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </span>
             </div>
           )}

@@ -281,6 +281,19 @@ export const listContractsQuerySchema = z.object({
       if (value === false || value === 'false') return false;
       return undefined;
     }, z.boolean().optional()),
+  unassignedOnly: z
+    .preprocess((value) => {
+      if (value === true || value === 'true') return true;
+      if (value === false || value === 'false') return false;
+      return undefined;
+    }, z.boolean().optional()),
+  nearingRenewalOnly: z
+    .preprocess((value) => {
+      if (value === true || value === 'true') return true;
+      if (value === false || value === 'false') return false;
+      return undefined;
+    }, z.boolean().optional()),
+  renewalWindowDays: z.coerce.number().int().min(1).max(365).optional().default(30),
 });
 
 export const listContractsSummaryQuerySchema = z.object({

@@ -105,6 +105,7 @@ describe('ContractsList', () => {
         pendingSignature: 0,
         active: 0,
       },
+      unassigned: 1,
       nearingRenewal: 0,
       renewalWindowDays: 30,
     });
