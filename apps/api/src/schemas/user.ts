@@ -8,7 +8,7 @@ const phoneSchema = z
   .optional()
   .nullable();
 
-export const userRoleSchema = z.enum(['owner', 'admin', 'manager', 'cleaner']);
+export const userRoleSchema = z.enum(['owner', 'admin', 'manager', 'cleaner', 'subcontractor']);
 
 export const createUserSchema = z.object({
   email: emailSchema,
