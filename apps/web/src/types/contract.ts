@@ -250,6 +250,19 @@ export interface ListContractsParams {
   includeArchived?: boolean;
 }
 
+export interface ContractSummary {
+  total: number;
+  byStatus: {
+    draft: number;
+    sent: number;
+    viewed: number;
+    pendingSignature: number;
+    active: number;
+  };
+  nearingRenewal: number;
+  renewalWindowDays: number;
+}
+
 // Renewal types
 export interface RenewContractInput {
   startDate?: string;

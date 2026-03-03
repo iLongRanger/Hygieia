@@ -28,11 +28,12 @@ import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import {
   listContracts,
+  getContractsSummary,
   archiveContract,
   restoreContract,
   updateContractStatus,
 } from '../../lib/contracts';
-import type { Contract, ContractStatus } from '../../types/contract';
+import type { Contract, ContractStatus, ContractSummary } from '../../types/contract';
 
 const CONTRACT_STATUSES = [
   { value: 'draft', label: 'Draft' },
@@ -103,6 +104,8 @@ const ContractsList = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summary, setSummary] = useState<ContractSummary | null>(null);
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -146,9 +149,30 @@ const ContractsList = () => {
     [accountIdFilter]
   );
 
+  const fetchSummary = useCallback(async () => {
+    try {
+      setSummaryLoading(true);
+      const data = await getContractsSummary({
+        accountId: accountIdFilter,
+        includeArchived,
+      });
+      setSummary(data);
+    } catch (error) {
+      console.error('Failed to load contracts summary:', error);
+      toast.error('Failed to load contract summary');
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [accountIdFilter, includeArchived]);
+
   useEffect(() => {
     fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
   }, [page, search, statusFilter, includeArchived, needsAttention, fetchContracts]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   useEffect(() => {
     setPage(1);
@@ -356,6 +380,48 @@ const ContractsList = () => {
             New Contract
           </Button>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Draft</div>
+          <div className="mt-1 text-xl font-semibold text-white">
+            {summaryLoading ? '-' : (summary?.byStatus.draft ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Sent</div>
+          <div className="mt-1 text-xl font-semibold text-white">
+            {summaryLoading ? '-' : (summary?.byStatus.sent ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Viewed</div>
+          <div className="mt-1 text-xl font-semibold text-white">
+            {summaryLoading ? '-' : (summary?.byStatus.viewed ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Signed</div>
+          <div className="mt-1 text-xl font-semibold text-white">
+            {summaryLoading ? '-' : (summary?.byStatus.pendingSignature ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Active</div>
+          <div className="mt-1 text-xl font-semibold text-white">
+            {summaryLoading ? '-' : (summary?.byStatus.active ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3">
+          <div className="text-xs text-amber-200 uppercase tracking-wide">Nearing Renewal</div>
+          <div className="mt-1 text-xl font-semibold text-amber-100">
+            {summaryLoading ? '-' : (summary?.nearingRenewal ?? 0)}
+          </div>
+          <div className="text-[11px] text-amber-200/80">
+            next {summary?.renewalWindowDays ?? 30} days
+          </div>
+        </div>
       </div>
 
       <Card noPadding className="overflow-hidden">

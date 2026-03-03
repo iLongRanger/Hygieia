@@ -1,6 +1,7 @@
 import api from './api';
 import type {
   Contract,
+  ContractSummary,
   CreateContractInput,
   CreateContractFromProposalInput,
   CreateStandaloneContractInput,
@@ -27,6 +28,15 @@ export async function listContracts(
 ): Promise<PaginatedResponse<Contract>> {
   const response = await api.get('/contracts', { params });
   return response.data;
+}
+
+export async function getContractsSummary(params?: {
+  accountId?: string;
+  includeArchived?: boolean;
+  renewalWindowDays?: number;
+}): Promise<ContractSummary> {
+  const response = await api.get('/contracts/summary', { params });
+  return response.data.data;
 }
 
 export async function getContract(id: string): Promise<Contract> {

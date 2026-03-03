@@ -5,6 +5,7 @@ import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listContracts,
+  getContractsSummary,
   getContractById,
   createContract,
   createContractFromProposal,
@@ -39,6 +40,7 @@ import {
   terminateContractSchema,
   renewContractSchemaWithDocumentValidation,
   listContractsQuerySchema,
+  listContractsSummaryQuerySchema,
   sendContractSchema,
 } from '../schemas/contract';
 import { listContractActivitiesQuerySchema } from '../schemas/contractActivity';
@@ -199,6 +201,30 @@ router.get(
       }
 
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get contracts summary
+router.get(
+  '/summary',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = listContractsSummaryQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const summary = await getContractsSummary(parsed.data, {
+        userRole: req.user?.role,
+        userTeamId: req.user?.teamId,
+      });
+
+      res.json({ data: summary });
     } catch (error) {
       next(error);
     }

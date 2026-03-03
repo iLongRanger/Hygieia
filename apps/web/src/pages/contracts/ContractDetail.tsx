@@ -136,6 +136,14 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatShortDate = (date: string | null | undefined) => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 const formatFrequency = (value: string | null | undefined) => {
   if (!value) return 'as scheduled';
   const normalized = value.replace(/_/g, ' ');
@@ -239,6 +247,14 @@ const BILLING_CYCLES = [
   { value: 'semi_annual', label: 'Semi-Annual' },
   { value: 'annual', label: 'Annual' },
 ];
+
+const CONTRACT_PIPELINE_STEPS = [
+  { key: 'draft', label: 'Draft' },
+  { key: 'sent', label: 'Sent' },
+  { key: 'viewed', label: 'Viewed' },
+  { key: 'pending_signature', label: 'Signed' },
+  { key: 'active', label: 'Active' },
+] as const;
 
 type AssignmentMode = 'subcontractor_team' | 'internal_employee';
 type TermsDocumentAction = 'unchanged' | 'replace' | 'remove';
@@ -615,6 +631,32 @@ const ContractDetail = () => {
     (contract.facility?.address?.timezone as string | undefined) ||
     (contract.facility?.address?.timeZone as string | undefined) ||
     null;
+  const pipelineStatusIndex: Record<ContractStatus, number> = {
+    draft: 0,
+    sent: 1,
+    viewed: 2,
+    pending_signature: 3,
+    active: 4,
+    expired: 4,
+    terminated: 4,
+  };
+  const currentPipelineIndex = pipelineStatusIndex[contract.status];
+  const pipelineDates: Array<string | null | undefined> = [
+    contract.createdAt,
+    contract.sentAt,
+    contract.viewedAt,
+    contract.signedDate,
+    contract.approvedAt,
+  ];
+  const nextActionText: Partial<Record<ContractStatus, string>> = {
+    draft: 'Send contract to client.',
+    sent: 'Wait for client to view and accept.',
+    viewed: 'Follow up with client for acceptance.',
+    pending_signature: 'Activate to start service and billing.',
+    active: 'Contract is active.',
+    expired: 'Renew this contract or create a new term.',
+    terminated: 'Contract closed.',
+  };
 
   return (
     <div className="space-y-6">
@@ -763,6 +805,71 @@ const ContractDetail = () => {
           </div>
         )}
       </div>
+
+      <Card>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-white">Contract Pipeline</div>
+              <div className="text-xs text-gray-400">
+                Track required stages from draft to active.
+              </div>
+            </div>
+            <Badge variant={contract.status === 'terminated' ? 'error' : contract.status === 'expired' ? 'warning' : 'info'}>
+              {nextActionText[contract.status]}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-1 overflow-x-auto px-1 py-1">
+            {CONTRACT_PIPELINE_STEPS.map((step, index) => {
+              const isLast = index === CONTRACT_PIPELINE_STEPS.length - 1;
+              const isDone = index <= currentPipelineIndex;
+              const isCurrent = index === currentPipelineIndex;
+              const isBlocked =
+                contract.status === 'terminated' && index === CONTRACT_PIPELINE_STEPS.length - 1;
+              return (
+                <React.Fragment key={step.key}>
+                  <div className="flex min-w-[62px] flex-col items-center">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold ${
+                        isBlocked
+                          ? 'border-red-500/70 bg-red-500/15 text-red-300'
+                          : isDone
+                            ? `border-emerald-400 bg-emerald-400/15 text-emerald-200 ${isCurrent ? 'ring-2 ring-emerald-400/30 ring-offset-2 ring-offset-surface-800' : ''}`
+                            : 'border-gray-600 text-gray-500'
+                      }`}
+                    >
+                      {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                    </div>
+                    <div className={`mt-1 text-xs ${isDone ? 'text-white' : 'text-gray-500'}`}>
+                      {step.label}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-gray-500">
+                      {isDone ? formatShortDate(pipelineDates[index]) : '\u00A0'}
+                    </div>
+                  </div>
+                  {!isLast && (
+                    <div
+                      className={`mx-1 mt-[-18px] h-0.5 flex-1 ${
+                        index < currentPipelineIndex ? 'bg-emerald-400/60' : 'bg-gray-700'
+                      }`}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+          {contract.status === 'terminated' && (
+            <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              This contract is terminated and no longer progresses in the pipeline.
+            </div>
+          )}
+          {contract.status === 'expired' && (
+            <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              This contract has expired. Renew to continue service.
+            </div>
+          )}
+        </div>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Account & Facility Information */}

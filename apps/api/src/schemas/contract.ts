@@ -283,6 +283,15 @@ export const listContractsQuerySchema = z.object({
     }, z.boolean().optional()),
 });
 
+export const listContractsSummaryQuerySchema = z.object({
+  accountId: z.string().uuid().optional(),
+  includeArchived: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
+  renewalWindowDays: z.coerce.number().int().min(1).max(365).optional().default(30),
+});
+
 // Send Contract Schema
 export const sendContractSchema = z.object({
   emailTo: z.string().email().optional(),
@@ -303,3 +312,4 @@ export type SignContractInput = z.infer<typeof signContractSchema>;
 export type TerminateContractInput = z.infer<typeof terminateContractSchema>;
 export type RenewContractInput = z.infer<typeof renewContractSchema>;
 export type ListContractsQuery = z.infer<typeof listContractsQuerySchema>;
+export type ListContractsSummaryQuery = z.infer<typeof listContractsSummaryQuerySchema>;

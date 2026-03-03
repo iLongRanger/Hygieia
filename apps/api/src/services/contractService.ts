@@ -23,6 +23,12 @@ export interface ContractListParams {
   includeArchived?: boolean;
 }
 
+export interface ContractSummaryParams {
+  accountId?: string;
+  includeArchived?: boolean;
+  renewalWindowDays?: number;
+}
+
 export interface ContractCreateInput {
   title: string;
   accountId: string;
@@ -631,6 +637,74 @@ export async function updateContractStatus(
   }
 
   return contract;
+}
+
+export async function getContractsSummary(
+  params: ContractSummaryParams,
+  options?: { userRole?: string; userTeamId?: string }
+) {
+  const {
+    accountId,
+    includeArchived = false,
+    renewalWindowDays = 30,
+  } = params;
+
+  const where: Prisma.ContractWhereInput = {};
+
+  if (options?.userRole === 'subcontractor' && options?.userTeamId) {
+    where.assignedTeamId = options.userTeamId;
+  }
+
+  if (accountId) {
+    where.accountId = accountId;
+  }
+
+  if (!includeArchived) {
+    where.archivedAt = null;
+  }
+
+  const renewalEndDate = new Date();
+  renewalEndDate.setDate(renewalEndDate.getDate() + renewalWindowDays);
+
+  const [
+    total,
+    draft,
+    sent,
+    viewed,
+    pendingSignature,
+    active,
+    nearingRenewal,
+  ] = await Promise.all([
+    prisma.contract.count({ where }),
+    prisma.contract.count({ where: { ...where, status: 'draft' } }),
+    prisma.contract.count({ where: { ...where, status: 'sent' } }),
+    prisma.contract.count({ where: { ...where, status: 'viewed' } }),
+    prisma.contract.count({ where: { ...where, status: 'pending_signature' } }),
+    prisma.contract.count({ where: { ...where, status: 'active' } }),
+    prisma.contract.count({
+      where: {
+        ...where,
+        status: 'active',
+        endDate: {
+          gte: new Date(),
+          lte: renewalEndDate,
+        },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    byStatus: {
+      draft,
+      sent,
+      viewed,
+      pendingSignature,
+      active,
+    },
+    nearingRenewal,
+    renewalWindowDays,
+  };
 }
 
 /**

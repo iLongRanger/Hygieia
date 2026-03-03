@@ -17,12 +17,14 @@ vi.mock('react-router-dom', async () => {
 });
 
 const listContractsMock = vi.fn();
+const getContractsSummaryMock = vi.fn();
 const archiveContractMock = vi.fn();
 const restoreContractMock = vi.fn();
 const updateContractStatusMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
   listContracts: (...args: unknown[]) => listContractsMock(...args),
+  getContractsSummary: (...args: unknown[]) => getContractsSummaryMock(...args),
   archiveContract: (...args: unknown[]) => archiveContractMock(...args),
   restoreContract: (...args: unknown[]) => restoreContractMock(...args),
   updateContractStatus: (...args: unknown[]) => updateContractStatusMock(...args),
@@ -93,6 +95,18 @@ describe('ContractsList', () => {
     listContractsMock.mockResolvedValue({
       data: [contract],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    getContractsSummaryMock.mockResolvedValue({
+      total: 1,
+      byStatus: {
+        draft: 1,
+        sent: 0,
+        viewed: 0,
+        pendingSignature: 0,
+        active: 0,
+      },
+      nearingRenewal: 0,
+      renewalWindowDays: 30,
     });
     archiveContractMock.mockResolvedValue({ ...contract, archivedAt: new Date().toISOString() });
     restoreContractMock.mockResolvedValue(contract);
