@@ -114,7 +114,7 @@ export function FacilityAreaDetail({
           <p className="text-gray-400">{area.areaType.name}</p>
         </div>
         <Button variant="secondary" onClick={() => onEditArea(area)}>
-          <Edit2 className="h-4 w-4" />
+          <Edit2 className="mr-2 h-4 w-4" />
           Edit Area
         </Button>
       </div>
@@ -194,7 +194,7 @@ export function FacilityAreaDetail({
               size="sm"
               onClick={() => onBulkAddTasks(area)}
             >
-              <ListPlus className="h-4 w-4" />
+              <ListPlus className="mr-1 h-4 w-4" />
               Add Tasks
             </Button>
             <Button

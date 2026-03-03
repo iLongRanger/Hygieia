@@ -43,7 +43,7 @@ export function FacilityAreas({
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold text-white">Areas (0)</h2>
           <Button size="sm" onClick={onAddArea}>
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             Add Area
           </Button>
         </div>
@@ -67,7 +67,7 @@ export function FacilityAreas({
           </p>
         </div>
         <Button size="sm" onClick={onAddArea}>
-          <Plus className="h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" />
           Add Area
         </Button>
       </div>

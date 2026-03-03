@@ -68,12 +68,17 @@ export function AreaCard({
       {/* Top section */}
       <div>
         <div className="font-medium text-white">
-          {area.name ?? area.areaType.name}
+          {area.name || area.areaType.name}
         </div>
-        <div className="text-sm text-gray-400">
-          {area.areaType.name}
-          {quantitySuffix}
-        </div>
+        {(area.name && area.name !== area.areaType.name) && (
+          <div className="text-sm text-gray-400">
+            {area.areaType.name}
+            {quantitySuffix}
+          </div>
+        )}
+        {(!area.name || area.name === area.areaType.name) && area.quantity > 1 && (
+          <div className="text-sm text-gray-400">{quantitySuffix.trim()}</div>
+        )}
       </div>
 
       {/* Middle section */}
