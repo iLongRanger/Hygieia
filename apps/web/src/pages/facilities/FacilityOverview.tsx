@@ -26,6 +26,7 @@ export function FacilityOverview({
   activeAreasCount,
   activeTasksCount,
 }: FacilityOverviewProps): React.JSX.Element {
+  const DEFAULT_GEOFENCE_RADIUS_METERS = 100;
   const addressRecord = (facility.address || {}) as Record<string, unknown>;
   const scheduleRecord =
     (addressRecord.serviceSchedule as Record<string, unknown> | undefined) ||
@@ -49,6 +50,24 @@ export function FacilityOverview({
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleString();
   };
+
+  const toNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const latitude = toNumber(addressRecord.latitude) ?? toNumber(addressRecord.lat);
+  const longitude = toNumber(addressRecord.longitude) ?? toNumber(addressRecord.lng);
+  const geofenceRadiusMeters = (() => {
+    const storedRadius = toNumber(addressRecord.geofenceRadiusMeters);
+    if (storedRadius && storedRadius > 0) return storedRadius;
+    if (latitude !== null && longitude !== null) return DEFAULT_GEOFENCE_RADIUS_METERS;
+    return null;
+  })();
 
   const frequency =
     (scheduleRecord?.frequency as string | undefined) ||
@@ -179,8 +198,8 @@ export function FacilityOverview({
           <div>
             <div className="text-xs text-gray-500 uppercase tracking-wide">Geofence Radius</div>
             <div className="text-sm text-white">
-              {addressRecord.geofenceRadiusMeters
-                ? `${Number(addressRecord.geofenceRadiusMeters).toLocaleString()} m`
+              {geofenceRadiusMeters
+                ? `${geofenceRadiusMeters.toLocaleString()} m`
                 : 'Not specified'}
             </div>
           </div>

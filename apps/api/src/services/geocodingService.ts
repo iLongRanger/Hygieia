@@ -5,6 +5,8 @@ interface GeocodedAddress {
   longitude: number;
 }
 
+const FALLBACK_GEOFENCE_RADIUS_METERS = 100;
+
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim()) {
@@ -40,6 +42,29 @@ function hasCoordinates(address: Record<string, unknown>): boolean {
   return lat !== null && lng !== null;
 }
 
+function resolveDefaultGeofenceRadiusMeters(): number {
+  const fromEnv = toNumber(process.env.DEFAULT_GEOFENCE_RADIUS_METERS);
+  if (fromEnv !== null && fromEnv > 0) return fromEnv;
+  return FALLBACK_GEOFENCE_RADIUS_METERS;
+}
+
+function hasGeofenceRadius(address: Record<string, unknown>): boolean {
+  const radius = toNumber(address.geofenceRadiusMeters);
+  return radius !== null && radius > 0;
+}
+
+function withDefaultGeofenceRadius(
+  address: Record<string, unknown>
+): Record<string, unknown> {
+  if (!hasCoordinates(address) || hasGeofenceRadius(address)) {
+    return address;
+  }
+  return {
+    ...address,
+    geofenceRadiusMeters: resolveDefaultGeofenceRadiusMeters(),
+  };
+}
+
 function geocodingEnabled(): boolean {
   if (process.env.NODE_ENV === 'test') return false;
   return process.env.GEOCODING_ENABLED !== 'false';
@@ -48,11 +73,11 @@ function geocodingEnabled(): boolean {
 export async function geocodeAddressIfNeeded(
   rawAddress: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  if (!geocodingEnabled()) return rawAddress;
-  if (hasCoordinates(rawAddress)) return rawAddress;
+  if (!geocodingEnabled()) return withDefaultGeofenceRadius(rawAddress);
+  if (hasCoordinates(rawAddress)) return withDefaultGeofenceRadius(rawAddress);
 
   const query = buildQuery(rawAddress);
-  if (!query) return rawAddress;
+  if (!query) return withDefaultGeofenceRadius(rawAddress);
 
   try {
     const userAgent =
@@ -74,16 +99,18 @@ export async function geocodeAddressIfNeeded(
     const latitude = first ? toNumber(first.lat) : null;
     const longitude = first ? toNumber(first.lon) : null;
 
-    if (latitude === null || longitude === null) return rawAddress;
+    if (latitude === null || longitude === null) {
+      return withDefaultGeofenceRadius(rawAddress);
+    }
 
     const geocoded: GeocodedAddress = { latitude, longitude };
-    return {
+    return withDefaultGeofenceRadius({
       ...rawAddress,
       ...geocoded,
       geocodingProvider: 'nominatim',
       geocodedAt: new Date().toISOString(),
-    };
+    });
   } catch {
-    return rawAddress;
+    return withDefaultGeofenceRadius(rawAddress);
   }
 }
