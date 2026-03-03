@@ -196,6 +196,7 @@ export async function sendContractExpiryReminders(
   daysThreshold: number = 30
 ): Promise<number> {
   const now = new Date();
+  const startOfToday = atUtcStartOfDay(now);
   const thresholdDate = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -221,6 +222,30 @@ export async function sendContractExpiryReminders(
 
   if (expiringContracts.length === 0) return 0;
 
+  const sentTodayActivities = await prisma.contractActivity.findMany({
+    where: {
+      contractId: { in: expiringContracts.map((contract) => contract.id) },
+      action: 'expiry_reminder_sent',
+      createdAt: { gte: startOfToday },
+    },
+    select: {
+      contractId: true,
+      metadata: true,
+    },
+  });
+  const sentTodayKeys = new Set(
+    sentTodayActivities.map((activity) => {
+      const days =
+        activity.metadata &&
+        typeof activity.metadata === 'object' &&
+        !Array.isArray(activity.metadata) &&
+        typeof (activity.metadata as Record<string, unknown>).daysUntilExpiry === 'number'
+          ? (activity.metadata as Record<string, unknown>).daysUntilExpiry
+          : null;
+      return `${activity.contractId}:${days ?? 'unknown'}`;
+    })
+  );
+
   const branding = await getBrandingSafe();
   let sent = 0;
 
@@ -233,6 +258,9 @@ export async function sendContractExpiryReminders(
 
     // Skip if not at a meaningful reminder interval (30, 14, 7 days)
     if (![30, 14, 7, 3, 1].includes(daysUntilExpiry)) continue;
+
+    const reminderKey = `${contract.id}:${daysUntilExpiry}`;
+    if (sentTodayKeys.has(reminderKey)) continue;
 
     try {
       const emailSubject = buildContractRenewalReminderSubject(
@@ -264,6 +292,15 @@ export async function sendContractExpiryReminders(
         emailSubject,
         emailHtml,
       });
+      await logContractActivity({
+        contractId: contract.id,
+        action: 'expiry_reminder_sent',
+        metadata: {
+          channel: 'automatic',
+          daysUntilExpiry,
+        },
+      });
+      sentTodayKeys.add(reminderKey);
 
       sent++;
     } catch (error) {
@@ -289,7 +326,6 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
   }
 
   const now = new Date();
-  const startOfToday = atUtcStartOfDay(now);
   const reminderEveryDays = parsePositiveInt(
     process.env.PROPOSAL_REMINDER_INTERVAL_DAYS,
     3
@@ -333,15 +369,16 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
 
   if (proposals.length === 0) return 0;
 
-  const remindedToday = await prisma.proposalActivity.findMany({
+  const alreadyReminded = await prisma.proposalActivity.findMany({
     where: {
       proposalId: { in: proposals.map((proposal) => proposal.id) },
       action: 'reminder_sent',
-      createdAt: { gte: startOfToday },
     },
     select: { proposalId: true },
   });
-  const remindedTodaySet = new Set(remindedToday.map((activity) => activity.proposalId));
+  const alreadyRemindedSet = new Set(
+    alreadyReminded.map((activity) => activity.proposalId)
+  );
 
   const adminUserIds = await getAdminUserIds();
   const branding = await getBrandingSafe();
@@ -349,7 +386,7 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
 
   for (const proposal of proposals) {
     if (proposal.validUntil && proposal.validUntil < now) continue;
-    if (remindedTodaySet.has(proposal.id)) continue;
+    if (alreadyRemindedSet.has(proposal.id)) continue;
 
     const baseDate = proposal.viewedAt ?? proposal.sentAt;
     if (!shouldSendFollowUpReminder(baseDate, now, reminderEveryDays)) continue;
@@ -421,6 +458,7 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
         },
       });
 
+      alreadyRemindedSet.add(proposal.id);
       sent++;
     } catch (error) {
       logger.error(`Failed proposal reminder for ${proposal.id}:`, error);
@@ -442,7 +480,6 @@ export async function sendContractFollowUpReminders(): Promise<number> {
   }
 
   const now = new Date();
-  const startOfToday = atUtcStartOfDay(now);
   const reminderEveryDays = parsePositiveInt(
     process.env.CONTRACT_REMINDER_INTERVAL_DAYS,
     3
@@ -487,22 +524,23 @@ export async function sendContractFollowUpReminders(): Promise<number> {
 
   if (contracts.length === 0) return 0;
 
-  const remindedToday = await prisma.contractActivity.findMany({
+  const alreadyReminded = await prisma.contractActivity.findMany({
     where: {
       contractId: { in: contracts.map((contract) => contract.id) },
       action: 'reminder_sent',
-      createdAt: { gte: startOfToday },
     },
     select: { contractId: true },
   });
-  const remindedTodaySet = new Set(remindedToday.map((activity) => activity.contractId));
+  const alreadyRemindedSet = new Set(
+    alreadyReminded.map((activity) => activity.contractId)
+  );
 
   const adminUserIds = await getAdminUserIds();
   const branding = await getBrandingSafe();
   let sent = 0;
 
   for (const contract of contracts) {
-    if (remindedTodaySet.has(contract.id)) continue;
+    if (alreadyRemindedSet.has(contract.id)) continue;
 
     const baseDate = contract.viewedAt ?? contract.sentAt;
     if (!shouldSendFollowUpReminder(baseDate, now, reminderEveryDays)) continue;
@@ -578,6 +616,7 @@ export async function sendContractFollowUpReminders(): Promise<number> {
         },
       });
 
+      alreadyRemindedSet.add(contract.id);
       sent++;
     } catch (error) {
       logger.error(`Failed contract reminder for ${contract.id}:`, error);
