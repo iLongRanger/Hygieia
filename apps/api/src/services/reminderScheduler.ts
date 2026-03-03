@@ -30,14 +30,26 @@ async function runReminderCycle(): Promise<void> {
 
   cycleRunning = true;
   try {
-    const { sendAppointmentReminders, sendContractExpiryReminders } = await import('./reminderService');
-    const [appointmentCount, contractCount] = await Promise.all([
+    const {
+      sendAppointmentReminders,
+      sendContractExpiryReminders,
+      sendProposalFollowUpReminders,
+      sendContractFollowUpReminders,
+    } = await import('./reminderService');
+    const [
+      appointmentCount,
+      contractExpiryCount,
+      proposalFollowUpCount,
+      contractFollowUpCount,
+    ] = await Promise.all([
       sendAppointmentReminders(),
       sendContractExpiryReminders(),
+      sendProposalFollowUpReminders(),
+      sendContractFollowUpReminders(),
     ]);
 
     logger.info(
-      `Reminder cycle complete: appointmentReminders=${appointmentCount}, contractExpiryReminders=${contractCount}`
+      `Reminder cycle complete: appointmentReminders=${appointmentCount}, contractExpiryReminders=${contractExpiryCount}, proposalFollowUpReminders=${proposalFollowUpCount}, contractFollowUpReminders=${contractFollowUpCount}`
     );
   } catch (error) {
     logger.error('Reminder cycle failed', error);
