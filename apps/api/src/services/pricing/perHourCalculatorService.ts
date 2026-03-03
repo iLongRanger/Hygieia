@@ -361,8 +361,8 @@ function buildPerHourTasks(tasks: any[]): PerHourTaskContext[] {
     const template = task.taskTemplate;
     const baseMinutes = task.baseMinutesOverride ?? (template?.baseMinutes ?? 0);
     const perSqftMinutes = task.perSqftMinutesOverride ?? (template?.perSqftMinutes ?? 0);
-    const perUnitMinutes = task.perUnitMinutesOverride ?? (template?.perUnitMinutes ?? 0);
-    const perRoomMinutes = task.perRoomMinutesOverride ?? (template?.perRoomMinutes ?? 0);
+    const perUnitMinutes = template?.perUnitMinutes ?? 0;
+    const perRoomMinutes = template?.perRoomMinutes ?? 0;
 
     const templateFixtureMinutes: Record<string, number> = {};
     if (template?.fixtureMinutes) {

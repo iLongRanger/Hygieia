@@ -26,8 +26,6 @@ export interface FacilityTaskCreateInput {
   estimatedMinutes?: number | null;
   baseMinutesOverride?: number | null;
   perSqftMinutesOverride?: number | null;
-  perUnitMinutesOverride?: number | null;
-  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: string;
   conditionMultiplier?: number;
@@ -44,8 +42,6 @@ export interface FacilityTaskUpdateInput {
   estimatedMinutes?: number | null;
   baseMinutesOverride?: number | null;
   perSqftMinutesOverride?: number | null;
-  perUnitMinutesOverride?: number | null;
-  perRoomMinutesOverride?: number | null;
   isRequired?: boolean;
   cleaningFrequency?: string;
   conditionMultiplier?: number;
@@ -70,8 +66,6 @@ const facilityTaskSelect = {
   estimatedMinutes: true,
   baseMinutesOverride: true,
   perSqftMinutesOverride: true,
-  perUnitMinutesOverride: true,
-  perRoomMinutesOverride: true,
   isRequired: true,
   cleaningFrequency: true,
   conditionMultiplier: true,
@@ -257,8 +251,6 @@ async function resolveTaskTemplateForCreate(
       estimatedMinutes: input.estimatedMinutes ?? 0,
       baseMinutes: input.baseMinutesOverride ?? 0,
       perSqftMinutes: input.perSqftMinutesOverride ?? 0,
-      perUnitMinutes: input.perUnitMinutesOverride ?? 0,
-      perRoomMinutes: input.perRoomMinutesOverride ?? 0,
       instructions: input.customInstructions ?? null,
       isGlobal: false,
       facilityId: input.facilityId,
@@ -388,8 +380,6 @@ export async function createFacilityTask(input: FacilityTaskCreateInput) {
       estimatedMinutes: input.estimatedMinutes,
       baseMinutesOverride: input.baseMinutesOverride,
       perSqftMinutesOverride: input.perSqftMinutesOverride,
-      perUnitMinutesOverride: input.perUnitMinutesOverride,
-      perRoomMinutesOverride: input.perRoomMinutesOverride,
       isRequired: input.isRequired ?? true,
       cleaningFrequency: input.cleaningFrequency ?? 'daily',
       conditionMultiplier: input.conditionMultiplier ?? 1.0,
@@ -469,10 +459,6 @@ export async function updateFacilityTask(
     updateData.baseMinutesOverride = input.baseMinutesOverride;
   if (input.perSqftMinutesOverride !== undefined)
     updateData.perSqftMinutesOverride = input.perSqftMinutesOverride;
-  if (input.perUnitMinutesOverride !== undefined)
-    updateData.perUnitMinutesOverride = input.perUnitMinutesOverride;
-  if (input.perRoomMinutesOverride !== undefined)
-    updateData.perRoomMinutesOverride = input.perRoomMinutesOverride;
   if (input.isRequired !== undefined) updateData.isRequired = input.isRequired;
   if (input.cleaningFrequency !== undefined)
     updateData.cleaningFrequency = input.cleaningFrequency;

@@ -499,8 +499,8 @@ export async function getTaskTimeBreakdown(
       const template = task.taskTemplate;
       const baseMinutes = Number(task.baseMinutesOverride ?? template?.baseMinutes ?? 0);
       const perSqftMinutes = Number(task.perSqftMinutesOverride ?? template?.perSqftMinutes ?? 0);
-      const perUnitMinutes = Number(task.perUnitMinutesOverride ?? template?.perUnitMinutes ?? 0);
-      const perRoomMinutes = Number(task.perRoomMinutesOverride ?? template?.perRoomMinutes ?? 0);
+      const perUnitMinutes = Number(template?.perUnitMinutes ?? 0);
+      const perRoomMinutes = Number(template?.perRoomMinutes ?? 0);
 
       // Build fixture minutes map (template values + overrides)
       const fixtureMinutesMap: Record<string, number> = {};

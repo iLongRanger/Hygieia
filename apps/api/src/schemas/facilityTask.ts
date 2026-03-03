@@ -25,8 +25,6 @@ export const createFacilityTaskSchema = z
     estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
     baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
     perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-    perUnitMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-    perRoomMinutesOverride: z.coerce.number().min(0).optional().nullable(),
     isRequired: z.boolean().optional().default(true),
     cleaningFrequency: cleaningFrequencySchema.optional().default('daily'),
     conditionMultiplier: z.coerce
@@ -56,8 +54,6 @@ export const updateFacilityTaskSchema = z.object({
   estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
   baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
   perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-  perUnitMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-  perRoomMinutesOverride: z.coerce.number().min(0).optional().nullable(),
   isRequired: z.boolean().optional(),
   cleaningFrequency: cleaningFrequencySchema.optional(),
   conditionMultiplier: z.coerce.number().min(0.1).max(5).optional(),

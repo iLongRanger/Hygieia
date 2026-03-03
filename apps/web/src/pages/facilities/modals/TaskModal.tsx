@@ -177,32 +177,6 @@ export function TaskModal({
               })
             }
           />
-          <Input
-            label="Per Unit Minutes Override"
-            type="number"
-            min={0}
-            step="0.01"
-            value={(taskForm as CreateFacilityTaskInput).perUnitMinutesOverride ?? ''}
-            onChange={(e) =>
-              setTaskForm({
-                ...taskForm,
-                perUnitMinutesOverride: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          />
-          <Input
-            label="Per Room Minutes Override"
-            type="number"
-            min={0}
-            step="0.01"
-            value={(taskForm as CreateFacilityTaskInput).perRoomMinutesOverride ?? ''}
-            onChange={(e) =>
-              setTaskForm({
-                ...taskForm,
-                perRoomMinutesOverride: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          />
         </div>
 
         <div className="space-y-2">
