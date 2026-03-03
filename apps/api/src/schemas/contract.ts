@@ -275,6 +275,12 @@ export const listContractsQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  needsAttention: z
+    .preprocess((value) => {
+      if (value === true || value === 'true') return true;
+      if (value === false || value === 'false') return false;
+      return undefined;
+    }, z.boolean().optional()),
 });
 
 // Send Contract Schema

@@ -107,6 +107,7 @@ const ContractsList = () => {
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [needsAttention, setNeedsAttention] = useState(true);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
@@ -118,6 +119,7 @@ const ContractsList = () => {
       filters?: {
         status?: string;
         includeArchived?: boolean;
+        needsAttention?: boolean;
       }
     ) => {
       try {
@@ -128,6 +130,7 @@ const ContractsList = () => {
           search: currentSearch || undefined,
           status: (filters?.status && filters.status !== '' ? filters.status : undefined) as ContractStatus | undefined,
           includeArchived: filters?.includeArchived,
+          needsAttention: filters?.needsAttention,
           accountId: accountIdFilter,
         });
         setContracts(result.data);
@@ -144,8 +147,8 @@ const ContractsList = () => {
   );
 
   useEffect(() => {
-    fetchContracts(page, search, { status: statusFilter, includeArchived });
-  }, [page, search, statusFilter, includeArchived, fetchContracts]);
+    fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
+  }, [page, search, statusFilter, includeArchived, needsAttention, fetchContracts]);
 
   useEffect(() => {
     setPage(1);
@@ -167,7 +170,7 @@ const ContractsList = () => {
     try {
       await archiveContract(id);
       toast.success('Contract archived successfully');
-      fetchContracts(page, search, { status: statusFilter, includeArchived });
+      fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
     } catch (error) {
       toast.error('Failed to archive contract');
       console.error('Failed to archive contract:', error);
@@ -178,7 +181,7 @@ const ContractsList = () => {
     try {
       await restoreContract(id);
       toast.success('Contract restored successfully');
-      fetchContracts(page, search, { status: statusFilter, includeArchived });
+      fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
     } catch (error) {
       toast.error('Failed to restore contract');
       console.error('Failed to restore contract:', error);
@@ -191,7 +194,7 @@ const ContractsList = () => {
     try {
       await updateContractStatus(id, 'active');
       toast.success('Contract activated successfully');
-      fetchContracts(page, search, { status: statusFilter, includeArchived });
+      fetchContracts(page, search, { status: statusFilter, includeArchived, needsAttention });
     } catch (error) {
       toast.error('Failed to activate contract');
       console.error('Failed to activate contract:', error);
@@ -201,10 +204,11 @@ const ContractsList = () => {
   const clearFilters = () => {
     setStatusFilter('');
     setIncludeArchived(false);
+    setNeedsAttention(false);
     setPage(1);
   };
 
-  const hasActiveFilters = statusFilter || includeArchived;
+  const hasActiveFilters = statusFilter || includeArchived || needsAttention;
 
   const columns = [
     {
@@ -373,6 +377,17 @@ const ContractsList = () => {
               <Filter className="h-4 w-4" />
               {hasActiveFilters && <span className="ml-2">*</span>}
             </Button>
+            <Button
+              variant={needsAttention ? 'primary' : 'secondary'}
+              className="px-3"
+              onClick={() => {
+                setNeedsAttention((prev) => !prev);
+                setPage(1);
+              }}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <span className="ml-2">Needs Attention</span>
+            </Button>
           </div>
           {accountIdFilter && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
@@ -388,6 +403,13 @@ const ContractsList = () => {
               </Button>
             </div>
           )}
+          {needsAttention && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-amber-200">
+              <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1">
+                Showing contracts needing attention: unassigned team or waiting for acceptance
+              </span>
+            </div>
+          )}
 
           {showFilterPanel && (
             <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -398,6 +420,20 @@ const ContractsList = () => {
                 value={statusFilter}
                 onChange={handleStatusFilter}
               />
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={needsAttention}
+                    onChange={(e) => {
+                      setNeedsAttention(e.target.checked);
+                      setPage(1);
+                    }}
+                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  />
+                  Needs Attention Only
+                </label>
+              </div>
               <div className="flex items-end gap-2">
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input

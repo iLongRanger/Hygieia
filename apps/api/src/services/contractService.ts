@@ -13,6 +13,7 @@ export interface ContractListParams {
   page?: number;
   limit?: number;
   status?: string;
+  needsAttention?: boolean;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
@@ -251,6 +252,7 @@ export async function listContracts(
     page = 1,
     limit = 10,
     status,
+    needsAttention = false,
     accountId,
     facilityId,
     proposalId,
@@ -282,11 +284,28 @@ export async function listContracts(
     where.proposalId = proposalId;
   }
 
+  const andConditions: Prisma.ContractWhereInput[] = [];
+
   if (search) {
-    where.OR = [
-      { contractNumber: { contains: search, mode: 'insensitive' } },
-      { title: { contains: search, mode: 'insensitive' } },
-    ];
+    andConditions.push({
+      OR: [
+        { contractNumber: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search, mode: 'insensitive' } },
+      ],
+    });
+  }
+
+  if (needsAttention) {
+    andConditions.push({
+      OR: [
+        { assignedTeamId: null },
+        { status: { in: ['sent', 'viewed'] } },
+      ],
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   if (!includeArchived) {

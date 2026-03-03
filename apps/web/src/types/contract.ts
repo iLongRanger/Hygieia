@@ -240,6 +240,7 @@ export interface ListContractsParams {
   page?: number;
   limit?: number;
   status?: ContractStatus;
+  needsAttention?: boolean;
   accountId?: string;
   facilityId?: string;
   proposalId?: string;
