@@ -13,6 +13,7 @@ import {
   updateTeam,
   archiveTeam,
   restoreTeam,
+  resendSubcontractorInvite,
 } from '../../lib/teams';
 import type { Team } from '../../types/team';
 
@@ -143,6 +144,24 @@ const TeamsList = () => {
     }
   };
 
+  const handleResendInvite = async (team: Team) => {
+    if (!team.contactEmail) {
+      toast.error('Team needs a contact email before sending invite');
+      return;
+    }
+
+    try {
+      const result = await resendSubcontractorInvite(team.id);
+      if (result.emailSent) {
+        toast.success(`Invite sent to ${result.email}`);
+      } else {
+        toast.success(`Invite link generated for ${result.email}`);
+      }
+    } catch {
+      toast.error('Failed to resend subcontractor invite');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -218,6 +237,16 @@ const TeamsList = () => {
                         <Button size="sm" variant="secondary" onClick={() => openEditModal(team)}>
                           Edit
                         </Button>
+                        {!team.archivedAt && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleResendInvite(team)}
+                            disabled={!team.contactEmail}
+                          >
+                            Resend Invite
+                          </Button>
+                        )}
                         {team.archivedAt ? (
                           <Button size="sm" variant="secondary" onClick={() => handleRestore(team)}>
                             <RotateCcw className="mr-1 h-3 w-3" />

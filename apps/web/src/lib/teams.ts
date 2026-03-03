@@ -40,3 +40,14 @@ export async function restoreTeam(id: string): Promise<Team> {
   const response = await api.post(`/teams/${id}/restore`);
   return response.data.data;
 }
+
+export async function resendSubcontractorInvite(id: string): Promise<{
+  userId: string;
+  email: string;
+  setPasswordUrl: string;
+  expiresAt: string;
+  emailSent: boolean;
+}> {
+  const response = await api.post(`/teams/${id}/resend-subcontractor-invite`);
+  return response.data.data;
+}

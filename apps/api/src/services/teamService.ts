@@ -1,5 +1,9 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
+import { buildSubcontractorWelcomeHtml, buildSubcontractorWelcomeSubject } from '../templates/subcontractorWelcome';
+import { isEmailConfigured } from '../config/email';
+import { sendNotificationEmail } from './emailService';
 
 export interface TeamListParams {
   page?: number;
@@ -164,4 +168,182 @@ export async function restoreTeam(id: string) {
     },
     select: teamSelect,
   });
+}
+
+async function getBrandingSafe() {
+  try {
+    return await getGlobalSettings();
+  } catch {
+    return getDefaultBranding();
+  }
+}
+
+export async function resendSubcontractorInvite(teamId: string): Promise<{
+  userId: string;
+  email: string;
+  setPasswordUrl: string;
+  expiresAt: Date;
+  emailSent: boolean;
+}> {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: {
+      id: true,
+      name: true,
+      contactName: true,
+      contactEmail: true,
+      users: {
+        select: {
+          id: true,
+          email: true,
+          roles: {
+            select: {
+              role: {
+                select: {
+                  key: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!team) {
+    throw new Error('Team not found');
+  }
+
+  const contactEmail = team.contactEmail?.trim().toLowerCase();
+  if (!contactEmail) {
+    throw new Error('Team contact email is required to send an invite');
+  }
+
+  let subRole = await prisma.role.findUnique({ where: { key: 'subcontractor' } });
+  if (!subRole) {
+    subRole = await prisma.role.create({
+      data: {
+        key: 'subcontractor',
+        label: 'Subcontractor',
+        permissions: {
+          dashboard_read: true,
+          contracts_read: true,
+          facilities_read: true,
+          jobs_read: true,
+          jobs_write: true,
+          time_tracking_read: true,
+          time_tracking_write: true,
+        },
+        isSystemRole: true,
+      },
+    });
+  }
+
+  let user =
+    team.users.find((candidate) => candidate.email.toLowerCase() === contactEmail) ||
+    team.users[0];
+
+  if (!user) {
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email: contactEmail },
+      select: {
+        id: true,
+        email: true,
+        roles: {
+          select: {
+            role: {
+              select: { key: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (existingByEmail) {
+      user = await prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: { teamId: team.id },
+        select: {
+          id: true,
+          email: true,
+          roles: {
+            select: {
+              role: {
+                select: { key: true },
+              },
+            },
+          },
+        },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: contactEmail,
+          fullName: team.contactName || team.name,
+          teamId: team.id,
+          status: 'pending',
+          roles: {
+            create: { roleId: subRole.id },
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+          roles: {
+            select: {
+              role: {
+                select: { key: true },
+              },
+            },
+          },
+        },
+      });
+    }
+  }
+
+  const hasSubcontractorRole = user.roles.some((assignment) => assignment.role.key === 'subcontractor');
+  if (!hasSubcontractorRole) {
+    await prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: subRole.id,
+      },
+    });
+  }
+
+  const tokenRecord = await prisma.passwordSetToken.create({
+    data: {
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
+    },
+  });
+
+  const baseUrl = process.env.WEB_APP_URL || 'http://localhost:5173';
+  const setPasswordUrl = `${baseUrl}/auth/set-password?token=${tokenRecord.token}`;
+
+  let emailSent = false;
+  if (isEmailConfigured()) {
+    const branding = await getBrandingSafe();
+    emailSent = await sendNotificationEmail(
+      contactEmail,
+      buildSubcontractorWelcomeSubject(),
+      buildSubcontractorWelcomeHtml(
+        {
+          teamName: team.name,
+          contractNumber: 'Portal Access',
+          facilityName: 'Hygieia',
+          setPasswordUrl,
+        },
+        branding
+      )
+    );
+  }
+
+  return {
+    userId: user.id,
+    email: contactEmail,
+    setPasswordUrl,
+    expiresAt: tokenRecord.expiresAt,
+    emailSent,
+  };
 }

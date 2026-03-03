@@ -11,6 +11,7 @@ import {
   updateTeam,
   archiveTeam,
   restoreTeam,
+  resendSubcontractorInvite,
 } from '../services/teamService';
 import { createTeamSchema, updateTeamSchema, listTeamsQuerySchema } from '../schemas/team';
 import { PERMISSIONS } from '../types';
@@ -137,6 +138,26 @@ router.post(
     try {
       const team = await restoreTeam(req.params.id);
       res.json({ data: team, message: 'Team restored successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/resend-subcontractor-invite',
+  authenticate,
+  requirePermission(PERMISSIONS.TEAMS_WRITE),
+  sensitiveRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await resendSubcontractorInvite(req.params.id);
+      res.json({
+        data: result,
+        message: result.emailSent
+          ? 'Subcontractor invite sent successfully'
+          : 'Subcontractor invite generated (email not configured)',
+      });
     } catch (error) {
       next(error);
     }

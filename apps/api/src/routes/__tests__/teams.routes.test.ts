@@ -178,6 +178,24 @@ describe('Team Routes', () => {
     expect(sensitiveLimiterCalls).toBe(1);
   });
 
+  it('POST /:id/resend-subcontractor-invite should trigger resend flow', async () => {
+    (teamService.resendSubcontractorInvite as jest.Mock).mockResolvedValue({
+      userId: 'user-1',
+      email: 'sub@example.com',
+      setPasswordUrl: 'http://localhost:5173/auth/set-password?token=test',
+      expiresAt: new Date().toISOString(),
+      emailSent: true,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/teams/team-1/resend-subcontractor-invite')
+      .expect(200);
+
+    expect(response.body.data.email).toBe('sub@example.com');
+    expect(teamService.resendSubcontractorInvite).toHaveBeenCalledWith('team-1');
+    expect(sensitiveLimiterCalls).toBe(1);
+  });
+
   it('GET endpoints should not hit sensitive limiter', async () => {
     (teamService.listTeams as jest.Mock).mockResolvedValue({
       data: [],

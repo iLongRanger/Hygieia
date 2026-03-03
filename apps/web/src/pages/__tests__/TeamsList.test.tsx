@@ -9,6 +9,7 @@ const createTeamMock = vi.fn();
 const updateTeamMock = vi.fn();
 const archiveTeamMock = vi.fn();
 const restoreTeamMock = vi.fn();
+const resendSubcontractorInviteMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 
@@ -18,6 +19,7 @@ vi.mock('../../lib/teams', () => ({
   updateTeam: (...args: unknown[]) => updateTeamMock(...args),
   archiveTeam: (...args: unknown[]) => archiveTeamMock(...args),
   restoreTeam: (...args: unknown[]) => restoreTeamMock(...args),
+  resendSubcontractorInvite: (...args: unknown[]) => resendSubcontractorInviteMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -59,6 +61,13 @@ describe('TeamsList', () => {
     updateTeamMock.mockResolvedValue({ ...activeTeam, name: 'Alpha Team Updated' });
     archiveTeamMock.mockResolvedValue({ ...activeTeam, archivedAt: new Date().toISOString() });
     restoreTeamMock.mockResolvedValue({ ...archivedTeam, archivedAt: null, isActive: true });
+    resendSubcontractorInviteMock.mockResolvedValue({
+      userId: 'user-1',
+      email: 'alice@example.com',
+      setPasswordUrl: 'http://localhost:5173/auth/set-password?token=test',
+      expiresAt: new Date().toISOString(),
+      emailSent: true,
+    });
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
@@ -156,5 +165,17 @@ describe('TeamsList', () => {
     await waitFor(() => {
       expect(restoreTeamMock).toHaveBeenCalledWith('team-2');
     });
+  });
+
+  it('resends subcontractor invite', async () => {
+    const user = userEvent.setup();
+    render(<TeamsList />);
+
+    await user.click(await screen.findByRole('button', { name: /resend invite/i }));
+
+    await waitFor(() => {
+      expect(resendSubcontractorInviteMock).toHaveBeenCalledWith('team-1');
+    });
+    expect(toastSuccessMock).toHaveBeenCalledWith('Invite sent to alice@example.com');
   });
 });
