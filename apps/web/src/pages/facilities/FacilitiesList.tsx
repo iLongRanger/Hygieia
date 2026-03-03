@@ -19,6 +19,7 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { FacilityServiceScheduleFields } from './modals/FacilityServiceScheduleFields';
 import {
   listFacilities,
   createFacility,
@@ -550,6 +551,16 @@ const FacilitiesList = () => {
           <p className="text-xs text-gray-400 -mt-2">
             Total square feet will be auto-calculated from areas you add to this facility.
           </p>
+
+          <FacilityServiceScheduleFields
+            address={formData.address}
+            onChange={(nextAddress) =>
+              setFormData({
+                ...formData,
+                address: nextAddress,
+              })
+            }
+          />
 
           <Textarea
             label="Notes"

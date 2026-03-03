@@ -1,4 +1,4 @@
-import { Building2, MapPin } from 'lucide-react';
+import { Building2, CalendarClock, MapPin } from 'lucide-react';
 
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
@@ -26,6 +26,12 @@ export function FacilityOverview({
   activeAreasCount,
   activeTasksCount,
 }: FacilityOverviewProps): React.JSX.Element {
+  const addressRecord = (facility.address || {}) as Record<string, unknown>;
+  const scheduleRecord =
+    (addressRecord.serviceSchedule as Record<string, unknown> | undefined) ||
+    (addressRecord.clientServiceSchedule as Record<string, unknown> | undefined) ||
+    undefined;
+
   const formatAddress = (address: Facility['address']): string => {
     const lines = [];
     if (address.street) lines.push(address.street);
@@ -36,6 +42,35 @@ export function FacilityOverview({
     if (address.country) lines.push(address.country);
     return lines.length > 0 ? lines.join('\n') : 'No address';
   };
+
+  const formatDateTime = (value: string | null): string => {
+    if (!value) return 'Not available';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString();
+  };
+
+  const frequency =
+    (scheduleRecord?.frequency as string | undefined) ||
+    (addressRecord.serviceFrequency as string | undefined) ||
+    'Not specified';
+
+  const scheduleDays = (
+    ((scheduleRecord?.days as string[] | undefined) ||
+      (addressRecord.serviceDays as string[] | undefined) ||
+      []) as string[]
+  )
+    .map((day) => day.charAt(0).toUpperCase() + day.slice(1))
+    .join(', ');
+
+  const allowedWindowStart =
+    (scheduleRecord?.allowedWindowStart as string | undefined) ||
+    (addressRecord.allowedWindowStart as string | undefined) ||
+    'Not specified';
+  const allowedWindowEnd =
+    (scheduleRecord?.allowedWindowEnd as string | undefined) ||
+    (addressRecord.allowedWindowEnd as string | undefined) ||
+    'Not specified';
 
   const hasDetails =
     facility.accessInstructions ||
@@ -104,6 +139,80 @@ export function FacilityOverview({
           </div>
         </div>
       </div>
+
+      <Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Account</div>
+            <div className="text-sm text-white">{facility.account.name || 'Not specified'}</div>
+            <div className="text-xs text-gray-400 capitalize">{facility.account.type || 'Not specified'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Facility Manager</div>
+            <div className="text-sm text-white">{facility.facilityManager?.fullName || 'Not assigned'}</div>
+            <div className="text-xs text-gray-400">{facility.facilityManager?.email || 'No email'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Created By</div>
+            <div className="text-sm text-white">{facility.createdByUser?.fullName || 'Unknown'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Created At</div>
+            <div className="text-sm text-white">{formatDateTime(facility.createdAt)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Last Updated</div>
+            <div className="text-sm text-white">{formatDateTime(facility.updatedAt)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Archived At</div>
+            <div className="text-sm text-white">{formatDateTime(facility.archivedAt)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Timezone</div>
+            <div className="text-sm text-white">
+              {(addressRecord.timezone as string | undefined) ||
+                (addressRecord.timeZone as string | undefined) ||
+                'Not specified'}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Geofence Radius</div>
+            <div className="text-sm text-white">
+              {addressRecord.geofenceRadiusMeters
+                ? `${Number(addressRecord.geofenceRadiusMeters).toLocaleString()} m`
+                : 'Not specified'}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Facility Sq Ft Field</div>
+            <div className="text-sm text-white">
+              {facility.squareFeet ? Number(facility.squareFeet).toLocaleString() : 'Not specified'}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarClock className="h-4 w-4 text-gold" />
+          <div className="text-sm font-medium text-white">Client Service Schedule</div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Frequency</div>
+            <div className="text-sm text-white">{frequency}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Service Window</div>
+            <div className="text-sm text-white">{allowedWindowStart} - {allowedWindowEnd}</div>
+          </div>
+          <div className="sm:col-span-2">
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Days</div>
+            <div className="text-sm text-white">{scheduleDays || 'Not specified'}</div>
+          </div>
+        </div>
+      </Card>
 
       {/* Details Section */}
       {hasDetails && (

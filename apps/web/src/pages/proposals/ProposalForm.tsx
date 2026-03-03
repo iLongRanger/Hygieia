@@ -59,7 +59,7 @@ import type {
 } from '../../types/proposal';
 import type { Account } from '../../types/crm';
 import type { Facility } from '../../types/facility';
-import type { Area, FacilityTask, CleaningFrequency } from '../../types/facility';
+import type { Area, FacilityTask } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTemplates } from '../../lib/proposalTemplates';
@@ -189,16 +189,6 @@ const DAY_ALIAS_MAP: Record<string, ServiceScheduleDay> = {
   sun: 'sunday',
 };
 
-const FACILITY_TASK_TO_SCHEDULE_FREQUENCY: Record<CleaningFrequency, ProposalScheduleFrequency | null> = {
-  daily: '7x_week',
-  weekly: '1x_week',
-  biweekly: 'biweekly',
-  monthly: 'monthly',
-  quarterly: 'quarterly',
-  annual: 'quarterly',
-  as_needed: null,
-};
-
 const mapPricingFrequencyToScheduleFrequency = (
   frequency: string
 ): ProposalScheduleFrequency => {
@@ -300,23 +290,6 @@ const extractFacilityAddressSchedule = (
     allowedWindowStart,
     allowedWindowEnd,
   };
-};
-
-const deriveScheduleFrequencyFromFacilityTasks = (
-  tasks: FacilityTask[]
-): ProposalScheduleFrequency | null => {
-  const counts = new Map<ProposalScheduleFrequency, number>();
-  for (const task of tasks) {
-    const mapped = FACILITY_TASK_TO_SCHEDULE_FREQUENCY[task.cleaningFrequency];
-    if (!mapped) continue;
-    counts.set(mapped, (counts.get(mapped) || 0) + 1);
-  }
-
-  if (!counts.size) return null;
-
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    [0][0];
 };
 
 const normalizeScheduleDays = (
@@ -729,20 +702,17 @@ const ProposalForm = () => {
   }, [formData.facilityId, formData.serviceFrequency, selectedPricingPlanId, workerCount, selectedSubcontractorTier]);
 
   const syncClientScheduleFromFacility = useCallback(
-    (tasks: FacilityTask[]) => {
+    (_tasks: FacilityTask[]) => {
       if (isEditMode || scheduleTouchedByUser || !formData.facilityId) return;
 
-      const derivedTaskFrequency = deriveScheduleFrequencyFromFacilityTasks(tasks);
       const addressDefaults = extractFacilityAddressSchedule(selectedFacility);
       const preferredFrequency =
         addressDefaults?.frequency ||
-        derivedTaskFrequency ||
         ((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
       setFormData((prev) => {
         const currentFrequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
         const nextFrequency =
           addressDefaults?.frequency ||
-          derivedTaskFrequency ||
           currentFrequency;
 
         const currentSchedule = prev.serviceSchedule || createDefaultSchedule(nextFrequency);

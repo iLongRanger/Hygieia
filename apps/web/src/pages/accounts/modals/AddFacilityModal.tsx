@@ -6,6 +6,7 @@ import { Textarea } from '../../../components/ui/Textarea';
 import { Button } from '../../../components/ui/Button';
 import { BUILDING_TYPES, FACILITY_STATUSES } from '../account-constants';
 import type { CreateFacilityInput } from '../../../types/facility';
+import { FacilityServiceScheduleFields } from '../../facilities/modals/FacilityServiceScheduleFields';
 
 interface AddFacilityModalProps {
   isOpen: boolean;
@@ -117,6 +118,15 @@ export function AddFacilityModal({
             </div>
           </div>
         </div>
+        <FacilityServiceScheduleFields
+          address={facilityFormData.address}
+          onChange={(nextAddress) =>
+            setFacilityFormData({
+              ...facilityFormData,
+              address: nextAddress,
+            })
+          }
+        />
         <Textarea
           label="Access Instructions"
           placeholder="Enter through the loading dock on the west side..."

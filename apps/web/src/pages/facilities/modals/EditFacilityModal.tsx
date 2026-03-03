@@ -5,6 +5,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { BUILDING_TYPES } from '../facility-constants';
+import { FacilityServiceScheduleFields } from './FacilityServiceScheduleFields';
 
 interface EditFacilityModalProps {
   isOpen: boolean;
@@ -106,6 +107,16 @@ export function EditFacilityModal({
             setFacilityForm({
               ...facilityForm,
               buildingType: value || null,
+            })
+          }
+        />
+
+        <FacilityServiceScheduleFields
+          address={facilityForm.address}
+          onChange={(nextAddress) =>
+            setFacilityForm({
+              ...facilityForm,
+              address: nextAddress,
             })
           }
         />
