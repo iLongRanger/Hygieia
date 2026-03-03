@@ -229,7 +229,32 @@ describe('JobForm', () => {
     render(<JobForm />);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Subcontractors cannot edit jobs');
+      expect(toast.error).toHaveBeenCalledWith('You do not have permission to manage jobs');
+      expect(navigateMock).toHaveBeenCalledWith('/jobs');
+    });
+    expect(listContractsMock).not.toHaveBeenCalled();
+  });
+
+  it('redirects cleaner users away from job form', async () => {
+    const toast = (await import('react-hot-toast')).default;
+    useAuthStore.setState({
+      user: {
+        id: 'clean-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    render(<JobForm />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('You do not have permission to manage jobs');
       expect(navigateMock).toHaveBeenCalledWith('/jobs');
     });
     expect(listContractsMock).not.toHaveBeenCalled();

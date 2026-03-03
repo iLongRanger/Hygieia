@@ -55,7 +55,7 @@ const JobForm = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const userRole = useAuthStore((state) => state.user?.role);
-  const isSubcontractor = userRole === 'subcontractor';
+  const cannotManageJobs = userRole === 'subcontractor' || userRole === 'cleaner';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,8 +127,8 @@ const JobForm = () => {
   );
 
   useEffect(() => {
-    if (isSubcontractor) {
-      toast.error('Subcontractors cannot edit jobs');
+    if (cannotManageJobs) {
+      toast.error('You do not have permission to manage jobs');
       navigate('/jobs');
       return;
     }
@@ -142,7 +142,7 @@ const JobForm = () => {
       setLoading(false);
     };
     loadData();
-  }, [fetchReferenceData, fetchJob, isEditMode, id, isSubcontractor, navigate]);
+  }, [fetchReferenceData, fetchJob, isEditMode, id, cannotManageJobs, navigate]);
 
   const handleContractChange = (contractId: string) => {
     const contract = contracts.find((c) => c.id === contractId);

@@ -205,4 +205,49 @@ describe('JobsList', () => {
     expect(screen.queryByRole('button', { name: /generate recurring/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /new job/i })).not.toBeInTheDocument();
   });
+
+  it('hides generate recurring for manager users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'mgr-1',
+        email: 'manager@example.com',
+        fullName: 'Manager User',
+        role: 'manager',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    listJobsMock.mockResolvedValue(mockPaginatedResponse([]));
+
+    render(<JobsList />);
+    await screen.findByText('No jobs found');
+
+    expect(screen.queryByRole('button', { name: /generate recurring/i })).not.toBeInTheDocument();
+  });
+
+  it('hides generate recurring for cleaner users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'clean-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    listJobsMock.mockResolvedValue(mockPaginatedResponse([]));
+
+    render(<JobsList />);
+    await screen.findByText('No jobs found');
+
+    expect(screen.queryByRole('button', { name: /generate recurring/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new job/i })).not.toBeInTheDocument();
+  });
 });

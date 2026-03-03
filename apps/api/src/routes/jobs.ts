@@ -43,6 +43,18 @@ function assertCanEditJob(req: Request): void {
   }
 }
 
+function assertCanGenerateRecurringJobs(req: Request): void {
+  if (!req.user || !['owner', 'admin'].includes(req.user.role)) {
+    throw new ValidationError('Only admin and owner can generate recurring jobs');
+  }
+}
+
+function assertCanCreateJob(req: Request): void {
+  if (!req.user || ['subcontractor', 'cleaner'].includes(req.user.role)) {
+    throw new ValidationError('Only admin, owner, and manager can create jobs');
+  }
+}
+
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
   return new ValidationError(firstError.message, {
@@ -87,7 +99,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      assertCanEditJob(req);
+      assertCanGenerateRecurringJobs(req);
       const parsed = generateJobsSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -131,7 +143,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      assertCanEditJob(req);
+      assertCanCreateJob(req);
       const parsed = createJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
