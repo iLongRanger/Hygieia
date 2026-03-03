@@ -192,7 +192,6 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     facilities_read: true,
     jobs_read: true,
     inspections_read: true,
-    inspections_write: true,
     time_tracking_read: true,
     time_tracking_write: true,
   },

@@ -40,6 +40,14 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.INSPECTIONS_READ],
   },
   {
+    path: '/inspections/new',
+    requiredPermissions: [PERMISSIONS.INSPECTIONS_WRITE],
+  },
+  {
+    path: '/inspections/:id/edit',
+    requiredPermissions: [PERMISSIONS.INSPECTIONS_WRITE],
+  },
+  {
     path: '/inspection-templates',
     requiredPermissions: [PERMISSIONS.INSPECTIONS_ADMIN],
   },

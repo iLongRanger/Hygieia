@@ -147,8 +147,8 @@ function App() {
             <Route path="/jobs/:id/edit" element={withRouteGuard('/jobs', <JobForm />)} />
             <Route path="/jobs/:id" element={withRouteGuard('/jobs', <JobDetail />)} />
             <Route path="/inspections" element={withRouteGuard('/inspections', <InspectionsList />)} />
-            <Route path="/inspections/new" element={withRouteGuard('/inspections', <InspectionForm />)} />
-            <Route path="/inspections/:id/edit" element={withRouteGuard('/inspections', <InspectionForm />)} />
+            <Route path="/inspections/new" element={withRouteGuard('/inspections/new', <InspectionForm />)} />
+            <Route path="/inspections/:id/edit" element={withRouteGuard('/inspections/:id/edit', <InspectionForm />)} />
             <Route path="/inspections/:id" element={withRouteGuard('/inspections', <InspectionDetail />)} />
             <Route
               path="/inspection-templates"

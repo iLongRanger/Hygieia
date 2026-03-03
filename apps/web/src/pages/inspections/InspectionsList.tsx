@@ -16,6 +16,8 @@ import { Select } from '../../components/ui/Select';
 import { listInspections } from '../../lib/inspections';
 import type { Inspection, InspectionStatus } from '../../types/inspection';
 import type { Pagination } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 
 const STATUSES = [
   { value: '', label: 'All Statuses' },
@@ -44,6 +46,16 @@ const getRatingVariant = (rating: string | null): 'default' | 'success' | 'warni
 
 const InspectionsList = () => {
   const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canManageTemplates =
+    hasPermission(PERMISSIONS.INSPECTIONS_ADMIN) &&
+    userRole !== 'subcontractor' &&
+    userRole !== 'cleaner';
+  const canCreateInspection =
+    hasPermission(PERMISSIONS.INSPECTIONS_WRITE) &&
+    userRole !== 'subcontractor' &&
+    userRole !== 'cleaner';
   const [searchParams, setSearchParams] = useSearchParams();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -195,13 +207,15 @@ const InspectionsList = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate('/inspection-templates')}
-          >
-            Templates
-          </Button>
+          {canManageTemplates && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/inspection-templates')}
+            >
+              Templates
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"
@@ -210,10 +224,12 @@ const InspectionsList = () => {
             <Filter className="mr-1.5 h-4 w-4" />
             Filters
           </Button>
-          <Button size="sm" onClick={() => navigate('/inspections/new')}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Inspection
-          </Button>
+          {canCreateInspection && (
+            <Button size="sm" onClick={() => navigate('/inspections/new')}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Inspection
+            </Button>
+          )}
         </div>
       </div>
 

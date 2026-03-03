@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
+import { ValidationError } from '../middleware/errorHandler';
 import {
   listInspectionsSchema,
   createInspectionSchema,
@@ -53,12 +54,17 @@ router.get(
       status, dateFrom, dateTo, minScore, maxScore, page, limit,
     } = req.query;
 
+    const scopedInspectorUserId =
+      req.user?.role === 'cleaner' || req.user?.role === 'subcontractor'
+        ? req.user.id
+        : (inspectorUserId as string);
+
     const result = await listInspections({
       facilityId: facilityId as string,
       accountId: accountId as string,
       contractId: contractId as string,
       jobId: jobId as string,
-      inspectorUserId: inspectorUserId as string,
+      inspectorUserId: scopedInspectorUserId,
       status: status as string,
       dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
       dateTo: dateTo ? new Date(dateTo as string) : undefined,
@@ -78,6 +84,13 @@ router.get(
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
     const inspection = await getInspectionById(req.params.id);
+    if (
+      req.user &&
+      (req.user.role === 'cleaner' || req.user.role === 'subcontractor') &&
+      inspection.inspectorUserId !== req.user.id
+    ) {
+      throw new ValidationError('Insufficient permissions');
+    }
     res.json({ data: inspection });
   }
 );
