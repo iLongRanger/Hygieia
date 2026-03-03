@@ -101,35 +101,6 @@ export function FacilityOverview({
 
   return (
     <div className="space-y-6">
-      {/* Facility Info Card */}
-      <Card>
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10">
-              <Building2 className="h-6 w-6 text-emerald" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">Building Type</div>
-              <div className="font-medium capitalize text-white">
-                {facility.buildingType || 'Not specified'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10">
-              <MapPin className="h-6 w-6 text-gold" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">Address</div>
-              <div className="whitespace-pre-line font-medium text-white">
-                {formatAddress(facility.address)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
       {/* Stats Strip */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-4">
@@ -158,6 +129,35 @@ export function FacilityOverview({
           </div>
         </div>
       </div>
+
+      {/* Facility Info Card */}
+      <Card>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10">
+              <Building2 className="h-6 w-6 text-emerald" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Building Type</div>
+              <div className="font-medium capitalize text-white">
+                {facility.buildingType || 'Not specified'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10">
+              <MapPin className="h-6 w-6 text-gold" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Address</div>
+              <div className="whitespace-pre-line font-medium text-white">
+                {formatAddress(facility.address)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
