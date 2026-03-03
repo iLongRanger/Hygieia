@@ -1,10 +1,16 @@
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { Textarea } from '../../../components/ui/Textarea';
+import type { Area, FacilityTask } from '../../../types/facility';
 
 interface SubmitProposalModalProps {
   isOpen: boolean;
   onClose: () => void;
+  facilityName: string;
+  accountName: string;
+  totalSquareFeet: number;
+  areas: Area[];
+  tasks: FacilityTask[];
   activeAreasCount: number;
   activeTasksCount: number;
   submitProposalNotes: string;
@@ -16,6 +22,11 @@ interface SubmitProposalModalProps {
 export function SubmitProposalModal({
   isOpen,
   onClose,
+  facilityName,
+  accountName,
+  totalSquareFeet,
+  areas,
+  tasks,
   activeAreasCount,
   activeTasksCount,
   submitProposalNotes,
@@ -23,6 +34,18 @@ export function SubmitProposalModal({
   onSubmit,
   submitting,
 }: SubmitProposalModalProps): React.JSX.Element {
+  const activeAreas = areas.filter((area) => !area.archivedAt);
+  const activeTasks = tasks.filter((task) => !task.archivedAt);
+
+  const tasksByAreaId = activeTasks.reduce<Record<string, number>>((acc, task) => {
+    const areaId = task.area?.id;
+    if (!areaId) return acc;
+    acc[areaId] = (acc[areaId] || 0) + 1;
+    return acc;
+  }, {});
+
+  const unassignedTaskCount = activeTasks.filter((task) => !task.area?.id).length;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -34,7 +57,11 @@ export function SubmitProposalModal({
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-          <div className="text-sm text-gray-400">Review Summary</div>
+          <div className="text-sm text-gray-400">Final Review</div>
+          <div className="mt-2">
+            <div className="text-white font-medium">{facilityName}</div>
+            <div className="text-xs text-gray-400">{accountName}</div>
+          </div>
           <div className="mt-2 grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs text-gray-500">Areas</div>
@@ -44,6 +71,48 @@ export function SubmitProposalModal({
               <div className="text-xs text-gray-500">Tasks</div>
               <div className="text-white font-medium">{activeTasksCount}</div>
             </div>
+            <div>
+              <div className="text-xs text-gray-500">Total Sq Ft</div>
+              <div className="text-white font-medium">
+                {totalSquareFeet.toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Unassigned Tasks</div>
+              <div className="text-white font-medium">{unassignedTaskCount}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-white/10 bg-navy-darker/30 p-4">
+          <div className="text-sm text-gray-300 mb-3">Area Overview</div>
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {activeAreas.map((area) => {
+              const areaName = area.name || area.areaType.name;
+              const areaSqFt = (Number(area.squareFeet) || 0) * (area.quantity || 1);
+              const areaTaskCount = tasksByAreaId[area.id] || 0;
+              return (
+                <div
+                  key={area.id}
+                  className="rounded-md border border-white/10 bg-black/20 px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-white">{areaName}</div>
+                      <div className="text-xs text-gray-400">
+                        {areaSqFt.toLocaleString()} sqft
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-white">{areaTaskCount} task{areaTaskCount === 1 ? '' : 's'}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {activeAreas.length === 0 && (
+              <div className="text-sm text-gray-400">No active areas found.</div>
+            )}
           </div>
           <div className="mt-3 text-sm text-gray-300">
             This submits the facility as reviewed and ready for proposal creation.

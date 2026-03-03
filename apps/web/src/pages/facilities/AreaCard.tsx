@@ -2,6 +2,7 @@ import {
   Archive,
   ClipboardList,
   Edit2,
+  Plus,
   RotateCcw,
   Ruler,
   Trash2,
@@ -17,6 +18,7 @@ interface AreaCardProps {
   taskCount: number;
   onSelect: (area: Area) => void;
   onEdit: (area: Area) => void;
+  onAddTask: (area: Area) => void;
   onArchive: (areaId: string) => void;
   onRestore: (areaId: string) => void;
   onDelete: (areaId: string) => void;
@@ -53,6 +55,7 @@ export function AreaCard({
   taskCount,
   onSelect,
   onEdit,
+  onAddTask,
   onArchive,
   onRestore,
   onDelete,
@@ -104,9 +107,24 @@ export function AreaCard({
 
       {/* Bottom section */}
       <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
-          <ClipboardList className="h-3.5 w-3.5" />
-          {taskCount} task{taskCount !== 1 ? 's' : ''}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <ClipboardList className="h-3.5 w-3.5" />
+            {taskCount} task{taskCount !== 1 ? 's' : ''}
+          </div>
+          {!isArchived && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddTask(area);
+              }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Add Task
+            </Button>
+          )}
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button

@@ -1032,6 +1032,7 @@ const FacilityDetail = () => {
             setEditingArea(null);
             setShowAreaModal(true);
           }}
+          onAddTask={openAddTaskForArea}
           onEditArea={openEditArea}
           onArchiveArea={handleArchiveArea}
           onRestoreArea={handleRestoreArea}
@@ -1138,6 +1139,11 @@ const FacilityDetail = () => {
           if (submittingForProposal) return;
           setShowSubmitProposalModal(false);
         }}
+        facilityName={facility.name}
+        accountName={facility.account.name}
+        totalSquareFeet={totalSquareFeetFromAreas}
+        areas={areas}
+        tasks={tasks}
         activeAreasCount={activeAreasCount}
         activeTasksCount={activeTasksCount}
         submitProposalNotes={submitProposalNotes}

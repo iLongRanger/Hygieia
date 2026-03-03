@@ -208,6 +208,69 @@ async function ensureNoDuplicateFacilityTask(params: {
   }
 }
 
+async function resolveTaskTemplateForCreate(
+  input: FacilityTaskCreateInput
+): Promise<string | null> {
+  if (input.taskTemplateId) {
+    return input.taskTemplateId;
+  }
+
+  const customName = input.customName?.trim();
+  if (!customName) {
+    return null;
+  }
+
+  const cleaningType = input.cleaningFrequency ?? 'daily';
+
+  const facilityTemplate = await prisma.taskTemplate.findFirst({
+    where: {
+      facilityId: input.facilityId,
+      archivedAt: null,
+      isActive: true,
+      cleaningType,
+      name: { equals: customName, mode: 'insensitive' },
+    },
+    select: { id: true },
+  });
+  if (facilityTemplate) {
+    return facilityTemplate.id;
+  }
+
+  const globalTemplate = await prisma.taskTemplate.findFirst({
+    where: {
+      isGlobal: true,
+      archivedAt: null,
+      isActive: true,
+      cleaningType,
+      name: { equals: customName, mode: 'insensitive' },
+    },
+    select: { id: true },
+  });
+  if (globalTemplate) {
+    return globalTemplate.id;
+  }
+
+  const createdTemplate = await prisma.taskTemplate.create({
+    data: {
+      name: customName,
+      cleaningType,
+      estimatedMinutes: input.estimatedMinutes ?? 0,
+      baseMinutes: input.baseMinutesOverride ?? 0,
+      perSqftMinutes: input.perSqftMinutesOverride ?? 0,
+      perUnitMinutes: input.perUnitMinutesOverride ?? 0,
+      perRoomMinutes: input.perRoomMinutesOverride ?? 0,
+      instructions: input.customInstructions ?? null,
+      isGlobal: false,
+      facilityId: input.facilityId,
+      isActive: true,
+      createdByUserId: input.createdByUserId,
+    },
+    select: { id: true },
+  });
+
+  return createdTemplate.id;
+}
+
 export async function listFacilityTasks(
   params: FacilityTaskListParams
 ): Promise<
@@ -312,12 +375,14 @@ export async function createFacilityTask(input: FacilityTaskCreateInput) {
     taskTemplateId: input.taskTemplateId,
     customName: input.customName,
   });
+  
+  const resolvedTaskTemplateId = await resolveTaskTemplateForCreate(input);
 
   return prisma.facilityTask.create({
     data: {
       facilityId: input.facilityId,
       areaId: input.areaId,
-      taskTemplateId: input.taskTemplateId,
+      taskTemplateId: resolvedTaskTemplateId,
       customName: input.customName,
       customInstructions: input.customInstructions,
       estimatedMinutes: input.estimatedMinutes,

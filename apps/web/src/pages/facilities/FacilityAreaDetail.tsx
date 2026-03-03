@@ -195,22 +195,23 @@ export function FacilityAreaDetail({
               onClick={() => onBulkAddTasks(area)}
             >
               <ListPlus className="mr-1 h-4 w-4" />
-              Add Tasks
+              Add From Templates
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onAddTask(area)}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="mr-1 h-4 w-4" />
+              Add Custom Task
             </Button>
           </div>
         </div>
 
         {tasks.length === 0 ? (
           <p className="text-center text-gray-500 py-8">
-            No tasks assigned to this area yet. Use the buttons above to add
-            tasks.
+            No tasks assigned to this area yet. Use Add Custom Task for a new
+            task, or Add From Templates for existing standards.
           </p>
         ) : (
           <div className="space-y-6">

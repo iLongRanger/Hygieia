@@ -16,6 +16,8 @@ jest.mock('../../lib/prisma', () => ({
     taskTemplate: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
     },
   },
 }));
@@ -46,6 +48,7 @@ describe('facilityTaskService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.taskTemplate.findFirst as jest.Mock).mockResolvedValue(null);
   });
 
   describe('listFacilityTasks', () => {
@@ -347,6 +350,78 @@ describe('facilityTaskService', () => {
         'Duplicate task detected for this area and frequency'
       );
       expect(prisma.facilityTask.create).not.toHaveBeenCalled();
+    });
+
+    it('should link to an existing template when custom name matches', async () => {
+      const input: facilityTaskService.FacilityTaskCreateInput = {
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        customName: 'Vacuum Floor',
+        cleaningFrequency: 'daily',
+        createdByUserId: 'user-123',
+      };
+
+      (prisma.taskTemplate.findFirst as jest.Mock)
+        .mockResolvedValueOnce({ id: 'template-existing' })
+        .mockResolvedValueOnce(null);
+      (prisma.facilityTask.create as jest.Mock).mockResolvedValue(
+        createTestFacilityTask({ taskTemplateId: 'template-existing', customName: 'Vacuum Floor' })
+      );
+
+      await facilityTaskService.createFacilityTask(input);
+
+      expect(prisma.taskTemplate.create).not.toHaveBeenCalled();
+      expect(prisma.facilityTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            taskTemplateId: 'template-existing',
+          }),
+        })
+      );
+    });
+
+    it('should create a facility template for a new custom task name', async () => {
+      const input: facilityTaskService.FacilityTaskCreateInput = {
+        facilityId: 'facility-123',
+        areaId: 'area-123',
+        customName: 'Sanitize Door Handles',
+        customInstructions: 'Use disinfectant',
+        cleaningFrequency: 'daily',
+        estimatedMinutes: 12,
+        baseMinutesOverride: 5,
+        perSqftMinutesOverride: 0.01,
+        createdByUserId: 'user-123',
+      };
+
+      (prisma.taskTemplate.findFirst as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      (prisma.taskTemplate.create as jest.Mock).mockResolvedValue({
+        id: 'template-new',
+      });
+      (prisma.facilityTask.create as jest.Mock).mockResolvedValue(
+        createTestFacilityTask({ taskTemplateId: 'template-new', customName: 'Sanitize Door Handles' })
+      );
+
+      await facilityTaskService.createFacilityTask(input);
+
+      expect(prisma.taskTemplate.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: 'Sanitize Door Handles',
+          cleaningType: 'daily',
+          facilityId: 'facility-123',
+          isGlobal: false,
+          createdByUserId: 'user-123',
+        }),
+        select: { id: true },
+      });
+      expect(prisma.facilityTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            taskTemplateId: 'template-new',
+          }),
+        })
+      );
     });
   });
 
