@@ -168,6 +168,7 @@ export const assignContractTeamSchema = z
   .object({
     teamId: z.string().uuid().nullable().optional(),
     assignedToUserId: z.string().uuid().nullable().optional(),
+    effectivityDate: z.coerce.date().nullable().optional(),
     subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
   })
   .refine((data) => !(data.teamId && data.assignedToUserId), {

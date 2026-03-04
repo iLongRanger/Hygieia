@@ -282,6 +282,7 @@ const ContractDetail = () => {
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('subcontractor_team');
   const [assigningTeam, setAssigningTeam] = useState(false);
   const [selectedTier, setSelectedTier] = useState('premium');
+  const [overrideEffectivityDate, setOverrideEffectivityDate] = useState('');
 
   // T&C inline editing state
   const [editingTerms, setEditingTerms] = useState(false);
@@ -356,6 +357,11 @@ const ContractDetail = () => {
       setSelectedTeamId(data.assignedTeam?.id || '');
       setSelectedUserId(data.assignedToUser?.id || '');
       setSelectedTier(data.subcontractorTier || 'premium');
+      setOverrideEffectivityDate(
+        data.assignmentOverrideEffectiveDate
+          ? new Date(data.assignmentOverrideEffectiveDate).toISOString().slice(0, 10)
+          : ''
+      );
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -389,22 +395,37 @@ const ContractDetail = () => {
     if (!contract) return;
 
     try {
-      setAssigningTeam(true);
       const teamId =
         assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
       const assignedToUserId =
         assignmentMode === 'internal_employee' ? selectedUserId || null : null;
+      const requiresEffectivityDate =
+        Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id) &&
+        Boolean(teamId || assignedToUserId) &&
+        (teamId !== (contract.assignedTeam?.id || null) ||
+          assignedToUserId !== (contract.assignedToUser?.id || null));
+
+      if (requiresEffectivityDate && !overrideEffectivityDate) {
+        toast.error('Effectivity date is required when overriding an existing assignment');
+        return;
+      }
+
+      setAssigningTeam(true);
       const updatedContract = await assignContractTeam(
         contract.id,
         teamId,
         assignedToUserId,
-        teamId ? selectedTier : undefined
+        teamId ? selectedTier : undefined,
+        requiresEffectivityDate ? overrideEffectivityDate : null
       );
       setContract(updatedContract);
       setActivityRefresh((n) => n + 1);
       const teamName = teams.find((t) => t.id === selectedTeamId)?.name;
       const userName = users.find((u) => u.id === selectedUserId)?.fullName;
-      if (assignmentMode === 'internal_employee') {
+      if (requiresEffectivityDate) {
+        const dateLabel = new Date(`${overrideEffectivityDate}T00:00:00`).toLocaleDateString();
+        toast.success(`Assignment override scheduled for ${dateLabel}`);
+      } else if (assignmentMode === 'internal_employee') {
         toast.success(
           assignedToUserId
             ? `${userName || 'Employee'} assigned successfully`
@@ -671,6 +692,14 @@ const ContractDetail = () => {
     terminated: 'Contract closed.',
   };
   const internalEmployeeUsers = users.filter(isInternalEmployeeOption);
+  const hasCurrentAssignment = Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id);
+  const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
+  const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
+  const assignmentWillChange =
+    selectedAssignmentTeamId !== (contract.assignedTeam?.id || null) ||
+    selectedAssignmentUserId !== (contract.assignedToUser?.id || null);
+  const hasNextAssignment = Boolean(selectedAssignmentTeamId || selectedAssignmentUserId);
+  const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentWillChange;
 
   return (
     <div className="space-y-6">
@@ -1147,6 +1176,22 @@ const ContractDetail = () => {
             <h2 className="text-lg font-semibold text-white">Assignment</h2>
           </div>
           <div className="space-y-4">
+            {contract.assignmentOverrideEffectiveDate &&
+              (contract.pendingAssignedTeam || contract.pendingAssignedToUser) && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                  A new assignee is scheduled on{' '}
+                  <span className="font-semibold">
+                    {formatDate(contract.assignmentOverrideEffectiveDate)}
+                  </span>
+                  :{' '}
+                  <span className="font-semibold">
+                    {contract.pendingAssignedToUser?.fullName ||
+                      contract.pendingAssignedTeam?.name ||
+                      'Pending assignee'}
+                  </span>
+                  . Future scheduled jobs from that date will be reassigned automatically.
+                </div>
+              )}
             <Select
               label="Assign To"
               value={assignmentMode}
@@ -1222,6 +1267,16 @@ const ContractDetail = () => {
                 }
               />
             )}
+            {shouldScheduleOverride && (
+              <Input
+                label="Effectivity Date *"
+                type="date"
+                value={overrideEffectivityDate}
+                onChange={(e) => setOverrideEffectivityDate(e.target.value)}
+                hint="Because this is an override, assignment changes take effect on this date and future scheduled jobs will be reassigned automatically."
+                disabled={contract.status !== 'active' || !canAdminContracts}
+              />
+            )}
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-400">
                 Current: {contract.assignedTeam?.name || contract.assignedToUser?.fullName || 'Unassigned'}
@@ -1231,7 +1286,7 @@ const ContractDetail = () => {
                 disabled={contract.status !== 'active' || !canAdminContracts}
                 isLoading={assigningTeam}
               >
-                Save Assignment
+                {shouldScheduleOverride ? 'Schedule Override' : 'Save Assignment'}
               </Button>
             </div>
           </div>

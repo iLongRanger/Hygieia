@@ -13,6 +13,7 @@ import {
   updateContract,
   updateContractStatus,
   assignContractTeam,
+  scheduleContractAssignmentOverride,
   signContract,
   sendContract as sendContractService,
   terminateContract,
@@ -598,23 +599,114 @@ router.patch(
         throw handleZodError(parsed.error);
       }
 
-      const contract = await assignContractTeam(
-        req.params.id,
-        parsed.data.teamId ?? null,
-        parsed.data.assignedToUserId ?? null,
-        parsed.data.subcontractorTier
+      const existingContract = await getContractById(req.params.id);
+      if (!existingContract) {
+        throw new NotFoundError('Contract not found');
+      }
+
+      const nextTeamId = parsed.data.teamId ?? null;
+      const nextAssignedToUserId = parsed.data.assignedToUserId ?? null;
+      const hasCurrentAssignment = Boolean(
+        existingContract.assignedTeam?.id || existingContract.assignedToUser?.id
       );
+      const assignmentChanged =
+        (existingContract.assignedTeam?.id ?? null) !== nextTeamId ||
+        (existingContract.assignedToUser?.id ?? null) !== nextAssignedToUserId ||
+        (nextTeamId &&
+          parsed.data.subcontractorTier !== undefined &&
+          parsed.data.subcontractorTier !== existingContract.subcontractorTier);
+      const hasNextAssignment = Boolean(nextTeamId || nextAssignedToUserId);
+      const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentChanged;
+
+      if (shouldScheduleOverride && !parsed.data.effectivityDate) {
+        throw new ValidationError(
+          'Effectivity date is required when overriding an existing contract assignment'
+        );
+      }
+
+      if (parsed.data.effectivityDate && !['owner', 'admin'].includes(req.user?.role || '')) {
+        throw new ValidationError('Only owner and admin can schedule assignment overrides');
+      }
+
+      const contract = shouldScheduleOverride
+        ? await scheduleContractAssignmentOverride(
+            req.params.id,
+            nextTeamId,
+            nextAssignedToUserId,
+            parsed.data.effectivityDate!,
+            req.user!.id,
+            parsed.data.subcontractorTier
+          )
+        : await assignContractTeam(
+            req.params.id,
+            nextTeamId,
+            nextAssignedToUserId,
+            parsed.data.subcontractorTier
+          );
 
       await logContractActivity({
         contractId: contract.id,
-        action: 'team_assigned',
+        action: shouldScheduleOverride ? 'assignment_override_scheduled' : 'team_assigned',
         performedByUserId: req.user?.id,
         metadata: {
-          teamId: parsed.data.teamId,
-          assignedToUserId: parsed.data.assignedToUserId,
+          previousTeamId: existingContract.assignedTeam?.id ?? null,
+          previousAssignedToUserId: existingContract.assignedToUser?.id ?? null,
+          teamId: parsed.data.teamId ?? null,
+          assignedToUserId: parsed.data.assignedToUserId ?? null,
+          effectivityDate: parsed.data.effectivityDate?.toISOString() ?? null,
           subcontractorTier: parsed.data.subcontractorTier,
         },
       });
+
+      if (shouldScheduleOverride) {
+        if (nextTeamId) {
+          try {
+            await ensureSubcontractorRoleForTeamUsers(nextTeamId);
+          } catch (roleSyncError) {
+            logger.error('Failed to ensure subcontractor role for team users:', roleSyncError);
+          }
+        }
+
+        const notifyUserIds = new Set<string>();
+        notifyUserIds.add(existingContract.createdByUser.id);
+        if (existingContract.account.id) {
+          const account = await prisma.account.findUnique({
+            where: { id: existingContract.account.id },
+            select: { accountManagerId: true },
+          });
+          if (account?.accountManagerId) notifyUserIds.add(account.accountManagerId);
+        }
+        if (existingContract.assignedToUser?.id) notifyUserIds.add(existingContract.assignedToUser.id);
+        if (nextAssignedToUserId) notifyUserIds.add(nextAssignedToUserId);
+
+        const oldTeamUsers = existingContract.assignedTeam?.id
+          ? await getSubcontractorTeamUsers(existingContract.assignedTeam.id)
+          : [];
+        const newTeamUsers = nextTeamId ? await getSubcontractorTeamUsers(nextTeamId) : [];
+        for (const user of [...oldTeamUsers, ...newTeamUsers]) {
+          notifyUserIds.add(user.id);
+        }
+
+        if (notifyUserIds.size > 0) {
+          await createBulkNotifications([...notifyUserIds], {
+            type: 'contract_assignment_override_scheduled',
+            title: `Assignment change scheduled for ${contract.contractNumber}`,
+            body:
+              `A new contract assignee will take effect on ${parsed.data.effectivityDate!.toLocaleDateString()}. ` +
+              'Future scheduled jobs on and after this date will be reassigned automatically.',
+            metadata: {
+              contractId: contract.id,
+              effectivityDate: parsed.data.effectivityDate!.toISOString(),
+              previousTeamId: existingContract.assignedTeam?.id ?? null,
+              previousAssignedToUserId: existingContract.assignedToUser?.id ?? null,
+              nextTeamId,
+              nextAssignedToUserId,
+            },
+          });
+        }
+
+        return res.json({ data: contract });
+      }
 
       // Send notification when an assignee is set (team or internal employee)
       if (parsed.data.teamId || parsed.data.assignedToUserId) {

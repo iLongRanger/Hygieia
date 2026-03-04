@@ -190,6 +190,28 @@ const contractSelect = {
       status: true,
     },
   },
+  pendingAssignedTeamId: true,
+  pendingAssignedToUserId: true,
+  pendingSubcontractorTier: true,
+  assignmentOverrideEffectiveDate: true,
+  assignmentOverrideSetAt: true,
+  pendingAssignedTeam: {
+    select: {
+      id: true,
+      name: true,
+      contactName: true,
+      contactEmail: true,
+      contactPhone: true,
+    },
+  },
+  pendingAssignedToUser: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      status: true,
+    },
+  },
   approvedByUser: {
     select: {
       id: true,
@@ -796,6 +818,39 @@ export async function assignContractTeam(
     throw new Error('Assign either a subcontractor team or an internal employee, not both');
   }
 
+  await validateContractAssignee(teamId, assignedToUserId);
+
+  const data: any = {
+    assignedTeamId: teamId,
+    assignedToUserId: assignedToUserId,
+    pendingAssignedTeamId: null,
+    pendingAssignedToUserId: null,
+    pendingSubcontractorTier: null,
+    assignmentOverrideEffectiveDate: null,
+    assignmentOverrideSetByUserId: null,
+    assignmentOverrideSetAt: null,
+  };
+  if (subcontractorTier !== undefined) {
+    data.subcontractorTier = subcontractorTier;
+  }
+
+  const updatedContract = await prisma.contract.update({
+    where: { id: contractId },
+    data,
+    select: contractSelect,
+  });
+
+  if (teamId || assignedToUserId) {
+    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+  }
+
+  return updatedContract;
+}
+
+async function validateContractAssignee(
+  teamId: string | null,
+  assignedToUserId: string | null
+): Promise<void> {
   if (teamId) {
     const team = await prisma.team.findUnique({
       where: { id: teamId },
@@ -824,26 +879,68 @@ export async function assignContractTeam(
       throw new Error('Assigned internal employee not found or inactive');
     }
   }
+}
 
-  const data: any = {
-    assignedTeamId: teamId,
-    assignedToUserId: assignedToUserId,
-  };
-  if (subcontractorTier !== undefined) {
-    data.subcontractorTier = subcontractorTier;
-  }
-
-  const updatedContract = await prisma.contract.update({
+export async function scheduleContractAssignmentOverride(
+  contractId: string,
+  teamId: string | null,
+  assignedToUserId: string | null,
+  effectivityDate: Date,
+  updatedByUserId: string,
+  subcontractorTier?: string
+) {
+  const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    data,
-    select: contractSelect,
+    select: {
+      id: true,
+      status: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+      subcontractorTier: true,
+    },
   });
 
-  if (teamId || assignedToUserId) {
-    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+  if (!contract) {
+    throw new Error('Contract not found');
   }
 
-  return updatedContract;
+  if (contract.status !== 'active') {
+    throw new Error('Only active contracts can have assignment overrides');
+  }
+
+  if (!teamId && !assignedToUserId) {
+    throw new Error('Assignment override requires a team or internal employee');
+  }
+
+  if (teamId && assignedToUserId) {
+    throw new Error('Assign either a subcontractor team or an internal employee, not both');
+  }
+
+  await validateContractAssignee(teamId, assignedToUserId);
+
+  const sameAssignee =
+    contract.assignedTeamId === (teamId ?? null) &&
+    contract.assignedToUserId === (assignedToUserId ?? null) &&
+    (teamId ? (subcontractorTier ?? contract.subcontractorTier) === contract.subcontractorTier : true);
+  if (sameAssignee) {
+    throw new Error('New assignment must be different from current assignment');
+  }
+
+  const dateOnlyIso = effectivityDate.toISOString().slice(0, 10);
+  const normalizedDate = new Date(`${dateOnlyIso}T00:00:00.000Z`);
+
+  return prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      pendingAssignedTeamId: teamId,
+      pendingAssignedToUserId: assignedToUserId,
+      pendingSubcontractorTier: teamId ? subcontractorTier ?? contract.subcontractorTier : null,
+      assignmentOverrideEffectiveDate: normalizedDate,
+      assignmentOverrideSetByUserId: updatedByUserId,
+      assignmentOverrideSetAt: new Date(),
+    },
+    select: contractSelect,
+  });
 }
 
 /**

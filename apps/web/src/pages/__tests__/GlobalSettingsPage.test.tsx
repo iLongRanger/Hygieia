@@ -8,6 +8,7 @@ const updateGlobalSettingsMock = vi.fn();
 const uploadCompanyLogoMock = vi.fn();
 const removeCompanyLogoMock = vi.fn();
 const getBackgroundServiceSettingsMock = vi.fn();
+const getBackgroundServiceLogsMock = vi.fn();
 const updateBackgroundServiceSettingMock = vi.fn();
 const runBackgroundServiceNowMock = vi.fn();
 
@@ -17,6 +18,7 @@ vi.mock('../../lib/globalSettings', () => ({
   uploadCompanyLogo: (...args: unknown[]) => uploadCompanyLogoMock(...args),
   removeCompanyLogo: (...args: unknown[]) => removeCompanyLogoMock(...args),
   getBackgroundServiceSettings: (...args: unknown[]) => getBackgroundServiceSettingsMock(...args),
+  getBackgroundServiceLogs: (...args: unknown[]) => getBackgroundServiceLogsMock(...args),
   updateBackgroundServiceSetting: (...args: unknown[]) =>
     updateBackgroundServiceSettingMock(...args),
   runBackgroundServiceNow: (...args: unknown[]) => runBackgroundServiceNowMock(...args),
@@ -47,6 +49,12 @@ describe('GlobalSettingsPage', () => {
     vi.clearAllMocks();
     getGlobalSettingsMock.mockResolvedValue(mockSettings);
     getBackgroundServiceSettingsMock.mockResolvedValue([]);
+    getBackgroundServiceLogsMock.mockResolvedValue({
+      reminders: [],
+      recurring_jobs_autogen: [],
+      job_alerts: [],
+      contract_assignment_overrides: [],
+    });
     updateGlobalSettingsMock.mockResolvedValue(mockSettings);
     uploadCompanyLogoMock.mockResolvedValue(mockSettings);
     removeCompanyLogoMock.mockResolvedValue(mockSettings);

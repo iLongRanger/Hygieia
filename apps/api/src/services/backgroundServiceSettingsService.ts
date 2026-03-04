@@ -18,10 +18,22 @@ export interface BackgroundServiceSettingView {
   updatedAt: Date | null;
 }
 
+export interface BackgroundServiceRunLogView {
+  id: string;
+  serviceKey: BackgroundServiceKey;
+  status: 'success' | 'failed';
+  summary: string;
+  details: Record<string, unknown>;
+  startedAt: Date;
+  endedAt: Date;
+  createdAt: Date;
+}
+
 const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
   reminders: 15 * 60 * 1000,
   recurring_jobs_autogen: 6 * 60 * 60 * 1000,
   job_alerts: 15 * 60 * 1000,
+  contract_assignment_overrides: 15 * 60 * 1000,
 };
 
 function parseIntervalMs(raw: string | undefined, fallback: number): number {
@@ -40,6 +52,9 @@ function getDefaultEnabled(serviceKey: BackgroundServiceKey): boolean {
   if (serviceKey === 'recurring_jobs_autogen') {
     return process.env.RECURRING_JOBS_AUTOGEN_ENABLED !== 'false';
   }
+  if (serviceKey === 'contract_assignment_overrides') {
+    return process.env.CONTRACT_ASSIGNMENT_OVERRIDES_ENABLED !== 'false';
+  }
   return process.env.JOB_ALERTS_ENABLED !== 'false';
 }
 
@@ -51,6 +66,12 @@ function getDefaultIntervalMs(serviceKey: BackgroundServiceKey): number {
     return parseIntervalMs(
       process.env.RECURRING_JOBS_AUTOGEN_INTERVAL_MS,
       DEFAULT_INTERVALS_MS.recurring_jobs_autogen
+    );
+  }
+  if (serviceKey === 'contract_assignment_overrides') {
+    return parseIntervalMs(
+      process.env.CONTRACT_ASSIGNMENT_OVERRIDES_INTERVAL_MS,
+      DEFAULT_INTERVALS_MS.contract_assignment_overrides
     );
   }
   return parseIntervalMs(process.env.JOB_ALERTS_INTERVAL_MS, DEFAULT_INTERVALS_MS.job_alerts);
@@ -106,10 +127,15 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'reminders',
   'recurring_jobs_autogen',
   'job_alerts',
+  'contract_assignment_overrides',
 ];
 
 function hasBackgroundServiceDelegate(): boolean {
   return Boolean((prisma as unknown as { backgroundServiceSetting?: unknown }).backgroundServiceSetting);
+}
+
+function hasBackgroundServiceLogDelegate(): boolean {
+  return Boolean((prisma as unknown as { backgroundServiceRunLog?: unknown }).backgroundServiceRunLog);
 }
 
 function shouldSkipDbReads(): boolean {
@@ -237,4 +263,80 @@ export async function markBackgroundServiceRunFailure(
     lastError: message.slice(0, 2000),
     lastErrorAt: new Date(),
   });
+}
+
+export async function createBackgroundServiceRunLog(
+  serviceKey: BackgroundServiceKey,
+  input: {
+    status: 'success' | 'failed';
+    summary: string;
+    details?: Record<string, unknown>;
+    startedAt: Date;
+    endedAt: Date;
+  }
+): Promise<void> {
+  if (!hasBackgroundServiceLogDelegate()) {
+    return;
+  }
+
+  try {
+    await prisma.backgroundServiceRunLog.create({
+      data: {
+        serviceKey,
+        status: input.status,
+        summary: input.summary,
+        details: input.details ?? {},
+        startedAt: input.startedAt,
+        endedAt: input.endedAt,
+      },
+    });
+  } catch (error) {
+    logger.warn(`Failed to create background service run log for "${serviceKey}"`, error);
+  }
+}
+
+export async function getBackgroundServiceRunLogs(limitPerService = 20): Promise<
+  Record<BackgroundServiceKey, BackgroundServiceRunLogView[]>
+> {
+  const empty: Record<BackgroundServiceKey, BackgroundServiceRunLogView[]> = {
+    reminders: [],
+    recurring_jobs_autogen: [],
+    job_alerts: [],
+    contract_assignment_overrides: [],
+  };
+
+  if (!hasBackgroundServiceLogDelegate()) {
+    return empty;
+  }
+
+  try {
+    const logs = await prisma.backgroundServiceRunLog.findMany({
+      where: { serviceKey: { in: BACKGROUND_SERVICE_KEYS } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.max(1, limitPerService) * BACKGROUND_SERVICE_KEYS.length,
+    });
+
+    for (const log of logs) {
+      const key = log.serviceKey as BackgroundServiceKey;
+      if (!empty[key]) continue;
+      if (empty[key].length >= limitPerService) continue;
+      empty[key].push({
+        id: log.id,
+        serviceKey: key,
+        status: log.status === 'failed' ? 'failed' : 'success',
+        summary: log.summary,
+        details:
+          log.details && typeof log.details === 'object' && !Array.isArray(log.details)
+            ? (log.details as Record<string, unknown>)
+            : {},
+        startedAt: log.startedAt,
+        endedAt: log.endedAt,
+        createdAt: log.createdAt,
+      });
+    }
+  } catch (error) {
+    logger.warn('Failed to load background service run logs', error);
+  }
+
+  return empty;
 }

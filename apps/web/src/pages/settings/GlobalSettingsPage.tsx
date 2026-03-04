@@ -70,6 +70,14 @@ const BACKGROUND_SERVICE_GUIDANCE: Record<
     minMinutes: 5,
     maxMinutes: 240,
   },
+  contract_assignment_overrides: {
+    label: 'Contract Assignment Overrides',
+    description:
+      'Applies scheduled contract assignee overrides on their effectivity date and reassigns future scheduled jobs.',
+    recommendedMinutes: 15,
+    minMinutes: 5,
+    maxMinutes: 240,
+  },
 };
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -88,6 +96,7 @@ const GlobalSettingsPage: React.FC = () => {
     reminders: [],
     recurring_jobs_autogen: [],
     job_alerts: [],
+    contract_assignment_overrides: [],
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -40,6 +40,16 @@ const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; co
   archived: { icon: Archive, label: 'Contract archived', color: 'text-orange-400' },
   restored: { icon: RotateCcw, label: 'Contract restored', color: 'text-blue-400' },
   team_assigned: { icon: Users, label: 'Team assigned', color: 'text-teal-400' },
+  assignment_override_scheduled: {
+    icon: Clock,
+    label: 'Assignment override scheduled',
+    color: 'text-amber-400',
+  },
+  assignment_override_applied: {
+    icon: Users,
+    label: 'Assignment override applied',
+    color: 'text-teal-400',
+  },
   initial_clean_completed: { icon: Sparkles, label: 'Initial clean completed', color: 'text-emerald-400' },
   pdf_generated: { icon: FileDown, label: 'PDF generated', color: 'text-gray-400' },
 };

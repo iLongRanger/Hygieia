@@ -235,7 +235,11 @@ describe('contractService', () => {
   });
 
   it('assignContractTeam should assign team to an active contract', async () => {
-    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'active' });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      accountId: 'account-1',
+    });
     (prisma.team.findUnique as jest.Mock).mockResolvedValue({
       id: 'team-1',
       isActive: true,
@@ -249,13 +253,23 @@ describe('contractService', () => {
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },
-        data: { assignedTeamId: 'team-1', assignedToUserId: null },
+        data: expect.objectContaining({
+          assignedTeamId: 'team-1',
+          assignedToUserId: null,
+          pendingAssignedTeamId: null,
+          pendingAssignedToUserId: null,
+          assignmentOverrideEffectiveDate: null,
+        }),
       })
     );
   });
 
   it('assignContractTeam should assign an internal employee to an active contract', async () => {
-    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'active' });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      accountId: 'account-1',
+    });
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({
       id: 'user-2',
       status: 'active',
@@ -272,7 +286,59 @@ describe('contractService', () => {
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },
-        data: { assignedTeamId: null, assignedToUserId: 'user-2' },
+        data: expect.objectContaining({
+          assignedTeamId: null,
+          assignedToUserId: 'user-2',
+          pendingAssignedTeamId: null,
+          pendingAssignedToUserId: null,
+          assignmentOverrideEffectiveDate: null,
+        }),
+      })
+    );
+  });
+
+  it('scheduleContractAssignmentOverride should save pending assignment and effectivity date', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      assignedTeamId: 'team-old',
+      assignedToUserId: null,
+      subcontractorTier: 'standard',
+    });
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      id: 'team-new',
+      isActive: true,
+      archivedAt: null,
+    });
+    (prisma.contract.update as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      pendingAssignedTeamId: 'team-new',
+      assignmentOverrideEffectiveDate: new Date('2026-03-10T00:00:00.000Z'),
+    });
+
+    const result = await contractService.scheduleContractAssignmentOverride(
+      'contract-1',
+      'team-new',
+      null,
+      new Date('2026-03-10'),
+      'owner-1',
+      'premium'
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-1',
+        pendingAssignedTeamId: 'team-new',
+      })
+    );
+    expect(prisma.contract.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'contract-1' },
+        data: expect.objectContaining({
+          pendingAssignedTeamId: 'team-new',
+          pendingAssignedToUserId: null,
+          assignmentOverrideSetByUserId: 'owner-1',
+        }),
       })
     );
   });

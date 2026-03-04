@@ -70,6 +70,11 @@ export interface Contract {
   paymentTerms: string;
   subcontractorTier?: string | null;
   subcontractorPayout?: number | null;
+  pendingAssignedTeamId?: string | null;
+  pendingAssignedToUserId?: string | null;
+  pendingSubcontractorTier?: string | null;
+  assignmentOverrideEffectiveDate?: string | null;
+  assignmentOverrideSetAt?: string | null;
   termsAndConditions?: string | null;
   termsDocumentName?: string | null;
   termsDocumentMimeType?: string | null;
@@ -139,6 +144,19 @@ export interface Contract {
     contactPhone?: string | null;
   } | null;
   assignedToUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+    status?: string;
+  } | null;
+  pendingAssignedTeam?: {
+    id: string;
+    name: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+  } | null;
+  pendingAssignedToUser?: {
     id: string;
     fullName: string;
     email: string;

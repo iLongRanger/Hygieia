@@ -49,6 +49,7 @@ import { initializeRealtime } from './lib/realtime';
 import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
 import { startJobAlertScheduler } from './services/jobAlertScheduler';
+import { startContractAssignmentOverrideScheduler } from './services/contractAssignmentOverrideScheduler';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -164,6 +165,7 @@ initializeRealtime(httpServer);
 startReminderScheduler();
 startRecurringJobScheduler();
 startJobAlertScheduler();
+startContractAssignmentOverrideScheduler();
 
 httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);

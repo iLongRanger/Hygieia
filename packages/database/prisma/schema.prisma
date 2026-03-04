@@ -52,9 +52,11 @@ model User {
   proposalVersions         ProposalVersion[] @relation("ProposalVersions")
   createdContracts         Contract[]        @relation("CreatedContracts")
   assignedContracts        Contract[]        @relation("AssignedContracts")
+  pendingAssignedContracts Contract[]        @relation("PendingAssignedContracts")
   createdTeams             Team[]            @relation("CreatedTeams")
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
+  scheduledAssignmentOverrideContracts Contract[] @relation("AssignmentOverrideSetByUser")
   contractActivities             ContractActivity[] @relation("ContractActivities")
   createdAppointments      Appointment[]     @relation("CreatedAppointments")
   assignedAppointments     Appointment[]     @relation("AssignedAppointments")
@@ -909,6 +911,12 @@ model Contract {
   proposalId     String? @map("proposal_id") @db.Uuid
   assignedTeamId String? @map("assigned_team_id") @db.Uuid
   assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
+  pendingAssignedTeamId String? @map("pending_assigned_team_id") @db.Uuid
+  pendingAssignedToUserId String? @map("pending_assigned_to_user_id") @db.Uuid
+  pendingSubcontractorTier String? @map("pending_subcontractor_tier") @db.VarChar(20)
+  assignmentOverrideEffectiveDate DateTime? @map("assignment_override_effective_date") @db.Date
+  assignmentOverrideSetByUserId String? @map("assignment_override_set_by_user_id") @db.Uuid
+  assignmentOverrideSetAt DateTime? @map("assignment_override_set_at") @db.Timestamptz(6)
 
   // Renewal tracking
   renewalNumber         Int     @default(0) @map("renewal_number")
@@ -972,6 +980,9 @@ model Contract {
   proposal                   Proposal? @relation(fields: [proposalId], references: [id])
   assignedTeam               Team?     @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
   assignedToUser             User?     @relation("AssignedContracts", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  pendingAssignedTeam        Team?     @relation("PendingAssignedTeamContracts", fields: [pendingAssignedTeamId], references: [id], onDelete: SetNull)
+  pendingAssignedToUser      User?     @relation("PendingAssignedContracts", fields: [pendingAssignedToUserId], references: [id], onDelete: SetNull)
+  assignmentOverrideSetByUser User?    @relation("AssignmentOverrideSetByUser", fields: [assignmentOverrideSetByUserId], references: [id], onDelete: SetNull)
   approvedByUser             User?     @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
   createdByUser              User      @relation("CreatedContracts", fields: [createdByUserId], references: [id])
   initialCleanCompletedByUser User?    @relation("InitialCleanCompletedContracts", fields: [initialCleanCompletedByUserId], references: [id])
@@ -983,6 +994,10 @@ model Contract {
   @@index([proposalId])
   @@index([assignedTeamId])
   @@index([assignedToUserId])
+  @@index([pendingAssignedTeamId])
+  @@index([pendingAssignedToUserId])
+  @@index([assignmentOverrideEffectiveDate])
+  @@index([assignmentOverrideSetByUserId])
   @@index([startDate])
   @@index([endDate])
   @@index([publicToken])
@@ -1030,6 +1045,7 @@ model Team {
   createdByUser User          @relation("CreatedTeams", fields: [createdByUserId], references: [id], onDelete: Restrict)
   users         User[]
   contracts     Contract[]    @relation("AssignedTeamContracts")
+  pendingContracts Contract[] @relation("PendingAssignedTeamContracts")
   appointments  Appointment[] @relation("AssignedTeamAppointments")
   jobs          Job[]         @relation("AssignedTeamJobs")
 
@@ -1698,4 +1714,19 @@ model BackgroundServiceSetting {
   @@index([serviceKey])
   @@index([enabled])
   @@map("background_service_settings")
+}
+
+model BackgroundServiceRunLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  serviceKey String   @map("service_key") @db.VarChar(50)
+  status     String   @db.VarChar(20)
+  summary    String   @db.Text
+  details    Json     @default("{}") @db.JsonB
+  startedAt  DateTime @map("started_at") @db.Timestamptz(6)
+  endedAt    DateTime @map("ended_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([serviceKey, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("background_service_run_logs")
 }

@@ -111,12 +111,14 @@ export async function assignContractTeam(
   id: string,
   teamId: string | null,
   assignedToUserId?: string | null,
-  subcontractorTier?: string
+  subcontractorTier?: string,
+  effectivityDate?: string | null
 ): Promise<Contract> {
   const response = await api.patch(`/contracts/${id}/team`, {
     teamId,
     assignedToUserId: assignedToUserId ?? null,
     subcontractorTier,
+    effectivityDate: effectivityDate ?? null,
   });
   return response.data.data;
 }

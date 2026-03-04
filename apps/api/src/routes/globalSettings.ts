@@ -17,6 +17,7 @@ import {
 import {
   getBackgroundServiceSetting,
   getBackgroundServiceSettings,
+  getBackgroundServiceRunLogs,
   updateBackgroundServiceSetting,
 } from '../services/backgroundServiceSettingsService';
 import { reloadReminderScheduler, runReminderCycleNow } from '../services/reminderScheduler';
@@ -25,6 +26,10 @@ import {
   runRecurringJobCycleNow,
 } from '../services/recurringJobScheduler';
 import { reloadJobAlertScheduler, runJobAlertCycleNow } from '../services/jobAlertScheduler';
+import {
+  reloadContractAssignmentOverrideScheduler,
+  runContractAssignmentOverrideCycleNow,
+} from '../services/contractAssignmentOverrideScheduler';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -40,6 +45,10 @@ async function reloadSchedulerForService(serviceKey: string): Promise<void> {
   }
   if (serviceKey === 'job_alerts') {
     await reloadJobAlertScheduler();
+    return;
+  }
+  if (serviceKey === 'contract_assignment_overrides') {
+    await reloadContractAssignmentOverrideScheduler();
   }
 }
 
@@ -54,6 +63,10 @@ async function runServiceNow(serviceKey: string): Promise<void> {
   }
   if (serviceKey === 'job_alerts') {
     await runJobAlertCycleNow();
+    return;
+  }
+  if (serviceKey === 'contract_assignment_overrides') {
+    await runContractAssignmentOverrideCycleNow();
   }
 }
 
@@ -145,6 +158,22 @@ router.get(
     try {
       const settings = await getBackgroundServiceSettings();
       res.json({ data: settings });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/background-services/logs',
+  authenticate,
+  requirePermission(PERMISSIONS.SETTINGS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rawLimit = Number(req.query.limit ?? 10);
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 50) : 10;
+      const logs = await getBackgroundServiceRunLogs(limit);
+      res.json({ data: logs });
     } catch (error) {
       next(error);
     }
