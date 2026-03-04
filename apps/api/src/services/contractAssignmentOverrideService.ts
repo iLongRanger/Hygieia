@@ -15,6 +15,14 @@ function atUtcStartOfDay(value: Date): Date {
   return new Date(`${isoDate}T00:00:00.000Z`);
 }
 
+function isMissingOverrideColumnsError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const maybeError = error as { code?: string; meta?: { column?: string } };
+  if (maybeError.code !== 'P2022') return false;
+  const column = maybeError.meta?.column || '';
+  return column.includes('contracts.pending_assigned_') || column.includes('contracts.assignment_override_');
+}
+
 async function getTeamUserIds(teamId: string | null): Promise<string[]> {
   if (!teamId) return [];
 
@@ -33,37 +41,52 @@ export async function runContractAssignmentOverrideCycle(
   anchorDate: Date = new Date()
 ): Promise<ContractAssignmentOverrideCycleResult> {
   const todayUtc = atUtcStartOfDay(anchorDate);
-
-  const dueContracts = await prisma.contract.findMany({
-    where: {
-      archivedAt: null,
-      status: 'active',
-      assignmentOverrideEffectiveDate: { lte: todayUtc },
-      OR: [
-        { pendingAssignedTeamId: { not: null } },
-        { pendingAssignedToUserId: { not: null } },
-      ],
-    },
-    select: {
-      id: true,
-      contractNumber: true,
-      title: true,
-      account: { select: { name: true, accountManagerId: true } },
-      createdByUserId: true,
-      assignedTeamId: true,
-      assignedToUserId: true,
-      subcontractorTier: true,
-      pendingAssignedTeamId: true,
-      pendingAssignedToUserId: true,
-      pendingSubcontractorTier: true,
-      assignmentOverrideEffectiveDate: true,
-      assignmentOverrideSetByUserId: true,
-      pendingAssignedTeam: { select: { id: true, name: true } },
-      pendingAssignedToUser: { select: { id: true, fullName: true } },
-      assignedTeam: { select: { id: true, name: true } },
-      assignedToUser: { select: { id: true, fullName: true } },
-    },
-  });
+  let dueContracts;
+  try {
+    dueContracts = await prisma.contract.findMany({
+      where: {
+        archivedAt: null,
+        status: 'active',
+        assignmentOverrideEffectiveDate: { lte: todayUtc },
+        OR: [
+          { pendingAssignedTeamId: { not: null } },
+          { pendingAssignedToUserId: { not: null } },
+        ],
+      },
+      select: {
+        id: true,
+        contractNumber: true,
+        title: true,
+        account: { select: { name: true, accountManagerId: true } },
+        createdByUserId: true,
+        assignedTeamId: true,
+        assignedToUserId: true,
+        subcontractorTier: true,
+        pendingAssignedTeamId: true,
+        pendingAssignedToUserId: true,
+        pendingSubcontractorTier: true,
+        assignmentOverrideEffectiveDate: true,
+        assignmentOverrideSetByUserId: true,
+        pendingAssignedTeam: { select: { id: true, name: true } },
+        pendingAssignedToUser: { select: { id: true, fullName: true } },
+        assignedTeam: { select: { id: true, name: true } },
+        assignedToUser: { select: { id: true, fullName: true } },
+      },
+    });
+  } catch (error) {
+    if (isMissingOverrideColumnsError(error)) {
+      logger.warn(
+        'Contract assignment override cycle skipped: pending override columns are not available yet. Run DB migrations.'
+      );
+      return {
+        checked: 0,
+        applied: 0,
+        reassignedJobs: 0,
+        notifications: 0,
+      };
+    }
+    throw error;
+  }
 
   let applied = 0;
   let reassignedJobs = 0;

@@ -249,7 +249,9 @@ describe('contractService', () => {
 
     const result = await contractService.assignContractTeam('contract-1', 'team-1');
 
-    expect(result).toEqual({ id: 'contract-1', assignedTeam: { id: 'team-1' } });
+    expect(result).toEqual(
+      expect.objectContaining({ id: 'contract-1', assignedTeam: { id: 'team-1' } })
+    );
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },
@@ -282,7 +284,13 @@ describe('contractService', () => {
 
     const result = await contractService.assignContractTeam('contract-1', null, 'user-2');
 
-    expect(result).toEqual({ id: 'contract-1', assignedToUser: { id: 'user-2' }, assignedTeam: null });
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-1',
+        assignedToUser: { id: 'user-2' },
+        assignedTeam: null,
+      })
+    );
     expect(prisma.contract.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'contract-1' },

@@ -230,15 +230,43 @@ const contractSelect = {
 
 const {
   assignedToUser: _assignedToUserOmitted,
+  pendingAssignedTeamId: _pendingAssignedTeamIdOmitted,
+  pendingAssignedToUserId: _pendingAssignedToUserIdOmitted,
+  pendingSubcontractorTier: _pendingSubcontractorTierOmitted,
+  assignmentOverrideEffectiveDate: _assignmentOverrideEffectiveDateOmitted,
+  assignmentOverrideSetAt: _assignmentOverrideSetAtOmitted,
+  pendingAssignedTeam: _pendingAssignedTeamOmitted,
+  pendingAssignedToUser: _pendingAssignedToUserOmitted,
   ...contractSelectWithoutAssignedUser
 } = contractSelect;
 
-function isMissingAssignedToUserColumnError(error: unknown): boolean {
+function isLegacyContractColumnError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return (
-    error.message.includes('contracts.assigned_to_user_id') &&
-    error.message.includes('does not exist')
-  );
+  const missingColumns = [
+    'contracts.assigned_to_user_id',
+    'contracts.pending_assigned_team_id',
+    'contracts.pending_assigned_to_user_id',
+    'contracts.pending_subcontractor_tier',
+    'contracts.assignment_override_effective_date',
+    'contracts.assignment_override_set_at',
+  ];
+  return error.message.includes('does not exist') && missingColumns.some((c) => error.message.includes(c));
+}
+
+function withLegacyPendingDefaults<T extends Record<string, any>>(contract: T) {
+  return {
+    ...contract,
+    assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
+    pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
+    pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
+    pendingSubcontractorTier:
+      'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
+    assignmentOverrideEffectiveDate:
+      'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
+    assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
+    pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
+    pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
+  };
 }
 
 /**
@@ -374,7 +402,7 @@ export async function listContracts(
       take: limit,
     });
   } catch (error) {
-    if (!isMissingAssignedToUserColumnError(error)) {
+    if (!isLegacyContractColumnError(error)) {
       throw error;
     }
 
@@ -388,9 +416,19 @@ export async function listContracts(
   }
 
   return {
-    data: contracts.map((contract) =>
-      'assignedToUser' in contract ? contract : { ...contract, assignedToUser: null }
-    ),
+    data: contracts.map((contract) => ({
+      ...contract,
+      assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
+      pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
+      pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
+      pendingSubcontractorTier:
+        'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
+      assignmentOverrideEffectiveDate:
+        'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
+      assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
+      pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
+      pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
+    })),
     pagination: {
       page,
       limit,
@@ -404,10 +442,21 @@ export async function listContracts(
  * Get contract by ID
  */
 export async function getContractById(id: string) {
-  const contract = await prisma.contract.findUnique({
-    where: { id },
-    select: contractSelect,
-  });
+  let contract;
+  try {
+    contract = await prisma.contract.findUnique({
+      where: { id },
+      select: contractSelect,
+    });
+  } catch (error) {
+    if (!isLegacyContractColumnError(error)) {
+      throw error;
+    }
+    contract = await prisma.contract.findUnique({
+      where: { id },
+      select: contractSelectWithoutAssignedUser,
+    });
+  }
 
   if (!contract) {
     throw new Error('Contract not found');
@@ -680,7 +729,19 @@ export async function updateContractStatus(
     await autoSetLeadStatusForAccount(contract.account.id, 'lost');
   }
 
-  return contract;
+  return {
+    ...contract,
+    assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
+    pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
+    pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
+    pendingSubcontractorTier:
+      'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
+    assignmentOverrideEffectiveDate:
+      'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
+    assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
+    pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
+    pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
+  };
 }
 
 export async function getContractsSummary(
@@ -697,9 +758,6 @@ export async function getContractsSummary(
 
   if (options?.userRole === 'subcontractor' && options?.userTeamId) {
     where.assignedTeamId = options.userTeamId;
-  }
-  if (options?.userRole === 'cleaner' && options?.userId) {
-    where.assignedToUserId = options.userId;
   }
   if (options?.userRole === 'cleaner' && options?.userId) {
     where.assignedToUserId = options.userId;
@@ -834,17 +892,38 @@ export async function assignContractTeam(
     data.subcontractorTier = subcontractorTier;
   }
 
-  const updatedContract = await prisma.contract.update({
-    where: { id: contractId },
-    data,
-    select: contractSelect,
-  });
+  let updatedContract;
+  try {
+    updatedContract = await prisma.contract.update({
+      where: { id: contractId },
+      data,
+      select: contractSelect,
+    });
+  } catch (error) {
+    if (!isLegacyContractColumnError(error)) {
+      throw error;
+    }
+
+    const legacyData: Record<string, unknown> = {
+      assignedTeamId: teamId,
+      assignedToUserId: assignedToUserId,
+    };
+    if (subcontractorTier !== undefined) {
+      legacyData.subcontractorTier = subcontractorTier;
+    }
+
+    updatedContract = await prisma.contract.update({
+      where: { id: contractId },
+      data: legacyData,
+      select: contractSelectWithoutAssignedUser,
+    });
+  }
 
   if (teamId || assignedToUserId) {
     await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
   }
 
-  return updatedContract;
+  return withLegacyPendingDefaults(updatedContract);
 }
 
 async function validateContractAssignee(
