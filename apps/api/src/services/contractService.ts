@@ -255,7 +255,7 @@ async function generateContractNumber(): Promise<string> {
  */
 export async function listContracts(
   params: ContractListParams,
-  options?: { userRole?: string; userTeamId?: string }
+  options?: { userRole?: string; userTeamId?: string; userId?: string }
 ): Promise<PaginatedResult<any>> {
   const {
     page = 1,
@@ -663,7 +663,7 @@ export async function updateContractStatus(
 
 export async function getContractsSummary(
   params: ContractSummaryParams,
-  options?: { userRole?: string; userTeamId?: string }
+  options?: { userRole?: string; userTeamId?: string; userId?: string }
 ) {
   const {
     accountId,
@@ -675,6 +675,12 @@ export async function getContractsSummary(
 
   if (options?.userRole === 'subcontractor' && options?.userTeamId) {
     where.assignedTeamId = options.userTeamId;
+  }
+  if (options?.userRole === 'cleaner' && options?.userId) {
+    where.assignedToUserId = options.userId;
+  }
+  if (options?.userRole === 'cleaner' && options?.userId) {
+    where.assignedToUserId = options.userId;
   }
 
   if (accountId) {

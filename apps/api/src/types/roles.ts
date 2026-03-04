@@ -207,6 +207,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
   cleaner: {
     work_orders: true,
     own_tasks_only: true,
+    contracts_read: true,
     facilities_read: true,
     jobs_read: true,
     inspections_read: true,

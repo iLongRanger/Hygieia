@@ -187,6 +187,7 @@ router.get(
       const result = await listContracts(parsed.data, {
         userRole: req.user?.role,
         userTeamId: req.user?.teamId,
+        userId: req.user?.id,
       });
 
       if (req.user?.role === 'subcontractor') {
@@ -223,6 +224,7 @@ router.get(
       const summary = await getContractsSummary(parsed.data, {
         userRole: req.user?.role,
         userTeamId: req.user?.teamId,
+        userId: req.user?.id,
       });
 
       res.json({ data: summary });
@@ -310,7 +312,7 @@ router.get(
         throw new NotFoundError('Contract not found');
       }
 
-      if (req.user?.role === 'subcontractor') {
+      if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
         const facilityId = contract.facility?.id;
         const [facilityAreas, facilityTasks] = facilityId
           ? await Promise.all([
@@ -338,6 +340,7 @@ router.get(
             ])
           : [[], []];
 
+        const isSubcontractor = req.user?.role === 'subcontractor';
         const payout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
         const { monthlyValue, totalValue, ...safeContract } = contract as any;
         const safeFacility = safeContract.facility
@@ -364,7 +367,7 @@ router.get(
           data: {
             ...safeContract,
             facility: safeFacility,
-            subcontractorPayout: payout,
+            ...(isSubcontractor ? { subcontractorPayout: payout } : {}),
           },
         });
       }

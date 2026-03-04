@@ -136,6 +136,17 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const isInternalEmployeeOption = (user: SystemUser): boolean => {
+  const primaryRole = typeof user.role === 'string' ? user.role.toLowerCase() : '';
+  if (primaryRole === 'subcontractor') return false;
+
+  const roleKeys = (user.roles || [])
+    .map((assignment) => assignment.role?.key?.toLowerCase())
+    .filter((value): value is string => Boolean(value));
+
+  return !roleKeys.includes('subcontractor');
+};
+
 const formatShortDate = (date: string | null | undefined) => {
   if (!date) return '';
   return new Date(date).toLocaleDateString('en-US', {
@@ -291,6 +302,7 @@ const ContractDetail = () => {
   const userRole = useAuthStore((state) => state.user?.role);
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const isSubcontractor = userRole === 'subcontractor';
+  const isLimitedContractViewer = userRole === 'subcontractor' || userRole === 'cleaner';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
@@ -314,12 +326,12 @@ const ContractDetail = () => {
   useEffect(() => {
     if (id) {
       fetchContract(id);
-      if (!isSubcontractor) {
+      if (!isLimitedContractViewer) {
         fetchTeams();
         fetchUsers();
       }
     }
-  }, [id, isSubcontractor]);
+  }, [id, isLimitedContractViewer]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -658,6 +670,7 @@ const ContractDetail = () => {
     expired: 'Renew this contract or create a new term.',
     terminated: 'Contract closed.',
   };
+  const internalEmployeeUsers = users.filter(isInternalEmployeeOption);
 
   return (
     <div className="space-y-6">
@@ -687,7 +700,7 @@ const ContractDetail = () => {
           </div>
           <p className="text-gray-400">{contract.title}</p>
         </div>
-        {!isSubcontractor && (
+        {!isLimitedContractViewer && (
           <div className="flex items-center gap-2">
             {/* Primary actions based on status */}
             {contract.status === 'draft' && canWriteContracts && (
@@ -902,7 +915,7 @@ const ContractDetail = () => {
                     {contract.facility.buildingType.replace(/_/g, ' ')}
                   </div>
                 )}
-                {isSubcontractor &&
+                {isLimitedContractViewer &&
                   (contract.facility.accessInstructions ||
                     contract.facility.parkingInfo ||
                     contract.facility.specialRequirements ||
@@ -947,7 +960,7 @@ const ContractDetail = () => {
                   )}
               </div>
             )}
-            {contract.proposal && !isSubcontractor && (
+            {contract.proposal && !isLimitedContractViewer && (
               <div>
                 <div className="text-sm text-gray-400">Source Proposal</div>
                 <button
@@ -1033,7 +1046,7 @@ const ContractDetail = () => {
         )}
 
         {/* Assignment — hidden for subcontractors */}
-        {isSubcontractor && contract.facility && (
+        {isLimitedContractViewer && contract.facility && (
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="h-5 w-5 text-emerald-400" />
@@ -1128,7 +1141,7 @@ const ContractDetail = () => {
           </Card>
         )}
 
-        {!isSubcontractor && <Card>
+        {!isLimitedContractViewer && <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
             <h2 className="text-lg font-semibold text-white">Assignment</h2>
@@ -1196,13 +1209,15 @@ const ContractDetail = () => {
                 disabled={contract.status !== 'active' || !canAdminContracts}
                 options={[
                   { value: '', label: 'Unassigned' },
-                  ...users.map((user) => ({ value: user.id, label: user.fullName })),
+                  ...internalEmployeeUsers.map((user) => ({ value: user.id, label: user.fullName })),
                 ]}
                 hint={
                   contract.status !== 'active'
                     ? 'Assignments can only be changed on active contracts'
                     : !canAdminContracts
                       ? 'You do not have permission to update assignments'
+                      : internalEmployeeUsers.length === 0
+                        ? 'No internal employees available'
                       : undefined
                 }
               />
@@ -1285,7 +1300,7 @@ const ContractDetail = () => {
         </Card>
 
         {/* Workflow & Signatures — hidden for subcontractors */}
-        {!isSubcontractor && <Card>
+        {!isLimitedContractViewer && <Card>
           <div className="flex items-center gap-2 mb-4">
             <FileSignature className="h-5 w-5 text-purple-400" />
             <h2 className="text-lg font-semibold text-white">Workflow & Signatures</h2>
@@ -1371,7 +1386,7 @@ const ContractDetail = () => {
       </div>
 
       {/* Terms & Conditions — hidden for subcontractors */}
-      {!isSubcontractor && <Card>
+      {!isLimitedContractViewer && <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
           {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && canWriteContracts && (
@@ -1512,9 +1527,9 @@ const ContractDetail = () => {
           <div className="text-gray-300 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto">
             {contract.termsAndConditions}
           </div>
-        ) : (
+        ) : !isLimitedContractViewer ? (
           <p className="text-gray-500 text-sm italic">No terms and conditions set.</p>
-        )}
+        ) : null}
         {contract.termsDocumentName && !editingTerms && (
           <div className="mt-4 rounded-lg border border-white/10 bg-navy-darker/40 p-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1542,7 +1557,7 @@ const ContractDetail = () => {
       )}
 
       {/* Initial Clean — hidden for subcontractors */}
-      {contract.includesInitialClean && !isSubcontractor && (
+      {contract.includesInitialClean && !isLimitedContractViewer && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-5 w-5 text-emerald-400" />
@@ -1576,12 +1591,12 @@ const ContractDetail = () => {
       )}
 
       {/* Activity Timeline — hidden for subcontractors */}
-      {contract && !isSubcontractor && (
+      {contract && !isLimitedContractViewer && (
         <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
       )}
 
       {/* Send Contract Modal */}
-      {contract && canWriteContracts && (
+      {contract && canWriteContracts && !isLimitedContractViewer && (
         <SendContractModal
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}

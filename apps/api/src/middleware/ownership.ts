@@ -220,8 +220,26 @@ export function verifyOwnership(context: OwnershipContext) {
         }
       }
 
-      // Cleaner role - deny access by default for these resources
+      // Cleaner role: only allow access to contracts assigned directly to them.
       if (role === 'cleaner') {
+        const paramName = context.paramName || 'id';
+        const resourceId = req.params[paramName];
+
+        if (!resourceId) {
+          throw new ForbiddenError('Resource ID not provided');
+        }
+
+        if (context.resourceType === 'contract') {
+          const contract = await prisma.contract.findUnique({
+            where: { id: resourceId },
+            select: { assignedToUserId: true },
+          });
+
+          if (contract?.assignedToUserId === userId) {
+            return next();
+          }
+        }
+
         throw new ForbiddenError('Insufficient permissions');
       }
 
