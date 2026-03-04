@@ -60,6 +60,7 @@ const mockUserOption = {
   id: 'user-1',
   fullName: 'Test User',
   email: 'test@example.com',
+  roles: [{ role: { key: 'manager' } }],
 };
 
 describe('InspectionForm', () => {

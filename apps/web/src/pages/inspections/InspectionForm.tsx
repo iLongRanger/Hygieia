@@ -39,6 +39,11 @@ interface UserOption {
   id: string;
   fullName: string;
   email: string;
+  roles?: Array<{
+    role: {
+      key: string;
+    };
+  }>;
 }
 
 interface JobOption {
@@ -89,10 +94,14 @@ const InspectionForm = () => {
     try {
       const [facilitiesRes, usersRes] = await Promise.all([
         listFacilities({ limit: 100 }),
-        listUsers({ limit: 100 }),
+        listUsers({ limit: 100, status: 'active' }),
       ]);
+      const eligibleInspectorRoles = new Set(['owner', 'admin', 'manager']);
+      const eligibleInspectors = (usersRes?.data || []).filter((user) =>
+        (user.roles || []).some((assignment) => eligibleInspectorRoles.has(assignment.role.key))
+      );
       setFacilities(facilitiesRes?.data || []);
-      setUsers(usersRes?.data || []);
+      setUsers(eligibleInspectors);
     } catch {
       toast.error('Failed to load reference data');
     }

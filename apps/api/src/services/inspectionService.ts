@@ -274,6 +274,42 @@ const inspectionSignoffSelect = {
   signedByUser: { select: { id: true, fullName: true } },
 };
 
+const ELIGIBLE_INSPECTOR_ROLES = new Set(['owner', 'admin', 'manager']);
+
+async function assertEligibleInspectorUser(inspectorUserId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: inspectorUserId },
+    select: {
+      id: true,
+      roles: {
+        select: {
+          role: {
+            select: { key: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new BadRequestError('Inspector user not found', {
+      code: 'INSPECTOR_USER_NOT_FOUND',
+      inspectorUserId,
+    });
+  }
+
+  const hasEligibleRole = user.roles.some((assignment) =>
+    ELIGIBLE_INSPECTOR_ROLES.has(assignment.role.key)
+  );
+  if (!hasEligibleRole) {
+    throw new BadRequestError('Inspector must be an owner, admin, or manager', {
+      code: 'INVALID_INSPECTOR_ROLE',
+      allowedRoles: Array.from(ELIGIBLE_INSPECTOR_ROLES),
+      inspectorUserId,
+    });
+  }
+}
+
 // ==================== Number generation ====================
 
 async function generateInspectionNumber(): Promise<string> {
@@ -430,6 +466,8 @@ export async function getInspectionById(id: string) {
 }
 
 export async function createInspection(input: InspectionCreateInput) {
+  await assertEligibleInspectorUser(input.inspectorUserId);
+
   const inspectionNumber = await generateInspectionNumber();
 
   // If template provided, pre-populate items from template
@@ -537,6 +575,10 @@ export async function updateInspection(id: string, input: InspectionUpdateInput)
   const existing = await prisma.inspection.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Inspection not found');
   if (existing.status === 'completed') throw new BadRequestError('Cannot edit a completed inspection');
+
+  if (input.inspectorUserId) {
+    await assertEligibleInspectorUser(input.inspectorUserId);
+  }
 
   const inspection = await prisma.inspection.update({
     where: { id },
@@ -1038,6 +1080,7 @@ export async function createReinspection(
   const scheduledDate = input.scheduledDate ?? getDefaultCorrectiveActionDueDate(new Date());
   const inspectionNumber = await generateInspectionNumber();
   const assigneeUserId = input.inspectorUserId ?? inspection.inspectorUserId;
+  await assertEligibleInspectorUser(assigneeUserId);
 
   const reinspection = await prisma.inspection.create({
     data: {

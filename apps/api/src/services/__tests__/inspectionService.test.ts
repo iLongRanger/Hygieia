@@ -44,12 +44,19 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       findMany: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   },
 }));
 
 describe('inspectionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      roles: [{ role: { key: 'manager' } }],
+    });
   });
 
   it('listInspections applies date and score filters with pagination', async () => {
@@ -210,6 +217,24 @@ describe('inspectionService', () => {
       failedItems: 1,
       correctiveActionsAutoCreated: 1,
     });
+  });
+
+  it('createInspection rejects non-management inspectors', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'cleaner-1',
+      roles: [{ role: { key: 'cleaner' } }],
+    });
+
+    await expect(
+      createInspection({
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        inspectorUserId: 'cleaner-1',
+        scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+        createdByUserId: 'admin-1',
+        skipAutoCreate: true,
+      })
+    ).rejects.toThrow('Inspector must be an owner, admin, or manager');
   });
 
   it('addInspectionItem defaults sortOrder to next index', async () => {
