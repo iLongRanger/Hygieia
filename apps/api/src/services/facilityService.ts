@@ -106,7 +106,8 @@ const facilitySelect = {
 } satisfies Prisma.FacilitySelect;
 
 export async function listFacilities(
-  params: FacilityListParams
+  params: FacilityListParams,
+  options?: { userRole?: string; userId?: string; userTeamId?: string }
 ): Promise<
   PaginatedResult<Prisma.FacilityGetPayload<{ select: typeof facilitySelect }>>
 > {
@@ -159,6 +160,13 @@ export async function listFacilities(
         archivedAt: null,
       },
     };
+  }
+
+  // RBAC scoping
+  if (options?.userRole === 'cleaner' && options.userId) {
+    where.jobs = { some: { assignedToUserId: options.userId } };
+  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    where.contracts = { some: { assignedTeamId: options.userTeamId } };
   }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'squareFeet'];
