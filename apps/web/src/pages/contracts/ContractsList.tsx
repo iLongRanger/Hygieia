@@ -124,6 +124,7 @@ const ContractsList = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
+  const canUseNeedsAttention = userRole === 'owner' || userRole === 'admin';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
@@ -148,7 +149,7 @@ const ContractsList = () => {
           search: currentSearch || undefined,
           status: (filters?.status && filters.status !== '' ? filters.status : undefined) as ContractStatus | undefined,
           includeArchived: filters?.includeArchived,
-          needsAttention: filters?.needsAttention,
+          needsAttention: canUseNeedsAttention ? filters?.needsAttention : false,
           unassignedOnly: filters?.unassignedOnly,
           nearingRenewalOnly: filters?.nearingRenewalOnly,
           renewalWindowDays: filters?.renewalWindowDays,
@@ -164,7 +165,7 @@ const ContractsList = () => {
         setLoading(false);
       }
     },
-    [accountIdFilter]
+    [accountIdFilter, canUseNeedsAttention]
   );
 
   const fetchSummary = useCallback(async () => {
@@ -197,12 +198,12 @@ const ContractsList = () => {
     fetchContracts(page, search, {
       status: statusFromSummaryCard ?? statusFilter,
       includeArchived,
-      needsAttention,
+      needsAttention: canUseNeedsAttention ? needsAttention : false,
       unassignedOnly: canViewPipelines && summaryCardFilter === 'unassigned',
       nearingRenewalOnly: canViewPipelines && summaryCardFilter === 'nearing_renewal',
       renewalWindowDays: summary?.renewalWindowDays ?? 30,
     });
-  }, [page, search, statusFilter, includeArchived, needsAttention, summaryCardFilter, summary?.renewalWindowDays, fetchContracts, canViewPipelines]);
+  }, [page, search, statusFilter, includeArchived, needsAttention, summaryCardFilter, summary?.renewalWindowDays, fetchContracts, canViewPipelines, canUseNeedsAttention]);
 
   useEffect(() => {
     if (!canViewPipelines) {
@@ -542,17 +543,19 @@ const ContractsList = () => {
               <Filter className="h-4 w-4" />
               {hasActiveFilters && <span className="ml-2">*</span>}
             </Button>
-            <Button
-              variant={needsAttention ? 'primary' : 'secondary'}
-              className="px-3"
-              onClick={() => {
-                setNeedsAttention((prev) => !prev);
-                setPage(1);
-              }}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <span className="ml-2">Needs Attention</span>
-            </Button>
+            {canUseNeedsAttention && (
+              <Button
+                variant={needsAttention ? 'primary' : 'secondary'}
+                className="px-3"
+                onClick={() => {
+                  setNeedsAttention((prev) => !prev);
+                  setPage(1);
+                }}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span className="ml-2">Needs Attention</span>
+              </Button>
+            )}
           </div>
           {accountIdFilter && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
@@ -568,7 +571,7 @@ const ContractsList = () => {
               </Button>
             </div>
           )}
-          {needsAttention && (
+          {canUseNeedsAttention && needsAttention && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-amber-200">
               <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1">
                 Showing contracts needing attention: unassigned team or waiting for acceptance
@@ -592,20 +595,22 @@ const ContractsList = () => {
                 value={statusFilter}
                 onChange={handleStatusFilter}
               />
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={needsAttention}
-                    onChange={(e) => {
-                      setNeedsAttention(e.target.checked);
-                      setPage(1);
-                    }}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
-                  />
-                  Needs Attention Only
-                </label>
-              </div>
+              {canUseNeedsAttention && (
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={needsAttention}
+                      onChange={(e) => {
+                        setNeedsAttention(e.target.checked);
+                        setPage(1);
+                      }}
+                      className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    />
+                    Needs Attention Only
+                  </label>
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input
