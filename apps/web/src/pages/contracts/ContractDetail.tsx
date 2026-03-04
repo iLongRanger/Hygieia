@@ -289,6 +289,7 @@ const ContractDetail = () => {
   const [showSendModal, setShowSendModal] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
+  const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const isSubcontractor = userRole === 'subcontractor';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
@@ -806,6 +807,7 @@ const ContractDetail = () => {
         )}
       </div>
 
+      {canViewPipelines && (
       <Card>
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -870,6 +872,7 @@ const ContractDetail = () => {
           )}
         </div>
       </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Account & Facility Information */}

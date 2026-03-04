@@ -297,6 +297,8 @@ const LeadsList = () => {
     },
   });
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canWriteLeads = hasPermission(PERMISSIONS.LEADS_WRITE);
   const canAdminLeads = hasPermission(PERMISSIONS.LEADS_ADMIN);
   const leadAssignableUsers = users.filter(isLeadAssignableUser);
@@ -428,10 +430,16 @@ const LeadsList = () => {
     fetchUsers();
     fetchAccounts();
     fetchFacilities();
-    fetchPipelineLeads();
-  }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities, fetchPipelineLeads]);
+    if (canViewPipelines) {
+      fetchPipelineLeads();
+    } else {
+      setPipelineLeads([]);
+      setPipelineLoading(false);
+    }
+  }, [fetchLeadSources, fetchUsers, fetchAccounts, fetchFacilities, fetchPipelineLeads, canViewPipelines]);
 
   useEffect(() => {
+    if (!canViewPipelines) return;
     const handleWindowFocus = () => {
       fetchPipelineLeads();
     };
@@ -449,7 +457,7 @@ const LeadsList = () => {
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchPipelineLeads]);
+  }, [fetchPipelineLeads, canViewPipelines]);
 
   useEffect(() => {
     const routeStatus = new URLSearchParams(location.search).get('status');
@@ -527,7 +535,9 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
-      fetchPipelineLeads();
+      if (canViewPipelines) {
+        fetchPipelineLeads();
+      }
     } catch (error) {
       console.error('Failed to create lead:', error);
       toast.error('Failed to create lead');
@@ -579,7 +589,9 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
-      fetchPipelineLeads();
+      if (canViewPipelines) {
+        fetchPipelineLeads();
+      }
     } catch (error) {
       console.error('Failed to archive lead:', error);
       toast.error('Failed to archive lead');
@@ -596,7 +608,9 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
-      fetchPipelineLeads();
+      if (canViewPipelines) {
+        fetchPipelineLeads();
+      }
     } catch (error) {
       console.error('Failed to restore lead:', error);
       toast.error('Failed to restore lead');
@@ -709,7 +723,9 @@ const LeadsList = () => {
         assignedToUserId: assignedToFilter,
         includeArchived,
       });
-      fetchPipelineLeads();
+      if (canViewPipelines) {
+        fetchPipelineLeads();
+      }
     } catch (error) {
       console.error('Failed to convert lead:', error);
       const errorMessage = (error as { response?: { data?: { message?: string; error?: { message?: string } } } })
@@ -890,6 +906,7 @@ const LeadsList = () => {
         )}
       </div>
 
+      {canViewPipelines && (
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-surface-200 bg-gradient-to-r from-surface-50 to-white p-4 dark:border-surface-700 dark:from-surface-800/60 dark:to-surface-800">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1073,6 +1090,7 @@ const LeadsList = () => {
           </div>
         </div>
       </Card>
+      )}
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">
@@ -1850,5 +1868,4 @@ const LeadsList = () => {
 };
 
 export default LeadsList;
-
 

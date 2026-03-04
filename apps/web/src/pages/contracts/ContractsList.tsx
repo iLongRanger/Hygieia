@@ -122,6 +122,8 @@ const ContractsList = () => {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [needsAttention, setNeedsAttention] = useState(true);
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
@@ -184,26 +186,32 @@ const ContractsList = () => {
 
   useEffect(() => {
     const statusFromSummaryCard: ContractStatus | undefined =
-      summaryCardFilter === 'draft' ||
-      summaryCardFilter === 'sent' ||
-      summaryCardFilter === 'viewed' ||
-      summaryCardFilter === 'pending_signature' ||
-      summaryCardFilter === 'active'
+      canViewPipelines &&
+      (summaryCardFilter === 'draft' ||
+        summaryCardFilter === 'sent' ||
+        summaryCardFilter === 'viewed' ||
+        summaryCardFilter === 'pending_signature' ||
+        summaryCardFilter === 'active')
         ? summaryCardFilter
         : undefined;
     fetchContracts(page, search, {
       status: statusFromSummaryCard ?? statusFilter,
       includeArchived,
       needsAttention,
-      unassignedOnly: summaryCardFilter === 'unassigned',
-      nearingRenewalOnly: summaryCardFilter === 'nearing_renewal',
+      unassignedOnly: canViewPipelines && summaryCardFilter === 'unassigned',
+      nearingRenewalOnly: canViewPipelines && summaryCardFilter === 'nearing_renewal',
       renewalWindowDays: summary?.renewalWindowDays ?? 30,
     });
-  }, [page, search, statusFilter, includeArchived, needsAttention, summaryCardFilter, summary?.renewalWindowDays, fetchContracts]);
+  }, [page, search, statusFilter, includeArchived, needsAttention, summaryCardFilter, summary?.renewalWindowDays, fetchContracts, canViewPipelines]);
 
   useEffect(() => {
+    if (!canViewPipelines) {
+      setSummary(null);
+      setSummaryLoading(false);
+      return;
+    }
     fetchSummary();
-  }, [fetchSummary]);
+  }, [fetchSummary, canViewPipelines]);
 
   useEffect(() => {
     setPage(1);
@@ -420,6 +428,7 @@ const ContractsList = () => {
         )}
       </div>
 
+      {canViewPipelines && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         <button
           type="button"
@@ -512,6 +521,7 @@ const ContractsList = () => {
           </div>
         </button>
       </div>
+      )}
 
       <Card noPadding className="overflow-hidden">
         <div className="border-b border-white/10 bg-navy-dark/30 p-4">
