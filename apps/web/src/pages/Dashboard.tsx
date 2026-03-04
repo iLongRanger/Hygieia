@@ -613,9 +613,12 @@ const AdminDashboard = () => {
 
 const Dashboard = () => {
   const user = useAuthStore((state) => state.user);
-  const isSubcontractor = user?.role === 'subcontractor';
 
-  if (isSubcontractor) {
+  if (!user) {
+    return null;
+  }
+
+  if (user.role === 'subcontractor' || user.role === 'cleaner') {
     return <SubcontractorDashboard />;
   }
 
