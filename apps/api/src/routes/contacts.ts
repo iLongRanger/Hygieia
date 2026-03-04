@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listContacts,
@@ -55,6 +56,7 @@ router.get(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.CONTACTS_READ),
+  verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contact = await getContactById(req.params.id);
