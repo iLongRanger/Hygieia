@@ -86,6 +86,7 @@ model User {
   createdOneTimeServiceCatalogItems OneTimeServiceCatalogItem[] @relation("CreatedOneTimeServiceCatalogItems")
   requestedPricingApprovals Quotation[]         @relation("QuotationPricingApprovalRequestedBy")
   approvedPricingApprovals  Quotation[]         @relation("QuotationPricingApprovalApprovedBy")
+  updatedBackgroundServiceSettings BackgroundServiceSetting[] @relation("BackgroundServiceSettingUpdatedBy")
 
   @@index([email])
   @@index([status])
@@ -1677,4 +1678,24 @@ model GlobalSettings {
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("global_settings")
+}
+
+model BackgroundServiceSetting {
+  id              String    @id @default(uuid()) @db.Uuid
+  serviceKey      String    @unique @map("service_key") @db.VarChar(50)
+  enabled         Boolean   @default(true)
+  intervalMs      Int       @map("interval_ms")
+  lastRunAt       DateTime? @map("last_run_at") @db.Timestamptz(6)
+  lastSuccessAt   DateTime? @map("last_success_at") @db.Timestamptz(6)
+  lastError       String?   @map("last_error") @db.Text
+  lastErrorAt     DateTime? @map("last_error_at") @db.Timestamptz(6)
+  updatedByUserId String?   @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedByUser User? @relation("BackgroundServiceSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([serviceKey])
+  @@index([enabled])
+  @@map("background_service_settings")
 }

@@ -1,26 +1,15 @@
 import logger from '../lib/logger';
+import {
+  getBackgroundServiceSetting,
+  markBackgroundServiceRunFailure,
+  markBackgroundServiceRunStart,
+  markBackgroundServiceRunSuccess,
+} from './backgroundServiceSettingsService';
 
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
 let intervalHandle: NodeJS.Timeout | null = null;
 let cycleRunning = false;
-
-function shouldStartScheduler(): boolean {
-  if (process.env.NODE_ENV === 'test') return false;
-  return process.env.REMINDERS_ENABLED === 'true';
-}
-
-function getIntervalMs(): number {
-  const raw = process.env.REMINDERS_INTERVAL_MS;
-  if (!raw) return DEFAULT_INTERVAL_MS;
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 60_000) {
-    logger.warn(`Invalid REMINDERS_INTERVAL_MS="${raw}", falling back to ${DEFAULT_INTERVAL_MS}ms`);
-    return DEFAULT_INTERVAL_MS;
-  }
-
-  return parsed;
-}
+const SERVICE_KEY = 'reminders';
 
 async function runReminderCycle(): Promise<void> {
   if (cycleRunning) {
@@ -29,6 +18,7 @@ async function runReminderCycle(): Promise<void> {
   }
 
   cycleRunning = true;
+  await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
     const {
       sendAppointmentReminders,
@@ -51,24 +41,34 @@ async function runReminderCycle(): Promise<void> {
     logger.info(
       `Reminder cycle complete: appointmentReminders=${appointmentCount}, contractExpiryReminders=${contractExpiryCount}, proposalFollowUpReminders=${proposalFollowUpCount}, contractFollowUpReminders=${contractFollowUpCount}`
     );
+    await markBackgroundServiceRunSuccess(SERVICE_KEY);
   } catch (error) {
     logger.error('Reminder cycle failed', error);
+    await markBackgroundServiceRunFailure(SERVICE_KEY, error);
   } finally {
     cycleRunning = false;
   }
 }
 
-export function startReminderScheduler(): void {
-  if (!shouldStartScheduler()) {
+async function configureReminderScheduler(): Promise<void> {
+  if (process.env.NODE_ENV === 'test') {
     logger.info('Reminder scheduler disabled');
     return;
   }
 
-  if (intervalHandle) {
+  const config = await getBackgroundServiceSetting(SERVICE_KEY);
+  if (!config.enabled) {
+    logger.info('Reminder scheduler disabled');
     return;
   }
 
-  const intervalMs = getIntervalMs();
+  const intervalMs = config.intervalMs >= 60_000 ? config.intervalMs : DEFAULT_INTERVAL_MS;
+  if (config.intervalMs < 60_000) {
+    logger.warn(
+      `Invalid reminders interval "${config.intervalMs}", falling back to ${DEFAULT_INTERVAL_MS}ms`
+    );
+  }
+
   logger.info(`Starting reminder scheduler (interval=${intervalMs}ms)`);
 
   runReminderCycle().catch((error) => {
@@ -80,4 +80,23 @@ export function startReminderScheduler(): void {
       logger.error('Scheduled reminder cycle failed', error);
     });
   }, intervalMs);
+}
+
+export function startReminderScheduler(): void {
+  if (intervalHandle) {
+    return;
+  }
+  void configureReminderScheduler();
+}
+
+export async function reloadReminderScheduler(): Promise<void> {
+  if (intervalHandle) {
+    clearInterval(intervalHandle);
+    intervalHandle = null;
+  }
+  await configureReminderScheduler();
+}
+
+export async function runReminderCycleNow(): Promise<void> {
+  await runReminderCycle();
 }

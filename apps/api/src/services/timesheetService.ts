@@ -59,13 +59,23 @@ const timesheetDetailSelect = {
 
 // ==================== Service ====================
 
-export async function listTimesheets(params: TimesheetListParams) {
+export async function listTimesheets(
+  params: TimesheetListParams,
+  options?: { userRole?: string; userId?: string; userTeamId?: string }
+) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
   const where: Record<string, unknown> = {};
   if (params.userId) where.userId = params.userId;
   if (params.status) where.status = params.status;
+
+  // RBAC scoping
+  if (options?.userRole === 'cleaner' && options.userId) {
+    where.userId = options.userId;
+  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    where.user = { teamId: options.userTeamId };
+  }
 
   const [data, total] = await Promise.all([
     prisma.timesheet.findMany({
@@ -89,12 +99,23 @@ export async function listTimesheets(params: TimesheetListParams) {
   };
 }
 
-export async function getTimesheetById(id: string) {
+export async function getTimesheetById(
+  id: string,
+  options?: { userRole?: string; userId?: string; userTeamId?: string }
+) {
   const timesheet = await prisma.timesheet.findUnique({
     where: { id },
-    select: timesheetDetailSelect,
+    select: { ...timesheetDetailSelect, user: { select: { id: true, fullName: true, teamId: true } } },
   });
   if (!timesheet) throw new NotFoundError('Timesheet not found');
+
+  // RBAC ownership check — return NotFoundError (not 403) to avoid resource enumeration
+  if (options?.userRole === 'cleaner' && options.userId) {
+    if (timesheet.userId !== options.userId) throw new NotFoundError('Timesheet not found');
+  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    if (timesheet.user.teamId !== options.userTeamId) throw new NotFoundError('Timesheet not found');
+  }
+
   return timesheet;
 }
 

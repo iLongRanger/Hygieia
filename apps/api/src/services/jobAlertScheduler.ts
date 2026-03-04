@@ -1,27 +1,16 @@
 import logger from '../lib/logger';
 import { runJobNearingEndNoCheckInAlertCycle } from './jobService';
+import {
+  getBackgroundServiceSetting,
+  markBackgroundServiceRunFailure,
+  markBackgroundServiceRunStart,
+  markBackgroundServiceRunSuccess,
+} from './backgroundServiceSettingsService';
 
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
 let intervalHandle: NodeJS.Timeout | null = null;
 let cycleRunning = false;
-
-function shouldStartScheduler(): boolean {
-  if (process.env.NODE_ENV === 'test') return false;
-  return process.env.JOB_ALERTS_ENABLED !== 'false';
-}
-
-function getIntervalMs(): number {
-  const raw = process.env.JOB_ALERTS_INTERVAL_MS;
-  if (!raw) return DEFAULT_INTERVAL_MS;
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 60_000) {
-    logger.warn(`Invalid JOB_ALERTS_INTERVAL_MS="${raw}", falling back to ${DEFAULT_INTERVAL_MS}ms`);
-    return DEFAULT_INTERVAL_MS;
-  }
-
-  return parsed;
-}
+const SERVICE_KEY = 'job_alerts';
 
 async function runJobAlertCycle(): Promise<void> {
   if (cycleRunning) {
@@ -30,29 +19,40 @@ async function runJobAlertCycle(): Promise<void> {
   }
 
   cycleRunning = true;
+  await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
     const result = await runJobNearingEndNoCheckInAlertCycle();
     logger.info(
       `Job alert cycle complete: checked=${result.checked}, alerted=${result.alerted}, notifications=${result.notifications}`
     );
+    await markBackgroundServiceRunSuccess(SERVICE_KEY);
   } catch (error) {
     logger.error('Job alert cycle failed', error);
+    await markBackgroundServiceRunFailure(SERVICE_KEY, error);
   } finally {
     cycleRunning = false;
   }
 }
 
-export function startJobAlertScheduler(): void {
-  if (!shouldStartScheduler()) {
+async function configureJobAlertScheduler(): Promise<void> {
+  if (process.env.NODE_ENV === 'test') {
     logger.info('Job alert scheduler disabled');
     return;
   }
 
-  if (intervalHandle) {
+  const config = await getBackgroundServiceSetting(SERVICE_KEY);
+  if (!config.enabled) {
+    logger.info('Job alert scheduler disabled');
     return;
   }
 
-  const intervalMs = getIntervalMs();
+  const intervalMs = config.intervalMs >= 60_000 ? config.intervalMs : DEFAULT_INTERVAL_MS;
+  if (config.intervalMs < 60_000) {
+    logger.warn(
+      `Invalid job alerts interval "${config.intervalMs}", falling back to ${DEFAULT_INTERVAL_MS}ms`
+    );
+  }
+
   logger.info(`Starting job alert scheduler (interval=${intervalMs}ms)`);
 
   runJobAlertCycle().catch((error) => {
@@ -64,4 +64,23 @@ export function startJobAlertScheduler(): void {
       logger.error('Scheduled job alert cycle failed', error);
     });
   }, intervalMs);
+}
+
+export function startJobAlertScheduler(): void {
+  if (intervalHandle) {
+    return;
+  }
+  void configureJobAlertScheduler();
+}
+
+export async function reloadJobAlertScheduler(): Promise<void> {
+  if (intervalHandle) {
+    clearInterval(intervalHandle);
+    intervalHandle = null;
+  }
+  await configureJobAlertScheduler();
+}
+
+export async function runJobAlertCycleNow(): Promise<void> {
+  await runJobAlertCycle();
 }

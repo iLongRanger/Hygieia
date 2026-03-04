@@ -117,7 +117,10 @@ function toNumber(value: unknown): number | null {
 
 // ==================== Service ====================
 
-export async function listTimeEntries(params: TimeEntryListParams) {
+export async function listTimeEntries(
+  params: TimeEntryListParams,
+  options?: { userRole?: string; userId?: string; userTeamId?: string }
+) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
@@ -132,6 +135,13 @@ export async function listTimeEntries(params: TimeEntryListParams) {
     where.clockIn = {};
     if (params.dateFrom) (where.clockIn as Record<string, unknown>).gte = params.dateFrom;
     if (params.dateTo) (where.clockIn as Record<string, unknown>).lte = params.dateTo;
+  }
+
+  // RBAC scoping
+  if (options?.userRole === 'cleaner' && options.userId) {
+    where.userId = options.userId;
+  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    where.user = { teamId: options.userTeamId };
   }
 
   const [data, total] = await Promise.all([
@@ -156,12 +166,23 @@ export async function listTimeEntries(params: TimeEntryListParams) {
   };
 }
 
-export async function getTimeEntryById(id: string) {
+export async function getTimeEntryById(
+  id: string,
+  options?: { userRole?: string; userId?: string; userTeamId?: string }
+) {
   const entry = await prisma.timeEntry.findUnique({
     where: { id },
-    select: timeEntryDetailSelect,
+    select: { ...timeEntryDetailSelect, user: { select: { id: true, fullName: true, teamId: true } } },
   });
   if (!entry) throw new NotFoundError('Time entry not found');
+
+  // RBAC ownership check — return NotFoundError (not 403) to avoid resource enumeration
+  if (options?.userRole === 'cleaner' && options.userId) {
+    if (entry.userId !== options.userId) throw new NotFoundError('Time entry not found');
+  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    if (entry.user.teamId !== options.userTeamId) throw new NotFoundError('Time entry not found');
+  }
+
   return entry;
 }
 

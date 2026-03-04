@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Upload, Trash2, Palette, Building2 } from 'lucide-react';
+import { Save, Upload, Trash2, Palette, Building2, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -10,8 +10,15 @@ import {
   updateGlobalSettings,
   uploadCompanyLogo,
   removeCompanyLogo,
+  getBackgroundServiceSettings,
+  runBackgroundServiceNow,
+  updateBackgroundServiceSetting,
 } from '../../lib/globalSettings';
 import type { GlobalSettings } from '../../types/globalSettings';
+import type {
+  BackgroundServiceKey,
+  BackgroundServiceSetting,
+} from '../../types/backgroundServiceSettings';
 
 const DEFAULT_SETTINGS: GlobalSettings = {
   companyName: '',
@@ -37,16 +44,23 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 const GlobalSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
+  const [backgroundServices, setBackgroundServices] = useState<BackgroundServiceSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [savingServiceKey, setSavingServiceKey] = useState<BackgroundServiceKey | null>(null);
+  const [runningServiceKey, setRunningServiceKey] = useState<BackgroundServiceKey | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const data = await getGlobalSettings();
+        const [data, serviceData] = await Promise.all([
+          getGlobalSettings(),
+          getBackgroundServiceSettings(),
+        ]);
         setSettings(data);
+        setBackgroundServices(serviceData);
       } catch {
         toast.error('Failed to load global settings');
       } finally {
@@ -79,6 +93,53 @@ const GlobalSettingsPage: React.FC = () => {
       setSaving(false);
     }
   };
+
+  const updateServiceState = (
+    serviceKey: BackgroundServiceKey,
+    updater: (service: BackgroundServiceSetting) => BackgroundServiceSetting
+  ) => {
+    setBackgroundServices((prev) =>
+      prev.map((item) => (item.serviceKey === serviceKey ? updater(item) : item))
+    );
+  };
+
+  const onSaveBackgroundService = async (service: BackgroundServiceSetting) => {
+    try {
+      setSavingServiceKey(service.serviceKey);
+      const updated = await updateBackgroundServiceSetting(service.serviceKey, {
+        enabled: service.enabled,
+        intervalMs: service.intervalMs,
+      });
+      updateServiceState(service.serviceKey, () => updated);
+      toast.success('Background service updated');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to update background service');
+    } finally {
+      setSavingServiceKey(null);
+    }
+  };
+
+  const onRunBackgroundService = async (serviceKey: BackgroundServiceKey) => {
+    try {
+      setRunningServiceKey(serviceKey);
+      const updated = await runBackgroundServiceNow(serviceKey);
+      updateServiceState(serviceKey, () => updated);
+      toast.success('Background service run triggered');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to trigger background service');
+    } finally {
+      setRunningServiceKey(null);
+    }
+  };
+
+  const getServiceLabel = (serviceKey: BackgroundServiceKey): string => {
+    if (serviceKey === 'reminders') return 'Reminders';
+    if (serviceKey === 'recurring_jobs_autogen') return 'Recurring Jobs Auto-Generation';
+    return 'Job Alerts';
+  };
+
+  const formatDateTime = (value: string | null): string =>
+    value ? new Date(value).toLocaleString() : 'Never';
 
   const onSelectLogo = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -267,6 +328,71 @@ const GlobalSettingsPage: React.FC = () => {
           <p className="text-sm">
             This style preview will be used by proposal PDFs, public proposal pages, and email templates.
           </p>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h2 className="mb-4 text-lg font-semibold text-white">Background Services</h2>
+        <p className="mb-4 text-sm text-gray-400">
+          Configure automatic system jobs and run them manually when needed.
+        </p>
+        <div className="space-y-4">
+          {backgroundServices.map((service) => (
+            <div key={service.serviceKey} className="rounded-lg border border-surface-700 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-white">{getServiceLabel(service.serviceKey)}</h3>
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={service.enabled}
+                    onChange={(e) =>
+                      updateServiceState(service.serviceKey, (current) => ({
+                        ...current,
+                        enabled: e.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4"
+                  />
+                  Enabled
+                </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <Input
+                  label="Interval (ms)"
+                  type="number"
+                  min={60000}
+                  value={String(service.intervalMs)}
+                  onChange={(e) =>
+                    updateServiceState(service.serviceKey, (current) => ({
+                      ...current,
+                      intervalMs: Math.max(60_000, Number(e.target.value || 60_000)),
+                    }))
+                  }
+                />
+                <Input label="Last Run" value={formatDateTime(service.lastRunAt)} readOnly />
+                <Input label="Last Success" value={formatDateTime(service.lastSuccessAt)} readOnly />
+                <Input label="Last Error" value={service.lastError || 'None'} readOnly />
+              </div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onRunBackgroundService(service.serviceKey)}
+                  isLoading={runningServiceKey === service.serviceKey}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Run Now
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => onSaveBackgroundService(service)}
+                  isLoading={savingServiceKey === service.serviceKey}
+                >
+                  Save Service
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 

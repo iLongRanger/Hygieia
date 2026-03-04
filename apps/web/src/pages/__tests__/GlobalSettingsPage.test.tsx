@@ -7,12 +7,19 @@ const getGlobalSettingsMock = vi.fn();
 const updateGlobalSettingsMock = vi.fn();
 const uploadCompanyLogoMock = vi.fn();
 const removeCompanyLogoMock = vi.fn();
+const getBackgroundServiceSettingsMock = vi.fn();
+const updateBackgroundServiceSettingMock = vi.fn();
+const runBackgroundServiceNowMock = vi.fn();
 
 vi.mock('../../lib/globalSettings', () => ({
   getGlobalSettings: (...args: unknown[]) => getGlobalSettingsMock(...args),
   updateGlobalSettings: (...args: unknown[]) => updateGlobalSettingsMock(...args),
   uploadCompanyLogo: (...args: unknown[]) => uploadCompanyLogoMock(...args),
   removeCompanyLogo: (...args: unknown[]) => removeCompanyLogoMock(...args),
+  getBackgroundServiceSettings: (...args: unknown[]) => getBackgroundServiceSettingsMock(...args),
+  updateBackgroundServiceSetting: (...args: unknown[]) =>
+    updateBackgroundServiceSettingMock(...args),
+  runBackgroundServiceNow: (...args: unknown[]) => runBackgroundServiceNowMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -39,9 +46,12 @@ describe('GlobalSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getGlobalSettingsMock.mockResolvedValue(mockSettings);
+    getBackgroundServiceSettingsMock.mockResolvedValue([]);
     updateGlobalSettingsMock.mockResolvedValue(mockSettings);
     uploadCompanyLogoMock.mockResolvedValue(mockSettings);
     removeCompanyLogoMock.mockResolvedValue(mockSettings);
+    updateBackgroundServiceSettingMock.mockResolvedValue(null);
+    runBackgroundServiceNowMock.mockResolvedValue(null);
   });
 
   it('loads and renders company settings', async () => {

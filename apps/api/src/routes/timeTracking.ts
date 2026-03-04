@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { prisma } from '../lib/prisma';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -50,17 +51,27 @@ router.get(
   validate(listTimeEntriesSchema),
   async (req: Request, res: Response) => {
     const { userId, jobId, contractId, facilityId, status, dateFrom, dateTo, page, limit } = req.query;
-    const result = await listTimeEntries({
-      userId: userId as string,
-      jobId: jobId as string,
-      contractId: contractId as string,
-      facilityId: facilityId as string,
-      status: status as string,
-      dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-      dateTo: dateTo ? new Date(dateTo as string) : undefined,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+
+    const scopedUserId = req.user?.role === 'cleaner' ? req.user.id : (userId as string);
+
+    const result = await listTimeEntries(
+      {
+        userId: scopedUserId,
+        jobId: jobId as string,
+        contractId: contractId as string,
+        facilityId: facilityId as string,
+        status: status as string,
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId,
+      }
+    );
     res.json(result);
   }
 );
@@ -73,7 +84,11 @@ router.get('/active', async (req: Request, res: Response) => {
 
 // Get time entry by ID
 router.get('/entries/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ), async (req: Request, res: Response) => {
-  const entry = await getTimeEntryById(req.params.id);
+  const entry = await getTimeEntryById(req.params.id, {
+    userRole: req.user?.role,
+    userId: req.user?.id,
+    userTeamId: req.user?.teamId,
+  });
   res.json({ data: entry });
 });
 
@@ -175,8 +190,25 @@ router.get('/summary/:userId', requirePermission(PERMISSIONS.TIME_TRACKING_READ)
     res.status(400).json({ error: 'dateFrom and dateTo are required' });
     return;
   }
+
+  // Cleaners can only view their own summary
+  let targetUserId = req.params.userId;
+  if (req.user?.role === 'cleaner') {
+    targetUserId = req.user.id;
+  } else if (req.user?.role === 'subcontractor' && req.user.teamId) {
+    // Subcontractors can only view summaries for users on their team
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { teamId: true },
+    });
+    if (!targetUser || targetUser.teamId !== req.user.teamId) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+  }
+
   const summary = await getUserTimeSummary(
-    req.params.userId,
+    targetUserId,
     new Date(dateFrom as string),
     new Date(dateTo as string)
   );
@@ -192,19 +224,33 @@ router.get(
   validate(listTimesheetsSchema),
   async (req: Request, res: Response) => {
     const { userId, status, page, limit } = req.query;
-    const result = await listTimesheets({
-      userId: userId as string,
-      status: status as string,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+
+    const scopedUserId = req.user?.role === 'cleaner' ? req.user.id : (userId as string);
+
+    const result = await listTimesheets(
+      {
+        userId: scopedUserId,
+        status: status as string,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId,
+      }
+    );
     res.json(result);
   }
 );
 
 // Get timesheet by ID
 router.get('/timesheets/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ), async (req: Request, res: Response) => {
-  const timesheet = await getTimesheetById(req.params.id);
+  const timesheet = await getTimesheetById(req.params.id, {
+    userRole: req.user?.role,
+    userId: req.user?.id,
+    userTeamId: req.user?.teamId,
+  });
   res.json({ data: timesheet });
 });
 
