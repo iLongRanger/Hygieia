@@ -11,12 +11,15 @@ import {
   uploadCompanyLogo,
   removeCompanyLogo,
   getBackgroundServiceSettings,
+  getBackgroundServiceLogs,
   runBackgroundServiceNow,
   updateBackgroundServiceSetting,
 } from '../../lib/globalSettings';
 import type { GlobalSettings } from '../../types/globalSettings';
 import type {
   BackgroundServiceKey,
+  BackgroundServiceRunLog,
+  BackgroundServiceRunLogsByService,
   BackgroundServiceSetting,
 } from '../../types/backgroundServiceSettings';
 
@@ -57,7 +60,7 @@ const BACKGROUND_SERVICE_GUIDANCE: Record<
       'Creates upcoming recurring jobs from active contracts. This can run less often because schedules do not change every minute.',
     recommendedMinutes: 360,
     minMinutes: 60,
-    maxMinutes: 1440,
+    maxMinutes: 10080,
   },
   job_alerts: {
     label: 'Job Alert Checks',
@@ -81,6 +84,11 @@ async function fileToDataUrl(file: File): Promise<string> {
 const GlobalSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
   const [backgroundServices, setBackgroundServices] = useState<BackgroundServiceSetting[]>([]);
+  const [backgroundServiceLogs, setBackgroundServiceLogs] = useState<BackgroundServiceRunLogsByService>({
+    reminders: [],
+    recurring_jobs_autogen: [],
+    job_alerts: [],
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -91,12 +99,14 @@ const GlobalSettingsPage: React.FC = () => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const [data, serviceData] = await Promise.all([
+        const [data, serviceData, logs] = await Promise.all([
           getGlobalSettings(),
           getBackgroundServiceSettings(),
+          getBackgroundServiceLogs(10),
         ]);
         setSettings(data);
         setBackgroundServices(serviceData);
+        setBackgroundServiceLogs(logs);
       } catch {
         toast.error('Failed to load global settings');
       } finally {
@@ -169,8 +179,12 @@ const GlobalSettingsPage: React.FC = () => {
   const onRunBackgroundService = async (serviceKey: BackgroundServiceKey) => {
     try {
       setRunningServiceKey(serviceKey);
-      const updated = await runBackgroundServiceNow(serviceKey);
+      const [updated, logs] = await Promise.all([
+        runBackgroundServiceNow(serviceKey),
+        getBackgroundServiceLogs(10),
+      ]);
       updateServiceState(serviceKey, () => updated);
+      setBackgroundServiceLogs(logs);
       toast.success('Background service run triggered');
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'Failed to trigger background service');
@@ -185,6 +199,26 @@ const GlobalSettingsPage: React.FC = () => {
 
   const formatDateTime = (value: string | null): string =>
     value ? new Date(value).toLocaleString() : 'Never';
+
+  const formatMinutesReadable = (minutes: number): string => {
+    if (minutes < 1440) return `${minutes} minutes`;
+
+    const days = Math.floor(minutes / 1440);
+    const remainingMinutes = minutes % 1440;
+    const hours = Math.floor(remainingMinutes / 60);
+    const mins = remainingMinutes % 60;
+
+    const dayPart = `${days} day${days === 1 ? '' : 's'}`;
+    if (hours === 0 && mins === 0) return dayPart;
+    if (mins === 0) return `${dayPart} ${hours} hour${hours === 1 ? '' : 's'}`;
+    if (hours === 0) return `${dayPart} ${mins} minute${mins === 1 ? '' : 's'}`;
+    return `${dayPart} ${hours} hour${hours === 1 ? '' : 's'} ${mins} minute${mins === 1 ? '' : 's'}`;
+  };
+
+  const formatLogDateTime = (value: string): string => new Date(value).toLocaleString();
+
+  const getServiceLogs = (serviceKey: BackgroundServiceKey): BackgroundServiceRunLog[] =>
+    backgroundServiceLogs[serviceKey] || [];
 
   const getServiceIntervalMinutes = (service: BackgroundServiceSetting): number =>
     Math.max(1, Math.round(getSanitizedIntervalMs(service.serviceKey, service.intervalMs) / 60000));
@@ -411,10 +445,10 @@ const GlobalSettingsPage: React.FC = () => {
                 </label>
               </div>
               <p className="mb-3 text-xs text-primary-300">
-                Recommended: every {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes}{' '}
-                minutes. Allowed range:{' '}
-                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes}-
-                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes} minutes.
+                Recommended: every{' '}
+                {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes)}.
+                Allowed range: {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes)}-
+                {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes)}.
               </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <Input
@@ -438,6 +472,9 @@ const GlobalSettingsPage: React.FC = () => {
                 <Input label="Last Success" value={formatDateTime(service.lastSuccessAt)} readOnly />
                 <Input label="Last Error" value={service.lastError || 'None'} readOnly />
               </div>
+              <p className="mt-2 text-xs text-gray-400">
+                Current interval: {formatMinutesReadable(getServiceIntervalMinutes(service))}.
+              </p>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button
                   type="button"
@@ -455,6 +492,34 @@ const GlobalSettingsPage: React.FC = () => {
                 >
                   Save Service
                 </Button>
+              </div>
+              <div className="mt-4 rounded-lg border border-surface-800 bg-surface-900/40 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Recent Runs
+                </p>
+                {getServiceLogs(service.serviceKey).length === 0 ? (
+                  <p className="text-xs text-gray-500">No logs yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {getServiceLogs(service.serviceKey).map((log) => (
+                      <div key={log.id} className="rounded border border-surface-700 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={
+                              log.status === 'success'
+                                ? 'text-xs font-medium text-emerald-400'
+                                : 'text-xs font-medium text-red-400'
+                            }
+                          >
+                            {log.status === 'success' ? 'Success' : 'Failed'}
+                          </span>
+                          <span className="text-xs text-gray-500">{formatLogDateTime(log.createdAt)}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-300">{log.summary}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
