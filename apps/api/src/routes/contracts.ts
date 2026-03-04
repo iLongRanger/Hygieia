@@ -65,6 +65,7 @@ import {
   autoGenerateRecurringJobsForContract,
   regenerateRecurringJobsForContract,
 } from '../services/jobService';
+import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
 
 const router: Router = Router();
 
@@ -672,6 +673,12 @@ router.patch(
       }
 
       if (parsed.data.teamId) {
+        try {
+          await ensureSubcontractorRoleForTeamUsers(parsed.data.teamId);
+        } catch (roleSyncError) {
+          logger.error('Failed to ensure subcontractor role for team users:', roleSyncError);
+        }
+
         const subcontractorPayout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
         const subcontractorPayoutLabel = `$${subcontractorPayout.toLocaleString('en-US', {
           minimumFractionDigits: 2,
