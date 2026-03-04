@@ -19,7 +19,6 @@ vi.mock('react-router-dom', async () => {
 const listFacilitiesMock = vi.fn();
 const listUsersMock = vi.fn();
 const listInspectionTemplatesMock = vi.fn();
-const listJobsMock = vi.fn();
 const createInspectionMock = vi.fn();
 const updateInspectionMock = vi.fn();
 const getInspectionMock = vi.fn();
@@ -37,10 +36,6 @@ vi.mock('../../lib/inspections', () => ({
   createInspection: (...args: unknown[]) => createInspectionMock(...args),
   updateInspection: (...args: unknown[]) => updateInspectionMock(...args),
   getInspection: (...args: unknown[]) => getInspectionMock(...args),
-}));
-
-vi.mock('../../lib/jobs', () => ({
-  listJobs: (...args: unknown[]) => listJobsMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -77,9 +72,6 @@ describe('InspectionForm', () => {
     );
     listInspectionTemplatesMock.mockResolvedValue(
       mockPaginatedResponse([{ id: 'template-1', name: 'Standard Checklist' }])
-    );
-    listJobsMock.mockResolvedValue(
-      mockPaginatedResponse([])
     );
     createInspectionMock.mockResolvedValue(mockInspectionDetail());
     updateInspectionMock.mockResolvedValue(mockInspectionDetail());

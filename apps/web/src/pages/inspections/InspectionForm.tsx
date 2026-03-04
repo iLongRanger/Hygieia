@@ -25,7 +25,6 @@ import {
 } from '../../lib/inspections';
 import { listFacilities } from '../../lib/facilities';
 import { listUsers } from '../../lib/users';
-import { listJobs } from '../../lib/jobs';
 import { listContracts } from '../../lib/contracts';
 import type { CreateInspectionInput, UpdateInspectionInput, InspectionTemplateDetail } from '../../types/inspection';
 
@@ -46,12 +45,6 @@ interface UserOption {
   }>;
 }
 
-interface JobOption {
-  id: string;
-  jobNumber: string;
-  contract: { id: string; contractNumber: string; title: string };
-}
-
 interface ContractOption {
   id: string;
   contractNumber: string;
@@ -69,7 +62,6 @@ const InspectionForm = () => {
   // Reference data
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
-  const [jobs, setJobs] = useState<JobOption[]>([]);
   const [contracts, setContracts] = useState<ContractOption[]>([]);
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<InspectionTemplateDetail | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
@@ -88,7 +80,6 @@ const InspectionForm = () => {
 
   // Derived values
   const selectedFacility = facilities.find((f) => f.id === formData.facilityId);
-  const selectedJob = jobs.find((j) => j.id === formData.jobId);
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -104,19 +95,6 @@ const InspectionForm = () => {
       setUsers(eligibleInspectors);
     } catch {
       toast.error('Failed to load reference data');
-    }
-  }, []);
-
-  const fetchJobsForFacility = useCallback(async (facilityId: string) => {
-    if (!facilityId) {
-      setJobs([]);
-      return;
-    }
-    try {
-      const jobsRes = await listJobs({ facilityId, status: 'scheduled', limit: 100 });
-      setJobs(jobsRes?.data || []);
-    } catch {
-      setJobs([]);
     }
   }, []);
 
@@ -160,13 +138,12 @@ const InspectionForm = () => {
           accountId: inspection.accountId,
           inspectorUserId: inspection.inspectorUserId,
           templateId: inspection.templateId || null,
-          jobId: inspection.jobId || null,
+          jobId: null,
           contractId: inspection.contractId || null,
           scheduledDate: inspection.scheduledDate.split('T')[0],
           notes: inspection.notes || null,
         });
-        // Load jobs and contracts for the facility
-        await fetchJobsForFacility(inspection.facilityId);
+        // Load contracts for the facility
         await fetchContractsForFacility(inspection.facilityId);
         // Load template detail if one exists
         if (inspection.templateId) {
@@ -177,7 +154,7 @@ const InspectionForm = () => {
         navigate('/inspections');
       }
     },
-    [navigate, fetchJobsForFacility, fetchContractsForFacility, fetchTemplateDetail]
+    [navigate, fetchContractsForFacility, fetchTemplateDetail]
   );
 
   useEffect(() => {
@@ -203,7 +180,6 @@ const InspectionForm = () => {
       templateId: null,
     }));
     setSelectedTemplateDetail(null);
-    fetchJobsForFacility(facilityId);
     fetchContractsForFacility(facilityId);
   };
 
@@ -232,20 +208,6 @@ const InspectionForm = () => {
       } finally {
         setLoadingTemplate(false);
       }
-    }
-  };
-
-  const handleJobChange = (jobId: string) => {
-    const job = jobs.find((j) => j.id === jobId);
-    const contractId = job?.contract?.id || null;
-    setFormData((prev) => ({
-      ...prev,
-      jobId: jobId || null,
-      contractId,
-    }));
-    // Trigger template auto-fill when job sets a contract
-    if (contractId) {
-      handleContractChange(contractId);
     }
   };
 
@@ -392,27 +354,13 @@ const InspectionForm = () => {
             </div>
           </Card>
 
-          {/* Job & Scheduling */}
+          {/* Scheduling */}
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary-500" />
-              Job & Scheduling
+              Scheduling
             </h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Select
-                label="Job"
-                placeholder="Select a job (optional)"
-                value={formData.jobId || ''}
-                onChange={handleJobChange}
-                options={[
-                  { value: '', label: 'None' },
-                  ...jobs.map((j) => ({
-                    value: j.id,
-                    label: j.jobNumber,
-                  })),
-                ]}
-                disabled={isEditMode || !formData.facilityId}
-              />
               <Input
                 label="Scheduled Date *"
                 type="date"
@@ -501,14 +449,6 @@ const InspectionForm = () => {
                     <span className="text-surface-500 dark:text-surface-400">Contract</span>
                     <p className="font-medium text-surface-900 dark:text-surface-100">
                       {contracts.find((c) => c.id === formData.contractId)?.contractNumber || formData.contractId}
-                    </p>
-                  </div>
-                )}
-                {selectedJob && (
-                  <div>
-                    <span className="text-surface-500 dark:text-surface-400">Job</span>
-                    <p className="font-medium text-surface-900 dark:text-surface-100">
-                      {selectedJob.jobNumber}
                     </p>
                   </div>
                 )}
