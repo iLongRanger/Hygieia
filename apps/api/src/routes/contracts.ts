@@ -190,7 +190,7 @@ router.get(
         userId: req.user?.id,
       });
 
-      if (req.user?.role === 'subcontractor') {
+      if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
         const safeContracts = result.data.map((contract: any) => {
           const payout =
             Number(contract.monthlyValue || 0) *

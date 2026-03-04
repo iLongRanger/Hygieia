@@ -83,7 +83,7 @@ const JobDetail = () => {
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const userRole = useAuthStore((state) => state.user?.role);
-  const isSubcontractor = userRole === 'subcontractor';
+  const isSubcontractor = userRole === 'subcontractor' || userRole === 'cleaner';
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
   const [gettingLocation, setGettingLocation] = useState(false);
 

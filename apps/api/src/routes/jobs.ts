@@ -38,7 +38,7 @@ import { PERMISSIONS } from '../types';
 const router: Router = Router();
 
 function assertCanEditJob(req: Request): void {
-  if (req.user?.role === 'subcontractor') {
+  if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
     throw new ValidationError('Insufficient permissions');
   }
 }

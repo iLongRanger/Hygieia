@@ -189,10 +189,11 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     quotations_write: true,
   },
   cleaner: {
+    dashboard_read: true,
     contracts_read: true,
     facilities_read: true,
     jobs_read: true,
-    inspections_read: true,
+    jobs_write: true,
     time_tracking_read: true,
     time_tracking_write: true,
   },

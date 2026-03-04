@@ -113,9 +113,9 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
-  const isSubcontractor = user?.role === 'subcontractor';
+  const isFieldWorker = user?.role === 'subcontractor' || user?.role === 'cleaner';
 
-  const effectiveSections: NavSection[] = isSubcontractor
+  const effectiveSections: NavSection[] = isFieldWorker
     ? [
         {
           key: 'dashboard',
