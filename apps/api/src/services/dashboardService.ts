@@ -6,6 +6,8 @@ export interface DashboardParams {
   period?: TimePeriod;
   dateFrom?: Date;
   dateTo?: Date;
+  userRole?: string;
+  userTeamId?: string;
 }
 
 export interface PeriodComparison {
@@ -174,10 +176,119 @@ async function getComparisonData(
   };
 }
 
+async function getSubcontractorDashboard(
+  periodStart: Date,
+  periodEnd: Date,
+  teamId: string
+): Promise<DashboardStats> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const teamWhere = { assignedTeamId: teamId };
+
+  const [
+    jobsScheduledToday,
+    jobsInProgressToday,
+    jobsCompletedToday,
+    jobsCompletedInPeriod,
+    jobsMissedInPeriod,
+    inspectionScoreAgg,
+    inspectionsCompletedInPeriod,
+    activeClockIns,
+    pendingTimesheets,
+  ] = await Promise.all([
+    prisma.job.count({
+      where: { ...teamWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'scheduled' },
+    }),
+    prisma.job.count({
+      where: { ...teamWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'in_progress' },
+    }),
+    prisma.job.count({
+      where: { ...teamWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'completed' },
+    }),
+    prisma.job.count({
+      where: { ...teamWhere, status: 'completed', updatedAt: { gte: periodStart, lte: periodEnd } },
+    }),
+    prisma.job.count({
+      where: { ...teamWhere, status: 'missed', updatedAt: { gte: periodStart, lte: periodEnd } },
+    }),
+    prisma.inspection.aggregate({
+      _avg: { overallScore: true },
+      where: {
+        status: 'completed',
+        completedAt: { gte: periodStart, lte: periodEnd },
+        job: teamWhere,
+      },
+    }),
+    prisma.inspection.count({
+      where: {
+        status: 'completed',
+        completedAt: { gte: periodStart, lte: periodEnd },
+        job: teamWhere,
+      },
+    }),
+    prisma.timeEntry.count({
+      where: { status: 'active', clockOut: null, user: { teamId } },
+    }),
+    prisma.timesheet.count({
+      where: { status: { in: ['draft', 'submitted'] }, user: { teamId } },
+    }),
+  ]);
+
+  // Zero out all sales/revenue data for subcontractors
+  const emptyComparison: PeriodComparison = {
+    newLeads: 0, newLeadsPrev: 0, newLeadsChange: null,
+    newAccounts: 0, newAccountsPrev: 0, newAccountsChange: null,
+    proposalsSent: 0, proposalsSentPrev: 0, proposalsSentChange: null,
+    winRate: 0, winRatePrev: 0, winRateChange: null,
+    mrr: 0, mrrPrev: 0, mrrChange: null,
+  };
+
+  return {
+    totalLeads: 0,
+    newLeadsInPeriod: 0,
+    activeAccounts: 0,
+    newAccountsInPeriod: 0,
+    activeContracts: 0,
+    totalMRR: 0,
+    proposalsSentInPeriod: 0,
+    proposalWinRate: 0,
+    comparison: emptyComparison,
+    leadsByStatus: [],
+    pipelineValue: 0,
+    proposalsByStatus: [],
+    contractsByStatus: [],
+    expiringContracts: [],
+    revenueByMonth: [],
+    upcomingAppointments: [],
+    recentActivity: [],
+    jobsScheduledToday,
+    jobsTodayOverview: {
+      scheduled: jobsScheduledToday,
+      inProgress: jobsInProgressToday,
+      completed: jobsCompletedToday,
+      unassigned: 0,
+    },
+    jobsCompletedInPeriod,
+    jobsMissedInPeriod,
+    inspectionAvgScore: inspectionScoreAgg._avg.overallScore
+      ? Math.round(Number(inspectionScoreAgg._avg.overallScore) * 10) / 10
+      : null,
+    inspectionsCompletedInPeriod,
+    activeClockIns,
+    pendingTimesheets,
+    outstandingInvoiceAmount: 0,
+    overdueInvoiceCount: 0,
+    invoicesPaidInPeriod: 0,
+    activeUsers: 0,
+    activeTeams: 0,
+  };
+}
+
 export async function getDashboardStats(
   params: DashboardParams = {}
 ): Promise<DashboardStats> {
-  const { period = 'month', dateFrom, dateTo } = params;
+  const { period = 'month', dateFrom, dateTo, userRole, userTeamId } = params;
 
   let periodStart: Date;
   let periodEnd: Date;
@@ -189,6 +300,11 @@ export async function getDashboardStats(
     const dates = getPeriodDates(period);
     periodStart = dates.start;
     periodEnd = dates.end;
+  }
+
+  // Subcontractors get a scoped dashboard with only operations data for their team
+  if (userRole === 'subcontractor' && userTeamId) {
+    return getSubcontractorDashboard(periodStart, periodEnd, userTeamId);
   }
 
   const now = new Date();

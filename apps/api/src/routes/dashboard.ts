@@ -8,6 +8,7 @@ import {
   ExportType,
 } from '../services/dashboardService';
 import { PERMISSIONS } from '../types';
+import { ForbiddenError } from '../middleware/errorHandler';
 
 const router: Router = Router();
 
@@ -41,7 +42,13 @@ router.get(
         }
       }
 
-      const stats = await getDashboardStats({ period, dateFrom, dateTo });
+      const stats = await getDashboardStats({
+        period,
+        dateFrom,
+        dateTo,
+        userRole: req.user?.role,
+        userTeamId: req.user?.teamId,
+      });
       res.json({ data: stats });
     } catch (error) {
       next(error);
@@ -55,6 +62,10 @@ router.get(
   requirePermission(PERMISSIONS.DASHBOARD_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (req.user?.role === 'subcontractor') {
+        throw new ForbiddenError('Subcontractors cannot export dashboard data');
+      }
+
       const typeParam = req.query.type as string | undefined;
 
       if (!typeParam || !validExportTypes.includes(typeParam as ExportType)) {
