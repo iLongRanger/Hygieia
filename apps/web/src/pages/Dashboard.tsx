@@ -81,7 +81,6 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
 const SubcontractorDashboard = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const isCleaner = user?.role === 'cleaner';
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,13 +89,9 @@ const SubcontractorDashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const promises: [Promise<{ data: Contract[] }> | null, Promise<{ data: Job[] }>] = [
-          isCleaner ? null : listContracts({ status: 'active', limit: 50 }),
-          listJobs({ limit: 20 }),
-        ];
         const [contractRes, jobRes] = await Promise.all([
-          promises[0] ?? Promise.resolve({ data: [] as Contract[] }),
-          promises[1],
+          listContracts({ status: 'active', limit: 50 }),
+          listJobs({ limit: 20 }),
         ]);
         setContracts(contractRes.data || []);
         setJobs(jobRes.data || []);
@@ -107,7 +102,7 @@ const SubcontractorDashboard = () => {
       }
     };
     fetchData();
-  }, [isCleaner]);
+  }, []);
 
   const activeContracts = contracts.filter((c) => c.status === 'active');
   const totalPayout = activeContracts.reduce(
@@ -146,18 +141,16 @@ const SubcontractorDashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isCleaner ? '' : 'lg:grid-cols-3'} sm:gap-6`}>
-        {!isCleaner && (
-          <StatCard
-            label="Active Contracts"
-            value={activeContracts.length}
-            subtitle={`${contracts.length} total assigned`}
-            icon={FileText}
-            color="text-primary-600 dark:text-primary-400"
-            bg="bg-primary-100 dark:bg-primary-900/30"
-            onClick={() => navigate('/contracts')}
-          />
-        )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+        <StatCard
+          label="Active Contracts"
+          value={activeContracts.length}
+          subtitle={`${contracts.length} total assigned`}
+          icon={FileText}
+          color="text-primary-600 dark:text-primary-400"
+          bg="bg-primary-100 dark:bg-primary-900/30"
+          onClick={() => navigate('/contracts')}
+        />
         <StatCard
           label="Upcoming Jobs"
           value={upcomingJobs.length}
@@ -167,16 +160,14 @@ const SubcontractorDashboard = () => {
           bg="bg-indigo-100 dark:bg-indigo-900/30"
           onClick={() => navigate('/jobs')}
         />
-        {!isCleaner && (
-          <StatCard
-            label="Monthly Payout"
-            value={formatCurrencyFull(totalPayout)}
-            subtitle="across active contracts"
-            icon={DollarSign}
-            color="text-teal-600 dark:text-teal-400"
-            bg="bg-teal-100 dark:bg-teal-900/30"
-          />
-        )}
+        <StatCard
+          label="Monthly Payout"
+          value={formatCurrencyFull(totalPayout)}
+          subtitle="across active contracts"
+          icon={DollarSign}
+          color="text-teal-600 dark:text-teal-400"
+          bg="bg-teal-100 dark:bg-teal-900/30"
+        />
       </div>
 
       {/* Upcoming Jobs */}
@@ -224,48 +215,45 @@ const SubcontractorDashboard = () => {
         )}
       </Card>
 
-      {/* Active Contracts (subcontractors only) */}
-      {!isCleaner && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-              Active Contracts
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/contracts')}>
-              View all
-            </Button>
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            Active Contracts
+          </h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/contracts')}>
+            View all
+          </Button>
+        </div>
+        {activeContracts.length === 0 ? (
+          <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
+            No active contracts assigned.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {activeContracts.map((contract) => (
+              <button
+                key={contract.id}
+                onClick={() => navigate(`/contracts/${contract.id}`)}
+                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+              >
+                <div>
+                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                    {contract.title}
+                  </div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">
+                    {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-teal-600 dark:text-teal-400">
+                    {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
-          {activeContracts.length === 0 ? (
-            <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
-              No active contracts assigned.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {activeContracts.map((contract) => (
-                <button
-                  key={contract.id}
-                  onClick={() => navigate(`/contracts/${contract.id}`)}
-                  className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
-                >
-                  <div>
-                    <div className="font-medium text-surface-900 dark:text-surface-100">
-                      {contract.title}
-                    </div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">
-                      {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-teal-600 dark:text-teal-400">
-                      {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+        )}
+      </Card>
     </div>
   );
 };
