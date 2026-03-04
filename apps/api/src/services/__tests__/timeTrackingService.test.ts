@@ -61,6 +61,29 @@ describe('timeTrackingService', () => {
     );
   });
 
+  it('clockIn rejects when selected job is not scheduled for today', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-02-01T08:00:00.000Z'));
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      scheduledDate: new Date('2026-02-02T00:00:00.000Z'),
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      contract: {
+        serviceFrequency: null,
+        serviceSchedule: null,
+        facility: { address: null },
+      },
+      facility: { address: null },
+    });
+
+    await expect(
+      clockIn({
+        userId: 'user-1',
+        jobId: 'job-1',
+      })
+    ).rejects.toThrow('You cannot clock in today. Job is not scheduled for today.');
+  });
+
   it('clockIn rejects when user is outside facility geofence', async () => {
     (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({

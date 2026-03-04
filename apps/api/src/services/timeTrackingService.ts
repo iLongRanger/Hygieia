@@ -115,6 +115,10 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 // ==================== Service ====================
 
 export async function listTimeEntries(
@@ -210,6 +214,7 @@ export async function clockIn(input: ClockInInput) {
       ? await prisma.job.findUnique({
           where: { id: input.jobId },
           select: {
+            scheduledDate: true,
             contractId: true,
             facilityId: true,
             contract: {
@@ -223,6 +228,18 @@ export async function clockIn(input: ClockInInput) {
           },
         })
       : null;
+
+    if (linkedJob?.scheduledDate) {
+      const scheduledDate = toIsoDate(linkedJob.scheduledDate);
+      const today = toIsoDate(new Date());
+      if (scheduledDate !== today) {
+        throw new BadRequestError('You cannot clock in today. Job is not scheduled for today.', {
+          code: 'JOB_NOT_SCHEDULED_TODAY',
+          scheduledDate,
+          today,
+        });
+      }
+    }
 
     const linkedContract = !linkedJob && input.contractId
       ? await prisma.contract.findUnique({

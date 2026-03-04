@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { prisma } from '../lib/prisma';
@@ -96,13 +96,17 @@ router.get('/entries/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ), as
 router.post(
   '/clock-in',
   validate(clockInSchema),
-  async (req: Request, res: Response) => {
-    const entry = await clockIn({
-      userId: req.user!.id,
-      ...req.body,
-      userRole: req.user?.role,
-    });
-    res.status(201).json({ data: entry });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const entry = await clockIn({
+        userId: req.user!.id,
+        ...req.body,
+        userRole: req.user?.role,
+      });
+      res.status(201).json({ data: entry });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -110,14 +114,18 @@ router.post(
 router.post(
   '/clock-out',
   validate(clockOutSchema),
-  async (req: Request, res: Response) => {
-    const entry = await clockOut(
-      req.user!.id,
-      req.body.notes,
-      req.body.geoLocation,
-      req.user?.role
-    );
-    res.json({ data: entry });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const entry = await clockOut(
+        req.user!.id,
+        req.body.notes,
+        req.body.geoLocation,
+        req.user?.role
+      );
+      res.json({ data: entry });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

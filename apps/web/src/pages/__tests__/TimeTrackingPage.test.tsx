@@ -153,4 +153,30 @@ describe('TimeTrackingPage', () => {
       expect(approveTimeEntryMock).toHaveBeenCalledWith('entry-1');
     });
   });
+
+  it('completes in-progress job from clock-out modal without a second clock-out call', async () => {
+    const user = userEvent.setup();
+    getActiveEntryMock.mockResolvedValue({
+      ...entry,
+      id: 'entry-active',
+      status: 'active',
+      clockOut: null,
+      job: { id: 'job-1', jobNumber: 'WO-2026-0001' },
+    });
+
+    render(<TimeTrackingPage />);
+
+    await screen.findByText('Currently Clocked In');
+    await user.click(screen.getByRole('button', { name: /clock out/i }));
+    await screen.findByRole('heading', { name: /complete job before clock-out/i });
+    await user.click(screen.getByRole('button', { name: /complete job \+ clock out/i }));
+
+    await waitFor(() => {
+      expect(completeJobMock).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ geoLocation: null })
+      );
+    });
+    expect(clockOutMock).not.toHaveBeenCalled();
+  });
 });

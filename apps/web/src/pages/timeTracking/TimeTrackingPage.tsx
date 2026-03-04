@@ -229,6 +229,8 @@ const TimeTrackingPage = () => {
       toast.error(
         details?.code === 'OUTSIDE_SERVICE_WINDOW'
           ? 'Outside allowed service window'
+          : details?.code === 'JOB_NOT_SCHEDULED_TODAY'
+            ? 'You cannot clock in today. Job is not scheduled for today.'
           : details?.code === 'OUTSIDE_FACILITY_GEOFENCE'
             ? 'You are too far from the facility to clock in'
             : details?.code === 'CLOCK_IN_LOCATION_REQUIRED'
@@ -299,7 +301,6 @@ const TimeTrackingPage = () => {
         completionNotes: jobCompletionNotes || null,
         geoLocation,
       });
-      await clockOut(clockOutNotes || undefined, geoLocation);
       setActiveEntry(null);
       setShowClockOutCompleteModal(false);
       setJobCompletionNotes('');
