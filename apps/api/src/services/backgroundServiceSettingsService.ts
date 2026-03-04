@@ -108,12 +108,16 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'job_alerts',
 ];
 
+function hasBackgroundServiceDelegate(): boolean {
+  return Boolean((prisma as unknown as { backgroundServiceSetting?: unknown }).backgroundServiceSetting);
+}
+
 function shouldSkipDbReads(): boolean {
   return process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID);
 }
 
 export async function getBackgroundServiceSettings(): Promise<BackgroundServiceSettingView[]> {
-  if (shouldSkipDbReads()) {
+  if (shouldSkipDbReads() || !hasBackgroundServiceDelegate()) {
     return BACKGROUND_SERVICE_KEYS.map((serviceKey) => getDefaultServiceConfig(serviceKey));
   }
 
@@ -133,7 +137,7 @@ export async function getBackgroundServiceSettings(): Promise<BackgroundServiceS
 export async function getBackgroundServiceSetting(
   serviceKey: BackgroundServiceKey
 ): Promise<BackgroundServiceSettingView> {
-  if (shouldSkipDbReads()) {
+  if (shouldSkipDbReads() || !hasBackgroundServiceDelegate()) {
     return getDefaultServiceConfig(serviceKey);
   }
 
@@ -156,6 +160,12 @@ export async function updateBackgroundServiceSetting(
   input: UpdateBackgroundServiceSettingsInput,
   updatedByUserId: string | null
 ): Promise<BackgroundServiceSettingView> {
+  if (!hasBackgroundServiceDelegate()) {
+    throw new Error(
+      'Background services settings are unavailable. Run database migration and Prisma generate.'
+    );
+  }
+
   const defaults = getDefaultServiceConfig(serviceKey);
   const row = await prisma.backgroundServiceSetting.upsert({
     where: { serviceKey },
@@ -184,6 +194,10 @@ async function patchRunMetadata(
     lastErrorAt?: Date | null;
   }
 ): Promise<void> {
+  if (!hasBackgroundServiceDelegate()) {
+    return;
+  }
+
   try {
     await prisma.backgroundServiceSetting.upsert({
       where: { serviceKey },

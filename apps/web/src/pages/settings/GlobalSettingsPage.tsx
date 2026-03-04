@@ -33,6 +33,42 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   themeTextColor: '#333333',
 };
 
+const BACKGROUND_SERVICE_GUIDANCE: Record<
+  BackgroundServiceKey,
+  {
+    label: string;
+    description: string;
+    recommendedMinutes: number;
+    minMinutes: number;
+    maxMinutes: number;
+  }
+> = {
+  reminders: {
+    label: 'Client Reminders',
+    description:
+      'Sends appointment and follow-up reminders. Use a shorter interval for faster reminder delivery.',
+    recommendedMinutes: 15,
+    minMinutes: 5,
+    maxMinutes: 240,
+  },
+  recurring_jobs_autogen: {
+    label: 'Recurring Job Creation',
+    description:
+      'Creates upcoming recurring jobs from active contracts. This can run less often because schedules do not change every minute.',
+    recommendedMinutes: 360,
+    minMinutes: 60,
+    maxMinutes: 1440,
+  },
+  job_alerts: {
+    label: 'Job Alert Checks',
+    description:
+      'Checks for jobs nearing end time with no check-in and alerts your team. Keep this fairly frequent.',
+    recommendedMinutes: 15,
+    minMinutes: 5,
+    maxMinutes: 240,
+  },
+};
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -94,6 +130,16 @@ const GlobalSettingsPage: React.FC = () => {
     }
   };
 
+  const getSanitizedIntervalMs = (
+    serviceKey: BackgroundServiceKey,
+    intervalMs: number
+  ): number => {
+    const guide = BACKGROUND_SERVICE_GUIDANCE[serviceKey];
+    const rawMinutes = Number.isFinite(intervalMs) ? intervalMs / 60000 : guide.recommendedMinutes;
+    const clampedMinutes = Math.min(guide.maxMinutes, Math.max(guide.minMinutes, Math.round(rawMinutes)));
+    return clampedMinutes * 60_000;
+  };
+
   const updateServiceState = (
     serviceKey: BackgroundServiceKey,
     updater: (service: BackgroundServiceSetting) => BackgroundServiceSetting
@@ -106,9 +152,10 @@ const GlobalSettingsPage: React.FC = () => {
   const onSaveBackgroundService = async (service: BackgroundServiceSetting) => {
     try {
       setSavingServiceKey(service.serviceKey);
+      const sanitizedIntervalMs = getSanitizedIntervalMs(service.serviceKey, service.intervalMs);
       const updated = await updateBackgroundServiceSetting(service.serviceKey, {
         enabled: service.enabled,
-        intervalMs: service.intervalMs,
+        intervalMs: sanitizedIntervalMs,
       });
       updateServiceState(service.serviceKey, () => updated);
       toast.success('Background service updated');
@@ -133,13 +180,14 @@ const GlobalSettingsPage: React.FC = () => {
   };
 
   const getServiceLabel = (serviceKey: BackgroundServiceKey): string => {
-    if (serviceKey === 'reminders') return 'Reminders';
-    if (serviceKey === 'recurring_jobs_autogen') return 'Recurring Jobs Auto-Generation';
-    return 'Job Alerts';
+    return BACKGROUND_SERVICE_GUIDANCE[serviceKey].label;
   };
 
   const formatDateTime = (value: string | null): string =>
     value ? new Date(value).toLocaleString() : 'Never';
+
+  const getServiceIntervalMinutes = (service: BackgroundServiceSetting): number =>
+    Math.max(1, Math.round(getSanitizedIntervalMs(service.serviceKey, service.intervalMs) / 60000));
 
   const onSelectLogo = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -334,13 +382,19 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <h2 className="mb-4 text-lg font-semibold text-white">Background Services</h2>
         <p className="mb-4 text-sm text-gray-400">
-          Configure automatic system jobs and run them manually when needed.
+          Configure automatic system jobs using minutes (not technical milliseconds). Use the
+          recommended values unless you need faster or slower updates.
         </p>
         <div className="space-y-4">
           {backgroundServices.map((service) => (
             <div key={service.serviceKey} className="rounded-lg border border-surface-700 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-white">{getServiceLabel(service.serviceKey)}</h3>
+                <div>
+                  <h3 className="font-semibold text-white">{getServiceLabel(service.serviceKey)}</h3>
+                  <p className="text-xs text-gray-400">
+                    {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].description}
+                  </p>
+                </div>
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input
                     type="checkbox"
@@ -356,16 +410,27 @@ const GlobalSettingsPage: React.FC = () => {
                   Enabled
                 </label>
               </div>
+              <p className="mb-3 text-xs text-primary-300">
+                Recommended: every {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes}{' '}
+                minutes. Allowed range:{' '}
+                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes}-
+                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes} minutes.
+              </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <Input
-                  label="Interval (ms)"
+                  label="Run Every (minutes)"
                   type="number"
-                  min={60000}
-                  value={String(service.intervalMs)}
+                  min={BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes}
+                  max={BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes}
+                  value={String(getServiceIntervalMinutes(service))}
                   onChange={(e) =>
                     updateServiceState(service.serviceKey, (current) => ({
                       ...current,
-                      intervalMs: Math.max(60_000, Number(e.target.value || 60_000)),
+                      intervalMs: getSanitizedIntervalMs(
+                        service.serviceKey,
+                        Number(e.target.value || BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes) *
+                          60_000
+                      ),
                     }))
                   }
                 />
