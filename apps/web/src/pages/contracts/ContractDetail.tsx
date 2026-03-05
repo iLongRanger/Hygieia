@@ -2073,73 +2073,88 @@ const ContractDetail = () => {
         title="Create Contract Amendment"
         size="2xl"
       >
-        <div className="space-y-4">
-          <Input
-            label="Title *"
-            value={amendmentFormData.title}
-            onChange={(e) =>
-              setAmendmentFormData((prev) => ({ ...prev, title: e.target.value }))
-            }
-            placeholder="Scope change for April"
-          />
-          <Textarea
-            label="Description"
-            rows={2}
-            value={amendmentFormData.description || ''}
-            onChange={(e) =>
-              setAmendmentFormData((prev) => ({ ...prev, description: e.target.value || null }))
-            }
-            placeholder="What changed and why"
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="Effective Date *"
-              type="date"
-              value={amendmentFormData.effectiveDate}
-              onChange={(e) =>
-                setAmendmentFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))
-              }
-            />
-            <Input
-              label="Monthly Value"
-              type="number"
-              step="0.01"
-              value={amendmentFormData.monthlyValue ?? ''}
-              onChange={(e) =>
-                setAmendmentFormData((prev) => ({
-                  ...prev,
-                  monthlyValue: e.target.value ? Number(e.target.value) : null,
-                }))
-              }
-            />
+        <div className="space-y-5">
+          <div className="rounded-xl border border-primary-500/30 bg-gradient-to-r from-primary-500/20 via-primary-400/10 to-transparent px-4 py-3">
+            <div className="text-sm font-semibold text-white">Amendment Workspace</div>
+            <div className="mt-1 text-xs text-primary-100/90">
+              Update pricing, then review areas and tasks card-by-card before saving.
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Select
-              label="Service Frequency"
-              placeholder="Keep current"
-              options={SERVICE_FREQUENCIES}
-              value={amendmentFormData.serviceFrequency || ''}
-              onChange={(value) =>
-                setAmendmentFormData((prev) => ({
-                  ...prev,
-                  serviceFrequency: (value || null) as any,
-                }))
-              }
-            />
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
             <Input
-              label="Payment Terms"
-              value={amendmentFormData.paymentTerms ?? ''}
+              label="Title *"
+              value={amendmentFormData.title}
               onChange={(e) =>
-                setAmendmentFormData((prev) => ({
-                  ...prev,
-                  paymentTerms: e.target.value || null,
-                }))
+                setAmendmentFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              placeholder="Net 30"
+              placeholder="Scope change for April"
             />
+            <Textarea
+              label="Description"
+              rows={2}
+              value={amendmentFormData.description || ''}
+              onChange={(e) =>
+                setAmendmentFormData((prev) => ({ ...prev, description: e.target.value || null }))
+              }
+              placeholder="What changed and why"
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Effective Date *"
+                type="date"
+                value={amendmentFormData.effectiveDate}
+                onChange={(e) =>
+                  setAmendmentFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))
+                }
+              />
+              <Input
+                label="Monthly Value"
+                type="number"
+                step="0.01"
+                value={amendmentFormData.monthlyValue ?? ''}
+                onChange={(e) =>
+                  setAmendmentFormData((prev) => ({
+                    ...prev,
+                    monthlyValue: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Service Frequency"
+                placeholder="Keep current"
+                options={SERVICE_FREQUENCIES}
+                value={amendmentFormData.serviceFrequency || ''}
+                onChange={(value) =>
+                  setAmendmentFormData((prev) => ({
+                    ...prev,
+                    serviceFrequency: (value || null) as any,
+                  }))
+                }
+              />
+              <Input
+                label="Payment Terms"
+                value={amendmentFormData.paymentTerms ?? ''}
+                onChange={(e) =>
+                  setAmendmentFormData((prev) => ({
+                    ...prev,
+                    paymentTerms: e.target.value || null,
+                  }))
+                }
+                placeholder="Net 30"
+              />
+            </div>
           </div>
-          <div className="rounded-md border border-white/10 p-3 space-y-4">
-            <div className="text-sm font-medium text-white">Areas and Tasks</div>
+
+          <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-white">Areas and Tasks</div>
+              <span className="rounded-full border border-primary-400/40 bg-primary-500/20 px-2.5 py-1 text-[11px] font-medium text-primary-100">
+                Review Per Area
+              </span>
+            </div>
             {existingAreasRaw.length === 0 ? (
               <div className="rounded border border-dashed border-white/10 px-3 py-4 text-sm text-gray-400">
                 No existing areas found on this facility.
@@ -2158,16 +2173,16 @@ const ContractDetail = () => {
 
                 return (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <div className="flex items-center justify-between rounded-lg border border-primary-500/20 bg-primary-500/10 px-3 py-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setActiveAreaIndex((prev) => Math.max(prev - 1, 0))}
                         disabled={safeIndex === 0}
                       >
-                        Left
+                        Back
                       </Button>
-                      <div className="text-xs text-gray-300">
+                      <div className="text-xs font-medium text-primary-100">
                         Area {safeIndex + 1} of {existingAreasRaw.length}
                       </div>
                       <Button
@@ -2178,13 +2193,13 @@ const ContractDetail = () => {
                         }
                         disabled={safeIndex >= existingAreasRaw.length - 1}
                       >
-                        Right
+                        Next
                       </Button>
                     </div>
 
-                    <div className="rounded border border-white/10">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-                        <div className="text-sm font-medium text-white">{areaName}</div>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5">
+                        <div className="text-sm font-semibold text-white">{areaName}</div>
                         <Button
                           variant={isArchived ? 'secondary' : 'ghost'}
                           size="sm"
@@ -2194,7 +2209,7 @@ const ContractDetail = () => {
                         </Button>
                       </div>
 
-                      <div className="space-y-3 p-3">
+                      <div className="space-y-3 p-3.5">
                         <div className="text-xs text-gray-400">Existing tasks ({areaTasks.length})</div>
                         <div className="space-y-2">
                           {areaTasks.length === 0 ? (
@@ -2206,7 +2221,7 @@ const ContractDetail = () => {
                               return (
                                 <div
                                   key={task.id}
-                                  className="flex items-center justify-between rounded border border-white/10 px-3 py-2 text-sm"
+                                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm"
                                 >
                                   <span className="text-gray-200">
                                     {taskName} ({task.cleaningFrequency})
@@ -2285,7 +2300,7 @@ const ContractDetail = () => {
             )}
 
             <div className="border-t border-white/10 pt-3">
-              <div className="mb-2 text-xs text-gray-400">Add New Area</div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Add New Area</div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Select
                   label="Area Type"
@@ -2318,7 +2333,7 @@ const ContractDetail = () => {
                   {areasToCreate.map((area, index) => (
                     <div
                       key={`${area.name}-${index}`}
-                      className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
+                      className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
                     >
                       <span className="text-emerald-100">
                         New area: {area.name} ({area.squareFeet || 'n/a'} sqft)
@@ -2338,7 +2353,7 @@ const ContractDetail = () => {
               )}
             </div>
           </div>
-          <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
             Apply flow: create amendment -&gt; approve -&gt; apply. Applying updates contract values and
             regenerates future recurring scheduled jobs from the effective date.
           </div>
