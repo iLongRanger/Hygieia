@@ -7,6 +7,8 @@ import {
   X,
   Send,
   ArrowLeft,
+  Trash2,
+  Filter,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +17,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { Textarea } from '../../components/ui/Textarea';
 import { listUsers } from '../../lib/users';
 import {
   listTimesheets,
@@ -23,10 +27,21 @@ import {
   submitTimesheet,
   approveTimesheet,
   rejectTimesheet,
+  deleteTimesheet,
 } from '../../lib/timeTracking';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import type { Timesheet, TimesheetDetail, TimesheetStatus } from '../../types/timeTracking';
 import type { Pagination } from '../../types/crm';
 import type { User } from '../../types/user';
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+];
 
 const getStatusVariant = (status: TimesheetStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<TimesheetStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -64,8 +79,12 @@ function getPrimaryRoleKey(user: User): (typeof ROLE_GROUP_ORDER)[number] {
 
 const TimesheetsPage = () => {
   const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canApprove = hasPermission(PERMISSIONS.TIME_TRACKING_APPROVE);
+
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetDetail | null>(null);
   const [showGenerate, setShowGenerate] = useState(false);
@@ -74,10 +93,27 @@ const TimesheetsPage = () => {
   const [generateStart, setGenerateStart] = useState('');
   const [generateEnd, setGenerateEnd] = useState('');
 
+  // Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterUserId, setFilterUserId] = useState('');
+
+  // Reject modal
+  const [rejectModalId, setRejectModalId] = useState<string | null>(null);
+  const [rejectNotes, setRejectNotes] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+
+  // Delete confirmation
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const fetchTimesheets = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await listTimesheets({ limit: 20 });
+      const params: Record<string, unknown> = { limit: 20, page };
+      if (filterStatus) params.status = filterStatus;
+      if (filterUserId) params.userId = filterUserId;
+      const result = await listTimesheets(params);
       setTimesheets(result.data);
       setPagination(result.pagination);
     } catch {
@@ -85,7 +121,7 @@ const TimesheetsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, filterStatus, filterUserId]);
 
   useEffect(() => {
     fetchTimesheets();
@@ -173,21 +209,57 @@ const TimesheetsPage = () => {
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleRejectConfirm = async () => {
+    if (!rejectModalId) return;
+    setRejecting(true);
     try {
-      await rejectTimesheet(id);
+      await rejectTimesheet(rejectModalId, rejectNotes || undefined);
       toast.success('Timesheet rejected');
+      setRejectModalId(null);
+      setRejectNotes('');
       fetchTimesheets();
-      if (selectedTimesheet?.id === id) {
-        const detail = await getTimesheet(id);
+      if (selectedTimesheet?.id === rejectModalId) {
+        const detail = await getTimesheet(rejectModalId);
         setSelectedTimesheet(detail);
       }
     } catch {
       toast.error('Failed to reject timesheet');
+    } finally {
+      setRejecting(false);
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteModalId) return;
+    setDeleting(true);
+    try {
+      await deleteTimesheet(deleteModalId);
+      toast.success('Timesheet deleted');
+      setDeleteModalId(null);
+      if (selectedTimesheet?.id === deleteModalId) {
+        setSelectedTimesheet(null);
+      }
+      fetchTimesheets();
+    } catch {
+      toast.error('Failed to delete timesheet');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setFilterStatus('');
+    setFilterUserId('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = filterStatus || filterUserId;
+
+  // ==================== Detail View ====================
+
   if (selectedTimesheet) {
+    const canDelete = canApprove && selectedTimesheet.status !== 'approved';
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -214,20 +286,43 @@ const TimesheetsPage = () => {
                 Submit
               </Button>
             )}
-            {selectedTimesheet.status === 'submitted' && (
+            {selectedTimesheet.status === 'submitted' && canApprove && (
               <>
                 <Button size="sm" onClick={() => handleApprove(selectedTimesheet.id)}>
                   <Check className="mr-1.5 h-4 w-4" />
                   Approve
                 </Button>
-                <Button variant="danger" size="sm" onClick={() => handleReject(selectedTimesheet.id)}>
+                <Button variant="danger" size="sm" onClick={() => {
+                  setRejectModalId(selectedTimesheet.id);
+                  setRejectNotes('');
+                }}>
                   <X className="mr-1.5 h-4 w-4" />
                   Reject
                 </Button>
               </>
             )}
+            {canDelete && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setDeleteModalId(selectedTimesheet.id)}
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Notes (shown if rejected) */}
+        {selectedTimesheet.status === 'rejected' && selectedTimesheet.notes && (
+          <Card>
+            <div className="p-4">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Rejection Reason</p>
+              <p className="text-sm text-surface-700 dark:text-surface-300">{selectedTimesheet.notes}</p>
+            </div>
+          </Card>
+        )}
 
         {/* Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -299,6 +394,8 @@ const TimesheetsPage = () => {
     );
   }
 
+  // ==================== List View ====================
+
   const columns = [
     {
       header: 'Employee',
@@ -352,6 +449,11 @@ const TimesheetsPage = () => {
     },
   ];
 
+  const userFilterOptions = [
+    { value: '', label: 'All Users' },
+    ...availableUsers.map((u) => ({ value: u.id, label: u.fullName })),
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -372,11 +474,56 @@ const TimesheetsPage = () => {
             </p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setShowGenerate(!showGenerate)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Generate
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="mr-1.5 h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white">
+                !
+              </span>
+            )}
+          </Button>
+          {canApprove && (
+            <Button size="sm" onClick={() => setShowGenerate(!showGenerate)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Generate
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <Card>
+          <div className="p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <Select
+                label="Status"
+                value={filterStatus}
+                onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                options={STATUS_OPTIONS}
+              />
+              <Select
+                label="Employee"
+                value={filterUserId}
+                onChange={(val) => { setFilterUserId(val); setPage(1); }}
+                options={userFilterOptions}
+              />
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1 h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Generate form */}
       {showGenerate && (
@@ -457,7 +604,7 @@ const TimesheetsPage = () => {
               variant="secondary"
               size="sm"
               disabled={pagination.page <= 1}
-              onClick={() => {/* TODO: add page param support */}}
+              onClick={() => setPage((p) => p - 1)}
             >
               Previous
             </Button>
@@ -465,13 +612,63 @@ const TimesheetsPage = () => {
               variant="secondary"
               size="sm"
               disabled={pagination.page >= pagination.totalPages}
-              onClick={() => {/* TODO: add page param support */}}
+              onClick={() => setPage((p) => p + 1)}
             >
               Next
             </Button>
           </div>
         </div>
       )}
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={!!rejectModalId}
+        onClose={() => { setRejectModalId(null); setRejectNotes(''); }}
+        title="Reject Timesheet"
+      >
+        <div className="space-y-4">
+          <Textarea
+            label="Rejection reason (optional)"
+            value={rejectNotes}
+            onChange={(e) => setRejectNotes(e.target.value)}
+            placeholder="Explain why this timesheet is being rejected..."
+            rows={3}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setRejectModalId(null); setRejectNotes(''); }}
+            >
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleRejectConfirm} isLoading={rejecting}>
+              Reject Timesheet
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal
+        isOpen={!!deleteModalId}
+        onClose={() => setDeleteModalId(null)}
+        title="Delete Timesheet"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600 dark:text-surface-400">
+            Are you sure you want to delete this timesheet? Time entries will be unlinked but not deleted.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setDeleteModalId(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleDeleteConfirm} isLoading={deleting}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

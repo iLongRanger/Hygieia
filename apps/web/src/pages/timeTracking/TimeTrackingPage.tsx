@@ -10,6 +10,7 @@ import {
   Check,
   X,
   User,
+  ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +23,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import {
   listTimeEntries,
+  getTimeEntry,
   getActiveEntry,
   clockIn,
   clockOut,
@@ -89,6 +91,7 @@ const TimeTrackingPage = () => {
   const [jobCompletionNotes, setJobCompletionNotes] = useState('');
   const [clockOutNotes, setClockOutNotes] = useState('');
   const [clockingOut, setClockingOut] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const userRole = useAuthStore((state) => state.user?.role);
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
 
@@ -349,6 +352,15 @@ const TimeTrackingPage = () => {
     }
   };
 
+  const handleViewEntry = async (id: string) => {
+    try {
+      const entry = await getTimeEntry(id);
+      setSelectedEntry(entry);
+    } catch {
+      toast.error('Failed to load time entry');
+    }
+  };
+
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
@@ -429,6 +441,131 @@ const TimeTrackingPage = () => {
         ) : null,
     },
   ];
+
+  // ==================== Entry Detail View ====================
+  if (selectedEntry) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedEntry(null)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
+              Time Entry — {selectedEntry.user.fullName}
+            </h1>
+            <p className="text-sm text-surface-500">
+              {formatDate(selectedEntry.clockIn)}
+            </p>
+          </div>
+          <Badge variant={getStatusVariant(selectedEntry.status)} size="sm">
+            {selectedEntry.status}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <div className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Shift Details</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Clock In</span>
+                  <span className="font-mono text-surface-700 dark:text-surface-300">{formatTime(selectedEntry.clockIn)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Clock Out</span>
+                  <span className="font-mono text-surface-700 dark:text-surface-300">
+                    {selectedEntry.clockOut ? formatTime(selectedEntry.clockOut) : 'In Progress'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Break</span>
+                  <span className="text-surface-700 dark:text-surface-300">{selectedEntry.breakMinutes || 0} min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Total Hours</span>
+                  <span className="font-medium text-surface-900 dark:text-surface-100">{formatDuration(selectedEntry.totalHours)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Entry Type</span>
+                  <span className="text-surface-700 dark:text-surface-300">{selectedEntry.entryType}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Assignment</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-surface-500">Employee</span>
+                  <span className="text-surface-700 dark:text-surface-300">{selectedEntry.user.fullName}</span>
+                </div>
+                {selectedEntry.facility && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-500">Facility</span>
+                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.facility.name}</span>
+                  </div>
+                )}
+                {selectedEntry.job && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-500">Job</span>
+                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.job.jobNumber}</span>
+                  </div>
+                )}
+                {selectedEntry.contract && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-500">Contract</span>
+                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.contract.contractNumber}</span>
+                  </div>
+                )}
+                {selectedEntry.approvedByUser && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-500">Approved By</span>
+                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.approvedByUser.fullName}</span>
+                  </div>
+                )}
+                {selectedEntry.editedByUser && (
+                  <div className="flex justify-between">
+                    <span className="text-surface-500">Edited By</span>
+                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.editedByUser.fullName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {selectedEntry.notes && (
+          <Card>
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-2">Notes</h3>
+              <p className="text-sm text-surface-600 dark:text-surface-400">{selectedEntry.notes}</p>
+            </div>
+          </Card>
+        )}
+
+        {selectedEntry.editReason && (
+          <Card>
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-2">Edit Reason</h3>
+              <p className="text-sm text-surface-600 dark:text-surface-400">{selectedEntry.editReason}</p>
+            </div>
+          </Card>
+        )}
+
+        {(selectedEntry.status === 'completed' || selectedEntry.status === 'edited') && (
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => { handleApprove(selectedEntry.id); setSelectedEntry(null); }}>
+              <Check className="mr-1.5 h-4 w-4" />
+              Approve
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -560,6 +697,7 @@ const TimeTrackingPage = () => {
           columns={columns}
           data={entries}
           isLoading={loading}
+          onRowClick={(row) => handleViewEntry(row.id)}
         />
       </Card>
 
