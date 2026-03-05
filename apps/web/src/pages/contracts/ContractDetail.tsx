@@ -51,6 +51,10 @@ import {
   downloadContractPdf,
   downloadContractTermsDocument,
   generateContractTerms,
+  listContractAmendments as listContractAmendmentsApi,
+  createContractAmendment as createContractAmendmentApi,
+  approveContractAmendment as approveContractAmendmentApi,
+  applyContractAmendment as applyContractAmendmentApi,
 } from '../../lib/contracts';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
@@ -61,6 +65,8 @@ import { PERMISSIONS } from '../../lib/permissions';
 import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
 import type {
   Contract,
+  ContractAmendment,
+  CreateContractAmendmentInput,
   ContractStatus,
   RenewContractInput,
   SendContractInput,
@@ -311,6 +317,23 @@ const ContractDetail = () => {
   const [activityRefresh, setActivityRefresh] = useState(0);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [amendments, setAmendments] = useState<ContractAmendment[]>([]);
+  const [amendmentsLoading, setAmendmentsLoading] = useState(false);
+  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
+  const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
+  const [amendmentAreaChangesJson, setAmendmentAreaChangesJson] = useState('');
+  const [amendmentTaskChangesJson, setAmendmentTaskChangesJson] = useState('');
+  const [amendmentFormData, setAmendmentFormData] = useState<CreateContractAmendmentInput>({
+    title: '',
+    description: '',
+    effectiveDate: new Date().toISOString().slice(0, 10),
+    monthlyValue: null,
+    serviceFrequency: null,
+    paymentTerms: null,
+    billingCycle: null,
+    areaChanges: null,
+    taskChanges: null,
+  });
   const [renewalFormData, setRenewalFormData] = useState<RenewContractInput>({
     startDate: '',
     endDate: null,
@@ -328,6 +351,7 @@ const ContractDetail = () => {
     if (id) {
       fetchContract(id);
       if (!isLimitedContractViewer) {
+        fetchAmendments(id);
         fetchTeams();
         fetchUsers();
       }
@@ -344,7 +368,23 @@ const ContractDetail = () => {
 
   const refreshAll = (contractId: string) => {
     fetchContract(contractId);
+    if (!isLimitedContractViewer) {
+      fetchAmendments(contractId);
+    }
     setActivityRefresh((n) => n + 1);
+  };
+
+  const fetchAmendments = async (contractId: string) => {
+    try {
+      setAmendmentsLoading(true);
+      const data = await listContractAmendmentsApi(contractId);
+      setAmendments(data);
+    } catch (error) {
+      console.error('Failed to fetch amendments:', error);
+      toast.error('Failed to load amendments');
+    } finally {
+      setAmendmentsLoading(false);
+    }
   };
 
   const fetchContract = async (contractId: string) => {
@@ -644,6 +684,106 @@ const ContractDetail = () => {
     }
   };
 
+  const openAmendmentModal = () => {
+    const baseSchedule = contract?.serviceSchedule || null;
+    setAmendmentAreaChangesJson('');
+    setAmendmentTaskChangesJson('');
+    setAmendmentFormData({
+      title: '',
+      description: '',
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      monthlyValue: Number(contract?.monthlyValue ?? 0) || null,
+      endDate: contract?.endDate ?? null,
+      serviceFrequency: contract?.serviceFrequency ?? null,
+      serviceSchedule: baseSchedule,
+      billingCycle: contract?.billingCycle ?? null,
+      paymentTerms: contract?.paymentTerms ?? null,
+      autoRenew: contract?.autoRenew ?? null,
+      renewalNoticeDays: contract?.renewalNoticeDays ?? null,
+      termsAndConditions: contract?.termsAndConditions ?? null,
+      specialInstructions: contract?.specialInstructions ?? null,
+      areaChanges: null,
+      taskChanges: null,
+    });
+    setShowAmendmentModal(true);
+  };
+
+  const handleCreateAmendment = async () => {
+    if (!contract) return;
+    if (!amendmentFormData.title?.trim()) {
+      toast.error('Amendment title is required');
+      return;
+    }
+    if (!amendmentFormData.effectiveDate) {
+      toast.error('Effective date is required');
+      return;
+    }
+
+    let parsedAreaChanges: CreateContractAmendmentInput['areaChanges'] = null;
+    let parsedTaskChanges: CreateContractAmendmentInput['taskChanges'] = null;
+
+    try {
+      parsedAreaChanges = amendmentAreaChangesJson.trim()
+        ? JSON.parse(amendmentAreaChangesJson)
+        : null;
+    } catch {
+      toast.error('Area changes JSON is invalid');
+      return;
+    }
+
+    try {
+      parsedTaskChanges = amendmentTaskChangesJson.trim()
+        ? JSON.parse(amendmentTaskChangesJson)
+        : null;
+    } catch {
+      toast.error('Task changes JSON is invalid');
+      return;
+    }
+
+    try {
+      setAmendmentSubmitting(true);
+      await createContractAmendmentApi(contract.id, {
+        ...amendmentFormData,
+        title: amendmentFormData.title.trim(),
+        description: amendmentFormData.description?.trim() || null,
+        areaChanges: parsedAreaChanges,
+        taskChanges: parsedTaskChanges,
+      });
+      setShowAmendmentModal(false);
+      toast.success('Amendment created');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to create amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleApproveAmendment = async (amendmentId: string) => {
+    if (!contract) return;
+    try {
+      await approveContractAmendmentApi(contract.id, amendmentId);
+      toast.success('Amendment approved');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to approve amendment');
+    }
+  };
+
+  const handleApplyAmendment = async (amendmentId: string) => {
+    if (!contract) return;
+    if (!confirm('Apply this amendment now? This will update contract and future scheduled recurring jobs.')) {
+      return;
+    }
+    try {
+      await applyContractAmendmentApi(contract.id, amendmentId);
+      toast.success('Amendment applied');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to apply amendment');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -700,6 +840,8 @@ const ContractDetail = () => {
     selectedAssignmentUserId !== (contract.assignedToUser?.id || null);
   const hasNextAssignment = Boolean(selectedAssignmentTeamId || selectedAssignmentUserId);
   const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentWillChange;
+  const canManageAmendments = !isLimitedContractViewer && canWriteContracts;
+  const canApproveAmendments = userRole === 'owner' || userRole === 'admin';
 
   return (
     <div className="space-y-6">
@@ -760,10 +902,16 @@ const ContractDetail = () => {
               </Button>
             )}
             {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
-              <Button onClick={openRenewModal}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Renew
-              </Button>
+              <>
+                <Button variant="secondary" onClick={openAmendmentModal}>
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Amendment
+                </Button>
+                <Button onClick={openRenewModal}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Renew
+                </Button>
+              </>
             )}
             {contract.archivedAt && canAdminContracts && (
               <Button variant="secondary" onClick={handleRestore}>
@@ -1645,6 +1793,94 @@ const ContractDetail = () => {
         </Card>
       )}
 
+      {canManageAmendments && (
+        <Card>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Amendments</h2>
+              <p className="text-sm text-gray-400">
+                Use amendments to update active contract scope, pricing, and area/task setup.
+              </p>
+            </div>
+            <Button onClick={openAmendmentModal}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              New Amendment
+            </Button>
+          </div>
+          {amendmentsLoading ? (
+            <div className="py-6 text-center text-sm text-gray-400">Loading amendments...</div>
+          ) : amendments.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 text-sm text-gray-400">
+              No amendments yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {amendments.map((amendment) => (
+                <div
+                  key={amendment.id}
+                  className="rounded-lg border border-white/10 bg-white/[0.02] p-4"
+                >
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-white">{amendment.title}</div>
+                    <Badge
+                      variant={
+                        amendment.status === 'applied'
+                          ? 'success'
+                          : amendment.status === 'approved'
+                            ? 'info'
+                            : amendment.status === 'canceled'
+                              ? 'error'
+                              : 'warning'
+                      }
+                    >
+                      {amendment.status.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                  {amendment.description && (
+                    <p className="mb-2 text-sm text-gray-300">{amendment.description}</p>
+                  )}
+                  <div className="grid gap-2 text-xs text-gray-400 sm:grid-cols-2">
+                    <div>
+                      Effective: <span className="text-gray-200">{formatDate(amendment.effectiveDate)}</span>
+                    </div>
+                    <div>
+                      Created: <span className="text-gray-200">{formatDate(amendment.createdAt)}</span>
+                    </div>
+                    <div>
+                      Proposed by:{' '}
+                      <span className="text-gray-200">{amendment.proposedByUser.fullName}</span>
+                    </div>
+                    {amendment.approvedByUser && (
+                      <div>
+                        Approved by:{' '}
+                        <span className="text-gray-200">{amendment.approvedByUser.fullName}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {canApproveAmendments &&
+                      (amendment.status === 'draft' || amendment.status === 'pending_approval') && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleApproveAmendment(amendment.id)}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                    {canApproveAmendments && amendment.status === 'approved' && (
+                      <Button size="sm" onClick={() => handleApplyAmendment(amendment.id)}>
+                        Apply
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Activity Timeline — hidden for subcontractors */}
       {contract && !isLimitedContractViewer && (
         <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
@@ -1659,6 +1895,106 @@ const ContractDetail = () => {
           onSend={handleSend}
         />
       )}
+
+      <Modal
+        isOpen={showAmendmentModal}
+        onClose={() => setShowAmendmentModal(false)}
+        title="Create Contract Amendment"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Title *"
+            value={amendmentFormData.title}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({ ...prev, title: e.target.value }))
+            }
+            placeholder="Scope change for April"
+          />
+          <Textarea
+            label="Description"
+            rows={2}
+            value={amendmentFormData.description || ''}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({ ...prev, description: e.target.value || null }))
+            }
+            placeholder="What changed and why"
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="Effective Date *"
+              type="date"
+              value={amendmentFormData.effectiveDate}
+              onChange={(e) =>
+                setAmendmentFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))
+              }
+            />
+            <Input
+              label="Monthly Value"
+              type="number"
+              step="0.01"
+              value={amendmentFormData.monthlyValue ?? ''}
+              onChange={(e) =>
+                setAmendmentFormData((prev) => ({
+                  ...prev,
+                  monthlyValue: e.target.value ? Number(e.target.value) : null,
+                }))
+              }
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select
+              label="Service Frequency"
+              placeholder="Keep current"
+              options={SERVICE_FREQUENCIES}
+              value={amendmentFormData.serviceFrequency || ''}
+              onChange={(value) =>
+                setAmendmentFormData((prev) => ({
+                  ...prev,
+                  serviceFrequency: (value || null) as any,
+                }))
+              }
+            />
+            <Input
+              label="Payment Terms"
+              value={amendmentFormData.paymentTerms ?? ''}
+              onChange={(e) =>
+                setAmendmentFormData((prev) => ({
+                  ...prev,
+                  paymentTerms: e.target.value || null,
+                }))
+              }
+              placeholder="Net 30"
+            />
+          </div>
+          <Textarea
+            label="Area Changes JSON (optional)"
+            rows={5}
+            value={amendmentAreaChangesJson}
+            onChange={(e) => setAmendmentAreaChangesJson(e.target.value)}
+            placeholder='{"create":[{"areaTypeId":"...","name":"Storage","squareFeet":300}],"archiveIds":["area-id"]}'
+          />
+          <Textarea
+            label="Task Changes JSON (optional)"
+            rows={5}
+            value={amendmentTaskChangesJson}
+            onChange={(e) => setAmendmentTaskChangesJson(e.target.value)}
+            placeholder='{"create":[{"areaId":"...","customName":"Refill hand soap","cleaningFrequency":"daily"}],"archiveIds":["task-id"]}'
+          />
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+            Apply flow: create amendment -&gt; approve -&gt; apply. Applying updates contract values and
+            regenerates future recurring scheduled jobs from the effective date.
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowAmendmentModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAmendment} isLoading={amendmentSubmitting}>
+              Save Amendment
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Renewal Modal */}
       <Modal

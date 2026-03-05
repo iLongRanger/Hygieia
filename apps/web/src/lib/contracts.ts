@@ -1,7 +1,9 @@
 import api from './api';
 import type {
   Contract,
+  ContractAmendment,
   ContractSummary,
+  CreateContractAmendmentInput,
   CreateContractInput,
   CreateContractFromProposalInput,
   CreateStandaloneContractInput,
@@ -10,6 +12,7 @@ import type {
   SendContractInput,
   TerminateContractInput,
   RenewContractInput,
+  UpdateContractAmendmentInput,
   ListContractsParams,
 } from '../types/contract';
 
@@ -216,6 +219,44 @@ export async function getContractActivities(
 
 export async function getExpiringContracts(days: number = 30): Promise<Contract[]> {
   const response = await api.get('/contracts/expiring', { params: { days } });
+  return response.data.data;
+}
+
+export async function listContractAmendments(contractId: string): Promise<ContractAmendment[]> {
+  const response = await api.get(`/contracts/${contractId}/amendments`);
+  return response.data.data;
+}
+
+export async function createContractAmendment(
+  contractId: string,
+  data: CreateContractAmendmentInput
+): Promise<ContractAmendment> {
+  const response = await api.post(`/contracts/${contractId}/amendments`, data);
+  return response.data.data;
+}
+
+export async function updateContractAmendment(
+  contractId: string,
+  amendmentId: string,
+  data: UpdateContractAmendmentInput
+): Promise<ContractAmendment> {
+  const response = await api.patch(`/contracts/${contractId}/amendments/${amendmentId}`, data);
+  return response.data.data;
+}
+
+export async function approveContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<ContractAmendment> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/approve`);
+  return response.data.data;
+}
+
+export async function applyContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<ContractAmendment> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/apply`);
   return response.data.data;
 }
 

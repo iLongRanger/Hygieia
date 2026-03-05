@@ -43,6 +43,8 @@ import {
   listContractsQuerySchema,
   listContractsSummaryQuerySchema,
   sendContractSchema,
+  createContractAmendmentSchema,
+  updateContractAmendmentSchema,
 } from '../schemas/contract';
 import { listContractActivitiesQuerySchema } from '../schemas/contractActivity';
 import { logContractActivity, getContractActivities } from '../services/contractActivityService';
@@ -67,6 +69,14 @@ import {
   regenerateRecurringJobsForContract,
 } from '../services/jobService';
 import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
+import {
+  applyContractAmendment,
+  approveContractAmendment,
+  createContractAmendment,
+  getContractAmendmentById,
+  listContractAmendments,
+  updateContractAmendment,
+} from '../services/contractAmendmentService';
 
 const router: Router = Router();
 
@@ -1433,6 +1443,168 @@ router.get(
 // ============================================================
 // Contract Activities
 // ============================================================
+
+router.get(
+  '/:id/amendments',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const amendments = await listContractAmendments(req.params.id);
+      res.json({ data: amendments });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendments',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const parsed = createContractAmendmentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const amendment = await createContractAmendment(req.params.id, parsed.data, req.user.id);
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_created',
+        performedByUserId: req.user.id,
+        metadata: {
+          amendmentId: amendment.id,
+          title: amendment.title,
+          effectiveDate: amendment.effectiveDate.toISOString(),
+        },
+      });
+
+      res.status(201).json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  '/:id/amendments/:amendmentId',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = updateContractAmendmentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const existing = await getContractAmendmentById(req.params.amendmentId);
+      if (!existing || existing.contractId !== req.params.id) {
+        throw new NotFoundError('Amendment not found');
+      }
+
+      const amendment = await updateContractAmendment(req.params.amendmentId, parsed.data);
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_updated',
+        performedByUserId: req.user?.id,
+        metadata: {
+          amendmentId: amendment.id,
+          status: amendment.status,
+          fields: Object.keys(parsed.data),
+        },
+      });
+
+      res.json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendments/:amendmentId/approve',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+      const existing = await getContractAmendmentById(req.params.amendmentId);
+      if (!existing || existing.contractId !== req.params.id) {
+        throw new NotFoundError('Amendment not found');
+      }
+
+      const amendment = await approveContractAmendment(req.params.amendmentId, req.user.id);
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_approved',
+        performedByUserId: req.user.id,
+        metadata: {
+          amendmentId: amendment.id,
+          title: amendment.title,
+          effectiveDate: amendment.effectiveDate.toISOString(),
+        },
+      });
+
+      res.json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendments/:amendmentId/apply',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+      if (!['owner', 'admin'].includes(req.user.role)) {
+        throw new ValidationError('Only owner and admin can apply amendments');
+      }
+
+      const existing = await getContractAmendmentById(req.params.amendmentId);
+      if (!existing || existing.contractId !== req.params.id) {
+        throw new NotFoundError('Amendment not found');
+      }
+
+      const amendment = await applyContractAmendment(req.params.amendmentId, req.user.id);
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_applied',
+        performedByUserId: req.user.id,
+        metadata: {
+          amendmentId: amendment.id,
+          title: amendment.title,
+          effectiveDate: amendment.effectiveDate.toISOString(),
+        },
+      });
+
+      res.json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /** Get contract activity log */
 router.get(

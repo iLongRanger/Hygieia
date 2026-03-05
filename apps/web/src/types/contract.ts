@@ -174,6 +174,110 @@ export interface Contract {
   };
 }
 
+export type ContractAmendmentStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'applied'
+  | 'canceled';
+
+export interface ContractAmendmentAreaChanges {
+  create?: Array<{
+    areaTypeId: string;
+    name?: string | null;
+    quantity?: number;
+    squareFeet?: number | null;
+    floorType?: string;
+    conditionLevel?: string;
+    trafficLevel?: string;
+    notes?: string | null;
+  }>;
+  update?: Array<{
+    id: string;
+    areaTypeId?: string;
+    name?: string | null;
+    quantity?: number;
+    squareFeet?: number | null;
+    floorType?: string;
+    conditionLevel?: string;
+    trafficLevel?: string;
+    notes?: string | null;
+  }>;
+  archiveIds?: string[];
+}
+
+export interface ContractAmendmentTaskChanges {
+  create?: Array<{
+    areaId?: string | null;
+    taskTemplateId?: string | null;
+    customName?: string | null;
+    customInstructions?: string | null;
+    estimatedMinutes?: number | null;
+    baseMinutesOverride?: number | null;
+    perSqftMinutesOverride?: number | null;
+    isRequired?: boolean;
+    cleaningFrequency?: string;
+    conditionMultiplier?: number;
+    priority?: number;
+  }>;
+  update?: Array<{
+    id: string;
+    areaId?: string | null;
+    taskTemplateId?: string | null;
+    customName?: string | null;
+    customInstructions?: string | null;
+    estimatedMinutes?: number | null;
+    baseMinutesOverride?: number | null;
+    perSqftMinutesOverride?: number | null;
+    isRequired?: boolean;
+    cleaningFrequency?: string;
+    conditionMultiplier?: number;
+    priority?: number;
+  }>;
+  archiveIds?: string[];
+}
+
+export interface ContractAmendment {
+  id: string;
+  contractId: string;
+  status: ContractAmendmentStatus;
+  title: string;
+  description?: string | null;
+  effectiveDate: string;
+  monthlyValue?: number | null;
+  endDate?: string | null;
+  serviceFrequency?: ServiceFrequency | null;
+  serviceSchedule?: ServiceSchedule | null;
+  billingCycle?: BillingCycle | null;
+  paymentTerms?: string | null;
+  autoRenew?: boolean | null;
+  renewalNoticeDays?: number | null;
+  termsAndConditions?: string | null;
+  specialInstructions?: string | null;
+  areaChanges?: ContractAmendmentAreaChanges | null;
+  taskChanges?: ContractAmendmentTaskChanges | null;
+  approvedAt?: string | null;
+  appliedAt?: string | null;
+  canceledAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  proposedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  approvedByUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+  appliedByUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
 export interface CreateContractInput {
   title: string;
   accountId: string;
@@ -323,4 +427,27 @@ export interface CreateStandaloneContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+}
+
+export interface CreateContractAmendmentInput {
+  title: string;
+  description?: string | null;
+  effectiveDate: string;
+  monthlyValue?: number | null;
+  endDate?: string | null;
+  serviceFrequency?: ServiceFrequency | null;
+  serviceSchedule?: ServiceSchedule | null;
+  billingCycle?: BillingCycle | null;
+  paymentTerms?: string | null;
+  autoRenew?: boolean | null;
+  renewalNoticeDays?: number | null;
+  termsAndConditions?: string | null;
+  specialInstructions?: string | null;
+  areaChanges?: ContractAmendmentAreaChanges | null;
+  taskChanges?: ContractAmendmentTaskChanges | null;
+}
+
+export interface UpdateContractAmendmentInput
+  extends Partial<CreateContractAmendmentInput> {
+  status?: ContractAmendmentStatus;
 }

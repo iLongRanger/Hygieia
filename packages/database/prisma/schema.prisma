@@ -57,6 +57,9 @@ model User {
   approvedContracts        Contract[]        @relation("ApprovedContracts")
   initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
   scheduledAssignmentOverrideContracts Contract[] @relation("AssignmentOverrideSetByUser")
+  proposedContractAmendments ContractAmendment[] @relation("ProposedContractAmendments")
+  approvedContractAmendments ContractAmendment[] @relation("ApprovedContractAmendments")
+  appliedContractAmendments  ContractAmendment[] @relation("AppliedContractAmendments")
   contractActivities             ContractActivity[] @relation("ContractActivities")
   createdAppointments      Appointment[]     @relation("CreatedAppointments")
   assignedAppointments     Appointment[]     @relation("AssignedAppointments")
@@ -1010,6 +1013,7 @@ model Contract {
   inspectionTemplates  InspectionTemplate[]  @relation("ContractInspectionTemplates")
   timeEntries          TimeEntry[]           @relation("ContractTimeEntries")
   invoices    Invoice[]    @relation("ContractInvoices")
+  amendments  ContractAmendment[]
 }
 
 model ContractActivity {
@@ -1027,6 +1031,52 @@ model ContractActivity {
   @@index([action])
   @@index([createdAt])
   @@map("contract_activities")
+}
+
+model ContractAmendment {
+  id                String    @id @default(uuid()) @db.Uuid
+  contractId        String    @map("contract_id") @db.Uuid
+  status            String    @default("draft") @db.VarChar(30)
+  title             String    @db.VarChar(255)
+  description       String?   @db.Text
+  effectiveDate     DateTime  @map("effective_date") @db.Date
+
+  monthlyValue      Decimal?  @map("monthly_value") @db.Decimal(12, 2)
+  endDate           DateTime? @map("end_date") @db.Date
+  serviceFrequency  String?   @map("service_frequency") @db.VarChar(30)
+  serviceSchedule   Json?     @map("service_schedule") @db.JsonB
+  billingCycle      String?   @map("billing_cycle") @db.VarChar(20)
+  paymentTerms      String?   @map("payment_terms") @db.VarChar(50)
+  autoRenew         Boolean?  @map("auto_renew")
+  renewalNoticeDays Int?      @map("renewal_notice_days")
+  termsAndConditions String?  @map("terms_and_conditions") @db.Text
+  specialInstructions String? @map("special_instructions") @db.Text
+
+  areaChanges       Json?     @map("area_changes") @db.JsonB
+  taskChanges       Json?     @map("task_changes") @db.JsonB
+
+  proposedByUserId  String    @map("proposed_by_user_id") @db.Uuid
+  approvedByUserId  String?   @map("approved_by_user_id") @db.Uuid
+  appliedByUserId   String?   @map("applied_by_user_id") @db.Uuid
+  approvedAt        DateTime? @map("approved_at") @db.Timestamptz(6)
+  appliedAt         DateTime? @map("applied_at") @db.Timestamptz(6)
+  canceledAt        DateTime? @map("canceled_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  proposedByUser  User     @relation("ProposedContractAmendments", fields: [proposedByUserId], references: [id], onDelete: Restrict)
+  approvedByUser  User?    @relation("ApprovedContractAmendments", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  appliedByUser   User?    @relation("AppliedContractAmendments", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([contractId])
+  @@index([status])
+  @@index([effectiveDate])
+  @@index([proposedByUserId])
+  @@index([approvedByUserId])
+  @@index([appliedByUserId])
+  @@index([createdAt])
+  @@map("contract_amendments")
 }
 
 model Team {
