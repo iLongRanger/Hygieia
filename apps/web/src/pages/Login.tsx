@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Mail, Lock, Sun, Moon } from 'lucide-react';
+import { AxiosError } from 'axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,10 +26,14 @@ const Login = () => {
     setError('');
 
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       navigate('/');
     } catch (err) {
-      setError('Invalid email or password');
+      const apiMessage =
+        err instanceof AxiosError
+          ? (err.response?.data as { error?: { message?: string } } | undefined)?.error?.message
+          : undefined;
+      setError(apiMessage || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }

@@ -47,7 +47,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       login: async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
+        const normalizedEmail = email.trim().toLowerCase();
+        const response = await api.post('/auth/login', { email: normalizedEmail, password });
         const { user, tokens } = response.data.data;
         set({
           user: normalizeUser(user),

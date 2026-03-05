@@ -105,8 +105,9 @@ export async function login(
   credentials: LoginCredentials,
   metadata: TokenMetadata = {}
 ): Promise<{ tokens: AuthTokens; user: UserInfo } | null> {
+  const normalizedEmail = credentials.email.trim().toLowerCase();
   const user = await prisma.user.findUnique({
-    where: { email: credentials.email.toLowerCase() },
+    where: { email: normalizedEmail },
     include: {
       roles: {
         include: {
@@ -118,7 +119,7 @@ export async function login(
 
   if (!user) {
     logAuthEvent('login_failed', {
-      email: credentials.email,
+      email: normalizedEmail,
       reason: 'user_not_found',
     });
     return null;

@@ -38,13 +38,14 @@ router.post(
         });
       }
 
+      const normalizedEmail = email.trim().toLowerCase();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!emailRegex.test(normalizedEmail)) {
         throw new ValidationError('Invalid email format', { field: 'email' });
       }
 
       const result = await login(
-        { email, password },
+        { email: normalizedEmail, password },
         {
           ipAddress: req.ip || req.socket.remoteAddress,
           userAgent: req.headers['user-agent'],
