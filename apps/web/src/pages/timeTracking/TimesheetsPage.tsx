@@ -43,6 +43,25 @@ const formatHours = (hours: string) => {
   return `${h.toFixed(1)}h`;
 };
 
+const ROLE_GROUP_ORDER = ['owner', 'admin', 'manager', 'cleaner', 'subcontractor', 'unassigned'] as const;
+
+const ROLE_GROUP_LABELS: Record<(typeof ROLE_GROUP_ORDER)[number], string> = {
+  owner: 'Owners',
+  admin: 'Admins',
+  manager: 'Managers',
+  cleaner: 'Cleaners',
+  subcontractor: 'Subcontractors',
+  unassigned: 'Unassigned Role',
+};
+
+function getPrimaryRoleKey(user: User): (typeof ROLE_GROUP_ORDER)[number] {
+  const roleKey = user.roles?.[0]?.role?.key;
+  if (roleKey === 'owner' || roleKey === 'admin' || roleKey === 'manager' || roleKey === 'cleaner' || roleKey === 'subcontractor') {
+    return roleKey;
+  }
+  return 'unassigned';
+}
+
 const TimesheetsPage = () => {
   const navigate = useNavigate();
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
@@ -117,6 +136,14 @@ const TimesheetsPage = () => {
       toast.error('Failed to generate timesheet');
     }
   };
+
+  const groupedUsers = ROLE_GROUP_ORDER
+    .map((groupKey) => ({
+      key: groupKey,
+      label: ROLE_GROUP_LABELS[groupKey],
+      users: availableUsers.filter((user) => getPrimaryRoleKey(user) === groupKey),
+    }))
+    .filter((group) => group.users.length > 0);
 
   const handleSubmit = async (id: string) => {
     try {
@@ -360,22 +387,29 @@ const TimesheetsPage = () => {
               <p className="text-xs text-surface-500 dark:text-surface-400">
                 Select one or more users to generate timesheets in bulk.
               </p>
-              <div className="grid grid-cols-1 gap-2 max-h-52 overflow-auto rounded-md border border-surface-200 p-3 dark:border-surface-700">
-                {availableUsers.map((user) => (
-                  <label key={user.id} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.includes(user.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUserIds((prev) => [...prev, user.id]);
-                        } else {
-                          setSelectedUserIds((prev) => prev.filter((id) => id !== user.id));
-                        }
-                      }}
-                    />
-                    <span>{user.fullName}</span>
-                  </label>
+              <div className="grid grid-cols-1 gap-3 max-h-60 overflow-auto rounded-md border border-surface-200 p-3 dark:border-surface-700">
+                {groupedUsers.map((group) => (
+                  <div key={group.key} className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                      {group.label}
+                    </p>
+                    {group.users.map((user) => (
+                      <label key={user.id} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUserIds((prev) => [...prev, user.id]);
+                            } else {
+                              setSelectedUserIds((prev) => prev.filter((id) => id !== user.id));
+                            }
+                          }}
+                        />
+                        <span>{user.fullName}</span>
+                      </label>
+                    ))}
+                  </div>
                 ))}
                 {availableUsers.length === 0 && (
                   <p className="text-sm text-surface-400">No active users found.</p>
