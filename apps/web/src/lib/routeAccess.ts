@@ -103,6 +103,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     path: '/tasks',
     requiredPermissions: [PERMISSIONS.TASK_TEMPLATES_READ],
   },
+  { path: '/finance', requiredPermissions: [PERMISSIONS.FINANCE_REPORTS_READ] },
+  { path: '/finance/expenses', requiredPermissions: [PERMISSIONS.EXPENSES_READ] },
+  { path: '/finance/payroll', requiredPermissions: [PERMISSIONS.PAYROLL_READ] },
+  { path: '/finance/reports', requiredPermissions: [PERMISSIONS.FINANCE_REPORTS_READ] },
 ];
 
 const routeAccessMap = new Map<string, RouteAccessConfig>(

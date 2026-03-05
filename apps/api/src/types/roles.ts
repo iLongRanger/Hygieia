@@ -84,6 +84,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     quotations_write: true,
     quotations_admin: true,
     quotations_delete: true,
+    expenses_read: true,
+    expenses_write: true,
+    expenses_approve: true,
+    payroll_read: true,
+    payroll_write: true,
+    payroll_approve: true,
+    finance_reports_read: true,
   },
   admin: {
     crm: true,
@@ -155,6 +162,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     quotations_read: true,
     quotations_write: true,
     quotations_admin: true,
+    expenses_read: true,
+    expenses_write: true,
+    expenses_approve: true,
+    payroll_read: true,
+    payroll_write: true,
+    payroll_approve: true,
+    finance_reports_read: true,
   },
   manager: {
     estimates: true,
@@ -203,6 +217,10 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     invoices_write: true,
     quotations_read: true,
     quotations_write: true,
+    expenses_read: true,
+    expenses_write: true,
+    payroll_read: true,
+    finance_reports_read: true,
   },
   cleaner: {
     dashboard_read: true,
@@ -212,6 +230,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     jobs_write: true,
     time_tracking_read: true,
     time_tracking_write: true,
+    payroll_read: true,
   },
   subcontractor: {
     dashboard_read: true,
@@ -221,6 +240,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     jobs_write: true,
     time_tracking_read: true,
     time_tracking_write: true,
+    expenses_read: true,
+    payroll_read: true,
   },
 };
 

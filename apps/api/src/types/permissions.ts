@@ -65,6 +65,13 @@ export const PERMISSIONS = {
   QUOTATIONS_WRITE: 'quotations_write',
   QUOTATIONS_ADMIN: 'quotations_admin',
   QUOTATIONS_DELETE: 'quotations_delete',
+  EXPENSES_READ: 'expenses_read',
+  EXPENSES_WRITE: 'expenses_write',
+  EXPENSES_APPROVE: 'expenses_approve',
+  PAYROLL_READ: 'payroll_read',
+  PAYROLL_WRITE: 'payroll_write',
+  PAYROLL_APPROVE: 'payroll_approve',
+  FINANCE_REPORTS_READ: 'finance_reports_read',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
