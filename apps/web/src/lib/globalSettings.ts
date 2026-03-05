@@ -2,7 +2,7 @@ import api from './api';
 import type { GlobalSettings, UpdateGlobalSettingsInput } from '../types/globalSettings';
 import type {
   BackgroundServiceKey,
-  BackgroundServiceRunLogsByService,
+  BackgroundServiceRunLogPage,
   BackgroundServiceSetting,
 } from '../types/backgroundServiceSettings';
 
@@ -46,9 +46,13 @@ export async function runBackgroundServiceNow(
   return response.data.data;
 }
 
-export async function getBackgroundServiceLogs(limit = 10): Promise<BackgroundServiceRunLogsByService> {
+export async function getBackgroundServiceLogs(
+  serviceKey: BackgroundServiceKey,
+  page = 1,
+  limit = 9
+): Promise<BackgroundServiceRunLogPage> {
   const response = await api.get('/settings/global/background-services/logs', {
-    params: { limit },
+    params: { serviceKey, page, limit },
   });
   return response.data.data;
 }

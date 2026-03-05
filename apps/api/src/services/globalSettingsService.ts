@@ -7,6 +7,7 @@ const DEFAULT_BRANDING: GlobalBranding = {
   companyPhone: process.env.COMPANY_PHONE || null,
   companyWebsite: process.env.COMPANY_WEBSITE || null,
   companyAddress: process.env.COMPANY_ADDRESS || null,
+  companyTimezone: process.env.COMPANY_TIMEZONE || 'UTC',
   logoDataUrl: process.env.COMPANY_LOGO_PATH || null,
   themePrimaryColor: '#1a1a2e',
   themeAccentColor: '#d4af37',
@@ -20,6 +21,7 @@ export interface UpdateGlobalSettingsInput {
   companyPhone?: string | null;
   companyWebsite?: string | null;
   companyAddress?: string | null;
+  companyTimezone?: string;
   logoDataUrl?: string | null;
   themePrimaryColor?: string;
   themeAccentColor?: string;
@@ -34,6 +36,7 @@ function mergeWithDefaults(input: Partial<GlobalBranding> | null | undefined): G
     companyPhone: input?.companyPhone ?? DEFAULT_BRANDING.companyPhone,
     companyWebsite: input?.companyWebsite ?? DEFAULT_BRANDING.companyWebsite,
     companyAddress: input?.companyAddress ?? DEFAULT_BRANDING.companyAddress,
+    companyTimezone: input?.companyTimezone || DEFAULT_BRANDING.companyTimezone,
     logoDataUrl: input?.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
     themePrimaryColor: input?.themePrimaryColor || DEFAULT_BRANDING.themePrimaryColor,
     themeAccentColor: input?.themeAccentColor || DEFAULT_BRANDING.themeAccentColor,
@@ -60,6 +63,7 @@ export async function updateGlobalSettings(input: UpdateGlobalSettingsInput): Pr
       companyPhone: input.companyPhone ?? DEFAULT_BRANDING.companyPhone,
       companyWebsite: input.companyWebsite ?? DEFAULT_BRANDING.companyWebsite,
       companyAddress: input.companyAddress ?? DEFAULT_BRANDING.companyAddress,
+      companyTimezone: input.companyTimezone ?? DEFAULT_BRANDING.companyTimezone,
       logoDataUrl: input.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
       themePrimaryColor: input.themePrimaryColor ?? DEFAULT_BRANDING.themePrimaryColor,
       themeAccentColor: input.themeAccentColor ?? DEFAULT_BRANDING.themeAccentColor,
@@ -72,6 +76,7 @@ export async function updateGlobalSettings(input: UpdateGlobalSettingsInput): Pr
       ...(input.companyPhone !== undefined ? { companyPhone: input.companyPhone } : {}),
       ...(input.companyWebsite !== undefined ? { companyWebsite: input.companyWebsite } : {}),
       ...(input.companyAddress !== undefined ? { companyAddress: input.companyAddress } : {}),
+      ...(input.companyTimezone !== undefined ? { companyTimezone: input.companyTimezone } : {}),
       ...(input.logoDataUrl !== undefined ? { logoDataUrl: input.logoDataUrl } : {}),
       ...(input.themePrimaryColor !== undefined ? { themePrimaryColor: input.themePrimaryColor } : {}),
       ...(input.themeAccentColor !== undefined ? { themeAccentColor: input.themeAccentColor } : {}),
@@ -89,5 +94,10 @@ export async function clearGlobalLogo(): Promise<GlobalBranding> {
 
 export function getDefaultBranding(): GlobalBranding {
   return DEFAULT_BRANDING;
+}
+
+export async function getGlobalSettingsTimezone(): Promise<string> {
+  const settings = await getGlobalSettings();
+  return settings.companyTimezone || 'UTC';
 }
 

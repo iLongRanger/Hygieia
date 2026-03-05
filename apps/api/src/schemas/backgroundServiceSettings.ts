@@ -10,7 +10,7 @@ export const backgroundServiceKeySchema = z.enum([
 export const updateBackgroundServiceSettingsSchema = z
   .object({
     enabled: z.boolean().optional(),
-    intervalMs: z.coerce.number().int().min(60_000).optional(),
+    intervalMs: z.coerce.number().int().min(0).max(86_340_000).optional(),
   })
   .refine((value) => value.enabled !== undefined || value.intervalMs !== undefined, {
     message: 'At least one of enabled or intervalMs is required',

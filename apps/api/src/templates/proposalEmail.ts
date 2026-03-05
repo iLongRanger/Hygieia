@@ -17,6 +17,7 @@ export function buildProposalEmailHtml(data: ProposalEmailData): string {
     companyPhone: companyConfig.phone || null,
     companyEmail: companyConfig.email || null,
     companyWebsite: companyConfig.website || null,
+    companyTimezone: 'UTC',
     logoDataUrl: companyConfig.logoPath || null,
     themePrimaryColor: '#1a1a2e',
     themeAccentColor: '#d4af37',

@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
+import type { Prisma } from '@prisma/client';
 import type {
   BackgroundServiceKey,
   UpdateBackgroundServiceSettingsInput,
@@ -8,6 +9,7 @@ import type {
 export interface BackgroundServiceSettingView {
   serviceKey: BackgroundServiceKey;
   enabled: boolean;
+  // Stored as milliseconds from UTC midnight (00:00 = 0, 23:59 = 86_340_000).
   intervalMs: number;
   lastRunAt: Date | null;
   lastSuccessAt: Date | null;
@@ -29,17 +31,26 @@ export interface BackgroundServiceRunLogView {
   createdAt: Date;
 }
 
+export interface BackgroundServiceRunLogPageView {
+  serviceKey: BackgroundServiceKey;
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+  items: BackgroundServiceRunLogView[];
+}
+
 const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
-  reminders: 15 * 60 * 1000,
-  recurring_jobs_autogen: 6 * 60 * 60 * 1000,
-  job_alerts: 15 * 60 * 1000,
-  contract_assignment_overrides: 15 * 60 * 1000,
+  reminders: 8 * 60 * 60 * 1000,
+  recurring_jobs_autogen: 1 * 60 * 60 * 1000,
+  job_alerts: 7 * 60 * 60 * 1000,
+  contract_assignment_overrides: 0,
 };
 
 function parseIntervalMs(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback;
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 60_000) {
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 86_340_000) {
     return fallback;
   }
   return parsed;
@@ -285,7 +296,7 @@ export async function createBackgroundServiceRunLog(
         serviceKey,
         status: input.status,
         summary: input.summary,
-        details: input.details ?? {},
+        details: (input.details ?? {}) as Prisma.InputJsonValue,
         startedAt: input.startedAt,
         endedAt: input.endedAt,
       },
@@ -339,4 +350,70 @@ export async function getBackgroundServiceRunLogs(limitPerService = 20): Promise
   }
 
   return empty;
+}
+
+export async function getBackgroundServiceRunLogsPage(
+  serviceKey: BackgroundServiceKey,
+  page = 1,
+  limit = 9
+): Promise<BackgroundServiceRunLogPageView> {
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 50);
+  const safePage = Math.max(Math.floor(page), 1);
+
+  if (!hasBackgroundServiceLogDelegate()) {
+    return {
+      serviceKey,
+      page: safePage,
+      limit: safeLimit,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    };
+  }
+
+  try {
+    const where = { serviceKey };
+    const [totalCount, logs] = await Promise.all([
+      prisma.backgroundServiceRunLog.count({ where }),
+      prisma.backgroundServiceRunLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
+      }),
+    ]);
+
+    const items = logs.map((log) => ({
+      id: log.id,
+      serviceKey,
+      status: (log.status === 'failed' ? 'failed' : 'success') as 'success' | 'failed',
+      summary: log.summary,
+      details:
+        log.details && typeof log.details === 'object' && !Array.isArray(log.details)
+          ? (log.details as Record<string, unknown>)
+          : {},
+      startedAt: log.startedAt,
+      endedAt: log.endedAt,
+      createdAt: log.createdAt,
+    }));
+
+    return {
+      serviceKey,
+      page: safePage,
+      limit: safeLimit,
+      totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / safeLimit)),
+      items,
+    };
+  } catch (error) {
+    logger.warn(`Failed to load background service run logs for "${serviceKey}"`, error);
+    return {
+      serviceKey,
+      page: safePage,
+      limit: safeLimit,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    };
+  }
 }

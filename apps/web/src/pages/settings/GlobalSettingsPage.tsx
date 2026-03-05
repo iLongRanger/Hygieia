@@ -18,8 +18,7 @@ import {
 import type { GlobalSettings } from '../../types/globalSettings';
 import type {
   BackgroundServiceKey,
-  BackgroundServiceRunLog,
-  BackgroundServiceRunLogsByService,
+  BackgroundServiceRunLogPage,
   BackgroundServiceSetting,
 } from '../../types/backgroundServiceSettings';
 
@@ -29,6 +28,7 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   companyPhone: '',
   companyWebsite: '',
   companyAddress: '',
+  companyTimezone: 'UTC',
   logoDataUrl: null,
   themePrimaryColor: '#1a1a2e',
   themeAccentColor: '#d4af37',
@@ -41,44 +41,43 @@ const BACKGROUND_SERVICE_GUIDANCE: Record<
   {
     label: string;
     description: string;
-    recommendedMinutes: number;
-    minMinutes: number;
-    maxMinutes: number;
+    recommendedTime: string;
   }
 > = {
   reminders: {
     label: 'Client Reminders',
     description:
-      'Sends appointment and follow-up reminders. Use a shorter interval for faster reminder delivery.',
-    recommendedMinutes: 15,
-    minMinutes: 5,
-    maxMinutes: 240,
+      'Sends appointment and follow-up reminders at one scheduled time each day.',
+    recommendedTime: '08:00',
   },
   recurring_jobs_autogen: {
     label: 'Recurring Job Creation',
     description:
-      'Creates upcoming recurring jobs from active contracts. This can run less often because schedules do not change every minute.',
-    recommendedMinutes: 360,
-    minMinutes: 60,
-    maxMinutes: 10080,
+      'Creates upcoming recurring jobs from active contracts once per day.',
+    recommendedTime: '01:00',
   },
   job_alerts: {
     label: 'Job Alert Checks',
     description:
-      'Checks for jobs nearing end time with no check-in and alerts your team. Keep this fairly frequent.',
-    recommendedMinutes: 15,
-    minMinutes: 5,
-    maxMinutes: 240,
+      'Checks for jobs that need attention at one scheduled time each day.',
+    recommendedTime: '07:00',
   },
   contract_assignment_overrides: {
     label: 'Contract Assignment Overrides',
     description:
-      'Applies scheduled contract assignee overrides on their effectivity date and reassigns future scheduled jobs.',
-    recommendedMinutes: 15,
-    minMinutes: 5,
-    maxMinutes: 240,
+      'Applies scheduled contract assignee overrides on their effectivity date once daily.',
+    recommendedTime: '00:00',
   },
 };
+
+const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
+  'reminders',
+  'recurring_jobs_autogen',
+  'job_alerts',
+  'contract_assignment_overrides',
+];
+
+const LOGS_PAGE_LIMIT = 9;
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -92,11 +91,41 @@ async function fileToDataUrl(file: File): Promise<string> {
 const GlobalSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
   const [backgroundServices, setBackgroundServices] = useState<BackgroundServiceSetting[]>([]);
-  const [backgroundServiceLogs, setBackgroundServiceLogs] = useState<BackgroundServiceRunLogsByService>({
-    reminders: [],
-    recurring_jobs_autogen: [],
-    job_alerts: [],
-    contract_assignment_overrides: [],
+  const [backgroundServiceLogs, setBackgroundServiceLogs] = useState<
+    Record<BackgroundServiceKey, BackgroundServiceRunLogPage>
+  >({
+    reminders: {
+      serviceKey: 'reminders',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
+    recurring_jobs_autogen: {
+      serviceKey: 'recurring_jobs_autogen',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
+    job_alerts: {
+      serviceKey: 'job_alerts',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
+    contract_assignment_overrides: {
+      serviceKey: 'contract_assignment_overrides',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,14 +137,27 @@ const GlobalSettingsPage: React.FC = () => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const [data, serviceData, logs] = await Promise.all([
+        const [data, serviceData] = await Promise.all([
           getGlobalSettings(),
           getBackgroundServiceSettings(),
-          getBackgroundServiceLogs(10),
         ]);
+        const logsEntries = await Promise.all(
+          BACKGROUND_SERVICE_KEYS.map(async (serviceKey) => [
+            serviceKey,
+            await getBackgroundServiceLogs(serviceKey, 1, LOGS_PAGE_LIMIT),
+          ] as const)
+        );
         setSettings(data);
         setBackgroundServices(serviceData);
-        setBackgroundServiceLogs(logs);
+        setBackgroundServiceLogs(
+          logsEntries.reduce(
+            (acc, [serviceKey, page]) => {
+              acc[serviceKey] = page;
+              return acc;
+            },
+            {} as Record<BackgroundServiceKey, BackgroundServiceRunLogPage>
+          )
+        );
       } catch {
         toast.error('Failed to load global settings');
       } finally {
@@ -135,6 +177,7 @@ const GlobalSettingsPage: React.FC = () => {
         companyPhone: settings.companyPhone?.trim() || null,
         companyWebsite: settings.companyWebsite?.trim() || null,
         companyAddress: settings.companyAddress?.trim() || null,
+        companyTimezone: settings.companyTimezone?.trim() || 'UTC',
         themePrimaryColor: settings.themePrimaryColor,
         themeAccentColor: settings.themeAccentColor,
         themeBackgroundColor: settings.themeBackgroundColor,
@@ -149,14 +192,28 @@ const GlobalSettingsPage: React.FC = () => {
     }
   };
 
-  const getSanitizedIntervalMs = (
-    serviceKey: BackgroundServiceKey,
-    intervalMs: number
-  ): number => {
-    const guide = BACKGROUND_SERVICE_GUIDANCE[serviceKey];
-    const rawMinutes = Number.isFinite(intervalMs) ? intervalMs / 60000 : guide.recommendedMinutes;
-    const clampedMinutes = Math.min(guide.maxMinutes, Math.max(guide.minMinutes, Math.round(rawMinutes)));
-    return clampedMinutes * 60_000;
+  const getSanitizedTimeOfDayMs = (serviceKey: BackgroundServiceKey, value: number): number => {
+    if (Number.isFinite(value) && value >= 0 && value <= 86_340_000) {
+      return Math.floor(value);
+    }
+    const [hours, minutes] = BACKGROUND_SERVICE_GUIDANCE[serviceKey].recommendedTime
+      .split(':')
+      .map((part) => Number(part));
+    return (hours * 60 + minutes) * 60_000;
+  };
+
+  const timeToMs = (value: string): number => {
+    const [hours, minutes] = value.split(':').map((part) => Number(part));
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
+    return Math.min(86_340_000, Math.max(0, (hours * 60 + minutes) * 60_000));
+  };
+
+  const msToTime = (serviceKey: BackgroundServiceKey, value: number): string => {
+    const safeValue = getSanitizedTimeOfDayMs(serviceKey, value);
+    const totalMinutes = Math.floor(safeValue / 60_000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
   const updateServiceState = (
@@ -171,7 +228,7 @@ const GlobalSettingsPage: React.FC = () => {
   const onSaveBackgroundService = async (service: BackgroundServiceSetting) => {
     try {
       setSavingServiceKey(service.serviceKey);
-      const sanitizedIntervalMs = getSanitizedIntervalMs(service.serviceKey, service.intervalMs);
+      const sanitizedIntervalMs = getSanitizedTimeOfDayMs(service.serviceKey, service.intervalMs);
       const updated = await updateBackgroundServiceSetting(service.serviceKey, {
         enabled: service.enabled,
         intervalMs: sanitizedIntervalMs,
@@ -188,12 +245,13 @@ const GlobalSettingsPage: React.FC = () => {
   const onRunBackgroundService = async (serviceKey: BackgroundServiceKey) => {
     try {
       setRunningServiceKey(serviceKey);
+      const currentPage = backgroundServiceLogs[serviceKey]?.page ?? 1;
       const [updated, logs] = await Promise.all([
         runBackgroundServiceNow(serviceKey),
-        getBackgroundServiceLogs(10),
+        getBackgroundServiceLogs(serviceKey, currentPage, LOGS_PAGE_LIMIT),
       ]);
       updateServiceState(serviceKey, () => updated);
-      setBackgroundServiceLogs(logs);
+      setBackgroundServiceLogs((prev) => ({ ...prev, [serviceKey]: logs }));
       toast.success('Background service run triggered');
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'Failed to trigger background service');
@@ -209,28 +267,19 @@ const GlobalSettingsPage: React.FC = () => {
   const formatDateTime = (value: string | null): string =>
     value ? new Date(value).toLocaleString() : 'Never';
 
-  const formatMinutesReadable = (minutes: number): string => {
-    if (minutes < 1440) return `${minutes} minutes`;
-
-    const days = Math.floor(minutes / 1440);
-    const remainingMinutes = minutes % 1440;
-    const hours = Math.floor(remainingMinutes / 60);
-    const mins = remainingMinutes % 60;
-
-    const dayPart = `${days} day${days === 1 ? '' : 's'}`;
-    if (hours === 0 && mins === 0) return dayPart;
-    if (mins === 0) return `${dayPart} ${hours} hour${hours === 1 ? '' : 's'}`;
-    if (hours === 0) return `${dayPart} ${mins} minute${mins === 1 ? '' : 's'}`;
-    return `${dayPart} ${hours} hour${hours === 1 ? '' : 's'} ${mins} minute${mins === 1 ? '' : 's'}`;
-  };
-
   const formatLogDateTime = (value: string): string => new Date(value).toLocaleString();
 
-  const getServiceLogs = (serviceKey: BackgroundServiceKey): BackgroundServiceRunLog[] =>
-    backgroundServiceLogs[serviceKey] || [];
+  const getServiceLogs = (serviceKey: BackgroundServiceKey): BackgroundServiceRunLogPage =>
+    backgroundServiceLogs[serviceKey];
 
-  const getServiceIntervalMinutes = (service: BackgroundServiceSetting): number =>
-    Math.max(1, Math.round(getSanitizedIntervalMs(service.serviceKey, service.intervalMs) / 60000));
+  const onChangeLogPage = async (serviceKey: BackgroundServiceKey, page: number) => {
+    try {
+      const nextPage = await getBackgroundServiceLogs(serviceKey, page, LOGS_PAGE_LIMIT);
+      setBackgroundServiceLogs((prev) => ({ ...prev, [serviceKey]: nextPage }));
+    } catch {
+      toast.error('Failed to load background service logs');
+    }
+  };
 
   const onSelectLogo = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -319,6 +368,12 @@ const GlobalSettingsPage: React.FC = () => {
             label="Website"
             value={settings.companyWebsite || ''}
             onChange={(e) => setSettings((prev) => ({ ...prev, companyWebsite: e.target.value }))}
+          />
+          <Input
+            label="Company Timezone (IANA)"
+            value={settings.companyTimezone || 'UTC'}
+            onChange={(e) => setSettings((prev) => ({ ...prev, companyTimezone: e.target.value }))}
+            placeholder="America/New_York"
           />
         </div>
         <div className="mt-4">
@@ -425,8 +480,8 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <h2 className="mb-4 text-lg font-semibold text-white">Background Services</h2>
         <p className="mb-4 text-sm text-gray-400">
-          Configure automatic system jobs using minutes (not technical milliseconds). Use the
-          recommended values unless you need faster or slower updates.
+          Configure each automatic job to run once per day at a specific company-local time. This keeps
+          scheduling predictable and easier to review.
         </p>
         <div className="space-y-4">
           {backgroundServices.map((service) => (
@@ -454,26 +509,18 @@ const GlobalSettingsPage: React.FC = () => {
                 </label>
               </div>
               <p className="mb-3 text-xs text-primary-300">
-                Recommended: every{' '}
-                {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes)}.
-                Allowed range: {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes)}-
-                {formatMinutesReadable(BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes)}.
+                Recommended run time: {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedTime}{' '}
+                ({settings.companyTimezone || 'UTC'}).
               </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <Input
-                  label="Run Every (minutes)"
-                  type="number"
-                  min={BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].minMinutes}
-                  max={BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].maxMinutes}
-                  value={String(getServiceIntervalMinutes(service))}
+                  label={`Run Time (${settings.companyTimezone || 'UTC'})`}
+                  type="time"
+                  value={msToTime(service.serviceKey, service.intervalMs)}
                   onChange={(e) =>
                     updateServiceState(service.serviceKey, (current) => ({
                       ...current,
-                      intervalMs: getSanitizedIntervalMs(
-                        service.serviceKey,
-                        Number(e.target.value || BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedMinutes) *
-                          60_000
-                      ),
+                      intervalMs: timeToMs(e.target.value),
                     }))
                   }
                 />
@@ -482,7 +529,8 @@ const GlobalSettingsPage: React.FC = () => {
                 <Input label="Last Error" value={service.lastError || 'None'} readOnly />
               </div>
               <p className="mt-2 text-xs text-gray-400">
-                Current interval: {formatMinutesReadable(getServiceIntervalMinutes(service))}.
+                Current run time: {msToTime(service.serviceKey, service.intervalMs)} (
+                {settings.companyTimezone || 'UTC'}).
               </p>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button
@@ -506,11 +554,11 @@ const GlobalSettingsPage: React.FC = () => {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Recent Runs
                 </p>
-                {getServiceLogs(service.serviceKey).length === 0 ? (
+                {getServiceLogs(service.serviceKey).items.length === 0 ? (
                   <p className="text-xs text-gray-500">No logs yet.</p>
                 ) : (
                   <div className="space-y-2">
-                    {getServiceLogs(service.serviceKey).map((log) => (
+                    {getServiceLogs(service.serviceKey).items.map((log) => (
                       <div key={log.id} className="rounded border border-surface-700 p-2">
                         <div className="flex items-center justify-between gap-2">
                           <span
@@ -527,6 +575,37 @@ const GlobalSettingsPage: React.FC = () => {
                         <p className="mt-1 text-xs text-gray-300">{log.summary}</p>
                       </div>
                     ))}
+                    {getServiceLogs(service.serviceKey).totalPages > 1 && (
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={getServiceLogs(service.serviceKey).page <= 1}
+                          onClick={() =>
+                            onChangeLogPage(service.serviceKey, getServiceLogs(service.serviceKey).page - 1)
+                          }
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs text-gray-400">
+                          Page {getServiceLogs(service.serviceKey).page} of{' '}
+                          {getServiceLogs(service.serviceKey).totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={
+                            getServiceLogs(service.serviceKey).page >=
+                            getServiceLogs(service.serviceKey).totalPages
+                          }
+                          onClick={() =>
+                            onChangeLogPage(service.serviceKey, getServiceLogs(service.serviceKey).page + 1)
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

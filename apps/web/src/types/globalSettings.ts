@@ -4,6 +4,7 @@ export interface GlobalBranding {
   companyPhone: string | null;
   companyWebsite: string | null;
   companyAddress: string | null;
+  companyTimezone: string;
   logoDataUrl: string | null;
   themePrimaryColor: string;
   themeAccentColor: string;
@@ -19,6 +20,7 @@ export interface UpdateGlobalSettingsInput {
   companyPhone?: string | null;
   companyWebsite?: string | null;
   companyAddress?: string | null;
+  companyTimezone?: string;
   logoDataUrl?: string | null;
   themePrimaryColor?: string;
   themeAccentColor?: string;

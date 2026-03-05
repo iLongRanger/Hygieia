@@ -7,9 +7,16 @@ import {
   markBackgroundServiceRunStart,
   markBackgroundServiceRunSuccess,
 } from './backgroundServiceSettingsService';
+import {
+  formatTimeOfDay,
+  getDelayUntilNextRunMs,
+  getNextRunAt,
+  sanitizeTimeOfDayMs,
+} from './backgroundSchedulerUtils';
+import { getGlobalSettingsTimezone } from './globalSettingsService';
 
-const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
-let intervalHandle: NodeJS.Timeout | null = null;
+const DEFAULT_TIME_OF_DAY_MS = 1 * 60 * 60 * 1000;
+let timeoutHandle: NodeJS.Timeout | null = null;
 let cycleRunning = false;
 const SERVICE_KEY = 'recurring_jobs_autogen';
 
@@ -61,37 +68,40 @@ async function configureRecurringJobScheduler(): Promise<void> {
     return;
   }
 
-  const intervalMs = config.intervalMs >= 60_000 ? config.intervalMs : DEFAULT_INTERVAL_MS;
-  if (config.intervalMs < 60_000) {
+  const timeOfDayMs = sanitizeTimeOfDayMs(config.intervalMs, DEFAULT_TIME_OF_DAY_MS);
+  const companyTimezone = await getGlobalSettingsTimezone();
+  if (timeOfDayMs !== config.intervalMs) {
     logger.warn(
-      `Invalid recurring jobs interval "${config.intervalMs}", falling back to ${DEFAULT_INTERVAL_MS}ms`
+      `Invalid recurring jobs schedule time "${config.intervalMs}", falling back to ${DEFAULT_TIME_OF_DAY_MS}ms`
     );
   }
+  const nextRunAt = getNextRunAt(timeOfDayMs, companyTimezone);
+  const delayMs = getDelayUntilNextRunMs(timeOfDayMs, companyTimezone);
+  logger.info(
+    `Starting recurring jobs scheduler (dailyAt=${formatTimeOfDay(timeOfDayMs, companyTimezone)}, nextRunAt=${nextRunAt.toISOString()})`
+  );
 
-  logger.info(`Starting recurring jobs scheduler (interval=${intervalMs}ms)`);
-
-  runRecurringJobCycle().catch((error) => {
-    logger.error('Initial recurring jobs cycle failed', error);
-  });
-
-  intervalHandle = setInterval(() => {
+  timeoutHandle = setTimeout(() => {
     runRecurringJobCycle().catch((error) => {
       logger.error('Scheduled recurring jobs cycle failed', error);
+    }).finally(() => {
+      timeoutHandle = null;
+      void configureRecurringJobScheduler();
     });
-  }, intervalMs);
+  }, delayMs);
 }
 
 export function startRecurringJobScheduler(): void {
-  if (intervalHandle) {
+  if (timeoutHandle) {
     return;
   }
   void configureRecurringJobScheduler();
 }
 
 export async function reloadRecurringJobScheduler(): Promise<void> {
-  if (intervalHandle) {
-    clearInterval(intervalHandle);
-    intervalHandle = null;
+  if (timeoutHandle) {
+    clearTimeout(timeoutHandle);
+    timeoutHandle = null;
   }
   await configureRecurringJobScheduler();
 }

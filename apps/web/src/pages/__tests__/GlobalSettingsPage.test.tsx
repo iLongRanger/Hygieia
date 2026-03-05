@@ -38,6 +38,7 @@ describe('GlobalSettingsPage', () => {
     companyPhone: '555-0100',
     companyWebsite: 'https://hygieia.example',
     companyAddress: '123 Main St',
+    companyTimezone: 'America/New_York',
     logoDataUrl: null,
     themePrimaryColor: '#1a1a2e',
     themeAccentColor: '#d4af37',
@@ -49,12 +50,16 @@ describe('GlobalSettingsPage', () => {
     vi.clearAllMocks();
     getGlobalSettingsMock.mockResolvedValue(mockSettings);
     getBackgroundServiceSettingsMock.mockResolvedValue([]);
-    getBackgroundServiceLogsMock.mockResolvedValue({
-      reminders: [],
-      recurring_jobs_autogen: [],
-      job_alerts: [],
-      contract_assignment_overrides: [],
-    });
+    getBackgroundServiceLogsMock.mockImplementation((serviceKey: string) =>
+      Promise.resolve({
+        serviceKey,
+        page: 1,
+        limit: 9,
+        totalCount: 0,
+        totalPages: 1,
+        items: [],
+      })
+    );
     updateGlobalSettingsMock.mockResolvedValue(mockSettings);
     uploadCompanyLogoMock.mockResolvedValue(mockSettings);
     removeCompanyLogoMock.mockResolvedValue(mockSettings);

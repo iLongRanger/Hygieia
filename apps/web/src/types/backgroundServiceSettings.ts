@@ -28,4 +28,11 @@ export interface BackgroundServiceRunLog {
   createdAt: string;
 }
 
-export type BackgroundServiceRunLogsByService = Record<BackgroundServiceKey, BackgroundServiceRunLog[]>;
+export interface BackgroundServiceRunLogPage {
+  serviceKey: BackgroundServiceKey;
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+  items: BackgroundServiceRunLog[];
+}

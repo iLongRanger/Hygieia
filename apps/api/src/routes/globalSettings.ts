@@ -17,7 +17,7 @@ import {
 import {
   getBackgroundServiceSetting,
   getBackgroundServiceSettings,
-  getBackgroundServiceRunLogs,
+  getBackgroundServiceRunLogsPage,
   updateBackgroundServiceSetting,
 } from '../services/backgroundServiceSettingsService';
 import { reloadReminderScheduler, runReminderCycleNow } from '../services/reminderScheduler';
@@ -170,9 +170,16 @@ router.get(
   requirePermission(PERMISSIONS.SETTINGS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const rawLimit = Number(req.query.limit ?? 10);
-      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 50) : 10;
-      const logs = await getBackgroundServiceRunLogs(limit);
+      const parsedServiceKey = backgroundServiceKeySchema.safeParse(req.query.serviceKey);
+      if (!parsedServiceKey.success) {
+        throw handleZodError(parsedServiceKey.error);
+      }
+
+      const rawPage = Number(req.query.page ?? 1);
+      const rawLimit = Number(req.query.limit ?? 9);
+      const page = Number.isFinite(rawPage) ? Math.max(Math.floor(rawPage), 1) : 1;
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 50) : 9;
+      const logs = await getBackgroundServiceRunLogsPage(parsedServiceKey.data, page, limit);
       res.json({ data: logs });
     } catch (error) {
       next(error);

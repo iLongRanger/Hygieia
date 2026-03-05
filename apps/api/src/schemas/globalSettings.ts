@@ -4,12 +4,27 @@ const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 const DATA_URL_IMAGE_REGEX =
   /^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/;
 
+function isValidIanaTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const updateGlobalSettingsSchema = z.object({
   companyName: z.string().min(1, 'Company name is required').max(255).optional(),
   companyEmail: z.string().email('Invalid company email').max(255).nullable().optional(),
   companyPhone: z.string().max(20).nullable().optional(),
   companyWebsite: z.string().url('Invalid website URL').max(500).nullable().optional(),
   companyAddress: z.string().max(2000).nullable().optional(),
+  companyTimezone: z
+    .string()
+    .min(1, 'Timezone is required')
+    .max(100, 'Timezone is too long')
+    .refine((value) => isValidIanaTimezone(value), 'Invalid timezone')
+    .optional(),
   logoDataUrl: z.string().max(2_800_000).regex(DATA_URL_IMAGE_REGEX, 'Invalid logo image format').nullable().optional(),
   themePrimaryColor: z.string().regex(HEX_COLOR_REGEX, 'Primary color must be a hex value').optional(),
   themeAccentColor: z.string().regex(HEX_COLOR_REGEX, 'Accent color must be a hex value').optional(),

@@ -1685,6 +1685,7 @@ model GlobalSettings {
   companyPhone         String?  @map("company_phone") @db.VarChar(20)
   companyWebsite       String?  @map("company_website") @db.VarChar(500)
   companyAddress       String?  @map("company_address") @db.Text
+  companyTimezone      String   @default("UTC") @map("company_timezone") @db.VarChar(100)
   logoDataUrl          String?  @map("logo_data_url") @db.Text
   themePrimaryColor    String   @default("#1a1a2e") @map("theme_primary_color") @db.VarChar(7)
   themeAccentColor     String   @default("#d4af37") @map("theme_accent_color") @db.VarChar(7)

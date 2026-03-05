@@ -1,0 +1,2 @@
+ALTER TABLE "global_settings"
+ADD COLUMN IF NOT EXISTS "company_timezone" VARCHAR(100) NOT NULL DEFAULT 'UTC';
