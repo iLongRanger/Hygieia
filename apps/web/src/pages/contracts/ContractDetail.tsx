@@ -341,7 +341,7 @@ const ContractDetail = () => {
   const [areaTypes, setAreaTypes] = useState<AreaTypeOption[]>([]);
   const [existingAreasRaw, setExistingAreasRaw] = useState<Area[]>([]);
   const [existingTasksRaw, setExistingTasksRaw] = useState<FacilityTask[]>([]);
-  const [expandedAreaIds, setExpandedAreaIds] = useState<string[]>([]);
+  const [activeAreaIndex, setActiveAreaIndex] = useState(0);
   const [areasToArchive, setAreasToArchive] = useState<string[]>([]);
   const [tasksToArchive, setTasksToArchive] = useState<string[]>([]);
   const [areasToCreate, setAreasToCreate] = useState<AmendmentAreaDraft[]>([]);
@@ -444,14 +444,14 @@ const ContractDetail = () => {
 
       setAreaTypes(directAreaTypes.length > 0 ? directAreaTypes : derivedAreaTypes);
       setExistingAreasRaw(loadedAreas);
-      setExpandedAreaIds(loadedAreas.map((area) => area.id));
+      setActiveAreaIndex(0);
       setExistingTasksRaw(loadedTasks);
     } catch (error) {
       console.error('Failed to load amendment options:', error);
       setAreaTypes([]);
       setExistingAreasRaw([]);
       setExistingTasksRaw([]);
-      setExpandedAreaIds([]);
+      setActiveAreaIndex(0);
     }
   };
 
@@ -762,7 +762,7 @@ const ContractDetail = () => {
     setAreasToCreate([]);
     setTasksToCreateByArea({});
     setNewTaskDraftByArea({});
-    setExpandedAreaIds(existingAreasRaw.map((area) => area.id));
+    setActiveAreaIndex(0);
     setNewAreaDraft({
       areaTypeId: areaTypes[0]?.id || '',
       name: '',
@@ -786,12 +786,6 @@ const ContractDetail = () => {
       taskChanges: null,
     });
     setShowAmendmentModal(true);
-  };
-
-  const toggleAreaExpanded = (areaId: string) => {
-    setExpandedAreaIds((prev) =>
-      prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]
-    );
   };
 
   const addAreaChange = () => {
@@ -2077,7 +2071,7 @@ const ContractDetail = () => {
         isOpen={showAmendmentModal}
         onClose={() => setShowAmendmentModal(false)}
         title="Create Contract Amendment"
-        size="lg"
+        size="2xl"
       >
         <div className="space-y-4">
           <Input
@@ -2151,25 +2145,46 @@ const ContractDetail = () => {
                 No existing areas found on this facility.
               </div>
             ) : (
-              <div className="space-y-3">
-                {existingAreasRaw.map((area) => {
-                  const areaName = area.name || `Area ${area.id.slice(0, 6)}`;
-                  const areaTasks = existingTasksRaw.filter((task) => task.area?.id === area.id);
-                  const isExpanded = expandedAreaIds.includes(area.id);
-                  const isArchived = areasToArchive.includes(area.id);
-                  const pendingTasks = tasksToCreateByArea[area.id] || [];
-                  const taskDraft = getNewTaskDraft(area.id);
+              (() => {
+                const safeIndex = Math.min(activeAreaIndex, Math.max(existingAreasRaw.length - 1, 0));
+                const area = existingAreasRaw[safeIndex];
+                if (!area) return null;
 
-                  return (
-                    <div key={area.id} className="rounded border border-white/10">
+                const areaName = area.name || `Area ${area.id.slice(0, 6)}`;
+                const areaTasks = existingTasksRaw.filter((task) => task.area?.id === area.id);
+                const isArchived = areasToArchive.includes(area.id);
+                const pendingTasks = tasksToCreateByArea[area.id] || [];
+                const taskDraft = getNewTaskDraft(area.id);
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded border border-white/10 bg-white/[0.02] px-3 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveAreaIndex((prev) => Math.max(prev - 1, 0))}
+                        disabled={safeIndex === 0}
+                      >
+                        Left
+                      </Button>
+                      <div className="text-xs text-gray-300">
+                        Area {safeIndex + 1} of {existingAreasRaw.length}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setActiveAreaIndex((prev) => Math.min(prev + 1, existingAreasRaw.length - 1))
+                        }
+                        disabled={safeIndex >= existingAreasRaw.length - 1}
+                      >
+                        Right
+                      </Button>
+                    </div>
+
+                    <div className="rounded border border-white/10">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleAreaExpanded(area.id)}
-                          className="text-left text-sm font-medium text-white"
-                        >
-                          {isExpanded ? '[-]' : '[+]'} {areaName}
-                        </button>
+                        <div className="text-sm font-medium text-white">{areaName}</div>
                         <Button
                           variant={isArchived ? 'secondary' : 'ghost'}
                           size="sm"
@@ -2179,99 +2194,94 @@ const ContractDetail = () => {
                         </Button>
                       </div>
 
-                      {isExpanded && (
-                        <div className="space-y-3 p-3">
-                          <div className="text-xs text-gray-400">
-                            Existing tasks ({areaTasks.length})
-                          </div>
-                          <div className="space-y-2">
-                            {areaTasks.length === 0 ? (
-                              <div className="text-sm text-gray-500">No tasks in this area yet.</div>
-                            ) : (
-                              areaTasks.map((task) => {
-                                const taskName =
-                                  task.customName || task.taskTemplate?.name || 'Unnamed task';
-                                const isTaskArchived = tasksToArchive.includes(task.id);
-                                return (
-                                  <div
-                                    key={task.id}
-                                    className="flex items-center justify-between rounded border border-white/10 px-3 py-2 text-sm"
-                                  >
-                                    <span className="text-gray-200">
-                                      {taskName} ({task.cleaningFrequency})
-                                    </span>
-                                    <Button
-                                      variant={isTaskArchived ? 'secondary' : 'ghost'}
-                                      size="sm"
-                                      onClick={() => toggleTaskArchive(task.id)}
-                                    >
-                                      {isTaskArchived ? 'Undo' : 'Remove'}
-                                    </Button>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-
-                          <div className="border-t border-white/10 pt-3">
-                            <div className="mb-2 text-xs text-gray-400">Add task to this area</div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                              <Input
-                                label="Task Name"
-                                value={taskDraft.customName}
-                                onChange={(e) =>
-                                  updateAreaTaskDraft(area.id, { customName: e.target.value })
-                                }
-                                placeholder="Enter custom task"
-                              />
-                              <Select
-                                label="Frequency"
-                                options={CLEANING_FREQUENCIES}
-                                value={taskDraft.cleaningFrequency}
-                                onChange={(value) =>
-                                  updateAreaTaskDraft(area.id, {
-                                    cleaningFrequency: value || 'daily',
-                                  })
-                                }
-                              />
-                              <div className="flex items-end">
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => addTaskToArea(area.id)}
+                      <div className="space-y-3 p-3">
+                        <div className="text-xs text-gray-400">Existing tasks ({areaTasks.length})</div>
+                        <div className="space-y-2">
+                          {areaTasks.length === 0 ? (
+                            <div className="text-sm text-gray-500">No tasks in this area yet.</div>
+                          ) : (
+                            areaTasks.map((task) => {
+                              const taskName = task.customName || task.taskTemplate?.name || 'Unnamed task';
+                              const isTaskArchived = tasksToArchive.includes(task.id);
+                              return (
+                                <div
+                                  key={task.id}
+                                  className="flex items-center justify-between rounded border border-white/10 px-3 py-2 text-sm"
                                 >
-                                  Add Task
-                                </Button>
-                              </div>
-                            </div>
-                            {pendingTasks.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                {pendingTasks.map((task, index) => (
-                                  <div
-                                    key={`${area.id}-${index}`}
-                                    className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
+                                  <span className="text-gray-200">
+                                    {taskName} ({task.cleaningFrequency})
+                                  </span>
+                                  <Button
+                                    variant={isTaskArchived ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => toggleTaskArchive(task.id)}
                                   >
-                                    <span className="text-emerald-100">
-                                      New: {task.customName} ({task.cleaningFrequency})
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removePendingTask(area.id, index)}
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                                    {isTaskArchived ? 'Undo' : 'Remove'}
+                                  </Button>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
-                      )}
+
+                        <div className="border-t border-white/10 pt-3">
+                          <div className="mb-2 text-xs text-gray-400">Add task to this area</div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <Input
+                              label="Task Name"
+                              value={taskDraft.customName}
+                              onChange={(e) =>
+                                updateAreaTaskDraft(area.id, { customName: e.target.value })
+                              }
+                              placeholder="Enter custom task"
+                            />
+                            <Select
+                              label="Frequency"
+                              options={CLEANING_FREQUENCIES}
+                              value={taskDraft.cleaningFrequency}
+                              onChange={(value) =>
+                                updateAreaTaskDraft(area.id, {
+                                  cleaningFrequency: value || 'daily',
+                                })
+                              }
+                            />
+                            <div className="flex items-end">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => addTaskToArea(area.id)}
+                              >
+                                Add Task
+                              </Button>
+                            </div>
+                          </div>
+                          {pendingTasks.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {pendingTasks.map((task, index) => (
+                                <div
+                                  key={`${area.id}-${index}`}
+                                  className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
+                                >
+                                  <span className="text-emerald-100">
+                                    New: {task.customName} ({task.cleaningFrequency})
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removePendingTask(area.id, index)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })()
             )}
 
             <div className="border-t border-white/10 pt-3">
