@@ -45,6 +45,7 @@ import publicContractsRoutes from './routes/publicContracts';
 import quotationsRoutes from './routes/quotations';
 import publicQuotationsRoutes from './routes/publicQuotations';
 import oneTimeServiceCatalogRoutes from './routes/oneTimeServiceCatalog';
+import expensesRoutes from './routes/expenses';
 import { initializeRealtime } from './lib/realtime';
 import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
@@ -52,7 +53,7 @@ import { startJobAlertScheduler } from './services/jobAlertScheduler';
 import { startContractAssignmentOverrideScheduler } from './services/contractAssignmentOverrideScheduler';
 
 const app: Application = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3101;
 
 function parseConfiguredOrigins(): string[] {
   return (process.env.CORS_ORIGIN || 'http://localhost:3000')
@@ -150,6 +151,7 @@ app.use('/api/v1/time-tracking', timeTrackingRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
 app.use('/api/v1/quotations', quotationsRoutes);
 app.use('/api/v1/one-time-service-catalog', oneTimeServiceCatalogRoutes);
+app.use('/api/v1/expenses', expensesRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
