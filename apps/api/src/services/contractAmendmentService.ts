@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { generateJobsFromContract } from './jobService';
 import { normalizeServiceSchedule } from './serviceScheduleService';
+import { calculatePricing } from './pricing';
 
 export type ContractAmendmentStatus =
   | 'draft'
@@ -16,6 +17,8 @@ export interface ContractAmendmentAreaChangesInput {
     areaTypeId: string;
     name?: string | null;
     quantity?: number;
+    length?: number | null;
+    width?: number | null;
     squareFeet?: number | null;
     floorType?: string;
     conditionLevel?: string;
@@ -27,6 +30,8 @@ export interface ContractAmendmentAreaChangesInput {
     areaTypeId?: string;
     name?: string | null;
     quantity?: number;
+    length?: number | null;
+    width?: number | null;
     squareFeet?: number | null;
     floorType?: string;
     conditionLevel?: string;
@@ -419,6 +424,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
         select: {
           id: true,
           status: true,
+          accountId: true,
           facilityId: true,
           assignedTeamId: true,
           assignedToUserId: true,
@@ -445,6 +451,14 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
 
   const areaChanges = (amendment.areaChanges ?? {}) as ContractAmendmentAreaChangesInput;
   const taskChanges = (amendment.taskChanges ?? {}) as ContractAmendmentTaskChangesInput;
+  const hasPricingImpactingChanges =
+    amendment.serviceFrequency !== null ||
+    (areaChanges.create?.length || 0) > 0 ||
+    (areaChanges.update?.length || 0) > 0 ||
+    (areaChanges.archiveIds?.length || 0) > 0 ||
+    (taskChanges.create?.length || 0) > 0 ||
+    (taskChanges.update?.length || 0) > 0 ||
+    (taskChanges.archiveIds?.length || 0) > 0;
 
   const result = await prisma.$transaction(async (tx) => {
     const updateData: Prisma.ContractUpdateInput = {};
@@ -492,6 +506,8 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
           areaTypeId: createAreaInput.areaTypeId,
           name: createAreaInput.name?.trim() || null,
           quantity: createAreaInput.quantity ?? 1,
+          length: createAreaInput.length ?? null,
+          width: createAreaInput.width ?? null,
           squareFeet: createAreaInput.squareFeet ?? null,
           floorType: createAreaInput.floorType ?? 'vct',
           conditionLevel: createAreaInput.conditionLevel ?? 'standard',
@@ -509,6 +525,8 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
           areaTypeId: updateAreaInput.areaTypeId,
           name: updateAreaInput.name?.trim() || null,
           quantity: updateAreaInput.quantity,
+          length: updateAreaInput.length,
+          width: updateAreaInput.width,
           squareFeet: updateAreaInput.squareFeet,
           floorType: updateAreaInput.floorType,
           conditionLevel: updateAreaInput.conditionLevel,
@@ -629,6 +647,39 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
 
     return updatedAmendment;
   });
+
+  if (
+    amendment.monthlyValue === null &&
+    hasPricingImpactingChanges &&
+    amendment.contract.facilityId
+  ) {
+    try {
+      const nextServiceFrequency =
+        amendment.serviceFrequency ?? amendment.contract.serviceFrequency ?? '5x_week';
+      const repriced = await calculatePricing(
+        {
+          facilityId: amendment.contract.facilityId,
+          serviceFrequency: nextServiceFrequency,
+        },
+        {
+          accountId: amendment.contract.accountId,
+        }
+      );
+
+      await prisma.contract.update({
+        where: { id: amendment.contractId },
+        data: {
+          monthlyValue: Number(repriced.monthlyTotal.toFixed(2)),
+        },
+      });
+    } catch (error) {
+      console.warn('Failed to auto-recalculate contract pricing after amendment apply', {
+        amendmentId: amendment.id,
+        contractId: amendment.contractId,
+        error,
+      });
+    }
+  }
 
   const shouldRegenerateRecurringJobs =
     amendment.contract.status === 'active' &&

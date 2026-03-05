@@ -56,6 +56,7 @@ import {
   approveContractAmendment as approveContractAmendmentApi,
   applyContractAmendment as applyContractAmendmentApi,
 } from '../../lib/contracts';
+import { getFacilityPricing } from '../../lib/pricing';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
@@ -338,6 +339,7 @@ const ContractDetail = () => {
   const [amendmentsLoading, setAmendmentsLoading] = useState(false);
   const [showAmendmentModal, setShowAmendmentModal] = useState(false);
   const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
+  const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
   const [areaTypes, setAreaTypes] = useState<AreaTypeOption[]>([]);
   const [existingAreasRaw, setExistingAreasRaw] = useState<Area[]>([]);
   const [existingTasksRaw, setExistingTasksRaw] = useState<FacilityTask[]>([]);
@@ -927,6 +929,30 @@ const ContractDetail = () => {
       toast.error(error?.response?.data?.error?.message || 'Failed to create amendment');
     } finally {
       setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleRecalculateAmendmentPricing = async () => {
+    if (!contract?.facility?.id) {
+      toast.error('Facility is required to recalculate pricing');
+      return;
+    }
+
+    const frequency =
+      amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week';
+
+    try {
+      setAmendmentPricingLoading(true);
+      const pricing = await getFacilityPricing(contract.facility.id, frequency);
+      setAmendmentFormData((prev) => ({
+        ...prev,
+        monthlyValue: Number(pricing.monthlyTotal.toFixed(2)),
+      }));
+      toast.success('Monthly value recalculated from pricing engine');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error?.message || 'Failed to recalculate pricing');
+    } finally {
+      setAmendmentPricingLoading(false);
     }
   };
 
@@ -2120,6 +2146,16 @@ const ContractDetail = () => {
                   }))
                 }
               />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRecalculateAmendmentPricing}
+                isLoading={amendmentPricingLoading}
+              >
+                Recalculate Price
+              </Button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
