@@ -46,6 +46,7 @@ import quotationsRoutes from './routes/quotations';
 import publicQuotationsRoutes from './routes/publicQuotations';
 import oneTimeServiceCatalogRoutes from './routes/oneTimeServiceCatalog';
 import expensesRoutes from './routes/expenses';
+import payrollRoutes from './routes/payroll';
 import { initializeRealtime } from './lib/realtime';
 import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
@@ -152,6 +153,7 @@ app.use('/api/v1/invoices', invoicesRoutes);
 app.use('/api/v1/quotations', quotationsRoutes);
 app.use('/api/v1/one-time-service-catalog', oneTimeServiceCatalogRoutes);
 app.use('/api/v1/expenses', expensesRoutes);
+app.use('/api/v1/payroll', payrollRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
