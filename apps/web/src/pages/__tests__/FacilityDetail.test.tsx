@@ -90,6 +90,8 @@ const facility: Facility = {
   _count: {
     areas: 1,
     facilityTasks: 0,
+    proposals: 0,
+    contracts: 0,
   },
 };
 
@@ -271,5 +273,21 @@ describe('FacilityDetail', () => {
         'Ready for proposal'
       );
     });
+  });
+
+  it('hides submit for proposal when facility already has proposal or contract', async () => {
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      _count: {
+        ...facility._count,
+        proposals: 1,
+        contracts: 0,
+      },
+    });
+
+    render(<FacilityDetail />);
+
+    await screen.findByText('Main Facility');
+    expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
   });
 });

@@ -101,6 +101,8 @@ const facilitySelect = {
     select: {
       areas: true,
       facilityTasks: true,
+      proposals: true,
+      contracts: true,
     },
   },
 } satisfies Prisma.FacilitySelect;

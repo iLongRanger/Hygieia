@@ -152,6 +152,8 @@ const FacilityDetail = () => {
 
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
+  const hasExistingProposalOrContract =
+    (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
 
   // --- Effects ---
   useEffect(() => {
@@ -954,13 +956,15 @@ const FacilityDetail = () => {
           <p className="text-gray-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowSubmitProposalModal(true)}
-            disabled={activeAreasCount === 0 || activeTasksCount === 0}
-          >
-            <Send className="mr-2 h-4 w-4" />
-            Submit for Proposal
-          </Button>
+          {!hasExistingProposalOrContract && (
+            <Button
+              onClick={() => setShowSubmitProposalModal(true)}
+              disabled={activeAreasCount === 0 || activeTasksCount === 0}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Submit for Proposal
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setShowEditModal(true)}>
             <Edit2 className="mr-2 h-4 w-4" />
             Edit Facility

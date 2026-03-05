@@ -65,6 +65,8 @@ export interface Facility {
   _count: {
     areas: number;
     facilityTasks: number;
+    proposals?: number;
+    contracts?: number;
   };
 }
 
