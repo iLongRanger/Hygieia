@@ -60,9 +60,15 @@ import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
+import {
+  listAreaTypes,
+  listAreas,
+  listFacilityTasks,
+} from '../../lib/facilities';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
+import { CLEANING_FREQUENCIES } from '../facilities/facility-constants';
 import type {
   Contract,
   ContractAmendment,
@@ -74,6 +80,7 @@ import type {
 } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User as SystemUser } from '../../types/user';
+import type { Area, FacilityTask } from '../../types/facility';
 
 // Format address object into readable string
 const formatAddress = (address: any): string => {
@@ -275,6 +282,16 @@ const CONTRACT_PIPELINE_STEPS = [
 
 type AssignmentMode = 'subcontractor_team' | 'internal_employee';
 type TermsDocumentAction = 'unchanged' | 'replace' | 'remove';
+type AmendmentAreaDraft = {
+  areaTypeId: string;
+  name: string;
+  squareFeet: string;
+};
+type AmendmentTaskDraft = {
+  customName: string;
+  cleaningFrequency: string;
+};
+type AreaTypeOption = { id: string; name: string };
 
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -321,8 +338,20 @@ const ContractDetail = () => {
   const [amendmentsLoading, setAmendmentsLoading] = useState(false);
   const [showAmendmentModal, setShowAmendmentModal] = useState(false);
   const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
-  const [amendmentAreaChangesJson, setAmendmentAreaChangesJson] = useState('');
-  const [amendmentTaskChangesJson, setAmendmentTaskChangesJson] = useState('');
+  const [areaTypes, setAreaTypes] = useState<AreaTypeOption[]>([]);
+  const [existingAreasRaw, setExistingAreasRaw] = useState<Area[]>([]);
+  const [existingTasksRaw, setExistingTasksRaw] = useState<FacilityTask[]>([]);
+  const [expandedAreaIds, setExpandedAreaIds] = useState<string[]>([]);
+  const [areasToArchive, setAreasToArchive] = useState<string[]>([]);
+  const [tasksToArchive, setTasksToArchive] = useState<string[]>([]);
+  const [areasToCreate, setAreasToCreate] = useState<AmendmentAreaDraft[]>([]);
+  const [tasksToCreateByArea, setTasksToCreateByArea] = useState<Record<string, AmendmentTaskDraft[]>>({});
+  const [newTaskDraftByArea, setNewTaskDraftByArea] = useState<Record<string, AmendmentTaskDraft>>({});
+  const [newAreaDraft, setNewAreaDraft] = useState<AmendmentAreaDraft>({
+    areaTypeId: '',
+    name: '',
+    squareFeet: '',
+  });
   const [amendmentFormData, setAmendmentFormData] = useState<CreateContractAmendmentInput>({
     title: '',
     description: '',
@@ -387,6 +416,45 @@ const ContractDetail = () => {
     }
   };
 
+  const fetchAmendmentOptions = async (facilityId: string) => {
+    try {
+      const [areaTypesResult, areasResult, tasksResult] = await Promise.allSettled([
+        listAreaTypes({ limit: 100 }),
+        listAreas({ facilityId, limit: 100 }),
+        listFacilityTasks({ facilityId, limit: 100 }),
+      ]);
+
+      const loadedAreas =
+        areasResult.status === 'fulfilled' ? areasResult.value.data || [] : [];
+      const loadedTasks =
+        tasksResult.status === 'fulfilled' ? tasksResult.value.data || [] : [];
+
+      const directAreaTypes =
+        areaTypesResult.status === 'fulfilled'
+          ? (areaTypesResult.value.data || []).map((type) => ({ id: type.id, name: type.name }))
+          : [];
+      const derivedAreaTypes = loadedAreas
+        .map((area) => ({
+          id: area.areaType.id,
+          name: area.areaType.name,
+        }))
+        .filter(
+          (type, index, self) => self.findIndex((item) => item.id === type.id) === index
+        );
+
+      setAreaTypes(directAreaTypes.length > 0 ? directAreaTypes : derivedAreaTypes);
+      setExistingAreasRaw(loadedAreas);
+      setExpandedAreaIds(loadedAreas.map((area) => area.id));
+      setExistingTasksRaw(loadedTasks);
+    } catch (error) {
+      console.error('Failed to load amendment options:', error);
+      setAreaTypes([]);
+      setExistingAreasRaw([]);
+      setExistingTasksRaw([]);
+      setExpandedAreaIds([]);
+    }
+  };
+
   const fetchContract = async (contractId: string) => {
     try {
       setLoading(true);
@@ -402,6 +470,9 @@ const ContractDetail = () => {
           ? new Date(data.assignmentOverrideEffectiveDate).toISOString().slice(0, 10)
           : ''
       );
+      if (!isLimitedContractViewer && data.facility?.id) {
+        await fetchAmendmentOptions(data.facility.id);
+      }
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -686,8 +757,17 @@ const ContractDetail = () => {
 
   const openAmendmentModal = () => {
     const baseSchedule = contract?.serviceSchedule || null;
-    setAmendmentAreaChangesJson('');
-    setAmendmentTaskChangesJson('');
+    setAreasToArchive([]);
+    setTasksToArchive([]);
+    setAreasToCreate([]);
+    setTasksToCreateByArea({});
+    setNewTaskDraftByArea({});
+    setExpandedAreaIds(existingAreasRaw.map((area) => area.id));
+    setNewAreaDraft({
+      areaTypeId: areaTypes[0]?.id || '',
+      name: '',
+      squareFeet: '',
+    });
     setAmendmentFormData({
       title: '',
       description: '',
@@ -708,6 +788,84 @@ const ContractDetail = () => {
     setShowAmendmentModal(true);
   };
 
+  const toggleAreaExpanded = (areaId: string) => {
+    setExpandedAreaIds((prev) =>
+      prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]
+    );
+  };
+
+  const addAreaChange = () => {
+    if (!newAreaDraft.areaTypeId) {
+      toast.error('Select area type first');
+      return;
+    }
+    if (!newAreaDraft.name.trim()) {
+      toast.error('Area name is required');
+      return;
+    }
+    setAreasToCreate((prev) => [...prev, { ...newAreaDraft, name: newAreaDraft.name.trim() }]);
+    setNewAreaDraft((prev) => ({
+      ...prev,
+      name: '',
+      squareFeet: '',
+    }));
+  };
+
+  const getNewTaskDraft = (areaId: string): AmendmentTaskDraft =>
+    newTaskDraftByArea[areaId] || {
+      customName: '',
+      cleaningFrequency: 'daily',
+    };
+
+  const updateAreaTaskDraft = (areaId: string, patch: Partial<AmendmentTaskDraft>) => {
+    setNewTaskDraftByArea((prev) => ({
+      ...prev,
+      [areaId]: {
+        ...getNewTaskDraft(areaId),
+        ...patch,
+      },
+    }));
+  };
+
+  const addTaskToArea = (areaId: string) => {
+    const draft = getNewTaskDraft(areaId);
+    if (!draft.customName.trim()) {
+      toast.error('Task name is required');
+      return;
+    }
+
+    setTasksToCreateByArea((prev) => ({
+      ...prev,
+      [areaId]: [...(prev[areaId] || []), { ...draft, customName: draft.customName.trim() }],
+    }));
+    setNewTaskDraftByArea((prev) => ({
+      ...prev,
+      [areaId]: {
+        customName: '',
+        cleaningFrequency: draft.cleaningFrequency || 'daily',
+      },
+    }));
+  };
+
+  const removePendingTask = (areaId: string, index: number) => {
+    setTasksToCreateByArea((prev) => ({
+      ...prev,
+      [areaId]: (prev[areaId] || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const toggleAreaArchive = (areaId: string) => {
+    setAreasToArchive((prev) =>
+      prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]
+    );
+  };
+
+  const toggleTaskArchive = (taskId: string) => {
+    setTasksToArchive((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
+
   const handleCreateAmendment = async () => {
     if (!contract) return;
     if (!amendmentFormData.title?.trim()) {
@@ -719,26 +877,45 @@ const ContractDetail = () => {
       return;
     }
 
-    let parsedAreaChanges: CreateContractAmendmentInput['areaChanges'] = null;
-    let parsedTaskChanges: CreateContractAmendmentInput['taskChanges'] = null;
+    const areaCreatePayload = areasToCreate.map((area) => ({
+      areaTypeId: area.areaTypeId,
+      name: area.name.trim(),
+      squareFeet: area.squareFeet ? Number(area.squareFeet) : null,
+      quantity: 1,
+      floorType: 'vct',
+      conditionLevel: 'standard',
+      trafficLevel: 'medium',
+      notes: null,
+    }));
+    const taskCreatePayload = Object.entries(tasksToCreateByArea).flatMap(([areaId, tasks]) =>
+      tasks.map((task) => ({
+        areaId,
+        taskTemplateId: null,
+        customName: task.customName.trim(),
+        customInstructions: null,
+        estimatedMinutes: null,
+        baseMinutesOverride: null,
+        perSqftMinutesOverride: null,
+        priority: 3,
+        isRequired: true,
+        cleaningFrequency: task.cleaningFrequency,
+      }))
+    );
 
-    try {
-      parsedAreaChanges = amendmentAreaChangesJson.trim()
-        ? JSON.parse(amendmentAreaChangesJson)
+    const areaChanges =
+      areaCreatePayload.length > 0 || areasToArchive.length > 0
+        ? {
+            ...(areaCreatePayload.length > 0 ? { create: areaCreatePayload } : {}),
+            ...(areasToArchive.length > 0 ? { archiveIds: areasToArchive } : {}),
+          }
         : null;
-    } catch {
-      toast.error('Area changes JSON is invalid');
-      return;
-    }
-
-    try {
-      parsedTaskChanges = amendmentTaskChangesJson.trim()
-        ? JSON.parse(amendmentTaskChangesJson)
+    const taskChanges =
+      taskCreatePayload.length > 0 || tasksToArchive.length > 0
+        ? {
+            ...(taskCreatePayload.length > 0 ? { create: taskCreatePayload } : {}),
+            ...(tasksToArchive.length > 0 ? { archiveIds: tasksToArchive } : {}),
+          }
         : null;
-    } catch {
-      toast.error('Task changes JSON is invalid');
-      return;
-    }
 
     try {
       setAmendmentSubmitting(true);
@@ -746,8 +923,8 @@ const ContractDetail = () => {
         ...amendmentFormData,
         title: amendmentFormData.title.trim(),
         description: amendmentFormData.description?.trim() || null,
-        areaChanges: parsedAreaChanges,
-        taskChanges: parsedTaskChanges,
+        areaChanges,
+        taskChanges,
       });
       setShowAmendmentModal(false);
       toast.success('Amendment created');
@@ -1967,20 +2144,190 @@ const ContractDetail = () => {
               placeholder="Net 30"
             />
           </div>
-          <Textarea
-            label="Area Changes JSON (optional)"
-            rows={5}
-            value={amendmentAreaChangesJson}
-            onChange={(e) => setAmendmentAreaChangesJson(e.target.value)}
-            placeholder='{"create":[{"areaTypeId":"...","name":"Storage","squareFeet":300}],"archiveIds":["area-id"]}'
-          />
-          <Textarea
-            label="Task Changes JSON (optional)"
-            rows={5}
-            value={amendmentTaskChangesJson}
-            onChange={(e) => setAmendmentTaskChangesJson(e.target.value)}
-            placeholder='{"create":[{"areaId":"...","customName":"Refill hand soap","cleaningFrequency":"daily"}],"archiveIds":["task-id"]}'
-          />
+          <div className="rounded-md border border-white/10 p-3 space-y-4">
+            <div className="text-sm font-medium text-white">Areas and Tasks</div>
+            {existingAreasRaw.length === 0 ? (
+              <div className="rounded border border-dashed border-white/10 px-3 py-4 text-sm text-gray-400">
+                No existing areas found on this facility.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {existingAreasRaw.map((area) => {
+                  const areaName = area.name || `Area ${area.id.slice(0, 6)}`;
+                  const areaTasks = existingTasksRaw.filter((task) => task.area?.id === area.id);
+                  const isExpanded = expandedAreaIds.includes(area.id);
+                  const isArchived = areasToArchive.includes(area.id);
+                  const pendingTasks = tasksToCreateByArea[area.id] || [];
+                  const taskDraft = getNewTaskDraft(area.id);
+
+                  return (
+                    <div key={area.id} className="rounded border border-white/10">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleAreaExpanded(area.id)}
+                          className="text-left text-sm font-medium text-white"
+                        >
+                          {isExpanded ? '[-]' : '[+]'} {areaName}
+                        </button>
+                        <Button
+                          variant={isArchived ? 'secondary' : 'ghost'}
+                          size="sm"
+                          onClick={() => toggleAreaArchive(area.id)}
+                        >
+                          {isArchived ? 'Undo Remove Area' : 'Remove Area'}
+                        </Button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="space-y-3 p-3">
+                          <div className="text-xs text-gray-400">
+                            Existing tasks ({areaTasks.length})
+                          </div>
+                          <div className="space-y-2">
+                            {areaTasks.length === 0 ? (
+                              <div className="text-sm text-gray-500">No tasks in this area yet.</div>
+                            ) : (
+                              areaTasks.map((task) => {
+                                const taskName =
+                                  task.customName || task.taskTemplate?.name || 'Unnamed task';
+                                const isTaskArchived = tasksToArchive.includes(task.id);
+                                return (
+                                  <div
+                                    key={task.id}
+                                    className="flex items-center justify-between rounded border border-white/10 px-3 py-2 text-sm"
+                                  >
+                                    <span className="text-gray-200">
+                                      {taskName} ({task.cleaningFrequency})
+                                    </span>
+                                    <Button
+                                      variant={isTaskArchived ? 'secondary' : 'ghost'}
+                                      size="sm"
+                                      onClick={() => toggleTaskArchive(task.id)}
+                                    >
+                                      {isTaskArchived ? 'Undo' : 'Remove'}
+                                    </Button>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          <div className="border-t border-white/10 pt-3">
+                            <div className="mb-2 text-xs text-gray-400">Add task to this area</div>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <Input
+                                label="Task Name"
+                                value={taskDraft.customName}
+                                onChange={(e) =>
+                                  updateAreaTaskDraft(area.id, { customName: e.target.value })
+                                }
+                                placeholder="Enter custom task"
+                              />
+                              <Select
+                                label="Frequency"
+                                options={CLEANING_FREQUENCIES}
+                                value={taskDraft.cleaningFrequency}
+                                onChange={(value) =>
+                                  updateAreaTaskDraft(area.id, {
+                                    cleaningFrequency: value || 'daily',
+                                  })
+                                }
+                              />
+                              <div className="flex items-end">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => addTaskToArea(area.id)}
+                                >
+                                  Add Task
+                                </Button>
+                              </div>
+                            </div>
+                            {pendingTasks.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {pendingTasks.map((task, index) => (
+                                  <div
+                                    key={`${area.id}-${index}`}
+                                    className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
+                                  >
+                                    <span className="text-emerald-100">
+                                      New: {task.customName} ({task.cleaningFrequency})
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removePendingTask(area.id, index)}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="border-t border-white/10 pt-3">
+              <div className="mb-2 text-xs text-gray-400">Add New Area</div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Select
+                  label="Area Type"
+                  options={areaTypes.map((item) => ({ value: item.id, label: item.name }))}
+                  value={newAreaDraft.areaTypeId}
+                  onChange={(value) => setNewAreaDraft((prev) => ({ ...prev, areaTypeId: value }))}
+                  placeholder="Select area type"
+                />
+                <Input
+                  label="Area Name"
+                  value={newAreaDraft.name}
+                  onChange={(e) => setNewAreaDraft((prev) => ({ ...prev, name: e.target.value }))}
+                />
+                <Input
+                  label="Square Feet"
+                  type="number"
+                  value={newAreaDraft.squareFeet}
+                  onChange={(e) =>
+                    setNewAreaDraft((prev) => ({ ...prev, squareFeet: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <Button variant="secondary" size="sm" onClick={addAreaChange}>
+                  Add Area
+                </Button>
+              </div>
+              {areasToCreate.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {areasToCreate.map((area, index) => (
+                    <div
+                      key={`${area.name}-${index}`}
+                      className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
+                    >
+                      <span className="text-emerald-100">
+                        New area: {area.name} ({area.squareFeet || 'n/a'} sqft)
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setAreasToCreate((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
             Apply flow: create amendment -&gt; approve -&gt; apply. Applying updates contract values and
             regenerates future recurring scheduled jobs from the effective date.
