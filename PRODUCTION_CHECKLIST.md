@@ -39,6 +39,19 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/
 | `REDIS_URL` | Redis connection string |
 | `DB_ENCRYPTION_KEY` | 32-char key |
 | `FILE_ENCRYPTION_KEY` | 64-char key |
+| `RESEND_API_KEY` | Resend API key for notification/reminder emails |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID for SMS job alerts |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token for SMS job alerts |
+| `TWILIO_FROM_NUMBER` | Twilio sender phone number in E.164 format |
+
+### Reminder/Alert Reconfiguration (Required Before Go-Live)
+
+- [ ] Reconfigure Background Services schedule times in `Settings -> Global Settings -> Background Services` for production timezone
+- [ ] Confirm **Job Alert Checks** is enabled at the intended production time
+- [ ] Confirm reminder recipients and assignment flow are validated in production data
+- [ ] Verify `RESEND_API_KEY` and sender domain are production-ready (not test/sandbox)
+- [ ] Verify Twilio SMS credentials and sender number are production-ready
+- [ ] Run one manual background service cycle and confirm in-app + email + SMS delivery before deployment sign-off
 
 ### Security Checks
 

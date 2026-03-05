@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { getCoordinatesFromAddress, validateGeofence } from '../lib/geofence';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createBulkNotifications, createNotification } from './notificationService';
+import { sendSms } from './smsService';
 import {
   extractFacilityTimezone,
   normalizeServiceSchedule,
@@ -1362,8 +1363,17 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
       scheduledEndTime: true,
       facility: { select: { id: true, name: true } },
       contract: { select: { id: true, contractNumber: true } },
-      assignedTeam: { select: { id: true, name: true } },
-      assignedToUser: { select: { id: true, fullName: true, email: true } },
+      assignedTeam: {
+        select: {
+          id: true,
+          name: true,
+          users: {
+            where: { status: 'active' },
+            select: { id: true, email: true, fullName: true, phone: true },
+          },
+        },
+      },
+      assignedToUser: { select: { id: true, fullName: true, email: true, phone: true } },
     },
   });
 
@@ -1396,13 +1406,9 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
           },
         },
       },
-      select: { id: true },
+      select: { id: true, phone: true },
     }),
   ]);
-
-  if (adminUsers.length === 0) {
-    return { checked: candidateJobs.length, alerted: 0, notifications: 0 };
-  }
 
   const jobsWithTimeTracking = new Set(
     timeTrackedJobs
@@ -1411,6 +1417,11 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
   );
   const alreadyAlertedJobIds = new Set(alertedJobs.map((activity) => activity.jobId));
   const adminUserIds = adminUsers.map((user) => user.id);
+  const adminPhonesById = new Map(
+    adminUsers
+      .filter((user) => Boolean(user.phone))
+      .map((user) => [user.id, user.phone as string])
+  );
 
   let alerted = 0;
   let notifications = 0;
@@ -1426,11 +1437,45 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
         ? `Assigned team: ${job.assignedTeam.name}`
         : 'Assigned cleaner/team: Unassigned';
     const body = `${job.jobNumber} at ${job.facility.name} ends at ${job.scheduledEndTime.toISOString()} and has no check-in yet. ${assigneeLabel}.`;
+    const assigneeUserIds = new Set<string>();
+    const assigneePhones = new Set<string>();
+    if (job.assignedToUser?.id) {
+      assigneeUserIds.add(job.assignedToUser.id);
+      if (job.assignedToUser.phone) {
+        assigneePhones.add(job.assignedToUser.phone);
+      }
+    }
+    for (const teamUser of job.assignedTeam?.users ?? []) {
+      assigneeUserIds.add(teamUser.id);
+      if (teamUser.phone) {
+        assigneePhones.add(teamUser.phone);
+      }
+    }
+    const recipientUserIds = [...new Set([...adminUserIds, ...assigneeUserIds])];
+    if (recipientUserIds.length === 0) {
+      continue;
+    }
+    const emailSubject = `No check-in yet for ${job.jobNumber}`;
+    const emailHtml = `
+      <p>${job.jobNumber} at ${job.facility.name} ends at ${job.scheduledEndTime.toISOString()} and has no check-in yet.</p>
+      <p>${assigneeLabel}</p>
+    `;
+    const recipientPhones = new Set<string>(assigneePhones);
+    for (const adminUserId of adminUserIds) {
+      const phone = adminPhonesById.get(adminUserId);
+      if (phone) {
+        recipientPhones.add(phone);
+      }
+    }
+    const smsMessage = `${job.jobNumber} at ${job.facility.name} ends at ${job.scheduledEndTime.toISOString()} and has no check-in yet.`;
 
-    const created = await createBulkNotifications(adminUserIds, {
+    const created = await createBulkNotifications(recipientUserIds, {
       type: 'job_no_checkin_near_end',
       title: `No check-in yet for ${job.jobNumber}`,
       body,
+      sendEmail: true,
+      emailSubject,
+      emailHtml,
       metadata: {
         jobId: job.id,
         jobNumber: job.jobNumber,
@@ -1446,6 +1491,11 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
         assignedTeamId: job.assignedTeam?.id ?? null,
       },
     });
+    let smsSentCount = 0;
+    for (const phone of recipientPhones) {
+      const sent = await sendSms(phone, smsMessage);
+      if (sent) smsSentCount += 1;
+    }
 
     await prisma.jobActivity.create({
       data: {
@@ -1453,7 +1503,8 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
         action: JOB_NO_CHECKIN_ALERT_ACTION,
         metadata: {
           leadHours,
-          alertedAdminCount: created.length,
+          alertedRecipientCount: created.length,
+          smsSentCount,
           scheduledEndTime: job.scheduledEndTime.toISOString(),
         },
       },
