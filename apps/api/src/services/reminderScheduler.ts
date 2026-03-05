@@ -1,5 +1,6 @@
 import logger from '../lib/logger';
 import {
+  createBackgroundServiceRunLog,
   getBackgroundServiceSetting,
   markBackgroundServiceRunFailure,
   markBackgroundServiceRunStart,
@@ -18,6 +19,7 @@ async function runReminderCycle(): Promise<void> {
   }
 
   cycleRunning = true;
+  const startedAt = new Date();
   await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
     const {
@@ -41,9 +43,27 @@ async function runReminderCycle(): Promise<void> {
     logger.info(
       `Reminder cycle complete: appointmentReminders=${appointmentCount}, contractExpiryReminders=${contractExpiryCount}, proposalFollowUpReminders=${proposalFollowUpCount}, contractFollowUpReminders=${contractFollowUpCount}`
     );
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'success',
+      summary: `Sent reminders - appointments: ${appointmentCount}, contract expiry: ${contractExpiryCount}, proposal follow-up: ${proposalFollowUpCount}, contract follow-up: ${contractFollowUpCount}`,
+      details: {
+        appointmentReminders: appointmentCount,
+        contractExpiryReminders: contractExpiryCount,
+        proposalFollowUpReminders: proposalFollowUpCount,
+        contractFollowUpReminders: contractFollowUpCount,
+      },
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunSuccess(SERVICE_KEY);
   } catch (error) {
     logger.error('Reminder cycle failed', error);
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'failed',
+      summary: error instanceof Error ? error.message : String(error),
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunFailure(SERVICE_KEY, error);
   } finally {
     cycleRunning = false;

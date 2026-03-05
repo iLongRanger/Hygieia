@@ -1,6 +1,7 @@
 import logger from '../lib/logger';
 import { runRecurringJobsAutoRegenerationCycle } from './jobService';
 import {
+  createBackgroundServiceRunLog,
   getBackgroundServiceSetting,
   markBackgroundServiceRunFailure,
   markBackgroundServiceRunStart,
@@ -19,15 +20,29 @@ async function runRecurringJobCycle(): Promise<void> {
   }
 
   cycleRunning = true;
+  const startedAt = new Date();
   await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
     const result = await runRecurringJobsAutoRegenerationCycle();
     logger.info(
       `Recurring jobs cycle complete: checked=${result.checked}, generatedFor=${result.generatedFor}, created=${result.created}`
     );
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'success',
+      summary: `Checked ${result.checked} contracts, generated for ${result.generatedFor}, created ${result.created} recurring jobs`,
+      details: result as unknown as Record<string, unknown>,
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunSuccess(SERVICE_KEY);
   } catch (error) {
     logger.error('Recurring jobs cycle failed', error);
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'failed',
+      summary: error instanceof Error ? error.message : String(error),
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunFailure(SERVICE_KEY, error);
   } finally {
     cycleRunning = false;

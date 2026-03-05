@@ -1,6 +1,10 @@
 import api from './api';
 import type { GlobalSettings, UpdateGlobalSettingsInput } from '../types/globalSettings';
-import type { BackgroundServiceKey, BackgroundServiceSetting } from '../types/backgroundServiceSettings';
+import type {
+  BackgroundServiceKey,
+  BackgroundServiceRunLogsByService,
+  BackgroundServiceSetting,
+} from '../types/backgroundServiceSettings';
 
 export async function getGlobalSettings(): Promise<GlobalSettings> {
   const response = await api.get('/settings/global');
@@ -39,6 +43,13 @@ export async function runBackgroundServiceNow(
   serviceKey: BackgroundServiceKey
 ): Promise<BackgroundServiceSetting> {
   const response = await api.post(`/settings/global/background-services/${serviceKey}/run-now`);
+  return response.data.data;
+}
+
+export async function getBackgroundServiceLogs(limit = 10): Promise<BackgroundServiceRunLogsByService> {
+  const response = await api.get('/settings/global/background-services/logs', {
+    params: { limit },
+  });
   return response.data.data;
 }
 

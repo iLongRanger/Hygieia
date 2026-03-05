@@ -597,6 +597,9 @@ export async function updateInspection(id: string, input: InspectionUpdateInput)
 export async function startInspection(id: string, userId: string) {
   const existing = await prisma.inspection.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Inspection not found');
+  if (existing.status === 'canceled') {
+    throw new BadRequestError('Cannot restart a canceled inspection');
+  }
   if (existing.status !== 'scheduled') throw new BadRequestError('Inspection can only be started from scheduled status');
 
   const inspection = await prisma.inspection.update({

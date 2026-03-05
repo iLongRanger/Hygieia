@@ -153,9 +153,6 @@ export function verifyOwnership(context: OwnershipContext) {
       // Subcontractor: can only access resources assigned to their team
       if (role === 'subcontractor') {
         const teamId = req.user.teamId;
-        if (!teamId) {
-          return next(new ForbiddenError('Subcontractor has no team assigned'));
-        }
 
         const paramName = context.paramName || 'id';
         const resourceId = req.params[paramName];
@@ -169,14 +166,18 @@ export function verifyOwnership(context: OwnershipContext) {
         if (context.resourceType === 'contract') {
           const contract = await prisma.contract.findUnique({
             where: { id: resourceId },
-            select: { assignedTeamId: true },
+            select: { assignedTeamId: true, assignedToUserId: true },
           });
-          hasAccess = contract?.assignedTeamId === teamId;
+          hasAccess =
+            contract?.assignedToUserId === userId ||
+            (Boolean(teamId) && contract?.assignedTeamId === teamId);
         } else if (context.resourceType === 'facility') {
-          const count = await prisma.contract.count({
-            where: { facilityId: resourceId, assignedTeamId: teamId },
-          });
-          hasAccess = count > 0;
+          if (teamId) {
+            const count = await prisma.contract.count({
+              where: { facilityId: resourceId, assignedTeamId: teamId },
+            });
+            hasAccess = count > 0;
+          }
         }
 
         if (!hasAccess) {

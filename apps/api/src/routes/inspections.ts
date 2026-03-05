@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
@@ -127,9 +127,13 @@ router.patch(
 router.post(
   '/:id/start',
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
-  async (req: Request, res: Response) => {
-    const inspection = await startInspection(req.params.id, req.user!.id);
-    res.json({ data: inspection });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const inspection = await startInspection(req.params.id, req.user!.id);
+      res.json({ data: inspection });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

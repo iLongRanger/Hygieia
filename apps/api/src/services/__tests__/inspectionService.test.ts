@@ -6,6 +6,7 @@ import {
   createInspection,
   getInspectionById,
   listInspections,
+  startInspection,
   updateInspection,
 } from '../inspectionService';
 
@@ -235,6 +236,17 @@ describe('inspectionService', () => {
         skipAutoCreate: true,
       })
     ).rejects.toThrow('Inspector must be an owner, admin, or manager');
+  });
+
+  it('startInspection rejects canceled inspections', async () => {
+    (prisma.inspection.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ins-1',
+      status: 'canceled',
+    });
+
+    await expect(startInspection('ins-1', 'manager-1')).rejects.toThrow(
+      'Cannot restart a canceled inspection'
+    );
   });
 
   it('addInspectionItem defaults sortOrder to next index', async () => {

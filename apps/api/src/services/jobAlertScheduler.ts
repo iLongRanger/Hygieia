@@ -1,6 +1,7 @@
 import logger from '../lib/logger';
 import { runJobNearingEndNoCheckInAlertCycle } from './jobService';
 import {
+  createBackgroundServiceRunLog,
   getBackgroundServiceSetting,
   markBackgroundServiceRunFailure,
   markBackgroundServiceRunStart,
@@ -19,15 +20,29 @@ async function runJobAlertCycle(): Promise<void> {
   }
 
   cycleRunning = true;
+  const startedAt = new Date();
   await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
     const result = await runJobNearingEndNoCheckInAlertCycle();
     logger.info(
       `Job alert cycle complete: checked=${result.checked}, alerted=${result.alerted}, notifications=${result.notifications}`
     );
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'success',
+      summary: `Checked ${result.checked} jobs, alerted ${result.alerted}, created ${result.notifications} notifications`,
+      details: result as unknown as Record<string, unknown>,
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunSuccess(SERVICE_KEY);
   } catch (error) {
     logger.error('Job alert cycle failed', error);
+    await createBackgroundServiceRunLog(SERVICE_KEY, {
+      status: 'failed',
+      summary: error instanceof Error ? error.message : String(error),
+      startedAt,
+      endedAt: new Date(),
+    });
     await markBackgroundServiceRunFailure(SERVICE_KEY, error);
   } finally {
     cycleRunning = false;

@@ -364,6 +364,15 @@ const AppointmentsPage = () => {
     setShowEditModal(true);
   };
 
+  const handleCalendarEdit = (appointment: Appointment) => {
+    const linkedInspectionId = appointment.inspection?.id || appointment.inspectionId;
+    if (appointment.type === 'inspection' && linkedInspectionId) {
+      navigate(`/inspections/${linkedInspectionId}`);
+      return;
+    }
+    openEditModal(appointment);
+  };
+
   const handleUpdate = async () => {
     if (!selectedAppointment) return;
     if (!formData.leadId || !formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
@@ -775,7 +784,7 @@ const AppointmentsPage = () => {
               month={calendarMonth}
               appointments={calendarAppointments}
               onMonthChange={handleMonthChange}
-              onEdit={openEditModal}
+              onEdit={handleCalendarEdit}
               onCustomerClick={handleCustomerClick}
               onCreateClick={handleCalendarCreateClick}
               isLoading={calendarLoading}
@@ -785,7 +794,7 @@ const AppointmentsPage = () => {
               date={calendarDate}
               appointments={calendarAppointments}
               onDateChange={setCalendarDate}
-              onEdit={openEditModal}
+              onEdit={handleCalendarEdit}
               onCustomerClick={handleCustomerClick}
               onCreateClick={handleCalendarCreateClick}
               layout={calendarLayout}
@@ -796,7 +805,7 @@ const AppointmentsPage = () => {
               date={calendarDate}
               appointments={calendarAppointments}
               onDateChange={setCalendarDate}
-              onEdit={openEditModal}
+              onEdit={handleCalendarEdit}
               onCustomerClick={handleCustomerClick}
               onCreateClick={handleCalendarCreateClick}
               layout={calendarLayout}
