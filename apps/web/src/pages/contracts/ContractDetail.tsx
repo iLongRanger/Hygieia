@@ -56,9 +56,11 @@ import {
   approveContractAmendment as approveContractAmendmentApi,
   applyContractAmendment as applyContractAmendmentApi,
 } from '../../lib/contracts';
-import { getFacilityPricing } from '../../lib/pricing';
+import { getFacilityPricing, type FacilityPricingResult } from '../../lib/pricing';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
+import ClientServiceScheduleCard from '../../components/proposals/ClientServiceScheduleCard';
+import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import {
@@ -222,6 +224,65 @@ const DAY_LABELS: Record<string, string> = {
   sunday: 'Sun',
 };
 
+const SCHEDULE_DAY_OPTIONS = [
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+  { value: 'sunday', label: 'Sun' },
+];
+
+const SCHEDULE_DAY_ORDER = SCHEDULE_DAY_OPTIONS.map((day) => day.value);
+
+const expectedDaysForScheduleFrequency = (frequency: string): number => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'biweekly':
+    case 'bi_weekly':
+    case 'monthly':
+    case 'quarterly':
+      return 1;
+    case '2x_week':
+      return 2;
+    case '3x_week':
+      return 3;
+    case '4x_week':
+      return 4;
+    case '5x_week':
+    case 'daily':
+      return 5;
+    case '7x_week':
+      return 7;
+    default:
+      return 5;
+  }
+};
+
+const defaultDaysForScheduleFrequency = (frequency: string): string[] => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'biweekly':
+    case 'bi_weekly':
+    case 'monthly':
+    case 'quarterly':
+      return ['monday'];
+    case '2x_week':
+      return ['monday', 'thursday'];
+    case '3x_week':
+      return ['monday', 'wednesday', 'friday'];
+    case '4x_week':
+      return ['monday', 'tuesday', 'thursday', 'friday'];
+    case '7x_week':
+      return [...SCHEDULE_DAY_ORDER];
+    default:
+      return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  }
+};
+
 const formatTime24h = (value: string) => {
   const [hourRaw, minuteRaw] = value.split(':');
   const hour = Number(hourRaw);
@@ -264,6 +325,20 @@ const SERVICE_FREQUENCIES = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'custom', label: 'Custom' },
+];
+
+const PROPOSAL_SCHEDULE_FREQUENCIES = [
+  { value: '1x_week', label: '1x per Week' },
+  { value: '2x_week', label: '2x per Week' },
+  { value: '3x_week', label: '3x per Week' },
+  { value: '4x_week', label: '4x per Week' },
+  { value: '5x_week', label: '5x per Week' },
+  { value: '7x_week', label: '7x per Week (Daily)' },
+  { value: 'daily', label: 'Daily (Weekdays)' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
 ];
 
 const BILLING_CYCLES = [
@@ -340,6 +415,8 @@ const ContractDetail = () => {
   const [showAmendmentModal, setShowAmendmentModal] = useState(false);
   const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
   const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
+  const [amendmentPricingPreview, setAmendmentPricingPreview] =
+    useState<FacilityPricingResult | null>(null);
   const [areaTypes, setAreaTypes] = useState<AreaTypeOption[]>([]);
   const [existingAreasRaw, setExistingAreasRaw] = useState<Area[]>([]);
   const [existingTasksRaw, setExistingTasksRaw] = useState<FacilityTask[]>([]);
@@ -764,6 +841,7 @@ const ContractDetail = () => {
     setAreasToCreate([]);
     setTasksToCreateByArea({});
     setNewTaskDraftByArea({});
+    setAmendmentPricingPreview(null);
     setActiveAreaIndex(0);
     setNewAreaDraft({
       areaTypeId: areaTypes[0]?.id || '',
@@ -948,12 +1026,80 @@ const ContractDetail = () => {
         ...prev,
         monthlyValue: Number(pricing.monthlyTotal.toFixed(2)),
       }));
+      setAmendmentPricingPreview(pricing);
       toast.success('Monthly value recalculated from pricing engine');
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'Failed to recalculate pricing');
     } finally {
       setAmendmentPricingLoading(false);
     }
+  };
+
+  const updateAmendmentServiceSchedule = (patch: Record<string, unknown>) => {
+    setAmendmentFormData((prev) => {
+      const currentFrequency = prev.serviceFrequency || contract?.serviceFrequency || '5x_week';
+      const currentSchedule =
+        (prev.serviceSchedule as Record<string, unknown> | null) ||
+        (contract?.serviceSchedule as Record<string, unknown> | null) ||
+        {};
+      const merged: Record<string, unknown> = {
+        ...currentSchedule,
+        ...patch,
+      };
+
+      const days = Array.isArray(merged.days)
+        ? (merged.days as string[]).filter((day) => SCHEDULE_DAY_ORDER.includes(day))
+        : defaultDaysForScheduleFrequency(currentFrequency);
+
+      merged.days = days;
+      if (typeof merged.allowedWindowStart !== 'string' || !merged.allowedWindowStart) {
+        merged.allowedWindowStart = '18:00';
+      }
+      if (typeof merged.allowedWindowEnd !== 'string' || !merged.allowedWindowEnd) {
+        merged.allowedWindowEnd = '06:00';
+      }
+
+      return {
+        ...prev,
+        serviceSchedule: merged,
+      };
+    });
+  };
+
+  const handleAmendmentScheduleFrequencyChange = (value: string) => {
+    const frequency = value || '5x_week';
+    setAmendmentFormData((prev) => ({
+      ...prev,
+      serviceFrequency: frequency,
+    }));
+    updateAmendmentServiceSchedule({
+      days: defaultDaysForScheduleFrequency(frequency),
+    });
+  };
+
+  const toggleAmendmentScheduleDay = (day: string) => {
+    const frequency =
+      amendmentFormData.serviceFrequency || contract?.serviceFrequency || '5x_week';
+    const expectedDays = expectedDaysForScheduleFrequency(frequency);
+    const currentDaysRaw =
+      (amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.days;
+    const currentDays = Array.isArray(currentDaysRaw)
+      ? (currentDaysRaw as string[])
+      : defaultDaysForScheduleFrequency(frequency);
+    const hasDay = currentDays.includes(day);
+    let nextDays: string[];
+
+    if (hasDay) {
+      nextDays = currentDays.filter((item) => item !== day);
+      if (nextDays.length === 0) nextDays = [day];
+    } else if (currentDays.length < expectedDays) {
+      nextDays = [...currentDays, day];
+    } else {
+      nextDays = [...currentDays.slice(1), day];
+    }
+
+    const sorted = SCHEDULE_DAY_ORDER.filter((item) => nextDays.includes(item));
+    updateAmendmentServiceSchedule({ days: sorted });
   };
 
   const handleApproveAmendment = async (amendmentId: string) => {
@@ -2157,19 +2303,39 @@ const ContractDetail = () => {
                 Recalculate Price
               </Button>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
-                label="Service Frequency"
-                placeholder="Keep current"
-                options={SERVICE_FREQUENCIES}
-                value={amendmentFormData.serviceFrequency || ''}
-                onChange={(value) =>
-                  setAmendmentFormData((prev) => ({
-                    ...prev,
-                    serviceFrequency: (value || null) as any,
-                  }))
-                }
-              />
+            <ClientServiceScheduleCard
+              frequencyValue={amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week'}
+              frequencyOptions={PROPOSAL_SCHEDULE_FREQUENCIES}
+              allowedWindowStart={
+                ((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.allowedWindowStart as string) ||
+                ((contract.serviceSchedule as Record<string, unknown> | null)?.allowedWindowStart as string) ||
+                '18:00'
+              }
+              allowedWindowEnd={
+                ((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.allowedWindowEnd as string) ||
+                ((contract.serviceSchedule as Record<string, unknown> | null)?.allowedWindowEnd as string) ||
+                '06:00'
+              }
+              dayOptions={SCHEDULE_DAY_OPTIONS}
+              selectedDays={
+                (Array.isArray((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.days)
+                  ? ((amendmentFormData.serviceSchedule as Record<string, unknown>).days as string[])
+                  : getScheduleDays(amendmentFormData.serviceSchedule ?? contract.serviceSchedule)) ||
+                defaultDaysForScheduleFrequency(amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week')
+              }
+              requiredDays={expectedDaysForScheduleFrequency(
+                amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week'
+              )}
+              onFrequencyChange={handleAmendmentScheduleFrequencyChange}
+              onAllowedWindowStartChange={(value) =>
+                updateAmendmentServiceSchedule({ allowedWindowStart: value || '00:00' })
+              }
+              onAllowedWindowEndChange={(value) =>
+                updateAmendmentServiceSchedule({ allowedWindowEnd: value || '23:59' })
+              }
+              onToggleDay={toggleAmendmentScheduleDay}
+            />
+            <div className="grid grid-cols-1 gap-4">
               <Input
                 label="Payment Terms"
                 value={amendmentFormData.paymentTerms ?? ''}
@@ -2183,6 +2349,10 @@ const ContractDetail = () => {
               />
             </div>
           </div>
+
+          {amendmentPricingPreview && (
+            <PricingBreakdownPanel pricing={amendmentPricingPreview} />
+          )}
 
           <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-4 space-y-4">
             <div className="flex items-center justify-between">

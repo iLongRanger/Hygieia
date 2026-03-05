@@ -9,7 +9,6 @@ import {
   Building2,
   FileText,
   DollarSign,
-  Calendar,
   GripVertical,
   Sparkles,
   AlertCircle,
@@ -62,6 +61,7 @@ import type { Facility } from '../../types/facility';
 import type { Area, FacilityTask } from '../../types/facility';
 import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBreakdown';
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
+import ClientServiceScheduleCard from '../../components/proposals/ClientServiceScheduleCard';
 import { listTemplates } from '../../lib/proposalTemplates';
 import type { ProposalTemplate } from '../../types/proposalTemplate';
 import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
@@ -1161,64 +1161,30 @@ const ProposalForm = () => {
               />
 
               <div className="md:col-span-2">
-                <div className="rounded-xl border border-white/10 bg-navy-dark/40 p-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-gold" />
-                    <div>
-                      <h3 className="text-sm font-semibold text-white">Client Service Schedule</h3>
-                      <p className="text-xs text-gray-400">
-                        Select exact service days (Mon-Sun) and allowed arrival window.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <Select
-                      label="Cleaning Frequency"
-                      value={formData.serviceFrequency || '5x_week'}
-                      onChange={handleScheduleFrequencyChange}
-                      options={SCHEDULE_FREQUENCIES}
-                    />
-                    <Input
-                      label="Allowed Start Time"
-                      type="time"
-                      value={formData.serviceSchedule?.allowedWindowStart || '18:00'}
-                      onChange={(e) => updateServiceSchedule({ allowedWindowStart: e.target.value || '00:00' })}
-                    />
-                    <Input
-                      label="Allowed End Time"
-                      type="time"
-                      value={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
-                      onChange={(e) => updateServiceSchedule({ allowedWindowEnd: e.target.value || '23:59' })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-xs text-gray-400">
-                      Required days: {expectedDaysForFrequency((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency)}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {SCHEDULE_DAY_OPTIONS.map((option) => {
-                        const selectedDays = formData.serviceSchedule?.days || defaultDaysForFrequency((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
-                        const selected = selectedDays.includes(option.value);
-                        return (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            size="sm"
-                            variant={selected ? 'primary' : 'secondary'}
-                            onClick={() => toggleScheduleDay(option.value)}
-                          >
-                            {option.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Window anchor: start day. Example: 6:00 PM to 6:00 AM on Monday runs overnight into Tuesday morning.
-                    </p>
-                  </div>
-                </div>
+                <ClientServiceScheduleCard
+                  frequencyValue={formData.serviceFrequency || '5x_week'}
+                  frequencyOptions={SCHEDULE_FREQUENCIES}
+                  allowedWindowStart={formData.serviceSchedule?.allowedWindowStart || '18:00'}
+                  allowedWindowEnd={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
+                  dayOptions={SCHEDULE_DAY_OPTIONS}
+                  selectedDays={
+                    formData.serviceSchedule?.days ||
+                    defaultDaysForFrequency(
+                      (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
+                    )
+                  }
+                  requiredDays={expectedDaysForFrequency(
+                    (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
+                  )}
+                  onFrequencyChange={handleScheduleFrequencyChange}
+                  onAllowedWindowStartChange={(value) =>
+                    updateServiceSchedule({ allowedWindowStart: value || '00:00' })
+                  }
+                  onAllowedWindowEndChange={(value) =>
+                    updateServiceSchedule({ allowedWindowEnd: value || '23:59' })
+                  }
+                  onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
+                />
               </div>
 
               {/* Auto-populate from facility */}
