@@ -245,6 +245,7 @@ async function generateJobNumber(): Promise<string> {
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const AUTO_RECURRING_JOB_LOOKAHEAD_DAYS = 30;
 const JOB_NO_CHECKIN_ALERT_ACTION = 'no_checkin_alert_sent';
+const JOB_MISSED_NO_CHECKIN_ACTION = 'job_marked_missed_no_checkin';
 const JOB_NO_CHECKIN_ALERT_HOURS = 2;
 
 const JS_WEEKDAY_TO_SERVICE_DAY: Partial<Record<number, ServiceWeekday>> = {
@@ -1345,6 +1346,8 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
   const now = input?.now ?? new Date();
   const leadHours = input?.leadHours ?? JOB_NO_CHECKIN_ALERT_HOURS;
   const alertThreshold = new Date(now.getTime() + leadHours * 60 * 60 * 1000);
+  const missedCommunicationNote =
+    'Communication with assigned cleaner/subcontractor is required.';
 
   const candidateJobs = await prisma.job.findMany({
     where: {
@@ -1377,24 +1380,24 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
     },
   });
 
-  if (candidateJobs.length === 0) {
-    return { checked: 0, alerted: 0, notifications: 0 };
-  }
-
   const candidateJobIds = candidateJobs.map((job) => job.id);
   const [timeTrackedJobs, alertedJobs, adminUsers] = await Promise.all([
-    prisma.timeEntry.findMany({
-      where: { jobId: { in: candidateJobIds } },
-      select: { jobId: true },
-      distinct: ['jobId'],
-    }),
-    prisma.jobActivity.findMany({
-      where: {
-        jobId: { in: candidateJobIds },
-        action: JOB_NO_CHECKIN_ALERT_ACTION,
-      },
-      select: { jobId: true },
-    }),
+    candidateJobIds.length > 0
+      ? prisma.timeEntry.findMany({
+          where: { jobId: { in: candidateJobIds } },
+          select: { jobId: true },
+          distinct: ['jobId'],
+        })
+      : Promise.resolve([]),
+    candidateJobIds.length > 0
+      ? prisma.jobActivity.findMany({
+          where: {
+            jobId: { in: candidateJobIds },
+            action: JOB_NO_CHECKIN_ALERT_ACTION,
+          },
+          select: { jobId: true },
+        })
+      : Promise.resolve([]),
     prisma.user.findMany({
       where: {
         status: 'active',
@@ -1430,6 +1433,7 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
     if (jobsWithTimeTracking.has(job.id)) continue;
     if (alreadyAlertedJobIds.has(job.id)) continue;
     if (!job.scheduledEndTime) continue;
+    if (job.scheduledEndTime.getTime() <= now.getTime()) continue;
 
     const assigneeLabel = job.assignedToUser?.fullName
       ? `Assigned cleaner: ${job.assignedToUser.fullName}`
@@ -1512,6 +1516,161 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
 
     alerted += 1;
     notifications += created.length;
+  }
+
+  const missedJobs = await prisma.job.findMany({
+    where: {
+      status: { in: ['scheduled', 'in_progress'] },
+      scheduledEndTime: {
+        not: null,
+        lte: now,
+      },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      facility: { select: { id: true, name: true } },
+      contract: { select: { id: true, contractNumber: true } },
+      assignedTeam: {
+        select: {
+          id: true,
+          name: true,
+          users: {
+            where: { status: 'active' },
+            select: { id: true, email: true, fullName: true, phone: true },
+          },
+        },
+      },
+      assignedToUser: { select: { id: true, fullName: true, email: true, phone: true } },
+    },
+  });
+
+  if (missedJobs.length > 0) {
+    const missedJobIds = missedJobs.map((job) => job.id);
+    const [missedJobsWithTimeTracking, alreadyMissedJobs] = await Promise.all([
+      prisma.timeEntry.findMany({
+        where: { jobId: { in: missedJobIds } },
+        select: { jobId: true },
+        distinct: ['jobId'],
+      }),
+      prisma.jobActivity.findMany({
+        where: {
+          jobId: { in: missedJobIds },
+          action: JOB_MISSED_NO_CHECKIN_ACTION,
+        },
+        select: { jobId: true },
+      }),
+    ]);
+
+    const missedTimeTrackingJobIds = new Set(
+      missedJobsWithTimeTracking
+        .map((entry) => entry.jobId)
+        .filter((jobId): jobId is string => Boolean(jobId))
+    );
+    const alreadyMarkedMissedJobIds = new Set(
+      alreadyMissedJobs.map((activity) => activity.jobId)
+    );
+
+    for (const job of missedJobs) {
+      if (missedTimeTrackingJobIds.has(job.id)) continue;
+      if (alreadyMarkedMissedJobIds.has(job.id)) continue;
+      if (!job.scheduledEndTime) continue;
+      if (job.scheduledEndTime.getTime() > now.getTime()) continue;
+
+      await prisma.job.update({
+        where: { id: job.id },
+        data: { status: 'missed' },
+      });
+
+      const assigneeLabel = job.assignedToUser?.fullName
+        ? `Assigned cleaner: ${job.assignedToUser.fullName}`
+        : job.assignedTeam?.name
+          ? `Assigned team: ${job.assignedTeam.name}`
+          : 'Assigned cleaner/team: Unassigned';
+      const body = `${job.jobNumber} at ${job.facility.name} has been marked as missed (no check-in). ${missedCommunicationNote} ${assigneeLabel}.`;
+
+      const assigneeUserIds = new Set<string>();
+      const assigneePhones = new Set<string>();
+      if (job.assignedToUser?.id) {
+        assigneeUserIds.add(job.assignedToUser.id);
+        if (job.assignedToUser.phone) {
+          assigneePhones.add(job.assignedToUser.phone);
+        }
+      }
+      for (const teamUser of job.assignedTeam?.users ?? []) {
+        assigneeUserIds.add(teamUser.id);
+        if (teamUser.phone) {
+          assigneePhones.add(teamUser.phone);
+        }
+      }
+      const recipientUserIds = [...new Set([...adminUserIds, ...assigneeUserIds])];
+      if (recipientUserIds.length === 0) {
+        continue;
+      }
+
+      const emailSubject = `Missed job: ${job.jobNumber}`;
+      const emailHtml = `
+        <p>${job.jobNumber} at ${job.facility.name} has been marked as missed (no check-in).</p>
+        <p>${missedCommunicationNote}</p>
+        <p>${assigneeLabel}</p>
+      `;
+      const recipientPhones = new Set<string>(assigneePhones);
+      for (const adminUserId of adminUserIds) {
+        const phone = adminPhonesById.get(adminUserId);
+        if (phone) {
+          recipientPhones.add(phone);
+        }
+      }
+      const smsMessage = `${job.jobNumber} marked MISSED (no check-in). ${missedCommunicationNote}`;
+
+      const created = await createBulkNotifications(recipientUserIds, {
+        type: 'job_missed',
+        title: `Job missed: ${job.jobNumber}`,
+        body,
+        sendEmail: true,
+        emailSubject,
+        emailHtml,
+        metadata: {
+          jobId: job.id,
+          jobNumber: job.jobNumber,
+          facilityId: job.facility.id,
+          facilityName: job.facility.name,
+          contractId: job.contract?.id ?? null,
+          contractNumber: job.contract?.contractNumber ?? null,
+          scheduledDate: job.scheduledDate.toISOString(),
+          scheduledStartTime: job.scheduledStartTime?.toISOString() ?? null,
+          scheduledEndTime: job.scheduledEndTime.toISOString(),
+          communicationRequired: true,
+          assignedToUserId: job.assignedToUser?.id ?? null,
+          assignedTeamId: job.assignedTeam?.id ?? null,
+        },
+      });
+
+      let smsSentCount = 0;
+      for (const phone of recipientPhones) {
+        const sent = await sendSms(phone, smsMessage);
+        if (sent) smsSentCount += 1;
+      }
+
+      await prisma.jobActivity.create({
+        data: {
+          jobId: job.id,
+          action: JOB_MISSED_NO_CHECKIN_ACTION,
+          metadata: {
+            communicationRequired: true,
+            notificationRecipientCount: created.length,
+            smsSentCount,
+            scheduledEndTime: job.scheduledEndTime.toISOString(),
+          },
+        },
+      });
+
+      alerted += 1;
+      notifications += created.length;
+    }
   }
 
   return {

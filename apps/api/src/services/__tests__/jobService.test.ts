@@ -558,6 +558,75 @@ describe('jobService', () => {
     });
   });
 
+  it('runJobNearingEndNoCheckInAlertCycle marks overdue no-checkin jobs as missed and notifies recipients', async () => {
+    (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'job-9',
+          jobNumber: 'WO-2026-0199',
+          scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-02-26T14:00:00.000Z'),
+          scheduledEndTime: new Date('2026-02-26T15:00:00.000Z'),
+          facility: { id: 'facility-9', name: 'Branch B' },
+          contract: { id: 'contract-9', contractNumber: 'CT-900' },
+          assignedToUser: {
+            id: 'cleaner-9',
+            fullName: 'Cleaner Nine',
+            email: 'cleaner9@example.com',
+            phone: '+15550009999',
+          },
+          assignedTeam: null,
+        },
+      ]);
+    (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: 'admin-1', phone: '+15550001111' },
+      { id: 'owner-1', phone: '+15550002222' },
+    ]);
+    (createBulkNotifications as jest.Mock).mockResolvedValue([
+      { id: 'n-1' },
+      { id: 'n-2' },
+      { id: 'n-3' },
+    ]);
+    (prisma.job.update as jest.Mock).mockResolvedValue({ id: 'job-9', status: 'missed' });
+    (prisma.jobActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-9' });
+
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: new Date('2026-02-26T16:00:00.000Z'),
+    });
+
+    expect(prisma.job.update).toHaveBeenCalledWith({
+      where: { id: 'job-9' },
+      data: { status: 'missed' },
+    });
+    expect(createBulkNotifications).toHaveBeenCalledWith(
+      ['admin-1', 'owner-1', 'cleaner-9'],
+      expect.objectContaining({
+        type: 'job_missed',
+        sendEmail: true,
+        metadata: expect.objectContaining({
+          jobId: 'job-9',
+          communicationRequired: true,
+        }),
+      })
+    );
+    expect(sendSms).toHaveBeenCalledWith(
+      '+15550009999',
+      expect.stringContaining('WO-2026-0199')
+    );
+    expect(result).toEqual({
+      checked: 0,
+      alerted: 1,
+      notifications: 3,
+    });
+  });
+
   it('completeJob requires active clock-in for cleaners', async () => {
     (prisma.job.findUnique as jest.Mock).mockResolvedValue({
       id: 'job-1',
