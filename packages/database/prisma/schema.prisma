@@ -27,6 +27,8 @@ model User {
   lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
   preferences              Json      @default("{}") @db.JsonB
   notificationPreferences  Json      @default("{}") @map("notification_preferences") @db.JsonB
+  payType                  String?   @map("pay_type") @db.VarChar(20)
+  hourlyPayRate            Decimal?  @map("hourly_pay_rate") @db.Decimal(10, 2)
   createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -92,6 +94,11 @@ model User {
   requestedPricingApprovals Quotation[]         @relation("QuotationPricingApprovalRequestedBy")
   approvedPricingApprovals  Quotation[]         @relation("QuotationPricingApprovalApprovedBy")
   updatedBackgroundServiceSettings BackgroundServiceSetting[] @relation("BackgroundServiceSettingUpdatedBy")
+  createdExpenses        Expense[]      @relation("CreatedExpenses")
+  approvedExpenses       Expense[]      @relation("ApprovedExpenses")
+  approvedPayrollRuns    PayrollRun[]   @relation("ApprovedPayrollRuns")
+  payrollEntries         PayrollEntry[] @relation("UserPayrollEntries")
+  adjustedPayrollEntries PayrollEntry[] @relation("AdjustedPayrollEntries")
 
   @@index([email])
   @@index([status])
@@ -432,6 +439,7 @@ model Facility {
   timeEntries      TimeEntry[]      @relation("FacilityTimeEntries")
   invoices         Invoice[]        @relation("FacilityInvoices")
   quotations       Quotation[]      @relation("FacilityQuotations")
+  expenses         Expense[]        @relation("FacilityExpenses")
 
   @@unique([accountId, name])
   @@index([accountId])
@@ -1013,7 +1021,9 @@ model Contract {
   inspectionTemplates  InspectionTemplate[]  @relation("ContractInspectionTemplates")
   timeEntries          TimeEntry[]           @relation("ContractTimeEntries")
   invoices    Invoice[]    @relation("ContractInvoices")
-  amendments  ContractAmendment[]
+  amendments     ContractAmendment[]
+  expenses       Expense[]      @relation("ContractExpenses")
+  payrollEntries PayrollEntry[] @relation("ContractPayrollEntries")
 }
 
 model ContractActivity {
@@ -1147,6 +1157,7 @@ model Job {
   activities     JobActivity[]
   inspections    Inspection[] @relation("JobInspections")
   timeEntries    TimeEntry[]  @relation("JobTimeEntries")
+  expenses       Expense[]    @relation("JobExpenses")
 
   @@index([jobNumber])
   @@index([contractId])
@@ -1780,4 +1791,111 @@ model BackgroundServiceRunLog {
   @@index([serviceKey, createdAt(sort: Desc)])
   @@index([status])
   @@map("background_service_run_logs")
+}
+
+// ============================================================
+// FINANCIAL MANAGEMENT TABLES
+// ============================================================
+
+model ExpenseCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  expenses Expense[]
+
+  @@index([isActive])
+  @@map("expense_categories")
+}
+
+model Expense {
+  id               String    @id @default(uuid()) @db.Uuid
+  date             DateTime  @db.Date
+  amount           Decimal   @db.Decimal(12, 2)
+  description      String    @db.Text
+  vendor           String?   @db.VarChar(200)
+  categoryId       String    @map("category_id") @db.Uuid
+  jobId            String?   @map("job_id") @db.Uuid
+  contractId       String?   @map("contract_id") @db.Uuid
+  facilityId       String?   @map("facility_id") @db.Uuid
+  receiptUrl       String?   @map("receipt_url") @db.Text
+  status           String    @default("pending") @db.VarChar(20)
+  createdByUserId  String    @map("created_by_user_id") @db.Uuid
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  job            Job?            @relation("JobExpenses", fields: [jobId], references: [id], onDelete: SetNull)
+  contract       Contract?       @relation("ContractExpenses", fields: [contractId], references: [id], onDelete: SetNull)
+  facility       Facility?       @relation("FacilityExpenses", fields: [facilityId], references: [id], onDelete: SetNull)
+  createdByUser  User            @relation("CreatedExpenses", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedByUser User?           @relation("ApprovedExpenses", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([jobId])
+  @@index([contractId])
+  @@index([facilityId])
+  @@index([status])
+  @@index([date])
+  @@index([createdByUserId])
+  @@map("expenses")
+}
+
+model PayrollRun {
+  id               String    @id @default(uuid()) @db.Uuid
+  periodStart      DateTime  @map("period_start") @db.Date
+  periodEnd        DateTime  @map("period_end") @db.Date
+  status           String    @default("draft") @db.VarChar(20)
+  totalGrossPay    Decimal   @default(0) @map("total_gross_pay") @db.Decimal(12, 2)
+  totalEntries     Int       @default(0) @map("total_entries")
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
+  paidAt           DateTime? @map("paid_at") @db.Timestamptz(6)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  approvedByUser User?          @relation("ApprovedPayrollRuns", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  entries        PayrollEntry[]
+
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@map("payroll_runs")
+}
+
+model PayrollEntry {
+  id                   String   @id @default(uuid()) @db.Uuid
+  payrollRunId         String   @map("payroll_run_id") @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  payType              String   @map("pay_type") @db.VarChar(20)
+  scheduledHours       Decimal? @map("scheduled_hours") @db.Decimal(8, 2)
+  hourlyRate           Decimal? @map("hourly_rate") @db.Decimal(10, 2)
+  contractId           String?  @map("contract_id") @db.Uuid
+  contractMonthlyValue Decimal? @map("contract_monthly_value") @db.Decimal(12, 2)
+  tierPercentage       Decimal? @map("tier_percentage") @db.Decimal(5, 2)
+  grossPay             Decimal  @map("gross_pay") @db.Decimal(12, 2)
+  status               String   @default("valid") @db.VarChar(20)
+  flagReason           String?  @map("flag_reason") @db.Text
+  adjustedByUserId     String?  @map("adjusted_by_user_id") @db.Uuid
+  adjustmentNotes      String?  @map("adjustment_notes") @db.Text
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  payrollRun     PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  user           User       @relation("UserPayrollEntries", fields: [userId], references: [id], onDelete: Restrict)
+  contract       Contract?  @relation("ContractPayrollEntries", fields: [contractId], references: [id], onDelete: SetNull)
+  adjustedByUser User?      @relation("AdjustedPayrollEntries", fields: [adjustedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([payrollRunId])
+  @@index([userId])
+  @@index([contractId])
+  @@index([status])
+  @@map("payroll_entries")
 }
