@@ -12,6 +12,7 @@ import {
   editTimeEntrySchema,
   listTimesheetsSchema,
   generateTimesheetSchema,
+  generateTimesheetsBulkSchema,
   rejectTimesheetSchema,
 } from '../schemas/timeTracking';
 import {
@@ -32,6 +33,7 @@ import {
   listTimesheets,
   getTimesheetById,
   generateTimesheet,
+  generateTimesheetsBulk,
   submitTimesheet,
   approveTimesheet,
   rejectTimesheet,
@@ -267,13 +269,36 @@ router.post(
   '/timesheets/generate',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   validate(generateTimesheetSchema),
-  async (req: Request, res: Response) => {
-    const timesheet = await generateTimesheet({
-      userId: req.body.userId,
-      periodStart: new Date(req.body.periodStart),
-      periodEnd: new Date(req.body.periodEnd),
-    });
-    res.status(201).json({ data: timesheet });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const timesheet = await generateTimesheet({
+        userId: req.body.userId,
+        periodStart: new Date(req.body.periodStart),
+        periodEnd: new Date(req.body.periodEnd),
+      });
+      res.status(201).json({ data: timesheet });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Generate timesheets in bulk
+router.post(
+  '/timesheets/generate-bulk',
+  requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
+  validate(generateTimesheetsBulkSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await generateTimesheetsBulk({
+        userIds: req.body.userIds,
+        periodStart: new Date(req.body.periodStart),
+        periodEnd: new Date(req.body.periodEnd),
+      });
+      res.status(201).json({ data: result });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

@@ -4,6 +4,7 @@ import {
   approveTimesheet,
   deleteTimesheet,
   generateTimesheet,
+  generateTimesheetsBulk,
   submitTimesheet,
 } from '../timesheetService';
 
@@ -137,5 +138,43 @@ describe('timesheetService', () => {
     await expect(deleteTimesheet('ts-1')).rejects.toThrow(
       'Cannot delete an approved timesheet'
     );
+  });
+
+  it('generateTimesheetsBulk creates and skips duplicates', async () => {
+    (prisma.timesheet.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'ts-existing' });
+    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([
+      { id: 'te-1', totalHours: { toString: () => '8' } },
+    ]);
+    (prisma.timesheet.create as jest.Mock).mockResolvedValue({ id: 'ts-1' });
+    (prisma.timeEntry.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      userId: 'user-1',
+      totalHours: { toString: () => '8' },
+      regularHours: { toString: () => '8' },
+      overtimeHours: { toString: () => '0' },
+      entries: [],
+      user: { id: 'user-1', fullName: 'Jane Worker', teamId: null },
+    });
+
+    const result = await generateTimesheetsBulk({
+      userIds: ['user-1', 'user-2'],
+      periodStart: new Date('2026-02-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-02-07T23:59:59.000Z'),
+    });
+
+    expect(result.summary).toEqual({
+      requested: 2,
+      created: 1,
+      skipped: 1,
+      failed: 0,
+    });
+    expect(result.created[0].id).toBe('ts-1');
+    expect(result.skipped[0]).toEqual({
+      userId: 'user-2',
+      reason: 'Timesheet already exists for this period',
+    });
   });
 });

@@ -17,6 +17,12 @@ export interface GenerateTimesheetInput {
   periodEnd: Date;
 }
 
+export interface GenerateTimesheetsBulkInput {
+  userIds: string[];
+  periodStart: Date;
+  periodEnd: Date;
+}
+
 // ==================== Select objects ====================
 
 const timesheetListSelect = {
@@ -174,6 +180,46 @@ export async function generateTimesheet(input: GenerateTimesheetInput) {
   });
 
   return getTimesheetById(timesheet.id);
+}
+
+export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput) {
+  const dedupedUserIds = Array.from(new Set(input.userIds));
+  const created: Awaited<ReturnType<typeof generateTimesheet>>[] = [];
+  const skipped: Array<{ userId: string; reason: string }> = [];
+  const failed: Array<{ userId: string; error: string }> = [];
+
+  for (const userId of dedupedUserIds) {
+    try {
+      const timesheet = await generateTimesheet({
+        userId,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+      });
+      created.push(timesheet);
+    } catch (error) {
+      if (error instanceof BadRequestError && error.message === 'Timesheet already exists for this period') {
+        skipped.push({ userId, reason: 'Timesheet already exists for this period' });
+        continue;
+      }
+
+      failed.push({
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  return {
+    created,
+    skipped,
+    failed,
+    summary: {
+      requested: dedupedUserIds.length,
+      created: created.length,
+      skipped: skipped.length,
+      failed: failed.length,
+    },
+  };
 }
 
 export async function submitTimesheet(id: string) {

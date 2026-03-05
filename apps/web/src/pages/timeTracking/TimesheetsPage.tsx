@@ -15,16 +15,18 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
+import { listUsers } from '../../lib/users';
 import {
   listTimesheets,
   getTimesheet,
-  generateTimesheet,
+  generateTimesheetsBulk,
   submitTimesheet,
   approveTimesheet,
   rejectTimesheet,
 } from '../../lib/timeTracking';
 import type { Timesheet, TimesheetDetail, TimesheetStatus } from '../../types/timeTracking';
 import type { Pagination } from '../../types/crm';
+import type { User } from '../../types/user';
 
 const getStatusVariant = (status: TimesheetStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<TimesheetStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -48,7 +50,8 @@ const TimesheetsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetDetail | null>(null);
   const [showGenerate, setShowGenerate] = useState(false);
-  const [generateUserId, setGenerateUserId] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [generateStart, setGenerateStart] = useState('');
   const [generateEnd, setGenerateEnd] = useState('');
 
@@ -69,6 +72,20 @@ const TimesheetsPage = () => {
     fetchTimesheets();
   }, [fetchTimesheets]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await listUsers({ limit: 100, status: 'active' });
+      setAvailableUsers(response?.data || []);
+    } catch {
+      setAvailableUsers([]);
+      toast.error('Failed to load users');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
   const handleViewDetail = async (id: string) => {
     try {
       const detail = await getTimesheet(id);
@@ -79,18 +96,22 @@ const TimesheetsPage = () => {
   };
 
   const handleGenerate = async () => {
-    if (!generateUserId || !generateStart || !generateEnd) {
+    if (selectedUserIds.length === 0 || !generateStart || !generateEnd) {
       toast.error('All fields are required');
       return;
     }
     try {
-      await generateTimesheet({
-        userId: generateUserId,
+      const result = await generateTimesheetsBulk({
+        userIds: selectedUserIds,
         periodStart: generateStart,
         periodEnd: generateEnd,
       });
-      toast.success('Timesheet generated');
+      toast.success(
+        `Timesheets generated: ${result.summary.created} created, ` +
+        `${result.summary.skipped} skipped, ${result.summary.failed} failed`
+      );
       setShowGenerate(false);
+      setSelectedUserIds([]);
       fetchTimesheets();
     } catch {
       toast.error('Failed to generate timesheet');
@@ -335,14 +356,33 @@ const TimesheetsPage = () => {
         <Card>
           <div className="p-4 space-y-4">
             <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">Generate Timesheet</h3>
+            <div className="space-y-3">
+              <p className="text-xs text-surface-500 dark:text-surface-400">
+                Select one or more users to generate timesheets in bulk.
+              </p>
+              <div className="grid grid-cols-1 gap-2 max-h-52 overflow-auto rounded-md border border-surface-200 p-3 dark:border-surface-700">
+                {availableUsers.map((user) => (
+                  <label key={user.id} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                    <input
+                      type="checkbox"
+                      checked={selectedUserIds.includes(user.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUserIds((prev) => [...prev, user.id]);
+                        } else {
+                          setSelectedUserIds((prev) => prev.filter((id) => id !== user.id));
+                        }
+                      }}
+                    />
+                    <span>{user.fullName}</span>
+                  </label>
+                ))}
+                {availableUsers.length === 0 && (
+                  <p className="text-sm text-surface-400">No active users found.</p>
+                )}
+              </div>
+            </div>
             <div className="flex flex-wrap items-end gap-4">
-              <Input
-                label="User ID"
-                className="w-full sm:w-64"
-                value={generateUserId}
-                onChange={(e) => setGenerateUserId(e.target.value)}
-                placeholder="User UUID"
-              />
               <Input
                 label="Period Start"
                 type="date"
@@ -355,7 +395,7 @@ const TimesheetsPage = () => {
                 value={generateEnd}
                 onChange={(e) => setGenerateEnd(e.target.value)}
               />
-              <Button size="sm" onClick={handleGenerate}>Generate</Button>
+              <Button size="sm" onClick={handleGenerate}>Generate Selected</Button>
               <Button variant="secondary" size="sm" onClick={() => setShowGenerate(false)}>Cancel</Button>
             </div>
           </div>

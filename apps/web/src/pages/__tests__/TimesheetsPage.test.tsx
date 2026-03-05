@@ -15,18 +15,23 @@ vi.mock('react-router-dom', async () => {
 
 const listTimesheetsMock = vi.fn();
 const getTimesheetMock = vi.fn();
-const generateTimesheetMock = vi.fn();
+const generateTimesheetsBulkMock = vi.fn();
 const submitTimesheetMock = vi.fn();
 const approveTimesheetMock = vi.fn();
 const rejectTimesheetMock = vi.fn();
+const listUsersMock = vi.fn();
 
 vi.mock('../../lib/timeTracking', () => ({
   listTimesheets: (...args: unknown[]) => listTimesheetsMock(...args),
   getTimesheet: (...args: unknown[]) => getTimesheetMock(...args),
-  generateTimesheet: (...args: unknown[]) => generateTimesheetMock(...args),
+  generateTimesheetsBulk: (...args: unknown[]) => generateTimesheetsBulkMock(...args),
   submitTimesheet: (...args: unknown[]) => submitTimesheetMock(...args),
   approveTimesheet: (...args: unknown[]) => approveTimesheetMock(...args),
   rejectTimesheet: (...args: unknown[]) => rejectTimesheetMock(...args),
+}));
+
+vi.mock('../../lib/users', () => ({
+  listUsers: (...args: unknown[]) => listUsersMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -79,10 +84,33 @@ describe('TimesheetsPage', () => {
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
     getTimesheetMock.mockResolvedValue(detail);
-    generateTimesheetMock.mockResolvedValue(detail);
+    generateTimesheetsBulkMock.mockResolvedValue({
+      created: [detail],
+      skipped: [],
+      failed: [],
+      summary: { requested: 1, created: 1, skipped: 0, failed: 0 },
+    });
     submitTimesheetMock.mockResolvedValue({ ...detail, status: 'submitted' });
     approveTimesheetMock.mockResolvedValue({ ...detail, status: 'approved' });
     rejectTimesheetMock.mockResolvedValue({ ...detail, status: 'rejected' });
+    listUsersMock.mockResolvedValue({
+      data: [
+        {
+          id: 'user-1',
+          fullName: 'Jane Worker',
+          email: 'jane@example.com',
+          phone: null,
+          avatarUrl: null,
+          status: 'active',
+          lastLoginAt: null,
+          preferences: {},
+          createdAt: '2026-02-08T00:00:00.000Z',
+          updatedAt: '2026-02-08T00:00:00.000Z',
+          role: null,
+          roles: [],
+        },
+      ],
+    });
   });
 
   afterEach(() => {
@@ -105,10 +133,10 @@ describe('TimesheetsPage', () => {
     await screen.findByText('Timesheets');
 
     await user.click(screen.getByRole('button', { name: /^generate$/i }));
-    await user.click(screen.getAllByRole('button', { name: /^generate$/i })[1]);
+    await user.click(screen.getByRole('button', { name: /generate selected/i }));
 
     expect(toast.error).toHaveBeenCalledWith('All fields are required');
-    expect(generateTimesheetMock).not.toHaveBeenCalled();
+    expect(generateTimesheetsBulkMock).not.toHaveBeenCalled();
   });
 
   it('opens detail and submits draft timesheet', async () => {

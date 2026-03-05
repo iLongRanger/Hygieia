@@ -83,6 +83,14 @@ export const generateTimesheetSchema = z.object({
   }),
 });
 
+export const generateTimesheetsBulkSchema = z.object({
+  body: z.object({
+    userIds: z.array(z.string().uuid()).min(1),
+    periodStart: z.string(),
+    periodEnd: z.string(),
+  }),
+});
+
 export const rejectTimesheetSchema = z.object({
   body: z.object({
     notes: z.string().max(1000).optional(),

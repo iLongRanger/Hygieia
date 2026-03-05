@@ -9,6 +9,8 @@ import type {
   ManualEntryInput,
   EditTimeEntryInput,
   GenerateTimesheetInput,
+  GenerateTimesheetsBulkInput,
+  GenerateTimesheetsBulkResult,
 } from '../types/timeTracking';
 
 // ==================== Time Entries ====================
@@ -118,6 +120,13 @@ export async function getTimesheet(id: string): Promise<TimesheetDetail> {
 
 export async function generateTimesheet(input: GenerateTimesheetInput): Promise<TimesheetDetail> {
   const response = await api.post('/time-tracking/timesheets/generate', input);
+  return response.data.data;
+}
+
+export async function generateTimesheetsBulk(
+  input: GenerateTimesheetsBulkInput
+): Promise<GenerateTimesheetsBulkResult> {
+  const response = await api.post('/time-tracking/timesheets/generate-bulk', input);
   return response.data.data;
 }
 

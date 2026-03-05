@@ -102,3 +102,21 @@ export interface GenerateTimesheetInput {
   periodStart: string;
   periodEnd: string;
 }
+
+export interface GenerateTimesheetsBulkInput {
+  userIds: string[];
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface GenerateTimesheetsBulkResult {
+  created: TimesheetDetail[];
+  skipped: Array<{ userId: string; reason: string }>;
+  failed: Array<{ userId: string; error: string }>;
+  summary: {
+    requested: number;
+    created: number;
+    skipped: number;
+    failed: number;
+  };
+}
