@@ -102,6 +102,8 @@ export interface CalculatePricingOptions {
   taskComplexity?: string; // e.g., 'standard', 'sanitization', 'biohazard'
   pricingPlanId?: string; // Optional: use a specific pricing plan instead of default
   subcontractorPercentageOverride?: number; // Override plan's subcontractor percentage
+  excludedAreaIds?: string[];
+  excludedTaskIds?: string[];
 }
 
 /**
@@ -110,7 +112,13 @@ export interface CalculatePricingOptions {
 export async function calculateFacilityPricing(
   options: CalculatePricingOptions
 ): Promise<FacilityPricingResult> {
-  const { facilityId, serviceFrequency, taskComplexity = 'standard', pricingPlanId } = options;
+  const {
+    facilityId,
+    serviceFrequency,
+    taskComplexity = 'standard',
+    pricingPlanId,
+    excludedAreaIds = [],
+  } = options;
 
   const pricingSettings = pricingPlanId
     ? await getPricingSettingsById(pricingPlanId)
@@ -124,7 +132,10 @@ export async function calculateFacilityPricing(
     where: { id: facilityId },
     include: {
       areas: {
-        where: { archivedAt: null },
+        where: {
+          archivedAt: null,
+          ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
+        },
         include: {
           areaType: true,
         },
@@ -422,14 +433,31 @@ export async function isFacilityReadyForPricing(facilityId: string): Promise<{
 /**
  * Get facility tasks grouped by area and frequency
  */
-export async function getFacilityTasksGrouped(facilityId: string): Promise<{
+export async function getFacilityTasksGrouped(
+  facilityId: string,
+  options?: {
+    excludedAreaIds?: string[];
+    excludedTaskIds?: string[];
+  }
+): Promise<{
   byArea: Map<string, { areaName: string; tasks: { name: string; frequency: string }[] }>;
   byFrequency: Map<string, { name: string; areaName: string }[]>;
 }> {
+  const excludedAreaIds = options?.excludedAreaIds ?? [];
+  const excludedTaskIds = options?.excludedTaskIds ?? [];
   const facilityTasks = await prisma.facilityTask.findMany({
     where: {
       facilityId,
       archivedAt: null,
+      ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
+      ...(excludedAreaIds.length > 0
+        ? {
+            OR: [
+              { areaId: null },
+              { areaId: { notIn: excludedAreaIds } },
+            ],
+          }
+        : {}),
     },
     include: {
       taskTemplate: {
@@ -487,7 +515,11 @@ export async function getFacilityTasksGrouped(facilityId: string): Promise<{
 export async function generateProposalServicesFromFacility(
   facilityId: string,
   serviceFrequency: string,
-  pricingPlanId?: string
+  pricingPlanId?: string,
+  options?: {
+    excludedAreaIds?: string[];
+    excludedTaskIds?: string[];
+  }
 ): Promise<{
   serviceName: string;
   serviceType: string;
@@ -500,10 +532,14 @@ export async function generateProposalServicesFromFacility(
     facilityId,
     serviceFrequency,
     pricingPlanId,
+    excludedAreaIds: options?.excludedAreaIds,
   });
 
   // Get facility tasks grouped by area
-  const { byArea } = await getFacilityTasksGrouped(facilityId);
+  const { byArea } = await getFacilityTasksGrouped(facilityId, {
+    excludedAreaIds: options?.excludedAreaIds,
+    excludedTaskIds: options?.excludedTaskIds,
+  });
 
   const frequencyLabel = getFrequencyLabel(serviceFrequency);
   const services: {

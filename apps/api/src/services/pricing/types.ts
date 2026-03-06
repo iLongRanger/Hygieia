@@ -21,6 +21,8 @@ export interface PricingContext {
   workerCount?: number;
   pricingPlanId?: string;
   subcontractorPercentageOverride?: number;
+  excludedAreaIds?: string[];
+  excludedTaskIds?: string[];
 }
 
 /**

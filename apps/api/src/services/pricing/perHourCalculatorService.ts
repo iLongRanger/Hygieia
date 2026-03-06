@@ -15,6 +15,8 @@ export interface CalculatePerHourPricingOptions {
   pricingPlanId?: string;
   workerCount?: number;
   subcontractorPercentageOverride?: number;
+  excludedAreaIds?: string[];
+  excludedTaskIds?: string[];
 }
 
 export interface PerHourAreaContext {
@@ -50,6 +52,8 @@ export async function calculatePerHourPricing(
     taskComplexity = 'standard',
     pricingPlanId,
     workerCount = 1,
+    excludedAreaIds = [],
+    excludedTaskIds = [],
   } = options;
 
   const pricingSettings = pricingPlanId
@@ -63,7 +67,10 @@ export async function calculatePerHourPricing(
     where: { id: facilityId },
     include: {
       areas: {
-        where: { archivedAt: null },
+        where: {
+          archivedAt: null,
+          ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
+        },
         include: {
           areaType: true,
           fixtures: {
@@ -84,6 +91,12 @@ export async function calculatePerHourPricing(
     where: {
       facilityId,
       archivedAt: null,
+      ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
+      ...(excludedAreaIds.length > 0
+        ? {
+            OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
+          }
+        : {}),
     },
     include: {
       taskTemplate: {

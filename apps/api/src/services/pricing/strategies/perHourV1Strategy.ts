@@ -25,7 +25,16 @@ export class PerHourV1Strategy implements PricingStrategy {
   readonly version = '1.0.0';
 
   async quote(context: PricingContext): Promise<PricingBreakdown> {
-    const { facilityId, serviceFrequency, taskComplexity = 'standard', workerCount = 1, pricingPlanId, subcontractorPercentageOverride } = context;
+    const {
+      facilityId,
+      serviceFrequency,
+      taskComplexity = 'standard',
+      workerCount = 1,
+      pricingPlanId,
+      subcontractorPercentageOverride,
+      excludedAreaIds,
+      excludedTaskIds,
+    } = context;
 
     const pricingResult = await calculatePerHourPricing({
       facilityId,
@@ -34,6 +43,8 @@ export class PerHourV1Strategy implements PricingStrategy {
       pricingPlanId,
       workerCount,
       subcontractorPercentageOverride,
+      excludedAreaIds,
+      excludedTaskIds,
     });
 
     const monthlyLaborHours = Number(pricingResult.costBreakdown?.totalLaborHours || 0);
@@ -109,18 +120,34 @@ export class PerHourV1Strategy implements PricingStrategy {
   }
 
   async generateProposalServices(context: PricingContext): Promise<ProposalServiceLine[]> {
-    const { facilityId, serviceFrequency, workerCount = 1, pricingPlanId } = context;
+    const {
+      facilityId,
+      serviceFrequency,
+      workerCount = 1,
+      pricingPlanId,
+      excludedAreaIds,
+      excludedTaskIds,
+    } = context;
 
     const pricing = await calculatePerHourPricing({
       facilityId,
       serviceFrequency,
       pricingPlanId,
       workerCount,
+      excludedAreaIds,
+      excludedTaskIds,
     });
 
-    const { byArea } = await getFacilityTasksGrouped(facilityId);
+    const { byArea } = await getFacilityTasksGrouped(facilityId, {
+      excludedAreaIds,
+      excludedTaskIds,
+    });
     const areaFixtures = await prisma.area.findMany({
-      where: { facilityId, archivedAt: null },
+      where: {
+        facilityId,
+        archivedAt: null,
+        ...(excludedAreaIds && excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
+      },
       select: {
         id: true,
         fixtures: {

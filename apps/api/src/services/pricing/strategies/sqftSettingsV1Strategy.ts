@@ -36,6 +36,8 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       pricingPlanId,
       subcontractorPercentageOverride,
       workerCount = 1,
+      excludedAreaIds,
+      excludedTaskIds,
     } = context;
 
     // Use the existing pricing calculator
@@ -45,6 +47,7 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       taskComplexity,
       pricingPlanId,
       subcontractorPercentageOverride,
+      excludedAreaIds,
     });
 
     // Get pricing settings for the snapshot
@@ -116,10 +119,13 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
   }
 
   async generateProposalServices(context: PricingContext): Promise<ProposalServiceLine[]> {
-    const { facilityId, serviceFrequency, pricingPlanId } = context;
+    const { facilityId, serviceFrequency, pricingPlanId, excludedAreaIds, excludedTaskIds } = context;
 
     // Use the existing service generator
-    return generateProposalServicesFromFacility(facilityId, serviceFrequency, pricingPlanId);
+    return generateProposalServicesFromFacility(facilityId, serviceFrequency, pricingPlanId, {
+      excludedAreaIds,
+      excludedTaskIds,
+    });
   }
 
   async compareFrequencies(

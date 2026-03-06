@@ -270,6 +270,12 @@ router.get(
       const pricingPlanId = (req.query.pricingPlanId as string) || undefined;
       const workerCount = req.query.workerCount ? Number(req.query.workerCount) : undefined;
       const subcontractorTier = (req.query.subcontractorTier as string) || undefined;
+      const excludedAreaIds = typeof req.query.excludedAreaIds === 'string'
+        ? req.query.excludedAreaIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : [];
+      const excludedTaskIds = typeof req.query.excludedTaskIds === 'string'
+        ? req.query.excludedTaskIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : [];
       const subcontractorPercentageOverride = subcontractorTier
         ? SUBCONTRACTOR_TIER_MAP[subcontractorTier]
         : undefined;
@@ -287,6 +293,8 @@ router.get(
           serviceFrequency: frequency,
           workerCount,
           subcontractorPercentageOverride,
+          excludedAreaIds,
+          excludedTaskIds,
         },
         { pricingPlanId, accountId: existing.account.id }
       );
@@ -298,6 +306,8 @@ router.get(
           serviceFrequency: frequency,
           workerCount,
           subcontractorPercentageOverride,
+          excludedAreaIds,
+          excludedTaskIds,
         },
         { pricingPlanId, accountId: existing.account.id }
       );

@@ -350,10 +350,19 @@ export async function getFacilityProposalTemplate(
   frequency: string = '5x_week',
   pricingPlanId?: string,
   workerCount?: number,
-  subcontractorTier?: string
+  subcontractorTier?: string,
+  excludedAreaIds?: string[],
+  excludedTaskIds?: string[]
 ): Promise<FacilityProposalTemplate> {
   const response = await api.get(`/facilities/${facilityId}/proposal-template`, {
-    params: { frequency, pricingPlanId, workerCount, subcontractorTier },
+    params: {
+      frequency,
+      pricingPlanId,
+      workerCount,
+      subcontractorTier,
+      excludedAreaIds: excludedAreaIds?.join(',') || undefined,
+      excludedTaskIds: excludedTaskIds?.join(',') || undefined,
+    },
   });
   return response.data.data;
 }
