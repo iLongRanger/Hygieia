@@ -98,6 +98,31 @@ function toNumber(value: Prisma.Decimal | number | null | undefined) {
   return Number(value);
 }
 
+function normalizeText(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function buildAreaMatchKey(input: {
+  areaTypeId?: string | null;
+  name?: string | null;
+}) {
+  return `${input.areaTypeId || ''}::${normalizeText(input.name)}`;
+}
+
+function buildTaskMatchKey(input: {
+  areaId?: string | null;
+  taskTemplateId?: string | null;
+  customName?: string | null;
+  cleaningFrequency?: string | null;
+}) {
+  return [
+    input.areaId || '',
+    input.taskTemplateId || '',
+    normalizeText(input.customName),
+    normalizeText(input.cleaningFrequency),
+  ].join('::');
+}
+
 function mapAmendment(amendment: any) {
   return {
     ...amendment,
@@ -894,6 +919,8 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
       },
       select: {
         id: true,
+        areaTypeId: true,
+        name: true,
       },
     });
 
@@ -904,11 +931,16 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
       },
       select: {
         id: true,
+        areaId: true,
+        taskTemplateId: true,
+        customName: true,
+        cleaningFrequency: true,
       },
     });
 
     const areaIdMap = new Map<string, string>();
     const keptAreaIds = new Set<string>();
+    const unmatchedAreaIds = new Set(currentAreas.map((area) => area.id));
 
     for (const area of areas) {
       const areaKey = toSafeString(area.id ?? area.tempId, '');
@@ -923,9 +955,29 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
         throw new Error(`Area "${toSafeString(area.name, 'Unnamed Area')}" is missing an area type`);
       }
 
-      if (typeof area.id === 'string' && area.id) {
+      const directAreaId =
+        typeof area.id === 'string' && currentAreas.some((currentArea) => currentArea.id === area.id)
+          ? area.id
+          : null;
+      const matchedAreaId =
+        directAreaId ??
+        currentAreas.find(
+          (currentArea) =>
+            unmatchedAreaIds.has(currentArea.id) &&
+            buildAreaMatchKey({
+              areaTypeId: currentArea.areaTypeId,
+              name: currentArea.name,
+            }) ===
+              buildAreaMatchKey({
+                areaTypeId,
+                name: typeof area.name === 'string' ? area.name : null,
+              })
+        )?.id ??
+        null;
+
+      if (matchedAreaId) {
         const updated = await tx.area.update({
-          where: { id: area.id },
+          where: { id: matchedAreaId },
           data: {
             areaTypeId,
             name: typeof area.name === 'string' ? area.name.trim() || null : null,
@@ -943,6 +995,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
         });
         areaIdMap.set(areaKey, updated.id);
         keptAreaIds.add(updated.id);
+        unmatchedAreaIds.delete(updated.id);
       } else {
         const created = await tx.area.create({
           data: {
@@ -980,16 +1033,41 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
     }
 
     const keptTaskIds = new Set<string>();
+    const unmatchedTaskIds = new Set(currentTasks.map((task) => task.id));
 
     for (const task of tasks) {
       const resolvedAreaId =
         task.areaId == null
           ? null
           : areaIdMap.get(String(task.areaId)) ?? String(task.areaId);
+      const directTaskId =
+        typeof task.id === 'string' && currentTasks.some((currentTask) => currentTask.id === task.id)
+          ? task.id
+          : null;
+      const matchedTaskId =
+        directTaskId ??
+        currentTasks.find(
+          (currentTask) =>
+            unmatchedTaskIds.has(currentTask.id) &&
+            buildTaskMatchKey({
+              areaId: currentTask.areaId,
+              taskTemplateId: currentTask.taskTemplateId,
+              customName: currentTask.customName,
+              cleaningFrequency: currentTask.cleaningFrequency,
+            }) ===
+              buildTaskMatchKey({
+                areaId: resolvedAreaId,
+                taskTemplateId:
+                  typeof task.taskTemplateId === 'string' ? task.taskTemplateId : null,
+                customName: typeof task.customName === 'string' ? task.customName : null,
+                cleaningFrequency: toSafeString(task.cleaningFrequency, 'daily'),
+              })
+        )?.id ??
+        null;
 
-      if (typeof task.id === 'string' && task.id) {
+      if (matchedTaskId) {
         const updated = await tx.facilityTask.update({
-          where: { id: task.id },
+          where: { id: matchedTaskId },
           data: {
             areaId: resolvedAreaId,
             taskTemplateId:
@@ -1017,6 +1095,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
           select: { id: true },
         });
         keptTaskIds.add(updated.id);
+        unmatchedTaskIds.delete(updated.id);
       } else {
         const created = await tx.facilityTask.create({
           data: {
