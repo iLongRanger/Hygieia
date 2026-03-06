@@ -186,6 +186,8 @@ export interface ContractAmendmentAreaChanges {
     areaTypeId: string;
     name?: string | null;
     quantity?: number;
+    length?: number | null;
+    width?: number | null;
     squareFeet?: number | null;
     floorType?: string;
     conditionLevel?: string;
@@ -197,6 +199,8 @@ export interface ContractAmendmentAreaChanges {
     areaTypeId?: string;
     name?: string | null;
     quantity?: number;
+    length?: number | null;
+    width?: number | null;
     squareFeet?: number | null;
     floorType?: string;
     conditionLevel?: string;

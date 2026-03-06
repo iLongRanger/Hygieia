@@ -30,6 +30,8 @@ import ProposalForm from './pages/proposals/ProposalForm';
 import ContractsList from './pages/contracts/ContractsList';
 import ContractDetail from './pages/contracts/ContractDetail';
 import ContractForm from './pages/contracts/ContractForm';
+import AmendmentsList from './pages/contracts/AmendmentsList';
+import AmendmentDetail from './pages/contracts/AmendmentDetail';
 import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
 import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
@@ -139,6 +141,8 @@ function App() {
             <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
             <Route path="/quotations/catalog" element={withRouteGuard('/quotations', <OneTimeServiceCatalogPage />)} />
             <Route path="/contracts" element={withRouteGuard('/contracts', <ContractsList />)} />
+            <Route path="/amendments" element={withRouteGuard('/amendments', <AmendmentsList />)} />
+            <Route path="/amendments/:id" element={withRouteGuard('/amendments/:id', <AmendmentDetail />)} />
             <Route path="/contracts/new" element={withRouteGuard('/contracts', <ContractForm />)} />
             <Route path="/contracts/:id" element={withRouteGuard('/contracts', <ContractDetail />)} />
             <Route path="/contracts/:id/edit" element={withRouteGuard('/contracts', <ContractForm />)} />

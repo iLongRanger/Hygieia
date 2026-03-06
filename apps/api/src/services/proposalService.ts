@@ -331,6 +331,91 @@ export async function getProposalByNumber(proposalNumber: string) {
   });
 }
 
+export async function createAmendmentProposalFromContract(
+  contractId: string,
+  createdByUserId: string
+) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      contractNumber: true,
+      title: true,
+      status: true,
+      accountId: true,
+      facilityId: true,
+      serviceFrequency: true,
+      serviceSchedule: true,
+      monthlyValue: true,
+      paymentTerms: true,
+      specialInstructions: true,
+      termsAndConditions: true,
+      proposal: {
+        select: {
+          taxRate: true,
+          pricingPlanId: true,
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  if (contract.status !== 'active') {
+    throw new Error('Only active contracts can create amendment proposals');
+  }
+
+  const serviceFrequency = contract.serviceFrequency || '5x_week';
+  const pricingPlanId = contract.proposal?.pricingPlanId ?? undefined;
+
+  let proposalServices: ProposalServiceInput[] = [];
+  if (contract.facilityId) {
+    proposalServices = await generateProposalServices(
+      {
+        facilityId: contract.facilityId,
+        serviceFrequency,
+      },
+      {
+        pricingPlanId,
+        accountId: contract.accountId,
+      }
+    );
+  } else {
+    proposalServices = [
+      {
+        serviceName: 'Contract Amendment Service',
+        serviceType: 'recurring',
+        frequency: serviceFrequency,
+        monthlyPrice: Number(contract.monthlyValue ?? 0),
+        description: 'Generated from active contract amendment workflow',
+        includedTasks: [],
+      },
+    ];
+  }
+
+  const amendmentTitle = `Amendment to Active Contract ${contract.contractNumber} - ${contract.title}`;
+  const amendmentNotes = [
+    `This proposal is an amendment to active contract ${contract.contractNumber}.`,
+    `Review and update scope/pricing before sending to client.`,
+  ].join(' ');
+
+  return createProposal({
+    accountId: contract.accountId,
+    facilityId: contract.facilityId,
+    title: amendmentTitle,
+    description: `Amendment proposal for ${contract.contractNumber}`,
+    notes: amendmentNotes,
+    taxRate: Number(contract.proposal?.taxRate ?? 0),
+    serviceFrequency,
+    serviceSchedule: (contract.serviceSchedule as Record<string, unknown> | null) ?? null,
+    proposalServices,
+    createdByUserId,
+    pricingPlanId,
+  });
+}
+
 export async function createProposal(input: ProposalCreateInput) {
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;

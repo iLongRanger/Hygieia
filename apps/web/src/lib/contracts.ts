@@ -260,6 +260,30 @@ export async function applyContractAmendment(
   return response.data.data;
 }
 
+export async function createAmendmentProposalFromContract(
+  contractId: string
+): Promise<{ id: string; proposalNumber: string; title: string }> {
+  const response = await api.post(`/contracts/${contractId}/amendment-proposal`);
+  return response.data.data;
+}
+
+export async function listAllContractAmendments(
+  params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }
+): Promise<PaginatedResponse<ContractAmendment>> {
+  const response = await api.get('/contract-amendments', { params });
+  return response.data;
+}
+
+export async function getContractAmendment(amendmentId: string): Promise<ContractAmendment> {
+  const response = await api.get(`/contract-amendments/${amendmentId}`);
+  return response.data.data;
+}
+
 // Standalone Contract Creation (imported/legacy)
 
 export async function createStandaloneContract(

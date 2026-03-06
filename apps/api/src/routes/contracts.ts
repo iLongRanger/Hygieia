@@ -77,6 +77,7 @@ import {
   listContractAmendments,
   updateContractAmendment,
 } from '../services/contractAmendmentService';
+import { createAmendmentProposalFromContract } from '../services/proposalService';
 
 const router: Router = Router();
 
@@ -1453,6 +1454,38 @@ router.get(
     try {
       const amendments = await listContractAmendments(req.params.id);
       res.json({ data: amendments });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendment-proposal',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const proposal = await createAmendmentProposalFromContract(req.params.id, req.user.id);
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_created',
+        performedByUserId: req.user.id,
+        metadata: {
+          proposalId: proposal.id,
+          proposalNumber: proposal.proposalNumber,
+          title: proposal.title,
+          source: 'amendment_proposal',
+        },
+      });
+
+      res.status(201).json({ data: proposal });
     } catch (error) {
       next(error);
     }

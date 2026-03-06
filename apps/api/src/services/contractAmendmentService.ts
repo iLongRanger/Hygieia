@@ -124,11 +124,33 @@ const amendmentSelect = {
       contractNumber: true,
       title: true,
       status: true,
+      accountId: true,
       facilityId: true,
       assignedTeamId: true,
       assignedToUserId: true,
       startDate: true,
       endDate: true,
+      monthlyValue: true,
+      serviceFrequency: true,
+      serviceSchedule: true,
+      billingCycle: true,
+      paymentTerms: true,
+      autoRenew: true,
+      renewalNoticeDays: true,
+      termsAndConditions: true,
+      specialInstructions: true,
+      account: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      facility: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
   proposedByUser: {
@@ -153,6 +175,19 @@ const amendmentSelect = {
     },
   },
 } satisfies Prisma.ContractAmendmentSelect;
+
+export interface ListOrganizationContractAmendmentsParams {
+  page?: number;
+  limit?: number;
+  status?: ContractAmendmentStatus;
+  search?: string;
+}
+
+export interface ListOrganizationContractAmendmentsOptions {
+  userRole?: string;
+  userId?: string;
+  userTeamId?: string | null;
+}
 
 function normalizeAmendmentStatus(value: string | null | undefined): ContractAmendmentStatus {
   const normalized = (value || 'draft') as ContractAmendmentStatus;
@@ -236,6 +271,94 @@ export async function listContractAmendments(contractId: string) {
     select: amendmentSelect,
     orderBy: [{ createdAt: 'desc' }],
   });
+}
+
+export async function listOrganizationContractAmendments(
+  params: ListOrganizationContractAmendmentsParams,
+  options?: ListOrganizationContractAmendmentsOptions
+) {
+  const {
+    page = 1,
+    limit = 20,
+    status,
+    search,
+  } = params;
+
+  const where: Prisma.ContractAmendmentWhereInput = {};
+  const andConditions: Prisma.ContractAmendmentWhereInput[] = [];
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (search) {
+    andConditions.push({
+      OR: [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { contract: { title: { contains: search, mode: 'insensitive' } } },
+        { contract: { contractNumber: { contains: search, mode: 'insensitive' } } },
+        { contract: { account: { name: { contains: search, mode: 'insensitive' } } } },
+        { contract: { facility: { name: { contains: search, mode: 'insensitive' } } } },
+      ],
+    });
+  }
+
+  if (options?.userRole === 'manager' && options.userId) {
+    andConditions.push({
+      contract: {
+        OR: [
+          { createdByUserId: options.userId },
+          { account: { accountManagerId: options.userId } },
+        ],
+      },
+    });
+  }
+
+  if (options?.userRole === 'subcontractor') {
+    andConditions.push({
+      contract: {
+        OR: [
+          { assignedToUserId: options.userId },
+          options.userTeamId ? { assignedTeamId: options.userTeamId } : undefined,
+        ].filter(Boolean) as Prisma.ContractWhereInput[],
+      },
+    });
+  }
+
+  if (options?.userRole === 'cleaner' && options.userId) {
+    andConditions.push({
+      contract: { assignedToUserId: options.userId },
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
+  }
+
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const safePage = Math.max(page, 1);
+
+  const [total, data] = await Promise.all([
+    prisma.contractAmendment.count({ where }),
+    prisma.contractAmendment.findMany({
+      where,
+      select: amendmentSelect,
+      orderBy: [{ createdAt: 'desc' }],
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+    }),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.max(Math.ceil(total / safeLimit), 1),
+    },
+  };
 }
 
 export async function getContractAmendmentById(id: string) {

@@ -55,6 +55,7 @@ import {
   createContractAmendment as createContractAmendmentApi,
   approveContractAmendment as approveContractAmendmentApi,
   applyContractAmendment as applyContractAmendmentApi,
+  createAmendmentProposalFromContract as createAmendmentProposalFromContractApi,
 } from '../../lib/contracts';
 import { getFacilityPricing, type FacilityPricingResult } from '../../lib/pricing';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
@@ -942,69 +943,13 @@ const ContractDetail = () => {
 
   const handleCreateAmendment = async () => {
     if (!contract) return;
-    if (!amendmentFormData.title?.trim()) {
-      toast.error('Amendment title is required');
-      return;
-    }
-    if (!amendmentFormData.effectiveDate) {
-      toast.error('Effective date is required');
-      return;
-    }
-
-    const areaCreatePayload = areasToCreate.map((area) => ({
-      areaTypeId: area.areaTypeId,
-      name: area.name.trim(),
-      squareFeet: area.squareFeet ? Number(area.squareFeet) : null,
-      quantity: 1,
-      floorType: 'vct',
-      conditionLevel: 'standard',
-      trafficLevel: 'medium',
-      notes: null,
-    }));
-    const taskCreatePayload = Object.entries(tasksToCreateByArea).flatMap(([areaId, tasks]) =>
-      tasks.map((task) => ({
-        areaId,
-        taskTemplateId: null,
-        customName: task.customName.trim(),
-        customInstructions: null,
-        estimatedMinutes: null,
-        baseMinutesOverride: null,
-        perSqftMinutesOverride: null,
-        priority: 3,
-        isRequired: true,
-        cleaningFrequency: task.cleaningFrequency,
-      }))
-    );
-
-    const areaChanges =
-      areaCreatePayload.length > 0 || areasToArchive.length > 0
-        ? {
-            ...(areaCreatePayload.length > 0 ? { create: areaCreatePayload } : {}),
-            ...(areasToArchive.length > 0 ? { archiveIds: areasToArchive } : {}),
-          }
-        : null;
-    const taskChanges =
-      taskCreatePayload.length > 0 || tasksToArchive.length > 0
-        ? {
-            ...(taskCreatePayload.length > 0 ? { create: taskCreatePayload } : {}),
-            ...(tasksToArchive.length > 0 ? { archiveIds: tasksToArchive } : {}),
-          }
-        : null;
-
     try {
       setAmendmentSubmitting(true);
-      await createContractAmendmentApi(contract.id, {
-        ...amendmentFormData,
-        title: amendmentFormData.title.trim(),
-        description: amendmentFormData.description?.trim() || null,
-        areaChanges,
-        taskChanges,
-      });
-      setShowAmendmentModal(false);
-      toast.success('Amendment created');
-      refreshAll(contract.id);
+      const proposal = await createAmendmentProposalFromContractApi(contract.id);
+      toast.success('Amendment proposal created');
+      navigate(`/proposals/${proposal.id}/edit`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to create amendment');
+      toast.error(error?.response?.data?.error?.message || 'Failed to create amendment proposal');
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2140,14 +2085,14 @@ const ContractDetail = () => {
         <Card>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-white">Amendments</h2>
+              <h2 className="text-lg font-semibold text-white">New Amendment Proposal</h2>
               <p className="text-sm text-gray-400">
-                Use amendments to update active contract scope, pricing, and area/task setup.
+                Create an amendment proposal from this active contract and continue editing in the proposal builder.
               </p>
             </div>
-            <Button onClick={openAmendmentModal}>
+            <Button onClick={handleCreateAmendment} isLoading={amendmentSubmitting}>
               <Edit2 className="mr-2 h-4 w-4" />
-              New Amendment
+              New Amendment Proposal
             </Button>
           </div>
           {amendmentsLoading ? (
