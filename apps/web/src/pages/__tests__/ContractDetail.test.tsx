@@ -458,4 +458,161 @@ describe('ContractDetail', () => {
       );
     });
   });
+
+  it('shows a before and after comparison for contract changes', async () => {
+    const amendmentWithComparison = {
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+      amendmentType: 'mixed',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 3000,
+      monthlyDelta: 500,
+      pricingPlanId: 'plan-1',
+      newServiceFrequency: '2x_week',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [
+        {
+          id: 'snap-before',
+          snapshotType: 'before',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: 'weekly',
+              serviceSchedule: { days: ['monday'] },
+            },
+            areas: [{ id: 'area-1', name: 'Lobby' }],
+            tasks: [{ id: 'task-1', areaId: 'area-1', customName: 'Vacuum', cleaningFrequency: 'weekly' }],
+          },
+        },
+        {
+          id: 'snap-working',
+          snapshotType: 'working',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: '2x_week',
+              serviceSchedule: { days: ['monday', 'thursday'] },
+            },
+            areas: [
+              { id: 'area-1', name: 'Lobby' },
+              { tempId: 'temp-area-2', name: 'East Wing' },
+            ],
+            tasks: [
+              { id: 'task-1', areaId: 'area-1', customName: 'Vacuum', cleaningFrequency: 'weekly' },
+              { tempId: 'temp-task-2', areaId: 'temp-area-2', customName: 'Dust Fixtures', cleaningFrequency: '2x_week' },
+            ],
+          },
+        },
+      ],
+      activities: [],
+    };
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    createContractAmendmentMock.mockResolvedValueOnce(amendmentWithComparison);
+    getContractAmendmentMock.mockResolvedValueOnce(amendmentWithComparison);
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+
+    expect(await screen.findByText('What Will Change')).toBeInTheDocument();
+    expect(screen.getByText('Current Schedule')).toBeInTheDocument();
+    expect(screen.getByText('Updated Schedule')).toBeInTheDocument();
+    expect(screen.getByText('Being Added')).toBeInTheDocument();
+    expect(screen.getByText('Being Removed')).toBeInTheDocument();
+    expect(screen.getByText('East Wing')).toBeInTheDocument();
+    expect(screen.getByText('Dust Fixtures (East Wing)')).toBeInTheDocument();
+    expect(screen.getAllByText(/\+\$500\.00/).length).toBeGreaterThan(0);
+  });
+
+  it('updates the comparison immediately when draft scope changes before save', async () => {
+    const amendmentWithDraftScope = {
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'mixed',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      pricingPlanId: 'plan-1',
+      newServiceFrequency: 'weekly',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [
+        {
+          id: 'snap-before',
+          snapshotType: 'before',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: 'weekly',
+              serviceSchedule: { days: ['monday'] },
+            },
+            areas: [
+              { id: 'area-1', name: 'Lobby' },
+              { id: 'area-2', name: 'Break Room' },
+            ],
+            tasks: [
+              { id: 'task-1', areaId: 'area-1', customName: 'Vacuum', cleaningFrequency: 'weekly' },
+            ],
+          },
+        },
+        {
+          id: 'snap-working',
+          snapshotType: 'working',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: 'weekly',
+              serviceSchedule: { days: ['monday'] },
+            },
+            areas: [
+              { id: 'area-1', name: 'Lobby' },
+              { id: 'area-2', name: 'Break Room' },
+            ],
+            tasks: [
+              { id: 'task-1', areaId: 'area-1', customName: 'Vacuum', cleaningFrequency: 'weekly' },
+            ],
+          },
+        },
+      ],
+      activities: [],
+    };
+
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    createContractAmendmentMock.mockResolvedValueOnce(amendmentWithDraftScope);
+    getContractAmendmentMock.mockResolvedValueOnce(amendmentWithDraftScope);
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+
+    expect((await screen.findAllByText('Break Room')).length).toBeGreaterThan(0);
+
+    const removeAreaButtons = screen.getAllByRole('button', { name: /remove area/i });
+    await user.click(removeAreaButtons[1]);
+
+    const addTaskButtons = screen.getAllByRole('button', { name: /add task/i });
+    await user.click(addTaskButtons[0]);
+
+    const taskNameInputs = screen.getAllByLabelText(/task name/i);
+    await user.type(taskNameInputs[taskNameInputs.length - 1], 'Dust Desks');
+
+    expect(await screen.findByText('Being Removed')).toBeInTheDocument();
+    expect(screen.getByText('Break Room')).toBeInTheDocument();
+    expect(screen.getByText('Dust Desks (Lobby)')).toBeInTheDocument();
+  });
 });

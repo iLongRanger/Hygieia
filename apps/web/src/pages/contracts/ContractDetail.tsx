@@ -434,6 +434,119 @@ const getWorkingScopeFromAmendment = (
   };
 };
 
+const getLatestAmendmentSnapshot = (
+  amendment: ContractAmendment | null,
+  snapshotType: string
+) =>
+  [...(amendment?.snapshots || [])]
+    .reverse()
+    .find((snapshot) => snapshot.snapshotType === snapshotType);
+
+const normalizeLabel = (value: string | null | undefined, fallback: string) => {
+  const trimmed = value?.trim();
+  return trimmed || fallback;
+};
+
+const getAreaComparisonKey = (area: Record<string, any>, index: number) =>
+  area.id || area.tempId || `${normalizeLabel(area.name, `Area ${index + 1}`)}-${index}`;
+
+const getAreaDisplayName = (area: Record<string, any>, index: number) =>
+  normalizeLabel(area.name, area.areaType?.name || `Area ${index + 1}`);
+
+const getTaskComparisonKey = (task: Record<string, any>, index: number) =>
+  task.id ||
+  task.tempId ||
+  [
+    task.areaId || 'facility-wide',
+    normalizeLabel(task.customName, task.taskTemplate?.name || `Task ${index + 1}`),
+    task.cleaningFrequency || 'unscheduled',
+    index,
+  ].join(':');
+
+const getTaskDisplayName = (task: Record<string, any>, index: number) =>
+  normalizeLabel(task.customName, task.taskTemplate?.name || `Task ${index + 1}`);
+
+const getTaskAreaNameMap = (areas: Record<string, any>[]) => {
+  const map = new Map<string, string>();
+  areas.forEach((area, index) => {
+    const id = area.id || area.tempId;
+    if (id) {
+      map.set(id, getAreaDisplayName(area, index));
+    }
+  });
+  return map;
+};
+
+const describeTaskForComparison = (
+  task: Record<string, any>,
+  index: number,
+  areaNameMap: Map<string, string>
+) => {
+  const name = getTaskDisplayName(task, index);
+  const areaName = task.areaId ? areaNameMap.get(task.areaId) : null;
+  return areaName ? `${name} (${areaName})` : `${name} (Facility-Wide)`;
+};
+
+const buildComparisonList = (
+  beforeItems: Record<string, any>[],
+  targetItems: Record<string, any>[],
+  getKey: (item: Record<string, any>, index: number) => string,
+  getLabel: (item: Record<string, any>, index: number) => string
+) => {
+  const beforeMap = new Map(beforeItems.map((item, index) => [getKey(item, index), getLabel(item, index)]));
+  const targetMap = new Map(targetItems.map((item, index) => [getKey(item, index), getLabel(item, index)]));
+
+  const added = [...targetMap.entries()]
+    .filter(([key]) => !beforeMap.has(key))
+    .map(([, label]) => label);
+  const removed = [...beforeMap.entries()]
+    .filter(([key]) => !targetMap.has(key))
+    .map(([, label]) => label);
+
+  return { added, removed };
+};
+
+const getScheduleSummary = (scope: Record<string, any> | undefined) => {
+  const frequency = formatFrequency(scope?.contract?.serviceFrequency);
+  const days = getScheduleDays(scope?.contract?.serviceSchedule);
+  if (days.length === 0) return frequency;
+  return `${frequency} on ${days.map((day) => DAY_LABELS[day]).join(', ')}`;
+};
+
+const buildWorkingScopeForComparison = (
+  amendment: ContractAmendment | null,
+  workingScope: ContractAmendmentWorkingScope
+) => {
+  const latestSnapshot =
+    getLatestAmendmentSnapshot(amendment, 'after') ||
+    getLatestAmendmentSnapshot(amendment, 'working');
+  const snapshotScope = (latestSnapshot?.scopeJson || {}) as Record<string, any>;
+
+  return {
+    ...snapshotScope,
+    contract: {
+      ...(snapshotScope.contract || {}),
+      ...(workingScope.contract || {}),
+      serviceFrequency:
+        workingScope.contract?.serviceFrequency ||
+        amendment?.newServiceFrequency ||
+        snapshotScope.contract?.serviceFrequency ||
+        null,
+      serviceSchedule:
+        workingScope.contract?.serviceSchedule ||
+        amendment?.newServiceSchedule ||
+        snapshotScope.contract?.serviceSchedule ||
+        null,
+    },
+    facility: {
+      ...(snapshotScope.facility || {}),
+      ...(workingScope.facility || {}),
+    },
+    areas: Array.isArray(workingScope.areas) ? workingScope.areas : [],
+    tasks: Array.isArray(workingScope.tasks) ? workingScope.tasks : [],
+  };
+};
+
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -1239,6 +1352,44 @@ const ContractDetail = () => {
       tasks: amendmentWorkingScope.tasks.filter((task) => task.areaId === areaKey),
     };
   });
+  const beforeAmendmentSnapshot = getLatestAmendmentSnapshot(selectedAmendment, 'before');
+  const beforeAmendmentScope = (beforeAmendmentSnapshot?.scopeJson || {}) as Record<string, any>;
+  const targetAmendmentScope = buildWorkingScopeForComparison(
+    selectedAmendment,
+    amendmentWorkingScope
+  );
+  const beforeAreas = Array.isArray(beforeAmendmentScope.areas) ? beforeAmendmentScope.areas : [];
+  const targetAreas = Array.isArray(targetAmendmentScope.areas) ? targetAmendmentScope.areas : [];
+  const beforeTasks = Array.isArray(beforeAmendmentScope.tasks) ? beforeAmendmentScope.tasks : [];
+  const targetTasks = Array.isArray(targetAmendmentScope.tasks) ? targetAmendmentScope.tasks : [];
+  const targetAreaNameMap = getTaskAreaNameMap(targetAreas);
+  const beforeAreaNameMap = getTaskAreaNameMap(beforeAreas);
+  const areaChangeSummary = buildComparisonList(
+    beforeAreas,
+    targetAreas,
+    getAreaComparisonKey,
+    getAreaDisplayName
+  );
+  const taskChangeSummary = buildComparisonList(
+    beforeTasks,
+    targetTasks,
+    getTaskComparisonKey,
+    (task, index) => describeTaskForComparison(task, index, targetAreaNameMap)
+  );
+  const removedTaskSummary = buildComparisonList(
+    targetTasks,
+    beforeTasks,
+    getTaskComparisonKey,
+    (task, index) => describeTaskForComparison(task, index, beforeAreaNameMap)
+  );
+  const beforeScheduleSummary = getScheduleSummary(beforeAmendmentScope);
+  const targetScheduleSummary = getScheduleSummary(targetAmendmentScope);
+  const hasScopeComparison =
+    areaChangeSummary.added.length > 0 ||
+    areaChangeSummary.removed.length > 0 ||
+    taskChangeSummary.added.length > 0 ||
+    removedTaskSummary.added.length > 0 ||
+    beforeScheduleSummary !== targetScheduleSummary;
   const facilityWideDraftTasks = amendmentWorkingScope.tasks.filter((task) => !task.areaId);
   const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
   const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
@@ -2970,6 +3121,135 @@ const ContractDetail = () => {
             {amendmentPricing && (
               <PricingBreakdownPanel pricing={amendmentPricing} />
             )}
+
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-white">What Will Change</div>
+                  <div className="mt-1 text-xs text-gray-400">
+                    Review the service updates before approval or apply.
+                  </div>
+                </div>
+                {selectedAmendment.status === 'applied' && (
+                  <Badge variant="success">Applied</Badge>
+                )}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-gray-400">Current Schedule</div>
+                  <div className="mt-1 text-sm text-gray-100">{beforeScheduleSummary}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-gray-400">Updated Schedule</div>
+                  <div className="mt-1 text-sm text-gray-100">{targetScheduleSummary}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-gray-400">Monthly Change</div>
+                  <div className="mt-1 text-sm font-medium text-gray-100">
+                    {formatCurrencyChange(selectedAmendment.monthlyDelta || 0)}
+                  </div>
+                </div>
+              </div>
+
+              {hasScopeComparison ? (
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+                    <div className="text-sm font-medium text-emerald-200">Being Added</div>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-emerald-300/80">
+                          Areas ({areaChangeSummary.added.length})
+                        </div>
+                        {areaChangeSummary.added.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {areaChangeSummary.added.map((item) => (
+                              <span
+                                key={`added-area-${item}`}
+                                className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-xs text-emerald-100"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-emerald-100/70">No new areas.</div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-emerald-300/80">
+                          Tasks ({taskChangeSummary.added.length})
+                        </div>
+                        {taskChangeSummary.added.length > 0 ? (
+                          <div className="mt-2 space-y-2">
+                            {taskChangeSummary.added.map((item) => (
+                              <div
+                                key={`added-task-${item}`}
+                                className="rounded border border-emerald-400/15 px-3 py-2 text-sm text-emerald-50"
+                              >
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-emerald-100/70">No new tasks.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-4">
+                    <div className="text-sm font-medium text-rose-200">Being Removed</div>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-rose-300/80">
+                          Areas ({areaChangeSummary.removed.length})
+                        </div>
+                        {areaChangeSummary.removed.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {areaChangeSummary.removed.map((item) => (
+                              <span
+                                key={`removed-area-${item}`}
+                                className="rounded-full border border-rose-400/20 bg-rose-400/10 px-2.5 py-1 text-xs text-rose-100"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-rose-100/70">No areas removed.</div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-rose-300/80">
+                          Tasks ({removedTaskSummary.added.length})
+                        </div>
+                        {removedTaskSummary.added.length > 0 ? (
+                          <div className="mt-2 space-y-2">
+                            {removedTaskSummary.added.map((item) => (
+                              <div
+                                key={`removed-task-${item}`}
+                                className="rounded border border-rose-400/15 px-3 py-2 text-sm text-rose-50"
+                              >
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-rose-100/70">No tasks removed.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-lg border border-dashed border-white/10 px-4 py-3 text-sm text-gray-400">
+                  No service scope changes yet.
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
