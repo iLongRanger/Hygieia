@@ -481,9 +481,11 @@ export async function getLaborCostReport(dateFrom?: Date, dateTo?: Date) {
       scheduledHours: true,
       user: {
         select: {
-          firstName: true,
-          lastName: true,
-          role: true,
+          fullName: true,
+          roles: {
+            select: { role: { select: { key: true } } },
+            take: 1,
+          },
         },
       },
     },
@@ -505,8 +507,8 @@ export async function getLaborCostReport(dateFrom?: Date, dateTo?: Date) {
     let data = userMap.get(entry.userId);
     if (!data) {
       data = {
-        userName: `${entry.user.firstName} ${entry.user.lastName}`,
-        userRole: entry.user.role,
+        userName: entry.user.fullName,
+        userRole: entry.user.roles[0]?.role?.key ?? 'unknown',
         payType: entry.payType,
         totalHours: 0,
         totalGrossPay: 0,

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
@@ -28,11 +28,15 @@ function parseDateParam(value: unknown): Date | undefined {
 router.get(
   '/overview',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const data = await getFinanceOverview(dateFrom, dateTo);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const data = await getFinanceOverview(dateFrom, dateTo);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -40,9 +44,13 @@ router.get(
 router.get(
   '/reports/ar-aging',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const data = await getArAgingReport();
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await getArAgingReport();
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -50,12 +58,16 @@ router.get(
 router.get(
   '/reports/profitability',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const groupBy = req.query.groupBy === 'facility' ? 'facility' : 'contract';
-    const data = await getProfitabilityReport(dateFrom, dateTo, groupBy);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const groupBy = req.query.groupBy === 'facility' ? 'facility' : 'contract';
+      const data = await getProfitabilityReport(dateFrom, dateTo, groupBy);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -63,11 +75,15 @@ router.get(
 router.get(
   '/reports/revenue',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const data = await getRevenueReport(dateFrom, dateTo);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const data = await getRevenueReport(dateFrom, dateTo);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -75,11 +91,15 @@ router.get(
 router.get(
   '/reports/expenses',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const data = await getExpenseSummaryReport(dateFrom, dateTo);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const data = await getExpenseSummaryReport(dateFrom, dateTo);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -87,11 +107,15 @@ router.get(
 router.get(
   '/reports/labor-costs',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const data = await getLaborCostReport(dateFrom, dateTo);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const data = await getLaborCostReport(dateFrom, dateTo);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -99,11 +123,15 @@ router.get(
 router.get(
   '/reports/payroll-summary',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response) => {
-    const dateFrom = parseDateParam(req.query.dateFrom);
-    const dateTo = parseDateParam(req.query.dateTo);
-    const data = await getPayrollSummaryReport(dateFrom, dateTo);
-    res.json({ data });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateFrom = parseDateParam(req.query.dateFrom);
+      const dateTo = parseDateParam(req.query.dateTo);
+      const data = await getPayrollSummaryReport(dateFrom, dateTo);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

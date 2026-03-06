@@ -46,7 +46,7 @@ const payrollEntryUserSelect = {
   fullName: true,
   roles: {
     select: {
-      role: { select: { name: true } },
+      role: { select: { key: true, label: true } },
     },
   },
 };
@@ -116,6 +116,16 @@ export async function getPayrollRunById(
   });
   if (!run) throw new NotFoundError('Payroll run not found');
 
+  // Flatten user roles to a single role string for frontend consumption
+  const transformedEntries = run.entries.map((e) => ({
+    ...e,
+    user: {
+      id: e.user.id,
+      fullName: e.user.fullName,
+      role: e.user.roles[0]?.role?.key ?? 'unknown',
+    },
+  }));
+
   // RBAC: cleaners and subcontractors only see their own entries
   if (
     options?.userRole &&
@@ -124,11 +134,11 @@ export async function getPayrollRunById(
   ) {
     return {
       ...run,
-      entries: run.entries.filter((e) => e.userId === options.userId),
+      entries: transformedEntries.filter((e) => e.userId === options.userId),
     };
   }
 
-  return run;
+  return { ...run, entries: transformedEntries };
 }
 
 export async function generatePayrollRun(periodStart: string, periodEnd: string) {
@@ -153,7 +163,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
       status: 'active',
       roles: {
         some: {
-          role: { name: { in: ['cleaner', 'subcontractor'] } },
+          role: { key: { in: ['cleaner', 'subcontractor'] } },
         },
       },
     },
@@ -163,7 +173,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
       payType: true,
       hourlyPayRate: true,
       roles: {
-        select: { role: { select: { name: true } } },
+        select: { role: { select: { key: true } } },
       },
     },
   });
@@ -180,7 +190,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
   const entryData: Prisma.PayrollEntryCreateManyInput[] = [];
 
   for (const worker of workers) {
-    const workerRoles = worker.roles.map((r) => r.role.name);
+    const workerRoles = worker.roles.map((r) => r.role.key);
     const isSubcontractor = workerRoles.includes('subcontractor');
 
     // Determine effective payType
