@@ -57,6 +57,8 @@ import {
   createContractAmendment as createContractAmendmentApi,
   getContractAmendment as getContractAmendmentApi,
   recalculateContractAmendment as recalculateContractAmendmentApi,
+  approveContractAmendment as approveContractAmendmentApi,
+  rejectContractAmendment as rejectContractAmendmentApi,
   updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
@@ -140,6 +142,14 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'USD',
   }).format(amount);
+};
+
+const formatCurrencyChange = (amount: number) => {
+  const abs = Math.abs(amount);
+  const formatted = formatCurrency(abs);
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+  return formatCurrency(0);
 };
 
 const formatDate = (date: string | null | undefined) => {
@@ -293,7 +303,7 @@ const getDefaultAmendmentDate = () => {
 
 const AMENDMENT_STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
-  submitted: 'Submitted',
+  submitted: 'Sent for Approval',
   approved: 'Approved',
   rejected: 'Rejected',
   signed: 'Signed',
@@ -347,6 +357,63 @@ const TASK_FREQUENCY_OPTIONS = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
 ];
+
+const AMENDMENT_SCHEDULE_DAY_OPTIONS = [
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+  { value: 'sunday', label: 'Sun' },
+];
+
+const expectedScheduleDays = (frequency: string | null | undefined): number => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'bi_weekly':
+    case 'monthly':
+    case 'quarterly':
+      return 1;
+    case '2x_week':
+      return 2;
+    case '3x_week':
+      return 3;
+    case '4x_week':
+      return 4;
+    case '5x_week':
+    case 'daily':
+      return 5;
+    case '7x_week':
+      return 7;
+    default:
+      return 0;
+  }
+};
+
+const defaultScheduleDays = (frequency: string | null | undefined): string[] => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'bi_weekly':
+    case 'monthly':
+    case 'quarterly':
+      return ['monday'];
+    case '2x_week':
+      return ['monday', 'thursday'];
+    case '3x_week':
+      return ['monday', 'wednesday', 'friday'];
+    case '4x_week':
+      return ['monday', 'tuesday', 'thursday', 'friday'];
+    case '7x_week':
+      return AMENDMENT_SCHEDULE_DAY_OPTIONS.map((day) => day.value);
+    case '5x_week':
+    case 'daily':
+    default:
+      return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  }
+};
 
 const createTempId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -925,6 +992,7 @@ const ContractDetail = () => {
         workingScope: amendmentWorkingScope,
         pricingPlanId: selectedAmendment.pricingPlanId,
         newServiceFrequency: selectedAmendment.newServiceFrequency,
+        newServiceSchedule: selectedAmendment.newServiceSchedule,
       });
       setSelectedAmendment(updated);
       setAmendmentScopeDirty(false);
@@ -964,6 +1032,32 @@ const ContractDetail = () => {
     }
   };
 
+  const handleToggleAmendmentServiceDay = (day: string) => {
+    setSelectedAmendment((current) => {
+      if (!current) return current;
+      const frequency = current.newServiceFrequency || current.oldServiceFrequency || null;
+      const expected = expectedScheduleDays(frequency);
+      const currentDays = Array.isArray(current.newServiceSchedule?.days)
+        ? [...current.newServiceSchedule.days]
+        : defaultScheduleDays(frequency);
+      const hasDay = currentDays.includes(day);
+      const nextDays = hasDay
+        ? currentDays.filter((value) => value !== day)
+        : [...currentDays, day];
+      if (!hasDay && expected > 0 && nextDays.length > expected) {
+        return current;
+      }
+      return {
+        ...current,
+        newServiceSchedule: {
+          ...(current.newServiceSchedule || {}),
+          days: nextDays,
+        },
+      };
+    });
+    setAmendmentScopeDirty(true);
+  };
+
   const handleSubmitAmendmentDraft = async () => {
     if (!contract || !selectedAmendment) return;
     if (amendmentScopeDirty) {
@@ -984,6 +1078,42 @@ const ContractDetail = () => {
       fetchAmendments(contract.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to submit amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleApproveAmendment = async () => {
+    if (!contract || !selectedAmendment) return;
+    try {
+      setAmendmentSubmitting(true);
+      const updated = await approveContractAmendmentApi(contract.id, selectedAmendment.id);
+      setSelectedAmendment(updated);
+      toast.success('Amendment approved');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to approve amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleRejectAmendment = async () => {
+    if (!contract || !selectedAmendment) return;
+    const rejectedReason = prompt('Enter rejection reason:');
+    if (!rejectedReason) return;
+    try {
+      setAmendmentSubmitting(true);
+      const updated = await rejectContractAmendmentApi(
+        contract.id,
+        selectedAmendment.id,
+        rejectedReason
+      );
+      setSelectedAmendment(updated);
+      toast.success('Amendment rejected');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to reject amendment');
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2051,7 +2181,7 @@ const ContractDetail = () => {
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">Amendments</h2>
+              <h2 className="text-lg font-semibold text-white">Contract Changes</h2>
               <p className="mt-1 text-sm text-gray-400">
                 Draft and track scope changes against the active contract without touching the live facility yet.
               </p>
@@ -2059,7 +2189,7 @@ const ContractDetail = () => {
             {canWriteContracts && contract.status === 'active' && (
               <Button onClick={openAmendmentModal}>
                 <FileText className="mr-2 h-4 w-4" />
-                Create Amendment
+                Create Contract Change
               </Button>
             )}
           </div>
@@ -2296,7 +2426,7 @@ const ContractDetail = () => {
       <Modal
         isOpen={showAmendmentModal}
         onClose={() => setShowAmendmentModal(false)}
-        title="Create Amendment Draft"
+        title="Create Contract Change Draft"
         size="lg"
       >
         <div className="space-y-4">
@@ -2397,10 +2527,20 @@ const ContractDetail = () => {
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-gray-400">Delta</div>
-                <div className="mt-1 text-lg font-semibold text-white">
+                <div className="text-xs uppercase tracking-wide text-gray-400">Monthly Change</div>
+                <div
+                  className={`mt-1 text-lg font-semibold ${
+                    selectedAmendment.monthlyDelta == null
+                      ? 'text-white'
+                      : selectedAmendment.monthlyDelta > 0
+                        ? 'text-emerald-400'
+                        : selectedAmendment.monthlyDelta < 0
+                          ? 'text-rose-400'
+                          : 'text-white'
+                  }`}
+                >
                   {selectedAmendment.monthlyDelta != null
-                    ? formatCurrency(selectedAmendment.monthlyDelta)
+                    ? formatCurrencyChange(selectedAmendment.monthlyDelta)
                     : 'Pending'}
                 </div>
               </div>
@@ -2410,9 +2550,9 @@ const ContractDetail = () => {
               <div className="space-y-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-medium text-white">Draft Scope Editor</div>
+                    <div className="text-sm font-medium text-white">Edit Service Areas and Tasks</div>
                     <div className="mt-1 text-xs text-gray-400">
-                      Edit areas and tasks here, then recalculate the amendment before submitting.
+                      Update the service areas, tasks, and schedule here, then update the price before sending it for approval.
                     </div>
                   </div>
                   {amendmentScopeDirty && (
@@ -2437,12 +2577,62 @@ const ContractDetail = () => {
                     options={SERVICE_FREQUENCIES.filter((option) => option.value !== 'custom')}
                     value={selectedAmendment.newServiceFrequency || ''}
                     onChange={(value) => {
+                      const nextDays = defaultScheduleDays(value || null);
                       setSelectedAmendment((current) =>
-                        current ? { ...current, newServiceFrequency: (value || null) as any } : current
+                        current
+                          ? {
+                              ...current,
+                              newServiceFrequency: (value || null) as any,
+                              newServiceSchedule: {
+                                ...(current.newServiceSchedule || {}),
+                                days: nextDays,
+                              },
+                            }
+                          : current
                       );
                       setAmendmentScopeDirty(true);
                     }}
                   />
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-white">Service Days</div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        Select the new service days for this amendment.
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Required: {expectedScheduleDays(selectedAmendment.newServiceFrequency || selectedAmendment.oldServiceFrequency || null) || 'Custom'}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {AMENDMENT_SCHEDULE_DAY_OPTIONS.map((day) => {
+                      const selectedDays = Array.isArray(selectedAmendment.newServiceSchedule?.days)
+                        ? selectedAmendment.newServiceSchedule?.days
+                        : defaultScheduleDays(
+                            selectedAmendment.newServiceFrequency ||
+                              selectedAmendment.oldServiceFrequency ||
+                              null
+                          );
+                      const isSelected = selectedDays.includes(day.value);
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => handleToggleAmendmentServiceDay(day.value)}
+                          className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                            isSelected
+                              ? 'border-emerald bg-emerald/15 text-white'
+                              : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -2751,10 +2941,10 @@ const ContractDetail = () => {
                     onClick={handleSaveAmendmentScope}
                     isLoading={amendmentSubmitting}
                   >
-                    Save Draft Scope
+                    Save Changes
                   </Button>
                   <Button onClick={handleRecalculateAmendment} isLoading={amendmentPricingLoading}>
-                    Calculate Amendment Price
+                    Update Price
                   </Button>
                 </div>
               </div>
@@ -2822,13 +3012,27 @@ const ContractDetail = () => {
             </div>
 
             <div className="flex justify-end gap-3">
+              {selectedAmendment.status === 'submitted' && canAdminContracts && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={handleRejectAmendment}
+                    isLoading={amendmentSubmitting}
+                  >
+                    Reject
+                  </Button>
+                  <Button onClick={handleApproveAmendment} isLoading={amendmentSubmitting}>
+                    Approve
+                  </Button>
+                </>
+              )}
               {selectedAmendment.status === 'draft' && canWriteContracts && (
                 <Button
                   onClick={handleSubmitAmendmentDraft}
                   isLoading={amendmentSubmitting}
                   disabled={amendmentScopeDirty || !selectedAmendment.pricingSnapshot}
                 >
-                  Submit Draft
+                  Send for Approval
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setShowAmendmentDetailModal(false)}>

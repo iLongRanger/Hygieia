@@ -266,6 +266,25 @@ export async function recalculateContractAmendment(
   return response.data.data;
 }
 
+export async function approveContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<ContractAmendment> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/approve`);
+  return response.data.data;
+}
+
+export async function rejectContractAmendment(
+  contractId: string,
+  amendmentId: string,
+  rejectedReason: string
+): Promise<ContractAmendment> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/reject`, {
+    rejectedReason,
+  });
+  return response.data.data;
+}
+
 // Standalone Contract Creation (imported/legacy)
 
 export async function createStandaloneContract(

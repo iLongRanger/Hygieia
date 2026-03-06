@@ -662,6 +662,59 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('POST /:id/amendments/:amendmentId/approve should approve amendment', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'submitted',
+    });
+    (contractAmendmentService.approveContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/approve')
+      .expect(200);
+
+    expect(response.body.data.status).toBe('approved');
+    expect(contractAmendmentService.approveContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      'user-1'
+    );
+  });
+
+  it('POST /:id/amendments/:amendmentId/reject should reject amendment', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'submitted',
+    });
+    (contractAmendmentService.rejectContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'rejected',
+      rejectedReason: 'Scope not approved',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/reject')
+      .send({ rejectedReason: 'Scope not approved' })
+      .expect(200);
+
+    expect(response.body.data.status).toBe('rejected');
+    expect(contractAmendmentService.rejectContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      'Scope not approved',
+      'user-1'
+    );
+  });
+
   it('POST /standalone should create standalone contract', async () => {
     (contractService.createStandaloneContract as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 

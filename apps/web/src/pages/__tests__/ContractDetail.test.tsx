@@ -31,6 +31,8 @@ const createContractAmendmentMock = vi.fn();
 const getContractAmendmentMock = vi.fn();
 const updateContractAmendmentMock = vi.fn();
 const recalculateContractAmendmentMock = vi.fn();
+const approveContractAmendmentMock = vi.fn();
+const rejectContractAmendmentMock = vi.fn();
 const listTeamsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listAreaTypesMock = vi.fn();
@@ -50,6 +52,8 @@ vi.mock('../../lib/contracts', () => ({
   createContractAmendment: (...args: unknown[]) => createContractAmendmentMock(...args),
   getContractAmendment: (...args: unknown[]) => getContractAmendmentMock(...args),
   recalculateContractAmendment: (...args: unknown[]) => recalculateContractAmendmentMock(...args),
+  approveContractAmendment: (...args: unknown[]) => approveContractAmendmentMock(...args),
+  rejectContractAmendment: (...args: unknown[]) => rejectContractAmendmentMock(...args),
   updateContractAmendment: (...args: unknown[]) => updateContractAmendmentMock(...args),
 }));
 
@@ -259,6 +263,41 @@ describe('ContractDetail', () => {
         pricingPlanName: 'Default Plan',
       },
     });
+    approveContractAmendmentMock.mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 3000,
+      monthlyDelta: 500,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    });
+    rejectContractAmendmentMock.mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'rejected',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 3000,
+      monthlyDelta: 500,
+      rejectedReason: 'Scope not approved',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    });
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
@@ -352,7 +391,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /create amendment/i }));
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.type(screen.getByLabelText(/^reason$/i), 'Client requested scope change');
     await user.click(screen.getByRole('button', { name: /create draft/i }));
 
@@ -402,9 +441,9 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /create amendment/i }));
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
-    await user.click(await screen.findByRole('button', { name: /calculate amendment price/i }));
+    await user.click(await screen.findByRole('button', { name: /update price/i }));
 
     await waitFor(() => {
       expect(recalculateContractAmendmentMock).toHaveBeenCalledWith(

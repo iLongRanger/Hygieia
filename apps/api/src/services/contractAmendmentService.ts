@@ -12,7 +12,7 @@ import type {
   UpdateContractAmendmentInput,
 } from '../schemas/contract';
 
-const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'approved', 'signed'] as const;
+const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'signed'] as const;
 
 const amendmentListSelect = {
   id: true,
@@ -767,4 +767,82 @@ export async function recalculateContractAmendment(
     amendment: mapAmendment(amendment),
     pricing,
   };
+}
+
+export async function approveContractAmendment(amendmentId: string, approvedByUserId: string) {
+  const existing = await prisma.contractAmendment.findUnique({
+    where: { id: amendmentId },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!existing) {
+    throw new Error('Amendment not found');
+  }
+
+  if (existing.status !== 'submitted') {
+    throw new Error(`Cannot approve amendment in ${existing.status} status`);
+  }
+
+  const approved = await prisma.$transaction(async (tx) => {
+    const amendment = await tx.contractAmendment.update({
+      where: { id: amendmentId },
+      data: {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedByUserId,
+        rejectedAt: null,
+        rejectedReason: null,
+      },
+      select: amendmentDetailSelect,
+    });
+
+    await createAmendmentActivity(tx, amendmentId, 'approved', approvedByUserId);
+    return amendment;
+  });
+
+  return mapAmendment(approved);
+}
+
+export async function rejectContractAmendment(
+  amendmentId: string,
+  rejectedReason: string,
+  rejectedByUserId: string
+) {
+  const existing = await prisma.contractAmendment.findUnique({
+    where: { id: amendmentId },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!existing) {
+    throw new Error('Amendment not found');
+  }
+
+  if (existing.status !== 'submitted') {
+    throw new Error(`Cannot reject amendment in ${existing.status} status`);
+  }
+
+  const rejected = await prisma.$transaction(async (tx) => {
+    const amendment = await tx.contractAmendment.update({
+      where: { id: amendmentId },
+      data: {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectedReason,
+      },
+      select: amendmentDetailSelect,
+    });
+
+    await createAmendmentActivity(tx, amendmentId, 'rejected', rejectedByUserId, {
+      rejectedReason,
+    });
+    return amendment;
+  });
+
+  return mapAmendment(rejected);
 }
