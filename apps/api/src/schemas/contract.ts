@@ -314,111 +314,53 @@ export const sendContractSchema = z.object({
   emailBody: z.string().max(10000).optional(),
 });
 
-const areaAmendmentChangesSchema = z.object({
-  create: z
-    .array(
-      z.object({
-        areaTypeId: z.string().uuid(),
-        name: z.string().max(255).optional().nullable(),
-        quantity: z.coerce.number().int().min(1).optional(),
-        squareFeet: z.coerce.number().positive().optional().nullable(),
-        floorType: z.string().max(20).optional(),
-        conditionLevel: z.string().max(20).optional(),
-        trafficLevel: z.string().max(20).optional(),
-        notes: z.string().max(5000).optional().nullable(),
-      })
-    )
-    .optional(),
-  update: z
-    .array(
-      z.object({
-        id: z.string().uuid(),
-        areaTypeId: z.string().uuid().optional(),
-        name: z.string().max(255).optional().nullable(),
-        quantity: z.coerce.number().int().min(1).optional(),
-        squareFeet: z.coerce.number().positive().optional().nullable(),
-        floorType: z.string().max(20).optional(),
-        conditionLevel: z.string().max(20).optional(),
-        trafficLevel: z.string().max(20).optional(),
-        notes: z.string().max(5000).optional().nullable(),
-      })
-    )
-    .optional(),
-  archiveIds: z.array(z.string().uuid()).optional(),
-});
+export const contractAmendmentStatusSchema = z.enum([
+  'draft',
+  'submitted',
+  'approved',
+  'rejected',
+  'signed',
+  'applied',
+  'canceled',
+]);
 
-const taskAmendmentChangesSchema = z.object({
-  create: z
-    .array(
-      z.object({
-        areaId: z.string().uuid().optional().nullable(),
-        taskTemplateId: z.string().uuid().optional().nullable(),
-        customName: z.string().max(255).optional().nullable(),
-        customInstructions: z.string().max(5000).optional().nullable(),
-        estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
-        baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-        perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-        isRequired: z.boolean().optional(),
-        cleaningFrequency: z.string().max(20).optional(),
-        conditionMultiplier: z.coerce.number().min(0).optional(),
-        priority: z.coerce.number().int().min(1).max(5).optional(),
-      })
-    )
-    .optional(),
-  update: z
-    .array(
-      z.object({
-        id: z.string().uuid(),
-        areaId: z.string().uuid().optional().nullable(),
-        taskTemplateId: z.string().uuid().optional().nullable(),
-        customName: z.string().max(255).optional().nullable(),
-        customInstructions: z.string().max(5000).optional().nullable(),
-        estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(),
-        baseMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-        perSqftMinutesOverride: z.coerce.number().min(0).optional().nullable(),
-        isRequired: z.boolean().optional(),
-        cleaningFrequency: z.string().max(20).optional(),
-        conditionMultiplier: z.coerce.number().min(0).optional(),
-        priority: z.coerce.number().int().min(1).max(5).optional(),
-      })
-    )
-    .optional(),
-  archiveIds: z.array(z.string().uuid()).optional(),
-});
+export const contractAmendmentScopeSchema = z.record(z.any()).optional().nullable();
 
-const contractAmendmentBaseSchema = z.object({
-  title: z.string().min(1).max(255),
-  description: z.string().max(10000).optional().nullable(),
+export const createContractAmendmentSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  summary: z.string().max(10000).optional().nullable(),
+  reason: z.string().max(10000).optional().nullable(),
   effectiveDate: z.coerce.date(),
-  monthlyValue: z.coerce.number().positive().optional().nullable(),
-  endDate: z.coerce.date().optional().nullable(),
-  serviceFrequency: serviceFrequencySchema.optional().nullable(),
-  serviceSchedule: z.any().optional().nullable(),
-  billingCycle: billingCycleSchema.optional().nullable(),
-  paymentTerms: z.string().max(50).optional().nullable(),
-  autoRenew: z.boolean().optional().nullable(),
-  renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
-  termsAndConditions: z.string().max(50000).optional().nullable(),
-  specialInstructions: z.string().max(10000).optional().nullable(),
-  areaChanges: areaAmendmentChangesSchema.optional().nullable(),
-  taskChanges: taskAmendmentChangesSchema.optional().nullable(),
+  pricingPlanId: z.string().uuid().optional().nullable(),
+  amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
+  newMonthlyValue: z.coerce.number().positive().optional().nullable(),
+  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+  newServiceSchedule: z.any().optional().nullable(),
+  pricingSnapshot: z.record(z.any()).optional().nullable(),
+  workingScope: contractAmendmentScopeSchema,
 });
 
-export const createContractAmendmentSchema = contractAmendmentBaseSchema.refine(
-  (data) => !data.endDate || data.endDate > data.effectiveDate,
-  {
-    message: 'End date must be after effective date',
-    path: ['endDate'],
-  }
-);
+export const updateContractAmendmentSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  summary: z.string().max(10000).optional().nullable(),
+  reason: z.string().max(10000).optional().nullable(),
+  effectiveDate: z.coerce.date().optional(),
+  pricingPlanId: z.string().uuid().optional().nullable(),
+  amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
+  newMonthlyValue: z.coerce.number().positive().optional().nullable(),
+  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+  newServiceSchedule: z.any().optional().nullable(),
+  pricingSnapshot: z.record(z.any()).optional().nullable(),
+  workingScope: contractAmendmentScopeSchema,
+  status: z.enum(['draft', 'submitted', 'canceled']).optional(),
+});
 
-export const updateContractAmendmentSchema = contractAmendmentBaseSchema
-  .partial()
-  .extend({
-    status: z
-      .enum(['draft', 'pending_approval', 'approved', 'applied', 'canceled'])
-      .optional(),
-  });
+export const recalculateContractAmendmentSchema = z.object({
+  pricingPlanId: z.string().uuid().optional().nullable(),
+  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+  newServiceSchedule: z.any().optional().nullable(),
+  workingScope: contractAmendmentScopeSchema,
+});
 
 // Export types
 export type SendContractInput = z.infer<typeof sendContractSchema>;
@@ -426,6 +368,7 @@ export type CreateContractInput = z.infer<typeof createContractSchema>;
 export type CreateContractFromProposalInput = z.infer<typeof createContractFromProposalSchema>;
 export type CreateContractAmendmentInput = z.infer<typeof createContractAmendmentSchema>;
 export type UpdateContractAmendmentInput = z.infer<typeof updateContractAmendmentSchema>;
+export type RecalculateContractAmendmentInput = z.infer<typeof recalculateContractAmendmentSchema>;
 export type CreateStandaloneContractInput = z.infer<typeof createStandaloneContractSchema>;
 export type UpdateContractInput = z.infer<typeof updateContractSchema>;
 export type UpdateContractStatusInput = z.infer<typeof updateContractStatusSchema>;
@@ -433,5 +376,6 @@ export type AssignContractTeamInput = z.infer<typeof assignContractTeamSchema>;
 export type SignContractInput = z.infer<typeof signContractSchema>;
 export type TerminateContractInput = z.infer<typeof terminateContractSchema>;
 export type RenewContractInput = z.infer<typeof renewContractSchema>;
+export type ContractAmendmentStatus = z.infer<typeof contractAmendmentStatusSchema>;
 export type ListContractsQuery = z.infer<typeof listContractsQuerySchema>;
 export type ListContractsSummaryQuery = z.infer<typeof listContractsSummaryQuerySchema>;

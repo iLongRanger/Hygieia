@@ -176,96 +176,117 @@ export interface Contract {
 
 export type ContractAmendmentStatus =
   | 'draft'
-  | 'pending_approval'
+  | 'submitted'
   | 'approved'
+  | 'rejected'
+  | 'signed'
   | 'applied'
   | 'canceled';
 
-export interface ContractAmendmentAreaChanges {
-  create?: Array<{
-    areaTypeId: string;
-    name?: string | null;
-    quantity?: number;
-    length?: number | null;
-    width?: number | null;
-    squareFeet?: number | null;
-    floorType?: string;
-    conditionLevel?: string;
-    trafficLevel?: string;
-    notes?: string | null;
-  }>;
-  update?: Array<{
-    id: string;
-    areaTypeId?: string;
-    name?: string | null;
-    quantity?: number;
-    length?: number | null;
-    width?: number | null;
-    squareFeet?: number | null;
-    floorType?: string;
-    conditionLevel?: string;
-    trafficLevel?: string;
-    notes?: string | null;
-  }>;
-  archiveIds?: string[];
+export type ContractAmendmentType =
+  | 'scope_change'
+  | 'pricing_change'
+  | 'schedule_change'
+  | 'terms_change'
+  | 'mixed';
+
+export interface ContractAmendmentScopeSnapshot {
+  id: string;
+  snapshotType: 'before' | 'working' | 'after' | string;
+  scopeJson: Record<string, any>;
+  createdAt: string;
 }
 
-export interface ContractAmendmentTaskChanges {
-  create?: Array<{
-    areaId?: string | null;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    customInstructions?: string | null;
-    estimatedMinutes?: number | null;
-    baseMinutesOverride?: number | null;
-    perSqftMinutesOverride?: number | null;
-    isRequired?: boolean;
-    cleaningFrequency?: string;
-    conditionMultiplier?: number;
-    priority?: number;
-  }>;
-  update?: Array<{
+export interface ContractAmendmentDraftArea {
+  id?: string;
+  tempId?: string;
+  areaTypeId?: string | null;
+  areaType?: {
+    id?: string;
+    name?: string | null;
+  } | null;
+  name?: string | null;
+  quantity?: number;
+  squareFeet?: number | null;
+  floorType?: string | null;
+  conditionLevel?: string | null;
+  trafficLevel?: string | null;
+  roomCount?: number | null;
+  unitCount?: number | null;
+  notes?: string | null;
+}
+
+export interface ContractAmendmentDraftTask {
+  id?: string;
+  tempId?: string;
+  areaId?: string | null;
+  taskTemplateId?: string | null;
+  taskTemplate?: {
+    id?: string;
+    name?: string | null;
+  } | null;
+  customName?: string | null;
+  cleaningFrequency?: string | null;
+  estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
+}
+
+export interface ContractAmendmentWorkingScope {
+  contract?: {
+    serviceFrequency?: ServiceFrequency | null;
+    serviceSchedule?: ServiceSchedule | null;
+  } | null;
+  facility?: {
+    id?: string;
+    name?: string;
+    buildingType?: string | null;
+  } | null;
+  areas: ContractAmendmentDraftArea[];
+  tasks: ContractAmendmentDraftTask[];
+}
+
+export interface ContractAmendmentActivity {
+  id: string;
+  action: string;
+  metadata: Record<string, any>;
+  createdAt: string;
+  performedByUser?: {
     id: string;
-    areaId?: string | null;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    customInstructions?: string | null;
-    estimatedMinutes?: number | null;
-    baseMinutesOverride?: number | null;
-    perSqftMinutesOverride?: number | null;
-    isRequired?: boolean;
-    cleaningFrequency?: string;
-    conditionMultiplier?: number;
-    priority?: number;
-  }>;
-  archiveIds?: string[];
+    fullName: string;
+    email: string;
+  } | null;
 }
 
 export interface ContractAmendment {
   id: string;
   contractId: string;
+  amendmentNumber: number;
   status: ContractAmendmentStatus;
+  amendmentType: ContractAmendmentType;
   title: string;
-  description?: string | null;
+  summary?: string | null;
+  reason?: string | null;
   effectiveDate: string;
-  monthlyValue?: number | null;
-  endDate?: string | null;
-  serviceFrequency?: ServiceFrequency | null;
-  serviceSchedule?: ServiceSchedule | null;
-  billingCycle?: BillingCycle | null;
-  paymentTerms?: string | null;
-  autoRenew?: boolean | null;
-  renewalNoticeDays?: number | null;
-  termsAndConditions?: string | null;
-  specialInstructions?: string | null;
-  areaChanges?: ContractAmendmentAreaChanges | null;
-  taskChanges?: ContractAmendmentTaskChanges | null;
+  pricingPlanId?: string | null;
+  oldMonthlyValue: number;
+  newMonthlyValue?: number | null;
+  monthlyDelta?: number | null;
+  oldServiceFrequency?: ServiceFrequency | null;
+  newServiceFrequency?: ServiceFrequency | null;
+  oldServiceSchedule?: ServiceSchedule | null;
+  newServiceSchedule?: ServiceSchedule | null;
+  pricingSnapshot?: Record<string, any> | null;
   approvedAt?: string | null;
   appliedAt?: string | null;
   canceledAt?: string | null;
+  rejectedAt?: string | null;
+  rejectedReason?: string | null;
   createdAt: string;
   updatedAt: string;
-  proposedByUser: {
+  createdByUser: {
     id: string;
     fullName: string;
     email: string;
@@ -280,6 +301,8 @@ export interface ContractAmendment {
     fullName: string;
     email: string;
   } | null;
+  snapshots?: ContractAmendmentScopeSnapshot[];
+  activities?: ContractAmendmentActivity[];
 }
 
 export interface CreateContractInput {
@@ -379,6 +402,13 @@ export interface ListContractsParams {
   includeArchived?: boolean;
 }
 
+export interface RecalculateContractAmendmentInput {
+  pricingPlanId?: string | null;
+  newServiceFrequency?: ServiceFrequency | null;
+  newServiceSchedule?: ServiceSchedule | null;
+  workingScope?: ContractAmendmentWorkingScope | null;
+}
+
 export interface ContractSummary {
   total: number;
   byStatus: {
@@ -434,24 +464,30 @@ export interface CreateStandaloneContractInput {
 }
 
 export interface CreateContractAmendmentInput {
-  title: string;
-  description?: string | null;
+  title?: string;
+  summary?: string | null;
+  reason?: string | null;
   effectiveDate: string;
-  monthlyValue?: number | null;
-  endDate?: string | null;
-  serviceFrequency?: ServiceFrequency | null;
-  serviceSchedule?: ServiceSchedule | null;
-  billingCycle?: BillingCycle | null;
-  paymentTerms?: string | null;
-  autoRenew?: boolean | null;
-  renewalNoticeDays?: number | null;
-  termsAndConditions?: string | null;
-  specialInstructions?: string | null;
-  areaChanges?: ContractAmendmentAreaChanges | null;
-  taskChanges?: ContractAmendmentTaskChanges | null;
+  pricingPlanId?: string | null;
+  amendmentType?: ContractAmendmentType;
+  newMonthlyValue?: number | null;
+  newServiceFrequency?: ServiceFrequency | null;
+  newServiceSchedule?: ServiceSchedule | null;
+  pricingSnapshot?: Record<string, any> | null;
+  workingScope?: ContractAmendmentWorkingScope | null;
 }
 
-export interface UpdateContractAmendmentInput
-  extends Partial<CreateContractAmendmentInput> {
-  status?: ContractAmendmentStatus;
+export interface UpdateContractAmendmentInput {
+  title?: string;
+  summary?: string | null;
+  reason?: string | null;
+  effectiveDate?: string;
+  pricingPlanId?: string | null;
+  amendmentType?: ContractAmendmentType;
+  newMonthlyValue?: number | null;
+  newServiceFrequency?: ServiceFrequency | null;
+  newServiceSchedule?: ServiceSchedule | null;
+  pricingSnapshot?: Record<string, any> | null;
+  workingScope?: ContractAmendmentWorkingScope | null;
+  status?: Extract<ContractAmendmentStatus, 'draft' | 'submitted' | 'canceled'>;
 }

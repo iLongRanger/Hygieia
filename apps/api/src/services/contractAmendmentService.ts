@@ -1,159 +1,43 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
-import { generateJobsFromContract } from './jobService';
-import { normalizeServiceSchedule } from './serviceScheduleService';
-import { calculatePricing } from './pricing';
+import { calculateFacilityPricing, type FacilityPricingScopeOverride } from './pricingCalculatorService';
+import {
+  calculatePerHourPricing,
+  type PerHourPricingScopeOverride,
+} from './pricing/perHourCalculatorService';
+import { resolvePricingPlan } from './pricing/strategyRegistry';
+import type {
+  CreateContractAmendmentInput,
+  RecalculateContractAmendmentInput,
+  UpdateContractAmendmentInput,
+} from '../schemas/contract';
 
-export type ContractAmendmentStatus =
-  | 'draft'
-  | 'pending_approval'
-  | 'approved'
-  | 'applied'
-  | 'canceled';
+const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'approved', 'signed'] as const;
 
-export interface ContractAmendmentAreaChangesInput {
-  create?: Array<{
-    areaTypeId: string;
-    name?: string | null;
-    quantity?: number;
-    length?: number | null;
-    width?: number | null;
-    squareFeet?: number | null;
-    floorType?: string;
-    conditionLevel?: string;
-    trafficLevel?: string;
-    notes?: string | null;
-  }>;
-  update?: Array<{
-    id: string;
-    areaTypeId?: string;
-    name?: string | null;
-    quantity?: number;
-    length?: number | null;
-    width?: number | null;
-    squareFeet?: number | null;
-    floorType?: string;
-    conditionLevel?: string;
-    trafficLevel?: string;
-    notes?: string | null;
-  }>;
-  archiveIds?: string[];
-}
-
-export interface ContractAmendmentTaskChangesInput {
-  create?: Array<{
-    areaId?: string | null;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    customInstructions?: string | null;
-    estimatedMinutes?: number | null;
-    baseMinutesOverride?: number | null;
-    perSqftMinutesOverride?: number | null;
-    isRequired?: boolean;
-    cleaningFrequency?: string;
-    conditionMultiplier?: number;
-    priority?: number;
-  }>;
-  update?: Array<{
-    id: string;
-    areaId?: string | null;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    customInstructions?: string | null;
-    estimatedMinutes?: number | null;
-    baseMinutesOverride?: number | null;
-    perSqftMinutesOverride?: number | null;
-    isRequired?: boolean;
-    cleaningFrequency?: string;
-    conditionMultiplier?: number;
-    priority?: number;
-  }>;
-  archiveIds?: string[];
-}
-
-export interface ContractAmendmentCreateInput {
-  title: string;
-  description?: string | null;
-  effectiveDate: Date;
-  monthlyValue?: number | null;
-  endDate?: Date | null;
-  serviceFrequency?: string | null;
-  serviceSchedule?: Record<string, unknown> | null;
-  billingCycle?: string | null;
-  paymentTerms?: string | null;
-  autoRenew?: boolean | null;
-  renewalNoticeDays?: number | null;
-  termsAndConditions?: string | null;
-  specialInstructions?: string | null;
-  areaChanges?: ContractAmendmentAreaChangesInput | null;
-  taskChanges?: ContractAmendmentTaskChangesInput | null;
-}
-
-export interface ContractAmendmentUpdateInput extends Partial<ContractAmendmentCreateInput> {
-  status?: ContractAmendmentStatus;
-}
-
-const amendmentSelect = {
+const amendmentListSelect = {
   id: true,
   contractId: true,
+  amendmentNumber: true,
   status: true,
+  amendmentType: true,
   title: true,
-  description: true,
+  summary: true,
+  reason: true,
   effectiveDate: true,
-  monthlyValue: true,
-  endDate: true,
-  serviceFrequency: true,
-  serviceSchedule: true,
-  billingCycle: true,
-  paymentTerms: true,
-  autoRenew: true,
-  renewalNoticeDays: true,
-  termsAndConditions: true,
-  specialInstructions: true,
-  areaChanges: true,
-  taskChanges: true,
+  pricingPlanId: true,
+  oldMonthlyValue: true,
+  newMonthlyValue: true,
+  monthlyDelta: true,
+  oldServiceFrequency: true,
+  newServiceFrequency: true,
   approvedAt: true,
   appliedAt: true,
   canceledAt: true,
+  rejectedAt: true,
+  rejectedReason: true,
   createdAt: true,
   updatedAt: true,
-  contract: {
-    select: {
-      id: true,
-      contractNumber: true,
-      title: true,
-      status: true,
-      accountId: true,
-      facilityId: true,
-      assignedTeamId: true,
-      assignedToUserId: true,
-      startDate: true,
-      endDate: true,
-      monthlyValue: true,
-      serviceFrequency: true,
-      serviceSchedule: true,
-      billingCycle: true,
-      paymentTerms: true,
-      autoRenew: true,
-      renewalNoticeDays: true,
-      termsAndConditions: true,
-      specialInstructions: true,
-      account: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      facility: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  },
-  proposedByUser: {
+  createdByUser: {
     select: {
       id: true,
       fullName: true,
@@ -176,692 +60,711 @@ const amendmentSelect = {
   },
 } satisfies Prisma.ContractAmendmentSelect;
 
-export interface ListOrganizationContractAmendmentsParams {
-  page?: number;
-  limit?: number;
-  status?: ContractAmendmentStatus;
-  search?: string;
-}
-
-export interface ListOrganizationContractAmendmentsOptions {
-  userRole?: string;
-  userId?: string;
-  userTeamId?: string | null;
-}
-
-function normalizeAmendmentStatus(value: string | null | undefined): ContractAmendmentStatus {
-  const normalized = (value || 'draft') as ContractAmendmentStatus;
-  if (!['draft', 'pending_approval', 'approved', 'applied', 'canceled'].includes(normalized)) {
-    throw new BadRequestError('Invalid amendment status');
-  }
-  return normalized;
-}
-
-async function resolveTaskTemplateId(
-  tx: Prisma.TransactionClient,
-  input: {
-    facilityId: string;
-    taskTemplateId?: string | null;
-    customName?: string | null;
-    cleaningFrequency?: string;
-    estimatedMinutes?: number | null;
-    baseMinutesOverride?: number | null;
-    perSqftMinutesOverride?: number | null;
-    customInstructions?: string | null;
-    createdByUserId: string;
-  }
-): Promise<string | null> {
-  if (input.taskTemplateId) {
-    return input.taskTemplateId;
-  }
-
-  const customName = input.customName?.trim();
-  if (!customName) {
-    return null;
-  }
-
-  const cleaningType = input.cleaningFrequency ?? 'daily';
-
-  const facilityTemplate = await tx.taskTemplate.findFirst({
-    where: {
-      facilityId: input.facilityId,
-      archivedAt: null,
-      isActive: true,
-      cleaningType,
-      name: { equals: customName, mode: 'insensitive' },
+const amendmentDetailSelect = {
+  ...amendmentListSelect,
+  oldServiceSchedule: true,
+  newServiceSchedule: true,
+  pricingSnapshot: true,
+  snapshots: {
+    select: {
+      id: true,
+      snapshotType: true,
+      scopeJson: true,
+      createdAt: true,
     },
-    select: { id: true },
-  });
-  if (facilityTemplate) return facilityTemplate.id;
-
-  const globalTemplate = await tx.taskTemplate.findFirst({
-    where: {
-      isGlobal: true,
-      archivedAt: null,
-      isActive: true,
-      cleaningType,
-      name: { equals: customName, mode: 'insensitive' },
-    },
-    select: { id: true },
-  });
-  if (globalTemplate) return globalTemplate.id;
-
-  const created = await tx.taskTemplate.create({
-    data: {
-      name: customName,
-      cleaningType,
-      estimatedMinutes: input.estimatedMinutes ?? 0,
-      baseMinutes: input.baseMinutesOverride ?? 0,
-      perSqftMinutes: input.perSqftMinutesOverride ?? 0,
-      instructions: input.customInstructions ?? null,
-      isGlobal: false,
-      facilityId: input.facilityId,
-      isActive: true,
-      createdByUserId: input.createdByUserId,
-    },
-    select: { id: true },
-  });
-
-  return created.id;
-}
-
-export async function listContractAmendments(contractId: string) {
-  return prisma.contractAmendment.findMany({
-    where: { contractId },
-    select: amendmentSelect,
-    orderBy: [{ createdAt: 'desc' }],
-  });
-}
-
-export async function listOrganizationContractAmendments(
-  params: ListOrganizationContractAmendmentsParams,
-  options?: ListOrganizationContractAmendmentsOptions
-) {
-  const {
-    page = 1,
-    limit = 20,
-    status,
-    search,
-  } = params;
-
-  const where: Prisma.ContractAmendmentWhereInput = {};
-  const andConditions: Prisma.ContractAmendmentWhereInput[] = [];
-
-  if (status) {
-    where.status = status;
-  }
-
-  if (search) {
-    andConditions.push({
-      OR: [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { contract: { title: { contains: search, mode: 'insensitive' } } },
-        { contract: { contractNumber: { contains: search, mode: 'insensitive' } } },
-        { contract: { account: { name: { contains: search, mode: 'insensitive' } } } },
-        { contract: { facility: { name: { contains: search, mode: 'insensitive' } } } },
-      ],
-    });
-  }
-
-  if (options?.userRole === 'manager' && options.userId) {
-    andConditions.push({
-      contract: {
-        OR: [
-          { createdByUserId: options.userId },
-          { account: { accountManagerId: options.userId } },
-        ],
+    orderBy: { createdAt: 'asc' as const },
+  },
+  activities: {
+    select: {
+      id: true,
+      action: true,
+      metadata: true,
+      createdAt: true,
+      performedByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
       },
-    });
-  }
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
+} satisfies Prisma.ContractAmendmentSelect;
 
-  if (options?.userRole === 'subcontractor') {
-    andConditions.push({
-      contract: {
-        OR: [
-          { assignedToUserId: options.userId },
-          options.userTeamId ? { assignedTeamId: options.userTeamId } : undefined,
-        ].filter(Boolean) as Prisma.ContractWhereInput[],
-      },
-    });
-  }
+function toNumber(value: Prisma.Decimal | number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  return Number(value);
+}
 
-  if (options?.userRole === 'cleaner' && options.userId) {
-    andConditions.push({
-      contract: { assignedToUserId: options.userId },
-    });
-  }
-
-  if (andConditions.length > 0) {
-    where.AND = andConditions;
-  }
-
-  const safeLimit = Math.min(Math.max(limit, 1), 100);
-  const safePage = Math.max(page, 1);
-
-  const [total, data] = await Promise.all([
-    prisma.contractAmendment.count({ where }),
-    prisma.contractAmendment.findMany({
-      where,
-      select: amendmentSelect,
-      orderBy: [{ createdAt: 'desc' }],
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
-    }),
-  ]);
-
+function mapAmendment(amendment: any) {
   return {
-    data,
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      totalPages: Math.max(Math.ceil(total / safeLimit), 1),
-    },
+    ...amendment,
+    oldMonthlyValue: toNumber(amendment.oldMonthlyValue),
+    newMonthlyValue: toNumber(amendment.newMonthlyValue),
+    monthlyDelta: toNumber(amendment.monthlyDelta),
   };
 }
 
-export async function getContractAmendmentById(id: string) {
-  return prisma.contractAmendment.findUnique({
-    where: { id },
-    select: amendmentSelect,
+type AmendmentWorkingScope = {
+  facility?: {
+    id?: string;
+    name?: string;
+    buildingType?: string | null;
+  } | null;
+  areas?: Array<Record<string, any>>;
+  tasks?: Array<Record<string, any>>;
+  contract?: {
+    serviceFrequency?: string | null;
+    serviceSchedule?: Record<string, unknown> | null;
+  } | null;
+};
+
+async function buildContractScopeSnapshot(contractId: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      id: true,
+      contractNumber: true,
+      title: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      monthlyValue: true,
+      billingCycle: true,
+      paymentTerms: true,
+      serviceFrequency: true,
+      serviceSchedule: true,
+      account: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+      },
+      facility: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          buildingType: true,
+          accessInstructions: true,
+          parkingInfo: true,
+          specialRequirements: true,
+          notes: true,
+        },
+      },
+    },
   });
+
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  const areas = contract.facility
+    ? await prisma.area.findMany({
+        where: {
+          facilityId: contract.facility.id,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          areaTypeId: true,
+          name: true,
+          quantity: true,
+          length: true,
+          width: true,
+          squareFeet: true,
+          floorType: true,
+          conditionLevel: true,
+          roomCount: true,
+          unitCount: true,
+          trafficLevel: true,
+          notes: true,
+          areaType: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
+      })
+    : [];
+
+  const tasks = contract.facility
+    ? await prisma.facilityTask.findMany({
+        where: {
+          facilityId: contract.facility.id,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          areaId: true,
+          taskTemplateId: true,
+          customName: true,
+          customInstructions: true,
+          estimatedMinutes: true,
+          baseMinutesOverride: true,
+          perSqftMinutesOverride: true,
+          perUnitMinutesOverride: true,
+          perRoomMinutesOverride: true,
+          isRequired: true,
+          cleaningFrequency: true,
+          conditionMultiplier: true,
+          priority: true,
+          area: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          taskTemplate: {
+            select: {
+              id: true,
+              name: true,
+              cleaningType: true,
+              areaTypeId: true,
+            },
+          },
+        },
+        orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
+      })
+    : [];
+
+  return {
+    capturedAt: new Date().toISOString(),
+    contract: {
+      id: contract.id,
+      contractNumber: contract.contractNumber,
+      title: contract.title,
+      status: contract.status,
+      startDate: contract.startDate.toISOString(),
+      endDate: contract.endDate?.toISOString() ?? null,
+      monthlyValue: Number(contract.monthlyValue),
+      billingCycle: contract.billingCycle,
+      paymentTerms: contract.paymentTerms,
+      serviceFrequency: contract.serviceFrequency,
+      serviceSchedule: contract.serviceSchedule,
+    },
+    account: contract.account,
+    facility: contract.facility,
+    areas: areas.map((area) => ({
+      ...area,
+      length: toNumber(area.length),
+      width: toNumber(area.width),
+      squareFeet: toNumber(area.squareFeet),
+    })),
+    tasks: tasks.map((task) => ({
+      ...task,
+      baseMinutesOverride: toNumber(task.baseMinutesOverride),
+      perSqftMinutesOverride: toNumber(task.perSqftMinutesOverride),
+      perUnitMinutesOverride: toNumber(task.perUnitMinutesOverride),
+      perRoomMinutesOverride: toNumber(task.perRoomMinutesOverride),
+      conditionMultiplier: toNumber(task.conditionMultiplier),
+    })),
+  };
+}
+
+async function createAmendmentActivity(
+  tx: Prisma.TransactionClient,
+  amendmentId: string,
+  action: string,
+  performedByUserId?: string,
+  metadata?: Record<string, unknown>
+) {
+  await tx.contractAmendmentActivity.create({
+    data: {
+      amendmentId,
+      action,
+      performedByUserId: performedByUserId ?? null,
+      metadata: (metadata ?? {}) as Prisma.InputJsonValue,
+    },
+  });
+}
+
+function getLatestWorkingScope(
+  amendment: { snapshots?: Array<{ snapshotType: string; scopeJson: Record<string, any> }> }
+): AmendmentWorkingScope {
+  const snapshots = amendment.snapshots ?? [];
+  for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+    if (snapshots[index]?.snapshotType === 'working') {
+      return snapshots[index].scopeJson as AmendmentWorkingScope;
+    }
+  }
+  return {};
+}
+
+function toSafeString(value: unknown, fallback: string) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function toSafeNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildSqftScopeOverride(
+  facility: { id?: string; name?: string; buildingType?: string | null } | null | undefined,
+  workingScope: AmendmentWorkingScope
+): FacilityPricingScopeOverride {
+  const draftFacility = workingScope.facility ?? facility;
+  const areas = Array.isArray(workingScope.areas) ? workingScope.areas : [];
+
+  return {
+    facilityId: toSafeString(draftFacility?.id, 'amendment-scope'),
+    facilityName: toSafeString(draftFacility?.name, 'Contract Amendment Scope'),
+    buildingType: typeof draftFacility?.buildingType === 'string' ? draftFacility.buildingType : 'other',
+    areas: areas.map((area, index) => ({
+      id: toSafeString(area.id ?? area.tempId, `draft-area-${index + 1}`),
+      name: toSafeString(area.name ?? area.areaType?.name ?? area.areaTypeName, `Area ${index + 1}`),
+      areaTypeName: toSafeString(area.areaType?.name ?? area.areaTypeName, 'Area'),
+      squareFeet: Math.max(0, toSafeNumber(area.squareFeet)),
+      floorType: toSafeString(area.floorType, 'vct'),
+      conditionLevel: toSafeString(area.conditionLevel, 'standard'),
+      trafficLevel: toSafeString(area.trafficLevel, 'medium'),
+      quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
+    })),
+  };
+}
+
+function buildPerHourScopeOverride(
+  facility: { id?: string; name?: string; buildingType?: string | null } | null | undefined,
+  workingScope: AmendmentWorkingScope
+): PerHourPricingScopeOverride {
+  const draftFacility = workingScope.facility ?? facility;
+  const areas = Array.isArray(workingScope.areas) ? workingScope.areas : [];
+  const tasks = Array.isArray(workingScope.tasks) ? workingScope.tasks : [];
+
+  return {
+    facilityId: toSafeString(draftFacility?.id, 'amendment-scope'),
+    facilityName: toSafeString(draftFacility?.name, 'Contract Amendment Scope'),
+    buildingType: typeof draftFacility?.buildingType === 'string' ? draftFacility.buildingType : 'other',
+    areas: areas.map((area, index) => ({
+      id: toSafeString(area.id ?? area.tempId, `draft-area-${index + 1}`),
+      name: toSafeString(area.name ?? area.areaType?.name ?? area.areaTypeName, `Area ${index + 1}`),
+      squareFeet: Math.max(0, toSafeNumber(area.squareFeet)),
+      quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
+      floorType: toSafeString(area.floorType, 'vct'),
+      conditionLevel: toSafeString(area.conditionLevel, 'standard'),
+      trafficLevel: toSafeString(area.trafficLevel, 'medium'),
+      roomCount: Math.max(0, Math.round(toSafeNumber(area.roomCount, 0))),
+      unitCount: Math.max(0, Math.round(toSafeNumber(area.unitCount, 0))),
+    })),
+    tasks: tasks.map((task, index) => ({
+      id: toSafeString(task.id ?? task.tempId, `draft-task-${index + 1}`),
+      areaId:
+        task.areaId === null || task.areaId === undefined || task.areaId === ''
+          ? null
+          : toSafeString(task.areaId, `draft-area-${index + 1}`),
+      cleaningFrequency: toSafeString(task.cleaningFrequency, 'daily'),
+      customName: typeof task.customName === 'string' ? task.customName : null,
+      estimatedMinutes: task.estimatedMinutes == null ? null : toSafeNumber(task.estimatedMinutes),
+      baseMinutesOverride:
+        task.baseMinutesOverride == null ? null : toSafeNumber(task.baseMinutesOverride),
+      perSqftMinutesOverride:
+        task.perSqftMinutesOverride == null ? null : toSafeNumber(task.perSqftMinutesOverride),
+      perUnitMinutesOverride:
+        task.perUnitMinutesOverride == null ? null : toSafeNumber(task.perUnitMinutesOverride),
+      perRoomMinutesOverride:
+        task.perRoomMinutesOverride == null ? null : toSafeNumber(task.perRoomMinutesOverride),
+      taskTemplate: task.taskTemplate
+        ? {
+            id: typeof task.taskTemplate.id === 'string' ? task.taskTemplate.id : undefined,
+            name: typeof task.taskTemplate.name === 'string' ? task.taskTemplate.name : undefined,
+          }
+        : null,
+    })),
+  };
+}
+
+async function calculateAmendmentScopePricing(params: {
+  contractId: string;
+  accountId: string;
+  facility: { id?: string; name?: string; buildingType?: string | null } | null | undefined;
+  workingScope: AmendmentWorkingScope;
+  serviceFrequency: string;
+  pricingPlanId?: string | null;
+}) {
+  const pricingPlan = await resolvePricingPlan({
+    pricingPlanId: params.pricingPlanId ?? undefined,
+    facilityId: params.facility?.id,
+    accountId: params.accountId,
+  });
+
+  if (!pricingPlan) {
+    throw new Error('No pricing plan found');
+  }
+
+  if (pricingPlan.pricingType === 'hourly') {
+    return calculatePerHourPricing({
+      facilityId: params.facility?.id ?? params.contractId,
+      serviceFrequency: params.serviceFrequency,
+      pricingPlanId: pricingPlan.id,
+      facilityOverride: buildPerHourScopeOverride(params.facility, params.workingScope),
+    });
+  }
+
+  return calculateFacilityPricing({
+    facilityId: params.facility?.id ?? params.contractId,
+    serviceFrequency: params.serviceFrequency,
+    pricingPlanId: pricingPlan.id,
+    facilityOverride: buildSqftScopeOverride(params.facility, params.workingScope),
+  });
+}
+
+export async function listContractAmendments(contractId: string) {
+  const amendments = await prisma.contractAmendment.findMany({
+    where: {
+      contractId,
+      archivedAt: null,
+    },
+    select: amendmentListSelect,
+    orderBy: [{ amendmentNumber: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  return amendments.map(mapAmendment);
+}
+
+export async function getContractAmendmentById(amendmentId: string) {
+  const amendment = await prisma.contractAmendment.findUnique({
+    where: { id: amendmentId },
+    select: amendmentDetailSelect,
+  });
+
+  return amendment ? mapAmendment(amendment) : null;
 }
 
 export async function createContractAmendment(
   contractId: string,
-  input: ContractAmendmentCreateInput,
-  proposedByUserId: string
+  input: CreateContractAmendmentInput,
+  createdByUserId: string
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     select: {
       id: true,
       status: true,
-      facilityId: true,
+      title: true,
+      monthlyValue: true,
+      serviceFrequency: true,
+      serviceSchedule: true,
     },
   });
 
   if (!contract) {
-    throw new NotFoundError('Contract not found');
+    throw new Error('Contract not found');
   }
 
-  if (!['active', 'expired'].includes(contract.status)) {
-    throw new BadRequestError('Only active or expired contracts can be amended');
+  if (contract.status !== 'active') {
+    throw new Error('Only active contracts can be amended');
   }
 
-  if (!contract.facilityId) {
-    throw new BadRequestError('Contract must have a facility before creating an amendment');
-  }
-
-  const effectiveIsoDate = input.effectiveDate.toISOString().slice(0, 10);
-
-  return prisma.contractAmendment.create({
-    data: {
+  const openAmendment = await prisma.contractAmendment.findFirst({
+    where: {
       contractId,
-      title: input.title,
-      description: input.description ?? null,
-      effectiveDate: new Date(`${effectiveIsoDate}T00:00:00.000Z`),
-      monthlyValue: input.monthlyValue ?? null,
-      endDate: input.endDate ?? null,
-      serviceFrequency: input.serviceFrequency ?? null,
-      serviceSchedule:
-        (input.serviceSchedule as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull,
-      billingCycle: input.billingCycle ?? null,
-      paymentTerms: input.paymentTerms ?? null,
-      autoRenew: input.autoRenew ?? null,
-      renewalNoticeDays: input.renewalNoticeDays ?? null,
-      termsAndConditions: input.termsAndConditions ?? null,
-      specialInstructions: input.specialInstructions ?? null,
-      areaChanges:
-        (input.areaChanges as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull,
-      taskChanges:
-        (input.taskChanges as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull,
-      proposedByUserId,
-      status: 'draft',
+      archivedAt: null,
+      status: { in: [...OPEN_AMENDMENT_STATUSES] },
     },
-    select: amendmentSelect,
+    select: { id: true, amendmentNumber: true, status: true },
   });
+
+  if (openAmendment) {
+    throw new Error(
+      `Contract already has an open amendment (#${openAmendment.amendmentNumber}) in ${openAmendment.status} status`
+    );
+  }
+
+  const lastAmendment = await prisma.contractAmendment.findFirst({
+    where: { contractId },
+    orderBy: { amendmentNumber: 'desc' },
+    select: { amendmentNumber: true },
+  });
+
+  const amendmentNumber = (lastAmendment?.amendmentNumber ?? 0) + 1;
+  const baseSnapshot = await buildContractScopeSnapshot(contractId);
+  const workingScope = input.workingScope ?? baseSnapshot;
+  const oldMonthlyValue = Number(contract.monthlyValue);
+  const newMonthlyValue =
+    input.newMonthlyValue === undefined ? oldMonthlyValue : input.newMonthlyValue;
+  const monthlyDelta = newMonthlyValue === null ? null : newMonthlyValue - oldMonthlyValue;
+
+  const amendment = await prisma.$transaction(async (tx) => {
+    const created = await tx.contractAmendment.create({
+      data: {
+        contractId,
+        amendmentNumber,
+        status: 'draft',
+        amendmentType: input.amendmentType ?? 'scope_change',
+        title: input.title ?? `${contract.title} Amendment #${amendmentNumber}`,
+        summary: input.summary ?? null,
+        reason: input.reason ?? null,
+        effectiveDate: input.effectiveDate,
+        pricingPlanId: input.pricingPlanId ?? null,
+        oldMonthlyValue,
+        newMonthlyValue,
+        monthlyDelta,
+        oldServiceFrequency: contract.serviceFrequency ?? null,
+        newServiceFrequency:
+          input.newServiceFrequency === undefined
+            ? contract.serviceFrequency ?? null
+            : input.newServiceFrequency,
+        oldServiceSchedule:
+          (contract.serviceSchedule as Prisma.InputJsonValue | null | undefined) ??
+          Prisma.JsonNull,
+        newServiceSchedule:
+          input.newServiceSchedule === undefined
+            ? ((contract.serviceSchedule as Prisma.InputJsonValue | null | undefined) ??
+              Prisma.JsonNull)
+            : ((input.newServiceSchedule as Prisma.InputJsonValue | null | undefined) ??
+              Prisma.JsonNull),
+        pricingSnapshot:
+          (input.pricingSnapshot as Prisma.InputJsonValue | null | undefined) ?? undefined,
+        createdByUserId,
+      },
+      select: amendmentDetailSelect,
+    });
+
+    await tx.contractAmendmentScopeSnapshot.createMany({
+      data: [
+        {
+          amendmentId: created.id,
+          snapshotType: 'before',
+          scopeJson: baseSnapshot as Prisma.InputJsonValue,
+        },
+        {
+          amendmentId: created.id,
+          snapshotType: 'working',
+          scopeJson: workingScope as Prisma.InputJsonValue,
+        },
+      ],
+    });
+
+    await createAmendmentActivity(tx, created.id, 'created', createdByUserId, {
+      amendmentNumber,
+      effectiveDate: input.effectiveDate.toISOString(),
+    });
+
+    return created;
+  });
+
+  return mapAmendment(amendment);
 }
 
 export async function updateContractAmendment(
   amendmentId: string,
-  input: ContractAmendmentUpdateInput
+  input: UpdateContractAmendmentInput,
+  updatedByUserId: string
 ) {
   const existing = await prisma.contractAmendment.findUnique({
     where: { id: amendmentId },
     select: {
       id: true,
       status: true,
-      serviceFrequency: true,
-      serviceSchedule: true,
+      pricingSnapshot: true,
+      oldMonthlyValue: true,
+      oldServiceFrequency: true,
+      oldServiceSchedule: true,
     },
   });
 
   if (!existing) {
-    throw new NotFoundError('Amendment not found');
+    throw new Error('Amendment not found');
   }
 
-  if (!['draft', 'pending_approval'].includes(existing.status)) {
-    throw new BadRequestError('Only draft or pending approval amendments can be edited');
+  if (!['draft', 'submitted'].includes(existing.status)) {
+    throw new Error(`Cannot update amendment in ${existing.status} status`);
   }
 
-  const data: Prisma.ContractAmendmentUpdateInput = {};
-
-  if (input.title !== undefined) data.title = input.title;
-  if (input.description !== undefined) data.description = input.description ?? null;
-  if (input.effectiveDate !== undefined) {
-    const effectiveIsoDate = input.effectiveDate.toISOString().slice(0, 10);
-    data.effectiveDate = new Date(`${effectiveIsoDate}T00:00:00.000Z`);
-  }
-  if (input.monthlyValue !== undefined) data.monthlyValue = input.monthlyValue;
-  if (input.endDate !== undefined) data.endDate = input.endDate;
-  if (input.billingCycle !== undefined) data.billingCycle = input.billingCycle;
-  if (input.paymentTerms !== undefined) data.paymentTerms = input.paymentTerms;
-  if (input.autoRenew !== undefined) data.autoRenew = input.autoRenew;
-  if (input.renewalNoticeDays !== undefined) data.renewalNoticeDays = input.renewalNoticeDays;
-  if (input.termsAndConditions !== undefined) data.termsAndConditions = input.termsAndConditions;
-  if (input.specialInstructions !== undefined) data.specialInstructions = input.specialInstructions;
-  if (input.areaChanges !== undefined) {
-    data.areaChanges =
-      (input.areaChanges as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull;
-  }
-  if (input.taskChanges !== undefined) {
-    data.taskChanges =
-      (input.taskChanges as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull;
+  if (input.status === 'submitted' && input.pricingSnapshot === undefined && !existingHasPricing(existing)) {
+    throw new Error('Amendment must be recalculated before submission');
   }
 
-  if (input.serviceSchedule !== undefined || input.serviceFrequency !== undefined) {
-    const normalized = normalizeServiceSchedule(
-      input.serviceSchedule ?? (existing.serviceSchedule as Record<string, unknown> | null),
-      input.serviceFrequency ?? existing.serviceFrequency
-    );
-    data.serviceFrequency = input.serviceFrequency ?? existing.serviceFrequency;
-    data.serviceSchedule =
-      (normalized as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull;
-  }
+  const nextMonthlyValue =
+    input.newMonthlyValue === undefined
+      ? undefined
+      : input.newMonthlyValue === null
+        ? null
+        : input.newMonthlyValue;
 
-  if (input.status !== undefined) {
-    data.status = normalizeAmendmentStatus(input.status);
-    if (input.status === 'canceled') {
-      data.canceledAt = new Date();
+  const updated = await prisma.$transaction(async (tx) => {
+    const amendment = await tx.contractAmendment.update({
+      where: { id: amendmentId },
+      data: {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        ...(input.reason !== undefined ? { reason: input.reason } : {}),
+        ...(input.effectiveDate !== undefined ? { effectiveDate: input.effectiveDate } : {}),
+        ...(input.pricingPlanId !== undefined ? { pricingPlanId: input.pricingPlanId } : {}),
+        ...(input.amendmentType !== undefined ? { amendmentType: input.amendmentType } : {}),
+        ...(nextMonthlyValue !== undefined
+          ? {
+              newMonthlyValue: nextMonthlyValue,
+              monthlyDelta:
+                nextMonthlyValue === null
+                  ? null
+                  : nextMonthlyValue - Number(existing.oldMonthlyValue),
+            }
+          : {}),
+        ...(input.newServiceFrequency !== undefined
+          ? { newServiceFrequency: input.newServiceFrequency }
+          : {}),
+        ...(input.newServiceSchedule !== undefined
+          ? {
+              newServiceSchedule:
+                (input.newServiceSchedule as Prisma.InputJsonValue | null | undefined) ??
+                Prisma.JsonNull,
+            }
+          : {}),
+        ...(input.pricingSnapshot !== undefined
+          ? {
+              pricingSnapshot:
+                (input.pricingSnapshot as Prisma.InputJsonValue | null | undefined) ??
+                Prisma.JsonNull,
+            }
+          : {}),
+        ...(input.status !== undefined
+          ? {
+              status: input.status,
+              canceledAt: input.status === 'canceled' ? new Date() : null,
+            }
+          : {}),
+      },
+      select: amendmentDetailSelect,
+    });
+
+    if (input.workingScope !== undefined) {
+      await tx.contractAmendmentScopeSnapshot.create({
+        data: {
+          amendmentId,
+          snapshotType: 'working',
+          scopeJson: (input.workingScope as Prisma.InputJsonValue | null | undefined) ??
+            Prisma.JsonNull,
+        },
+      });
     }
-  }
 
-  return prisma.contractAmendment.update({
-    where: { id: amendmentId },
-    data,
-    select: amendmentSelect,
+    await createAmendmentActivity(tx, amendmentId, 'updated', updatedByUserId, {
+      fields: Object.keys(input),
+      status: input.status ?? undefined,
+    });
+
+    return amendment;
   });
+
+  return mapAmendment(updated);
 }
 
-export async function approveContractAmendment(amendmentId: string, approvedByUserId: string) {
+function existingHasPricing(existing: {
+  oldMonthlyValue: Prisma.Decimal | number | null | undefined;
+  oldServiceFrequency?: string | null;
+  oldServiceSchedule?: unknown;
+  [key: string]: unknown;
+}) {
+  return Boolean((existing as { pricingSnapshot?: unknown }).pricingSnapshot);
+}
+
+export async function recalculateContractAmendment(
+  amendmentId: string,
+  input: RecalculateContractAmendmentInput,
+  updatedByUserId: string
+) {
   const existing = await prisma.contractAmendment.findUnique({
     where: { id: amendmentId },
     select: {
-      id: true,
-      status: true,
+      ...amendmentDetailSelect,
+      contract: {
+        select: {
+          id: true,
+          accountId: true,
+          serviceFrequency: true,
+          serviceSchedule: true,
+          facility: {
+            select: {
+              id: true,
+              name: true,
+              buildingType: true,
+            },
+          },
+        },
+      },
     },
   });
 
   if (!existing) {
-    throw new NotFoundError('Amendment not found');
+    throw new Error('Amendment not found');
   }
 
-  if (!['draft', 'pending_approval'].includes(existing.status)) {
-    throw new BadRequestError('Only draft or pending approval amendments can be approved');
+  if (existing.status !== 'draft') {
+    throw new Error('Only draft amendments can be recalculated');
   }
 
-  return prisma.contractAmendment.update({
-    where: { id: amendmentId },
-    data: {
-      status: 'approved',
-      approvedByUserId,
-      approvedAt: new Date(),
-    },
-    select: amendmentSelect,
-  });
-}
+  const workingScope = (input.workingScope ?? getLatestWorkingScope(existing)) as AmendmentWorkingScope;
+  const serviceFrequency =
+    input.newServiceFrequency ??
+    existing.newServiceFrequency ??
+    existing.oldServiceFrequency ??
+    existing.contract.serviceFrequency;
 
-export async function applyContractAmendment(amendmentId: string, appliedByUserId: string) {
-  const amendment = await prisma.contractAmendment.findUnique({
-    where: { id: amendmentId },
-    select: {
-      id: true,
-      contractId: true,
-      status: true,
-      effectiveDate: true,
-      monthlyValue: true,
-      endDate: true,
-      serviceFrequency: true,
-      serviceSchedule: true,
-      billingCycle: true,
-      paymentTerms: true,
-      autoRenew: true,
-      renewalNoticeDays: true,
-      termsAndConditions: true,
-      specialInstructions: true,
-      areaChanges: true,
-      taskChanges: true,
-      contract: {
-        select: {
-          id: true,
-          status: true,
-          accountId: true,
-          facilityId: true,
-          assignedTeamId: true,
-          assignedToUserId: true,
-          startDate: true,
-          endDate: true,
-          serviceFrequency: true,
-          serviceSchedule: true,
-        },
-      },
-    },
+  if (!serviceFrequency) {
+    throw new Error('Service frequency is required to recalculate amendment pricing');
+  }
+
+  const pricing = await calculateAmendmentScopePricing({
+    contractId: existing.contract.id,
+    accountId: existing.contract.accountId,
+    facility: existing.contract.facility,
+    workingScope,
+    serviceFrequency,
+    pricingPlanId: input.pricingPlanId ?? existing.pricingPlanId,
   });
 
-  if (!amendment) {
-    throw new NotFoundError('Amendment not found');
-  }
+  const newMonthlyValue = Number(pricing.monthlyTotal);
+  const monthlyDelta = newMonthlyValue - (toNumber(existing.oldMonthlyValue) ?? 0);
 
-  if (amendment.status !== 'approved') {
-    throw new BadRequestError('Only approved amendments can be applied');
-  }
-
-  if (!amendment.contract.facilityId) {
-    throw new BadRequestError('Contract facility is required to apply this amendment');
-  }
-
-  const areaChanges = (amendment.areaChanges ?? {}) as ContractAmendmentAreaChangesInput;
-  const taskChanges = (amendment.taskChanges ?? {}) as ContractAmendmentTaskChangesInput;
-  const hasPricingImpactingChanges =
-    amendment.serviceFrequency !== null ||
-    (areaChanges.create?.length || 0) > 0 ||
-    (areaChanges.update?.length || 0) > 0 ||
-    (areaChanges.archiveIds?.length || 0) > 0 ||
-    (taskChanges.create?.length || 0) > 0 ||
-    (taskChanges.update?.length || 0) > 0 ||
-    (taskChanges.archiveIds?.length || 0) > 0;
-
-  const result = await prisma.$transaction(async (tx) => {
-    const updateData: Prisma.ContractUpdateInput = {};
-
-    if (amendment.monthlyValue !== null) updateData.monthlyValue = amendment.monthlyValue;
-    if (amendment.endDate !== null) updateData.endDate = amendment.endDate;
-    if (amendment.billingCycle !== null) updateData.billingCycle = amendment.billingCycle;
-    if (amendment.paymentTerms !== null) updateData.paymentTerms = amendment.paymentTerms;
-    if (amendment.autoRenew !== null) updateData.autoRenew = amendment.autoRenew;
-    if (amendment.renewalNoticeDays !== null) {
-      updateData.renewalNoticeDays = amendment.renewalNoticeDays;
-    }
-    if (amendment.termsAndConditions !== null) {
-      updateData.termsAndConditions = amendment.termsAndConditions;
-    }
-    if (amendment.specialInstructions !== null) {
-      updateData.specialInstructions = amendment.specialInstructions;
-    }
-
-    const nextServiceFrequency = amendment.serviceFrequency ?? amendment.contract.serviceFrequency;
-    if (amendment.serviceSchedule !== null || amendment.serviceFrequency !== null) {
-      const normalized = normalizeServiceSchedule(
-        (amendment.serviceSchedule as Record<string, unknown> | null | undefined) ??
-          ((amendment.contract.serviceSchedule as Record<string, unknown> | null) ?? null),
-        nextServiceFrequency
-      );
-      updateData.serviceFrequency = nextServiceFrequency;
-      updateData.serviceSchedule =
-        (normalized as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull;
-    }
-
-    if (Object.keys(updateData).length > 0) {
-      await tx.contract.update({
-        where: { id: amendment.contractId },
-        data: updateData,
-      });
-    }
-
-    const facilityId = amendment.contract.facilityId as string;
-
-    for (const createAreaInput of areaChanges.create || []) {
-      await tx.area.create({
-        data: {
-          facilityId,
-          areaTypeId: createAreaInput.areaTypeId,
-          name: createAreaInput.name?.trim() || null,
-          quantity: createAreaInput.quantity ?? 1,
-          length: createAreaInput.length ?? null,
-          width: createAreaInput.width ?? null,
-          squareFeet: createAreaInput.squareFeet ?? null,
-          floorType: createAreaInput.floorType ?? 'vct',
-          conditionLevel: createAreaInput.conditionLevel ?? 'standard',
-          trafficLevel: createAreaInput.trafficLevel ?? 'medium',
-          notes: createAreaInput.notes ?? null,
-          createdByUserId: appliedByUserId,
-        },
-      });
-    }
-
-    for (const updateAreaInput of areaChanges.update || []) {
-      await tx.area.update({
-        where: { id: updateAreaInput.id },
-        data: {
-          areaTypeId: updateAreaInput.areaTypeId,
-          name: updateAreaInput.name?.trim() || null,
-          quantity: updateAreaInput.quantity,
-          length: updateAreaInput.length,
-          width: updateAreaInput.width,
-          squareFeet: updateAreaInput.squareFeet,
-          floorType: updateAreaInput.floorType,
-          conditionLevel: updateAreaInput.conditionLevel,
-          trafficLevel: updateAreaInput.trafficLevel,
-          notes: updateAreaInput.notes,
-        },
-      });
-    }
-
-    if (areaChanges.archiveIds && areaChanges.archiveIds.length > 0) {
-      await tx.area.updateMany({
-        where: {
-          id: { in: areaChanges.archiveIds },
-          facilityId,
-          archivedAt: null,
-        },
-        data: {
-          archivedAt: new Date(),
-        },
-      });
-
-      await tx.facilityTask.updateMany({
-        where: {
-          facilityId,
-          areaId: { in: areaChanges.archiveIds },
-          archivedAt: null,
-        },
-        data: {
-          archivedAt: new Date(),
-        },
-      });
-    }
-
-    for (const createTaskInput of taskChanges.create || []) {
-      const taskTemplateId = await resolveTaskTemplateId(tx, {
-        facilityId,
-        taskTemplateId: createTaskInput.taskTemplateId ?? undefined,
-        customName: createTaskInput.customName,
-        cleaningFrequency: createTaskInput.cleaningFrequency,
-        estimatedMinutes: createTaskInput.estimatedMinutes,
-        baseMinutesOverride: createTaskInput.baseMinutesOverride,
-        perSqftMinutesOverride: createTaskInput.perSqftMinutesOverride,
-        customInstructions: createTaskInput.customInstructions,
-        createdByUserId: appliedByUserId,
-      });
-
-      await tx.facilityTask.create({
-        data: {
-          facilityId,
-          areaId: createTaskInput.areaId ?? null,
-          taskTemplateId: taskTemplateId ?? null,
-          customName: createTaskInput.customName?.trim() || null,
-          customInstructions: createTaskInput.customInstructions ?? null,
-          estimatedMinutes: createTaskInput.estimatedMinutes ?? null,
-          baseMinutesOverride: createTaskInput.baseMinutesOverride ?? null,
-          perSqftMinutesOverride: createTaskInput.perSqftMinutesOverride ?? null,
-          isRequired: createTaskInput.isRequired ?? true,
-          cleaningFrequency: createTaskInput.cleaningFrequency ?? 'daily',
-          conditionMultiplier: createTaskInput.conditionMultiplier ?? 1,
-          priority: createTaskInput.priority ?? 3,
-          createdByUserId: appliedByUserId,
-        },
-      });
-    }
-
-    for (const updateTaskInput of taskChanges.update || []) {
-      const taskTemplateId = await resolveTaskTemplateId(tx, {
-        facilityId,
-        taskTemplateId: updateTaskInput.taskTemplateId ?? undefined,
-        customName: updateTaskInput.customName,
-        cleaningFrequency: updateTaskInput.cleaningFrequency,
-        estimatedMinutes: updateTaskInput.estimatedMinutes,
-        baseMinutesOverride: updateTaskInput.baseMinutesOverride,
-        perSqftMinutesOverride: updateTaskInput.perSqftMinutesOverride,
-        customInstructions: updateTaskInput.customInstructions,
-        createdByUserId: appliedByUserId,
-      });
-
-      await tx.facilityTask.update({
-        where: { id: updateTaskInput.id },
-        data: {
-          areaId:
-            updateTaskInput.areaId === undefined ? undefined : updateTaskInput.areaId,
-          taskTemplateId: taskTemplateId ?? null,
-          customName: updateTaskInput.customName?.trim() || null,
-          customInstructions: updateTaskInput.customInstructions,
-          estimatedMinutes: updateTaskInput.estimatedMinutes,
-          baseMinutesOverride: updateTaskInput.baseMinutesOverride,
-          perSqftMinutesOverride: updateTaskInput.perSqftMinutesOverride,
-          isRequired: updateTaskInput.isRequired,
-          cleaningFrequency: updateTaskInput.cleaningFrequency,
-          conditionMultiplier: updateTaskInput.conditionMultiplier,
-          priority: updateTaskInput.priority,
-        },
-      });
-    }
-
-    if (taskChanges.archiveIds && taskChanges.archiveIds.length > 0) {
-      await tx.facilityTask.updateMany({
-        where: {
-          id: { in: taskChanges.archiveIds },
-          facilityId,
-          archivedAt: null,
-        },
-        data: { archivedAt: new Date() },
-      });
-    }
-
-    const updatedAmendment = await tx.contractAmendment.update({
-      where: { id: amendment.id },
+  const amendment = await prisma.$transaction(async (tx) => {
+    const updated = await tx.contractAmendment.update({
+      where: { id: amendmentId },
       data: {
-        status: 'applied',
-        appliedByUserId,
-        appliedAt: new Date(),
+        pricingPlanId: pricing.pricingPlanId,
+        newMonthlyValue,
+        monthlyDelta,
+        newServiceFrequency: serviceFrequency,
+        ...(input.newServiceSchedule !== undefined
+          ? {
+              newServiceSchedule:
+                (input.newServiceSchedule as Prisma.InputJsonValue | null | undefined) ??
+                Prisma.JsonNull,
+            }
+          : {}),
+        pricingSnapshot: pricing as unknown as Prisma.InputJsonValue,
       },
-      select: amendmentSelect,
+      select: amendmentDetailSelect,
     });
 
-    return updatedAmendment;
+    if (input.workingScope !== undefined) {
+      await tx.contractAmendmentScopeSnapshot.create({
+        data: {
+          amendmentId,
+          snapshotType: 'working',
+          scopeJson:
+            (input.workingScope as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull,
+        },
+      });
+    }
+
+    await createAmendmentActivity(tx, amendmentId, 'recalculated', updatedByUserId, {
+      pricingPlanId: pricing.pricingPlanId,
+      serviceFrequency,
+      monthlyTotal: newMonthlyValue,
+      monthlyDelta,
+    });
+
+    return updated;
   });
 
-  if (
-    amendment.monthlyValue === null &&
-    hasPricingImpactingChanges &&
-    amendment.contract.facilityId
-  ) {
-    try {
-      const nextServiceFrequency =
-        amendment.serviceFrequency ?? amendment.contract.serviceFrequency ?? '5x_week';
-      const repriced = await calculatePricing(
-        {
-          facilityId: amendment.contract.facilityId,
-          serviceFrequency: nextServiceFrequency,
-        },
-        {
-          accountId: amendment.contract.accountId,
-        }
-      );
-
-      await prisma.contract.update({
-        where: { id: amendment.contractId },
-        data: {
-          monthlyValue: Number(repriced.monthlyTotal.toFixed(2)),
-        },
-      });
-    } catch (error) {
-      console.warn('Failed to auto-recalculate contract pricing after amendment apply', {
-        amendmentId: amendment.id,
-        contractId: amendment.contractId,
-        error,
-      });
-    }
-  }
-
-  const shouldRegenerateRecurringJobs =
-    amendment.contract.status === 'active' &&
-    (amendment.serviceFrequency !== null ||
-      amendment.serviceSchedule !== null ||
-      (areaChanges.create?.length || 0) > 0 ||
-      (areaChanges.update?.length || 0) > 0 ||
-      (areaChanges.archiveIds?.length || 0) > 0 ||
-      (taskChanges.create?.length || 0) > 0 ||
-      (taskChanges.update?.length || 0) > 0 ||
-      (taskChanges.archiveIds?.length || 0) > 0);
-
-  if (shouldRegenerateRecurringJobs) {
-    const effectiveDate = new Date(`${amendment.effectiveDate.toISOString().slice(0, 10)}T00:00:00.000Z`);
-    const today = new Date();
-    const anchorDate = effectiveDate > today ? effectiveDate : today;
-
-    const contractLatest = await prisma.contract.findUnique({
-      where: { id: amendment.contractId },
-      select: {
-        startDate: true,
-        endDate: true,
-        assignedTeamId: true,
-        assignedToUserId: true,
-      },
-    });
-
-    if (contractLatest && (contractLatest.assignedTeamId || contractLatest.assignedToUserId)) {
-      const endWindow = new Date(anchorDate.getTime());
-      endWindow.setUTCMonth(endWindow.getUTCMonth() + 2);
-      if (contractLatest.endDate && contractLatest.endDate < endWindow) {
-        endWindow.setTime(contractLatest.endDate.getTime());
-      }
-
-      await prisma.job.updateMany({
-        where: {
-          contractId: amendment.contractId,
-          jobCategory: 'recurring',
-          status: 'scheduled',
-          scheduledDate: {
-            gte: new Date(`${anchorDate.toISOString().slice(0, 10)}T00:00:00.000Z`),
-          },
-        },
-        data: {
-          status: 'canceled',
-          completionNotes: `Canceled due to amendment ${result.title} applied`,
-        },
-      });
-
-      await generateJobsFromContract({
-        contractId: amendment.contractId,
-        dateFrom: new Date(`${anchorDate.toISOString().slice(0, 10)}T00:00:00.000Z`),
-        dateTo: endWindow,
-        assignedTeamId: contractLatest.assignedToUserId ? null : contractLatest.assignedTeamId,
-        assignedToUserId: contractLatest.assignedToUserId,
-        createdByUserId: appliedByUserId,
-      });
-    }
-  }
-
-  return result;
+  return {
+    amendment: mapAmendment(amendment),
+    pricing,
+  };
 }

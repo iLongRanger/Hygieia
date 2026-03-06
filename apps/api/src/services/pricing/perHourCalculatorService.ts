@@ -17,6 +17,50 @@ export interface CalculatePerHourPricingOptions {
   subcontractorPercentageOverride?: number;
   excludedAreaIds?: string[];
   excludedTaskIds?: string[];
+  facilityOverride?: PerHourPricingScopeOverride;
+}
+
+export interface PerHourPricingScopeAreaOverride {
+  id: string;
+  name: string;
+  squareFeet: number;
+  quantity?: number;
+  floorType?: string;
+  conditionLevel?: string;
+  trafficLevel?: string;
+  roomCount?: number;
+  unitCount?: number;
+  fixtures?: { fixtureTypeId: string; count: number; minutesPerItem?: number }[];
+}
+
+export interface PerHourPricingScopeTaskOverride {
+  id: string;
+  areaId?: string | null;
+  cleaningFrequency?: string | null;
+  customName?: string | null;
+  estimatedMinutes?: number | null;
+  baseMinutesOverride?: number | null;
+  perSqftMinutesOverride?: number | null;
+  perUnitMinutesOverride?: number | null;
+  perRoomMinutesOverride?: number | null;
+  taskTemplate?: {
+    id?: string;
+    name?: string;
+    baseMinutes?: number | null;
+    perSqftMinutes?: number | null;
+    perUnitMinutes?: number | null;
+    perRoomMinutes?: number | null;
+    fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture?: number | null }[];
+  } | null;
+  fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture?: number | null }[];
+}
+
+export interface PerHourPricingScopeOverride {
+  facilityId: string;
+  facilityName: string;
+  buildingType?: string | null;
+  areas: PerHourPricingScopeAreaOverride[];
+  tasks: PerHourPricingScopeTaskOverride[];
 }
 
 export interface PerHourAreaContext {
@@ -54,6 +98,7 @@ export async function calculatePerHourPricing(
     workerCount = 1,
     excludedAreaIds = [],
     excludedTaskIds = [],
+    facilityOverride,
   } = options;
 
   const pricingSettings = pricingPlanId
@@ -63,54 +108,109 @@ export async function calculatePerHourPricing(
     throw new Error('No pricing plan found. Please configure pricing plans first.');
   }
 
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    include: {
-      areas: {
-        where: {
-          archivedAt: null,
-          ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
-        },
+  const facility = facilityOverride
+    ? {
+        id: facilityOverride.facilityId,
+        name: facilityOverride.facilityName,
+        buildingType: facilityOverride.buildingType || 'other',
+        areas: facilityOverride.areas.map((area) => ({
+          id: area.id,
+          name: area.name,
+          squareFeet: area.squareFeet,
+          quantity: area.quantity ?? 1,
+          floorType: area.floorType || 'vct',
+          conditionLevel: area.conditionLevel || 'standard',
+          trafficLevel: area.trafficLevel || 'medium',
+          roomCount: area.roomCount ?? 0,
+          unitCount: area.unitCount ?? 0,
+          fixtures: (area.fixtures ?? []).map((fixture) => ({
+            fixtureTypeId: fixture.fixtureTypeId,
+            count: fixture.count,
+            minutesPerItem: fixture.minutesPerItem ?? 0,
+            fixtureType: {
+              id: fixture.fixtureTypeId,
+              name: fixture.fixtureTypeId,
+            },
+          })),
+          areaType: {
+            name: area.name,
+          },
+        })),
+      }
+    : await prisma.facility.findUnique({
+        where: { id: facilityId },
         include: {
-          areaType: true,
-          fixtures: {
+          areas: {
+            where: {
+              archivedAt: null,
+              ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
+            },
             include: {
-              fixtureType: true,
+              areaType: true,
+              fixtures: {
+                include: {
+                  fixtureType: true,
+                },
+              },
             },
           },
         },
-      },
-    },
-  });
+      });
 
   if (!facility) {
     throw new Error('Facility not found');
   }
 
-  const facilityTasks = await prisma.facilityTask.findMany({
-    where: {
-      facilityId,
-      archivedAt: null,
-      ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
-      ...(excludedAreaIds.length > 0
-        ? {
-            OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
-          }
-        : {}),
-    },
-    include: {
-      taskTemplate: {
+  const facilityTasks = facilityOverride
+    ? facilityOverride.tasks.map((task) => ({
+        id: task.id,
+        areaId: task.areaId ?? null,
+        cleaningFrequency: task.cleaningFrequency || 'daily',
+        baseMinutesOverride: task.baseMinutesOverride ?? task.estimatedMinutes ?? null,
+        perSqftMinutesOverride: task.perSqftMinutesOverride ?? null,
+        perUnitMinutesOverride: task.perUnitMinutesOverride ?? null,
+        perRoomMinutesOverride: task.perRoomMinutesOverride ?? null,
+        taskTemplate: task.taskTemplate
+          ? {
+              baseMinutes: task.taskTemplate.baseMinutes ?? null,
+              perSqftMinutes: task.taskTemplate.perSqftMinutes ?? null,
+              perUnitMinutes: task.taskTemplate.perUnitMinutes ?? null,
+              perRoomMinutes: task.taskTemplate.perRoomMinutes ?? null,
+              fixtureMinutes: (task.taskTemplate.fixtureMinutes ?? []).map((fixture) => ({
+                fixtureTypeId: fixture.fixtureTypeId,
+                minutesPerFixture: fixture.minutesPerFixture ?? null,
+              })),
+            }
+          : null,
+        fixtureMinutes: (task.fixtureMinutes ?? []).map((fixture) => ({
+          fixtureTypeId: fixture.fixtureTypeId,
+          minutesPerFixture: fixture.minutesPerFixture ?? null,
+        })),
+      }))
+    : await prisma.facilityTask.findMany({
+        where: {
+          facilityId,
+          archivedAt: null,
+          ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
+          ...(excludedAreaIds.length > 0
+            ? {
+                OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
+              }
+            : {}),
+        },
         include: {
+          taskTemplate: {
+            include: {
+              fixtureMinutes: {
+                include: { fixtureType: true },
+              },
+            },
+          },
           fixtureMinutes: {
             include: { fixtureType: true },
           },
         },
-      },
-      fixtureMinutes: {
-        include: { fixtureType: true },
-      },
-    },
-  });
+      });
 
   // Extract full cost settings (same as sqft strategy)
   const laborCostPerHour = Number(pricingSettings.laborCostPerHour);
@@ -372,10 +472,11 @@ export async function calculatePerHourPricing(
 function buildPerHourTasks(tasks: any[]): PerHourTaskContext[] {
   return tasks.map((task) => {
     const template = task.taskTemplate;
-    const baseMinutes = task.baseMinutesOverride ?? (template?.baseMinutes ?? 0);
+    const baseMinutes =
+      task.baseMinutesOverride ?? task.estimatedMinutes ?? (template?.baseMinutes ?? 0);
     const perSqftMinutes = task.perSqftMinutesOverride ?? (template?.perSqftMinutes ?? 0);
-    const perUnitMinutes = template?.perUnitMinutes ?? 0;
-    const perRoomMinutes = template?.perRoomMinutes ?? 0;
+    const perUnitMinutes = task.perUnitMinutesOverride ?? (template?.perUnitMinutes ?? 0);
+    const perRoomMinutes = task.perRoomMinutesOverride ?? (template?.perRoomMinutes ?? 0);
 
     const templateFixtureMinutes: Record<string, number> = {};
     if (template?.fixtureMinutes) {

@@ -104,6 +104,25 @@ export interface CalculatePricingOptions {
   subcontractorPercentageOverride?: number; // Override plan's subcontractor percentage
   excludedAreaIds?: string[];
   excludedTaskIds?: string[];
+  facilityOverride?: FacilityPricingScopeOverride;
+}
+
+export interface FacilityPricingScopeAreaOverride {
+  id: string;
+  name: string;
+  areaTypeName?: string;
+  squareFeet: number;
+  floorType?: string;
+  conditionLevel?: string;
+  trafficLevel?: string;
+  quantity?: number;
+}
+
+export interface FacilityPricingScopeOverride {
+  facilityId: string;
+  facilityName: string;
+  buildingType?: string | null;
+  areas: FacilityPricingScopeAreaOverride[];
 }
 
 /**
@@ -118,6 +137,7 @@ export async function calculateFacilityPricing(
     taskComplexity = 'standard',
     pricingPlanId,
     excludedAreaIds = [],
+    facilityOverride,
   } = options;
 
   const pricingSettings = pricingPlanId
@@ -128,20 +148,38 @@ export async function calculateFacilityPricing(
   }
 
   // Get the facility with its areas
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    include: {
-      areas: {
-        where: {
-          archivedAt: null,
-          ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
-        },
+  const facility = facilityOverride
+    ? {
+        id: facilityOverride.facilityId,
+        name: facilityOverride.facilityName,
+        buildingType: facilityOverride.buildingType || 'other',
+        areas: facilityOverride.areas.map((area) => ({
+          id: area.id,
+          name: area.name,
+          squareFeet: area.squareFeet,
+          quantity: area.quantity ?? 1,
+          floorType: area.floorType || 'vct',
+          conditionLevel: area.conditionLevel || 'standard',
+          trafficLevel: area.trafficLevel || 'medium',
+          areaType: {
+            name: area.areaTypeName || area.name || 'Area',
+          },
+        })),
+      }
+    : await prisma.facility.findUnique({
+        where: { id: facilityId },
         include: {
-          areaType: true,
+          areas: {
+            where: {
+              archivedAt: null,
+              ...(excludedAreaIds.length > 0 ? { id: { notIn: excludedAreaIds } } : {}),
+            },
+            include: {
+              areaType: true,
+            },
+          },
         },
-      },
-    },
-  });
+      });
 
   if (!facility) {
     throw new Error('Facility not found');

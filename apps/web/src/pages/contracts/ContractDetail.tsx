@@ -27,6 +27,8 @@ import {
   Send,
   Eye,
   Mail,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -53,30 +55,26 @@ import {
   generateContractTerms,
   listContractAmendments as listContractAmendmentsApi,
   createContractAmendment as createContractAmendmentApi,
-  approveContractAmendment as approveContractAmendmentApi,
-  applyContractAmendment as applyContractAmendmentApi,
-  createAmendmentProposalFromContract as createAmendmentProposalFromContractApi,
+  getContractAmendment as getContractAmendmentApi,
+  recalculateContractAmendment as recalculateContractAmendmentApi,
+  updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
-import { getFacilityPricing, type FacilityPricingResult } from '../../lib/pricing';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import SendContractModal from '../../components/contracts/SendContractModal';
-import ClientServiceScheduleCard from '../../components/proposals/ClientServiceScheduleCard';
-import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
-import {
-  listAreaTypes,
-  listAreas,
-  listFacilityTasks,
-} from '../../lib/facilities';
+import { listAreaTypes } from '../../lib/facilities';
+import { listPricingSettings, type PricingSettings, type FacilityPricingResult } from '../../lib/pricing';
+import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { SUBCONTRACTOR_TIER_OPTIONS, tierToPercentage } from '../../lib/subcontractorTiers';
-import { CLEANING_FREQUENCIES } from '../facilities/facility-constants';
 import type {
   Contract,
   ContractAmendment,
+  ContractAmendmentWorkingScope,
   CreateContractAmendmentInput,
+  RecalculateContractAmendmentInput,
   ContractStatus,
   RenewContractInput,
   SendContractInput,
@@ -84,7 +82,7 @@ import type {
 } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User as SystemUser } from '../../types/user';
-import type { Area, FacilityTask } from '../../types/facility';
+import type { AreaType } from '../../types/facility';
 
 // Format address object into readable string
 const formatAddress = (address: any): string => {
@@ -225,65 +223,6 @@ const DAY_LABELS: Record<string, string> = {
   sunday: 'Sun',
 };
 
-const SCHEDULE_DAY_OPTIONS = [
-  { value: 'monday', label: 'Mon' },
-  { value: 'tuesday', label: 'Tue' },
-  { value: 'wednesday', label: 'Wed' },
-  { value: 'thursday', label: 'Thu' },
-  { value: 'friday', label: 'Fri' },
-  { value: 'saturday', label: 'Sat' },
-  { value: 'sunday', label: 'Sun' },
-];
-
-const SCHEDULE_DAY_ORDER = SCHEDULE_DAY_OPTIONS.map((day) => day.value);
-
-const expectedDaysForScheduleFrequency = (frequency: string): number => {
-  switch (frequency) {
-    case '1x_week':
-    case 'weekly':
-    case 'biweekly':
-    case 'bi_weekly':
-    case 'monthly':
-    case 'quarterly':
-      return 1;
-    case '2x_week':
-      return 2;
-    case '3x_week':
-      return 3;
-    case '4x_week':
-      return 4;
-    case '5x_week':
-    case 'daily':
-      return 5;
-    case '7x_week':
-      return 7;
-    default:
-      return 5;
-  }
-};
-
-const defaultDaysForScheduleFrequency = (frequency: string): string[] => {
-  switch (frequency) {
-    case '1x_week':
-    case 'weekly':
-    case 'biweekly':
-    case 'bi_weekly':
-    case 'monthly':
-    case 'quarterly':
-      return ['monday'];
-    case '2x_week':
-      return ['monday', 'thursday'];
-    case '3x_week':
-      return ['monday', 'wednesday', 'friday'];
-    case '4x_week':
-      return ['monday', 'tuesday', 'thursday', 'friday'];
-    case '7x_week':
-      return [...SCHEDULE_DAY_ORDER];
-    default:
-      return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-  }
-};
-
 const formatTime24h = (value: string) => {
   const [hourRaw, minuteRaw] = value.split(':');
   const hour = Number(hourRaw);
@@ -328,20 +267,6 @@ const SERVICE_FREQUENCIES = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const PROPOSAL_SCHEDULE_FREQUENCIES = [
-  { value: '1x_week', label: '1x per Week' },
-  { value: '2x_week', label: '2x per Week' },
-  { value: '3x_week', label: '3x per Week' },
-  { value: '4x_week', label: '4x per Week' },
-  { value: '5x_week', label: '5x per Week' },
-  { value: '7x_week', label: '7x per Week (Daily)' },
-  { value: 'daily', label: 'Daily (Weekdays)' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Bi-Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-];
-
 const BILLING_CYCLES = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
@@ -359,16 +284,87 @@ const CONTRACT_PIPELINE_STEPS = [
 
 type AssignmentMode = 'subcontractor_team' | 'internal_employee';
 type TermsDocumentAction = 'unchanged' | 'replace' | 'remove';
-type AmendmentAreaDraft = {
-  areaTypeId: string;
-  name: string;
-  squareFeet: string;
+
+const getDefaultAmendmentDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
 };
-type AmendmentTaskDraft = {
-  customName: string;
-  cleaningFrequency: string;
+
+const AMENDMENT_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  signed: 'Signed',
+  applied: 'Applied',
+  canceled: 'Canceled',
 };
-type AreaTypeOption = { id: string; name: string };
+
+const getAmendmentStatusVariant = (
+  status: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch (status) {
+    case 'approved':
+    case 'applied':
+    case 'signed':
+      return 'success';
+    case 'submitted':
+      return 'info';
+    case 'rejected':
+    case 'canceled':
+      return 'error';
+    default:
+      return 'warning';
+  }
+};
+
+const FLOOR_TYPE_OPTIONS = [
+  { value: 'vct', label: 'VCT' },
+  { value: 'carpet', label: 'Carpet' },
+  { value: 'hardwood', label: 'Hardwood' },
+  { value: 'tile', label: 'Tile' },
+  { value: 'concrete', label: 'Concrete' },
+  { value: 'epoxy', label: 'Epoxy' },
+];
+
+const CONDITION_OPTIONS = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' },
+];
+
+const TRAFFIC_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
+const TASK_FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+];
+
+const createTempId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const getWorkingScopeFromAmendment = (
+  amendment: ContractAmendment | null
+): ContractAmendmentWorkingScope => {
+  const workingSnapshot = [...(amendment?.snapshots || [])]
+    .reverse()
+    .find((snapshot) => snapshot.snapshotType === 'working');
+  const scope = (workingSnapshot?.scopeJson || {}) as ContractAmendmentWorkingScope;
+  return {
+    contract: scope.contract || null,
+    facility: scope.facility || null,
+    areas: Array.isArray(scope.areas) ? scope.areas : [],
+    tasks: Array.isArray(scope.tasks) ? scope.tasks : [],
+  };
+};
 
 const ContractDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -411,38 +407,6 @@ const ContractDetail = () => {
   const [activityRefresh, setActivityRefresh] = useState(0);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [renewing, setRenewing] = useState(false);
-  const [amendments, setAmendments] = useState<ContractAmendment[]>([]);
-  const [amendmentsLoading, setAmendmentsLoading] = useState(false);
-  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
-  const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
-  const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
-  const [amendmentPricingPreview, setAmendmentPricingPreview] =
-    useState<FacilityPricingResult | null>(null);
-  const [areaTypes, setAreaTypes] = useState<AreaTypeOption[]>([]);
-  const [existingAreasRaw, setExistingAreasRaw] = useState<Area[]>([]);
-  const [existingTasksRaw, setExistingTasksRaw] = useState<FacilityTask[]>([]);
-  const [activeAreaIndex, setActiveAreaIndex] = useState(0);
-  const [areasToArchive, setAreasToArchive] = useState<string[]>([]);
-  const [tasksToArchive, setTasksToArchive] = useState<string[]>([]);
-  const [areasToCreate, setAreasToCreate] = useState<AmendmentAreaDraft[]>([]);
-  const [tasksToCreateByArea, setTasksToCreateByArea] = useState<Record<string, AmendmentTaskDraft[]>>({});
-  const [newTaskDraftByArea, setNewTaskDraftByArea] = useState<Record<string, AmendmentTaskDraft>>({});
-  const [newAreaDraft, setNewAreaDraft] = useState<AmendmentAreaDraft>({
-    areaTypeId: '',
-    name: '',
-    squareFeet: '',
-  });
-  const [amendmentFormData, setAmendmentFormData] = useState<CreateContractAmendmentInput>({
-    title: '',
-    description: '',
-    effectiveDate: new Date().toISOString().slice(0, 10),
-    monthlyValue: null,
-    serviceFrequency: null,
-    paymentTerms: null,
-    billingCycle: null,
-    areaChanges: null,
-    taskChanges: null,
-  });
   const [renewalFormData, setRenewalFormData] = useState<RenewContractInput>({
     startDate: '',
     endDate: null,
@@ -455,12 +419,36 @@ const ContractDetail = () => {
     termsAndConditions: null,
     specialInstructions: null,
   });
+  const [amendments, setAmendments] = useState<ContractAmendment[]>([]);
+  const [amendmentsLoading, setAmendmentsLoading] = useState(false);
+  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
+  const [amendmentSubmitting, setAmendmentSubmitting] = useState(false);
+  const [amendmentDetailLoading, setAmendmentDetailLoading] = useState(false);
+  const [selectedAmendment, setSelectedAmendment] = useState<ContractAmendment | null>(null);
+  const [showAmendmentDetailModal, setShowAmendmentDetailModal] = useState(false);
+  const [amendmentPricing, setAmendmentPricing] = useState<FacilityPricingResult | null>(null);
+  const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
+  const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
+  const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
+  const [amendmentWorkingScope, setAmendmentWorkingScope] = useState<ContractAmendmentWorkingScope>({
+    areas: [],
+    tasks: [],
+  });
+  const [amendmentScopeDirty, setAmendmentScopeDirty] = useState(false);
+  const [collapsedAmendmentAreas, setCollapsedAmendmentAreas] = useState<Record<string, boolean>>({});
+  const [collapsedAmendmentTaskGroups, setCollapsedAmendmentTaskGroups] = useState<Record<string, boolean>>({});
+  const [amendmentFormData, setAmendmentFormData] = useState<CreateContractAmendmentInput>({
+    title: '',
+    effectiveDate: getDefaultAmendmentDate(),
+    reason: '',
+    summary: '',
+  });
 
   useEffect(() => {
     if (id) {
       fetchContract(id);
+      fetchAmendments(id);
       if (!isLimitedContractViewer) {
-        fetchAmendments(id);
         fetchTeams();
         fetchUsers();
       }
@@ -475,64 +463,33 @@ const ContractDetail = () => {
     return () => document.removeEventListener('click', handleClick);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!showAmendmentDetailModal || !selectedAmendment) return;
+    setAmendmentWorkingScope(getWorkingScopeFromAmendment(selectedAmendment));
+    const pricingSnapshot = selectedAmendment.pricingSnapshot as
+      | (FacilityPricingResult & { totalSquareFeet?: number })
+      | null
+      | undefined;
+    setAmendmentPricing(
+      pricingSnapshot && typeof pricingSnapshot.totalSquareFeet === 'number'
+        ? pricingSnapshot
+        : null
+    );
+    setAmendmentScopeDirty(false);
+    setCollapsedAmendmentAreas({});
+    setCollapsedAmendmentTaskGroups({});
+    if (areaTypes.length === 0) {
+      fetchAreaTypes();
+    }
+    if (pricingPlans.length === 0) {
+      fetchPricingPlans();
+    }
+  }, [showAmendmentDetailModal, selectedAmendment]);
+
   const refreshAll = (contractId: string) => {
     fetchContract(contractId);
-    if (!isLimitedContractViewer) {
-      fetchAmendments(contractId);
-    }
+    fetchAmendments(contractId);
     setActivityRefresh((n) => n + 1);
-  };
-
-  const fetchAmendments = async (contractId: string) => {
-    try {
-      setAmendmentsLoading(true);
-      const data = await listContractAmendmentsApi(contractId);
-      setAmendments(data);
-    } catch (error) {
-      console.error('Failed to fetch amendments:', error);
-      toast.error('Failed to load amendments');
-    } finally {
-      setAmendmentsLoading(false);
-    }
-  };
-
-  const fetchAmendmentOptions = async (facilityId: string) => {
-    try {
-      const [areaTypesResult, areasResult, tasksResult] = await Promise.allSettled([
-        listAreaTypes({ limit: 100 }),
-        listAreas({ facilityId, limit: 100 }),
-        listFacilityTasks({ facilityId, limit: 100 }),
-      ]);
-
-      const loadedAreas =
-        areasResult.status === 'fulfilled' ? areasResult.value.data || [] : [];
-      const loadedTasks =
-        tasksResult.status === 'fulfilled' ? tasksResult.value.data || [] : [];
-
-      const directAreaTypes =
-        areaTypesResult.status === 'fulfilled'
-          ? (areaTypesResult.value.data || []).map((type) => ({ id: type.id, name: type.name }))
-          : [];
-      const derivedAreaTypes = loadedAreas
-        .map((area) => ({
-          id: area.areaType.id,
-          name: area.areaType.name,
-        }))
-        .filter(
-          (type, index, self) => self.findIndex((item) => item.id === type.id) === index
-        );
-
-      setAreaTypes(directAreaTypes.length > 0 ? directAreaTypes : derivedAreaTypes);
-      setExistingAreasRaw(loadedAreas);
-      setActiveAreaIndex(0);
-      setExistingTasksRaw(loadedTasks);
-    } catch (error) {
-      console.error('Failed to load amendment options:', error);
-      setAreaTypes([]);
-      setExistingAreasRaw([]);
-      setExistingTasksRaw([]);
-      setActiveAreaIndex(0);
-    }
   };
 
   const fetchContract = async (contractId: string) => {
@@ -550,9 +507,6 @@ const ContractDetail = () => {
           ? new Date(data.assignmentOverrideEffectiveDate).toISOString().slice(0, 10)
           : ''
       );
-      if (!isLimitedContractViewer && data.facility?.id) {
-        await fetchAmendmentOptions(data.facility.id);
-      }
     } catch (error) {
       console.error('Failed to fetch contract:', error);
       toast.error('Failed to load contract');
@@ -789,6 +743,252 @@ const ContractDetail = () => {
     }
   };
 
+  const fetchAreaTypes = async () => {
+    try {
+      const response = await listAreaTypes({ limit: 100 });
+      setAreaTypes(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch area types:', error);
+      toast.error('Failed to load area types');
+    }
+  };
+
+  const fetchPricingPlans = async () => {
+    try {
+      const response = await listPricingSettings({ limit: 100, isActive: true });
+      setPricingPlans(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch pricing plans:', error);
+      toast.error('Failed to load pricing plans');
+    }
+  };
+
+  const fetchAmendments = async (contractId: string) => {
+    try {
+      setAmendmentsLoading(true);
+      const data = await listContractAmendmentsApi(contractId);
+      setAmendments(data);
+    } catch (error) {
+      console.error('Failed to fetch amendments:', error);
+      toast.error('Failed to load amendments');
+    } finally {
+      setAmendmentsLoading(false);
+    }
+  };
+
+  const openAmendmentModal = () => {
+    if (!contract) return;
+    setAmendmentFormData({
+      title: `${contract.title} Amendment`,
+      effectiveDate: getDefaultAmendmentDate(),
+      reason: '',
+      summary: '',
+    });
+    setShowAmendmentModal(true);
+  };
+
+  const handleCreateAmendment = async () => {
+    if (!contract) return;
+    if (!amendmentFormData.effectiveDate) {
+      toast.error('Effective date is required');
+      return;
+    }
+
+    try {
+      setAmendmentSubmitting(true);
+      const created = await createContractAmendmentApi(contract.id, amendmentFormData);
+      setShowAmendmentModal(false);
+      setSelectedAmendment(created);
+      setShowAmendmentDetailModal(true);
+      toast.success('Amendment draft created');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to create amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleOpenAmendmentDetail = async (amendmentId: string) => {
+    if (!contract) return;
+    try {
+      setAmendmentDetailLoading(true);
+      const detail = await getContractAmendmentApi(contract.id, amendmentId);
+      setSelectedAmendment(detail);
+      setShowAmendmentDetailModal(true);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to load amendment detail');
+    } finally {
+      setAmendmentDetailLoading(false);
+    }
+  };
+
+  const updateAmendmentArea = (
+    areaKey: string,
+    updates: Partial<ContractAmendmentWorkingScope['areas'][number]>
+  ) => {
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      areas: current.areas.map((area) => {
+        const key = area.id || area.tempId;
+        return key === areaKey ? { ...area, ...updates } : area;
+      }),
+    }));
+    setAmendmentScopeDirty(true);
+  };
+
+  const updateAmendmentTask = (
+    taskKey: string,
+    updates: Partial<ContractAmendmentWorkingScope['tasks'][number]>
+  ) => {
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => {
+        const key = task.id || task.tempId;
+        return key === taskKey ? { ...task, ...updates } : task;
+      }),
+    }));
+    setAmendmentScopeDirty(true);
+  };
+
+  const addDraftArea = () => {
+    const defaultAreaType = areaTypes[0];
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      areas: [
+        ...current.areas,
+        {
+          tempId: createTempId('area'),
+          areaTypeId: defaultAreaType?.id || null,
+          areaType: defaultAreaType
+            ? { id: defaultAreaType.id, name: defaultAreaType.name }
+            : { name: 'Area' },
+          name: '',
+          quantity: 1,
+          squareFeet: 0,
+          floorType: 'vct',
+          conditionLevel: 'standard',
+          trafficLevel: 'medium',
+          roomCount: 0,
+          unitCount: 0,
+        },
+      ],
+    }));
+    setAmendmentScopeDirty(true);
+  };
+
+  const removeDraftArea = (areaKey: string) => {
+    setAmendmentWorkingScope((current) => {
+      const nextAreas = current.areas.filter((area) => (area.id || area.tempId) !== areaKey);
+      return {
+        ...current,
+        areas: nextAreas,
+        tasks: current.tasks.map((task) =>
+          task.areaId === areaKey ? { ...task, areaId: null } : task
+        ),
+      };
+    });
+    setAmendmentScopeDirty(true);
+  };
+
+  const addDraftTask = (areaId?: string | null) => {
+    const firstArea = amendmentWorkingScope.areas[0];
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      tasks: [
+        ...current.tasks,
+        {
+          tempId: createTempId('task'),
+          areaId: areaId === undefined ? firstArea?.id || firstArea?.tempId || null : areaId,
+          customName: '',
+          cleaningFrequency: 'daily',
+          estimatedMinutes: 0,
+        },
+      ],
+    }));
+    setAmendmentScopeDirty(true);
+  };
+
+  const removeDraftTask = (taskKey: string) => {
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      tasks: current.tasks.filter((task) => (task.id || task.tempId) !== taskKey),
+    }));
+    setAmendmentScopeDirty(true);
+  };
+
+  const handleSaveAmendmentScope = async () => {
+    if (!contract || !selectedAmendment) return;
+    try {
+      setAmendmentSubmitting(true);
+      const updated = await updateContractAmendmentApi(contract.id, selectedAmendment.id, {
+        workingScope: amendmentWorkingScope,
+        pricingPlanId: selectedAmendment.pricingPlanId,
+        newServiceFrequency: selectedAmendment.newServiceFrequency,
+      });
+      setSelectedAmendment(updated);
+      setAmendmentScopeDirty(false);
+      toast.success('Amendment draft saved');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to save amendment draft');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleRecalculateAmendment = async () => {
+    if (!contract || !selectedAmendment) return;
+    try {
+      setAmendmentPricingLoading(true);
+      const payload: RecalculateContractAmendmentInput = {
+        pricingPlanId: selectedAmendment.pricingPlanId,
+        newServiceFrequency: selectedAmendment.newServiceFrequency,
+        newServiceSchedule: selectedAmendment.newServiceSchedule,
+        workingScope: amendmentWorkingScope,
+      };
+      const result = await recalculateContractAmendmentApi(
+        contract.id,
+        selectedAmendment.id,
+        payload
+      );
+      setSelectedAmendment(result.amendment);
+      setAmendmentPricing(result.pricing);
+      setAmendmentScopeDirty(false);
+      toast.success('Amendment price recalculated');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to recalculate amendment');
+    } finally {
+      setAmendmentPricingLoading(false);
+    }
+  };
+
+  const handleSubmitAmendmentDraft = async () => {
+    if (!contract || !selectedAmendment) return;
+    if (amendmentScopeDirty) {
+      toast.error('Save or recalculate the amendment before submitting');
+      return;
+    }
+    if (!selectedAmendment.pricingSnapshot) {
+      toast.error('Recalculate the amendment price before submitting');
+      return;
+    }
+    try {
+      setAmendmentSubmitting(true);
+      const updated = await updateContractAmendmentApi(contract.id, selectedAmendment.id, {
+        status: 'submitted',
+      });
+      setSelectedAmendment(updated);
+      toast.success('Amendment submitted');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to submit amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
   const handleTermsDocumentUpload = async (file: File | null) => {
     if (!file) return;
     const allowedTypes = new Set([
@@ -832,243 +1032,6 @@ const ContractDetail = () => {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to send contract');
       throw error;
-    }
-  };
-
-  const openAmendmentModal = () => {
-    const baseSchedule = contract?.serviceSchedule || null;
-    setAreasToArchive([]);
-    setTasksToArchive([]);
-    setAreasToCreate([]);
-    setTasksToCreateByArea({});
-    setNewTaskDraftByArea({});
-    setAmendmentPricingPreview(null);
-    setActiveAreaIndex(0);
-    setNewAreaDraft({
-      areaTypeId: areaTypes[0]?.id || '',
-      name: '',
-      squareFeet: '',
-    });
-    setAmendmentFormData({
-      title: '',
-      description: '',
-      effectiveDate: new Date().toISOString().slice(0, 10),
-      monthlyValue: Number(contract?.monthlyValue ?? 0) || null,
-      endDate: contract?.endDate ?? null,
-      serviceFrequency: contract?.serviceFrequency ?? null,
-      serviceSchedule: baseSchedule,
-      billingCycle: contract?.billingCycle ?? null,
-      paymentTerms: contract?.paymentTerms ?? null,
-      autoRenew: contract?.autoRenew ?? null,
-      renewalNoticeDays: contract?.renewalNoticeDays ?? null,
-      termsAndConditions: contract?.termsAndConditions ?? null,
-      specialInstructions: contract?.specialInstructions ?? null,
-      areaChanges: null,
-      taskChanges: null,
-    });
-    setShowAmendmentModal(true);
-  };
-
-  const addAreaChange = () => {
-    if (!newAreaDraft.areaTypeId) {
-      toast.error('Select area type first');
-      return;
-    }
-    if (!newAreaDraft.name.trim()) {
-      toast.error('Area name is required');
-      return;
-    }
-    setAreasToCreate((prev) => [...prev, { ...newAreaDraft, name: newAreaDraft.name.trim() }]);
-    setNewAreaDraft((prev) => ({
-      ...prev,
-      name: '',
-      squareFeet: '',
-    }));
-  };
-
-  const getNewTaskDraft = (areaId: string): AmendmentTaskDraft =>
-    newTaskDraftByArea[areaId] || {
-      customName: '',
-      cleaningFrequency: 'daily',
-    };
-
-  const updateAreaTaskDraft = (areaId: string, patch: Partial<AmendmentTaskDraft>) => {
-    setNewTaskDraftByArea((prev) => ({
-      ...prev,
-      [areaId]: {
-        ...getNewTaskDraft(areaId),
-        ...patch,
-      },
-    }));
-  };
-
-  const addTaskToArea = (areaId: string) => {
-    const draft = getNewTaskDraft(areaId);
-    if (!draft.customName.trim()) {
-      toast.error('Task name is required');
-      return;
-    }
-
-    setTasksToCreateByArea((prev) => ({
-      ...prev,
-      [areaId]: [...(prev[areaId] || []), { ...draft, customName: draft.customName.trim() }],
-    }));
-    setNewTaskDraftByArea((prev) => ({
-      ...prev,
-      [areaId]: {
-        customName: '',
-        cleaningFrequency: draft.cleaningFrequency || 'daily',
-      },
-    }));
-  };
-
-  const removePendingTask = (areaId: string, index: number) => {
-    setTasksToCreateByArea((prev) => ({
-      ...prev,
-      [areaId]: (prev[areaId] || []).filter((_, itemIndex) => itemIndex !== index),
-    }));
-  };
-
-  const toggleAreaArchive = (areaId: string) => {
-    setAreasToArchive((prev) =>
-      prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]
-    );
-  };
-
-  const toggleTaskArchive = (taskId: string) => {
-    setTasksToArchive((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
-    );
-  };
-
-  const handleCreateAmendment = async () => {
-    if (!contract) return;
-    try {
-      setAmendmentSubmitting(true);
-      const proposal = await createAmendmentProposalFromContractApi(contract.id);
-      toast.success('Amendment proposal created');
-      navigate(`/proposals/${proposal.id}/edit`);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to create amendment proposal');
-    } finally {
-      setAmendmentSubmitting(false);
-    }
-  };
-
-  const handleRecalculateAmendmentPricing = async () => {
-    if (!contract?.facility?.id) {
-      toast.error('Facility is required to recalculate pricing');
-      return;
-    }
-
-    const frequency =
-      amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week';
-
-    try {
-      setAmendmentPricingLoading(true);
-      const pricing = await getFacilityPricing(contract.facility.id, frequency);
-      setAmendmentFormData((prev) => ({
-        ...prev,
-        monthlyValue: Number(pricing.monthlyTotal.toFixed(2)),
-      }));
-      setAmendmentPricingPreview(pricing);
-      toast.success('Monthly value recalculated from pricing engine');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to recalculate pricing');
-    } finally {
-      setAmendmentPricingLoading(false);
-    }
-  };
-
-  const updateAmendmentServiceSchedule = (patch: Record<string, unknown>) => {
-    setAmendmentFormData((prev) => {
-      const currentFrequency = prev.serviceFrequency || contract?.serviceFrequency || '5x_week';
-      const currentSchedule =
-        (prev.serviceSchedule as Record<string, unknown> | null) ||
-        (contract?.serviceSchedule as Record<string, unknown> | null) ||
-        {};
-      const merged: Record<string, unknown> = {
-        ...currentSchedule,
-        ...patch,
-      };
-
-      const days = Array.isArray(merged.days)
-        ? (merged.days as string[]).filter((day) => SCHEDULE_DAY_ORDER.includes(day))
-        : defaultDaysForScheduleFrequency(currentFrequency);
-
-      merged.days = days;
-      if (typeof merged.allowedWindowStart !== 'string' || !merged.allowedWindowStart) {
-        merged.allowedWindowStart = '18:00';
-      }
-      if (typeof merged.allowedWindowEnd !== 'string' || !merged.allowedWindowEnd) {
-        merged.allowedWindowEnd = '06:00';
-      }
-
-      return {
-        ...prev,
-        serviceSchedule: merged,
-      };
-    });
-  };
-
-  const handleAmendmentScheduleFrequencyChange = (value: string) => {
-    const frequency = value || '5x_week';
-    setAmendmentFormData((prev) => ({
-      ...prev,
-      serviceFrequency: frequency,
-    }));
-    updateAmendmentServiceSchedule({
-      days: defaultDaysForScheduleFrequency(frequency),
-    });
-  };
-
-  const toggleAmendmentScheduleDay = (day: string) => {
-    const frequency =
-      amendmentFormData.serviceFrequency || contract?.serviceFrequency || '5x_week';
-    const expectedDays = expectedDaysForScheduleFrequency(frequency);
-    const currentDaysRaw =
-      (amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.days;
-    const currentDays = Array.isArray(currentDaysRaw)
-      ? (currentDaysRaw as string[])
-      : defaultDaysForScheduleFrequency(frequency);
-    const hasDay = currentDays.includes(day);
-    let nextDays: string[];
-
-    if (hasDay) {
-      nextDays = currentDays.filter((item) => item !== day);
-      if (nextDays.length === 0) nextDays = [day];
-    } else if (currentDays.length < expectedDays) {
-      nextDays = [...currentDays, day];
-    } else {
-      nextDays = [...currentDays.slice(1), day];
-    }
-
-    const sorted = SCHEDULE_DAY_ORDER.filter((item) => nextDays.includes(item));
-    updateAmendmentServiceSchedule({ days: sorted });
-  };
-
-  const handleApproveAmendment = async (amendmentId: string) => {
-    if (!contract) return;
-    try {
-      await approveContractAmendmentApi(contract.id, amendmentId);
-      toast.success('Amendment approved');
-      refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to approve amendment');
-    }
-  };
-
-  const handleApplyAmendment = async (amendmentId: string) => {
-    if (!contract) return;
-    if (!confirm('Apply this amendment now? This will update contract and future scheduled recurring jobs.')) {
-      return;
-    }
-    try {
-      await applyContractAmendmentApi(contract.id, amendmentId);
-      toast.success('Amendment applied');
-      refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to apply amendment');
     }
   };
 
@@ -1121,6 +1084,15 @@ const ContractDetail = () => {
   };
   const internalEmployeeUsers = users.filter(isInternalEmployeeOption);
   const hasCurrentAssignment = Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id);
+  const amendmentAreaTaskGroups = amendmentWorkingScope.areas.map((area, index) => {
+    const areaKey = area.id || area.tempId || `draft-area-${index + 1}`;
+    return {
+      key: areaKey,
+      label: area.name || area.areaType?.name || 'Unnamed Area',
+      tasks: amendmentWorkingScope.tasks.filter((task) => task.areaId === areaKey),
+    };
+  });
+  const facilityWideDraftTasks = amendmentWorkingScope.tasks.filter((task) => !task.areaId);
   const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
   const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
   const assignmentWillChange =
@@ -1128,8 +1100,6 @@ const ContractDetail = () => {
     selectedAssignmentUserId !== (contract.assignedToUser?.id || null);
   const hasNextAssignment = Boolean(selectedAssignmentTeamId || selectedAssignmentUserId);
   const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentWillChange;
-  const canManageAmendments = !isLimitedContractViewer && canWriteContracts;
-  const canApproveAmendments = userRole === 'owner' || userRole === 'admin';
 
   return (
     <div className="space-y-6">
@@ -1191,10 +1161,6 @@ const ContractDetail = () => {
             )}
             {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
               <>
-                <Button variant="secondary" onClick={openAmendmentModal}>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Amendment
-                </Button>
                 <Button onClick={openRenewModal}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Renew
@@ -2081,91 +2047,81 @@ const ContractDetail = () => {
         </Card>
       )}
 
-      {canManageAmendments && (
+      {!isLimitedContractViewer && (
         <Card>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">New Amendment Proposal</h2>
-              <p className="text-sm text-gray-400">
-                Create an amendment proposal from this active contract and continue editing in the proposal builder.
+              <h2 className="text-lg font-semibold text-white">Amendments</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Draft and track scope changes against the active contract without touching the live facility yet.
               </p>
             </div>
-            <Button onClick={handleCreateAmendment} isLoading={amendmentSubmitting}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              New Amendment Proposal
-            </Button>
+            {canWriteContracts && contract.status === 'active' && (
+              <Button onClick={openAmendmentModal}>
+                <FileText className="mr-2 h-4 w-4" />
+                Create Amendment
+              </Button>
+            )}
           </div>
-          {amendmentsLoading ? (
-            <div className="py-6 text-center text-sm text-gray-400">Loading amendments...</div>
-          ) : amendments.length === 0 ? (
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 text-sm text-gray-400">
-              No amendments yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {amendments.map((amendment) => (
-                <div
-                  key={amendment.id}
-                  className="rounded-lg border border-white/10 bg-white/[0.02] p-4"
-                >
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-white">{amendment.title}</div>
-                    <Badge
-                      variant={
-                        amendment.status === 'applied'
-                          ? 'success'
-                          : amendment.status === 'approved'
-                            ? 'info'
-                            : amendment.status === 'canceled'
-                              ? 'error'
-                              : 'warning'
-                      }
-                    >
-                      {amendment.status.replace(/_/g, ' ')}
-                    </Badge>
-                  </div>
-                  {amendment.description && (
-                    <p className="mb-2 text-sm text-gray-300">{amendment.description}</p>
-                  )}
-                  <div className="grid gap-2 text-xs text-gray-400 sm:grid-cols-2">
-                    <div>
-                      Effective: <span className="text-gray-200">{formatDate(amendment.effectiveDate)}</span>
-                    </div>
-                    <div>
-                      Created: <span className="text-gray-200">{formatDate(amendment.createdAt)}</span>
-                    </div>
-                    <div>
-                      Proposed by:{' '}
-                      <span className="text-gray-200">{amendment.proposedByUser.fullName}</span>
-                    </div>
-                    {amendment.approvedByUser && (
-                      <div>
-                        Approved by:{' '}
-                        <span className="text-gray-200">{amendment.approvedByUser.fullName}</span>
+
+          <div className="mt-4 space-y-3">
+            {amendmentsLoading ? (
+              <div className="text-sm text-gray-400">Loading amendments...</div>
+            ) : amendments.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 px-4 py-5 text-sm text-gray-400">
+                No amendments yet.
+              </div>
+            ) : (
+              amendments.map((amendment) => {
+                const snapshotCount = amendment.snapshots?.length || 0;
+                return (
+                  <div
+                    key={amendment.id}
+                    className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-medium text-white">
+                            Amendment #{amendment.amendmentNumber}
+                          </div>
+                          <Badge variant={getAmendmentStatusVariant(amendment.status)}>
+                            {AMENDMENT_STATUS_LABELS[amendment.status] || amendment.status}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 text-sm text-gray-300">
+                          {amendment.title}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          Effective {formatDate(amendment.effectiveDate)} · Old {formatCurrency(amendment.oldMonthlyValue)}
+                          {amendment.newMonthlyValue != null
+                            ? ` -> New ${formatCurrency(amendment.newMonthlyValue)}`
+                            : ''}
+                        </div>
+                        {amendment.summary && (
+                          <div className="mt-1 text-xs text-gray-500">{amendment.summary}</div>
+                        )}
+                        {snapshotCount > 0 && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            {snapshotCount} snapshot{snapshotCount === 1 ? '' : 's'}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {canApproveAmendments &&
-                      (amendment.status === 'draft' || amendment.status === 'pending_approval') && (
+                      <div className="flex gap-2">
                         <Button
-                          size="sm"
                           variant="secondary"
-                          onClick={() => handleApproveAmendment(amendment.id)}
+                          size="sm"
+                          onClick={() => handleOpenAmendmentDetail(amendment.id)}
                         >
-                          Approve
+                          View
                         </Button>
-                      )}
-                    {canApproveAmendments && amendment.status === 'approved' && (
-                      <Button size="sm" onClick={() => handleApplyAmendment(amendment.id)}>
-                        Apply
-                      </Button>
-                    )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </Card>
       )}
 
@@ -2183,341 +2139,6 @@ const ContractDetail = () => {
           onSend={handleSend}
         />
       )}
-
-      <Modal
-        isOpen={showAmendmentModal}
-        onClose={() => setShowAmendmentModal(false)}
-        title="Create Contract Amendment"
-        size="2xl"
-      >
-        <div className="space-y-5">
-          <div className="rounded-xl border border-primary-500/30 bg-gradient-to-r from-primary-500/20 via-primary-400/10 to-transparent px-4 py-3">
-            <div className="text-sm font-semibold text-white">Amendment Workspace</div>
-            <div className="mt-1 text-xs text-primary-100/90">
-              Update pricing, then review areas and tasks card-by-card before saving.
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
-            <Input
-              label="Title *"
-              value={amendmentFormData.title}
-              onChange={(e) =>
-                setAmendmentFormData((prev) => ({ ...prev, title: e.target.value }))
-              }
-              placeholder="Scope change for April"
-            />
-            <Textarea
-              label="Description"
-              rows={2}
-              value={amendmentFormData.description || ''}
-              onChange={(e) =>
-                setAmendmentFormData((prev) => ({ ...prev, description: e.target.value || null }))
-              }
-              placeholder="What changed and why"
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="Effective Date *"
-                type="date"
-                value={amendmentFormData.effectiveDate}
-                onChange={(e) =>
-                  setAmendmentFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))
-                }
-              />
-              <Input
-                label="Monthly Value"
-                type="number"
-                step="0.01"
-                value={amendmentFormData.monthlyValue ?? ''}
-                onChange={(e) =>
-                  setAmendmentFormData((prev) => ({
-                    ...prev,
-                    monthlyValue: e.target.value ? Number(e.target.value) : null,
-                  }))
-                }
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleRecalculateAmendmentPricing}
-                isLoading={amendmentPricingLoading}
-              >
-                Recalculate Price
-              </Button>
-            </div>
-            <ClientServiceScheduleCard
-              frequencyValue={amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week'}
-              frequencyOptions={PROPOSAL_SCHEDULE_FREQUENCIES}
-              allowedWindowStart={
-                ((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.allowedWindowStart as string) ||
-                ((contract.serviceSchedule as Record<string, unknown> | null)?.allowedWindowStart as string) ||
-                '18:00'
-              }
-              allowedWindowEnd={
-                ((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.allowedWindowEnd as string) ||
-                ((contract.serviceSchedule as Record<string, unknown> | null)?.allowedWindowEnd as string) ||
-                '06:00'
-              }
-              dayOptions={SCHEDULE_DAY_OPTIONS}
-              selectedDays={
-                (Array.isArray((amendmentFormData.serviceSchedule as Record<string, unknown> | null)?.days)
-                  ? ((amendmentFormData.serviceSchedule as Record<string, unknown>).days as string[])
-                  : getScheduleDays(amendmentFormData.serviceSchedule ?? contract.serviceSchedule)) ||
-                defaultDaysForScheduleFrequency(amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week')
-              }
-              requiredDays={expectedDaysForScheduleFrequency(
-                amendmentFormData.serviceFrequency || contract.serviceFrequency || '5x_week'
-              )}
-              onFrequencyChange={handleAmendmentScheduleFrequencyChange}
-              onAllowedWindowStartChange={(value) =>
-                updateAmendmentServiceSchedule({ allowedWindowStart: value || '00:00' })
-              }
-              onAllowedWindowEndChange={(value) =>
-                updateAmendmentServiceSchedule({ allowedWindowEnd: value || '23:59' })
-              }
-              onToggleDay={toggleAmendmentScheduleDay}
-            />
-            <div className="grid grid-cols-1 gap-4">
-              <Input
-                label="Payment Terms"
-                value={amendmentFormData.paymentTerms ?? ''}
-                onChange={(e) =>
-                  setAmendmentFormData((prev) => ({
-                    ...prev,
-                    paymentTerms: e.target.value || null,
-                  }))
-                }
-                placeholder="Net 30"
-              />
-            </div>
-          </div>
-
-          {amendmentPricingPreview && (
-            <PricingBreakdownPanel pricing={amendmentPricingPreview} />
-          )}
-
-          <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-white">Areas and Tasks</div>
-              <span className="rounded-full border border-primary-400/40 bg-primary-500/20 px-2.5 py-1 text-[11px] font-medium text-primary-100">
-                Review Per Area
-              </span>
-            </div>
-            {existingAreasRaw.length === 0 ? (
-              <div className="rounded border border-dashed border-white/10 px-3 py-4 text-sm text-gray-400">
-                No existing areas found on this facility.
-              </div>
-            ) : (
-              (() => {
-                const safeIndex = Math.min(activeAreaIndex, Math.max(existingAreasRaw.length - 1, 0));
-                const area = existingAreasRaw[safeIndex];
-                if (!area) return null;
-
-                const areaName = area.name || `Area ${area.id.slice(0, 6)}`;
-                const areaTasks = existingTasksRaw.filter((task) => task.area?.id === area.id);
-                const isArchived = areasToArchive.includes(area.id);
-                const pendingTasks = tasksToCreateByArea[area.id] || [];
-                const taskDraft = getNewTaskDraft(area.id);
-
-                return (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-primary-500/20 bg-primary-500/10 px-3 py-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveAreaIndex((prev) => Math.max(prev - 1, 0))}
-                        disabled={safeIndex === 0}
-                      >
-                        Back
-                      </Button>
-                      <div className="text-xs font-medium text-primary-100">
-                        Area {safeIndex + 1} of {existingAreasRaw.length}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setActiveAreaIndex((prev) => Math.min(prev + 1, existingAreasRaw.length - 1))
-                        }
-                        disabled={safeIndex >= existingAreasRaw.length - 1}
-                      >
-                        Next
-                      </Button>
-                    </div>
-
-                    <div className="rounded-xl border border-white/10 bg-white/[0.02] shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5">
-                        <div className="text-sm font-semibold text-white">{areaName}</div>
-                        <Button
-                          variant={isArchived ? 'secondary' : 'ghost'}
-                          size="sm"
-                          onClick={() => toggleAreaArchive(area.id)}
-                        >
-                          {isArchived ? 'Undo Remove Area' : 'Remove Area'}
-                        </Button>
-                      </div>
-
-                      <div className="space-y-3 p-3.5">
-                        <div className="text-xs text-gray-400">Existing tasks ({areaTasks.length})</div>
-                        <div className="space-y-2">
-                          {areaTasks.length === 0 ? (
-                            <div className="text-sm text-gray-500">No tasks in this area yet.</div>
-                          ) : (
-                            areaTasks.map((task) => {
-                              const taskName = task.customName || task.taskTemplate?.name || 'Unnamed task';
-                              const isTaskArchived = tasksToArchive.includes(task.id);
-                              return (
-                                <div
-                                  key={task.id}
-                                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm"
-                                >
-                                  <span className="text-gray-200">
-                                    {taskName} ({task.cleaningFrequency})
-                                  </span>
-                                  <Button
-                                    variant={isTaskArchived ? 'secondary' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => toggleTaskArchive(task.id)}
-                                  >
-                                    {isTaskArchived ? 'Undo' : 'Remove'}
-                                  </Button>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        <div className="border-t border-white/10 pt-3">
-                          <div className="mb-2 text-xs text-gray-400">Add task to this area</div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <Input
-                              label="Task Name"
-                              value={taskDraft.customName}
-                              onChange={(e) =>
-                                updateAreaTaskDraft(area.id, { customName: e.target.value })
-                              }
-                              placeholder="Enter custom task"
-                            />
-                            <Select
-                              label="Frequency"
-                              options={CLEANING_FREQUENCIES}
-                              value={taskDraft.cleaningFrequency}
-                              onChange={(value) =>
-                                updateAreaTaskDraft(area.id, {
-                                  cleaningFrequency: value || 'daily',
-                                })
-                              }
-                            />
-                            <div className="flex items-end">
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => addTaskToArea(area.id)}
-                              >
-                                Add Task
-                              </Button>
-                            </div>
-                          </div>
-                          {pendingTasks.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {pendingTasks.map((task, index) => (
-                                <div
-                                  key={`${area.id}-${index}`}
-                                  className="flex items-center justify-between rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
-                                >
-                                  <span className="text-emerald-100">
-                                    New: {task.customName} ({task.cleaningFrequency})
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removePendingTask(area.id, index)}
-                                  >
-                                    Remove
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-
-            <div className="border-t border-white/10 pt-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Add New Area</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Select
-                  label="Area Type"
-                  options={areaTypes.map((item) => ({ value: item.id, label: item.name }))}
-                  value={newAreaDraft.areaTypeId}
-                  onChange={(value) => setNewAreaDraft((prev) => ({ ...prev, areaTypeId: value }))}
-                  placeholder="Select area type"
-                />
-                <Input
-                  label="Area Name"
-                  value={newAreaDraft.name}
-                  onChange={(e) => setNewAreaDraft((prev) => ({ ...prev, name: e.target.value }))}
-                />
-                <Input
-                  label="Square Feet"
-                  type="number"
-                  value={newAreaDraft.squareFeet}
-                  onChange={(e) =>
-                    setNewAreaDraft((prev) => ({ ...prev, squareFeet: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="mt-3">
-                <Button variant="secondary" size="sm" onClick={addAreaChange}>
-                  Add Area
-                </Button>
-              </div>
-              {areasToCreate.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {areasToCreate.map((area, index) => (
-                    <div
-                      key={`${area.name}-${index}`}
-                      className="flex items-center justify-between rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm"
-                    >
-                      <span className="text-emerald-100">
-                        New area: {area.name} ({area.squareFeet || 'n/a'} sqft)
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setAreasToCreate((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
-            Apply flow: create amendment -&gt; approve -&gt; apply. Applying updates contract values and
-            regenerates future recurring scheduled jobs from the effective date.
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowAmendmentModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateAmendment} isLoading={amendmentSubmitting}>
-              Save Amendment
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Renewal Modal */}
       <Modal
@@ -2671,9 +2292,557 @@ const ContractDetail = () => {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={showAmendmentModal}
+        onClose={() => setShowAmendmentModal(false)}
+        title="Create Amendment Draft"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4 text-sm text-gray-300">
+            This creates an amendment draft with a snapshot of the current contract and facility scope. The live contract and facility are not changed yet.
+          </div>
+          <Input
+            label="Title"
+            value={amendmentFormData.title || ''}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({ ...prev, title: e.target.value }))
+            }
+          />
+          <Input
+            label="Effective Date"
+            type="date"
+            value={amendmentFormData.effectiveDate || ''}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({
+                ...prev,
+                effectiveDate: e.target.value,
+              }))
+            }
+          />
+          <Textarea
+            label="Reason"
+            rows={3}
+            value={amendmentFormData.reason || ''}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({ ...prev, reason: e.target.value }))
+            }
+          />
+          <Textarea
+            label="Summary"
+            rows={3}
+            value={amendmentFormData.summary || ''}
+            onChange={(e) =>
+              setAmendmentFormData((prev) => ({ ...prev, summary: e.target.value }))
+            }
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowAmendmentModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAmendment} isLoading={amendmentSubmitting}>
+              Create Draft
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showAmendmentDetailModal}
+        onClose={() => setShowAmendmentDetailModal(false)}
+        title={
+          selectedAmendment
+            ? `Amendment #${selectedAmendment.amendmentNumber}`
+            : 'Amendment Detail'
+        }
+        size="2xl"
+      >
+        {amendmentDetailLoading || !selectedAmendment ? (
+          <div className="py-8 text-sm text-gray-400">Loading amendment detail...</div>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={getAmendmentStatusVariant(selectedAmendment.status)}>
+                {AMENDMENT_STATUS_LABELS[selectedAmendment.status] || selectedAmendment.status}
+              </Badge>
+              <div className="text-sm text-gray-400">
+                Effective {formatDate(selectedAmendment.effectiveDate)}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="text-sm font-medium text-white">{selectedAmendment.title}</div>
+              {selectedAmendment.reason && (
+                <div className="mt-2 text-sm text-gray-300">{selectedAmendment.reason}</div>
+              )}
+              {selectedAmendment.summary && (
+                <div className="mt-2 text-sm text-gray-400">{selectedAmendment.summary}</div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-gray-400">Old Monthly</div>
+                <div className="mt-1 text-lg font-semibold text-white">
+                  {formatCurrency(selectedAmendment.oldMonthlyValue)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-gray-400">New Monthly</div>
+                <div className="mt-1 text-lg font-semibold text-white">
+                  {selectedAmendment.newMonthlyValue != null
+                    ? formatCurrency(selectedAmendment.newMonthlyValue)
+                    : 'Pending'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-gray-400">Delta</div>
+                <div className="mt-1 text-lg font-semibold text-white">
+                  {selectedAmendment.monthlyDelta != null
+                    ? formatCurrency(selectedAmendment.monthlyDelta)
+                    : 'Pending'}
+                </div>
+              </div>
+            </div>
+
+            {selectedAmendment.status === 'draft' && canWriteContracts && (
+              <div className="space-y-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-white">Draft Scope Editor</div>
+                    <div className="mt-1 text-xs text-gray-400">
+                      Edit areas and tasks here, then recalculate the amendment before submitting.
+                    </div>
+                  </div>
+                  {amendmentScopeDirty && (
+                    <Badge variant="warning">Unsaved changes</Badge>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Select
+                    label="Pricing Plan"
+                    options={pricingPlans.map((plan) => ({ value: plan.id, label: plan.name }))}
+                    value={selectedAmendment.pricingPlanId || ''}
+                    onChange={(value) => {
+                      setSelectedAmendment((current) =>
+                        current ? { ...current, pricingPlanId: value || null } : current
+                      );
+                      setAmendmentScopeDirty(true);
+                    }}
+                  />
+                  <Select
+                    label="Service Frequency"
+                    options={SERVICE_FREQUENCIES.filter((option) => option.value !== 'custom')}
+                    value={selectedAmendment.newServiceFrequency || ''}
+                    onChange={(value) => {
+                      setSelectedAmendment((current) =>
+                        current ? { ...current, newServiceFrequency: (value || null) as any } : current
+                      );
+                      setAmendmentScopeDirty(true);
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-white">Areas</div>
+                    <Button size="sm" variant="secondary" onClick={addDraftArea}>
+                      Add Area
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {amendmentWorkingScope.areas.map((area) => {
+                      const areaKey = area.id || area.tempId || createTempId('area');
+                      const isCollapsed = collapsedAmendmentAreas[areaKey] ?? false;
+                      return (
+                        <div key={areaKey} className="rounded-lg border border-white/10 bg-navy-darker/40">
+                          <div className="flex items-center justify-between gap-3 px-3 py-3">
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 text-left"
+                              onClick={() =>
+                                setCollapsedAmendmentAreas((current) => ({
+                                  ...current,
+                                  [areaKey]: !isCollapsed,
+                                }))
+                              }
+                            >
+                              {isCollapsed ? (
+                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-white">
+                                  {area.name || area.areaType?.name || 'Unnamed Area'}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {(area.squareFeet ?? 0).toLocaleString()} sqft · Qty {area.quantity ?? 1}
+                                </div>
+                              </div>
+                            </button>
+                            <Button size="sm" variant="secondary" onClick={() => removeDraftArea(areaKey)}>
+                              Remove Area
+                            </Button>
+                          </div>
+                          {!isCollapsed && (
+                            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <Select
+                                  label="Area Type"
+                                  options={areaTypes.map((type) => ({ value: type.id, label: type.name }))}
+                                  value={area.areaTypeId || area.areaType?.id || ''}
+                                  onChange={(value) => {
+                                    const type = areaTypes.find((entry) => entry.id === value);
+                                    updateAmendmentArea(areaKey, {
+                                      areaTypeId: value || null,
+                                      areaType: type ? { id: type.id, name: type.name } : null,
+                                      name: area.name || type?.name || '',
+                                    });
+                                  }}
+                                />
+                                <Input
+                                  label="Area Name"
+                                  value={area.name || ''}
+                                  onChange={(e) => updateAmendmentArea(areaKey, { name: e.target.value })}
+                                />
+                                <Input
+                                  label="Square Feet"
+                                  type="number"
+                                  min="0"
+                                  value={area.squareFeet ?? 0}
+                                  onChange={(e) =>
+                                    updateAmendmentArea(areaKey, {
+                                      squareFeet: e.target.value ? Number(e.target.value) : 0,
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                                <Input
+                                  label="Qty"
+                                  type="number"
+                                  min="1"
+                                  value={area.quantity ?? 1}
+                                  onChange={(e) =>
+                                    updateAmendmentArea(areaKey, {
+                                      quantity: e.target.value ? Number(e.target.value) : 1,
+                                    })
+                                  }
+                                />
+                                <Select
+                                  label="Floor"
+                                  options={FLOOR_TYPE_OPTIONS}
+                                  value={area.floorType || 'vct'}
+                                  onChange={(value) => updateAmendmentArea(areaKey, { floorType: value })}
+                                />
+                                <Select
+                                  label="Condition"
+                                  options={CONDITION_OPTIONS}
+                                  value={area.conditionLevel || 'standard'}
+                                  onChange={(value) =>
+                                    updateAmendmentArea(areaKey, { conditionLevel: value })
+                                  }
+                                />
+                                <Select
+                                  label="Traffic"
+                                  options={TRAFFIC_OPTIONS}
+                                  value={area.trafficLevel || 'medium'}
+                                  onChange={(value) =>
+                                    updateAmendmentArea(areaKey, { trafficLevel: value })
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {amendmentWorkingScope.areas.length === 0 && (
+                      <div className="rounded-lg border border-dashed border-white/10 p-4 text-sm text-gray-500">
+                        No draft areas yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-white">Tasks</div>
+                    <Button size="sm" variant="secondary" onClick={() => addDraftTask(null)}>
+                      Add Facility-Wide Task
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {amendmentAreaTaskGroups.map((group) => {
+                      const isCollapsed = collapsedAmendmentTaskGroups[group.key] ?? false;
+                      return (
+                        <div key={group.key} className="rounded-lg border border-white/10 bg-navy-darker/40">
+                          <div className="flex items-center justify-between gap-3 px-3 py-3">
+                            <button
+                              type="button"
+                              className="flex items-center gap-2 text-left"
+                              onClick={() =>
+                                setCollapsedAmendmentTaskGroups((current) => ({
+                                  ...current,
+                                  [group.key]: !isCollapsed,
+                                }))
+                              }
+                            >
+                              {isCollapsed ? (
+                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-white">{group.label}</div>
+                                <div className="text-xs text-gray-500">
+                                  {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
+                                </div>
+                              </div>
+                            </button>
+                            <Button size="sm" variant="secondary" onClick={() => addDraftTask(group.key)}>
+                              Add Task
+                            </Button>
+                          </div>
+                          {!isCollapsed && (
+                            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                              {group.tasks.length === 0 ? (
+                                <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
+                                  No tasks in this area yet.
+                                </div>
+                              ) : (
+                                group.tasks.map((task, taskIndex) => {
+                                  const taskKey = task.id || task.tempId || `draft-task-${taskIndex + 1}`;
+                                  return (
+                                    <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        <Input
+                                          label="Task Name"
+                                          value={task.customName || task.taskTemplate?.name || ''}
+                                          onChange={(e) => updateAmendmentTask(taskKey, { customName: e.target.value })}
+                                        />
+                                        <Select
+                                          label="Frequency"
+                                          options={TASK_FREQUENCY_OPTIONS}
+                                          value={task.cleaningFrequency || 'daily'}
+                                          onChange={(value) =>
+                                            updateAmendmentTask(taskKey, { cleaningFrequency: value })
+                                          }
+                                        />
+                                        <Input
+                                          label="Estimated Minutes"
+                                          type="number"
+                                          min="0"
+                                          value={task.estimatedMinutes ?? task.baseMinutesOverride ?? 0}
+                                          onChange={(e) =>
+                                            updateAmendmentTask(taskKey, {
+                                              estimatedMinutes: e.target.value ? Number(e.target.value) : 0,
+                                              baseMinutesOverride: e.target.value ? Number(e.target.value) : 0,
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div className="mt-3 flex justify-end">
+                                        <Button size="sm" variant="secondary" onClick={() => removeDraftTask(taskKey)}>
+                                          Remove Task
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div className="rounded-lg border border-white/10 bg-navy-darker/40">
+                      <div className="flex items-center justify-between gap-3 px-3 py-3">
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 text-left"
+                          onClick={() =>
+                            setCollapsedAmendmentTaskGroups((current) => ({
+                              ...current,
+                              facilityWide: !(current.facilityWide ?? false),
+                            }))
+                          }
+                        >
+                          {collapsedAmendmentTaskGroups.facilityWide ? (
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-white">Facility-Wide</div>
+                            <div className="text-xs text-gray-500">
+                              {facilityWideDraftTasks.length} task{facilityWideDraftTasks.length !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        </button>
+                        <Button size="sm" variant="secondary" onClick={() => addDraftTask(null)}>
+                          Add Task
+                        </Button>
+                      </div>
+                      {!(collapsedAmendmentTaskGroups.facilityWide ?? false) && (
+                        <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                          {facilityWideDraftTasks.length === 0 ? (
+                            <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
+                              No facility-wide tasks yet.
+                            </div>
+                          ) : (
+                            facilityWideDraftTasks.map((task, taskIndex) => {
+                              const taskKey = task.id || task.tempId || `draft-facility-task-${taskIndex + 1}`;
+                              return (
+                                <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                    <Input
+                                      label="Task Name"
+                                      value={task.customName || task.taskTemplate?.name || ''}
+                                      onChange={(e) => updateAmendmentTask(taskKey, { customName: e.target.value })}
+                                    />
+                                    <Select
+                                      label="Frequency"
+                                      options={TASK_FREQUENCY_OPTIONS}
+                                      value={task.cleaningFrequency || 'daily'}
+                                      onChange={(value) =>
+                                        updateAmendmentTask(taskKey, { cleaningFrequency: value })
+                                      }
+                                    />
+                                    <Input
+                                      label="Estimated Minutes"
+                                      type="number"
+                                      min="0"
+                                      value={task.estimatedMinutes ?? task.baseMinutesOverride ?? 0}
+                                      onChange={(e) =>
+                                        updateAmendmentTask(taskKey, {
+                                          estimatedMinutes: e.target.value ? Number(e.target.value) : 0,
+                                          baseMinutesOverride: e.target.value ? Number(e.target.value) : 0,
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="mt-3 flex justify-end">
+                                    <Button size="sm" variant="secondary" onClick={() => removeDraftTask(taskKey)}>
+                                      Remove Task
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {amendmentWorkingScope.tasks.length === 0 && (
+                      <div className="rounded-lg border border-dashed border-white/10 p-4 text-sm text-gray-500">
+                        No draft tasks yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={handleSaveAmendmentScope}
+                    isLoading={amendmentSubmitting}
+                  >
+                    Save Draft Scope
+                  </Button>
+                  <Button onClick={handleRecalculateAmendment} isLoading={amendmentPricingLoading}>
+                    Calculate Amendment Price
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {amendmentPricing && (
+              <PricingBreakdownPanel pricing={amendmentPricing} />
+            )}
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                <div className="text-sm font-medium text-white">Snapshots</div>
+                <div className="mt-3 space-y-2">
+                  {(selectedAmendment.snapshots || []).map((snapshot) => {
+                    const areas = Array.isArray(snapshot.scopeJson?.areas)
+                      ? snapshot.scopeJson.areas.length
+                      : 0;
+                    const tasks = Array.isArray(snapshot.scopeJson?.tasks)
+                      ? snapshot.scopeJson.tasks.length
+                      : 0;
+                    return (
+                      <div
+                        key={snapshot.id}
+                        className="rounded border border-white/10 px-3 py-2 text-sm"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-gray-200">
+                            {snapshot.snapshotType}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatShortDate(snapshot.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {areas} areas · {tasks} tasks
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(selectedAmendment.snapshots || []).length === 0 && (
+                    <div className="text-sm text-gray-500">No snapshots recorded.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                <div className="text-sm font-medium text-white">Activity</div>
+                <div className="mt-3 space-y-2">
+                  {(selectedAmendment.activities || []).map((activity) => (
+                    <div key={activity.id} className="rounded border border-white/10 px-3 py-2">
+                      <div className="text-sm text-gray-200">{activity.action.replace(/_/g, ' ')}</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        {formatDate(activity.createdAt)}
+                        {activity.performedByUser?.fullName
+                          ? ` · ${activity.performedByUser.fullName}`
+                          : ''}
+                      </div>
+                    </div>
+                  ))}
+                  {(selectedAmendment.activities || []).length === 0 && (
+                    <div className="text-sm text-gray-500">No amendment activity yet.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              {selectedAmendment.status === 'draft' && canWriteContracts && (
+                <Button
+                  onClick={handleSubmitAmendmentDraft}
+                  isLoading={amendmentSubmitting}
+                  disabled={amendmentScopeDirty || !selectedAmendment.pricingSnapshot}
+                >
+                  Submit Draft
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setShowAmendmentDetailModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
 export default ContractDetail;
+
+
 

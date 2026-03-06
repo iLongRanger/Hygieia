@@ -26,8 +26,15 @@ const restoreContractMock = vi.fn();
 const renewContractMock = vi.fn();
 const assignContractTeamMock = vi.fn();
 const getContractActivitiesMock = vi.fn();
+const listContractAmendmentsMock = vi.fn();
+const createContractAmendmentMock = vi.fn();
+const getContractAmendmentMock = vi.fn();
+const updateContractAmendmentMock = vi.fn();
+const recalculateContractAmendmentMock = vi.fn();
 const listTeamsMock = vi.fn();
 const listUsersMock = vi.fn();
+const listAreaTypesMock = vi.fn();
+const listPricingSettingsMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
   getContract: (...args: unknown[]) => getContractMock(...args),
@@ -39,6 +46,11 @@ vi.mock('../../lib/contracts', () => ({
   renewContract: (...args: unknown[]) => renewContractMock(...args),
   assignContractTeam: (...args: unknown[]) => assignContractTeamMock(...args),
   getContractActivities: (...args: unknown[]) => getContractActivitiesMock(...args),
+  listContractAmendments: (...args: unknown[]) => listContractAmendmentsMock(...args),
+  createContractAmendment: (...args: unknown[]) => createContractAmendmentMock(...args),
+  getContractAmendment: (...args: unknown[]) => getContractAmendmentMock(...args),
+  recalculateContractAmendment: (...args: unknown[]) => recalculateContractAmendmentMock(...args),
+  updateContractAmendment: (...args: unknown[]) => updateContractAmendmentMock(...args),
 }));
 
 vi.mock('../../lib/teams', () => ({
@@ -48,6 +60,18 @@ vi.mock('../../lib/teams', () => ({
 vi.mock('../../lib/users', () => ({
   listUsers: (...args: unknown[]) => listUsersMock(...args),
 }));
+
+vi.mock('../../lib/facilities', () => ({
+  listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
+}));
+
+vi.mock('../../lib/pricing', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/pricing')>('../../lib/pricing');
+  return {
+    ...actual,
+    listPricingSettings: (...args: unknown[]) => listPricingSettingsMock(...args),
+  };
+});
 
 vi.mock('react-hot-toast', () => ({
   default: {
@@ -113,6 +137,58 @@ describe('ContractDetail', () => {
       data: [],
       pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
     });
+    listContractAmendmentsMock.mockResolvedValue([]);
+    createContractAmendmentMock.mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    });
+    getContractAmendmentMock.mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    });
+    updateContractAmendmentMock.mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'submitted',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    });
     listTeamsMock.mockResolvedValue({
       data: [{ id: 'team-1', name: 'Alpha Team' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
@@ -120,6 +196,68 @@ describe('ContractDetail', () => {
     listUsersMock.mockResolvedValue({
       data: [{ id: 'user-2', fullName: 'Jane Employee', email: 'jane@example.com', status: 'active' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    listAreaTypesMock.mockResolvedValue({
+      data: [{ id: 'area-type-1', name: 'Lobby', description: null, defaultSquareFeet: null, baseCleaningTimeMinutes: null, createdAt: '', updatedAt: '', _count: { areas: 0, taskTemplates: 0 } }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    listPricingSettingsMock.mockResolvedValue({
+      data: [{ id: 'plan-1', name: 'Default Plan', pricingType: 'standard' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    recalculateContractAmendmentMock.mockResolvedValue({
+      amendment: {
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        status: 'draft',
+        amendmentType: 'scope_change',
+        title: 'Office Cleaning Agreement Amendment',
+        effectiveDate: new Date().toISOString(),
+        oldMonthlyValue: 2500,
+        newMonthlyValue: 3000,
+        monthlyDelta: 500,
+        pricingPlanId: 'plan-1',
+        newServiceFrequency: 'weekly',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+        pricingSnapshot: { monthlyTotal: 3000 },
+        snapshots: [],
+        activities: [],
+      },
+      pricing: {
+        facilityId: 'facility-1',
+        facilityName: 'Main Office',
+        buildingType: 'office',
+        serviceFrequency: 'weekly',
+        totalSquareFeet: 1000,
+        areas: [],
+        costBreakdown: {
+          totalLaborCost: 100,
+          totalLaborHours: 10,
+          totalInsuranceCost: 10,
+          totalAdminOverheadCost: 10,
+          totalEquipmentCost: 10,
+          totalTravelCost: 10,
+          totalSupplyCost: 10,
+          totalCostPerVisit: 150,
+        },
+        monthlyVisits: 4.33,
+        monthlyCostBeforeProfit: 650,
+        profitAmount: 350,
+        profitMarginApplied: 0.35,
+        taskComplexityAddOn: 0,
+        taskComplexityAmount: 0,
+        subtotal: 1000,
+        monthlyTotal: 3000,
+        minimumApplied: false,
+        subcontractorPercentage: 0.6,
+        subcontractorPayout: 1800,
+        companyRevenue: 1200,
+        pricingPlanId: 'plan-1',
+        pricingPlanName: 'Default Plan',
+      },
     });
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
@@ -206,5 +344,79 @@ describe('ContractDetail', () => {
     expect(screen.getByText('Lobby')).toBeInTheDocument();
     expect(screen.getByText('Vacuum')).toBeInTheDocument();
     expect(screen.getByText('Daily')).toBeInTheDocument();
+  });
+
+  it('creates amendment draft from contract detail', async () => {
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create amendment/i }));
+    await user.type(screen.getByLabelText(/^reason$/i), 'Client requested scope change');
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+
+    await waitFor(() => {
+      expect(createContractAmendmentMock).toHaveBeenCalledWith(
+        'contract-1',
+        expect.objectContaining({
+          reason: 'Client requested scope change',
+        })
+      );
+    });
+  });
+
+  it('recalculates amendment pricing from draft scope editor', async () => {
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    getContractAmendmentMock.mockResolvedValueOnce({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      pricingPlanId: 'plan-1',
+      newServiceFrequency: 'weekly',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [
+        {
+          id: 'snap-1',
+          snapshotType: 'working',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            facility: { id: 'facility-1', name: 'Main Office', buildingType: 'office' },
+            areas: [{ id: 'area-1', name: 'Lobby', areaType: { id: 'area-type-1', name: 'Lobby' }, squareFeet: 1000, quantity: 1, floorType: 'vct', conditionLevel: 'standard', trafficLevel: 'medium' }],
+            tasks: [{ id: 'task-1', areaId: 'area-1', customName: 'Vacuum', cleaningFrequency: 'daily', estimatedMinutes: 20 }],
+          },
+        },
+      ],
+      activities: [],
+    });
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create amendment/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+    await user.click(await screen.findByRole('button', { name: /calculate amendment price/i }));
+
+    await waitFor(() => {
+      expect(recalculateContractAmendmentMock).toHaveBeenCalledWith(
+        'contract-1',
+        'amend-1',
+        expect.objectContaining({
+          workingScope: expect.objectContaining({
+            areas: expect.any(Array),
+            tasks: expect.any(Array),
+          }),
+        })
+      );
+    });
   });
 });

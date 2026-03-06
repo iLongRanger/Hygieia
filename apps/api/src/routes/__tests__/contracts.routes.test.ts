@@ -4,6 +4,7 @@ import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractService from '../../services/contractService';
 import * as contractPublicService from '../../services/contractPublicService';
+import * as contractAmendmentService from '../../services/contractAmendmentService';
 import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
 import * as notificationService from '../../services/notificationService';
@@ -31,6 +32,7 @@ jest.mock('../../middleware/ownership', () => ({
 }));
 
 jest.mock('../../services/contractService');
+jest.mock('../../services/contractAmendmentService');
 
 jest.mock('../../services/contractActivityService', () => ({
   logContractActivity: jest.fn().mockResolvedValue({}),
@@ -93,6 +95,11 @@ jest.mock('../../lib/prisma', () => ({
     contact: { findMany: jest.fn().mockResolvedValue([]) },
     notification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
     userRole: { findMany: jest.fn().mockResolvedValue([]) },
+    contractAmendment: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   },
 }));
 
@@ -532,6 +539,127 @@ describe('Contract Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('contract-1');
+  });
+
+  it('GET /:id/amendments should list amendments', async () => {
+    (contractAmendmentService.listContractAmendments as jest.Mock).mockResolvedValue([
+      { id: 'amend-1', contractId: 'contract-1', amendmentNumber: 1, status: 'draft' },
+    ]);
+
+    const response = await request(app)
+      .get('/api/v1/contracts/contract-1/amendments')
+      .expect(200);
+
+    expect(response.body.data).toHaveLength(1);
+    expect(contractAmendmentService.listContractAmendments).toHaveBeenCalledWith('contract-1');
+  });
+
+  it('POST /:id/amendments should create amendment draft', async () => {
+    (contractAmendmentService.createContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments')
+      .send({
+        title: 'Scope change',
+        effectiveDate: '2026-03-15',
+      })
+      .expect(201);
+
+    expect(response.body.data.id).toBe('amend-1');
+    expect(contractAmendmentService.createContractAmendment).toHaveBeenCalledWith(
+      'contract-1',
+      expect.objectContaining({ title: 'Scope change' }),
+      'user-1'
+    );
+  });
+
+  it('GET /:id/amendments/:amendmentId should return amendment detail', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      snapshots: [],
+      activities: [],
+    });
+
+    const response = await request(app)
+      .get('/api/v1/contracts/contract-1/amendments/amend-1')
+      .expect(200);
+
+    expect(response.body.data.id).toBe('amend-1');
+  });
+
+  it('PATCH /:id/amendments/:amendmentId should update amendment draft', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+    });
+    (contractAmendmentService.updateContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'submitted',
+    });
+
+    const response = await request(app)
+      .patch('/api/v1/contracts/contract-1/amendments/amend-1')
+      .send({ status: 'submitted' })
+      .expect(200);
+
+    expect(response.body.data.status).toBe('submitted');
+    expect(contractAmendmentService.updateContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      expect.objectContaining({ status: 'submitted' }),
+      'user-1'
+    );
+  });
+
+  it('POST /:id/amendments/:amendmentId/recalculate should recalculate amendment pricing', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+    });
+    (contractAmendmentService.recalculateContractAmendment as jest.Mock).mockResolvedValue({
+      amendment: {
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        status: 'draft',
+        newMonthlyValue: 3200,
+        pricingPlanId: 'plan-1',
+      },
+      pricing: {
+        monthlyTotal: 3200,
+      },
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/recalculate')
+      .send({
+        pricingPlanId: '11111111-1111-1111-1111-111111111111',
+        newServiceFrequency: 'weekly',
+        workingScope: { areas: [], tasks: [] },
+      })
+      .expect(200);
+
+    expect(response.body.data.amendment.id).toBe('amend-1');
+    expect(contractAmendmentService.recalculateContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      expect.objectContaining({
+        newServiceFrequency: 'weekly',
+      }),
+      'user-1'
+    );
   });
 
   it('POST /standalone should create standalone contract', async () => {

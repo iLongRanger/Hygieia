@@ -7,14 +7,16 @@ import type {
   CreateContractInput,
   CreateContractFromProposalInput,
   CreateStandaloneContractInput,
+  RecalculateContractAmendmentInput,
   UpdateContractInput,
+  UpdateContractAmendmentInput,
   SignContractInput,
   SendContractInput,
   TerminateContractInput,
   RenewContractInput,
-  UpdateContractAmendmentInput,
   ListContractsParams,
 } from '../types/contract';
+import type { FacilityPricingResult } from './pricing';
 
 interface PaginatedResponse<T> {
   data: T[];
@@ -227,6 +229,14 @@ export async function listContractAmendments(contractId: string): Promise<Contra
   return response.data.data;
 }
 
+export async function getContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<ContractAmendment> {
+  const response = await api.get(`/contracts/${contractId}/amendments/${amendmentId}`);
+  return response.data.data;
+}
+
 export async function createContractAmendment(
   contractId: string,
   data: CreateContractAmendmentInput
@@ -244,43 +254,15 @@ export async function updateContractAmendment(
   return response.data.data;
 }
 
-export async function approveContractAmendment(
+export async function recalculateContractAmendment(
   contractId: string,
-  amendmentId: string
-): Promise<ContractAmendment> {
-  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/approve`);
-  return response.data.data;
-}
-
-export async function applyContractAmendment(
-  contractId: string,
-  amendmentId: string
-): Promise<ContractAmendment> {
-  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/apply`);
-  return response.data.data;
-}
-
-export async function createAmendmentProposalFromContract(
-  contractId: string
-): Promise<{ id: string; proposalNumber: string; title: string }> {
-  const response = await api.post(`/contracts/${contractId}/amendment-proposal`);
-  return response.data.data;
-}
-
-export async function listAllContractAmendments(
-  params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    search?: string;
-  }
-): Promise<PaginatedResponse<ContractAmendment>> {
-  const response = await api.get('/contract-amendments', { params });
-  return response.data;
-}
-
-export async function getContractAmendment(amendmentId: string): Promise<ContractAmendment> {
-  const response = await api.get(`/contract-amendments/${amendmentId}`);
+  amendmentId: string,
+  data: RecalculateContractAmendmentInput
+): Promise<{ amendment: ContractAmendment; pricing: FacilityPricingResult }> {
+  const response = await api.post(
+    `/contracts/${contractId}/amendments/${amendmentId}/recalculate`,
+    data
+  );
   return response.data.data;
 }
 
