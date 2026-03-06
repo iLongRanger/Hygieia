@@ -30,8 +30,6 @@ import ProposalForm from './pages/proposals/ProposalForm';
 import ContractsList from './pages/contracts/ContractsList';
 import ContractDetail from './pages/contracts/ContractDetail';
 import ContractForm from './pages/contracts/ContractForm';
-import AmendmentsList from './pages/contracts/AmendmentsList';
-import AmendmentDetail from './pages/contracts/AmendmentDetail';
 import ProposalTemplatesPage from './pages/settings/ProposalTemplatesPage';
 import GlobalSettingsPage from './pages/settings/GlobalSettingsPage';
 import TeamsList from './pages/teams/TeamsList';
@@ -52,6 +50,10 @@ import QuotationsList from './pages/quotations/QuotationsList';
 import QuotationDetail from './pages/quotations/QuotationDetail';
 import QuotationForm from './pages/quotations/QuotationForm';
 import OneTimeServiceCatalogPage from './pages/quotations/OneTimeServiceCatalogPage';
+import ExpensesPage from './pages/finance/ExpensesPage';
+import PayrollPage from './pages/finance/PayrollPage';
+import FinanceOverviewPage from './pages/finance/FinanceOverviewPage';
+import FinanceReportsPage from './pages/finance/FinanceReportsPage';
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
@@ -141,8 +143,6 @@ function App() {
             <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
             <Route path="/quotations/catalog" element={withRouteGuard('/quotations', <OneTimeServiceCatalogPage />)} />
             <Route path="/contracts" element={withRouteGuard('/contracts', <ContractsList />)} />
-            <Route path="/amendments" element={withRouteGuard('/amendments', <AmendmentsList />)} />
-            <Route path="/amendments/:id" element={withRouteGuard('/amendments/:id', <AmendmentDetail />)} />
             <Route path="/contracts/new" element={withRouteGuard('/contracts', <ContractForm />)} />
             <Route path="/contracts/:id" element={withRouteGuard('/contracts', <ContractDetail />)} />
             <Route path="/contracts/:id/edit" element={withRouteGuard('/contracts', <ContractForm />)} />
@@ -163,6 +163,10 @@ function App() {
             <Route path="/invoices" element={withRouteGuard('/invoices', <InvoicesList />)} />
             <Route path="/invoices/new" element={withRouteGuard('/invoices', <InvoiceForm />)} />
             <Route path="/invoices/:id" element={withRouteGuard('/invoices', <InvoiceDetail />)} />
+            <Route path="/finance" element={withRouteGuard('/finance', <FinanceOverviewPage />)} />
+            <Route path="/finance/expenses" element={withRouteGuard('/finance/expenses', <ExpensesPage />)} />
+            <Route path="/finance/payroll" element={withRouteGuard('/finance/payroll', <PayrollPage />)} />
+            <Route path="/finance/reports" element={withRouteGuard('/finance/reports', <FinanceReportsPage />)} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/teams" element={withRouteGuard('/teams', <TeamsList />)} />
             <Route
