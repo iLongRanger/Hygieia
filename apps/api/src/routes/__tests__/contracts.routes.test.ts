@@ -721,6 +721,7 @@ describe('Contract Routes', () => {
       contractId: 'contract-1',
       amendmentNumber: 1,
       status: 'approved',
+      effectiveDate: new Date('2026-03-06T00:00:00.000Z'),
     });
     (contractAmendmentService.applyContractAmendment as jest.Mock).mockResolvedValue({
       id: 'amend-1',
@@ -742,6 +743,50 @@ describe('Contract Routes', () => {
       expect.objectContaining({
         contractId: 'contract-1',
       })
+    );
+  });
+
+  it('POST /:id/amendments/:amendmentId/apply should block early apply without override', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+      effectiveDate: new Date('2026-03-20T00:00:00.000Z'),
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/apply')
+      .expect(422);
+
+    expect(response.body.error.message).toMatch(/starts on 2026-03-20/i);
+    expect(contractAmendmentService.applyContractAmendment).not.toHaveBeenCalled();
+  });
+
+  it('POST /:id/amendments/:amendmentId/apply should allow early apply with override', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+      effectiveDate: new Date('2026-03-20T00:00:00.000Z'),
+    });
+    (contractAmendmentService.applyContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'applied',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/apply')
+      .send({ forceApply: true })
+      .expect(200);
+
+    expect(response.body.data.amendment.status).toBe('applied');
+    expect(contractAmendmentService.applyContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      'user-1'
     );
   });
 

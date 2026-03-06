@@ -287,9 +287,12 @@ export async function rejectContractAmendment(
 
 export async function applyContractAmendment(
   contractId: string,
-  amendmentId: string
+  amendmentId: string,
+  options?: { forceApply?: boolean }
 ): Promise<{ amendment: ContractAmendment; recurringJobs?: { canceled: number; created: number } | null }> {
-  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/apply`);
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/apply`, {
+    forceApply: options?.forceApply ?? false,
+  });
   return response.data.data;
 }
 

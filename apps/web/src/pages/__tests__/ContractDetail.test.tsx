@@ -33,6 +33,7 @@ const updateContractAmendmentMock = vi.fn();
 const recalculateContractAmendmentMock = vi.fn();
 const approveContractAmendmentMock = vi.fn();
 const rejectContractAmendmentMock = vi.fn();
+const applyContractAmendmentMock = vi.fn();
 const listTeamsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listAreaTypesMock = vi.fn();
@@ -54,6 +55,7 @@ vi.mock('../../lib/contracts', () => ({
   recalculateContractAmendment: (...args: unknown[]) => recalculateContractAmendmentMock(...args),
   approveContractAmendment: (...args: unknown[]) => approveContractAmendmentMock(...args),
   rejectContractAmendment: (...args: unknown[]) => rejectContractAmendmentMock(...args),
+  applyContractAmendment: (...args: unknown[]) => applyContractAmendmentMock(...args),
   updateContractAmendment: (...args: unknown[]) => updateContractAmendmentMock(...args),
 }));
 
@@ -297,6 +299,26 @@ describe('ContractDetail', () => {
       createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
       snapshots: [],
       activities: [],
+    });
+    applyContractAmendmentMock.mockResolvedValue({
+      amendment: {
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        status: 'applied',
+        amendmentType: 'scope_change',
+        title: 'Office Cleaning Agreement Amendment',
+        effectiveDate: new Date().toISOString(),
+        oldMonthlyValue: 2500,
+        newMonthlyValue: 3000,
+        monthlyDelta: 500,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+        snapshots: [],
+        activities: [],
+      },
+      recurringJobs: { canceled: 2, created: 3 },
     });
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
@@ -614,5 +636,47 @@ describe('ContractDetail', () => {
     expect(await screen.findByText('Being Removed')).toBeInTheDocument();
     expect(screen.getByText('Break Room')).toBeInTheDocument();
     expect(screen.getByText('Dust Desks (Lobby)')).toBeInTheDocument();
+  });
+
+  it('requires explicit confirmation to apply a future contract change early', async () => {
+    const futureApprovedAmendment = {
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+      amendmentType: 'mixed',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: '2026-03-20T00:00:00.000Z',
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 3000,
+      monthlyDelta: 500,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [],
+      activities: [],
+    };
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    createContractAmendmentMock.mockResolvedValueOnce(futureApprovedAmendment);
+    getContractAmendmentMock.mockResolvedValueOnce(futureApprovedAmendment);
+
+    const user = userEvent.setup();
+    const confirmMock = vi.fn(() => true);
+    vi.stubGlobal('confirm', confirmMock);
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+    await user.click(await screen.findByRole('button', { name: /apply change/i }));
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.stringMatching(/scheduled to start on/i)
+      );
+    });
+    expect(applyContractAmendmentMock).toHaveBeenCalledWith('contract-1', 'amend-1', {
+      forceApply: true,
+    });
   });
 });

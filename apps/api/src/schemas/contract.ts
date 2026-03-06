@@ -366,6 +366,10 @@ export const rejectContractAmendmentSchema = z.object({
   rejectedReason: z.string().min(1).max(10000),
 });
 
+export const applyContractAmendmentSchema = z.object({
+  forceApply: z.boolean().optional().default(false),
+});
+
 // Export types
 export type SendContractInput = z.infer<typeof sendContractSchema>;
 export type CreateContractInput = z.infer<typeof createContractSchema>;
@@ -374,6 +378,7 @@ export type CreateContractAmendmentInput = z.infer<typeof createContractAmendmen
 export type UpdateContractAmendmentInput = z.infer<typeof updateContractAmendmentSchema>;
 export type RecalculateContractAmendmentInput = z.infer<typeof recalculateContractAmendmentSchema>;
 export type RejectContractAmendmentInput = z.infer<typeof rejectContractAmendmentSchema>;
+export type ApplyContractAmendmentInput = z.infer<typeof applyContractAmendmentSchema>;
 export type CreateStandaloneContractInput = z.infer<typeof createStandaloneContractSchema>;
 export type UpdateContractInput = z.infer<typeof updateContractSchema>;
 export type UpdateContractStatusInput = z.infer<typeof updateContractStatusSchema>;

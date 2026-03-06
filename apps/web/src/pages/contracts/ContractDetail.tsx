@@ -162,6 +162,11 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
+const formatDateInput = (date: string | null | undefined) => {
+  if (!date) return '';
+  return new Date(date).toISOString().slice(0, 10);
+};
+
 const isInternalEmployeeOption = (user: SystemUser): boolean => {
   const primaryRole = typeof user.role === 'string' ? user.role.toLowerCase() : '';
   if (primaryRole === 'subcontractor') return false;
@@ -1235,12 +1240,34 @@ const ContractDetail = () => {
 
   const handleApplyAmendment = async () => {
     if (!contract || !selectedAmendment) return;
-    if (!confirm('Apply this approved contract change to the live contract and facility?')) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveDate = new Date(selectedAmendment.effectiveDate);
+    effectiveDate.setHours(0, 0, 0, 0);
+    const applyingEarly = effectiveDate.getTime() > today.getTime();
+
+    let forceApply = false;
+    if (applyingEarly) {
+      const confirmedEarlyApply = confirm(
+        `This contract change is scheduled to start on ${formatDate(selectedAmendment.effectiveDate)}. Apply it early and start it today instead?`
+      );
+      if (!confirmedEarlyApply) return;
+      forceApply = true;
+    } else if (!confirm('Apply this approved contract change to the live contract and facility?')) {
+      return;
+    }
+
     try {
       setAmendmentSubmitting(true);
-      const result = await applyContractAmendmentApi(contract.id, selectedAmendment.id);
+      const result = await applyContractAmendmentApi(contract.id, selectedAmendment.id, {
+        forceApply,
+      });
       setSelectedAmendment(result.amendment);
-      toast.success('Contract change applied');
+      toast.success(
+        forceApply
+          ? `Contract change applied early. The original start date was ${formatDateInput(selectedAmendment.effectiveDate)}.`
+          : 'Contract change applied'
+      );
       refreshAll(contract.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to apply contract change');
@@ -1390,6 +1417,19 @@ const ContractDetail = () => {
     taskChangeSummary.added.length > 0 ||
     removedTaskSummary.added.length > 0 ||
     beforeScheduleSummary !== targetScheduleSummary;
+  const selectedAmendmentEffectiveDate = selectedAmendment?.effectiveDate
+    ? new Date(selectedAmendment.effectiveDate)
+    : null;
+  const selectedAmendmentStartsInFuture = (() => {
+    if (!selectedAmendmentEffectiveDate || Number.isNaN(selectedAmendmentEffectiveDate.getTime())) {
+      return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effective = new Date(selectedAmendmentEffectiveDate);
+    effective.setHours(0, 0, 0, 0);
+    return effective.getTime() > today.getTime();
+  })();
   const facilityWideDraftTasks = amendmentWorkingScope.tasks.filter((task) => !task.areaId);
   const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
   const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
@@ -3151,6 +3191,13 @@ const ContractDetail = () => {
                   </div>
                 </div>
               </div>
+
+              {selectedAmendmentStartsInFuture && (
+                <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  This contract change is scheduled to start on {formatDate(selectedAmendment.effectiveDate)}.
+                  Applying it now will start the updated service and pricing early.
+                </div>
+              )}
 
               {hasScopeComparison ? (
                 <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">

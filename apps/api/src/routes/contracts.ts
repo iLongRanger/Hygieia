@@ -47,6 +47,7 @@ import {
   rejectContractAmendmentSchema,
   recalculateContractAmendmentSchema,
   updateContractAmendmentSchema,
+  applyContractAmendmentSchema,
 } from '../schemas/contract';
 import { listContractActivitiesQuerySchema } from '../schemas/contractActivity';
 import { logContractActivity, getContractActivities } from '../services/contractActivityService';
@@ -1696,9 +1697,30 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
+      const parsed = applyContractAmendmentSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
       const existing = await getContractAmendmentById(req.params.amendmentId);
       if (!existing || existing.contractId !== req.params.id) {
         throw new NotFoundError('Amendment not found');
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const effectiveDate = new Date(existing.effectiveDate);
+      effectiveDate.setHours(0, 0, 0, 0);
+      const applyingEarly = effectiveDate.getTime() > today.getTime();
+
+      if (applyingEarly && !parsed.data.forceApply) {
+        throw new ValidationError(
+          `This contract change starts on ${existing.effectiveDate.toISOString().slice(0, 10)}. Review it now, or confirm an early apply override if you need it to start today.`,
+          {
+            field: 'forceApply',
+            effectiveDate: existing.effectiveDate.toISOString(),
+          }
+        );
       }
 
       const amendment = await applyContractAmendment(req.params.amendmentId, req.user.id);
@@ -1721,6 +1743,7 @@ router.post(
         metadata: {
           amendmentId: amendment.id,
           amendmentNumber: amendment.amendmentNumber,
+          appliedEarly: applyingEarly,
           jobsCanceled: regenerationResult?.canceled ?? 0,
           jobsCreated: regenerationResult?.created ?? 0,
         },
