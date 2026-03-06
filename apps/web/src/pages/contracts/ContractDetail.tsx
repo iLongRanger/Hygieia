@@ -58,6 +58,7 @@ import {
   getContractAmendment as getContractAmendmentApi,
   recalculateContractAmendment as recalculateContractAmendmentApi,
   approveContractAmendment as approveContractAmendmentApi,
+  applyContractAmendment as applyContractAmendmentApi,
   rejectContractAmendment as rejectContractAmendmentApi,
   updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
@@ -1114,6 +1115,22 @@ const ContractDetail = () => {
       fetchAmendments(contract.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to reject amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleApplyAmendment = async () => {
+    if (!contract || !selectedAmendment) return;
+    if (!confirm('Apply this approved contract change to the live contract and facility?')) return;
+    try {
+      setAmendmentSubmitting(true);
+      const result = await applyContractAmendmentApi(contract.id, selectedAmendment.id);
+      setSelectedAmendment(result.amendment);
+      toast.success('Contract change applied');
+      refreshAll(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to apply contract change');
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -3025,6 +3042,11 @@ const ContractDetail = () => {
                     Approve
                   </Button>
                 </>
+              )}
+              {selectedAmendment.status === 'approved' && canAdminContracts && (
+                <Button onClick={handleApplyAmendment} isLoading={amendmentSubmitting}>
+                  Apply Change
+                </Button>
               )}
               {selectedAmendment.status === 'draft' && canWriteContracts && (
                 <Button

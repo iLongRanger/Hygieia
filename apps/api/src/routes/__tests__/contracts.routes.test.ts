@@ -715,6 +715,36 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('POST /:id/amendments/:amendmentId/apply should apply amendment', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'approved',
+    });
+    (contractAmendmentService.applyContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'applied',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/apply')
+      .expect(200);
+
+    expect(response.body.data.amendment.status).toBe('applied');
+    expect(contractAmendmentService.applyContractAmendment).toHaveBeenCalledWith(
+      'amend-1',
+      'user-1'
+    );
+    expect(jobService.regenerateRecurringJobsForContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+      })
+    );
+  });
+
   it('POST /standalone should create standalone contract', async () => {
     (contractService.createStandaloneContract as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 

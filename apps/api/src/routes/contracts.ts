@@ -73,6 +73,7 @@ import {
 import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
 import {
   approveContractAmendment,
+  applyContractAmendment,
   createContractAmendment,
   getContractAmendmentById,
   listContractAmendments,
@@ -1678,6 +1679,59 @@ router.post(
       });
 
       res.json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendments/:amendmentId/apply',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const existing = await getContractAmendmentById(req.params.amendmentId);
+      if (!existing || existing.contractId !== req.params.id) {
+        throw new NotFoundError('Amendment not found');
+      }
+
+      const amendment = await applyContractAmendment(req.params.amendmentId, req.user.id);
+
+      let regenerationResult: { canceled: number; created: number } | null = null;
+      try {
+        regenerationResult = await regenerateRecurringJobsForContract({
+          contractId: req.params.id,
+          createdByUserId: req.user.id,
+          reason: `Contract amendment #${amendment.amendmentNumber} applied`,
+        });
+      } catch (regenerationError) {
+        logger.error('Failed to regenerate recurring jobs after amendment apply:', regenerationError);
+      }
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_applied',
+        performedByUserId: req.user.id,
+        metadata: {
+          amendmentId: amendment.id,
+          amendmentNumber: amendment.amendmentNumber,
+          jobsCanceled: regenerationResult?.canceled ?? 0,
+          jobsCreated: regenerationResult?.created ?? 0,
+        },
+      });
+
+      res.json({
+        data: {
+          amendment,
+          recurringJobs: regenerationResult,
+        },
+      });
     } catch (error) {
       next(error);
     }

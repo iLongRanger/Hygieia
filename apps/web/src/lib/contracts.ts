@@ -285,6 +285,14 @@ export async function rejectContractAmendment(
   return response.data.data;
 }
 
+export async function applyContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<{ amendment: ContractAmendment; recurringJobs?: { canceled: number; created: number } | null }> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/apply`);
+  return response.data.data;
+}
+
 // Standalone Contract Creation (imported/legacy)
 
 export async function createStandaloneContract(

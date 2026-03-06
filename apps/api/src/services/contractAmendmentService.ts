@@ -6,6 +6,7 @@ import {
   type PerHourPricingScopeOverride,
 } from './pricing/perHourCalculatorService';
 import { resolvePricingPlan } from './pricing/strategyRegistry';
+import { normalizeServiceSchedule } from './serviceScheduleService';
 import type {
   CreateContractAmendmentInput,
   RecalculateContractAmendmentInput,
@@ -845,4 +846,267 @@ export async function rejectContractAmendment(
   });
 
   return mapAmendment(rejected);
+}
+
+export async function applyContractAmendment(amendmentId: string, appliedByUserId: string) {
+  const existing = await prisma.contractAmendment.findUnique({
+    where: { id: amendmentId },
+    select: {
+      ...amendmentDetailSelect,
+      contract: {
+        select: {
+          id: true,
+          status: true,
+          facilityId: true,
+          serviceFrequency: true,
+          serviceSchedule: true,
+          monthlyValue: true,
+        },
+      },
+    },
+  });
+
+  if (!existing) {
+    throw new Error('Amendment not found');
+  }
+
+  if (existing.status !== 'approved') {
+    throw new Error(`Cannot apply amendment in ${existing.status} status`);
+  }
+
+  if (existing.contract.status !== 'active') {
+    throw new Error('Only amendments for active contracts can be applied');
+  }
+
+  if (!existing.contract.facilityId) {
+    throw new Error('Contract must have a facility before applying an amendment');
+  }
+
+  const workingScope = getLatestWorkingScope(existing);
+  const areas = Array.isArray(workingScope.areas) ? workingScope.areas : [];
+  const tasks = Array.isArray(workingScope.tasks) ? workingScope.tasks : [];
+
+  const applied = await prisma.$transaction(async (tx) => {
+    const currentAreas = await tx.area.findMany({
+      where: {
+        facilityId: existing.contract.facilityId!,
+        archivedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const currentTasks = await tx.facilityTask.findMany({
+      where: {
+        facilityId: existing.contract.facilityId!,
+        archivedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const areaIdMap = new Map<string, string>();
+    const keptAreaIds = new Set<string>();
+
+    for (const area of areas) {
+      const areaKey = toSafeString(area.id ?? area.tempId, '');
+      const areaTypeId =
+        typeof area.areaTypeId === 'string'
+          ? area.areaTypeId
+          : typeof area.areaType?.id === 'string'
+            ? area.areaType.id
+            : null;
+
+      if (!areaTypeId) {
+        throw new Error(`Area "${toSafeString(area.name, 'Unnamed Area')}" is missing an area type`);
+      }
+
+      if (typeof area.id === 'string' && area.id) {
+        const updated = await tx.area.update({
+          where: { id: area.id },
+          data: {
+            areaTypeId,
+            name: typeof area.name === 'string' ? area.name.trim() || null : null,
+            quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
+            squareFeet: toSafeNumber(area.squareFeet),
+            floorType: toSafeString(area.floorType, 'vct'),
+            conditionLevel: toSafeString(area.conditionLevel, 'standard'),
+            trafficLevel: toSafeString(area.trafficLevel, 'medium'),
+            roomCount: Math.max(0, Math.round(toSafeNumber(area.roomCount, 0))),
+            unitCount: Math.max(0, Math.round(toSafeNumber(area.unitCount, 0))),
+            notes: typeof area.notes === 'string' ? area.notes : null,
+            archivedAt: null,
+          },
+          select: { id: true },
+        });
+        areaIdMap.set(areaKey, updated.id);
+        keptAreaIds.add(updated.id);
+      } else {
+        const created = await tx.area.create({
+          data: {
+            facilityId: existing.contract.facilityId!,
+            areaTypeId,
+            name: typeof area.name === 'string' ? area.name.trim() || null : null,
+            quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
+            squareFeet: toSafeNumber(area.squareFeet),
+            floorType: toSafeString(area.floorType, 'vct'),
+            conditionLevel: toSafeString(area.conditionLevel, 'standard'),
+            trafficLevel: toSafeString(area.trafficLevel, 'medium'),
+            roomCount: Math.max(0, Math.round(toSafeNumber(area.roomCount, 0))),
+            unitCount: Math.max(0, Math.round(toSafeNumber(area.unitCount, 0))),
+            notes: typeof area.notes === 'string' ? area.notes : null,
+            createdByUserId: appliedByUserId,
+          },
+          select: { id: true },
+        });
+        if (areaKey) {
+          areaIdMap.set(areaKey, created.id);
+        }
+        keptAreaIds.add(created.id);
+      }
+    }
+
+    const areasToArchive = currentAreas
+      .map((area) => area.id)
+      .filter((areaId) => !keptAreaIds.has(areaId));
+
+    if (areasToArchive.length > 0) {
+      await tx.area.updateMany({
+        where: { id: { in: areasToArchive } },
+        data: { archivedAt: new Date() },
+      });
+    }
+
+    const keptTaskIds = new Set<string>();
+
+    for (const task of tasks) {
+      const resolvedAreaId =
+        task.areaId == null
+          ? null
+          : areaIdMap.get(String(task.areaId)) ?? String(task.areaId);
+
+      if (typeof task.id === 'string' && task.id) {
+        const updated = await tx.facilityTask.update({
+          where: { id: task.id },
+          data: {
+            areaId: resolvedAreaId,
+            taskTemplateId:
+              typeof task.taskTemplateId === 'string' ? task.taskTemplateId : null,
+            customName: typeof task.customName === 'string' ? task.customName : null,
+            estimatedMinutes:
+              task.estimatedMinutes == null ? null : toSafeNumber(task.estimatedMinutes),
+            baseMinutesOverride:
+              task.baseMinutesOverride == null ? null : toSafeNumber(task.baseMinutesOverride),
+            perSqftMinutesOverride:
+              task.perSqftMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perSqftMinutesOverride),
+            perUnitMinutesOverride:
+              task.perUnitMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perUnitMinutesOverride),
+            perRoomMinutesOverride:
+              task.perRoomMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perRoomMinutesOverride),
+            cleaningFrequency: toSafeString(task.cleaningFrequency, 'daily'),
+            archivedAt: null,
+          },
+          select: { id: true },
+        });
+        keptTaskIds.add(updated.id);
+      } else {
+        const created = await tx.facilityTask.create({
+          data: {
+            facilityId: existing.contract.facilityId!,
+            areaId: resolvedAreaId,
+            taskTemplateId:
+              typeof task.taskTemplateId === 'string' ? task.taskTemplateId : null,
+            customName: typeof task.customName === 'string' ? task.customName : null,
+            estimatedMinutes:
+              task.estimatedMinutes == null ? null : toSafeNumber(task.estimatedMinutes),
+            baseMinutesOverride:
+              task.baseMinutesOverride == null ? null : toSafeNumber(task.baseMinutesOverride),
+            perSqftMinutesOverride:
+              task.perSqftMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perSqftMinutesOverride),
+            perUnitMinutesOverride:
+              task.perUnitMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perUnitMinutesOverride),
+            perRoomMinutesOverride:
+              task.perRoomMinutesOverride == null
+                ? null
+                : toSafeNumber(task.perRoomMinutesOverride),
+            cleaningFrequency: toSafeString(task.cleaningFrequency, 'daily'),
+            createdByUserId: appliedByUserId,
+          },
+          select: { id: true },
+        });
+        keptTaskIds.add(created.id);
+      }
+    }
+
+    const tasksToArchive = currentTasks
+      .map((task) => task.id)
+      .filter((taskId) => !keptTaskIds.has(taskId));
+
+    if (tasksToArchive.length > 0) {
+      await tx.facilityTask.updateMany({
+        where: { id: { in: tasksToArchive } },
+        data: { archivedAt: new Date() },
+      });
+    }
+
+    const normalizedSchedule = normalizeServiceSchedule(
+      existing.newServiceSchedule,
+      existing.newServiceFrequency ?? existing.contract.serviceFrequency
+    );
+
+    await tx.contract.update({
+      where: { id: existing.contract.id },
+      data: {
+        monthlyValue:
+          existing.newMonthlyValue == null
+            ? Number(existing.contract.monthlyValue)
+            : Number(existing.newMonthlyValue),
+        serviceFrequency:
+          existing.newServiceFrequency ?? existing.contract.serviceFrequency,
+        serviceSchedule:
+          (normalizedSchedule as Prisma.InputJsonValue | null | undefined) ?? Prisma.JsonNull,
+      },
+    });
+
+    const amendment = await tx.contractAmendment.update({
+      where: { id: amendmentId },
+      data: {
+        status: 'applied',
+        appliedAt: new Date(),
+        appliedByUserId,
+      },
+      select: amendmentDetailSelect,
+    });
+
+    await tx.contractAmendmentScopeSnapshot.create({
+      data: {
+        amendmentId,
+        snapshotType: 'after',
+        scopeJson: workingScope as Prisma.InputJsonValue,
+      },
+    });
+
+    await createAmendmentActivity(tx, amendmentId, 'applied', appliedByUserId, {
+      archivedAreaCount: areasToArchive.length,
+      archivedTaskCount: tasksToArchive.length,
+      activeAreaCount: keptAreaIds.size,
+      activeTaskCount: keptTaskIds.size,
+    });
+
+    return amendment;
+  });
+
+  return mapAmendment(applied);
 }
