@@ -941,6 +941,8 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
     const areaIdMap = new Map<string, string>();
     const keptAreaIds = new Set<string>();
     const unmatchedAreaIds = new Set(currentAreas.map((area) => area.id));
+    let updatedAreaCount = 0;
+    let createdAreaCount = 0;
 
     for (const area of areas) {
       const areaKey = toSafeString(area.id ?? area.tempId, '');
@@ -996,6 +998,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
         areaIdMap.set(areaKey, updated.id);
         keptAreaIds.add(updated.id);
         unmatchedAreaIds.delete(updated.id);
+        updatedAreaCount += 1;
       } else {
         const created = await tx.area.create({
           data: {
@@ -1018,6 +1021,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
           areaIdMap.set(areaKey, created.id);
         }
         keptAreaIds.add(created.id);
+        createdAreaCount += 1;
       }
     }
 
@@ -1034,6 +1038,8 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
 
     const keptTaskIds = new Set<string>();
     const unmatchedTaskIds = new Set(currentTasks.map((task) => task.id));
+    let updatedTaskCount = 0;
+    let createdTaskCount = 0;
 
     for (const task of tasks) {
       const resolvedAreaId =
@@ -1096,6 +1102,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
         });
         keptTaskIds.add(updated.id);
         unmatchedTaskIds.delete(updated.id);
+        updatedTaskCount += 1;
       } else {
         const created = await tx.facilityTask.create({
           data: {
@@ -1126,6 +1133,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
           select: { id: true },
         });
         keptTaskIds.add(created.id);
+        createdTaskCount += 1;
       }
     }
 
@@ -1178,6 +1186,12 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
     });
 
     await createAmendmentActivity(tx, amendmentId, 'applied', appliedByUserId, {
+      createdAreaCount,
+      updatedAreaCount,
+      removedAreaCount: areasToArchive.length,
+      createdTaskCount,
+      updatedTaskCount,
+      removedTaskCount: tasksToArchive.length,
       archivedAreaCount: areasToArchive.length,
       archivedTaskCount: tasksToArchive.length,
       activeAreaCount: keptAreaIds.size,

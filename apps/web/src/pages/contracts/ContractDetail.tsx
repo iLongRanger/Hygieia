@@ -518,6 +518,11 @@ const getScheduleSummary = (scope: Record<string, any> | undefined) => {
   return `${frequency} on ${days.map((day) => DAY_LABELS[day]).join(', ')}`;
 };
 
+const getLatestAmendmentActivity = (amendment: ContractAmendment | null, action: string) =>
+  [...(amendment?.activities || [])]
+    .reverse()
+    .find((activity) => activity.action === action);
+
 const buildWorkingScopeForComparison = (
   amendment: ContractAmendment | null,
   workingScope: ContractAmendmentWorkingScope
@@ -612,6 +617,10 @@ const ContractDetail = () => {
   const [amendmentDetailLoading, setAmendmentDetailLoading] = useState(false);
   const [selectedAmendment, setSelectedAmendment] = useState<ContractAmendment | null>(null);
   const [showAmendmentDetailModal, setShowAmendmentDetailModal] = useState(false);
+  const [appliedRecurringJobsSummary, setAppliedRecurringJobsSummary] = useState<{
+    created: number;
+    canceled: number;
+  } | null>(null);
   const [amendmentPricing, setAmendmentPricing] = useState<FacilityPricingResult | null>(null);
   const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
@@ -964,6 +973,7 @@ const ContractDetail = () => {
 
   const openAmendmentModal = () => {
     if (!contract) return;
+    setAppliedRecurringJobsSummary(null);
     setAmendmentFormData({
       title: `${contract.title} Amendment`,
       effectiveDate: getDefaultAmendmentDate(),
@@ -984,6 +994,7 @@ const ContractDetail = () => {
       setAmendmentSubmitting(true);
       const created = await createContractAmendmentApi(contract.id, amendmentFormData);
       setShowAmendmentModal(false);
+      setAppliedRecurringJobsSummary(null);
       setSelectedAmendment(created);
       setShowAmendmentDetailModal(true);
       toast.success('Amendment draft created');
@@ -999,6 +1010,7 @@ const ContractDetail = () => {
     if (!contract) return;
     try {
       setAmendmentDetailLoading(true);
+      setAppliedRecurringJobsSummary(null);
       const detail = await getContractAmendmentApi(contract.id, amendmentId);
       setSelectedAmendment(detail);
       setShowAmendmentDetailModal(true);
@@ -1263,10 +1275,29 @@ const ContractDetail = () => {
         forceApply,
       });
       setSelectedAmendment(result.amendment);
+      setAppliedRecurringJobsSummary(result.recurringJobs || null);
+      const appliedActivity = getLatestAmendmentActivity(result.amendment, 'applied');
+      const summary = appliedActivity?.metadata || {};
+      const summaryParts = [
+        `${summary.updatedAreaCount ?? 0} areas updated`,
+        `${summary.createdAreaCount ?? 0} areas added`,
+        `${summary.removedAreaCount ?? summary.archivedAreaCount ?? 0} areas removed`,
+        `${summary.updatedTaskCount ?? 0} tasks updated`,
+        `${summary.createdTaskCount ?? 0} tasks added`,
+        `${summary.removedTaskCount ?? summary.archivedTaskCount ?? 0} tasks removed`,
+      ];
+      if (result.recurringJobs) {
+        summaryParts.push(
+          `${result.recurringJobs.created} future jobs created`,
+          `${result.recurringJobs.canceled} future jobs removed`
+        );
+      }
       toast.success(
-        forceApply
-          ? `Contract change applied early. The original start date was ${formatDateInput(selectedAmendment.effectiveDate)}.`
-          : 'Contract change applied'
+        `${
+          forceApply
+            ? `Contract change applied early. The original start date was ${formatDateInput(selectedAmendment.effectiveDate)}.`
+            : 'Contract change applied.'
+        } ${summaryParts.join(' • ')}`
       );
       refreshAll(contract.id);
     } catch (error: any) {
@@ -1430,6 +1461,8 @@ const ContractDetail = () => {
     effective.setHours(0, 0, 0, 0);
     return effective.getTime() > today.getTime();
   })();
+  const latestAppliedActivity = getLatestAmendmentActivity(selectedAmendment, 'applied');
+  const latestApplySummary = latestAppliedActivity?.metadata || null;
   const facilityWideDraftTasks = amendmentWorkingScope.tasks.filter((task) => !task.areaId);
   const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
   const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
@@ -2688,7 +2721,10 @@ const ContractDetail = () => {
 
       <Modal
         isOpen={showAmendmentDetailModal}
-        onClose={() => setShowAmendmentDetailModal(false)}
+        onClose={() => {
+          setAppliedRecurringJobsSummary(null);
+          setShowAmendmentDetailModal(false);
+        }}
         title={
           selectedAmendment
             ? `Amendment #${selectedAmendment.amendmentNumber}`
@@ -3199,6 +3235,75 @@ const ContractDetail = () => {
                 </div>
               )}
 
+              {selectedAmendment.status === 'applied' && latestApplySummary && (
+                <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <div className="text-sm font-medium text-emerald-100">Apply Summary</div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-lg border border-emerald-400/10 bg-black/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-emerald-200/70">Areas</div>
+                      <div className="mt-2 text-sm text-emerald-50">
+                        {latestApplySummary.updatedAreaCount ?? 0} updated
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {latestApplySummary.createdAreaCount ?? 0} added
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {latestApplySummary.removedAreaCount ??
+                          latestApplySummary.archivedAreaCount ??
+                          0}{' '}
+                        removed
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-400/10 bg-black/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-emerald-200/70">Tasks</div>
+                      <div className="mt-2 text-sm text-emerald-50">
+                        {latestApplySummary.updatedTaskCount ?? 0} updated
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {latestApplySummary.createdTaskCount ?? 0} added
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {latestApplySummary.removedTaskCount ??
+                          latestApplySummary.archivedTaskCount ??
+                          0}{' '}
+                        removed
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-400/10 bg-black/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-emerald-200/70">Active Scope</div>
+                      <div className="mt-2 text-sm text-emerald-50">
+                        {latestApplySummary.activeAreaCount ?? 0} total areas
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {latestApplySummary.activeTaskCount ?? 0} total tasks
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-400/10 bg-black/20 p-3">
+                      <div className="text-xs uppercase tracking-wide text-emerald-200/70">Applied On</div>
+                      <div className="mt-2 text-sm text-emerald-50">
+                        {formatDate(selectedAmendment.appliedAt)}
+                      </div>
+                      <div className="text-sm text-emerald-50">
+                        {selectedAmendment.appliedByUser?.fullName || 'System'}
+                      </div>
+                    </div>
+                    {appliedRecurringJobsSummary && (
+                      <div className="rounded-lg border border-emerald-400/10 bg-black/20 p-3">
+                        <div className="text-xs uppercase tracking-wide text-emerald-200/70">
+                          Future Jobs
+                        </div>
+                        <div className="mt-2 text-sm text-emerald-50">
+                          {appliedRecurringJobsSummary.created} created
+                        </div>
+                        <div className="text-sm text-emerald-50">
+                          {appliedRecurringJobsSummary.canceled} removed
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {hasScopeComparison ? (
                 <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
@@ -3384,7 +3489,13 @@ const ContractDetail = () => {
                   Send for Approval
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => setShowAmendmentDetailModal(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAppliedRecurringJobsSummary(null);
+                  setShowAmendmentDetailModal(false);
+                }}
+              >
                 Close
               </Button>
             </div>

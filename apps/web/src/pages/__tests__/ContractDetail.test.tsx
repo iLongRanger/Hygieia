@@ -314,9 +314,27 @@ describe('ContractDetail', () => {
         monthlyDelta: 500,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        appliedAt: new Date().toISOString(),
+        appliedByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
         createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
         snapshots: [],
-        activities: [],
+        activities: [
+          {
+            id: 'activity-1',
+            action: 'applied',
+            createdAt: new Date().toISOString(),
+            metadata: {
+              updatedAreaCount: 1,
+              createdAreaCount: 1,
+              removedAreaCount: 0,
+              updatedTaskCount: 2,
+              createdTaskCount: 1,
+              removedTaskCount: 0,
+              activeAreaCount: 2,
+              activeTaskCount: 3,
+            },
+          },
+        ],
       },
       recurringJobs: { canceled: 2, created: 3 },
     });
@@ -678,5 +696,11 @@ describe('ContractDetail', () => {
     expect(applyContractAmendmentMock).toHaveBeenCalledWith('contract-1', 'amend-1', {
       forceApply: true,
     });
+    expect(await screen.findByText('Apply Summary')).toBeInTheDocument();
+    expect(screen.getByText('1 updated')).toBeInTheDocument();
+    expect(screen.getByText('3 total tasks')).toBeInTheDocument();
+    expect(screen.getByText('Future Jobs')).toBeInTheDocument();
+    expect(screen.getByText('3 created')).toBeInTheDocument();
+    expect(screen.getByText('2 removed')).toBeInTheDocument();
   });
 });

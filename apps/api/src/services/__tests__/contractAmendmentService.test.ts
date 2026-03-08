@@ -140,6 +140,21 @@ describe('contractAmendmentService.applyContractAmendment', () => {
       })
     );
     expect(prisma.facilityTask.create).not.toHaveBeenCalled();
+    expect(prisma.contractAmendmentActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'applied',
+          metadata: expect.objectContaining({
+            updatedAreaCount: 1,
+            createdAreaCount: 0,
+            removedAreaCount: 0,
+            updatedTaskCount: 1,
+            createdTaskCount: 0,
+            removedTaskCount: 0,
+          }),
+        }),
+      })
+    );
     expect(result.status).toBe('applied');
   });
 });
