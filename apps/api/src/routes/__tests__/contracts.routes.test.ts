@@ -5,6 +5,7 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractService from '../../services/contractService';
 import * as contractPublicService from '../../services/contractPublicService';
 import * as contractAmendmentService from '../../services/contractAmendmentService';
+import * as contractAmendmentWorkflowService from '../../services/contractAmendmentWorkflowService';
 import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
 import * as notificationService from '../../services/notificationService';
@@ -33,6 +34,7 @@ jest.mock('../../middleware/ownership', () => ({
 
 jest.mock('../../services/contractService');
 jest.mock('../../services/contractAmendmentService');
+jest.mock('../../services/contractAmendmentWorkflowService');
 
 jest.mock('../../services/contractActivityService', () => ({
   logContractActivity: jest.fn().mockResolvedValue({}),
@@ -85,6 +87,12 @@ jest.mock('../../templates/contractSent', () => ({
   buildContractSentSubject: jest.fn().mockReturnValue('Subject'),
 }));
 
+jest.mock('../../services/teamService', () => ({
+  ensureSubcontractorRoleForTeamUsers: jest.fn().mockResolvedValue(undefined),
+  getSubcontractorTeamUsers: jest.fn().mockResolvedValue([]),
+  createSubcontractorUser: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -95,6 +103,7 @@ jest.mock('../../lib/prisma', () => ({
     contact: { findMany: jest.fn().mockResolvedValue([]) },
     notification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
     userRole: { findMany: jest.fn().mockResolvedValue([]) },
+    team: { findUnique: jest.fn().mockResolvedValue(null) },
     contractAmendment: {
       findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
@@ -355,6 +364,12 @@ describe('Contract Routes', () => {
   });
 
   it('PATCH /:id/team should assign team', async () => {
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      assignedTeam: null,
+      assignedToUser: null,
+    });
     (contractService.assignContractTeam as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       contractNumber: 'CONT-001',
@@ -395,6 +410,12 @@ describe('Contract Routes', () => {
   });
 
   it('PATCH /:id/team should assign internal employee', async () => {
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      assignedTeam: null,
+      assignedToUser: null,
+    });
     (contractService.assignContractTeam as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       contractNumber: 'CONT-001',
@@ -723,11 +744,15 @@ describe('Contract Routes', () => {
       status: 'approved',
       effectiveDate: new Date('2026-03-06T00:00:00.000Z'),
     });
-    (contractAmendmentService.applyContractAmendment as jest.Mock).mockResolvedValue({
-      id: 'amend-1',
-      contractId: 'contract-1',
-      amendmentNumber: 1,
-      status: 'applied',
+    (contractAmendmentWorkflowService.applyContractAmendmentWorkflow as jest.Mock).mockResolvedValue({
+      amendment: {
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        status: 'applied',
+      },
+      recurringJobs: { created: 0, canceled: 0 },
+      appliedEarly: false,
     });
 
     const response = await request(app)
@@ -735,13 +760,12 @@ describe('Contract Routes', () => {
       .expect(200);
 
     expect(response.body.data.amendment.status).toBe('applied');
-    expect(contractAmendmentService.applyContractAmendment).toHaveBeenCalledWith(
+    expect(contractAmendmentWorkflowService.applyContractAmendmentWorkflow).toHaveBeenCalledWith(
       'amend-1',
-      'user-1'
-    );
-    expect(jobService.regenerateRecurringJobsForContract).toHaveBeenCalledWith(
       expect.objectContaining({
-        contractId: 'contract-1',
+        appliedByUserId: 'user-1',
+        forceApply: false,
+        source: 'manual',
       })
     );
   });
@@ -760,7 +784,7 @@ describe('Contract Routes', () => {
       .expect(422);
 
     expect(response.body.error.message).toMatch(/starts on 2026-03-20/i);
-    expect(contractAmendmentService.applyContractAmendment).not.toHaveBeenCalled();
+    expect(contractAmendmentWorkflowService.applyContractAmendmentWorkflow).not.toHaveBeenCalled();
   });
 
   it('POST /:id/amendments/:amendmentId/apply should allow early apply with override', async () => {
@@ -771,11 +795,15 @@ describe('Contract Routes', () => {
       status: 'approved',
       effectiveDate: new Date('2026-03-20T00:00:00.000Z'),
     });
-    (contractAmendmentService.applyContractAmendment as jest.Mock).mockResolvedValue({
-      id: 'amend-1',
-      contractId: 'contract-1',
-      amendmentNumber: 1,
-      status: 'applied',
+    (contractAmendmentWorkflowService.applyContractAmendmentWorkflow as jest.Mock).mockResolvedValue({
+      amendment: {
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        status: 'applied',
+      },
+      recurringJobs: { created: 0, canceled: 0 },
+      appliedEarly: true,
     });
 
     const response = await request(app)
@@ -784,9 +812,13 @@ describe('Contract Routes', () => {
       .expect(200);
 
     expect(response.body.data.amendment.status).toBe('applied');
-    expect(contractAmendmentService.applyContractAmendment).toHaveBeenCalledWith(
+    expect(contractAmendmentWorkflowService.applyContractAmendmentWorkflow).toHaveBeenCalledWith(
       'amend-1',
-      'user-1'
+      expect.objectContaining({
+        appliedByUserId: 'user-1',
+        forceApply: true,
+        source: 'manual',
+      })
     );
   });
 

@@ -5,6 +5,7 @@ export const backgroundServiceKeySchema = z.enum([
   'recurring_jobs_autogen',
   'job_alerts',
   'contract_assignment_overrides',
+  'contract_amendment_auto_apply',
 ]);
 
 export const updateBackgroundServiceSettingsSchema = z

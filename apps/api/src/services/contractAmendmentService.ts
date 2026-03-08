@@ -310,12 +310,12 @@ async function createAmendmentActivity(
 }
 
 function getLatestWorkingScope(
-  amendment: { snapshots?: Array<{ snapshotType: string; scopeJson: Record<string, any> }> }
+  amendment: { snapshots?: Array<{ snapshotType: string; scopeJson: unknown }> }
 ): AmendmentWorkingScope {
   const snapshots = amendment.snapshots ?? [];
   for (let index = snapshots.length - 1; index >= 0; index -= 1) {
     if (snapshots[index]?.snapshotType === 'working') {
-      return snapshots[index].scopeJson as AmendmentWorkingScope;
+      return ((snapshots[index].scopeJson as Record<string, any> | null) ?? {}) as AmendmentWorkingScope;
     }
   }
   return {};
@@ -873,7 +873,11 @@ export async function rejectContractAmendment(
   return mapAmendment(rejected);
 }
 
-export async function applyContractAmendment(amendmentId: string, appliedByUserId: string) {
+export async function applyContractAmendment(
+  amendmentId: string,
+  appliedByUserId: string | null,
+  actorUserIdOverride?: string | null
+) {
   const existing = await prisma.contractAmendment.findUnique({
     where: { id: amendmentId },
     select: {
@@ -905,6 +909,13 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
 
   if (!existing.contract.facilityId) {
     throw new Error('Contract must have a facility before applying an amendment');
+  }
+
+  const actorUserId =
+    actorUserIdOverride ?? appliedByUserId ?? existing.approvedByUser?.id ?? existing.createdByUser.id;
+
+  if (!actorUserId) {
+    throw new Error('Amendment apply requires an actor user');
   }
 
   const workingScope = getLatestWorkingScope(existing);
@@ -1013,7 +1024,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
             roomCount: Math.max(0, Math.round(toSafeNumber(area.roomCount, 0))),
             unitCount: Math.max(0, Math.round(toSafeNumber(area.unitCount, 0))),
             notes: typeof area.notes === 'string' ? area.notes : null,
-            createdByUserId: appliedByUserId,
+            createdByUserId: actorUserId,
           },
           select: { id: true },
         });
@@ -1128,7 +1139,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
                 ? null
                 : toSafeNumber(task.perRoomMinutesOverride),
             cleaningFrequency: toSafeString(task.cleaningFrequency, 'daily'),
-            createdByUserId: appliedByUserId,
+            createdByUserId: actorUserId,
           },
           select: { id: true },
         });
@@ -1172,7 +1183,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
       data: {
         status: 'applied',
         appliedAt: new Date(),
-        appliedByUserId,
+        appliedByUserId: appliedByUserId ?? null,
       },
       select: amendmentDetailSelect,
     });
@@ -1185,7 +1196,7 @@ export async function applyContractAmendment(amendmentId: string, appliedByUserI
       },
     });
 
-    await createAmendmentActivity(tx, amendmentId, 'applied', appliedByUserId, {
+    await createAmendmentActivity(tx, amendmentId, 'applied', appliedByUserId ?? undefined, {
       createdAreaCount,
       updatedAreaCount,
       removedAreaCount: areasToArchive.length,

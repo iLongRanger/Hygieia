@@ -74,7 +74,6 @@ import {
 import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
 import {
   approveContractAmendment,
-  applyContractAmendment,
   createContractAmendment,
   getContractAmendmentById,
   listContractAmendments,
@@ -82,6 +81,7 @@ import {
   rejectContractAmendment,
   updateContractAmendment,
 } from '../services/contractAmendmentService';
+import { applyContractAmendmentWorkflow } from '../services/contractAmendmentWorkflowService';
 
 const router: Router = Router();
 
@@ -1723,36 +1723,16 @@ router.post(
         );
       }
 
-      const amendment = await applyContractAmendment(req.params.amendmentId, req.user.id);
-
-      let regenerationResult: { canceled: number; created: number } | null = null;
-      try {
-        regenerationResult = await regenerateRecurringJobsForContract({
-          contractId: req.params.id,
-          createdByUserId: req.user.id,
-          reason: `Contract amendment #${amendment.amendmentNumber} applied`,
-        });
-      } catch (regenerationError) {
-        logger.error('Failed to regenerate recurring jobs after amendment apply:', regenerationError);
-      }
-
-      await logContractActivity({
-        contractId: req.params.id,
-        action: 'amendment_applied',
-        performedByUserId: req.user.id,
-        metadata: {
-          amendmentId: amendment.id,
-          amendmentNumber: amendment.amendmentNumber,
-          appliedEarly: applyingEarly,
-          jobsCanceled: regenerationResult?.canceled ?? 0,
-          jobsCreated: regenerationResult?.created ?? 0,
-        },
+      const result = await applyContractAmendmentWorkflow(req.params.amendmentId, {
+        appliedByUserId: req.user.id,
+        forceApply: parsed.data.forceApply,
+        source: 'manual',
       });
 
       res.json({
         data: {
-          amendment,
-          recurringJobs: regenerationResult,
+          amendment: result.amendment,
+          recurringJobs: result.recurringJobs,
         },
       });
     } catch (error) {

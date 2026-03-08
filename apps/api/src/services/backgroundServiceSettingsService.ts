@@ -45,6 +45,7 @@ const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
   recurring_jobs_autogen: 1 * 60 * 60 * 1000,
   job_alerts: 7 * 60 * 60 * 1000,
   contract_assignment_overrides: 0,
+  contract_amendment_auto_apply: 2 * 60 * 60 * 1000,
 };
 
 function parseIntervalMs(raw: string | undefined, fallback: number): number {
@@ -66,6 +67,9 @@ function getDefaultEnabled(serviceKey: BackgroundServiceKey): boolean {
   if (serviceKey === 'contract_assignment_overrides') {
     return process.env.CONTRACT_ASSIGNMENT_OVERRIDES_ENABLED !== 'false';
   }
+  if (serviceKey === 'contract_amendment_auto_apply') {
+    return process.env.CONTRACT_AMENDMENT_AUTO_APPLY_ENABLED !== 'false';
+  }
   return process.env.JOB_ALERTS_ENABLED !== 'false';
 }
 
@@ -83,6 +87,12 @@ function getDefaultIntervalMs(serviceKey: BackgroundServiceKey): number {
     return parseIntervalMs(
       process.env.CONTRACT_ASSIGNMENT_OVERRIDES_INTERVAL_MS,
       DEFAULT_INTERVALS_MS.contract_assignment_overrides
+    );
+  }
+  if (serviceKey === 'contract_amendment_auto_apply') {
+    return parseIntervalMs(
+      process.env.CONTRACT_AMENDMENT_AUTO_APPLY_INTERVAL_MS,
+      DEFAULT_INTERVALS_MS.contract_amendment_auto_apply
     );
   }
   return parseIntervalMs(process.env.JOB_ALERTS_INTERVAL_MS, DEFAULT_INTERVALS_MS.job_alerts);
@@ -139,6 +149,7 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'recurring_jobs_autogen',
   'job_alerts',
   'contract_assignment_overrides',
+  'contract_amendment_auto_apply',
 ];
 
 function hasBackgroundServiceDelegate(): boolean {
@@ -314,6 +325,7 @@ export async function getBackgroundServiceRunLogs(limitPerService = 20): Promise
     recurring_jobs_autogen: [],
     job_alerts: [],
     contract_assignment_overrides: [],
+    contract_amendment_auto_apply: [],
   };
 
   if (!hasBackgroundServiceLogDelegate()) {

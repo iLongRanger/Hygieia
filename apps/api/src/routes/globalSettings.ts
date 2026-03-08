@@ -30,6 +30,10 @@ import {
   reloadContractAssignmentOverrideScheduler,
   runContractAssignmentOverrideCycleNow,
 } from '../services/contractAssignmentOverrideScheduler';
+import {
+  reloadContractAmendmentAutoApplyScheduler,
+  runContractAmendmentAutoApplyCycleNow,
+} from '../services/contractAmendmentAutoApplyScheduler';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -49,6 +53,10 @@ async function reloadSchedulerForService(serviceKey: string): Promise<void> {
   }
   if (serviceKey === 'contract_assignment_overrides') {
     await reloadContractAssignmentOverrideScheduler();
+    return;
+  }
+  if (serviceKey === 'contract_amendment_auto_apply') {
+    await reloadContractAmendmentAutoApplyScheduler();
   }
 }
 
@@ -67,6 +75,10 @@ async function runServiceNow(serviceKey: string): Promise<void> {
   }
   if (serviceKey === 'contract_assignment_overrides') {
     await runContractAssignmentOverrideCycleNow();
+    return;
+  }
+  if (serviceKey === 'contract_amendment_auto_apply') {
+    await runContractAmendmentAutoApplyCycleNow();
   }
 }
 

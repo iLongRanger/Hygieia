@@ -31,7 +31,6 @@ import areaTemplatesRoutes from './routes/areaTemplates';
 import proposalsRoutes from './routes/proposals';
 import proposalTemplatesRoutes from './routes/proposalTemplates';
 import contractsRoutes from './routes/contracts';
-import contractAmendmentsRoutes from './routes/contractAmendments';
 import dashboardRoutes from './routes/dashboard';
 import teamsRoutes from './routes/teams';
 import globalSettingsRoutes from './routes/globalSettings';
@@ -54,6 +53,7 @@ import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
 import { startJobAlertScheduler } from './services/jobAlertScheduler';
 import { startContractAssignmentOverrideScheduler } from './services/contractAssignmentOverrideScheduler';
+import { startContractAmendmentAutoApplyScheduler } from './services/contractAmendmentAutoApplyScheduler';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3101;
@@ -144,7 +144,6 @@ app.use('/api/v1/area-templates', areaTemplatesRoutes);
 app.use('/api/v1/proposals', proposalsRoutes);
 app.use('/api/v1/proposal-templates', proposalTemplatesRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
-app.use('/api/v1/contract-amendments', contractAmendmentsRoutes);
 app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/settings/global', globalSettingsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
@@ -174,6 +173,7 @@ startReminderScheduler();
 startRecurringJobScheduler();
 startJobAlertScheduler();
 startContractAssignmentOverrideScheduler();
+startContractAmendmentAutoApplyScheduler();
 
 httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);
