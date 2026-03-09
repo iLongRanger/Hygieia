@@ -145,24 +145,35 @@ export async function acceptProposalPublic(
     throw new Error('This proposal link has expired');
   }
 
-  if (!['sent', 'viewed'].includes(proposal.status)) {
+  if (!['sent', 'viewed', 'accepted'].includes(proposal.status)) {
     throw new Error('This proposal can no longer be accepted');
   }
 
-  const updatedProposal = await prisma.proposal.update({
+  const acceptedNow = proposal.status !== 'accepted';
+  if (acceptedNow) {
+    await prisma.proposal.update({
+      where: { id: proposal.id },
+      data: {
+        status: 'accepted',
+        acceptedAt: new Date(),
+        signatureName,
+        signatureDate: new Date(),
+        signatureIp: ipAddress ?? null,
+      },
+    });
+
+    await autoAdvanceLeadStatusForAccount(proposal.accountId, 'negotiation');
+  }
+
+  const resolvedProposal = await prisma.proposal.findUniqueOrThrow({
     where: { id: proposal.id },
-    data: {
-      status: 'accepted',
-      acceptedAt: new Date(),
-      signatureName,
-      signatureDate: new Date(),
-      signatureIp: ipAddress ?? null,
-    },
     select: publicProposalSelect,
   });
 
-  await autoAdvanceLeadStatusForAccount(proposal.accountId, 'negotiation');
-  return updatedProposal;
+  return {
+    proposal: resolvedProposal,
+    acceptedNow,
+  };
 }
 
 export async function rejectProposalPublic(

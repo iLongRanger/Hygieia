@@ -102,67 +102,74 @@ router.post(
         throw handleZodError(parsed.error);
       }
 
-      const proposal = await acceptProposalPublic(
+      const result = await acceptProposalPublic(
         req.params.token,
         parsed.data.signatureName,
         req.ip
       );
 
-      await logActivity({
-        proposalId: proposal.id,
-        action: 'public_accepted',
-        ipAddress: req.ip,
-        metadata: { signatureName: parsed.data.signatureName },
-      });
+      if (result.acceptedNow) {
+        await logActivity({
+          proposalId: result.proposal.id,
+          action: 'public_accepted',
+          ipAddress: req.ip,
+          metadata: { signatureName: parsed.data.signatureName },
+        });
 
-      // Notify admins and proposal creator (fire-and-forget)
-      try {
-        const { proposal: fullProposal, adminUsers } = await getNotificationRecipients(proposal.id);
-        if (fullProposal) {
-          const recipientUserIds = new Set<string>();
-          if (fullProposal.createdByUser) {
-            recipientUserIds.add(fullProposal.createdByUser.id);
-          }
-          for (const admin of adminUsers) {
-            recipientUserIds.add(admin.id);
-          }
-
-          await createBulkNotifications([...recipientUserIds], {
-            type: 'proposal_accepted',
-            title: `Proposal ${fullProposal.proposalNumber} accepted`,
-            body: `${fullProposal.account.name} has accepted proposal "${fullProposal.title}".`,
-            metadata: { proposalId: proposal.id },
-          });
-
-          // Send email notifications
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
-          const html = buildProposalAcceptedHtmlWithBranding({
-            proposalNumber: fullProposal.proposalNumber,
-            title: fullProposal.title,
-            accountName: fullProposal.account.name,
-            totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(fullProposal.totalAmount)),
-            acceptedAt: new Date().toLocaleDateString(),
-            signatureName: parsed.data.signatureName,
-          }, branding);
-          const subject = buildProposalAcceptedSubject(fullProposal.proposalNumber);
-
-          const emailRecipients = new Set<string>();
-          if (fullProposal.createdByUser?.email) {
-            emailRecipients.add(fullProposal.createdByUser.email);
-          }
-          if (branding.companyEmail) {
-            emailRecipients.add(branding.companyEmail);
-          }
-
-          await Promise.allSettled(
-            [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+        // Notify admins and proposal creator (fire-and-forget)
+        try {
+          const { proposal: fullProposal, adminUsers } = await getNotificationRecipients(
+            result.proposal.id
           );
+          if (fullProposal) {
+            const recipientUserIds = new Set<string>();
+            if (fullProposal.createdByUser) {
+              recipientUserIds.add(fullProposal.createdByUser.id);
+            }
+            for (const admin of adminUsers) {
+              recipientUserIds.add(admin.id);
+            }
+
+            await createBulkNotifications([...recipientUserIds], {
+              type: 'proposal_accepted',
+              title: `Proposal ${fullProposal.proposalNumber} accepted`,
+              body: `${fullProposal.account.name} has accepted proposal "${fullProposal.title}".`,
+              metadata: { proposalId: result.proposal.id },
+            });
+
+            // Send email notifications
+            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const html = buildProposalAcceptedHtmlWithBranding({
+              proposalNumber: fullProposal.proposalNumber,
+              title: fullProposal.title,
+              accountName: fullProposal.account.name,
+              totalAmount: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(fullProposal.totalAmount)),
+              acceptedAt: new Date().toLocaleDateString(),
+              signatureName: parsed.data.signatureName,
+            }, branding);
+            const subject = buildProposalAcceptedSubject(fullProposal.proposalNumber);
+
+            const emailRecipients = new Set<string>();
+            if (fullProposal.createdByUser?.email) {
+              emailRecipients.add(fullProposal.createdByUser.email);
+            }
+            if (branding.companyEmail) {
+              emailRecipients.add(branding.companyEmail);
+            }
+
+            await Promise.allSettled(
+              [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+            );
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send acceptance notifications:', notifyError);
         }
-      } catch (notifyError) {
-        logger.error('Failed to send acceptance notifications:', notifyError);
       }
 
-      res.json({ data: proposal, message: 'Proposal accepted successfully' });
+      res.json({
+        data: result.proposal,
+        message: result.acceptedNow ? 'Proposal accepted successfully' : 'Proposal already accepted',
+      });
     } catch (error) {
       next(error);
     }

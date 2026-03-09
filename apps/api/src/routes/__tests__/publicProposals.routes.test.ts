@@ -5,6 +5,9 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as proposalPublicService from '../../services/proposalPublicService';
 import * as proposalActivityService from '../../services/proposalActivityService';
 import * as pdfService from '../../services/pdfService';
+import * as notificationService from '../../services/notificationService';
+import * as emailService from '../../services/emailService';
+import { prisma } from '../../lib/prisma';
 
 jest.mock('../../services/proposalPublicService');
 jest.mock('../../services/proposalActivityService', () => ({
@@ -15,6 +18,9 @@ jest.mock('../../services/pdfService', () => ({
 }));
 jest.mock('../../services/emailService', () => ({
   sendNotificationEmail: jest.fn().mockResolvedValue(true),
+}));
+jest.mock('../../services/notificationService', () => ({
+  createBulkNotifications: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../services/globalSettingsService', () => {
   const branding = {
@@ -104,8 +110,18 @@ describe('Public Proposal Routes', () => {
 
   it('POST /:token/accept should accept proposal', async () => {
     (proposalPublicService.acceptProposalPublic as jest.Mock).mockResolvedValue({
-      id: 'proposal-1',
-      status: 'accepted',
+      proposal: {
+        id: 'proposal-1',
+        status: 'accepted',
+      },
+      acceptedNow: true,
+    });
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      proposalNumber: 'PROP-001',
+      title: 'Test Proposal',
+      totalAmount: '1200',
+      account: { name: 'Acme Corp' },
+      createdByUser: { id: 'user-1', email: 'owner@example.com' },
     });
 
     const response = await request(app)
@@ -122,6 +138,26 @@ describe('Public Proposal Routes', () => {
     expect(proposalActivityService.logActivity).toHaveBeenCalledWith(
       expect.objectContaining({ proposalId: 'proposal-1', action: 'public_accepted' })
     );
+  });
+
+  it('POST /:token/accept should skip duplicate acceptance side effects', async () => {
+    (proposalPublicService.acceptProposalPublic as jest.Mock).mockResolvedValue({
+      proposal: {
+        id: 'proposal-1',
+        status: 'accepted',
+      },
+      acceptedNow: false,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/public/proposals/token-123/accept')
+      .send({ signatureName: 'Jane Client' })
+      .expect(200);
+
+    expect(response.body.message).toBe('Proposal already accepted');
+    expect(proposalActivityService.logActivity).not.toHaveBeenCalled();
+    expect(notificationService.createBulkNotifications).not.toHaveBeenCalled();
+    expect(emailService.sendNotificationEmail).not.toHaveBeenCalled();
   });
 
   it('POST /:token/reject should reject proposal', async () => {
