@@ -194,6 +194,46 @@ describe('Contract Routes', () => {
       .expect(422);
   });
 
+  it('GET /summary should pass user scope to contract summary service', async () => {
+    mockAuthUser.role = 'manager';
+    (contractService.getContractsSummary as jest.Mock).mockResolvedValue({
+      total: 1,
+      byStatus: { draft: 0, sent: 0, viewed: 0, pendingSignature: 0, active: 1 },
+      unassigned: 0,
+      nearingRenewal: 0,
+      renewalWindowDays: 30,
+    });
+
+    await request(app)
+      .get('/api/v1/contracts/summary')
+      .expect(200);
+
+    expect(contractService.getContractsSummary).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'manager',
+        userId: 'user-1',
+      })
+    );
+  });
+
+  it('GET /expiring should pass cleaner scope to expiring contracts service', async () => {
+    mockAuthUser.role = 'cleaner';
+    (contractService.getExpiringContracts as jest.Mock).mockResolvedValue([]);
+
+    await request(app)
+      .get('/api/v1/contracts/expiring?days=14')
+      .expect(200);
+
+    expect(contractService.getExpiringContracts).toHaveBeenCalledWith(
+      14,
+      expect.objectContaining({
+        userRole: 'cleaner',
+        userId: 'user-1',
+      })
+    );
+  });
+
   it('GET /:id should return contract', async () => {
     (contractService.getContractById as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 

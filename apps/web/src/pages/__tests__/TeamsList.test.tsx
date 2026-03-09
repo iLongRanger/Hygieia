@@ -65,7 +65,7 @@ describe('TeamsList', () => {
     resendSubcontractorInviteMock.mockResolvedValue({
       userId: 'user-1',
       email: 'alice@example.com',
-      setPasswordUrl: 'http://localhost:5173/auth/set-password?token=test',
+      setPasswordUrl: 'https://portal.example.com/auth/set-password?token=test',
       expiresAt: new Date().toISOString(),
       emailSent: true,
     });

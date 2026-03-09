@@ -182,7 +182,7 @@ describe('Team Routes', () => {
     (teamService.resendSubcontractorInvite as jest.Mock).mockResolvedValue({
       userId: 'user-1',
       email: 'sub@example.com',
-      setPasswordUrl: 'http://localhost:5173/auth/set-password?token=test',
+      setPasswordUrl: 'https://portal.example.com/auth/set-password?token=test',
       expiresAt: new Date().toISOString(),
       emailSent: true,
     });
