@@ -3,6 +3,7 @@ import { render, screen } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import InspectionsList from '../inspections/InspectionsList';
 import { mockInspection, mockPaginatedResponse } from '../../test/mocks';
+import { useAuthStore } from '../../stores/authStore';
 
 const navigateMock = vi.fn();
 
@@ -31,6 +32,13 @@ describe('InspectionsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
+    // InspectionsList requires INSPECTIONS_WRITE permission for the "New Inspection" button
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
   });
 
   afterEach(() => {

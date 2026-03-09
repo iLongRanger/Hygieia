@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '../../test/test-utils';
 import TimesheetsPage from '../timeTracking/TimesheetsPage';
+import { useAuthStore } from '../../stores/authStore';
 
 const navigateMock = vi.fn();
 
@@ -79,6 +80,12 @@ describe('TimesheetsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     listTimesheetsMock.mockResolvedValue({
       data: [timesheetRow],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
@@ -122,7 +129,7 @@ describe('TimesheetsPage', () => {
 
     expect(await screen.findByText('Timesheets')).toBeInTheDocument();
     expect(screen.getByText('Jane Worker')).toBeInTheDocument();
-    expect(listTimesheetsMock).toHaveBeenCalledWith({ limit: 20 });
+    expect(listTimesheetsMock).toHaveBeenCalledWith({ limit: 20, page: 1 });
   });
 
   it('validates generate form required fields', async () => {

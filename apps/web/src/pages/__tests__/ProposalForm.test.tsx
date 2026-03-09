@@ -21,6 +21,7 @@ vi.mock('react-router-dom', async () => {
 const listAccountsMock = vi.fn();
 const listFacilitiesMock = vi.fn();
 const listAreasMock = vi.fn();
+const listAreaTypesMock = vi.fn();
 const listFacilityTasksMock = vi.fn();
 const listPricingSettingsMock = vi.fn();
 const getProposalMock = vi.fn();
@@ -36,6 +37,7 @@ vi.mock('../../lib/accounts', () => ({
 vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
   listAreas: (...args: unknown[]) => listAreasMock(...args),
+  listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
   listFacilityTasks: (...args: unknown[]) => listFacilityTasksMock(...args),
 }));
 
@@ -145,6 +147,7 @@ describe('ProposalForm', () => {
     listAccountsMock.mockReset();
     listFacilitiesMock.mockReset();
     listAreasMock.mockReset();
+    listAreaTypesMock.mockReset();
     listFacilityTasksMock.mockReset();
     listPricingSettingsMock.mockReset();
     getProposalMock.mockReset();
@@ -320,6 +323,9 @@ describe('ProposalForm', () => {
           withoutProposal: true,
         })
       );
+    });
+    listAreaTypesMock.mockResolvedValue({
+      data: [{ id: 'area-type-1', name: 'Lobby' }],
     });
 
     expect(createProposalMock).not.toHaveBeenCalled();

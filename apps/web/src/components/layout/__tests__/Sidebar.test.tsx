@@ -34,12 +34,14 @@ describe('Sidebar RBAC', () => {
   });
 
   it('shows route when explicit user permissions grant access', () => {
+    // Use a non-field-worker role with no default permissions,
+    // but grant users_read explicitly via the permissions map.
     useAuthStore.setState({
       user: {
-        id: 'cleaner-1',
-        email: 'cleaner@example.com',
-        fullName: 'Cleaner User',
-        role: 'cleaner',
+        id: 'custom-1',
+        email: 'custom@example.com',
+        fullName: 'Custom User',
+        role: 'viewer',
         permissions: {
           users_read: true,
         },

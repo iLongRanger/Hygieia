@@ -27,8 +27,8 @@ describe('ProposalVersionHistory', () => {
 
     await waitFor(() => {
       expect(getProposalVersionsMock).toHaveBeenCalledWith('proposal-1');
+      expect(screen.queryByText('Version History')).not.toBeInTheDocument();
     });
-    expect(screen.queryByText('Version History')).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 

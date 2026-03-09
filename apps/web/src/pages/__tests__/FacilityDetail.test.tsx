@@ -219,6 +219,8 @@ describe('FacilityDetail', () => {
     const user = userEvent.setup();
     render(<FacilityDetail />);
 
+    // Navigate to the Areas tab first
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
     await user.click(await screen.findByRole('button', { name: /add area/i }));
     await screen.findByRole('option', { name: 'Office' });
     await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
@@ -251,6 +253,8 @@ describe('FacilityDetail', () => {
     listTaskTemplatesMock.mockResolvedValue({ data: [areaSpecificTemplate] });
     render(<FacilityDetail />);
 
+    // Navigate to the Areas tab first
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
     await user.click(await screen.findByRole('button', { name: /add area/i }));
     await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
 
@@ -260,6 +264,19 @@ describe('FacilityDetail', () => {
 
   it('submits facility for proposal from header action', async () => {
     const user = userEvent.setup();
+    listFacilityTasksMock.mockResolvedValue({
+      data: [
+        {
+          id: 'task-1',
+          customName: 'Vacuum',
+          cleaningFrequency: 'daily',
+          priority: 3,
+          archivedAt: null,
+          area: { id: 'area-1', name: 'Office A' },
+          taskTemplate: null,
+        },
+      ],
+    });
     render(<FacilityDetail />);
 
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));

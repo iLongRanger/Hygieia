@@ -123,13 +123,20 @@ describe('ContractsList', () => {
   it('renders contracts from API', async () => {
     render(<ContractsList />);
 
-    expect(await screen.findByText('CONT-202602-0001')).toBeInTheDocument();
-    expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('CONT-202602-0001')).toBeInTheDocument();
+      expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
+    });
   });
 
   it('archives a draft contract from row action', async () => {
     const user = userEvent.setup();
     render(<ContractsList />);
+
+    // Wait for both listContracts and summary to resolve and stabilise
+    await waitFor(() => {
+      expect(listContractsMock).toHaveBeenCalledTimes(2);
+    });
 
     const contractNumber = await screen.findByText('CONT-202602-0001');
     const row = contractNumber.closest('tr');
@@ -145,6 +152,11 @@ describe('ContractsList', () => {
   it('activates draft contract', async () => {
     const user = userEvent.setup();
     render(<ContractsList />);
+
+    // Wait for both listContracts and summary to resolve and stabilise
+    await waitFor(() => {
+      expect(listContractsMock).toHaveBeenCalledTimes(2);
+    });
 
     const activateButton = await screen.findByRole('button', { name: /activate/i });
     await user.click(activateButton);

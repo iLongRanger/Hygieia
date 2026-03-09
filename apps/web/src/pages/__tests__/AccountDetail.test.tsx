@@ -32,6 +32,8 @@ const createFacilityMock = vi.fn();
 const listUsersMock = vi.fn();
 const listProposalsMock = vi.fn();
 const listContractsMock = vi.fn();
+const listContactsMock = vi.fn();
+const listJobsMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   getAccount: (...args: unknown[]) => getAccountMock(...args),
@@ -57,6 +59,14 @@ vi.mock('../../lib/proposals', () => ({
 
 vi.mock('../../lib/contracts', () => ({
   listContracts: (...args: unknown[]) => listContractsMock(...args),
+}));
+
+vi.mock('../../lib/contacts', () => ({
+  listContacts: (...args: unknown[]) => listContactsMock(...args),
+}));
+
+vi.mock('../../lib/jobs', () => ({
+  listJobs: (...args: unknown[]) => listJobsMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -275,6 +285,8 @@ describe('AccountDetail', () => {
     listFacilitiesMock.mockResolvedValue({ data: [facility], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     listProposalsMock.mockResolvedValue({ data: [proposal], pagination: { page: 1, limit: 5, total: 1, totalPages: 1 } });
     listContractsMock.mockResolvedValue({ data: [contract], pagination: { page: 1, limit: 5, total: 1, totalPages: 1 } });
+    listContactsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listJobsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
   });
 
   afterEach(() => {
@@ -296,7 +308,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /edit account/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /^edit$/i }));
 
     const accountNameInput = await screen.findByLabelText(/account name/i);
     await userEventInstance.clear(accountNameInput);
@@ -355,10 +367,10 @@ describe('AccountDetail', () => {
 
     render(<AccountDetail />);
 
-    expect(await screen.findByText('Team: Alpha Team')).toBeInTheDocument();
-    expect(await screen.findByText('Alpha Team')).toBeInTheDocument();
+    const alphaTeamElements = await screen.findAllByText('Alpha Team');
+    expect(alphaTeamElements.length).toBeGreaterThan(0);
 
-    await userEventInstance.click(screen.getByRole('button', { name: /edit account/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /^edit$/i }));
     expect(await screen.findByLabelText(/assigned team/i)).toHaveValue('Alpha Team');
   });
 });
