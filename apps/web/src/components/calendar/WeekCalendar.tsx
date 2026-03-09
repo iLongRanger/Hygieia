@@ -9,6 +9,7 @@ import {
   isToday,
 } from '../../lib/calendar-utils';
 import type { Appointment } from '../../types/crm';
+import type { AppointmentDisplayVariant } from './appointmentPresentation';
 
 type CalendarLayout = 'grid' | 'list';
 
@@ -22,6 +23,7 @@ interface WeekCalendarProps {
   layout?: CalendarLayout;
   isLoading?: boolean;
   showLegend?: boolean;
+  appointmentDisplayVariant?: AppointmentDisplayVariant;
 }
 
 const START_HOUR = 6;
@@ -40,6 +42,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
   layout = 'grid',
   isLoading = false,
   showLegend = true,
+  appointmentDisplayVariant = 'default',
 }) => {
   const weekDays = useMemo(() => getWeekDays(date), [date]);
   const timeSlots = useMemo(() => getTimeSlots(START_HOUR, END_HOUR, STEP_MINS), []);
@@ -166,6 +169,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                         appointment={appointment}
                         onEdit={onEdit}
                         onCustomerClick={onCustomerClick}
+                        displayVariant={appointmentDisplayVariant}
                       />
                     ))}
                   </div>
@@ -238,6 +242,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                     gridRow: `${segment.rowStart} / ${segment.rowEnd}`,
                   }}
                   className="m-0.5"
+                  displayVariant={appointmentDisplayVariant}
                 />
               ))}
             </div>

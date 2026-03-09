@@ -2,6 +2,7 @@ import React from 'react';
 import { getCalendarDays, formatDateKey, groupAppointmentsByDate } from '../../lib/calendar-utils';
 import { CalendarDayCell } from './CalendarDayCell';
 import type { Appointment } from '../../types/crm';
+import type { AppointmentDisplayVariant } from './appointmentPresentation';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -13,6 +14,7 @@ interface CalendarGridProps {
   onCustomerClick: (appointment: Appointment) => void;
   onCreateClick: (date: Date) => void;
   compact?: boolean;
+  appointmentDisplayVariant?: AppointmentDisplayVariant;
 }
 
 export const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -23,6 +25,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   onCustomerClick,
   onCreateClick,
   compact = false,
+  appointmentDisplayVariant = 'default',
 }) => {
   const days = getCalendarDays(year, month);
   const appointmentsByDate = groupAppointmentsByDate(appointments);
@@ -58,6 +61,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
               onCustomerClick={onCustomerClick}
               onCreateClick={onCreateClick}
               compact={compact}
+              appointmentDisplayVariant={appointmentDisplayVariant}
             />
           );
         })}

@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils';
 import { isToday, isSameMonth } from '../../lib/calendar-utils';
 import { AppointmentBlock } from './AppointmentBlock';
 import type { Appointment } from '../../types/crm';
+import type { AppointmentDisplayVariant } from './appointmentPresentation';
 
 const MAX_VISIBLE_APPOINTMENTS = 3;
 
@@ -15,6 +16,7 @@ interface CalendarDayCellProps {
   onCustomerClick: (appointment: Appointment) => void;
   onCreateClick: (date: Date) => void;
   compact?: boolean;
+  appointmentDisplayVariant?: AppointmentDisplayVariant;
 }
 
 export const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
@@ -26,6 +28,7 @@ export const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
   onCustomerClick,
   onCreateClick,
   compact = false,
+  appointmentDisplayVariant = 'default',
 }) => {
   const isCurrentMonth = isSameMonth(date, currentYear, currentMonth);
   const isTodayDate = isToday(date);
@@ -75,6 +78,7 @@ export const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
               onEdit={onEdit}
               onCustomerClick={onCustomerClick}
               compact
+              displayVariant={appointmentDisplayVariant}
             />
           ))
         ) : (
@@ -86,6 +90,7 @@ export const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
                 appointment={apt}
                 onEdit={onEdit}
                 onCustomerClick={onCustomerClick}
+                displayVariant={appointmentDisplayVariant}
               />
             ))}
             {hiddenCount > 0 && (

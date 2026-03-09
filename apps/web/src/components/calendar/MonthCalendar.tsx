@@ -2,6 +2,7 @@ import React from 'react';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarGrid } from './CalendarGrid';
 import type { Appointment } from '../../types/crm';
+import type { AppointmentDisplayVariant } from './appointmentPresentation';
 
 interface MonthCalendarProps {
   year: number;
@@ -13,6 +14,7 @@ interface MonthCalendarProps {
   onCreateClick: (date: Date) => void;
   isLoading?: boolean;
   showLegend?: boolean;
+  appointmentDisplayVariant?: AppointmentDisplayVariant;
 }
 
 export const MonthCalendar: React.FC<MonthCalendarProps> = ({
@@ -25,6 +27,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onCreateClick,
   isLoading = false,
   showLegend = true,
+  appointmentDisplayVariant = 'default',
 }) => {
   const currentDate = new Date(year, month, 1);
 
@@ -67,6 +70,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
           onEdit={onEdit}
           onCustomerClick={onCustomerClick}
           onCreateClick={onCreateClick}
+          appointmentDisplayVariant={appointmentDisplayVariant}
         />
       </div>
     </div>

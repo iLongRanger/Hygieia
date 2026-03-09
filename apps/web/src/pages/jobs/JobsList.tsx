@@ -953,6 +953,7 @@ const JobsList = () => {
               onCreateClick={handleCalendarCreateClick}
               isLoading={calendarLoading}
               showLegend={false}
+              appointmentDisplayVariant="bubble"
             />
           ) : calendarView === 'week' ? (
             <WeekCalendar
@@ -965,6 +966,7 @@ const JobsList = () => {
               layout={calendarLayout}
               isLoading={calendarLoading}
               showLegend={false}
+              appointmentDisplayVariant="bubble"
             />
           ) : (
             <DayCalendar
@@ -977,6 +979,7 @@ const JobsList = () => {
               layout={calendarLayout}
               isLoading={calendarLoading}
               showLegend={false}
+              appointmentDisplayVariant="bubble"
             />
           )}
         </div>

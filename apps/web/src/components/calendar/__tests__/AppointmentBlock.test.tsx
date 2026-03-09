@@ -195,6 +195,31 @@ describe('AppointmentBlock', () => {
         backgroundColor: 'rgba(18, 52, 86, 0.16)',
       });
     });
+
+    it('shows initials and a details card in bubble mode', async () => {
+      const user = userEvent.setup();
+      const appointment = createMockAppointment({
+        type: 'visit',
+        lead: null,
+        account: { id: 'a', name: 'Big Company Inc', type: 'commercial' },
+      });
+
+      render(
+        <AppointmentBlock
+          appointment={appointment}
+          onEdit={vi.fn()}
+          onCustomerClick={vi.fn()}
+          displayVariant="bubble"
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /show job details for big company inc/i });
+      expect(trigger).toHaveTextContent('BC');
+
+      await user.hover(trigger);
+      expect(screen.getByText('Open job')).toBeInTheDocument();
+      expect(screen.getByText('Big Company Inc')).toBeInTheDocument();
+    });
   });
 
   describe('Compact mode', () => {
