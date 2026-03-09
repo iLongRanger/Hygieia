@@ -639,7 +639,10 @@ export async function deleteProposal(id: string) {
  * Get accepted proposals that don't have a contract yet
  * Used for contract creation - only accepted proposals without existing contracts are available
  */
-export async function getProposalsAvailableForContract(accountId?: string) {
+export async function getProposalsAvailableForContract(
+  accountId?: string,
+  access: ProposalAccessOptions = {}
+) {
   const where: Prisma.ProposalWhereInput = {
     status: 'accepted',
     archivedAt: null,
@@ -651,6 +654,18 @@ export async function getProposalsAvailableForContract(accountId?: string) {
 
   if (accountId) {
     where.accountId = accountId;
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { account: { accountManagerId: access.userId } },
+        ],
+      },
+    ];
   }
 
   return prisma.proposal.findMany({

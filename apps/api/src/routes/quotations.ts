@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { verifyOwnership } from '../middleware/ownership';
+import { ensureOwnershipAccess, verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listQuotations,
@@ -84,7 +84,6 @@ router.get(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_READ),
-  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Try UUID first, then quotation number
@@ -94,6 +93,17 @@ router.get(
       const quotation = isUuid
         ? await getQuotationById(identifier)
         : await getQuotationByNumber(identifier);
+
+      if (!quotation) {
+        throw new NotFoundError('Quotation not found');
+      }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'quotation',
+        resourceId: quotation.id,
+        path: req.path,
+        method: req.method,
+      });
 
       res.json({ data: quotation });
     } catch (error) {

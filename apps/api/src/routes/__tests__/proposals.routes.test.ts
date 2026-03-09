@@ -127,7 +127,13 @@ describe('Proposal Routes', () => {
       .expect(200);
 
     expect(response.body.data).toHaveLength(1);
-    expect(proposalService.getProposalsAvailableForContract).toHaveBeenCalled();
+    expect(proposalService.getProposalsAvailableForContract).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 
   it('GET /:id should return proposal', async () => {

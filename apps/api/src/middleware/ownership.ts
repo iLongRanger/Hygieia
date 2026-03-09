@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from './errorHandler';
 import { prisma } from '../lib/prisma';
 import { logSecurityEvent } from '../lib/logger';
+import type { AuthenticatedUser } from '../types/express';
 
 export type ResourceType =
   | 'lead'
@@ -16,6 +17,13 @@ export type ResourceType =
 interface OwnershipContext {
   resourceType: ResourceType;
   paramName?: string; // defaults to 'id'
+}
+
+interface OwnershipCheckContext {
+  resourceType: ResourceType;
+  resourceId: string;
+  path?: string;
+  method?: string;
 }
 
 /**
@@ -155,116 +163,106 @@ export function verifyOwnership(context: OwnershipContext) {
     next: NextFunction
   ): Promise<void> => {
     try {
-      if (!req.user) {
-        throw new ForbiddenError('Authentication required');
+      const paramName = context.paramName || 'id';
+      const resourceId = req.params[paramName];
+
+      if (!resourceId) {
+        throw new ForbiddenError('Resource ID not provided');
       }
 
-      const { role, id: userId } = req.user;
-
-      // Owner and admin bypass ownership check
-      if (role === 'owner' || role === 'admin') {
-        return next();
-      }
-
-      // Subcontractor: can only access resources assigned to their team
-      if (role === 'subcontractor') {
-        const teamId = req.user.teamId;
-
-        const paramName = context.paramName || 'id';
-        const resourceId = req.params[paramName];
-
-        if (!resourceId) {
-          throw new ForbiddenError('Resource ID not provided');
-        }
-
-        let hasAccess = false;
-
-        if (context.resourceType === 'contract') {
-          const contract = await prisma.contract.findUnique({
-            where: { id: resourceId },
-            select: { assignedTeamId: true, assignedToUserId: true },
-          });
-          hasAccess =
-            contract?.assignedToUserId === userId ||
-            (Boolean(teamId) && contract?.assignedTeamId === teamId);
-        } else if (context.resourceType === 'facility') {
-          if (teamId) {
-            const count = await prisma.contract.count({
-              where: { facilityId: resourceId, assignedTeamId: teamId },
-            });
-            hasAccess = count > 0;
-          }
-        }
-
-        if (!hasAccess) {
-          logSecurityEvent('idor_attempt_blocked', {
-            userId,
-            resourceType: context.resourceType,
-            resourceId,
-            path: req.path,
-            method: req.method,
-          });
-          throw new ForbiddenError('Access denied');
-        }
-
-        return next();
-      }
-
-      // Manager needs ownership verification
-      if (role === 'manager') {
-        const paramName = context.paramName || 'id';
-        const resourceId = req.params[paramName];
-
-        if (!resourceId) {
-          throw new ForbiddenError('Resource ID not provided');
-        }
-
-        const hasAccess = await hasManagerAccess(
-          userId,
-          context.resourceType,
-          resourceId
-        );
-
-        if (!hasAccess) {
-          logSecurityEvent('idor_attempt_blocked', {
-            userId,
-            resourceType: context.resourceType,
-            resourceId,
-            path: req.path,
-            method: req.method,
-          });
-          throw new ForbiddenError('You do not have access to this resource');
-        }
-      }
-
-      // Cleaner role: only allow access to contracts assigned directly to them.
-      if (role === 'cleaner') {
-        const paramName = context.paramName || 'id';
-        const resourceId = req.params[paramName];
-
-        if (!resourceId) {
-          throw new ForbiddenError('Resource ID not provided');
-        }
-
-        if (context.resourceType === 'contract') {
-          const contract = await prisma.contract.findUnique({
-            where: { id: resourceId },
-            select: { assignedToUserId: true },
-          });
-
-          if (contract?.assignedToUserId === userId) {
-            return next();
-          }
-        }
-
-        throw new ForbiddenError('Insufficient permissions');
-      }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: context.resourceType,
+        resourceId,
+        path: req.path,
+        method: req.method,
+      });
 
       next();
     } catch (error) {
       next(error);
     }
   };
+}
+
+export async function ensureOwnershipAccess(
+  user: AuthenticatedUser | undefined,
+  context: OwnershipCheckContext
+): Promise<void> {
+  if (!user) {
+    throw new ForbiddenError('Authentication required');
+  }
+
+  const { role, id: userId } = user;
+  const { resourceType, resourceId, path, method } = context;
+
+  if (role === 'owner' || role === 'admin') {
+    return;
+  }
+
+  if (role === 'subcontractor') {
+    const teamId = user.teamId;
+    let hasAccess = false;
+
+    if (resourceType === 'contract') {
+      const contract = await prisma.contract.findUnique({
+        where: { id: resourceId },
+        select: { assignedTeamId: true, assignedToUserId: true },
+      });
+      hasAccess =
+        contract?.assignedToUserId === userId ||
+        (Boolean(teamId) && contract?.assignedTeamId === teamId);
+    } else if (resourceType === 'facility' && teamId) {
+      const count = await prisma.contract.count({
+        where: { facilityId: resourceId, assignedTeamId: teamId },
+      });
+      hasAccess = count > 0;
+    }
+
+    if (!hasAccess) {
+      logSecurityEvent('idor_attempt_blocked', {
+        userId,
+        resourceType,
+        resourceId,
+        path,
+        method,
+      });
+      throw new ForbiddenError('Access denied');
+    }
+
+    return;
+  }
+
+  if (role === 'manager') {
+    const hasAccess = await hasManagerAccess(userId, resourceType, resourceId);
+
+    if (!hasAccess) {
+      logSecurityEvent('idor_attempt_blocked', {
+        userId,
+        resourceType,
+        resourceId,
+        path,
+        method,
+      });
+      throw new ForbiddenError('You do not have access to this resource');
+    }
+
+    return;
+  }
+
+  if (role === 'cleaner') {
+    if (resourceType === 'contract') {
+      const contract = await prisma.contract.findUnique({
+        where: { id: resourceId },
+        select: { assignedToUserId: true },
+      });
+
+      if (contract?.assignedToUserId === userId) {
+        return;
+      }
+    }
+
+    throw new ForbiddenError('Insufficient permissions');
+  }
 }
 
 /**

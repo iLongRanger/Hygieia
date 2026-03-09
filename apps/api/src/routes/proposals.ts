@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { verifyOwnership } from '../middleware/ownership';
+import { ensureOwnershipAccess, verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listProposals,
@@ -104,7 +104,10 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const accountId = req.query.accountId as string | undefined;
-      const proposals = await getProposalsAvailableForContract(accountId);
+      const proposals = await getProposalsAvailableForContract(accountId, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: proposals });
     } catch (error) {
       next(error);
@@ -142,6 +145,14 @@ router.get(
       if (!proposal) {
         throw new NotFoundError('Proposal not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'proposal',
+        resourceId: proposal.id,
+        path: req.path,
+        method: req.method,
+      });
+
       res.json({ data: proposal });
     } catch (error) {
       next(error);
@@ -550,6 +561,7 @@ router.post(
   '/:id/archive',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_ADMIN),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -578,6 +590,7 @@ router.post(
   '/:id/restore',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_ADMIN),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -606,6 +619,7 @@ router.post(
   '/:id/remind',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       logger.info(`Remind request body: ${JSON.stringify(req.body)}`);
@@ -710,6 +724,7 @@ router.delete(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_DELETE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -739,6 +754,7 @@ router.patch(
   '/:proposalId/services/:serviceId/tasks',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal', paramName: 'proposalId' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateServiceTasksSchema.safeParse(req.body);
@@ -776,6 +792,7 @@ router.get(
   '/:id/pdf',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -807,6 +824,7 @@ router.get(
   '/:id/activities',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listActivitiesQuerySchema.safeParse(req.query);
@@ -836,6 +854,7 @@ router.get(
   '/:id/versions',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -856,6 +875,7 @@ router.get(
   '/:id/versions/:versionNumber',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -889,6 +909,7 @@ router.post(
   '/:id/pricing/lock',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -917,6 +938,7 @@ router.post(
   '/:id/pricing/unlock',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -945,6 +967,7 @@ router.post(
   '/:id/pricing/plan',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = changePricingPlanSchema.safeParse(req.body);
@@ -982,6 +1005,7 @@ router.post(
   '/:id/pricing/recalculate',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = recalculatePricingSchema.safeParse(req.body);
@@ -1026,6 +1050,7 @@ router.get(
   '/:id/pricing/preview',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = pricingPreviewQuerySchema.safeParse(req.query);

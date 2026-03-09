@@ -279,6 +279,53 @@ describe('proposalService', () => {
     });
   });
 
+  describe('getProposalsAvailableForContract', () => {
+    it('should scope accepted proposals for managers', async () => {
+      (prisma.proposal.findMany as jest.Mock).mockResolvedValue([createTestProposal({
+        status: 'accepted',
+      })]);
+
+      await proposalService.getProposalsAvailableForContract(undefined, {
+        userRole: 'manager',
+        userId: 'manager-123',
+      });
+
+      expect(prisma.proposal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'accepted',
+            archivedAt: null,
+            AND: [
+              {
+                OR: [
+                  { createdByUserId: 'manager-123' },
+                  { account: { accountManagerId: 'manager-123' } },
+                ],
+              },
+            ],
+          }),
+        })
+      );
+    });
+
+    it('should preserve account filtering when scoping manager access', async () => {
+      (prisma.proposal.findMany as jest.Mock).mockResolvedValue([]);
+
+      await proposalService.getProposalsAvailableForContract('account-123', {
+        userRole: 'manager',
+        userId: 'manager-123',
+      });
+
+      expect(prisma.proposal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            accountId: 'account-123',
+          }),
+        })
+      );
+    });
+  });
+
   describe('createProposal', () => {
     beforeEach(() => {
       (prisma.proposal.findFirst as jest.Mock).mockResolvedValue(null);
