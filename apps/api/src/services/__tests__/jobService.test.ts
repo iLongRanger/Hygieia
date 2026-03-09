@@ -9,6 +9,7 @@ import {
   createJob,
   generateJobsFromContract,
   listJobs,
+  runRecurringJobsAutoRegenerationCycle,
   runJobNearingEndNoCheckInAlertCycle,
 } from '../jobService';
 
@@ -449,6 +450,95 @@ describe('jobService', () => {
         }),
       })
     );
+  });
+
+  it('runRecurringJobsAutoRegenerationCycle extends recurring jobs when the horizon is short', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-03-09T10:00:00.000Z'));
+    const year = new Date().getFullYear();
+
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'contract-1',
+        startDate: new Date('2026-01-01T00:00:00.000Z'),
+        endDate: null,
+        assignedTeamId: 'team-1',
+        assignedToUserId: null,
+      },
+    ]);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: 'system-user-1' });
+    (prisma.job.findFirst as jest.Mock)
+      .mockResolvedValueOnce({
+        scheduledDate: new Date('2026-03-27T00:00:00.000Z'),
+      })
+      .mockResolvedValue({
+        jobNumber: `WO-${year}-0001`,
+      });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      startDate: new Date('2026-01-01T00:00:00.000Z'),
+      endDate: null,
+      assignedTeamId: 'team-1',
+      assignedToUserId: null,
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      serviceFrequency: '7x_week',
+      serviceSchedule: null,
+      facility: { address: null },
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.create as jest.Mock).mockImplementation(async ({ data }) => ({
+      id: `job-${data.scheduledDate.toISOString().slice(0, 10)}`,
+      scheduledDate: data.scheduledDate,
+      jobNumber: `WO-${year}-0002`,
+    }));
+
+    const result = await runRecurringJobsAutoRegenerationCycle();
+
+    expect(prisma.contract.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'contract-1' },
+      })
+    );
+    expect(prisma.job.create).toHaveBeenCalled();
+    expect(result).toEqual({
+      checked: 1,
+      generatedFor: 1,
+      created: 30,
+    });
+
+    jest.useRealTimers();
+  });
+
+  it('runRecurringJobsAutoRegenerationCycle skips contracts already filled to the lookahead horizon', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-03-09T10:00:00.000Z'));
+
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'contract-1',
+        startDate: new Date('2026-01-01T00:00:00.000Z'),
+        endDate: null,
+        assignedTeamId: 'team-1',
+        assignedToUserId: null,
+      },
+    ]);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: 'system-user-1' });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      scheduledDate: new Date('2026-04-07T00:00:00.000Z'),
+    });
+
+    const result = await runRecurringJobsAutoRegenerationCycle();
+
+    expect(prisma.contract.findUnique).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      checked: 1,
+      generatedFor: 0,
+      created: 0,
+    });
+
+    jest.useRealTimers();
   });
 
   it('runJobNearingEndNoCheckInAlertCycle notifies admins for jobs near end with no check-in', async () => {

@@ -1270,6 +1270,10 @@ export async function runRecurringJobsAutoRegenerationCycle(): Promise<{
   created: number;
 }> {
   const todayUtc = atUtcStartOfDay(new Date());
+  const targetHorizonUtc = new Date(todayUtc);
+  targetHorizonUtc.setUTCDate(
+    targetHorizonUtc.getUTCDate() + (AUTO_RECURRING_JOB_LOOKAHEAD_DAYS - 1)
+  );
   const activeContracts = await prisma.contract.findMany({
     where: {
       status: 'active',
@@ -1309,7 +1313,7 @@ export async function runRecurringJobsAutoRegenerationCycle(): Promise<{
 
     if (latestRecurring) {
       const latestDate = atUtcStartOfDay(latestRecurring.scheduledDate);
-      if (latestDate > todayUtc) {
+      if (latestDate >= targetHorizonUtc) {
         continue;
       }
     }
