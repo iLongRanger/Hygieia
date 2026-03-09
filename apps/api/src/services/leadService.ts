@@ -43,6 +43,11 @@ export interface LeadListParams {
   converted?: boolean;
 }
 
+interface LeadAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface LeadCreateInput {
   leadSourceId?: string | null;
   companyName?: string | null;
@@ -153,7 +158,8 @@ function hasAddressCoordinates(address: unknown): boolean {
 }
 
 export async function listLeads(
-  params: LeadListParams
+  params: LeadListParams,
+  access: LeadAccessOptions = {}
 ): Promise<
   PaginatedResult<Prisma.LeadGetPayload<{ select: typeof leadSelect }>>
 > {
@@ -202,6 +208,18 @@ export async function listLeads(
       { contactName: { contains: search, mode: 'insensitive' } },
       { companyName: { contains: search, mode: 'insensitive' } },
       { primaryEmail: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { assignedToUserId: access.userId },
+        ],
+      },
     ];
   }
 

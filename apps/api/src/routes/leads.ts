@@ -48,7 +48,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listLeads(parsed.data);
+      const result = await listLeads(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);

@@ -8,6 +8,7 @@ export type ResourceType =
   | 'account'
   | 'facility'
   | 'proposal'
+  | 'quotation'
   | 'contract'
   | 'contact'
   | 'appointment';
@@ -74,6 +75,21 @@ async function hasManagerAccess(
       return (
         proposal.createdByUserId === userId ||
         proposal.account.accountManagerId === userId
+      );
+    }
+
+    case 'quotation': {
+      const quotation = await prisma.quotation.findUnique({
+        where: { id: resourceId },
+        select: {
+          createdByUserId: true,
+          account: { select: { accountManagerId: true } },
+        },
+      });
+      if (!quotation) return false;
+      return (
+        quotation.createdByUserId === userId ||
+        quotation.account.accountManagerId === userId
       );
     }
 

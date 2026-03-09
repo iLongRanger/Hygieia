@@ -16,6 +16,11 @@ export interface QuotationListParams {
   includeArchived?: boolean;
 }
 
+interface QuotationAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface QuotationServiceInput {
   catalogItemId?: string | null;
   serviceName: string;
@@ -262,7 +267,10 @@ function derivePricingApproval(
 
 // ==================== Service ====================
 
-export async function listQuotations(params: QuotationListParams) {
+export async function listQuotations(
+  params: QuotationListParams,
+  access: QuotationAccessOptions = {}
+) {
   const {
     page = 1,
     limit = 20,
@@ -287,6 +295,18 @@ export async function listQuotations(params: QuotationListParams) {
       { quotationNumber: { contains: search, mode: 'insensitive' } },
       { title: { contains: search, mode: 'insensitive' } },
       { account: { name: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { account: { accountManagerId: access.userId } },
+        ],
+      },
     ];
   }
 

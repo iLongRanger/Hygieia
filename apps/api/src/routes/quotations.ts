@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listQuotations,
@@ -67,7 +68,10 @@ router.get(
       const parsed = listQuotationsQuerySchema.safeParse(req.query);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const result = await listQuotations(parsed.data);
+      const result = await listQuotations(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json(result);
     } catch (error) {
       next(error);
@@ -80,6 +84,7 @@ router.get(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_READ),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Try UUID first, then quotation number
@@ -130,6 +135,7 @@ router.put(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateQuotationSchema.safeParse(req.body);
@@ -158,6 +164,7 @@ router.post(
   '/:id/send',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = sendQuotationSchema.safeParse(req.body);
@@ -220,6 +227,7 @@ router.post(
   '/:id/accept',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = acceptQuotationSchema.safeParse(req.body);
@@ -245,6 +253,7 @@ router.post(
   '/:id/pricing-approval',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = quotationPricingApprovalSchema.safeParse(req.body);
@@ -275,6 +284,7 @@ router.post(
   '/:id/reject',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = rejectQuotationSchema.safeParse(req.body);
@@ -301,6 +311,7 @@ router.post(
   '/:id/archive',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const quotation = await archiveQuotation(req.params.id);
@@ -323,6 +334,7 @@ router.post(
   '/:id/restore',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const quotation = await restoreQuotation(req.params.id);
@@ -345,6 +357,7 @@ router.delete(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.QUOTATIONS_DELETE),
+  verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await deleteQuotation(req.params.id);

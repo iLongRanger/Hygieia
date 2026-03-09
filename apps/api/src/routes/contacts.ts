@@ -44,7 +44,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listContacts(parsed.data);
+      const result = await listContacts(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -101,6 +104,7 @@ router.patch(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.CONTACTS_WRITE),
+  verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -125,6 +129,7 @@ router.post(
   '/:id/archive',
   authenticate,
   requirePermission(PERMISSIONS.CONTACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -144,6 +149,7 @@ router.post(
   '/:id/restore',
   authenticate,
   requirePermission(PERMISSIONS.CONTACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);
@@ -163,6 +169,7 @@ router.delete(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.CONTACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getContactById(req.params.id);

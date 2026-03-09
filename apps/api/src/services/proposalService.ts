@@ -24,6 +24,11 @@ export interface ProposalListParams {
   includeArchived?: boolean;
 }
 
+interface ProposalAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface ProposalItemInput {
   itemType: string;
   description: string;
@@ -243,7 +248,8 @@ function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
 }
 
 export async function listProposals(
-  params: ProposalListParams
+  params: ProposalListParams,
+  access: ProposalAccessOptions = {}
 ): Promise<PaginatedResult<Prisma.ProposalGetPayload<{ select: typeof proposalSelect }>>> {
   const {
     page = 1,
@@ -281,6 +287,18 @@ export async function listProposals(
       { title: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
       { account: { name: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { account: { accountManagerId: access.userId } },
+        ],
+      },
     ];
   }
 

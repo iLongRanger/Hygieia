@@ -13,6 +13,11 @@ export interface ContactListParams {
   includeArchived?: boolean;
 }
 
+interface ContactAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface ContactCreateInput {
   accountId?: string | null;
   name: string;
@@ -79,7 +84,8 @@ const contactSelect = {
 } satisfies Prisma.ContactSelect;
 
 export async function listContacts(
-  params: ContactListParams
+  params: ContactListParams,
+  access: ContactAccessOptions = {}
 ): Promise<
   PaginatedResult<Prisma.ContactGetPayload<{ select: typeof contactSelect }>>
 > {
@@ -117,6 +123,18 @@ export async function listContacts(
     where.OR = [
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { account: { accountManagerId: access.userId } },
+        ],
+      },
     ];
   }
 

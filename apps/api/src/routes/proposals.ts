@@ -85,7 +85,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listProposals(parsed.data);
+      const result = await listProposals(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -277,6 +280,7 @@ router.post(
   '/:id/send',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = sendProposalSchema.safeParse(req.body);
@@ -401,6 +405,7 @@ router.post(
   '/:id/viewed',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const proposal = await getProposalById(req.params.id);
@@ -429,6 +434,7 @@ router.post(
   '/:id/accept',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = acceptProposalSchema.safeParse(req.body);
@@ -487,6 +493,7 @@ router.post(
   '/:id/reject',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSALS_WRITE),
+  verifyOwnership({ resourceType: 'proposal' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = rejectProposalSchema.safeParse(req.body);

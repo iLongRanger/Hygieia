@@ -57,7 +57,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listAccounts(parsed.data);
+      const result = await listAccounts(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -179,6 +182,7 @@ router.patch(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
+  verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -210,6 +214,7 @@ router.post(
   '/:id/archive',
   authenticate,
   requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
+  verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -229,6 +234,7 @@ router.post(
   '/:id/restore',
   authenticate,
   requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
+  verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);
@@ -248,6 +254,7 @@ router.delete(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.ACCOUNTS_ADMIN),
+  verifyOwnership({ resourceType: 'account' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAccountById(req.params.id);

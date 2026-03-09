@@ -13,6 +13,11 @@ export interface AccountListParams {
   readyForProposal?: boolean;
 }
 
+interface AccountAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface AccountCreateInput {
   name: string;
   type: string;
@@ -93,7 +98,8 @@ const accountSelect = {
 } satisfies Prisma.AccountSelect;
 
 export async function listAccounts(
-  params: AccountListParams
+  params: AccountListParams,
+  access: AccountAccessOptions = {}
 ): Promise<
   PaginatedResult<Prisma.AccountGetPayload<{ select: typeof accountSelect }>>
 > {
@@ -137,6 +143,18 @@ export async function listAccounts(
         archivedAt: null,
       },
     };
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { accountManagerId: access.userId },
+        ],
+      },
+    ];
   }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name'];
