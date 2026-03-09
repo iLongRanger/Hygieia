@@ -101,6 +101,7 @@ describe('Public Contract Routes', () => {
       expect.objectContaining({
         contractId: 'contract-1',
         action: 'public_signed',
+        ipAddress: expect.any(String),
       })
     );
   });
@@ -124,6 +125,33 @@ describe('Public Contract Routes', () => {
 
     expect(response.status).toBe(200);
     expect(logContractActivity).not.toHaveBeenCalled();
+  });
+
+  it('GET /:token should log public_viewed with top-level ipAddress on first view', async () => {
+    (contractPublicService.getContractByPublicToken as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-202602-0001',
+    });
+    (contractPublicService.markPublicViewed as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      newlyViewed: true,
+    });
+    (globalSettingsService.getGlobalSettings as jest.Mock).mockResolvedValue({
+      companyName: 'Hygieia',
+      companyEmail: 'ops@hygieia.test',
+    });
+
+    await request(app)
+      .get('/api/v1/public/contracts/token-123')
+      .expect(200);
+
+    expect(logContractActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+        action: 'public_viewed',
+        ipAddress: expect.any(String),
+      })
+    );
   });
 
   it('POST /:token/sign should skip duplicate notifications when already signed', async () => {

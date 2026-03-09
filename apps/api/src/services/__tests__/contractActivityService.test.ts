@@ -35,10 +35,37 @@ describe('contractActivityService', () => {
           action: 'created',
           performedByUserId: null,
           metadata: {},
+          ipAddress: null,
         }),
       })
     );
     expect(result.id).toBe('activity-1');
+  });
+
+  it('logContractActivity should persist ipAddress separately from metadata', async () => {
+    (prisma.contractActivity.create as jest.Mock).mockResolvedValue({
+      id: 'activity-2',
+      action: 'public_viewed',
+      ipAddress: '127.0.0.1',
+    });
+
+    await contractActivityService.logContractActivity({
+      contractId: 'contract-1',
+      action: 'public_viewed',
+      ipAddress: '127.0.0.1',
+      metadata: { source: 'public' },
+    });
+
+    expect(prisma.contractActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          contractId: 'contract-1',
+          action: 'public_viewed',
+          metadata: { source: 'public' },
+          ipAddress: '127.0.0.1',
+        }),
+      })
+    );
   });
 
   it('getContractActivities should return paginated result', async () => {

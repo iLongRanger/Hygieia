@@ -1033,6 +1033,7 @@ model ContractActivity {
   action          String   @db.VarChar(50)
   performedByUserId String? @map("performed_by_user_id") @db.Uuid
   metadata        Json     @default("{}") @db.JsonB
+  ipAddress       String?  @map("ip_address") @db.VarChar(45)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)

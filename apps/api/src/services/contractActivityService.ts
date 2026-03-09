@@ -5,12 +5,14 @@ export interface LogContractActivityInput {
   action: string;
   performedByUserId?: string | null;
   metadata?: Record<string, any>;
+  ipAddress?: string | null;
 }
 
 const activitySelect = {
   id: true,
   action: true,
   metadata: true,
+  ipAddress: true,
   createdAt: true,
   performedByUser: {
     select: {
@@ -28,6 +30,7 @@ export async function logContractActivity(input: LogContractActivityInput) {
       action: input.action,
       performedByUserId: input.performedByUserId ?? null,
       metadata: input.metadata ?? {},
+      ipAddress: input.ipAddress ?? null,
     },
     select: activitySelect,
   });

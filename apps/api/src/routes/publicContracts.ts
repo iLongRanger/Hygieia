@@ -85,7 +85,7 @@ router.get(
         await logContractActivity({
           contractId: viewResult.id,
           action: 'public_viewed',
-          metadata: { ipAddress: req.ip },
+          ipAddress: req.ip,
         });
       }
 
@@ -118,10 +118,10 @@ router.post(
         await logContractActivity({
           contractId: result.contract.id,
           action: 'public_signed',
+          ipAddress: req.ip,
           metadata: {
             signedByName: parsed.data.signedByName,
             signedByEmail: parsed.data.signedByEmail,
-            ipAddress: req.ip,
           },
         });
 
