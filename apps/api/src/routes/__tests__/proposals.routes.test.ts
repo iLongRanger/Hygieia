@@ -9,11 +9,21 @@ import * as proposalPublicService from '../../services/proposalPublicService';
 import * as pdfService from '../../services/pdfService';
 import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
+import { ensureOwnershipAccess } from '../../middleware/ownership';
 import { prisma } from '../../lib/prisma';
+
+const mockAuthUser: { id: string; role: string } = {
+  id: 'user-1',
+  role: 'owner',
+};
+
+const mockOwnership = {
+  deniedKeys: new Set<string>(),
+};
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = { id: 'user-1', role: 'owner' };
+    req.user = mockAuthUser;
     next();
   },
 }));
@@ -21,6 +31,28 @@ jest.mock('../../middleware/auth', () => ({
 jest.mock('../../middleware/rbac', () => ({
   requirePermission: () => (_req: any, _res: any, next: any) => next(),
 }));
+
+jest.mock('../../middleware/ownership', () => {
+  const { ForbiddenError } = require('../../middleware/errorHandler');
+
+  return {
+    verifyOwnership:
+      ({ resourceType, paramName = 'id' }: { resourceType: string; paramName?: string }) =>
+      (req: any, _res: any, next: any) => {
+        const key = `${req.user?.role}:${resourceType}:${req.params[paramName]}`;
+        if (mockOwnership.deniedKeys.has(key)) {
+          return next(new ForbiddenError('Access denied'));
+        }
+        next();
+      },
+    ensureOwnershipAccess: jest.fn(async (user: any, context: any) => {
+      const key = `${user?.role}:${context.resourceType}:${context.resourceId}`;
+      if (mockOwnership.deniedKeys.has(key)) {
+        throw new ForbiddenError('Access denied');
+      }
+    }),
+  };
+});
 
 jest.mock('../../services/proposalService');
 jest.mock('../../services/proposalActivityService', () => ({
@@ -94,6 +126,8 @@ describe('Proposal Routes', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     process.env.FRONTEND_URL = 'https://app.example.com';
+    mockAuthUser.role = 'owner';
+    mockOwnership.deniedKeys.clear();
     app = createTestApp();
     const routes = (await import('../proposals')).default;
     setupTestRoutes(app, routes, '/api/v1/proposals');
@@ -168,6 +202,17 @@ describe('Proposal Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('proposal-1');
+  });
+
+  it('GET /number/:proposalNumber should return 403 when manager lacks ownership', async () => {
+    const { ForbiddenError } = await import('../../middleware/errorHandler');
+    mockAuthUser.role = 'manager';
+    (ensureOwnershipAccess as jest.Mock).mockRejectedValueOnce(new ForbiddenError('Access denied'));
+    (proposalService.getProposalByNumber as jest.Mock).mockResolvedValue({ id: 'proposal-locked' });
+
+    await request(app)
+      .get('/api/v1/proposals/number/PROP-LOCKED')
+      .expect(403);
   });
 
   it('POST / should create proposal', async () => {
@@ -312,6 +357,18 @@ describe('Proposal Routes', () => {
       .post('/api/v1/proposals/proposal-1/send')
       .send({ emailTo: 'test@example.com' })
       .expect(422);
+  });
+
+  it('POST /:id/send should return 403 when manager lacks ownership', async () => {
+    mockAuthUser.role = 'manager';
+    mockOwnership.deniedKeys.add('manager:proposal:proposal-locked');
+
+    await request(app)
+      .post('/api/v1/proposals/proposal-locked/send')
+      .send({ emailTo: 'test@example.com' })
+      .expect(403);
+
+    expect(proposalService.getProposalById).not.toHaveBeenCalled();
   });
 
   it('POST /:id/send should return 422 when FRONTEND_URL is missing', async () => {

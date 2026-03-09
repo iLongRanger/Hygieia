@@ -19,6 +19,10 @@ const mockAuthUser: { id: string; role: string; teamId?: string } = {
   role: 'owner',
 };
 
+const mockOwnership = {
+  deniedKeys: new Set<string>(),
+};
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
     req.user = mockAuthUser;
@@ -31,8 +35,23 @@ jest.mock('../../middleware/rbac', () => ({
 }));
 
 jest.mock('../../middleware/ownership', () => ({
-  verifyOwnership: () => (_req: any, _res: any, next: any) => next(),
-  ensureOwnershipAccess: jest.fn().mockResolvedValue(undefined),
+  verifyOwnership:
+    ({ resourceType, paramName = 'id' }: { resourceType: string; paramName?: string }) =>
+    (req: any, _res: any, next: any) => {
+      const { ForbiddenError } = require('../../middleware/errorHandler');
+      const key = `${req.user?.role}:${resourceType}:${req.params[paramName]}`;
+      if (mockOwnership.deniedKeys.has(key)) {
+        return next(new ForbiddenError('Access denied'));
+      }
+      next();
+    },
+  ensureOwnershipAccess: jest.fn(async (user: any, context: any) => {
+    const { ForbiddenError } = require('../../middleware/errorHandler');
+    const key = `${user?.role}:${context.resourceType}:${context.resourceId}`;
+    if (mockOwnership.deniedKeys.has(key)) {
+      throw new ForbiddenError('Access denied');
+    }
+  }),
 }));
 
 jest.mock('../../services/contractService');
@@ -135,6 +154,7 @@ describe('Contract Routes', () => {
     process.env.WEB_APP_URL = 'https://portal.example.com';
     mockAuthUser.role = 'owner';
     delete mockAuthUser.teamId;
+    mockOwnership.deniedKeys.clear();
     app = createTestApp();
     const routes = (await import('../contracts')).default;
     setupTestRoutes(app, routes, '/api/v1/contracts');
@@ -307,6 +327,17 @@ describe('Contract Routes', () => {
       .expect(404);
   });
 
+  it('GET /:id should return 403 when cleaner lacks contract ownership', async () => {
+    mockAuthUser.role = 'cleaner';
+    mockOwnership.deniedKeys.add('cleaner:contract:contract-locked');
+
+    await request(app)
+      .get('/api/v1/contracts/contract-locked')
+      .expect(403);
+
+    expect(contractService.getContractById).not.toHaveBeenCalled();
+  });
+
   it('POST / should create contract', async () => {
     (contractService.createContract as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 
@@ -401,6 +432,18 @@ describe('Contract Routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.id).toBe('contract-1');
     expect(jobService.autoGenerateRecurringJobsForContract).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id/status should return 403 when manager lacks contract ownership', async () => {
+    mockAuthUser.role = 'manager';
+    mockOwnership.deniedKeys.add('manager:contract:contract-locked');
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-locked/status')
+      .send({ status: 'active' })
+      .expect(403);
+
+    expect(contractService.updateContractStatus).not.toHaveBeenCalled();
   });
 
   it('PATCH /:id/status should notify assignment required when activating without team', async () => {

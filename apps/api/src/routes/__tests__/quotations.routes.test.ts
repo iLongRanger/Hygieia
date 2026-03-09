@@ -5,15 +5,21 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as quotationService from '../../services/quotationService';
 import { ensureOwnershipAccess } from '../../middleware/ownership';
 
+const mockAuthUser = {
+  id: 'manager-1',
+  role: 'manager',
+  email: 'manager@example.com',
+  fullName: 'Manager User',
+  supabaseUserId: null,
+};
+
+const mockOwnership = {
+  deniedKeys: new Set<string>(),
+};
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = {
-      id: 'manager-1',
-      role: 'manager',
-      email: 'manager@example.com',
-      fullName: 'Manager User',
-      supabaseUserId: null,
-    };
+    req.user = mockAuthUser;
     next();
   },
 }));
@@ -23,8 +29,23 @@ jest.mock('../../middleware/rbac', () => ({
 }));
 
 jest.mock('../../middleware/ownership', () => ({
-  verifyOwnership: () => (_req: any, _res: any, next: any) => next(),
-  ensureOwnershipAccess: jest.fn().mockResolvedValue(undefined),
+  verifyOwnership:
+    ({ resourceType, paramName = 'id' }: { resourceType: string; paramName?: string }) =>
+    (req: any, _res: any, next: any) => {
+      const { ForbiddenError } = require('../../middleware/errorHandler');
+      const key = `${req.user?.role}:${resourceType}:${req.params[paramName]}`;
+      if (mockOwnership.deniedKeys.has(key)) {
+        return next(new ForbiddenError('Access denied'));
+      }
+      next();
+    },
+  ensureOwnershipAccess: jest.fn(async (user: any, context: any) => {
+    const { ForbiddenError } = require('../../middleware/errorHandler');
+    const key = `${user?.role}:${context.resourceType}:${context.resourceId}`;
+    if (mockOwnership.deniedKeys.has(key)) {
+      throw new ForbiddenError('Access denied');
+    }
+  }),
 }));
 
 jest.mock('../../services/quotationService', () => ({
@@ -78,6 +99,7 @@ describe('Quotation Routes', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     process.env.FRONTEND_URL = 'https://app.example.com';
+    mockOwnership.deniedKeys.clear();
     app = createTestApp();
     const routes = (await import('../quotations')).default;
     setupTestRoutes(app, routes, '/api/v1/quotations');
@@ -118,6 +140,19 @@ describe('Quotation Routes', () => {
       .expect(404);
   });
 
+  it('GET /:id returns 403 when resolved quotation is outside manager scope', async () => {
+    const { ForbiddenError } = await import('../../middleware/errorHandler');
+    (ensureOwnershipAccess as jest.Mock).mockRejectedValueOnce(new ForbiddenError('Access denied'));
+    (quotationService.getQuotationByNumber as jest.Mock).mockResolvedValue({
+      id: 'quotation-locked',
+      quotationNumber: 'QT-LOCKED',
+    });
+
+    await request(app)
+      .get('/api/v1/quotations/QT-LOCKED')
+      .expect(403);
+  });
+
   it('POST /:id/send returns 422 when FRONTEND_URL is missing', async () => {
     delete process.env.FRONTEND_URL;
     (quotationService.sendQuotation as jest.Mock).mockResolvedValue({
@@ -133,5 +168,16 @@ describe('Quotation Routes', () => {
       .post('/api/v1/quotations/quotation-1/send')
       .send({ emailTo: 'billing@acme.com' })
       .expect(422);
+  });
+
+  it('POST /:id/send returns 403 when manager lacks quotation ownership', async () => {
+    mockOwnership.deniedKeys.add('manager:quotation:quotation-locked');
+
+    await request(app)
+      .post('/api/v1/quotations/quotation-locked/send')
+      .send({ emailTo: 'billing@acme.com' })
+      .expect(403);
+
+    expect(quotationService.sendQuotation).not.toHaveBeenCalled();
   });
 });
