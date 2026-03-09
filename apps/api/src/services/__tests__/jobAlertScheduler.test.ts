@@ -4,6 +4,12 @@ const runJobNearingEndNoCheckInAlertCycleMock = jest.fn();
 const loggerInfoMock = jest.fn();
 const loggerWarnMock = jest.fn();
 const loggerErrorMock = jest.fn();
+const getBackgroundServiceSettingMock = jest.fn();
+const markBackgroundServiceRunStartMock = jest.fn();
+const markBackgroundServiceRunSuccessMock = jest.fn();
+const markBackgroundServiceRunFailureMock = jest.fn();
+const createBackgroundServiceRunLogMock = jest.fn();
+const getGlobalSettingsTimezoneMock = jest.fn();
 
 jest.mock('../jobService', () => ({
   runJobNearingEndNoCheckInAlertCycle: (...args: unknown[]) =>
@@ -19,6 +25,24 @@ jest.mock('../../lib/logger', () => ({
   },
 }));
 
+jest.mock('../backgroundServiceSettingsService', () => ({
+  getBackgroundServiceSetting: (...args: unknown[]) =>
+    getBackgroundServiceSettingMock(...args),
+  markBackgroundServiceRunStart: (...args: unknown[]) =>
+    markBackgroundServiceRunStartMock(...args),
+  markBackgroundServiceRunSuccess: (...args: unknown[]) =>
+    markBackgroundServiceRunSuccessMock(...args),
+  markBackgroundServiceRunFailure: (...args: unknown[]) =>
+    markBackgroundServiceRunFailureMock(...args),
+  createBackgroundServiceRunLog: (...args: unknown[]) =>
+    createBackgroundServiceRunLogMock(...args),
+}));
+
+jest.mock('../globalSettingsService', () => ({
+  getGlobalSettingsTimezone: (...args: unknown[]) =>
+    getGlobalSettingsTimezoneMock(...args),
+}));
+
 const originalEnv = { ...process.env };
 
 describe('jobAlertScheduler', () => {
@@ -32,6 +56,11 @@ describe('jobAlertScheduler', () => {
       alerted: 0,
       notifications: 0,
     });
+    markBackgroundServiceRunStartMock.mockResolvedValue(undefined);
+    markBackgroundServiceRunSuccessMock.mockResolvedValue(undefined);
+    markBackgroundServiceRunFailureMock.mockResolvedValue(undefined);
+    createBackgroundServiceRunLogMock.mockResolvedValue(undefined);
+    getGlobalSettingsTimezoneMock.mockResolvedValue('UTC');
   });
 
   afterEach(() => {
@@ -40,30 +69,63 @@ describe('jobAlertScheduler', () => {
     process.env = { ...originalEnv };
   });
 
-  it('does not start when JOB_ALERTS_ENABLED is false', async () => {
+  it('does not start when background service setting is disabled', async () => {
     process.env.NODE_ENV = 'development';
-    process.env.JOB_ALERTS_ENABLED = 'false';
+    getBackgroundServiceSettingMock.mockResolvedValue({
+      enabled: false,
+      intervalMs: 25200000,
+    });
 
     const { startJobAlertScheduler } = await import('../jobAlertScheduler');
     startJobAlertScheduler();
+
+    // Allow the async configureJobAlertScheduler to resolve
+    await jest.runAllTimersAsync();
 
     expect(runJobNearingEndNoCheckInAlertCycleMock).not.toHaveBeenCalled();
     expect(loggerInfoMock).toHaveBeenCalledWith('Job alert scheduler disabled');
   });
 
-  it('starts scheduler, runs initial cycle, then runs on interval', async () => {
-    process.env.NODE_ENV = 'development';
-    process.env.JOB_ALERTS_ENABLED = 'true';
-    process.env.JOB_ALERTS_INTERVAL_MS = '60000';
+  it('does not start when NODE_ENV is test', async () => {
+    process.env.NODE_ENV = 'test';
 
     const { startJobAlertScheduler } = await import('../jobAlertScheduler');
     startJobAlertScheduler();
 
-    await Promise.resolve();
-    expect(runJobNearingEndNoCheckInAlertCycleMock).toHaveBeenCalledTimes(1);
+    await jest.runAllTimersAsync();
 
-    jest.advanceTimersByTime(60000);
+    expect(runJobNearingEndNoCheckInAlertCycleMock).not.toHaveBeenCalled();
+    expect(loggerInfoMock).toHaveBeenCalledWith('Job alert scheduler disabled');
+  });
+
+  it('starts scheduler and runs cycle when timeout fires', async () => {
+    process.env.NODE_ENV = 'development';
+    getBackgroundServiceSettingMock.mockResolvedValue({
+      enabled: true,
+      intervalMs: 25200000, // 7 hours
+    });
+
+    const { startJobAlertScheduler } = await import('../jobAlertScheduler');
+    startJobAlertScheduler();
+
+    // Let configureJobAlertScheduler resolve (sets up setTimeout)
     await Promise.resolve();
-    expect(runJobNearingEndNoCheckInAlertCycleMock).toHaveBeenCalledTimes(2);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      expect.stringContaining('Starting job alert scheduler')
+    );
+
+    // The cycle hasn't run yet - it's on a setTimeout
+    expect(runJobNearingEndNoCheckInAlertCycleMock).not.toHaveBeenCalled();
+
+    // Advance timers to trigger the scheduled run
+    jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(runJobNearingEndNoCheckInAlertCycleMock).toHaveBeenCalledTimes(1);
   });
 });

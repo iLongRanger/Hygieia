@@ -90,7 +90,12 @@ async function configureReminderScheduler(): Promise<void> {
   }
 
   const timeOfDayMs = sanitizeTimeOfDayMs(config.intervalMs, DEFAULT_TIME_OF_DAY_MS);
-  const companyTimezone = await getGlobalSettingsTimezone();
+  let companyTimezone = 'UTC';
+  try {
+    companyTimezone = await getGlobalSettingsTimezone();
+  } catch (error) {
+    logger.warn('Failed to load company timezone for reminders scheduler, defaulting to UTC', error);
+  }
   if (timeOfDayMs !== config.intervalMs) {
     logger.warn(
       `Invalid reminders schedule time "${config.intervalMs}", falling back to ${DEFAULT_TIME_OF_DAY_MS}ms`
