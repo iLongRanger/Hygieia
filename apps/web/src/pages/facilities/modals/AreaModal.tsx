@@ -184,33 +184,6 @@ export function AreaModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Room Count"
-            type="number"
-            min={0}
-            value={(areaForm as CreateAreaInput).roomCount ?? 0}
-            onChange={(e) =>
-              setAreaForm({
-                ...areaForm,
-                roomCount: Number(e.target.value) || 0,
-              })
-            }
-          />
-          <Input
-            label="Unit Count"
-            type="number"
-            min={0}
-            value={(areaForm as CreateAreaInput).unitCount ?? 0}
-            onChange={(e) =>
-              setAreaForm({
-                ...areaForm,
-                unitCount: Number(e.target.value) || 0,
-              })
-            }
-          />
-        </div>
-
         <Select
           label="Traffic Level"
           options={TRAFFIC_LEVELS}
