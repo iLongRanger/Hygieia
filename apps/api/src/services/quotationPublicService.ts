@@ -189,17 +189,29 @@ export async function rejectQuotationPublic(
     throw new Error('This quotation link has expired');
   }
 
-  if (!['sent', 'viewed'].includes(quotation.status)) {
+  if (!['sent', 'viewed', 'rejected'].includes(quotation.status)) {
     throw new Error('This quotation can no longer be rejected');
   }
 
-  return prisma.quotation.update({
+  const rejectedNow = quotation.status !== 'rejected';
+  if (rejectedNow) {
+    await prisma.quotation.update({
+      where: { id: quotation.id },
+      data: {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectionReason,
+      },
+    });
+  }
+
+  const resolvedQuotation = await prisma.quotation.findUniqueOrThrow({
     where: { id: quotation.id },
-    data: {
-      status: 'rejected',
-      rejectedAt: new Date(),
-      rejectionReason,
-    },
     select: publicQuotationSelect,
   });
+
+  return {
+    quotation: resolvedQuotation,
+    rejectedNow,
+  };
 }

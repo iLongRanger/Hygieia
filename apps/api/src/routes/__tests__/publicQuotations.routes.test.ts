@@ -79,4 +79,22 @@ describe('Public Quotation Routes', () => {
     expect(response.body.message).toBe('Quotation already accepted');
     expect(quotationService.logQuotationActivity).not.toHaveBeenCalled();
   });
+
+  it('POST /:token/reject skips duplicate rejection side effects', async () => {
+    (quotationPublicService.rejectQuotationPublic as jest.Mock).mockResolvedValue({
+      quotation: {
+        id: 'quotation-1',
+        status: 'rejected',
+      },
+      rejectedNow: false,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/public/quotations/token-123/reject')
+      .send({ rejectionReason: 'Too expensive' })
+      .expect(200);
+
+    expect(response.body.message).toBe('Quotation already rejected');
+    expect(quotationService.logQuotationActivity).not.toHaveBeenCalled();
+  });
 });

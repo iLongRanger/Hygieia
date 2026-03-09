@@ -186,66 +186,73 @@ router.post(
         throw handleZodError(parsed.error);
       }
 
-      const proposal = await rejectProposalPublic(
+      const result = await rejectProposalPublic(
         req.params.token,
         parsed.data.rejectionReason,
         req.ip
       );
 
-      await logActivity({
-        proposalId: proposal.id,
-        action: 'public_rejected',
-        ipAddress: req.ip,
-        metadata: { rejectionReason: parsed.data.rejectionReason },
-      });
+      if (result.rejectedNow) {
+        await logActivity({
+          proposalId: result.proposal.id,
+          action: 'public_rejected',
+          ipAddress: req.ip,
+          metadata: { rejectionReason: parsed.data.rejectionReason },
+        });
 
-      // Notify admins and proposal creator (fire-and-forget)
-      try {
-        const { proposal: fullProposal, adminUsers } = await getNotificationRecipients(proposal.id);
-        if (fullProposal) {
-          const recipientUserIds = new Set<string>();
-          if (fullProposal.createdByUser) {
-            recipientUserIds.add(fullProposal.createdByUser.id);
-          }
-          for (const admin of adminUsers) {
-            recipientUserIds.add(admin.id);
-          }
-
-          await createBulkNotifications([...recipientUserIds], {
-            type: 'proposal_rejected',
-            title: `Proposal ${fullProposal.proposalNumber} rejected`,
-            body: `${fullProposal.account.name} has rejected proposal "${fullProposal.title}".`,
-            metadata: { proposalId: proposal.id },
-          });
-
-          // Send email notifications
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
-          const html = buildProposalRejectedHtmlWithBranding({
-            proposalNumber: fullProposal.proposalNumber,
-            title: fullProposal.title,
-            accountName: fullProposal.account.name,
-            rejectedAt: new Date().toLocaleDateString(),
-            rejectionReason: parsed.data.rejectionReason,
-          }, branding);
-          const subject = buildProposalRejectedSubject(fullProposal.proposalNumber);
-
-          const emailRecipients = new Set<string>();
-          if (fullProposal.createdByUser?.email) {
-            emailRecipients.add(fullProposal.createdByUser.email);
-          }
-          if (branding.companyEmail) {
-            emailRecipients.add(branding.companyEmail);
-          }
-
-          await Promise.allSettled(
-            [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+        // Notify admins and proposal creator (fire-and-forget)
+        try {
+          const { proposal: fullProposal, adminUsers } = await getNotificationRecipients(
+            result.proposal.id
           );
+          if (fullProposal) {
+            const recipientUserIds = new Set<string>();
+            if (fullProposal.createdByUser) {
+              recipientUserIds.add(fullProposal.createdByUser.id);
+            }
+            for (const admin of adminUsers) {
+              recipientUserIds.add(admin.id);
+            }
+
+            await createBulkNotifications([...recipientUserIds], {
+              type: 'proposal_rejected',
+              title: `Proposal ${fullProposal.proposalNumber} rejected`,
+              body: `${fullProposal.account.name} has rejected proposal "${fullProposal.title}".`,
+              metadata: { proposalId: result.proposal.id },
+            });
+
+            // Send email notifications
+            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const html = buildProposalRejectedHtmlWithBranding({
+              proposalNumber: fullProposal.proposalNumber,
+              title: fullProposal.title,
+              accountName: fullProposal.account.name,
+              rejectedAt: new Date().toLocaleDateString(),
+              rejectionReason: parsed.data.rejectionReason,
+            }, branding);
+            const subject = buildProposalRejectedSubject(fullProposal.proposalNumber);
+
+            const emailRecipients = new Set<string>();
+            if (fullProposal.createdByUser?.email) {
+              emailRecipients.add(fullProposal.createdByUser.email);
+            }
+            if (branding.companyEmail) {
+              emailRecipients.add(branding.companyEmail);
+            }
+
+            await Promise.allSettled(
+              [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+            );
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send rejection notifications:', notifyError);
         }
-      } catch (notifyError) {
-        logger.error('Failed to send rejection notifications:', notifyError);
       }
 
-      res.json({ data: proposal, message: 'Proposal rejected' });
+      res.json({
+        data: result.proposal,
+        message: result.rejectedNow ? 'Proposal rejected' : 'Proposal already rejected',
+      });
     } catch (error) {
       next(error);
     }

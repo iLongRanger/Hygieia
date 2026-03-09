@@ -220,4 +220,24 @@ describe('quotationPublicService', () => {
       rejectQuotationPublic('public-token', 'Too expensive', '127.0.0.1')
     ).rejects.toThrow('This quotation link has expired');
   });
+
+  it('rejectQuotationPublic is idempotent after the first rejection', async () => {
+    (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
+      id: 'qt-1',
+      status: 'rejected',
+      publicTokenExpiresAt: new Date('2026-12-01T00:00:00.000Z'),
+    });
+    (prisma.quotation.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      id: 'qt-1',
+      status: 'rejected',
+    });
+
+    const result = await rejectQuotationPublic('public-token', 'Too expensive', '127.0.0.1');
+
+    expect(prisma.quotation.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      quotation: { id: 'qt-1', status: 'rejected' },
+      rejectedNow: false,
+    });
+  });
 });

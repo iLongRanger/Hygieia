@@ -151,39 +151,46 @@ router.post(
       const parsed = publicRejectQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const quotation = await rejectQuotationPublic(
+      const result = await rejectQuotationPublic(
         req.params.token,
         parsed.data.rejectionReason,
         req.ip
       );
 
-      await logQuotationActivity({
-        quotationId: (quotation as any).id,
-        action: 'public_rejected',
-        ipAddress: req.ip,
-        metadata: { rejectionReason: parsed.data.rejectionReason },
-      });
+      if (result.rejectedNow) {
+        await logQuotationActivity({
+          quotationId: result.quotation.id,
+          action: 'public_rejected',
+          ipAddress: req.ip,
+          metadata: { rejectionReason: parsed.data.rejectionReason },
+        });
 
-      // Notify admins
-      try {
-        const { quotation: fullQuotation, adminUsers } = await getNotificationRecipients((quotation as any).id);
-        if (fullQuotation) {
-          const recipientUserIds = new Set<string>();
-          if (fullQuotation.createdByUser) recipientUserIds.add(fullQuotation.createdByUser.id);
-          for (const admin of adminUsers) recipientUserIds.add(admin.id);
+        // Notify admins
+        try {
+          const { quotation: fullQuotation, adminUsers } = await getNotificationRecipients(
+            result.quotation.id
+          );
+          if (fullQuotation) {
+            const recipientUserIds = new Set<string>();
+            if (fullQuotation.createdByUser) recipientUserIds.add(fullQuotation.createdByUser.id);
+            for (const admin of adminUsers) recipientUserIds.add(admin.id);
 
-          await createBulkNotifications([...recipientUserIds], {
-            type: 'quotation_rejected',
-            title: `Quotation ${fullQuotation.quotationNumber} rejected`,
-            body: `${fullQuotation.account.name} has rejected quotation "${fullQuotation.title}".`,
-            metadata: { quotationId: (quotation as any).id },
-          });
+            await createBulkNotifications([...recipientUserIds], {
+              type: 'quotation_rejected',
+              title: `Quotation ${fullQuotation.quotationNumber} rejected`,
+              body: `${fullQuotation.account.name} has rejected quotation "${fullQuotation.title}".`,
+              metadata: { quotationId: result.quotation.id },
+            });
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send quotation rejection notifications:', notifyError);
         }
-      } catch (notifyError) {
-        logger.error('Failed to send quotation rejection notifications:', notifyError);
       }
 
-      res.json({ data: quotation, message: 'Quotation rejected' });
+      res.json({
+        data: result.quotation,
+        message: result.rejectedNow ? 'Quotation rejected' : 'Quotation already rejected',
+      });
     } catch (error) {
       next(error);
     }

@@ -162,8 +162,11 @@ describe('Public Proposal Routes', () => {
 
   it('POST /:token/reject should reject proposal', async () => {
     (proposalPublicService.rejectProposalPublic as jest.Mock).mockResolvedValue({
-      id: 'proposal-1',
-      status: 'rejected',
+      proposal: {
+        id: 'proposal-1',
+        status: 'rejected',
+      },
+      rejectedNow: true,
     });
 
     const response = await request(app)
@@ -180,6 +183,26 @@ describe('Public Proposal Routes', () => {
     expect(proposalActivityService.logActivity).toHaveBeenCalledWith(
       expect.objectContaining({ proposalId: 'proposal-1', action: 'public_rejected' })
     );
+  });
+
+  it('POST /:token/reject should skip duplicate rejection side effects', async () => {
+    (proposalPublicService.rejectProposalPublic as jest.Mock).mockResolvedValue({
+      proposal: {
+        id: 'proposal-1',
+        status: 'rejected',
+      },
+      rejectedNow: false,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/public/proposals/token-123/reject')
+      .send({ rejectionReason: 'Budget constraints' })
+      .expect(200);
+
+    expect(response.body.message).toBe('Proposal already rejected');
+    expect(proposalActivityService.logActivity).not.toHaveBeenCalled();
+    expect(notificationService.createBulkNotifications).not.toHaveBeenCalled();
+    expect(emailService.sendNotificationEmail).not.toHaveBeenCalled();
   });
 
   it('GET /:token/pdf should return 404 when proposal token is invalid', async () => {

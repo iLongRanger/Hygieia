@@ -194,20 +194,31 @@ export async function rejectProposalPublic(
     throw new Error('This proposal link has expired');
   }
 
-  if (!['sent', 'viewed'].includes(proposal.status)) {
+  if (!['sent', 'viewed', 'rejected'].includes(proposal.status)) {
     throw new Error('This proposal can no longer be rejected');
   }
 
-  const updatedProposal = await prisma.proposal.update({
+  const rejectedNow = proposal.status !== 'rejected';
+  if (rejectedNow) {
+    await prisma.proposal.update({
+      where: { id: proposal.id },
+      data: {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectionReason,
+      },
+    });
+
+    await autoSetLeadStatusForAccount(proposal.accountId, 'lost');
+  }
+
+  const resolvedProposal = await prisma.proposal.findUniqueOrThrow({
     where: { id: proposal.id },
-    data: {
-      status: 'rejected',
-      rejectedAt: new Date(),
-      rejectionReason,
-    },
     select: publicProposalSelect,
   });
 
-  await autoSetLeadStatusForAccount(proposal.accountId, 'lost');
-  return updatedProposal;
+  return {
+    proposal: resolvedProposal,
+    rejectedNow,
+  };
 }
