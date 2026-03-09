@@ -179,6 +179,54 @@ describe('Contract Routes', () => {
     expect(contractService.listContracts).toHaveBeenCalled();
   });
 
+  it('GET / should pass cleaner scope to contract list service', async () => {
+    mockAuthUser.role = 'cleaner';
+    (contractService.listContracts as jest.Mock).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+
+    await request(app)
+      .get('/api/v1/contracts?page=1&limit=20')
+      .expect(200);
+
+    expect(contractService.listContracts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        limit: 20,
+      }),
+      expect.objectContaining({
+        userRole: 'cleaner',
+        userId: 'user-1',
+      })
+    );
+  });
+
+  it('GET / should pass subcontractor scope to contract list service', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    (contractService.listContracts as jest.Mock).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+
+    await request(app)
+      .get('/api/v1/contracts?page=1&limit=20')
+      .expect(200);
+
+    expect(contractService.listContracts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        limit: 20,
+      }),
+      expect.objectContaining({
+        userRole: 'subcontractor',
+        userId: 'user-1',
+        userTeamId: 'team-1',
+      })
+    );
+  });
+
   it('GET / should return subcontractor payout fields for subcontractor users', async () => {
     mockAuthUser.role = 'subcontractor';
     mockAuthUser.teamId = 'team-1';
