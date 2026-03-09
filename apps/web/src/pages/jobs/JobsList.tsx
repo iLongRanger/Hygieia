@@ -131,6 +131,8 @@ const jobToAppointment = (job: Job): Appointment => {
   return {
     id: job.id,
     type: JOB_STATUS_TO_APPOINTMENT_TYPE[job.status],
+    calendarColorKey: 'job',
+    calendarColor: job.assignedToUser?.calendarColor || job.assignedTeam?.calendarColor || null,
     status: job.status === 'in_progress' ? 'scheduled' : job.status === 'missed' ? 'no_show' : job.status as 'scheduled' | 'completed' | 'canceled',
     scheduledStart: `${dateBase}T${startTime}`,
     scheduledEnd: `${dateBase}T${endTime}`,
@@ -937,21 +939,6 @@ const JobsList = () => {
               </div>
             )}
 
-            {/* Legend */}
-            <div className="flex items-center gap-3 text-xs text-surface-500 dark:text-surface-400">
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                Scheduled
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                Completed
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-                Canceled/Missed
-              </span>
-            </div>
           </div>
 
           {/* Calendar component */}
@@ -965,6 +952,7 @@ const JobsList = () => {
               onCustomerClick={handleCalendarCustomerClick}
               onCreateClick={handleCalendarCreateClick}
               isLoading={calendarLoading}
+              showLegend={false}
             />
           ) : calendarView === 'week' ? (
             <WeekCalendar
@@ -976,6 +964,7 @@ const JobsList = () => {
               onCreateClick={handleCalendarCreateClick}
               layout={calendarLayout}
               isLoading={calendarLoading}
+              showLegend={false}
             />
           ) : (
             <DayCalendar
@@ -987,6 +976,7 @@ const JobsList = () => {
               onCreateClick={handleCalendarCreateClick}
               layout={calendarLayout}
               isLoading={calendarLoading}
+              showLegend={false}
             />
           )}
         </div>

@@ -16,6 +16,7 @@ interface DayCalendarProps {
   onCreateClick: (date: Date) => void;
   layout?: CalendarLayout;
   isLoading?: boolean;
+  showLegend?: boolean;
 }
 
 const START_HOUR = 6;
@@ -33,6 +34,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   onCreateClick,
   layout = 'grid',
   isLoading = false,
+  showLegend = true,
 }) => {
   const timeSlots = useMemo(() => getTimeSlots(START_HOUR, END_HOUR, STEP_MINS), []);
 
@@ -125,6 +127,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
+        showLegend={showLegend}
       />
 
       <div className="relative">

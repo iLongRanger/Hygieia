@@ -12,6 +12,7 @@ interface MonthCalendarProps {
   onCustomerClick: (appointment: Appointment) => void;
   onCreateClick: (date: Date) => void;
   isLoading?: boolean;
+  showLegend?: boolean;
 }
 
 export const MonthCalendar: React.FC<MonthCalendarProps> = ({
@@ -23,6 +24,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onCustomerClick,
   onCreateClick,
   isLoading = false,
+  showLegend = true,
 }) => {
   const currentDate = new Date(year, month, 1);
 
@@ -48,6 +50,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
         onPrev={handlePrevMonth}
         onNext={handleNextMonth}
         onToday={handleToday}
+        showLegend={showLegend}
       />
 
       <div className="relative">

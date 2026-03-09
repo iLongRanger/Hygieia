@@ -21,6 +21,7 @@ interface WeekCalendarProps {
   onCreateClick: (date: Date) => void;
   layout?: CalendarLayout;
   isLoading?: boolean;
+  showLegend?: boolean;
 }
 
 const START_HOUR = 6;
@@ -38,6 +39,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
   onCreateClick,
   layout = 'grid',
   isLoading = false,
+  showLegend = true,
 }) => {
   const weekDays = useMemo(() => getWeekDays(date), [date]);
   const timeSlots = useMemo(() => getTimeSlots(START_HOUR, END_HOUR, STEP_MINS), []);
@@ -131,6 +133,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
+        showLegend={showLegend}
       />
 
       <div className="relative">
