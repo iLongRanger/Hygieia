@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
@@ -89,12 +89,18 @@ jest.mock('../../lib/logger', () => ({
 
 describe('Proposal Routes', () => {
   let app: Application;
+  const originalFrontendUrl = process.env.FRONTEND_URL;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    process.env.FRONTEND_URL = 'https://app.example.com';
     app = createTestApp();
     const routes = (await import('../proposals')).default;
     setupTestRoutes(app, routes, '/api/v1/proposals');
+  });
+
+  afterEach(() => {
+    process.env.FRONTEND_URL = originalFrontendUrl;
   });
 
   it('GET / should list proposals', async () => {
@@ -306,6 +312,24 @@ describe('Proposal Routes', () => {
       .post('/api/v1/proposals/proposal-1/send')
       .send({ emailTo: 'test@example.com' })
       .expect(422);
+  });
+
+  it('POST /:id/send should return 422 when FRONTEND_URL is missing', async () => {
+    delete process.env.FRONTEND_URL;
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'draft',
+      pricingLocked: true,
+      account: { id: 'acc-1', name: 'Test Account' },
+    });
+
+    await request(app)
+      .post('/api/v1/proposals/proposal-1/send')
+      .send({ emailTo: 'test@example.com' })
+      .expect(422);
+
+    expect(proposalPublicService.generatePublicToken).not.toHaveBeenCalled();
+    expect(proposalService.sendProposal).not.toHaveBeenCalled();
   });
 
   it('POST /:id/viewed should mark proposal viewed', async () => {

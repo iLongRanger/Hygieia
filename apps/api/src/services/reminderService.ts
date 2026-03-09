@@ -23,6 +23,7 @@ import { logActivity as logProposalActivity } from './proposalActivityService';
 import { logContractActivity } from './contractActivityService';
 import logger from '../lib/logger';
 import type { GlobalBranding } from '../types/branding';
+import { getFrontendBaseUrl } from '../lib/appUrl';
 
 async function getBrandingSafe(): Promise<GlobalBranding> {
   try {
@@ -330,7 +331,11 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
     process.env.PROPOSAL_REMINDER_INTERVAL_DAYS,
     3
   );
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = getFrontendBaseUrl();
+  if (!frontendUrl) {
+    logger.warn('FRONTEND_URL is not configured — skipping proposal follow-up reminders');
+    return 0;
+  }
 
   const proposals = await prisma.proposal.findMany({
     where: {
@@ -484,7 +489,11 @@ export async function sendContractFollowUpReminders(): Promise<number> {
     process.env.CONTRACT_REMINDER_INTERVAL_DAYS,
     3
   );
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const frontendUrl = getFrontendBaseUrl();
+  if (!frontendUrl) {
+    logger.warn('FRONTEND_URL is not configured — skipping contract follow-up reminders');
+    return 0;
+  }
 
   const contracts = await prisma.contract.findMany({
     where: {

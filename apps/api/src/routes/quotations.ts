@@ -25,6 +25,7 @@ import { buildQuotationEmailHtmlWithBranding, buildQuotationEmailSubject } from 
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import logger from '../lib/logger';
 import { isEmailConfigured } from '../config/email';
+import { requireFrontendBaseUrl } from '../lib/appUrl';
 import {
   createQuotationSchema,
   updateQuotationSchema,
@@ -180,12 +181,11 @@ router.post(
       const parsed = sendQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
+      const frontendBaseUrl = requireFrontendBaseUrl();
       const quotation = await sendQuotation(req.params.id);
 
       // Generate public token
       const token = await generatePublicToken(quotation.id);
-      const requestOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : null;
-      const frontendBaseUrl = process.env.FRONTEND_URL || requestOrigin || 'http://localhost:5173';
       const publicUrl = `${frontendBaseUrl}/q/${token}`;
 
       await logQuotationActivity({

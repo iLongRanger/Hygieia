@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
@@ -119,14 +119,23 @@ jest.mock('../../lib/logger', () => {
 
 describe('Contract Routes', () => {
   let app: Application;
+  const originalFrontendUrl = process.env.FRONTEND_URL;
+  const originalWebAppUrl = process.env.WEB_APP_URL;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    process.env.FRONTEND_URL = 'https://app.example.com';
+    process.env.WEB_APP_URL = 'https://portal.example.com';
     mockAuthUser.role = 'owner';
     delete mockAuthUser.teamId;
     app = createTestApp();
     const routes = (await import('../contracts')).default;
     setupTestRoutes(app, routes, '/api/v1/contracts');
+  });
+
+  afterEach(() => {
+    process.env.FRONTEND_URL = originalFrontendUrl;
+    process.env.WEB_APP_URL = originalWebAppUrl;
   });
 
   it('GET / should list contracts', async () => {
@@ -503,6 +512,25 @@ describe('Contract Routes', () => {
         to: 'jane@acme.com',
       })
     );
+  });
+
+  it('POST /:id/send should return 422 when FRONTEND_URL is missing', async () => {
+    delete process.env.FRONTEND_URL;
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'draft',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+      account: { id: 'account-1', name: 'Acme Corp' },
+    });
+
+    await request(app)
+      .post('/api/v1/contracts/contract-1/send')
+      .send({})
+      .expect(422);
+
+    expect(contractPublicService.generatePublicToken).not.toHaveBeenCalled();
+    expect(contractService.sendContract).not.toHaveBeenCalled();
   });
 
   it('POST /:id/sign should sign contract', async () => {

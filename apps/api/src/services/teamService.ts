@@ -4,6 +4,7 @@ import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
 import { buildSubcontractorWelcomeHtml, buildSubcontractorWelcomeSubject } from '../templates/subcontractorWelcome';
 import { isEmailConfigured } from '../config/email';
 import { sendNotificationEmail } from './emailService';
+import { requireWebAppBaseUrl } from '../lib/appUrl';
 
 export interface TeamListParams {
   page?: number;
@@ -405,7 +406,7 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
     },
   });
 
-  const baseUrl = process.env.WEB_APP_URL || 'http://localhost:5173';
+  const baseUrl = requireWebAppBaseUrl();
   const setPasswordUrl = `${baseUrl}/auth/set-password?token=${tokenRecord.token}`;
 
   let emailSent = false;

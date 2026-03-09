@@ -50,6 +50,7 @@ import {
 import { listActivitiesQuerySchema } from '../schemas/proposalActivity';
 import { ZodError } from 'zod';
 import { prisma } from '../lib/prisma';
+import { requireFrontendBaseUrl } from '../lib/appUrl';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -308,6 +309,8 @@ router.post(
         throw new ValidationError('Only draft proposals can be sent');
       }
 
+      const frontendUrl = requireFrontendBaseUrl();
+
       // 1. Lock pricing if not already locked
       if (!proposal.pricingLocked) {
         await lockProposalPricing(req.params.id);
@@ -357,7 +360,6 @@ router.post(
           logger.warn('Email not configured — skipping proposal email send');
         } else {
           try {
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
             logger.info(`Generating PDF for proposal ${sent.proposalNumber}`);
@@ -664,7 +666,7 @@ router.post(
         }
 
         try {
-          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const frontendUrl = requireFrontendBaseUrl();
           const publicViewUrl = proposal.publicToken
             ? `${frontendUrl}/p/${proposal.publicToken}`
             : undefined;

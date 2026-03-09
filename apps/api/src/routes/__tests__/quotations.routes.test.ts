@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
@@ -73,12 +73,18 @@ jest.mock('../../lib/logger', () => ({
 
 describe('Quotation Routes', () => {
   let app: Application;
+  const originalFrontendUrl = process.env.FRONTEND_URL;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    process.env.FRONTEND_URL = 'https://app.example.com';
     app = createTestApp();
     const routes = (await import('../quotations')).default;
     setupTestRoutes(app, routes, '/api/v1/quotations');
+  });
+
+  afterEach(() => {
+    process.env.FRONTEND_URL = originalFrontendUrl;
   });
 
   it('GET /:id resolves quotation numbers before ownership checks', async () => {
@@ -110,5 +116,22 @@ describe('Quotation Routes', () => {
     await request(app)
       .get('/api/v1/quotations/QT-DOES-NOT-EXIST')
       .expect(404);
+  });
+
+  it('POST /:id/send returns 422 when FRONTEND_URL is missing', async () => {
+    delete process.env.FRONTEND_URL;
+    (quotationService.sendQuotation as jest.Mock).mockResolvedValue({
+      id: 'quotation-1',
+      quotationNumber: 'QT-20260101-0001',
+      title: 'Test quotation',
+      totalAmount: '100',
+      validUntil: null,
+      account: { name: 'Acme', billingEmail: 'billing@acme.com' },
+    });
+
+    await request(app)
+      .post('/api/v1/quotations/quotation-1/send')
+      .send({ emailTo: 'billing@acme.com' })
+      .expect(422);
   });
 });

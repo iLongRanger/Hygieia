@@ -82,6 +82,7 @@ import {
   updateContractAmendment,
 } from '../services/contractAmendmentService';
 import { applyContractAmendmentWorkflow } from '../services/contractAmendmentWorkflowService';
+import { getWebAppBaseUrl, requireFrontendBaseUrl } from '../lib/appUrl';
 
 const router: Router = Router();
 
@@ -765,17 +766,21 @@ router.patch(
           });
 
           if (assignedUser?.email && ['active', 'pending'].includes(assignedUser.status)) {
-            const webAppUrl = process.env.WEB_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-            const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
-            const subject = `Contract ${contract.contractNumber} assigned to you`;
-            const html = `
-              <p>Hi ${assignedUser.fullName || 'there'},</p>
-              <p>You were assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
-              <p>Please view it in the web app for full details:</p>
-              <p><a href="${contractUrl}">${contractUrl}</a></p>
-            `;
+            const webAppUrl = getWebAppBaseUrl();
+            if (!webAppUrl) {
+              logger.warn('Skipping internal contract assignment email because WEB_APP_URL/FRONTEND_URL is not configured');
+            } else {
+              const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
+              const subject = `Contract ${contract.contractNumber} assigned to you`;
+              const html = `
+                <p>Hi ${assignedUser.fullName || 'there'},</p>
+                <p>You were assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
+                <p>Please view it in the web app for full details:</p>
+                <p><a href="${contractUrl}">${contractUrl}</a></p>
+              `;
 
-            await sendNotificationEmail(assignedUser.email, subject, html);
+              await sendNotificationEmail(assignedUser.email, subject, html);
+            }
           }
         } catch (notifyError) {
           logger.error('Failed to send internal employee assignment notification:', notifyError);
@@ -813,26 +818,30 @@ router.patch(
               }
             );
 
-            const webAppUrl = process.env.WEB_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-            const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
+            const webAppUrl = getWebAppBaseUrl();
+            if (!webAppUrl) {
+              logger.warn('Skipping subcontractor assignment email because WEB_APP_URL/FRONTEND_URL is not configured');
+            } else {
+              const contractUrl = `${webAppUrl}/contracts/${contract.id}`;
 
-            await Promise.allSettled(
-              subcontractorUsers
-                .filter((user) => Boolean(user.email))
-                .map((user) =>
-                  sendNotificationEmail(
-                    user.email,
-                    `Contract ${contract.contractNumber} assigned to your team`,
-                    `
-                      <p>Hi ${user.fullName || 'there'},</p>
-                      <p>Your team has been assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
-                      <p>Your payout is <strong>${subcontractorPayoutLabel}</strong>.</p>
-                      <p>Please view it in the web app for full details:</p>
-                      <p><a href="${contractUrl}">${contractUrl}</a></p>
-                    `
+              await Promise.allSettled(
+                subcontractorUsers
+                  .filter((user) => Boolean(user.email))
+                  .map((user) =>
+                    sendNotificationEmail(
+                      user.email,
+                      `Contract ${contract.contractNumber} assigned to your team`,
+                      `
+                        <p>Hi ${user.fullName || 'there'},</p>
+                        <p>Your team has been assigned to contract <strong>${contract.contractNumber}</strong> (${contract.title}).</p>
+                        <p>Your payout is <strong>${subcontractorPayoutLabel}</strong>.</p>
+                        <p>Please view it in the web app for full details:</p>
+                        <p><a href="${contractUrl}">${contractUrl}</a></p>
+                      `
+                    )
                   )
-                )
-            );
+              );
+            }
           }
         } catch (notifyError) {
           logger.error('Failed to send subcontractor assignment notifications:', notifyError);
@@ -919,11 +928,14 @@ router.patch(
               logger.error('Failed to send new subcontractor assignment notification:', newUserNotifyError);
             }
 
-            const setPasswordUrl = `${process.env.WEB_APP_URL || 'http://localhost:5173'}/auth/set-password?token=${provisioned.token}`;
+            const webAppUrl = getWebAppBaseUrl();
             const branding = await getBrandingSafe();
             const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
             if (team?.contactEmail) {
-              if (isEmailConfigured()) {
+              if (!webAppUrl) {
+                logger.warn('Skipping subcontractor welcome email because WEB_APP_URL/FRONTEND_URL is not configured');
+              } else if (isEmailConfigured()) {
+                const setPasswordUrl = `${webAppUrl}/auth/set-password?token=${provisioned.token}`;
                 await sendNotificationEmail(
                   team.contactEmail,
                   buildSubcontractorWelcomeSubject(),
@@ -970,6 +982,8 @@ router.post(
       if (!['draft', 'sent', 'viewed', 'active'].includes(contract.status)) {
         throw new ValidationError('Only draft, sent, viewed, or active contracts can be sent');
       }
+
+      const frontendUrl = requireFrontendBaseUrl();
 
       // 1. Generate public token (regenerate on resend)
       const publicToken = await generatePublicToken(req.params.id);
@@ -1020,7 +1034,6 @@ router.post(
           logger.warn('Email not configured — skipping contract email send');
         } else {
           try {
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
 
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
