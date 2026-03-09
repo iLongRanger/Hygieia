@@ -48,13 +48,14 @@ export function AppointmentDetailCard({
   const customerName = getAppointmentCustomerName(appointment);
   const assigneeLabel = getAppointmentAssigneeLabel(appointment);
   const notes = appointment.notes?.trim();
+  const badgeStyle = colors.style ? { ...colors.style, color: undefined } : undefined;
 
   return (
     <div className="w-64 rounded-2xl border border-surface-200 bg-white/95 p-3 text-left shadow-xl backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900/95">
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/20 text-xs font-semibold uppercase tracking-[0.18em]"
-          style={colors.style}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/20 text-xs font-semibold uppercase tracking-[0.18em] text-black dark:text-white"
+          style={badgeStyle}
         >
           {getAppointmentInitials(appointment)}
         </div>

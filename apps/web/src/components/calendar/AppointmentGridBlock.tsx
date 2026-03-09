@@ -29,6 +29,7 @@ export const AppointmentGridBlock: React.FC<AppointmentGridBlockProps> = ({
   const colors = getAppointmentColors(appointment);
   const startTime = formatTime(new Date(appointment.scheduledStart));
   const customerName = getAppointmentCustomerName(appointment);
+  const bubbleStyle = colors.style ? { ...colors.style, color: undefined } : undefined;
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
@@ -70,10 +71,10 @@ export const AppointmentGridBlock: React.FC<AppointmentGridBlockProps> = ({
             if (nextTarget && wrapperRef.current?.contains(nextTarget)) return;
             if (!isPinned) setIsHovered(false);
           }}
-          style={colors.style}
+          style={bubbleStyle}
           aria-label={`Show job details for ${customerName}`}
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] shadow-md transition duration-150 hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40',
+            'flex h-10 w-10 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] text-black shadow-md transition duration-150 hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-white',
             colors.bg,
             colors.border,
             colors.text
