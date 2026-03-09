@@ -95,6 +95,37 @@ export interface PaginatedResult<T> {
   };
 }
 
+interface ContractAccessOptions {
+  userRole?: string;
+  userTeamId?: string;
+  userId?: string;
+}
+
+function applyContractAccessScope(
+  where: Prisma.ContractWhereInput,
+  options?: ContractAccessOptions
+) {
+  if (options?.userRole === 'subcontractor' && options.userTeamId) {
+    where.assignedTeamId = options.userTeamId;
+  }
+
+  if (options?.userRole === 'cleaner' && options.userId) {
+    where.assignedToUserId = options.userId;
+  }
+
+  if (options?.userRole === 'manager' && options.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: options.userId },
+          { account: { accountManagerId: options.userId } },
+        ],
+      },
+    ];
+  }
+}
+
 const contractSelect = {
   id: true,
   contractNumber: true,
@@ -305,7 +336,7 @@ async function generateContractNumber(): Promise<string> {
  */
 export async function listContracts(
   params: ContractListParams,
-  options?: { userRole?: string; userTeamId?: string; userId?: string }
+  options?: ContractAccessOptions
 ): Promise<PaginatedResult<any>> {
   const {
     page = 1,
@@ -325,10 +356,7 @@ export async function listContracts(
   } = params;
 
   const where: Prisma.ContractWhereInput = {};
-
-  if (options?.userRole === 'subcontractor' && options?.userTeamId) {
-    where.assignedTeamId = options.userTeamId;
-  }
+  applyContractAccessScope(where, options);
 
   if (status) {
     where.status = status;
@@ -746,7 +774,7 @@ export async function updateContractStatus(
 
 export async function getContractsSummary(
   params: ContractSummaryParams,
-  options?: { userRole?: string; userTeamId?: string; userId?: string }
+  options?: ContractAccessOptions
 ) {
   const {
     accountId,
@@ -756,12 +784,7 @@ export async function getContractsSummary(
 
   const where: Prisma.ContractWhereInput = {};
 
-  if (options?.userRole === 'subcontractor' && options?.userTeamId) {
-    where.assignedTeamId = options.userTeamId;
-  }
-  if (options?.userRole === 'cleaner' && options?.userId) {
-    where.assignedToUserId = options.userId;
-  }
+  applyContractAccessScope(where, options);
 
   if (accountId) {
     where.accountId = accountId;
@@ -1293,20 +1316,26 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
 /**
  * Get active contracts expiring within the given number of days
  */
-export async function getExpiringContracts(daysAhead: number = 30) {
+export async function getExpiringContracts(
+  daysAhead: number = 30,
+  options?: ContractAccessOptions
+) {
   const now = new Date();
   const futureDate = new Date();
   futureDate.setDate(now.getDate() + daysAhead);
 
-  return prisma.contract.findMany({
-    where: {
-      status: 'active',
-      archivedAt: null,
-      endDate: {
-        gte: now,
-        lte: futureDate,
-      },
+  const where: Prisma.ContractWhereInput = {
+    status: 'active',
+    archivedAt: null,
+    endDate: {
+      gte: now,
+      lte: futureDate,
     },
+  };
+  applyContractAccessScope(where, options);
+
+  return prisma.contract.findMany({
+    where,
     select: contractSelect,
     orderBy: { endDate: 'asc' },
   });

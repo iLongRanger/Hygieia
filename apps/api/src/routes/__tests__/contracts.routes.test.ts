@@ -10,7 +10,9 @@ import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
 import * as notificationService from '../../services/notificationService';
 import * as jobService from '../../services/jobService';
+import * as proposalService from '../../services/proposalService';
 import { prisma } from '../../lib/prisma';
+import { ensureOwnershipAccess } from '../../middleware/ownership';
 
 const mockAuthUser: { id: string; role: string; teamId?: string } = {
   id: 'user-1',
@@ -30,6 +32,7 @@ jest.mock('../../middleware/rbac', () => ({
 
 jest.mock('../../middleware/ownership', () => ({
   verifyOwnership: () => (_req: any, _res: any, next: any) => next(),
+  ensureOwnershipAccess: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../services/contractService');
@@ -91,6 +94,10 @@ jest.mock('../../services/teamService', () => ({
   ensureSubcontractorRoleForTeamUsers: jest.fn().mockResolvedValue(undefined),
   getSubcontractorTeamUsers: jest.fn().mockResolvedValue([]),
   createSubcontractorUser: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('../../services/proposalService', () => ({
+  getProposalById: jest.fn(),
 }));
 
 jest.mock('../../lib/prisma', () => ({
@@ -291,6 +298,9 @@ describe('Contract Routes', () => {
   });
 
   it('POST /from-proposal/:proposalId should create from proposal', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: '11111111-1111-1111-1111-111111111111',
+    });
     (contractService.createContractFromProposal as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 
     const response = await request(app)
@@ -300,6 +310,24 @@ describe('Contract Routes', () => {
 
     expect(response.body.data.id).toBe('contract-1');
     expect(contractService.createContractFromProposal).toHaveBeenCalled();
+    expect(ensureOwnershipAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1', role: 'owner' }),
+      expect.objectContaining({
+        resourceType: 'proposal',
+        resourceId: '11111111-1111-1111-1111-111111111111',
+      })
+    );
+  });
+
+  it('POST /from-proposal/:proposalId should return 404 when proposal is missing', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue(null);
+
+    await request(app)
+      .post('/api/v1/contracts/from-proposal/11111111-1111-1111-1111-111111111111')
+      .send({ title: 'From Proposal' })
+      .expect(404);
+
+    expect(contractService.createContractFromProposal).not.toHaveBeenCalled();
   });
 
   it('PATCH /:id should update contract', async () => {

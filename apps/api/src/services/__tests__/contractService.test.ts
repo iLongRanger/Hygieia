@@ -57,6 +57,92 @@ describe('contractService', () => {
     );
   });
 
+  it('listContracts should scope managers to owned or managed accounts', async () => {
+    (prisma.contract.count as jest.Mock).mockResolvedValue(0);
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([]);
+
+    await contractService.listContracts(
+      { page: 1, limit: 10 },
+      { userRole: 'manager', userId: 'manager-1' }
+    );
+
+    expect(prisma.contract.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [
+                { createdByUserId: 'manager-1' },
+                { account: { accountManagerId: 'manager-1' } },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('listContracts should scope cleaners to directly assigned contracts', async () => {
+    (prisma.contract.count as jest.Mock).mockResolvedValue(0);
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([]);
+
+    await contractService.listContracts(
+      { page: 1, limit: 10 },
+      { userRole: 'cleaner', userId: 'cleaner-1' }
+    );
+
+    expect(prisma.contract.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          assignedToUserId: 'cleaner-1',
+        }),
+      })
+    );
+  });
+
+  it('getContractsSummary should scope managers to owned or managed accounts', async () => {
+    (prisma.contract.count as jest.Mock).mockResolvedValue(0);
+
+    await contractService.getContractsSummary(
+      {},
+      { userRole: 'manager', userId: 'manager-1' }
+    );
+
+    expect(prisma.contract.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [
+                { createdByUserId: 'manager-1' },
+                { account: { accountManagerId: 'manager-1' } },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('getExpiringContracts should scope cleaners to directly assigned contracts', async () => {
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([]);
+
+    await contractService.getExpiringContracts(30, {
+      userRole: 'cleaner',
+      userId: 'cleaner-1',
+    });
+
+    expect(prisma.contract.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          assignedToUserId: 'cleaner-1',
+          status: 'active',
+          archivedAt: null,
+        }),
+      })
+    );
+  });
+
   it('createContract should require proposalId', async () => {
     await expect(
       contractService.createContract({

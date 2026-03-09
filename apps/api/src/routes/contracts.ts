@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { verifyOwnership } from '../middleware/ownership';
+import { ensureOwnershipAccess, verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listContracts,
@@ -83,6 +83,7 @@ import {
 } from '../services/contractAmendmentService';
 import { applyContractAmendmentWorkflow } from '../services/contractAmendmentWorkflowService';
 import { getWebAppBaseUrl, requireFrontendBaseUrl } from '../lib/appUrl';
+import { getProposalById } from '../services/proposalService';
 
 const router: Router = Router();
 
@@ -259,7 +260,11 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
-      const contracts = await getExpiringContracts(days);
+      const contracts = await getExpiringContracts(days, {
+        userRole: req.user?.role,
+        userTeamId: req.user?.teamId ?? undefined,
+        userId: req.user?.id,
+      });
       res.json({ data: contracts });
     } catch (error) {
       next(error);
@@ -451,6 +456,18 @@ router.post(
       }
 
       const { proposalId, ...overrides } = parsed.data;
+      const proposal = await getProposalById(proposalId);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'proposal',
+        resourceId: proposal.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const contract = await createContractFromProposal(
         proposalId,
         req.user.id,
@@ -517,6 +534,7 @@ router.patch(
   '/:id/status',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = updateContractStatusSchema.safeParse(req.body);
@@ -608,6 +626,7 @@ router.patch(
   '/:id/team',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = assignContractTeamSchema.safeParse(req.body);
@@ -967,6 +986,7 @@ router.post(
   '/:id/send',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = sendContractSchema.safeParse(req.body);
@@ -1114,6 +1134,7 @@ router.post(
   '/:id/sign',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = signContractSchema.safeParse(req.body);
@@ -1142,6 +1163,7 @@ router.post(
   '/:id/terminate',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = terminateContractSchema.safeParse(req.body);
@@ -1201,6 +1223,7 @@ router.delete(
   '/:id',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await archiveContract(req.params.id);
@@ -1223,6 +1246,7 @@ router.post(
   '/:id/restore',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await restoreContract(req.params.id);
@@ -1249,6 +1273,7 @@ router.post(
   '/:id/renew',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = renewContractSchemaWithDocumentValidation.safeParse(req.body);
@@ -1353,6 +1378,7 @@ router.post(
   '/:id/complete-initial-clean',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_WRITE),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
@@ -1418,6 +1444,7 @@ router.get(
   '/:id/pdf',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_READ),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await getContractById(req.params.id);
