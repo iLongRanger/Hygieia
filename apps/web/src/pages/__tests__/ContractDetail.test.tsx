@@ -37,6 +37,8 @@ const applyContractAmendmentMock = vi.fn();
 const listTeamsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listAreaTypesMock = vi.fn();
+const listTaskTemplatesMock = vi.fn();
+const getAreaTemplateByAreaTypeMock = vi.fn();
 const listPricingSettingsMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
@@ -69,6 +71,8 @@ vi.mock('../../lib/users', () => ({
 
 vi.mock('../../lib/facilities', () => ({
   listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
+  listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
+  getAreaTemplateByAreaType: (...args: unknown[]) => getAreaTemplateByAreaTypeMock(...args),
 }));
 
 vi.mock('../../lib/pricing', async () => {
@@ -206,6 +210,28 @@ describe('ContractDetail', () => {
     listAreaTypesMock.mockResolvedValue({
       data: [{ id: 'area-type-1', name: 'Lobby', description: null, defaultSquareFeet: null, baseCleaningTimeMinutes: null, createdAt: '', updatedAt: '', _count: { areas: 0, taskTemplates: 0 } }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    listTaskTemplatesMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+    getAreaTemplateByAreaTypeMock.mockResolvedValue({
+      id: 'template-1',
+      name: 'Lobby Template',
+      defaultSquareFeet: null,
+      createdAt: '',
+      updatedAt: '',
+      areaType: {
+        id: 'area-type-1',
+        name: 'Lobby',
+        defaultSquareFeet: null,
+      },
+      items: [],
+      tasks: [],
+      createdByUser: {
+        id: 'user-1',
+        fullName: 'Admin User',
+      },
     });
     listPricingSettingsMock.mockResolvedValue({
       data: [{ id: 'plan-1', name: 'Default Plan', pricingType: 'standard' }],
@@ -697,6 +723,8 @@ describe('ContractDetail', () => {
       forceApply: true,
     });
     expect(await screen.findByText('Apply Summary')).toBeInTheDocument();
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.getByText('Applied to the live contract')).toBeInTheDocument();
     expect(screen.getByText('1 updated')).toBeInTheDocument();
     expect(screen.getByText('3 total tasks')).toBeInTheDocument();
     expect(screen.getByText('Future Jobs')).toBeInTheDocument();

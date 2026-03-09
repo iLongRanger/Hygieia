@@ -62,7 +62,12 @@ import {
   rejectContractAmendment as rejectContractAmendmentApi,
   updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
+import { getAreaTemplateByAreaType, listTaskTemplates } from '../../lib/facilities';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
+import {
+  AmendmentAreaSetupModal,
+  buildAmendmentTasksFromSelections,
+} from '../../components/contracts/AmendmentAreaSetupModal';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
@@ -80,12 +85,18 @@ import type {
   RecalculateContractAmendmentInput,
   ContractStatus,
   RenewContractInput,
+  ServiceSchedule,
   SendContractInput,
   UpdateContractInput,
 } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User as SystemUser } from '../../types/user';
-import type { AreaType } from '../../types/facility';
+import type { AreaType, CleaningFrequency, TaskTemplate } from '../../types/facility';
+import {
+  ORDERED_CLEANING_FREQUENCIES,
+  isCleaningFrequency,
+  type AreaTemplateTaskSelection,
+} from '../facilities/facility-constants';
 
 // Format address object into readable string
 const formatAddress = (address: any): string => {
@@ -424,6 +435,27 @@ const defaultScheduleDays = (frequency: string | null | undefined): string[] => 
 const createTempId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const buildFallbackTemplateTasks = (
+  areaTypeId: string,
+  taskTemplates: TaskTemplate[]
+): AreaTemplateTaskSelection[] =>
+  taskTemplates
+    .filter((template) => template.isActive && template.areaType?.id === areaTypeId)
+    .map((template) => ({
+      id: `task-template-${template.id}`,
+      taskTemplateId: template.id,
+      name: template.name,
+      cleaningType: isCleaningFrequency(template.cleaningType)
+        ? template.cleaningType
+        : 'daily',
+      estimatedMinutes: template.estimatedMinutes ?? null,
+      baseMinutes: Number(template.baseMinutes) || 0,
+      perSqftMinutes: Number(template.perSqftMinutes) || 0,
+      perUnitMinutes: Number(template.perUnitMinutes) || 0,
+      perRoomMinutes: Number(template.perRoomMinutes) || 0,
+      include: true,
+    }));
+
 const getWorkingScopeFromAmendment = (
   amendment: ContractAmendment | null
 ): ContractAmendmentWorkingScope => {
@@ -522,6 +554,52 @@ const getLatestAmendmentActivity = (amendment: ContractAmendment | null, action:
   [...(amendment?.activities || [])]
     .reverse()
     .find((activity) => activity.action === action);
+
+const getAmendmentActivityLabel = (action: string) => {
+  switch (action) {
+    case 'created':
+      return 'Draft created';
+    case 'updated':
+      return 'Draft updated';
+    case 'recalculated':
+      return 'Price updated';
+    case 'submitted':
+      return 'Sent for approval';
+    case 'approved':
+      return 'Approved';
+    case 'rejected':
+      return 'Rejected';
+    case 'applied':
+      return 'Applied to the live contract';
+    default:
+      return action.replace(/_/g, ' ');
+  }
+};
+
+const getAmendmentActivityDetails = (activity: {
+  action: string;
+  metadata?: Record<string, any>;
+}) => {
+  const metadata = activity.metadata || {};
+
+  switch (activity.action) {
+    case 'rejected':
+      return metadata.rejectedReason ? `Reason: ${metadata.rejectedReason}` : null;
+    case 'applied': {
+      const parts = [
+        `${metadata.updatedAreaCount ?? 0} areas updated`,
+        `${metadata.createdAreaCount ?? 0} areas added`,
+        `${metadata.removedAreaCount ?? metadata.archivedAreaCount ?? 0} areas removed`,
+        `${metadata.updatedTaskCount ?? 0} tasks updated`,
+        `${metadata.createdTaskCount ?? 0} tasks added`,
+        `${metadata.removedTaskCount ?? metadata.archivedTaskCount ?? 0} tasks removed`,
+      ];
+      return parts.join(' • ');
+    }
+    default:
+      return null;
+  }
+};
 
 const buildWorkingScopeForComparison = (
   amendment: ContractAmendment | null,
@@ -624,11 +702,32 @@ const ContractDetail = () => {
   const [amendmentPricing, setAmendmentPricing] = useState<FacilityPricingResult | null>(null);
   const [amendmentPricingLoading, setAmendmentPricingLoading] = useState(false);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
   const [amendmentWorkingScope, setAmendmentWorkingScope] = useState<ContractAmendmentWorkingScope>({
     areas: [],
     tasks: [],
   });
+  const [showAmendmentAreaModal, setShowAmendmentAreaModal] = useState(false);
+  const [amendmentAreaForm, setAmendmentAreaForm] = useState<ContractAmendmentWorkingScope['areas'][number]>({
+    areaTypeId: '',
+    areaType: null,
+    name: '',
+    quantity: 1,
+    squareFeet: null,
+    floorType: 'vct',
+    conditionLevel: 'standard',
+    trafficLevel: 'medium',
+    roomCount: 0,
+    unitCount: 0,
+    notes: null,
+  });
+  const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
+  const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
+  const [areaTaskPipelineStep, setAreaTaskPipelineStep] = useState(0);
+  const [reviewedAreaTaskFrequencies, setReviewedAreaTaskFrequencies] =
+    useState<Set<CleaningFrequency>>(new Set());
+  const [newAreaCustomTaskName, setNewAreaCustomTaskName] = useState('');
   const [amendmentScopeDirty, setAmendmentScopeDirty] = useState(false);
   const [collapsedAmendmentAreas, setCollapsedAmendmentAreas] = useState<Record<string, boolean>>({});
   const [collapsedAmendmentTaskGroups, setCollapsedAmendmentTaskGroups] = useState<Record<string, boolean>>({});
@@ -675,6 +774,9 @@ const ContractDetail = () => {
     setCollapsedAmendmentTaskGroups({});
     if (areaTypes.length === 0) {
       fetchAreaTypes();
+    }
+    if (taskTemplates.length === 0) {
+      fetchTaskTemplates();
     }
     if (pricingPlans.length === 0) {
       fetchPricingPlans();
@@ -948,6 +1050,16 @@ const ContractDetail = () => {
     }
   };
 
+  const fetchTaskTemplates = async () => {
+    try {
+      const response = await listTaskTemplates({ isActive: true, limit: 100 });
+      setTaskTemplates(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch task templates:', error);
+      toast.error('Failed to load task templates');
+    }
+  };
+
   const fetchPricingPlans = async () => {
     try {
       const response = await listPricingSettings({ limit: 100, isActive: true });
@@ -1049,30 +1161,179 @@ const ContractDetail = () => {
     setAmendmentScopeDirty(true);
   };
 
-  const addDraftArea = () => {
+  const resetAmendmentAreaSetup = () => {
     const defaultAreaType = areaTypes[0];
+    setAmendmentAreaForm({
+      areaTypeId: defaultAreaType?.id || '',
+      areaType: defaultAreaType
+        ? { id: defaultAreaType.id, name: defaultAreaType.name }
+        : null,
+      name: defaultAreaType?.name || '',
+      quantity: 1,
+      squareFeet: defaultAreaType?.defaultSquareFeet
+        ? Number(defaultAreaType.defaultSquareFeet)
+        : null,
+      floorType: 'vct',
+      conditionLevel: 'standard',
+      trafficLevel: 'medium',
+      roomCount: 0,
+      unitCount: 0,
+      notes: null,
+    });
+    setAreaTemplateTasks(
+      defaultAreaType ? buildFallbackTemplateTasks(defaultAreaType.id, taskTemplates) : []
+    );
+    setAreaTaskPipelineStep(0);
+    setReviewedAreaTaskFrequencies(new Set());
+    setNewAreaCustomTaskName('');
+  };
+
+  const openAmendmentAreaModal = () => {
+    resetAmendmentAreaSetup();
+    setShowAmendmentAreaModal(true);
+  };
+
+  const applyAmendmentAreaTemplate = async (areaTypeId: string) => {
+    if (!areaTypeId) {
+      setAreaTemplateTasks([]);
+      return;
+    }
+
+    try {
+      setAreaTemplateLoading(true);
+      const template = await getAreaTemplateByAreaType(areaTypeId);
+      const templateTasks = template.tasks?.map((task) => ({
+        id: task.id,
+        taskTemplateId: task.taskTemplate?.id || null,
+        name: task.taskTemplate?.name || task.name || 'Untitled Task',
+        cleaningType:
+          task.taskTemplate?.cleaningType && isCleaningFrequency(task.taskTemplate.cleaningType)
+            ? task.taskTemplate.cleaningType
+            : 'daily',
+        estimatedMinutes: task.taskTemplate?.estimatedMinutes ?? null,
+        baseMinutes: Number(task.taskTemplate?.baseMinutes ?? task.baseMinutes) || 0,
+        perSqftMinutes: Number(task.taskTemplate?.perSqftMinutes ?? task.perSqftMinutes) || 0,
+        perUnitMinutes: Number(task.taskTemplate?.perUnitMinutes ?? task.perUnitMinutes) || 0,
+        perRoomMinutes: Number(task.taskTemplate?.perRoomMinutes ?? task.perRoomMinutes) || 0,
+        include: true,
+      })) || [];
+      const fallbackTasks = buildFallbackTemplateTasks(areaTypeId, taskTemplates);
+      setAreaTemplateTasks(templateTasks.length > 0 ? templateTasks : fallbackTasks);
+      setAreaTaskPipelineStep(0);
+      setReviewedAreaTaskFrequencies(new Set());
+      setNewAreaCustomTaskName('');
+      setAmendmentAreaForm((current) => ({
+        ...current,
+        squareFeet:
+          current.squareFeet ??
+          (template.defaultSquareFeet ? Number(template.defaultSquareFeet) : current.squareFeet),
+      }));
+    } catch (error) {
+      console.error('Failed to load amendment area template:', error);
+      setAreaTemplateTasks(buildFallbackTemplateTasks(areaTypeId, taskTemplates));
+      setAreaTaskPipelineStep(0);
+      setReviewedAreaTaskFrequencies(new Set());
+      setNewAreaCustomTaskName('');
+    } finally {
+      setAreaTemplateLoading(false);
+    }
+  };
+
+  const toggleAmendmentAreaTemplateTaskInclude = (taskId: string, include: boolean) => {
+    setAreaTemplateTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, include } : task))
+    );
+  };
+
+  const addCustomAmendmentAreaTemplateTask = () => {
+    const name = newAreaCustomTaskName.trim();
+    if (!name) {
+      toast.error('Enter a task name');
+      return;
+    }
+
+    const duplicate = areaTemplateTasks.some(
+      (task) =>
+        task.cleaningType === currentAreaTaskFrequency &&
+        task.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) {
+      toast.error('Task already exists in this frequency');
+      return;
+    }
+
+    setAreaTemplateTasks((current) => [
+      ...current,
+      {
+        id: createTempId('template-task'),
+        taskTemplateId: null,
+        name,
+        cleaningType: currentAreaTaskFrequency,
+        estimatedMinutes: null,
+        baseMinutes: 0,
+        perSqftMinutes: 0,
+        perUnitMinutes: 0,
+        perRoomMinutes: 0,
+        include: true,
+      },
+    ]);
+    setNewAreaCustomTaskName('');
+  };
+
+  const removeCustomAmendmentAreaTemplateTask = (taskId: string) => {
+    setAreaTemplateTasks((current) => current.filter((task) => task.id !== taskId));
+  };
+
+  const goToNextAmendmentAreaTaskFrequencyStep = () => {
+    setReviewedAreaTaskFrequencies((current) => {
+      const next = new Set(current);
+      next.add(currentAreaTaskFrequency as CleaningFrequency);
+      return next;
+    });
+    setAreaTaskPipelineStep((current) =>
+      Math.min(current + 1, ORDERED_CLEANING_FREQUENCIES.length - 1)
+    );
+  };
+
+  const goToPreviousAmendmentAreaTaskFrequencyStep = () => {
+    setAreaTaskPipelineStep((current) => Math.max(current - 1, 0));
+  };
+
+  const saveAmendmentAreaWithTasks = () => {
+    if (!amendmentAreaForm.areaTypeId) {
+      toast.error('Area type is required');
+      return;
+    }
+
+    const areaKey = createTempId('area');
+    const selectedAreaType =
+      amendmentAreaForm.areaType ||
+      areaTypes.find((areaType) => areaType.id === amendmentAreaForm.areaTypeId);
+    const draftArea = {
+      ...amendmentAreaForm,
+      tempId: areaKey,
+      areaType: selectedAreaType
+        ? {
+            id: amendmentAreaForm.areaTypeId || undefined,
+            name: selectedAreaType.name || amendmentAreaForm.name || 'Area',
+          }
+        : null,
+      name: amendmentAreaForm.name || selectedAreaType?.name || '',
+    };
+
+    const seededTasks = buildAmendmentTasksFromSelections(areaKey, areaTemplateTasks).map((task) => ({
+      ...task,
+      tempId: task.tempId || createTempId('task'),
+    }));
+
     setAmendmentWorkingScope((current) => ({
       ...current,
-      areas: [
-        ...current.areas,
-        {
-          tempId: createTempId('area'),
-          areaTypeId: defaultAreaType?.id || null,
-          areaType: defaultAreaType
-            ? { id: defaultAreaType.id, name: defaultAreaType.name }
-            : { name: 'Area' },
-          name: '',
-          quantity: 1,
-          squareFeet: 0,
-          floorType: 'vct',
-          conditionLevel: 'standard',
-          trafficLevel: 'medium',
-          roomCount: 0,
-          unitCount: 0,
-        },
-      ],
+      areas: [...current.areas, draftArea],
+      tasks: [...current.tasks, ...seededTasks],
     }));
     setAmendmentScopeDirty(true);
+    setShowAmendmentAreaModal(false);
+    resetAmendmentAreaSetup();
   };
 
   const removeDraftArea = (areaKey: string) => {
@@ -1172,9 +1433,9 @@ const ContractDetail = () => {
         ? [...current.newServiceSchedule.days]
         : defaultScheduleDays(frequency);
       const hasDay = currentDays.includes(day);
-      const nextDays = hasDay
+      const nextDays = (hasDay
         ? currentDays.filter((value) => value !== day)
-        : [...currentDays, day];
+        : [...currentDays, day]) as ServiceSchedule['days'];
       if (!hasDay && expected > 0 && nextDays.length > expected) {
         return current;
       }
@@ -1402,6 +1663,13 @@ const ContractDetail = () => {
   };
   const internalEmployeeUsers = users.filter(isInternalEmployeeOption);
   const hasCurrentAssignment = Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id);
+  const currentAreaTaskFrequency =
+    ORDERED_CLEANING_FREQUENCIES[areaTaskPipelineStep] || 'daily';
+  const filteredAreaTemplateTasks = areaTemplateTasks.filter(
+    (task) => task.cleaningType === currentAreaTaskFrequency
+  );
+  const allAreaTaskFrequenciesReviewed =
+    reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
   const amendmentAreaTaskGroups = amendmentWorkingScope.areas.map((area, index) => {
     const areaKey = area.id || area.tempId || `draft-area-${index + 1}`;
     return {
@@ -2829,7 +3097,7 @@ const ContractDetail = () => {
                               newServiceFrequency: (value || null) as any,
                               newServiceSchedule: {
                                 ...(current.newServiceSchedule || {}),
-                                days: nextDays,
+                                days: nextDays as ServiceSchedule['days'],
                               },
                             }
                           : current
@@ -2881,8 +3149,13 @@ const ContractDetail = () => {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-white">Areas</div>
-                    <Button size="sm" variant="secondary" onClick={addDraftArea}>
+                    <div>
+                      <div className="text-sm font-medium text-white">Areas</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        New areas use the guided facility task setup with frequency progress.
+                      </div>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={openAmendmentAreaModal}>
                       Add Area
                     </Button>
                   </div>
@@ -3403,7 +3676,7 @@ const ContractDetail = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
                 <div className="text-sm font-medium text-white">Snapshots</div>
                 <div className="mt-3 space-y-2">
@@ -3435,6 +3708,34 @@ const ContractDetail = () => {
                   })}
                   {(selectedAmendment.snapshots || []).length === 0 && (
                     <div className="text-sm text-gray-500">No snapshots recorded.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                <div className="text-sm font-medium text-white">History</div>
+                <div className="mt-3 space-y-2">
+                  {(selectedAmendment.activities || []).map((activity) => {
+                    const details = getAmendmentActivityDetails(activity);
+                    return (
+                      <div key={`history-${activity.id}`} className="rounded border border-white/10 px-3 py-2">
+                        <div className="text-sm text-gray-200">
+                          {getAmendmentActivityLabel(activity.action)}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          {formatDate(activity.createdAt)}
+                          {activity.performedByUser?.fullName
+                            ? ` Â· ${activity.performedByUser.fullName}`
+                            : ''}
+                        </div>
+                        {details && (
+                          <div className="mt-2 text-xs text-gray-400">{details}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(selectedAmendment.activities || []).length === 0 && (
+                    <div className="text-sm text-gray-500">No history yet.</div>
                   )}
                 </div>
               </div>
@@ -3502,6 +3803,33 @@ const ContractDetail = () => {
           </div>
         )}
       </Modal>
+
+      <AmendmentAreaSetupModal
+        isOpen={showAmendmentAreaModal}
+        onClose={() => {
+          setShowAmendmentAreaModal(false);
+          resetAmendmentAreaSetup();
+        }}
+        areaForm={amendmentAreaForm}
+        setAreaForm={setAmendmentAreaForm}
+        areaTypes={areaTypes}
+        areaTemplateLoading={areaTemplateLoading}
+        filteredAreaTemplateTasks={filteredAreaTemplateTasks}
+        currentAreaTaskFrequency={currentAreaTaskFrequency}
+        areaTaskPipelineStep={areaTaskPipelineStep}
+        reviewedAreaTaskFrequencies={reviewedAreaTaskFrequencies}
+        allAreaTaskFrequenciesReviewed={allAreaTaskFrequenciesReviewed}
+        newAreaCustomTaskName={newAreaCustomTaskName}
+        setNewAreaCustomTaskName={setNewAreaCustomTaskName}
+        toggleAreaTemplateTaskInclude={toggleAmendmentAreaTemplateTaskInclude}
+        addCustomAreaTemplateTask={addCustomAmendmentAreaTemplateTask}
+        removeCustomAreaTemplateTask={removeCustomAmendmentAreaTemplateTask}
+        goToNextAreaTaskFrequencyStep={goToNextAmendmentAreaTaskFrequencyStep}
+        goToPreviousAreaTaskFrequencyStep={goToPreviousAmendmentAreaTaskFrequencyStep}
+        applyAreaTemplate={applyAmendmentAreaTemplate}
+        onSave={saveAmendmentAreaWithTasks}
+        saving={amendmentSubmitting}
+      />
     </div>
   );
 };
