@@ -17,6 +17,8 @@ import {
 } from '../../lib/teams';
 import type { Team } from '../../types/team';
 
+const DEFAULT_CALENDAR_COLOR = '#8b5cf6';
+
 const TeamsList = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,7 @@ const TeamsList = () => {
     contactPhone: '',
     notes: '',
     isActive: 'true',
+    calendarColor: '',
   });
 
   const fetchTeams = useCallback(async () => {
@@ -63,6 +66,7 @@ const TeamsList = () => {
       contactPhone: '',
       notes: '',
       isActive: 'true',
+      calendarColor: '',
     });
     setEditingTeam(null);
   };
@@ -81,6 +85,7 @@ const TeamsList = () => {
       contactPhone: team.contactPhone || '',
       notes: team.notes || '',
       isActive: team.isActive ? 'true' : 'false',
+      calendarColor: team.calendarColor || '',
     });
     setShowModal(true);
   };
@@ -101,6 +106,7 @@ const TeamsList = () => {
         contactPhone: formData.contactPhone.trim() || null,
         notes: formData.notes.trim() || null,
         isActive: formData.isActive === 'true',
+        calendarColor: formData.calendarColor || null,
       };
 
       if (editingTeam) {
@@ -316,6 +322,26 @@ const TeamsList = () => {
             value={formData.notes}
             onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
           />
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <Input
+                label="Job Calendar Color"
+                type="color"
+                value={formData.calendarColor || DEFAULT_CALENDAR_COLOR}
+                onChange={(e) => setFormData((prev) => ({ ...prev, calendarColor: e.target.value }))}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setFormData((prev) => ({ ...prev, calendarColor: '' }))}
+              >
+                Use Default
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              Jobs assigned to this subcontractor team use this color in the calendar.
+            </p>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="secondary"

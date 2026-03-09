@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { passwordSchema } from '../utils/passwordPolicy';
 
 const emailSchema = z.string().email('Invalid email format').max(255);
+const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Calendar color must be a hex value');
 const phoneSchema = z
   .string()
   .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format')
@@ -29,6 +30,7 @@ export const updateUserSchema = z.object({
   avatarUrl: z.string().url().optional().nullable(),
   status: z.enum(['active', 'disabled', 'pending']).optional(),
   preferences: z.record(z.unknown()).optional(),
+  calendarColor: hexColorSchema.nullable().optional(),
 });
 
 export const listUsersQuerySchema = z.object({

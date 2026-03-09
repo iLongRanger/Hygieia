@@ -153,6 +153,48 @@ describe('AppointmentBlock', () => {
       const button = screen.getByRole('button');
       expect(button).toHaveClass('bg-orange-100');
     });
+
+    it('should apply violet styling for job calendar entries', () => {
+      const appointment = createMockAppointment({
+        type: 'visit',
+        calendarColorKey: 'job',
+        lead: null,
+        account: { id: 'a', name: 'Test', type: 'commercial' },
+      });
+      render(
+        <AppointmentBlock
+          appointment={appointment}
+          onEdit={vi.fn()}
+          onCustomerClick={vi.fn()}
+        />
+      );
+
+      const button = screen.getByRole('button');
+      expect(button).toHaveClass('bg-violet-100');
+    });
+
+    it('should apply custom inline styling for job assignee colors', () => {
+      const appointment = createMockAppointment({
+        type: 'visit',
+        calendarColorKey: 'job',
+        calendarColor: '#123456',
+        lead: null,
+        account: { id: 'a', name: 'Test', type: 'commercial' },
+      });
+      render(
+        <AppointmentBlock
+          appointment={appointment}
+          onEdit={vi.fn()}
+          onCustomerClick={vi.fn()}
+        />
+      );
+
+      const button = screen.getByRole('button');
+      expect(button).toHaveStyle({
+        color: '#123456',
+        backgroundColor: 'rgba(18, 52, 86, 0.16)',
+      });
+    });
   });
 
   describe('Compact mode', () => {

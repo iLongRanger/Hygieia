@@ -1133,6 +1133,7 @@ model Team {
   contactPhone  String?   @map("contact_phone") @db.VarChar(20)
   notes         String?   @db.Text
   isActive      Boolean   @default(true) @map("is_active")
+  calendarColor String?   @map("calendar_color") @db.VarChar(7)
   createdByUserId String  @map("created_by_user_id") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)

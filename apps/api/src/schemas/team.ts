@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Calendar color must be a hex value');
+
 export const createTeamSchema = z.object({
   name: z.string().min(1, 'Team name is required').max(255),
   contactName: z.string().max(255).optional().nullable(),
@@ -7,6 +9,7 @@ export const createTeamSchema = z.object({
   contactPhone: z.string().max(20).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
   isActive: z.boolean().optional(),
+  calendarColor: hexColorSchema.nullable().optional(),
 });
 
 export const updateTeamSchema = createTeamSchema.partial();

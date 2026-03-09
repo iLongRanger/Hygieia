@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { render, screen, waitFor, fireEvent } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import UserDetail from '../users/UserDetail';
 import type { User, Role } from '../../types/user';
@@ -73,6 +73,7 @@ const userData: User = {
   status: 'active',
   lastLoginAt: null,
   preferences: {},
+  calendarColor: '#22c55e',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   roles: [
@@ -125,6 +126,9 @@ describe('UserDetail', () => {
     const fullNameInput = await screen.findByLabelText(/full name/i);
     await user.clear(fullNameInput);
     await user.type(fullNameInput, 'Jane Updated');
+    fireEvent.change(screen.getByLabelText(/job calendar color/i), {
+      target: { value: '#112233' },
+    });
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
@@ -132,6 +136,7 @@ describe('UserDetail', () => {
         'user-1',
         expect.objectContaining({
           fullName: 'Jane Updated',
+          calendarColor: '#112233',
         })
       );
     });

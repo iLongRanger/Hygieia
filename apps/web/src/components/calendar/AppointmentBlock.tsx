@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { APPOINTMENT_TYPE_COLORS, formatTime } from '../../lib/calendar-utils';
+import { formatTime, getAppointmentColors } from '../../lib/calendar-utils';
 import type { Appointment } from '../../types/crm';
 
 interface AppointmentBlockProps {
@@ -16,7 +16,7 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   onCustomerClick,
   compact = false,
 }) => {
-  const colors = APPOINTMENT_TYPE_COLORS[appointment.type];
+  const colors = getAppointmentColors(appointment);
   const startTime = formatTime(new Date(appointment.scheduledStart));
 
   const customerName =
@@ -41,6 +41,7 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
       <button
         onClick={handleBlockClick}
         className={cn('h-2 w-2 rounded-full', colors.dot)}
+        style={colors.dotStyle}
         title={`${startTime} - ${customerName}`}
       />
     );
@@ -49,6 +50,7 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   return (
     <button
       onClick={handleBlockClick}
+      style={colors.style}
       className={cn(
         'w-full rounded border px-1.5 py-0.5 text-left text-xs transition-colors hover:opacity-80',
         colors.bg,

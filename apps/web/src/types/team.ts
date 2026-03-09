@@ -6,6 +6,7 @@ export interface Team {
   contactPhone?: string | null;
   notes?: string | null;
   isActive: boolean;
+  calendarColor?: string | null;
   createdAt: string;
   updatedAt: string;
   archivedAt?: string | null;
@@ -33,6 +34,7 @@ export interface CreateTeamInput {
   contactPhone?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  calendarColor?: string | null;
 }
 
 export interface UpdateTeamInput {
@@ -42,4 +44,5 @@ export interface UpdateTeamInput {
   contactPhone?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  calendarColor?: string | null;
 }

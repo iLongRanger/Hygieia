@@ -43,11 +43,13 @@ export interface Job {
   assignedTeam: {
     id: string;
     name: string;
+    calendarColor?: string | null;
   } | null;
   assignedToUser: {
     id: string;
     fullName: string;
     email: string;
+    calendarColor?: string | null;
   } | null;
   workforceAssignmentType?: WorkforceAssignmentType;
   createdByUser: {

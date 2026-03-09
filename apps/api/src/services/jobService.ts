@@ -105,6 +105,15 @@ type WorkforceAssignmentType =
   | 'internal_employee'
   | 'subcontractor_team';
 
+function readCalendarColor(source: unknown): string | null {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return null;
+  }
+
+  const calendarColor = (source as Record<string, unknown>).calendarColor;
+  return typeof calendarColor === 'string' ? calendarColor : null;
+}
+
 // ==================== Select Objects ====================
 
 const jobSelect = {
@@ -154,6 +163,7 @@ const jobSelect = {
     select: {
       id: true,
       name: true,
+      calendarColor: true,
     },
   },
   assignedToUser: {
@@ -161,6 +171,7 @@ const jobSelect = {
       id: true,
       fullName: true,
       email: true,
+      preferences: true,
     },
   },
   createdByUser: {
@@ -317,11 +328,26 @@ function deriveWorkforceAssignmentType(job: {
 }
 
 function withWorkforceMetadata<T extends {
-  assignedTeam?: { id: string } | null;
-  assignedToUser?: { id: string } | null;
+  assignedTeam?: ({ id: string } & Record<string, unknown>) | null;
+  assignedToUser?: ({ id: string } & Record<string, unknown>) | null;
 }>(job: T): T & { workforceAssignmentType: WorkforceAssignmentType } {
   return {
     ...job,
+    assignedTeam: job.assignedTeam
+      ? {
+          ...job.assignedTeam,
+          calendarColor:
+            typeof (job.assignedTeam as Record<string, unknown>).calendarColor === 'string'
+              ? ((job.assignedTeam as Record<string, unknown>).calendarColor as string)
+              : null,
+        }
+      : job.assignedTeam,
+    assignedToUser: job.assignedToUser
+      ? {
+          ...job.assignedToUser,
+          calendarColor: readCalendarColor((job.assignedToUser as Record<string, unknown>).preferences),
+        }
+      : job.assignedToUser,
     workforceAssignmentType: deriveWorkforceAssignmentType(job),
   };
 }

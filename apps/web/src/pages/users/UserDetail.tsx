@@ -39,6 +39,8 @@ const USER_STATUSES = [
   { value: 'pending', label: 'Pending' },
 ];
 
+const DEFAULT_CALENDAR_COLOR = '#14b8a6';
+
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,6 +72,7 @@ const UserDetail = () => {
           fullName: data.fullName,
           phone: data.phone,
           status: data.status,
+          calendarColor: data.calendarColor ?? null,
         });
       }
     } catch (error) {
@@ -415,6 +418,29 @@ const UserDetail = () => {
             value={formData.status || 'active'}
             onChange={(value) => setFormData({ ...formData, status: value })}
           />
+
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <Input
+                label="Job Calendar Color"
+                type="color"
+                value={formData.calendarColor || DEFAULT_CALENDAR_COLOR}
+                onChange={(e) =>
+                  setFormData({ ...formData, calendarColor: e.target.value })
+                }
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setFormData({ ...formData, calendarColor: null })}
+              >
+                Use Default
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              Jobs assigned to this user use this color in the calendar.
+            </p>
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>

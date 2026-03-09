@@ -10,6 +10,7 @@ import {
   formatTime,
   getDateRange,
   APPOINTMENT_TYPE_COLORS,
+  getAppointmentColors,
 } from '../calendar-utils';
 import type { Appointment } from '../../types/crm';
 
@@ -31,6 +32,53 @@ describe('calendar-utils', () => {
       expect(APPOINTMENT_TYPE_COLORS.inspection).toBeDefined();
       expect(APPOINTMENT_TYPE_COLORS.inspection.bg).toContain('orange');
       expect(APPOINTMENT_TYPE_COLORS.inspection.dot).toBe('bg-orange-500');
+    });
+
+    it('should have colors for job calendar entries', () => {
+      expect(APPOINTMENT_TYPE_COLORS.job).toBeDefined();
+      expect(APPOINTMENT_TYPE_COLORS.job.bg).toContain('violet');
+      expect(APPOINTMENT_TYPE_COLORS.job.dot).toBe('bg-violet-500');
+    });
+  });
+
+  describe('getAppointmentColors', () => {
+    it('returns inline styles for custom calendar colors', () => {
+      const appointment = {
+        id: 'job-1',
+        type: 'visit',
+        calendarColorKey: 'job',
+        calendarColor: '#123456',
+        status: 'scheduled',
+        scheduledStart: '2026-01-15T10:00:00Z',
+        scheduledEnd: '2026-01-15T11:00:00Z',
+        timezone: 'UTC',
+        location: null,
+        notes: null,
+        completionNotes: null,
+        actualDuration: null,
+        completedAt: null,
+        reminderSentAt: null,
+        rescheduledFromId: null,
+        lead: null,
+        account: { id: 'account-1', name: 'Acme', type: 'commercial' },
+        assignedToUser: { id: 'user-1', fullName: 'Cleaner', email: 'cleaner@example.com' },
+        assignedTeam: null,
+        createdByUser: { id: 'user-2', fullName: 'Admin' },
+        inspectionId: null,
+        inspection: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      } satisfies Appointment;
+
+      const colors = getAppointmentColors(appointment);
+
+      expect(colors.style).toEqual(
+        expect.objectContaining({
+          color: '#123456',
+          backgroundColor: 'rgba(18, 52, 86, 0.16)',
+        })
+      );
+      expect(colors.dotStyle).toEqual({ backgroundColor: '#123456' });
     });
   });
 

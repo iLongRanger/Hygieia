@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { render, screen, waitFor, fireEvent } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import TeamsList from '../teams/TeamsList';
 import type { Team } from '../../types/team';
@@ -37,6 +37,7 @@ const activeTeam: Team = {
   contactPhone: '555-000-1111',
   notes: 'Core team',
   isActive: true,
+  calendarColor: '#8b5cf6',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   archivedAt: null,
@@ -106,6 +107,9 @@ describe('TeamsList', () => {
     const notesField = screen.getByRole('dialog').querySelector('textarea');
     expect(notesField).not.toBeNull();
     await user.type(notesField as HTMLTextAreaElement, '  Night shift  ');
+    fireEvent.change(screen.getByLabelText(/job calendar color/i), {
+      target: { value: '#112233' },
+    });
     await user.click(screen.getByRole('button', { name: /create team/i }));
 
     await waitFor(() => {
@@ -116,6 +120,7 @@ describe('TeamsList', () => {
         contactPhone: '555-222-3333',
         notes: 'Night shift',
         isActive: true,
+        calendarColor: '#112233',
       });
     });
   });

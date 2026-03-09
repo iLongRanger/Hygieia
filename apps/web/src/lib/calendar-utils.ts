@@ -1,7 +1,7 @@
 import type { Appointment, AppointmentType } from '../types/crm';
 
 export const APPOINTMENT_TYPE_COLORS: Record<
-  AppointmentType,
+  AppointmentType | 'job',
   { bg: string; text: string; border: string; dot: string }
 > = {
   walk_through: {
@@ -22,7 +22,58 @@ export const APPOINTMENT_TYPE_COLORS: Record<
     border: 'border-orange-200 dark:border-orange-800',
     dot: 'bg-orange-500',
   },
+  job: {
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
+    text: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-200 dark:border-violet-800',
+    dot: 'bg-violet-500',
+  },
 };
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = hex.trim();
+  const match = /^#([0-9A-Fa-f]{6})$/.exec(normalized);
+  if (!match) return null;
+
+  const value = match[1];
+  return {
+    r: parseInt(value.slice(0, 2), 16),
+    g: parseInt(value.slice(2, 4), 16),
+    b: parseInt(value.slice(4, 6), 16),
+  };
+}
+
+function rgba(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+export function getAppointmentColors(appointment: Appointment) {
+  if (appointment.calendarColor) {
+    return {
+      bg: '',
+      text: '',
+      border: '',
+      dot: '',
+      style: {
+        backgroundColor: rgba(appointment.calendarColor, 0.16),
+        borderColor: rgba(appointment.calendarColor, 0.42),
+        color: appointment.calendarColor,
+      },
+      dotStyle: {
+        backgroundColor: appointment.calendarColor,
+      },
+    };
+  }
+
+  const colorKey = appointment.calendarColorKey || appointment.type;
+  return {
+    ...APPOINTMENT_TYPE_COLORS[colorKey],
+    style: undefined,
+    dotStyle: undefined,
+  };
+}
 
 export function getCalendarDays(year: number, month: number): Date[] {
   const firstDay = new Date(year, month, 1);

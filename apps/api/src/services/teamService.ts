@@ -22,6 +22,7 @@ export interface TeamCreateInput {
   contactPhone?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  calendarColor?: string | null;
   createdByUserId: string;
 }
 
@@ -32,6 +33,7 @@ export interface TeamUpdateInput {
   contactPhone?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  calendarColor?: string | null;
 }
 
 export interface PaginatedResult<T> {
@@ -52,6 +54,7 @@ const teamSelect = {
   contactPhone: true,
   notes: true,
   isActive: true,
+  calendarColor: true,
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
@@ -63,6 +66,27 @@ const teamSelect = {
     },
   },
 };
+
+type TeamWithMetadata = Prisma.TeamGetPayload<{
+  select: typeof teamSelect;
+}>;
+
+function formatTeam(team: TeamWithMetadata) {
+  return {
+    id: team.id,
+    name: team.name,
+    contactName: team.contactName,
+    contactEmail: team.contactEmail,
+    contactPhone: team.contactPhone,
+    notes: team.notes,
+    isActive: team.isActive,
+    calendarColor: team.calendarColor,
+    createdAt: team.createdAt,
+    updatedAt: team.updatedAt,
+    archivedAt: team.archivedAt,
+    createdByUser: team.createdByUser,
+  };
+}
 
 export async function listTeams(params: TeamListParams): Promise<PaginatedResult<any>> {
   const {
@@ -108,7 +132,7 @@ export async function listTeams(params: TeamListParams): Promise<PaginatedResult
   ]);
 
   return {
-    data: teams,
+    data: teams.map(formatTeam),
     pagination: {
       page,
       limit,
@@ -119,14 +143,16 @@ export async function listTeams(params: TeamListParams): Promise<PaginatedResult
 }
 
 export async function getTeamById(id: string) {
-  return prisma.team.findUnique({
+  const team = await prisma.team.findUnique({
     where: { id },
     select: teamSelect,
   });
+
+  return team ? formatTeam(team) : null;
 }
 
 export async function createTeam(input: TeamCreateInput) {
-  return prisma.team.create({
+  const team = await prisma.team.create({
     data: {
       name: input.name,
       contactName: input.contactName,
@@ -134,22 +160,35 @@ export async function createTeam(input: TeamCreateInput) {
       contactPhone: input.contactPhone,
       notes: input.notes,
       isActive: input.isActive ?? true,
+      calendarColor: input.calendarColor ?? null,
       createdByUserId: input.createdByUserId,
     },
     select: teamSelect,
   });
+
+  return formatTeam(team);
 }
 
 export async function updateTeam(id: string, input: TeamUpdateInput) {
-  return prisma.team.update({
+  const team = await prisma.team.update({
     where: { id },
-    data: input,
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
+      ...(input.contactEmail !== undefined ? { contactEmail: input.contactEmail } : {}),
+      ...(input.contactPhone !== undefined ? { contactPhone: input.contactPhone } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.calendarColor !== undefined ? { calendarColor: input.calendarColor } : {}),
+    },
     select: teamSelect,
   });
+
+  return formatTeam(team);
 }
 
 export async function archiveTeam(id: string) {
-  return prisma.team.update({
+  const team = await prisma.team.update({
     where: { id },
     data: {
       archivedAt: new Date(),
@@ -157,10 +196,12 @@ export async function archiveTeam(id: string) {
     },
     select: teamSelect,
   });
+
+  return formatTeam(team);
 }
 
 export async function restoreTeam(id: string) {
-  return prisma.team.update({
+  const team = await prisma.team.update({
     where: { id },
     data: {
       archivedAt: null,
@@ -168,6 +209,8 @@ export async function restoreTeam(id: string) {
     },
     select: teamSelect,
   });
+
+  return formatTeam(team);
 }
 
 async function getBrandingSafe() {

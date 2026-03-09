@@ -31,6 +31,16 @@ export interface UserUpdateInput {
   avatarUrl?: string | null;
   status?: string;
   preferences?: Record<string, unknown>;
+  calendarColor?: string | null;
+}
+
+function readCalendarColor(preferences: unknown): string | null {
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+    return null;
+  }
+
+  const calendarColor = (preferences as Record<string, unknown>).calendarColor;
+  return typeof calendarColor === 'string' ? calendarColor : null;
 }
 
 export interface PaginatedResult<T> {
@@ -82,6 +92,7 @@ function formatUser(user: UserWithRoles) {
     status: user.status,
     lastLoginAt: user.lastLoginAt,
     preferences: user.preferences,
+    calendarColor: readCalendarColor(user.preferences),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     role: primaryRole
@@ -247,8 +258,31 @@ export async function updateUser(id: string, input: UserUpdateInput) {
   if (input.phone !== undefined) updateData.phone = input.phone;
   if (input.avatarUrl !== undefined) updateData.avatarUrl = input.avatarUrl;
   if (input.status !== undefined) updateData.status = input.status;
-  if (input.preferences !== undefined) {
-    updateData.preferences = input.preferences as Prisma.InputJsonValue;
+  if (input.preferences !== undefined || input.calendarColor !== undefined) {
+    const existingUser =
+      input.calendarColor !== undefined
+        ? await prisma.user.findUnique({
+            where: { id },
+            select: { preferences: true },
+          })
+        : null;
+
+    const existingPreferences =
+      existingUser?.preferences && typeof existingUser.preferences === 'object' && !Array.isArray(existingUser.preferences)
+        ? (existingUser.preferences as Record<string, unknown>)
+        : {};
+    const nextPreferences =
+      input.preferences !== undefined ? { ...input.preferences } : { ...existingPreferences };
+
+    if (input.calendarColor !== undefined) {
+      if (input.calendarColor) {
+        nextPreferences.calendarColor = input.calendarColor;
+      } else {
+        delete nextPreferences.calendarColor;
+      }
+    }
+
+    updateData.preferences = nextPreferences as Prisma.InputJsonValue;
   }
 
   const user = await prisma.user.update({

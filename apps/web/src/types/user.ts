@@ -30,6 +30,7 @@ export interface User {
   status: string;
   lastLoginAt: string | null;
   preferences: Record<string, unknown>;
+  calendarColor?: string | null;
   createdAt: string;
   updatedAt: string;
   roles: UserRole[];
@@ -51,6 +52,7 @@ export interface UpdateUserInput {
   avatarUrl?: string | null;
   status?: string;
   preferences?: Record<string, unknown>;
+  calendarColor?: string | null;
 }
 
 export interface Pagination {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { APPOINTMENT_TYPE_COLORS, formatTime } from '../../lib/calendar-utils';
+import { formatTime, getAppointmentColors } from '../../lib/calendar-utils';
 import type { Appointment } from '../../types/crm';
 
 interface AppointmentGridBlockProps {
@@ -18,7 +18,7 @@ export const AppointmentGridBlock: React.FC<AppointmentGridBlockProps> = ({
   className,
   style,
 }) => {
-  const colors = APPOINTMENT_TYPE_COLORS[appointment.type];
+  const colors = getAppointmentColors(appointment);
   const startTime = formatTime(new Date(appointment.scheduledStart));
 
   const customerName =
@@ -41,7 +41,7 @@ export const AppointmentGridBlock: React.FC<AppointmentGridBlockProps> = ({
     <button
       type="button"
       onClick={handleBlockClick}
-      style={style}
+      style={{ ...colors.style, ...style }}
       className={cn(
         'flex h-full w-full flex-col gap-1 overflow-hidden rounded border px-2 py-1 text-left text-xs shadow-sm transition-colors hover:opacity-90',
         colors.bg,

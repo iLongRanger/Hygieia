@@ -77,6 +77,8 @@ export type AppointmentStatus =
 export interface Appointment {
   id: string;
   type: AppointmentType;
+  calendarColorKey?: 'job' | AppointmentType;
+  calendarColor?: string | null;
   status: AppointmentStatus;
   scheduledStart: string;
   scheduledEnd: string;
