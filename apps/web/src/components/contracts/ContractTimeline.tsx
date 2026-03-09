@@ -50,10 +50,6 @@ const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; co
     label: 'Assignment override applied',
     color: 'text-teal-400',
   },
-  amendment_created: { icon: FileText, label: 'Amendment created', color: 'text-cyan-400' },
-  amendment_updated: { icon: Edit2, label: 'Amendment updated', color: 'text-cyan-400' },
-  amendment_approved: { icon: CheckCircle, label: 'Amendment approved', color: 'text-lime-400' },
-  amendment_applied: { icon: RefreshCw, label: 'Amendment applied', color: 'text-emerald-400' },
   initial_clean_completed: { icon: Sparkles, label: 'Initial clean completed', color: 'text-emerald-400' },
   pdf_generated: { icon: FileDown, label: 'PDF generated', color: 'text-gray-400' },
 };

@@ -13,7 +13,6 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  Settings,
   ChevronDown,
   ChevronRight,
   CircleCheck,
@@ -325,67 +324,6 @@ const removeZeroValueProposalItems = (
   items: CreateProposalInput['proposalItems'] | undefined
 ) => (items || []).filter((item) => Number(item.totalPrice || 0) > 0);
 
-const AMENDMENT_SCOPE_MARKER = '[AMENDMENT_SCOPE]';
-
-interface AmendmentScopeOverride {
-  excludedAreaIds: string[];
-  excludedTaskIds: string[];
-  addedAreas: string[];
-  addedTasks: string[];
-}
-
-function parseAmendmentScopeFromNotes(
-  notes: string | null | undefined
-): { cleanNotes: string | null; scope: AmendmentScopeOverride } {
-  const defaultScope: AmendmentScopeOverride = {
-    excludedAreaIds: [],
-    excludedTaskIds: [],
-    addedAreas: [],
-    addedTasks: [],
-  };
-  if (!notes) return { cleanNotes: null, scope: defaultScope };
-
-  const markerIndex = notes.indexOf(AMENDMENT_SCOPE_MARKER);
-  if (markerIndex === -1) return { cleanNotes: notes, scope: defaultScope };
-
-  const cleanNotes = notes.slice(0, markerIndex).trim() || null;
-  const raw = notes.slice(markerIndex + AMENDMENT_SCOPE_MARKER.length).trim();
-  try {
-    const parsed = JSON.parse(raw) as Partial<AmendmentScopeOverride>;
-    return {
-      cleanNotes,
-      scope: {
-        excludedAreaIds: Array.isArray(parsed.excludedAreaIds) ? parsed.excludedAreaIds : [],
-        excludedTaskIds: Array.isArray(parsed.excludedTaskIds) ? parsed.excludedTaskIds : [],
-        addedAreas: Array.isArray(parsed.addedAreas) ? parsed.addedAreas : [],
-        addedTasks: Array.isArray(parsed.addedTasks) ? parsed.addedTasks : [],
-      },
-    };
-  } catch {
-    return { cleanNotes: notes, scope: defaultScope };
-  }
-}
-
-function buildNotesWithAmendmentScope(
-  notes: string | null | undefined,
-  scope: AmendmentScopeOverride,
-  isAmendmentProposal: boolean
-): string | null {
-  const base = notes?.trim() || '';
-  if (!isAmendmentProposal) return base || null;
-
-  const hasScope =
-    scope.excludedAreaIds.length > 0 ||
-    scope.excludedTaskIds.length > 0 ||
-    scope.addedAreas.length > 0 ||
-    scope.addedTasks.length > 0;
-
-  if (!hasScope) return base || null;
-
-  const payload = JSON.stringify(scope);
-  return `${base}${base ? '\n\n' : ''}${AMENDMENT_SCOPE_MARKER}${payload}`;
-}
-
 // Empty item template
 const createEmptyItem = (sortOrder: number): ProposalItem => ({
   itemType: 'labor',
@@ -471,12 +409,6 @@ const ProposalForm = () => {
   const [loadingFacilityReview, setLoadingFacilityReview] = useState(false);
   const [areasReviewed, setAreasReviewed] = useState(false);
   const [tasksReviewed, setTasksReviewed] = useState(false);
-  const [excludedAreaIds, setExcludedAreaIds] = useState<string[]>([]);
-  const [excludedTaskIds, setExcludedTaskIds] = useState<string[]>([]);
-  const [addedAreas, setAddedAreas] = useState<string[]>([]);
-  const [addedTasks, setAddedTasks] = useState<string[]>([]);
-  const [newAddedArea, setNewAddedArea] = useState('');
-  const [newAddedTask, setNewAddedTask] = useState('');
 
   const toggleServiceExpand = (index: number) => {
     setExpandedServices((prev) => {
@@ -508,7 +440,6 @@ const ProposalForm = () => {
     () => facilities.find((facility) => facility.id === formData.facilityId),
     [facilities, formData.facilityId]
   );
-  const isAmendmentProposal = formData.title.toLowerCase().includes('amendment');
 
   // Calculate totals whenever items, services, or tax rate change
   useEffect(() => {
@@ -615,7 +546,6 @@ const ProposalForm = () => {
   const fetchProposal = useCallback(async (proposalId: string) => {
     try {
       const proposal = await getProposal(proposalId);
-      const parsedScope = parseAmendmentScopeFromNotes(proposal.notes);
       const scheduleFrequency = proposal.serviceFrequency || '5x_week';
       const incomingSchedule = proposal.serviceSchedule || createDefaultSchedule(scheduleFrequency);
       const normalizedDays = normalizeScheduleDays(incomingSchedule.days || [], scheduleFrequency);
@@ -628,7 +558,7 @@ const ProposalForm = () => {
           ? proposal.validUntil.split('T')[0]
           : null,
         taxRate: proposal.taxRate,
-        notes: parsedScope.cleanNotes,
+        notes: proposal.notes || null,
         serviceFrequency: scheduleFrequency,
         serviceSchedule: {
           days: normalizedDays,
@@ -642,10 +572,6 @@ const ProposalForm = () => {
         pricingPlanId: proposal.pricingPlanId || null,
       });
       setScheduleTouchedByUser(true);
-      setExcludedAreaIds(parsedScope.scope.excludedAreaIds);
-      setExcludedTaskIds(parsedScope.scope.excludedTaskIds);
-      setAddedAreas(parsedScope.scope.addedAreas);
-      setAddedTasks(parsedScope.scope.addedTasks);
       // Set pricing plan from proposal
       if (proposal.pricingPlanId) {
         setSelectedPricingPlanId(proposal.pricingPlanId);
@@ -713,15 +639,8 @@ const ProposalForm = () => {
   }, [formData.facilityId, isEditMode, scheduleTouchedByUser, selectedFacility]);
 
   const facilityReview = useMemo(() => {
-    const activeAreas = facilityAreas.filter(
-      (area) => !area.archivedAt && !excludedAreaIds.includes(area.id)
-    );
-    const activeTasks = facilityTasks.filter(
-      (task) =>
-        !task.archivedAt &&
-        !excludedTaskIds.includes(task.id) &&
-        (task.area?.id ? !excludedAreaIds.includes(task.area.id) : true)
-    );
+    const activeAreas = facilityAreas.filter((area) => !area.archivedAt);
+    const activeTasks = facilityTasks.filter((task) => !task.archivedAt);
 
     const tasksByArea = new Map<string, number>();
     activeTasks.forEach((task) => {
@@ -746,7 +665,7 @@ const ProposalForm = () => {
         areasWithoutTasks.length > 0 ||
         areasMissingSquareFeet.length > 0,
     };
-  }, [facilityAreas, facilityTasks, excludedAreaIds, excludedTaskIds]);
+  }, [facilityAreas, facilityTasks]);
 
   const requiresFacilityReview = Boolean(formData.facilityId);
   const isFacilityReviewComplete =
@@ -840,9 +759,7 @@ const ProposalForm = () => {
         ),
         selectedPricingPlanId || undefined,
         isHourlyPlan ? workerCount : undefined,
-        selectedSubcontractorTier || undefined,
-        excludedAreaIds,
-        excludedTaskIds
+        selectedSubcontractorTier || undefined
       );
 
       // Convert suggested services to proposal services
@@ -854,19 +771,9 @@ const ProposalForm = () => {
         hourlyRate: null,
         monthlyPrice: svc.monthlyPrice,
         description: svc.description,
-        includedTasks: [
-          ...(svc.includedTasks || []),
-          ...(addedTasks.length > 0 ? addedTasks.map((task) => `${task} (Added)`) : []),
-        ],
+        includedTasks: svc.includedTasks || [],
         sortOrder: index,
       }));
-
-      if (addedAreas.length > 0 && newServices.length > 0) {
-        newServices[0] = {
-          ...newServices[0],
-          description: `${newServices[0].description || ''}\nAdded areas requested: ${addedAreas.join(', ')}`.trim(),
-        };
-      }
 
       // Convert suggested items to proposal items
       const newItems: ProposalItem[] = template.suggestedItems.map((item: any, index: number) => ({
@@ -921,19 +828,11 @@ const ProposalForm = () => {
         updated.facilityId = null;
         setPricingBreakdown(null);
         setScheduleTouchedByUser(false);
-        setExcludedAreaIds([]);
-        setExcludedTaskIds([]);
-        setAddedAreas([]);
-        setAddedTasks([]);
       }
       // Clear breakdown when facility changes
       if (field === 'facilityId') {
         setPricingBreakdown(null);
         setScheduleTouchedByUser(false);
-        setExcludedAreaIds([]);
-        setExcludedTaskIds([]);
-        setAddedAreas([]);
-        setAddedTasks([]);
       }
       return updated;
     });
@@ -950,32 +849,6 @@ const ProposalForm = () => {
       };
       return { ...prev, serviceSchedule: merged };
     });
-  };
-
-  const toggleExcludedArea = (areaId: string) => {
-    setExcludedAreaIds((prev) =>
-      prev.includes(areaId) ? prev.filter((id) => id !== areaId) : [...prev, areaId]
-    );
-  };
-
-  const toggleExcludedTask = (taskId: string) => {
-    setExcludedTaskIds((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
-    );
-  };
-
-  const addAddedArea = () => {
-    const value = newAddedArea.trim();
-    if (!value) return;
-    setAddedAreas((prev) => [...prev, value]);
-    setNewAddedArea('');
-  };
-
-  const addAddedTask = () => {
-    const value = newAddedTask.trim();
-    if (!value) return;
-    setAddedTasks((prev) => [...prev, value]);
-    setNewAddedTask('');
   };
 
   const handleScheduleFrequencyChange = (value: string) => {
@@ -1142,20 +1015,10 @@ const ProposalForm = () => {
     setSaving(true);
     try {
       const nonZeroItems = removeZeroValueProposalItems(formData.proposalItems);
-      const persistedNotes = buildNotesWithAmendmentScope(
-        formData.notes,
-        {
-          excludedAreaIds,
-          excludedTaskIds,
-          addedAreas,
-          addedTasks,
-        },
-        isAmendmentProposal
-      );
       if (isEditMode) {
         const updateData: UpdateProposalInput = {
           ...formData,
-          notes: persistedNotes,
+          notes: formData.notes,
           proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
@@ -1167,7 +1030,7 @@ const ProposalForm = () => {
       } else {
         await createProposal({
           ...formData,
-          notes: persistedNotes,
+          notes: formData.notes,
           proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
@@ -1500,130 +1363,6 @@ const ProposalForm = () => {
                 </div>
               )}
 
-              {formData.facilityId && isAmendmentProposal && (
-                <div className="md:col-span-2">
-                  <div className="bg-navy-dark/50 rounded-xl border border-white/10 p-4 space-y-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-white">Amendment Scope Overrides</span>
-                      </div>
-                      <Badge variant="info" size="sm">
-                        Pricing uses exclusions after Calculate & Populate
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <div className="text-sm font-medium text-white mb-2">Remove Existing Areas</div>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {facilityAreas.filter((area) => !area.archivedAt).map((area) => (
-                            <label key={area.id} className="flex items-center justify-between gap-2 text-sm text-gray-200">
-                              <span>{area.name || area.areaType?.name || 'Unnamed area'}</span>
-                              <input
-                                type="checkbox"
-                                checked={excludedAreaIds.includes(area.id)}
-                                onChange={() => toggleExcludedArea(area.id)}
-                                className="h-4 w-4 rounded border-white/20 bg-transparent"
-                              />
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <div className="text-sm font-medium text-white mb-2">Remove Existing Tasks</div>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {facilityTasks
-                            .filter((task) => !task.archivedAt)
-                            .map((task) => (
-                              <label key={task.id} className="flex items-center justify-between gap-2 text-sm text-gray-200">
-                                <span>
-                                  {task.customName || task.taskTemplate?.name || 'Unnamed task'}
-                                  {task.area?.name ? ` - ${task.area.name}` : ''}
-                                </span>
-                                <input
-                                  type="checkbox"
-                                  checked={excludedTaskIds.includes(task.id)}
-                                  onChange={() => toggleExcludedTask(task.id)}
-                                  className="h-4 w-4 rounded border-white/20 bg-transparent"
-                                />
-                              </label>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
-                        <div className="text-sm font-medium text-white">Add New Area (Client Request)</div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="e.g., Back Storage Room"
-                            value={newAddedArea}
-                            onChange={(e) => setNewAddedArea(e.target.value)}
-                          />
-                          <Button type="button" variant="secondary" onClick={addAddedArea}>
-                            Add
-                          </Button>
-                        </div>
-                        {addedAreas.length > 0 && (
-                          <div className="space-y-1">
-                            {addedAreas.map((name, idx) => (
-                              <div key={`${name}-${idx}`} className="flex items-center justify-between text-sm text-emerald-200">
-                                <span>{name}</span>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setAddedAreas((prev) => prev.filter((_, i) => i !== idx))}
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
-                        <div className="text-sm font-medium text-white">Add New Task (Client Request)</div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="e.g., Sanitize door handles hourly"
-                            value={newAddedTask}
-                            onChange={(e) => setNewAddedTask(e.target.value)}
-                          />
-                          <Button type="button" variant="secondary" onClick={addAddedTask}>
-                            Add
-                          </Button>
-                        </div>
-                        {addedTasks.length > 0 && (
-                          <div className="space-y-1">
-                            {addedTasks.map((name, idx) => (
-                              <div key={`${name}-${idx}`} className="flex items-center justify-between text-sm text-emerald-200">
-                                <span>{name}</span>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setAddedTasks((prev) => prev.filter((_, i) => i !== idx))}
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-gray-400">
-                      Tip: After changing removals, click <strong>Calculate & Populate</strong> again so pricing and services refresh.
-                    </p>
-                  </div>
-                </div>
-              )}
               <div className="md:col-span-2">
                 <Textarea
                   label="Description"

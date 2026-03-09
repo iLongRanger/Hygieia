@@ -169,33 +169,6 @@ export function AmendmentAreaSetupModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Room Count"
-            type="number"
-            min={0}
-            value={areaForm.roomCount ?? 0}
-            onChange={(e) =>
-              setAreaForm((current) => ({
-                ...current,
-                roomCount: Math.max(0, Number(e.target.value) || 0),
-              }))
-            }
-          />
-          <Input
-            label="Unit Count"
-            type="number"
-            min={0}
-            value={areaForm.unitCount ?? 0}
-            onChange={(e) =>
-              setAreaForm((current) => ({
-                ...current,
-                unitCount: Math.max(0, Number(e.target.value) || 0),
-              }))
-            }
-          />
-        </div>
-
         <Textarea
           label="Notes"
           value={areaForm.notes || ''}
