@@ -285,6 +285,31 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('GET /summary should pass subcontractor scope to contract summary service', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    (contractService.getContractsSummary as jest.Mock).mockResolvedValue({
+      total: 0,
+      byStatus: { draft: 0, sent: 0, viewed: 0, pendingSignature: 0, active: 0 },
+      unassigned: 0,
+      nearingRenewal: 0,
+      renewalWindowDays: 30,
+    });
+
+    await request(app)
+      .get('/api/v1/contracts/summary')
+      .expect(200);
+
+    expect(contractService.getContractsSummary).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'subcontractor',
+        userId: 'user-1',
+        userTeamId: 'team-1',
+      })
+    );
+  });
+
   it('GET /expiring should pass cleaner scope to expiring contracts service', async () => {
     mockAuthUser.role = 'cleaner';
     (contractService.getExpiringContracts as jest.Mock).mockResolvedValue([]);
@@ -298,6 +323,25 @@ describe('Contract Routes', () => {
       expect.objectContaining({
         userRole: 'cleaner',
         userId: 'user-1',
+      })
+    );
+  });
+
+  it('GET /expiring should pass subcontractor scope to expiring contracts service', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    (contractService.getExpiringContracts as jest.Mock).mockResolvedValue([]);
+
+    await request(app)
+      .get('/api/v1/contracts/expiring?days=14')
+      .expect(200);
+
+    expect(contractService.getExpiringContracts).toHaveBeenCalledWith(
+      14,
+      expect.objectContaining({
+        userRole: 'subcontractor',
+        userId: 'user-1',
+        userTeamId: 'team-1',
       })
     );
   });
@@ -378,6 +422,18 @@ describe('Contract Routes', () => {
   it('GET /:id should return 403 when cleaner lacks contract ownership', async () => {
     mockAuthUser.role = 'cleaner';
     mockOwnership.deniedKeys.add('cleaner:contract:contract-locked');
+
+    await request(app)
+      .get('/api/v1/contracts/contract-locked')
+      .expect(403);
+
+    expect(contractService.getContractById).not.toHaveBeenCalled();
+  });
+
+  it('GET /:id should return 403 when subcontractor lacks contract ownership', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    mockOwnership.deniedKeys.add('subcontractor:contract:contract-locked');
 
     await request(app)
       .get('/api/v1/contracts/contract-locked')
@@ -575,6 +631,19 @@ describe('Contract Routes', () => {
       'Contract CONT-001 assigned to your team',
       expect.stringContaining('Please view it in the web app for full details')
     );
+  });
+
+  it('PATCH /:id/team should return 403 when subcontractor lacks contract ownership', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    mockOwnership.deniedKeys.add('subcontractor:contract:contract-locked');
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-locked/team')
+      .send({ teamId: '11111111-1111-1111-1111-111111111111' })
+      .expect(403);
+
+    expect(contractService.assignContractTeam).not.toHaveBeenCalled();
   });
 
   it('PATCH /:id/team should assign internal employee', async () => {
