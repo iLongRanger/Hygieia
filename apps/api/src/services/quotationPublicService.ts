@@ -85,7 +85,7 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
   if (!quotation) return null;
 
   if (!quotation.viewedAt) {
-    return prisma.quotation.update({
+    const updated = await prisma.quotation.update({
       where: { id: quotation.id },
       data: {
         status: quotation.status === 'sent' ? 'viewed' : quotation.status,
@@ -93,9 +93,11 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
       },
       select: { id: true },
     });
+
+    return { ...updated, newlyViewed: true };
   }
 
-  return { id: quotation.id };
+  return { id: quotation.id, newlyViewed: false };
 }
 
 export async function acceptQuotationPublic(
@@ -144,7 +146,8 @@ export async function acceptQuotationPublic(
     throw new Error('Scheduled end time must be after scheduled start time');
   }
 
-  if (quotation.status !== 'accepted') {
+  const acceptedNow = quotation.status !== 'accepted';
+  if (acceptedNow) {
     await prisma.quotation.update({
       where: { id: quotation.id },
       data: {
@@ -159,10 +162,15 @@ export async function acceptQuotationPublic(
 
   await ensureOneTimeJobForAcceptedQuotation(quotation.id);
 
-  return prisma.quotation.findUniqueOrThrow({
+  const resolvedQuotation = await prisma.quotation.findUniqueOrThrow({
     where: { id: quotation.id },
     select: publicQuotationSelect,
   });
+
+  return {
+    quotation: resolvedQuotation,
+    acceptedNow,
+  };
 }
 
 export async function rejectQuotationPublic(

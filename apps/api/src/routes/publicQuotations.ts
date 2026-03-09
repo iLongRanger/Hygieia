@@ -73,7 +73,7 @@ router.get(
       }
 
       const viewResult = await markPublicViewed(req.params.token, req.ip);
-      if (viewResult) {
+      if (viewResult?.newlyViewed) {
         await logQuotationActivity({
           quotationId: viewResult.id,
           action: 'public_viewed',
@@ -97,41 +97,46 @@ router.post(
       const parsed = publicAcceptQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const quotation = await acceptQuotationPublic(
+      const result = await acceptQuotationPublic(
         req.params.token,
         parsed.data.signatureName,
         req.ip
       );
 
-      await logQuotationActivity({
-        quotationId: (quotation as any).id,
-        action: 'public_accepted',
-        ipAddress: req.ip,
-        metadata: {
-          signatureName: parsed.data.signatureName,
-        },
-      });
+      if (result.acceptedNow) {
+        await logQuotationActivity({
+          quotationId: result.quotation.id,
+          action: 'public_accepted',
+          ipAddress: req.ip,
+          metadata: {
+            signatureName: parsed.data.signatureName,
+          },
+        });
 
-      // Notify admins
-      try {
-        const { quotation: fullQuotation, adminUsers } = await getNotificationRecipients((quotation as any).id);
-        if (fullQuotation) {
-          const recipientUserIds = new Set<string>();
-          if (fullQuotation.createdByUser) recipientUserIds.add(fullQuotation.createdByUser.id);
-          for (const admin of adminUsers) recipientUserIds.add(admin.id);
+        // Notify admins
+        try {
+          const { quotation: fullQuotation, adminUsers } = await getNotificationRecipients(result.quotation.id);
+          if (fullQuotation) {
+            const recipientUserIds = new Set<string>();
+            if (fullQuotation.createdByUser) recipientUserIds.add(fullQuotation.createdByUser.id);
+            for (const admin of adminUsers) recipientUserIds.add(admin.id);
 
-          await createBulkNotifications([...recipientUserIds], {
-            type: 'quotation_accepted',
-            title: `Quotation ${fullQuotation.quotationNumber} accepted`,
-            body: `${fullQuotation.account.name} has accepted quotation "${fullQuotation.title}".`,
-            metadata: { quotationId: (quotation as any).id },
-          });
+            await createBulkNotifications([...recipientUserIds], {
+              type: 'quotation_accepted',
+              title: `Quotation ${fullQuotation.quotationNumber} accepted`,
+              body: `${fullQuotation.account.name} has accepted quotation "${fullQuotation.title}".`,
+              metadata: { quotationId: result.quotation.id },
+            });
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send quotation acceptance notifications:', notifyError);
         }
-      } catch (notifyError) {
-        logger.error('Failed to send quotation acceptance notifications:', notifyError);
       }
 
-      res.json({ data: quotation, message: 'Quotation accepted successfully' });
+      res.json({
+        data: result.quotation,
+        message: result.acceptedNow ? 'Quotation accepted successfully' : 'Quotation already accepted',
+      });
     } catch (error) {
       next(error);
     }

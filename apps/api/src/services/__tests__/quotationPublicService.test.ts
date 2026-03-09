@@ -78,7 +78,7 @@ describe('quotationPublicService', () => {
     });
     (prisma.quotation.update as jest.Mock).mockResolvedValue({ id: 'qt-1' });
 
-    await markPublicViewed('public-token');
+    const result = await markPublicViewed('public-token');
 
     expect(prisma.quotation.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,6 +89,20 @@ describe('quotationPublicService', () => {
         }),
       })
     );
+    expect(result).toEqual({ id: 'qt-1', newlyViewed: true });
+  });
+
+  it('markPublicViewed returns non-new view state when already viewed', async () => {
+    (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
+      id: 'qt-1',
+      status: 'viewed',
+      viewedAt: new Date('2026-03-01T09:00:00.000Z'),
+    });
+
+    const result = await markPublicViewed('public-token');
+
+    expect(prisma.quotation.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: 'qt-1', newlyViewed: false });
   });
 
   it('acceptQuotationPublic rejects non-actionable statuses', async () => {
@@ -142,7 +156,7 @@ describe('quotationPublicService', () => {
     (prisma.jobActivity.create as jest.Mock).mockResolvedValue({ id: 'a-1' });
     (prisma.quotation.findUniqueOrThrow as jest.Mock).mockResolvedValue({ id: 'qt-1', status: 'accepted' });
 
-    await acceptQuotationPublic('public-token', 'Jane Doe', '127.0.0.1');
+    const result = await acceptQuotationPublic('public-token', 'Jane Doe', '127.0.0.1');
 
     expect(prisma.quotation.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -156,6 +170,43 @@ describe('quotationPublicService', () => {
         }),
       })
     );
+    expect(result).toEqual({
+      quotation: { id: 'qt-1', status: 'accepted' },
+      acceptedNow: true,
+    });
+  });
+
+  it('acceptQuotationPublic is idempotent after the first acceptance', async () => {
+    (prisma.quotation.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'qt-1',
+        status: 'accepted',
+        publicTokenExpiresAt: new Date('2026-12-01T00:00:00.000Z'),
+        facilityId: 'facility-1',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+        scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+        pricingApprovalStatus: 'not_required',
+        generatedJob: { id: 'job-1' },
+      })
+      .mockResolvedValueOnce({
+        id: 'qt-1',
+        status: 'accepted',
+        facilityId: 'facility-1',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-03-01T09:00:00.000Z'),
+        scheduledEndTime: new Date('2026-03-01T10:00:00.000Z'),
+        generatedJob: { id: 'job-1' },
+      });
+    (prisma.quotation.findUniqueOrThrow as jest.Mock).mockResolvedValue({ id: 'qt-1', status: 'accepted' });
+
+    const result = await acceptQuotationPublic('public-token', 'Jane Doe', '127.0.0.1');
+
+    expect(prisma.quotation.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      quotation: { id: 'qt-1', status: 'accepted' },
+      acceptedNow: false,
+    });
   });
 
   it('rejectQuotationPublic rejects expired links', async () => {

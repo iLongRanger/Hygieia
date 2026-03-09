@@ -76,7 +76,10 @@ describe('Public Proposal Routes', () => {
       proposalNumber: 'PROP-001',
       status: 'sent',
     });
-    (proposalPublicService.markPublicViewed as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+    (proposalPublicService.markPublicViewed as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      newlyViewed: true,
+    });
 
     const response = await request(app).get('/api/v1/public/proposals/token-123').expect(200);
 

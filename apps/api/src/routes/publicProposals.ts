@@ -76,7 +76,7 @@ router.get(
 
       // Auto-mark as viewed
       const viewResult = await markPublicViewed(req.params.token, req.ip);
-      if (viewResult) {
+      if (viewResult?.newlyViewed) {
         await logActivity({
           proposalId: viewResult.id,
           action: 'public_viewed',

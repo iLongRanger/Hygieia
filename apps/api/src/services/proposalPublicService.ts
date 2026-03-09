@@ -112,7 +112,7 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
 
   // Auto-mark as viewed if status is 'sent'
   if (!proposal.viewedAt) {
-    return prisma.proposal.update({
+    const updated = await prisma.proposal.update({
       where: { id: proposal.id },
       data: {
         status: proposal.status === 'sent' ? 'viewed' : proposal.status,
@@ -120,9 +120,11 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
       },
       select: { id: true },
     });
+
+    return { ...updated, newlyViewed: true };
   }
 
-  return { id: proposal.id };
+  return { id: proposal.id, newlyViewed: false };
 }
 
 export async function acceptProposalPublic(
