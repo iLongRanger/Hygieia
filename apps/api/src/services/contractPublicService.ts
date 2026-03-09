@@ -91,7 +91,7 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
   if (!contract) return null;
 
   if (!contract.viewedAt) {
-    return prisma.contract.update({
+    const updated = await prisma.contract.update({
       where: { id: contract.id },
       data: {
         status: contract.status === 'sent' ? 'viewed' : contract.status,
@@ -99,9 +99,11 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
       },
       select: { id: true },
     });
+
+    return { ...updated, newlyViewed: true };
   }
 
-  return { id: contract.id };
+  return { id: contract.id, newlyViewed: false };
 }
 
 export async function signContractPublic(
@@ -112,7 +114,15 @@ export async function signContractPublic(
 ) {
   const contract = await prisma.contract.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true },
+    select: {
+      id: true,
+      status: true,
+      publicTokenExpiresAt: true,
+      accountId: true,
+      signedByName: true,
+      signedByEmail: true,
+      signedDate: true,
+    },
   });
 
   if (!contract) {
@@ -123,23 +133,37 @@ export async function signContractPublic(
     throw new Error('This contract link has expired');
   }
 
-  if (!['sent', 'viewed', 'active'].includes(contract.status)) {
+  if (!['sent', 'viewed', 'active', 'pending_signature'].includes(contract.status)) {
     throw new Error('This contract can no longer be signed');
   }
 
-  const updatedContract = await prisma.contract.update({
+  const alreadySigned =
+    contract.status === 'pending_signature' ||
+    Boolean(contract.signedDate && contract.signedByName && contract.signedByEmail);
+
+  if (!alreadySigned) {
+    await prisma.contract.update({
+      where: { id: contract.id },
+      data: {
+        // Don't regress an active contract; otherwise move to pending_signature (signed, awaiting admin activation)
+        ...(contract.status !== 'active' && { status: 'pending_signature' }),
+        signedByName,
+        signedByEmail,
+        signedDate: new Date(),
+        signatureIp: ipAddress ?? null,
+      },
+    });
+
+    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+  }
+
+  const resolvedContract = await prisma.contract.findUniqueOrThrow({
     where: { id: contract.id },
-    data: {
-      // Don't regress an active contract; otherwise move to pending_signature (signed, awaiting admin activation)
-      ...(contract.status !== 'active' && { status: 'pending_signature' }),
-      signedByName,
-      signedByEmail,
-      signedDate: new Date(),
-      signatureIp: ipAddress ?? null,
-    },
     select: publicContractSelect,
   });
 
-  await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
-  return updatedContract;
+  return {
+    contract: resolvedContract,
+    signedNow: !alreadySigned,
+  };
 }

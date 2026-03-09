@@ -81,7 +81,7 @@ router.get(
       }
 
       const viewResult = await markPublicViewed(req.params.token, req.ip);
-      if (viewResult) {
+      if (viewResult?.newlyViewed) {
         await logContractActivity({
           contractId: viewResult.id,
           action: 'public_viewed',
@@ -107,63 +107,70 @@ router.post(
         throw handleZodError(parsed.error);
       }
 
-      const contract = await signContractPublic(
+      const result = await signContractPublic(
         req.params.token,
         parsed.data.signedByName,
         parsed.data.signedByEmail,
         req.ip
       );
 
-      await logContractActivity({
-        contractId: contract.id,
-        action: 'public_signed',
-        metadata: {
-          signedByName: parsed.data.signedByName,
-          signedByEmail: parsed.data.signedByEmail,
-          ipAddress: req.ip,
-        },
-      });
+      if (result.signedNow) {
+        await logContractActivity({
+          contractId: result.contract.id,
+          action: 'public_signed',
+          metadata: {
+            signedByName: parsed.data.signedByName,
+            signedByEmail: parsed.data.signedByEmail,
+            ipAddress: req.ip,
+          },
+        });
 
-      // Notify admins and contract creator (fire-and-forget)
-      try {
-        const { contract: fullContract, adminUsers } = await getContractNotificationRecipients(contract.id);
-        if (fullContract) {
-          const recipientUserIds = new Set<string>();
-          if (fullContract.createdByUser) {
-            recipientUserIds.add(fullContract.createdByUser.id);
-          }
-          for (const admin of adminUsers) {
-            recipientUserIds.add(admin.id);
-          }
-
-          await createBulkNotifications([...recipientUserIds], {
-            type: 'contract_signed',
-            title: `Contract ${fullContract.contractNumber} signed`,
-            body: `${fullContract.account.name} has signed contract "${fullContract.title}".`,
-            metadata: { contractId: contract.id },
-          });
-
-          const branding = await getGlobalSettings().catch(() => getDefaultBranding());
-          const emailRecipients = new Set<string>();
-          if (fullContract.createdByUser?.email) {
-            emailRecipients.add(fullContract.createdByUser.email);
-          }
-          if (branding.companyEmail) {
-            emailRecipients.add(branding.companyEmail);
-          }
-
-          const subject = `Contract ${fullContract.contractNumber} signed by ${parsed.data.signedByName}`;
-          const html = `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) has signed contract <strong>${fullContract.contractNumber}: ${fullContract.title}</strong> for ${fullContract.account.name}.</p>`;
-
-          await Promise.allSettled(
-            [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+        // Notify admins and contract creator (fire-and-forget)
+        try {
+          const { contract: fullContract, adminUsers } = await getContractNotificationRecipients(
+            result.contract.id
           );
+          if (fullContract) {
+            const recipientUserIds = new Set<string>();
+            if (fullContract.createdByUser) {
+              recipientUserIds.add(fullContract.createdByUser.id);
+            }
+            for (const admin of adminUsers) {
+              recipientUserIds.add(admin.id);
+            }
+
+            await createBulkNotifications([...recipientUserIds], {
+              type: 'contract_signed',
+              title: `Contract ${fullContract.contractNumber} signed`,
+              body: `${fullContract.account.name} has signed contract "${fullContract.title}".`,
+              metadata: { contractId: result.contract.id },
+            });
+
+            const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+            const emailRecipients = new Set<string>();
+            if (fullContract.createdByUser?.email) {
+              emailRecipients.add(fullContract.createdByUser.email);
+            }
+            if (branding.companyEmail) {
+              emailRecipients.add(branding.companyEmail);
+            }
+
+            const subject = `Contract ${fullContract.contractNumber} signed by ${parsed.data.signedByName}`;
+            const html = `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) has signed contract <strong>${fullContract.contractNumber}: ${fullContract.title}</strong> for ${fullContract.account.name}.</p>`;
+
+            await Promise.allSettled(
+              [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
+            );
+          }
+        } catch (notifyError) {
+          logger.error('Failed to send contract signing notifications:', notifyError);
         }
-      } catch (notifyError) {
-        logger.error('Failed to send contract signing notifications:', notifyError);
       }
 
-      res.json({ data: contract, message: 'Contract signed successfully' });
+      res.json({
+        data: result.contract,
+        message: result.signedNow ? 'Contract signed successfully' : 'Contract already signed',
+      });
     } catch (error) {
       next(error);
     }

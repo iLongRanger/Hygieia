@@ -5,7 +5,9 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractPublicService from '../../services/contractPublicService';
 import * as notificationService from '../../services/notificationService';
 import * as emailService from '../../services/emailService';
+import * as globalSettingsService from '../../services/globalSettingsService';
 import { prisma } from '../../lib/prisma';
+import { logContractActivity } from '../../services/contractActivityService';
 
 jest.mock('../../services/contractPublicService');
 jest.mock('../../services/contractActivityService', () => ({
@@ -31,6 +33,7 @@ jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: {
       findUnique: jest.fn().mockResolvedValue(null),
+      findUniqueOrThrow: jest.fn().mockResolvedValue(null),
     },
     user: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -54,8 +57,11 @@ describe('Public Contract Routes', () => {
 
   it('POST /:token/sign should send notifications and email', async () => {
     (contractPublicService.signContractPublic as jest.Mock).mockResolvedValue({
-      id: 'contract-1',
-      status: 'pending_signature',
+      contract: {
+        id: 'contract-1',
+        status: 'pending_signature',
+      },
+      signedNow: true,
     });
 
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
@@ -69,6 +75,10 @@ describe('Public Contract Routes', () => {
     (prisma.user.findMany as jest.Mock).mockResolvedValue([
       { id: 'admin-1', email: 'admin@hygieia.test' },
     ]);
+    (globalSettingsService.getGlobalSettings as jest.Mock).mockResolvedValue({
+      companyName: 'Hygieia',
+      companyEmail: 'ops@hygieia.test',
+    });
 
     await request(app)
       .post('/api/v1/public/contracts/token-123/sign')
@@ -87,5 +97,52 @@ describe('Public Contract Routes', () => {
       expect.stringContaining('CONT-202602-0001 signed'),
       expect.stringContaining('contract')
     );
+    expect(logContractActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+        action: 'public_signed',
+      })
+    );
+  });
+
+  it('GET /:token should not log duplicate public_viewed activity', async () => {
+    (contractPublicService.getContractByPublicToken as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-202602-0001',
+    });
+    (contractPublicService.markPublicViewed as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      newlyViewed: false,
+    });
+    (globalSettingsService.getGlobalSettings as jest.Mock).mockResolvedValue({
+      companyName: 'Hygieia',
+      companyEmail: 'ops@hygieia.test',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/public/contracts/token-123');
+
+    expect(response.status).toBe(200);
+    expect(logContractActivity).not.toHaveBeenCalled();
+  });
+
+  it('POST /:token/sign should skip duplicate notifications when already signed', async () => {
+    (contractPublicService.signContractPublic as jest.Mock).mockResolvedValue({
+      contract: {
+        id: 'contract-1',
+        status: 'pending_signature',
+      },
+      signedNow: false,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/public/contracts/token-123/sign')
+      .send({ signedByName: 'Jane Client', signedByEmail: 'jane@acme.test' })
+      .expect(200);
+
+    expect(response.body.message).toBe('Contract already signed');
+    expect(logContractActivity).not.toHaveBeenCalled();
+    expect(notificationService.createBulkNotifications).not.toHaveBeenCalled();
+    expect(emailService.sendNotificationEmail).not.toHaveBeenCalled();
   });
 });
