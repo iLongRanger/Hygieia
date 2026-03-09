@@ -1,6 +1,7 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import * as teamService from '../teamService';
 import { prisma } from '../../lib/prisma';
+import { ValidationError } from '../../middleware/errorHandler';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -11,12 +12,54 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    role: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+    },
+    userRole: {
+      create: jest.fn(),
+    },
+    passwordSetToken: {
+      create: jest.fn(),
+    },
   },
 }));
 
+jest.mock('../../services/globalSettingsService', () => ({
+  getGlobalSettings: jest.fn().mockResolvedValue({}),
+  getDefaultBranding: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock('../../templates/subcontractorWelcome', () => ({
+  buildSubcontractorWelcomeHtml: jest.fn().mockReturnValue('<html></html>'),
+  buildSubcontractorWelcomeSubject: jest.fn().mockReturnValue('Welcome'),
+}));
+
+jest.mock('../../config/email', () => ({
+  isEmailConfigured: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../emailService', () => ({
+  sendNotificationEmail: jest.fn().mockResolvedValue(true),
+}));
+
 describe('teamService', () => {
+  const originalFrontendUrl = process.env.FRONTEND_URL;
+  const originalWebAppUrl = process.env.WEB_APP_URL;
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env.FRONTEND_URL = originalFrontendUrl;
+    process.env.WEB_APP_URL = originalWebAppUrl;
   });
 
   it('listTeams should return paginated teams', async () => {
@@ -39,5 +82,31 @@ describe('teamService', () => {
 
     expect(result.id).toBe('team-1');
     expect(prisma.team.create).toHaveBeenCalled();
+  });
+
+  it('resendSubcontractorInvite should fail before creating a token when app URL is missing', async () => {
+    delete process.env.FRONTEND_URL;
+    delete process.env.WEB_APP_URL;
+
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      id: 'team-1',
+      name: 'Alpha Team',
+      contactName: 'Alex Alpha',
+      contactEmail: 'alpha@example.com',
+      users: [],
+    });
+    (prisma.role.findUnique as jest.Mock).mockResolvedValue({
+      id: 'role-1',
+      key: 'subcontractor',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.create as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'alpha@example.com',
+      roles: [{ role: { key: 'subcontractor' } }],
+    });
+
+    await expect(teamService.resendSubcontractorInvite('team-1')).rejects.toThrow(ValidationError);
+    expect(prisma.passwordSetToken.create).not.toHaveBeenCalled();
   });
 });

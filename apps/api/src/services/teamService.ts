@@ -399,6 +399,7 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
     });
   }
 
+  const baseUrl = requireWebAppBaseUrl();
   const tokenRecord = await prisma.passwordSetToken.create({
     data: {
       userId: user.id,
@@ -406,7 +407,6 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
     },
   });
 
-  const baseUrl = requireWebAppBaseUrl();
   const setPasswordUrl = `${baseUrl}/auth/set-password?token=${tokenRecord.token}`;
 
   let emailSent = false;
