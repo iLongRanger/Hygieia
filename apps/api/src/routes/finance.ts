@@ -12,7 +12,7 @@ import {
   getPayrollSummaryReport,
 } from '../services/financeReportService';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 

@@ -47,7 +47,7 @@ router.get(
         dateFrom,
         dateTo,
         userRole: req.user?.role,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
       });
       res.json({ data: stats });
     } catch (error) {

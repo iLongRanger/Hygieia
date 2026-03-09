@@ -202,7 +202,7 @@ router.get(
 
       const result = await listContracts(parsed.data, {
         userRole: req.user?.role,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
         userId: req.user?.id,
       });
 
@@ -239,7 +239,7 @@ router.get(
 
       const summary = await getContractsSummary(parsed.data, {
         userRole: req.user?.role,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
         userId: req.user?.id,
       });
 

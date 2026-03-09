@@ -462,7 +462,7 @@ export async function getContractById(id: string) {
     throw new Error('Contract not found');
   }
 
-  return contract;
+  return withLegacyPendingDefaults(contract);
 }
 
 /**

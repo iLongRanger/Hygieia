@@ -25,7 +25,7 @@ import {
   listInvoiceActivities,
 } from '../services/invoiceService';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 

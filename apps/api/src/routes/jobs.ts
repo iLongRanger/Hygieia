@@ -83,7 +83,7 @@ router.get(
 
       const result = await listJobs(scopedParams, {
         userRole: req.user?.role,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
       });
       res.json(result);
     } catch (error) {

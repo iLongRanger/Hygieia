@@ -18,7 +18,7 @@ import {
   deletePayrollRun,
 } from '../services/payrollService';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 

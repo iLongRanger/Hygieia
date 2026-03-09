@@ -87,6 +87,25 @@ export interface PerHourTaskContext {
   fixtureMinutes: Record<string, number>;
 }
 
+type PerHourTaskSource = {
+  id: string;
+  areaId: string | null;
+  cleaningFrequency: string;
+  estimatedMinutes?: number | null;
+  baseMinutesOverride: number | null;
+  perSqftMinutesOverride: number | null;
+  perUnitMinutesOverride: number | null;
+  perRoomMinutesOverride: number | null;
+  taskTemplate: {
+    baseMinutes: number | null;
+    perSqftMinutes: number | null;
+    perUnitMinutes: number | null;
+    perRoomMinutes: number | null;
+    fixtureMinutes: { fixtureTypeId: string; minutesPerFixture: number | null }[];
+  } | null;
+  fixtureMinutes: { fixtureTypeId: string; minutesPerFixture: number | null }[];
+};
+
 export async function calculatePerHourPricing(
   options: CalculatePerHourPricingOptions
 ): Promise<FacilityPricingResult> {
@@ -161,11 +180,12 @@ export async function calculatePerHourPricing(
     throw new Error('Facility not found');
   }
 
-  const facilityTasks = facilityOverride
+  const facilityTasks: PerHourTaskSource[] = facilityOverride
     ? facilityOverride.tasks.map((task) => ({
         id: task.id,
         areaId: task.areaId ?? null,
         cleaningFrequency: task.cleaningFrequency || 'daily',
+        estimatedMinutes: task.estimatedMinutes ?? null,
         baseMinutesOverride: task.baseMinutesOverride ?? task.estimatedMinutes ?? null,
         perSqftMinutesOverride: task.perSqftMinutesOverride ?? null,
         perUnitMinutesOverride: task.perUnitMinutesOverride ?? null,
@@ -187,30 +207,57 @@ export async function calculatePerHourPricing(
           minutesPerFixture: fixture.minutesPerFixture ?? null,
         })),
       }))
-    : await prisma.facilityTask.findMany({
-        where: {
-          facilityId,
-          archivedAt: null,
-          ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
-          ...(excludedAreaIds.length > 0
-            ? {
-                OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
-              }
-            : {}),
-        },
-        include: {
-          taskTemplate: {
-            include: {
-              fixtureMinutes: {
-                include: { fixtureType: true },
+    : (
+        await prisma.facilityTask.findMany({
+          where: {
+            facilityId,
+            archivedAt: null,
+            ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
+            ...(excludedAreaIds.length > 0
+              ? {
+                  OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
+                }
+              : {}),
+          },
+          include: {
+            taskTemplate: {
+              include: {
+                fixtureMinutes: {
+                  include: { fixtureType: true },
+                },
               },
             },
+            fixtureMinutes: {
+              include: { fixtureType: true },
+            },
           },
-          fixtureMinutes: {
-            include: { fixtureType: true },
-          },
-        },
-      });
+        })
+      ).map((task) => ({
+        id: task.id,
+        areaId: task.areaId ?? null,
+        cleaningFrequency: task.cleaningFrequency || 'daily',
+        estimatedMinutes: task.estimatedMinutes ? Number(task.estimatedMinutes) : null,
+        baseMinutesOverride: task.baseMinutesOverride ? Number(task.baseMinutesOverride) : null,
+        perSqftMinutesOverride: task.perSqftMinutesOverride ? Number(task.perSqftMinutesOverride) : null,
+        perUnitMinutesOverride: task.perUnitMinutesOverride ? Number(task.perUnitMinutesOverride) : null,
+        perRoomMinutesOverride: task.perRoomMinutesOverride ? Number(task.perRoomMinutesOverride) : null,
+        taskTemplate: task.taskTemplate
+          ? {
+              baseMinutes: task.taskTemplate.baseMinutes ? Number(task.taskTemplate.baseMinutes) : null,
+              perSqftMinutes: task.taskTemplate.perSqftMinutes ? Number(task.taskTemplate.perSqftMinutes) : null,
+              perUnitMinutes: task.taskTemplate.perUnitMinutes ? Number(task.taskTemplate.perUnitMinutes) : null,
+              perRoomMinutes: task.taskTemplate.perRoomMinutes ? Number(task.taskTemplate.perRoomMinutes) : null,
+              fixtureMinutes: (task.taskTemplate.fixtureMinutes ?? []).map((fixture) => ({
+                fixtureTypeId: fixture.fixtureTypeId,
+                minutesPerFixture: fixture.minutesPerFixture ? Number(fixture.minutesPerFixture) : null,
+              })),
+            }
+          : null,
+        fixtureMinutes: (task.fixtureMinutes ?? []).map((fixture) => ({
+          fixtureTypeId: fixture.fixtureTypeId,
+          minutesPerFixture: fixture.minutesPerFixture ? Number(fixture.minutesPerFixture) : null,
+        })),
+      }));
 
   // Extract full cost settings (same as sqft strategy)
   const laborCostPerHour = Number(pricingSettings.laborCostPerHour);
@@ -233,7 +280,7 @@ export async function calculatePerHourPricing(
   const selectedMonthlyVisits = getMonthlyVisits(serviceFrequency);
 
   // Group tasks by area
-  const tasksByArea = new Map<string | null, typeof facilityTasks>();
+  const tasksByArea = new Map<string | null, PerHourTaskSource[]>();
   for (const task of facilityTasks) {
     const areaId = task.areaId ?? null;
     if (!tasksByArea.has(areaId)) {
@@ -469,7 +516,7 @@ export async function calculatePerHourPricing(
   };
 }
 
-function buildPerHourTasks(tasks: any[]): PerHourTaskContext[] {
+function buildPerHourTasks(tasks: PerHourTaskSource[]): PerHourTaskContext[] {
   return tasks.map((task) => {
     const template = task.taskTemplate;
     const baseMinutes =

@@ -40,7 +40,7 @@ import {
   deleteTimesheet,
 } from '../services/timesheetService';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 
@@ -71,7 +71,7 @@ router.get(
       {
         userRole: req.user?.role,
         userId: req.user?.id,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
       }
     );
     res.json(result);
@@ -89,7 +89,7 @@ router.get('/entries/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ), as
   const entry = await getTimeEntryById(req.params.id, {
     userRole: req.user?.role,
     userId: req.user?.id,
-    userTeamId: req.user?.teamId,
+    userTeamId: req.user?.teamId ?? undefined,
   });
   res.json({ data: entry });
 });
@@ -247,7 +247,7 @@ router.get(
       {
         userRole: req.user?.role,
         userId: req.user?.id,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
       }
     );
     res.json(result);
@@ -259,7 +259,7 @@ router.get('/timesheets/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ),
   const timesheet = await getTimesheetById(req.params.id, {
     userRole: req.user?.role,
     userId: req.user?.id,
-    userTeamId: req.user?.teamId,
+    userTeamId: req.user?.teamId ?? undefined,
   });
   res.json({ data: timesheet });
 });

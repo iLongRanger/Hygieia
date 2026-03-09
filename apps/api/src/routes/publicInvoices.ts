@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getInvoiceByPublicToken } from '../services/invoiceService';
 
-const router = Router();
+const router: Router = Router();
 
 // Get invoice by public token
 router.get('/:token', async (req: Request, res: Response) => {

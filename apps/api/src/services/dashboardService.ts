@@ -825,7 +825,7 @@ export async function exportDashboardCsv(type: ExportType): Promise<string> {
       const rows = proposals.map((p) =>
         toCsvRow([
           p.id, p.proposalNumber, p.title, p.status, Number(p.totalAmount),
-          p.account.name, p.facility.name, p.createdByUser.fullName,
+          p.account.name, p.facility?.name ?? '', p.createdByUser.fullName,
           p.sentAt?.toISOString().slice(0, 10) ?? '',
           p.acceptedAt?.toISOString().slice(0, 10) ?? '',
           p.rejectedAt?.toISOString().slice(0, 10) ?? '',
@@ -855,7 +855,7 @@ export async function exportDashboardCsv(type: ExportType): Promise<string> {
       const rows = contracts.map((c) =>
         toCsvRow([
           c.id, c.contractNumber, c.title, c.status, Number(c.monthlyValue),
-          c.account.name, c.facility.name,
+          c.account.name, c.facility?.name ?? '',
           c.startDate.toISOString().slice(0, 10),
           c.endDate?.toISOString().slice(0, 10) ?? '',
           c.createdAt.toISOString().slice(0, 10),

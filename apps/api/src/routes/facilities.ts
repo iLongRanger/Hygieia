@@ -61,7 +61,7 @@ router.get(
       const result = await listFacilities(parsed.data, {
         userRole: req.user?.role,
         userId: req.user?.id,
-        userTeamId: req.user?.teamId,
+        userTeamId: req.user?.teamId ?? undefined,
       });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {

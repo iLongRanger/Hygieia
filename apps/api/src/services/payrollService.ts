@@ -238,8 +238,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
             where: {
               userId: worker.id,
               jobId: job.id,
-              clockIn: { not: null },
-              clockOut: { not: null },
+              NOT: { clockOut: null },
             },
           });
           if (!timeEntry) {
@@ -307,7 +306,6 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
           where: {
             userId: worker.id,
             jobId: job.id,
-            clockIn: { not: null },
           },
           select: { clockIn: true, clockOut: true, totalHours: true, status: true },
         });
