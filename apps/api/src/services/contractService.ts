@@ -300,6 +300,51 @@ function withLegacyPendingDefaults<T extends Record<string, any>>(contract: T) {
   };
 }
 
+async function createContractWithLegacyFallback(data: Prisma.ContractCreateInput) {
+  try {
+    const contract = await prisma.contract.create({
+      data,
+      select: contractSelect,
+    });
+    return withLegacyPendingDefaults(contract);
+  } catch (error) {
+    if (!isLegacyContractColumnError(error)) {
+      throw error;
+    }
+
+    const contract = await prisma.contract.create({
+      data,
+      select: contractSelectWithoutAssignedUser,
+    });
+    return withLegacyPendingDefaults(contract);
+  }
+}
+
+async function updateContractWithLegacyFallback(
+  where: Prisma.ContractWhereUniqueInput,
+  data: Prisma.ContractUpdateInput
+) {
+  try {
+    const contract = await prisma.contract.update({
+      where,
+      data,
+      select: contractSelect,
+    });
+    return withLegacyPendingDefaults(contract);
+  } catch (error) {
+    if (!isLegacyContractColumnError(error)) {
+      throw error;
+    }
+
+    const contract = await prisma.contract.update({
+      where,
+      data,
+      select: contractSelectWithoutAssignedUser,
+    });
+    return withLegacyPendingDefaults(contract);
+  }
+}
+
 /**
  * Generate the next contract number in the format: CONT-YYYYMM-XXXX
  */
@@ -566,20 +611,15 @@ export async function createContract(data: ContractCreateInput) {
     });
   }
 
-  const contract = await prisma.contract.create({
-    data: {
-      contractNumber,
-      ...data,
-      serviceSchedule:
-        (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-      termsAndConditions,
-      status: 'draft',
-      includesInitialClean: true,
-    },
-    select: contractSelect,
+  return createContractWithLegacyFallback({
+    contractNumber,
+    ...data,
+    serviceSchedule:
+      (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+    termsAndConditions,
+    status: 'draft',
+    includesInitialClean: true,
   });
-
-  return contract;
 }
 
 /**
@@ -691,12 +731,7 @@ export async function createContractFromProposal(
     });
   }
 
-  const contract = await prisma.contract.create({
-    data: contractData,
-    select: contractSelect,
-  });
-
-  return contract;
+  return createContractWithLegacyFallback(contractData);
 }
 
 /**
@@ -1084,30 +1119,24 @@ export async function terminateContract(id: string, reason: string) {
  * Archive contract (soft delete)
  */
 export async function archiveContract(id: string) {
-  const contract = await prisma.contract.update({
-    where: { id },
-    data: {
+  return updateContractWithLegacyFallback(
+    { id },
+    {
       archivedAt: new Date(),
-    },
-    select: contractSelect,
-  });
-
-  return contract;
+    }
+  );
 }
 
 /**
  * Restore archived contract
  */
 export async function restoreContract(id: string) {
-  const contract = await prisma.contract.update({
-    where: { id },
-    data: {
+  return updateContractWithLegacyFallback(
+    { id },
+    {
       archivedAt: null,
-    },
-    select: contractSelect,
-  });
-
-  return contract;
+    }
+  );
 }
 
 // ============================================================
@@ -1278,35 +1307,30 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     });
   }
 
-  const contract = await prisma.contract.create({
-    data: {
-      contractNumber,
-      title: data.title,
-      status: 'draft',
-      accountId: data.accountId,
-      facilityId: data.facilityId,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      serviceFrequency: data.serviceFrequency,
-      serviceSchedule:
-        (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-      autoRenew: data.autoRenew ?? false,
-      renewalNoticeDays: data.renewalNoticeDays ?? 30,
-      monthlyValue: data.monthlyValue,
-      totalValue: data.totalValue,
-      billingCycle: data.billingCycle ?? 'monthly',
-      paymentTerms: data.paymentTerms ?? 'Net 30',
-      termsAndConditions,
-      termsDocumentName: data.termsDocumentName ?? null,
-      termsDocumentMimeType: data.termsDocumentMimeType ?? null,
-      termsDocumentDataUrl: data.termsDocumentDataUrl ?? null,
-      specialInstructions: data.specialInstructions,
-      createdByUserId: data.createdByUserId,
-    },
-    select: contractSelect,
+  return createContractWithLegacyFallback({
+    contractNumber,
+    title: data.title,
+    status: 'draft',
+    accountId: data.accountId,
+    facilityId: data.facilityId,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    serviceFrequency: data.serviceFrequency,
+    serviceSchedule:
+      (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+    autoRenew: data.autoRenew ?? false,
+    renewalNoticeDays: data.renewalNoticeDays ?? 30,
+    monthlyValue: data.monthlyValue,
+    totalValue: data.totalValue,
+    billingCycle: data.billingCycle ?? 'monthly',
+    paymentTerms: data.paymentTerms ?? 'Net 30',
+    termsAndConditions,
+    termsDocumentName: data.termsDocumentName ?? null,
+    termsDocumentMimeType: data.termsDocumentMimeType ?? null,
+    termsDocumentDataUrl: data.termsDocumentDataUrl ?? null,
+    specialInstructions: data.specialInstructions,
+    createdByUserId: data.createdByUserId,
   });
-
-  return contract;
 }
 
 // ============================================================

@@ -169,7 +169,7 @@ describe('contractService', () => {
       createdByUserId: 'user-1',
     });
 
-    expect(result).toEqual({ id: 'contract-1' });
+    expect(result).toEqual(expect.objectContaining({ id: 'contract-1' }));
     expect(prisma.contract.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -203,7 +203,7 @@ describe('contractService', () => {
 
     const result = await contractService.createContractFromProposal('proposal-1', 'user-1');
 
-    expect(result).toEqual({ id: 'contract-2' });
+    expect(result).toEqual(expect.objectContaining({ id: 'contract-2' }));
     expect(prisma.contract.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -278,6 +278,57 @@ describe('contractService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           serviceFrequency: '5x_week',
+        }),
+      })
+    );
+  });
+
+  it('createContractFromProposal should fall back when legacy contract columns are missing', async () => {
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      title: 'Proposal A',
+      status: 'accepted',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
+      totalAmount: '2500',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      termsAndConditions: 'Terms',
+      notes: 'Special',
+      account: {
+        name: 'Acme Corp',
+        paymentTerms: 'Net 30',
+      },
+      facility: { id: 'facility-1', name: 'HQ', address: null },
+      proposalServices: [],
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.contract.create as jest.Mock)
+      .mockRejectedValueOnce(new Error('column contracts.assigned_to_user_id does not exist'))
+      .mockResolvedValueOnce({ id: 'contract-legacy', title: 'Proposal A' });
+
+    const result = await contractService.createContractFromProposal('proposal-1', 'user-1');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-legacy',
+        assignedToUser: null,
+        pendingAssignedTeamId: null,
+      })
+    );
+    expect(prisma.contract.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        select: expect.objectContaining({
+          assignedToUser: expect.any(Object),
+        }),
+      })
+    );
+    expect(prisma.contract.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        select: expect.not.objectContaining({
+          assignedToUser: expect.anything(),
         }),
       })
     );
@@ -432,6 +483,40 @@ describe('contractService', () => {
           pendingAssignedTeamId: 'team-new',
           pendingAssignedToUserId: null,
           assignmentOverrideSetByUserId: 'owner-1',
+        }),
+      })
+    );
+  });
+
+  it('archiveContract should fall back when legacy contract columns are missing', async () => {
+    (prisma.contract.update as jest.Mock)
+      .mockRejectedValueOnce(new Error('column contracts.assigned_to_user_id does not exist'))
+      .mockResolvedValueOnce({ id: 'contract-archived', archivedAt: new Date('2026-03-10T00:00:00.000Z') });
+
+    const result = await contractService.archiveContract('contract-archived');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-archived',
+        assignedToUser: null,
+        pendingAssignedTeamId: null,
+      })
+    );
+    expect(prisma.contract.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: 'contract-archived' },
+        select: expect.objectContaining({
+          assignedToUser: expect.any(Object),
+        }),
+      })
+    );
+    expect(prisma.contract.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { id: 'contract-archived' },
+        select: expect.not.objectContaining({
+          assignedToUser: expect.anything(),
         }),
       })
     );
