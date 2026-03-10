@@ -19,7 +19,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
-import { getLead, listLeadSources, updateLead } from '../../lib/leads';
+import { convertLead, getLead, listLeadSources, updateLead } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listFacilities } from '../../lib/facilities';
 import {
@@ -44,6 +44,14 @@ const LEAD_STATUSES = [
   { value: 'won', label: 'Won' },
   { value: 'lost', label: 'Lost' },
   { value: 'reopened', label: 'Reopened' },
+];
+
+const ACCOUNT_TYPES = [
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'government', label: 'Government' },
+  { value: 'non_profit', label: 'Non-Profit' },
 ];
 
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
@@ -152,6 +160,19 @@ const LeadDetail = () => {
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleStartTime, setScheduleStartTime] = useState('');
   const [scheduleEndTime, setScheduleEndTime] = useState('');
+  const [scheduleConversionForm, setScheduleConversionForm] = useState({
+    accountName: '',
+    accountType: 'commercial' as 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit',
+    billingEmail: '',
+    billingPhone: '',
+    facilityName: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
+    notes: '',
+  });
 
   const [completeForm, setCompleteForm] = useState({
     facilityId: '',
@@ -291,8 +312,53 @@ const LeadDetail = () => {
       return;
     }
 
+    if (!lead?.convertedToAccountId) {
+      if (!scheduleConversionForm.accountName.trim()) {
+        toast.error('Account name is required before booking a walkthrough');
+        return;
+      }
+
+      if (!scheduleConversionForm.facilityName.trim()) {
+        toast.error('Facility name is required before booking a walkthrough');
+        return;
+      }
+
+      if (!scheduleConversionForm.street.trim()) {
+        toast.error('Facility address is required before booking a walkthrough');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
+      const wasConvertedDuringBooking = !lead?.convertedToAccountId;
+
+      if (wasConvertedDuringBooking) {
+        await convertLead(id, {
+          createNewAccount: true,
+          accountData: {
+            name: scheduleConversionForm.accountName.trim(),
+            type: scheduleConversionForm.accountType,
+            billingEmail: scheduleConversionForm.billingEmail.trim() || null,
+            billingPhone: scheduleConversionForm.billingPhone.trim() || null,
+            paymentTerms: 'Net 30',
+            notes: scheduleConversionForm.notes.trim() || null,
+          },
+          facilityOption: 'new',
+          facilityData: {
+            name: scheduleConversionForm.facilityName.trim(),
+            address: {
+              street: scheduleConversionForm.street.trim(),
+              city: scheduleConversionForm.city.trim() || null,
+              state: scheduleConversionForm.state.trim() || null,
+              postalCode: scheduleConversionForm.postalCode.trim() || null,
+              country: scheduleConversionForm.country.trim() || null,
+            },
+            notes: scheduleConversionForm.notes.trim() || null,
+          },
+        });
+      }
+
       await createAppointment({
         leadId: id,
         assignedToUserId: scheduleForm.assignedToUserId,
@@ -303,7 +369,11 @@ const LeadDetail = () => {
         location: scheduleForm.location || null,
         notes: scheduleForm.notes || null,
       });
-      toast.success('Walkthrough scheduled');
+      toast.success(
+        wasConvertedDuringBooking
+          ? 'Lead converted and walkthrough scheduled'
+          : 'Walkthrough scheduled'
+      );
       setShowScheduleModal(false);
       setScheduleForm({
         assignedToUserId: '',
@@ -316,6 +386,19 @@ const LeadDetail = () => {
       setScheduleDate('');
       setScheduleStartTime('');
       setScheduleEndTime('');
+      setScheduleConversionForm({
+        accountName: '',
+        accountType: 'commercial',
+        billingEmail: '',
+        billingPhone: '',
+        facilityName: '',
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+        notes: '',
+      });
       fetchAppointments();
       fetchLead();
     } catch (error) {
@@ -331,6 +414,19 @@ const LeadDetail = () => {
     setScheduleDate(defaults.date);
     setScheduleStartTime(defaults.startTime);
     setScheduleEndTime(defaults.endTime);
+    setScheduleConversionForm({
+      accountName: lead?.companyName || lead?.contactName || '',
+      accountType: 'commercial',
+      billingEmail: lead?.primaryEmail || '',
+      billingPhone: lead?.primaryPhone || '',
+      facilityName: lead?.companyName || lead?.contactName || '',
+      street: lead?.address?.street || '',
+      city: lead?.address?.city || '',
+      state: lead?.address?.state || '',
+      postalCode: lead?.address?.postalCode || '',
+      country: lead?.address?.country || '',
+      notes: '',
+    });
     setShowScheduleModal(true);
   };
 
@@ -632,6 +728,112 @@ const LeadDetail = () => {
         size="lg"
       >
         <div className="space-y-4">
+          {!lead.convertedToAccountId && (
+            <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
+              <div className="text-sm font-medium text-gold">Convert lead during booking</div>
+              <p className="mt-1 text-sm text-gray-400">
+                Booking this walkthrough will also create the account and initial facility record.
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Account Name"
+                  value={scheduleConversionForm.accountName}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, accountName: e.target.value })
+                  }
+                  maxLength={maxLengths.companyName}
+                />
+                <Select
+                  label="Account Type"
+                  options={ACCOUNT_TYPES}
+                  value={scheduleConversionForm.accountType}
+                  onChange={(value) =>
+                    setScheduleConversionForm({
+                      ...scheduleConversionForm,
+                      accountType: value as typeof scheduleConversionForm.accountType,
+                    })
+                  }
+                />
+                <Input
+                  label="Billing Email"
+                  type="email"
+                  value={scheduleConversionForm.billingEmail}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, billingEmail: e.target.value })
+                  }
+                  maxLength={maxLengths.email}
+                />
+                <Input
+                  label="Billing Phone"
+                  value={scheduleConversionForm.billingPhone}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, billingPhone: e.target.value })
+                  }
+                  maxLength={maxLengths.phone}
+                />
+                <Input
+                  label="Facility Name"
+                  value={scheduleConversionForm.facilityName}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, facilityName: e.target.value })
+                  }
+                  maxLength={maxLengths.companyName}
+                />
+                <Input
+                  label="Street Address"
+                  value={scheduleConversionForm.street}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, street: e.target.value })
+                  }
+                  maxLength={maxLengths.street}
+                />
+                <Input
+                  label="City"
+                  value={scheduleConversionForm.city}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, city: e.target.value })
+                  }
+                  maxLength={maxLengths.city}
+                />
+                <Input
+                  label="State"
+                  value={scheduleConversionForm.state}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, state: e.target.value })
+                  }
+                  maxLength={maxLengths.state}
+                />
+                <Input
+                  label="Postal Code"
+                  value={scheduleConversionForm.postalCode}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, postalCode: e.target.value })
+                  }
+                  maxLength={maxLengths.postalCode}
+                />
+                <Input
+                  label="Country"
+                  value={scheduleConversionForm.country}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, country: e.target.value })
+                  }
+                  maxLength={maxLengths.country}
+                />
+              </div>
+
+              <Textarea
+                label="Account / Facility Notes"
+                placeholder="Add any setup context for the new customer record..."
+                value={scheduleConversionForm.notes}
+                onChange={(e) =>
+                  setScheduleConversionForm({ ...scheduleConversionForm, notes: e.target.value })
+                }
+                maxLength={maxLengths.notes}
+              />
+            </div>
+          )}
+
           <Select
             label="Assigned Rep"
             placeholder="Select rep"

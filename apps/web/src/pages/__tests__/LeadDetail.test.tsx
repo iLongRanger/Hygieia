@@ -21,6 +21,7 @@ vi.mock('react-router-dom', async () => {
 const getLeadMock = vi.fn();
 const listLeadSourcesMock = vi.fn();
 const updateLeadMock = vi.fn();
+const convertLeadMock = vi.fn();
 const listUsersMock = vi.fn();
 const listFacilitiesMock = vi.fn();
 const createAppointmentMock = vi.fn();
@@ -32,6 +33,7 @@ vi.mock('../../lib/leads', () => ({
   getLead: (...args: unknown[]) => getLeadMock(...args),
   listLeadSources: (...args: unknown[]) => listLeadSourcesMock(...args),
   updateLead: (...args: unknown[]) => updateLeadMock(...args),
+  convertLead: (...args: unknown[]) => convertLeadMock(...args),
 }));
 
 vi.mock('../../lib/users', () => ({
@@ -191,6 +193,16 @@ describe('LeadDetail', () => {
     rescheduleAppointmentMock.mockResolvedValue({ id: 'appt-3' });
     completeAppointmentMock.mockResolvedValue({ id: 'appt-1', status: 'completed' });
     updateLeadMock.mockResolvedValue(lead);
+    convertLeadMock.mockResolvedValue({
+      lead: {
+        ...lead,
+        convertedToAccountId: 'account-1',
+        convertedAt: new Date().toISOString(),
+      },
+      account: { id: 'account-1', name: 'Acme Corporation' },
+      contact: { id: 'contact-1', name: 'Jane Smith', email: 'jane@example.com' },
+      facility: { id: 'facility-1', name: 'HQ' },
+    });
   });
 
   afterEach(() => {
@@ -205,12 +217,18 @@ describe('LeadDetail', () => {
     expect(screen.getByText('Walkthrough Appointments')).toBeInTheDocument();
   });
 
-  it('schedules walkthrough appointment', async () => {
+  it('converts unconverted lead when scheduling walkthrough appointment', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadDetail />);
 
     await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
     const modal = await screen.findByRole('dialog', { name: /schedule walkthrough/i });
+    await userEventInstance.clear(within(modal).getByLabelText(/account name/i));
+    await userEventInstance.type(within(modal).getByLabelText(/account name/i), 'Acme Corporation');
+    await userEventInstance.clear(within(modal).getByLabelText(/facility name/i));
+    await userEventInstance.type(within(modal).getByLabelText(/facility name/i), 'HQ');
+    await userEventInstance.clear(within(modal).getByLabelText(/street address/i));
+    await userEventInstance.type(within(modal).getByLabelText(/street address/i), '123 Main St');
     await userEventInstance.selectOptions(within(modal).getByLabelText(/assigned rep/i), 'user-1');
     await userEventInstance.clear(within(modal).getByLabelText(/^date$/i));
     await userEventInstance.type(within(modal).getByLabelText(/^date$/i), '2026-02-25');
@@ -219,6 +237,22 @@ describe('LeadDetail', () => {
     await userEventInstance.click(within(modal).getByRole('button', { name: /^schedule$/i }));
 
     await waitFor(() => {
+      expect(convertLeadMock).toHaveBeenCalledWith(
+        'lead-1',
+        expect.objectContaining({
+          createNewAccount: true,
+          facilityOption: 'new',
+          accountData: expect.objectContaining({
+            name: 'Acme Corporation',
+          }),
+          facilityData: expect.objectContaining({
+            name: 'HQ',
+            address: expect.objectContaining({
+              street: '123 Main St',
+            }),
+          }),
+        })
+      );
       expect(createAppointmentMock).toHaveBeenCalledWith(
         expect.objectContaining({
           leadId: 'lead-1',
