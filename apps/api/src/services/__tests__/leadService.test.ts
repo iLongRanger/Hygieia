@@ -641,4 +641,20 @@ describe('leadService', () => {
       expect(result.contact.id).toBe('contact-1');
     });
   });
+
+  describe('autoSetLeadStatusForAccount', () => {
+    it('should not downgrade a won lead to lost', async () => {
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        sourceLead: {
+          id: 'lead-1',
+          status: 'won',
+          archivedAt: null,
+        },
+      });
+
+      await leadService.autoSetLeadStatusForAccount('account-1', 'lost');
+
+      expect(prisma.lead.update).not.toHaveBeenCalled();
+    });
+  });
 });

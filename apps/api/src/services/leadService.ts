@@ -793,6 +793,7 @@ export async function autoSetLeadStatusForAccount(
     const lead = account?.sourceLead;
 
     if (!lead || lead.archivedAt) return;
+    if (lead.status === 'won') return;
     if (options.mode === 'advance') {
       if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
     } else {
