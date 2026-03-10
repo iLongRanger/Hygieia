@@ -63,8 +63,8 @@ describe('Dashboard', () => {
         mrrChange: 33,
       },
       leadsByStatus: [
-        { status: 'new', count: 3 },
-        { status: 'qualified', count: 2 },
+        { status: 'lead', count: 3 },
+        { status: 'walk_through_booked', count: 2 },
       ],
       pipelineValue: 8000,
       proposalsByStatus: [{ status: 'sent', count: 2, totalAmount: 4000 }],

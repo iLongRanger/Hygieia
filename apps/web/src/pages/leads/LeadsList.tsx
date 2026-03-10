@@ -528,11 +528,12 @@ const LeadsList = () => {
         return 'success';
       case 'lost':
         return 'error';
-      case 'proposal':
+      case 'walk_through_booked':
+      case 'walk_through_completed':
+        return 'info';
+      case 'proposal_sent':
       case 'negotiation':
         return 'warning';
-      case 'qualified':
-        return 'info';
       default:
         return 'default';
     }

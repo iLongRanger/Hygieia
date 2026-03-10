@@ -65,7 +65,7 @@ const mockAccount = {
 
 const mockLead = {
   id: 'lead-1',
-  status: 'qualified',
+  status: 'lead',
   companyName: 'Lead Company',
   contactName: 'Jane Lead',
   primaryEmail: 'jane@lead.com',
@@ -78,7 +78,7 @@ const mockLead = {
 const mockConvertedLead = {
   ...mockLead,
   id: 'lead-2',
-  status: 'converted',
+  status: 'won',
   convertedToAccountId: 'account-1',
   convertedAt: '2026-01-15T00:00:00Z',
 };

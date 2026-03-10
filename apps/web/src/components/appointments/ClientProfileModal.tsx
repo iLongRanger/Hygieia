@@ -146,14 +146,23 @@ export const ClientProfileModal = ({
     });
   };
 
-  const getLeadStatusVariant = (status: string) => {
+  const getLeadStatusVariant = (
+    status: string,
+    options?: { convertedToAccountId?: string | null }
+  ) => {
+    if (options?.convertedToAccountId) {
+      return 'success';
+    }
+
     switch (status) {
-      case 'converted':
-        return 'success';
-      case 'qualified':
+      case 'walk_through_booked':
+      case 'walk_through_completed':
         return 'info';
       case 'proposal_sent':
+      case 'negotiation':
         return 'warning';
+      case 'won':
+        return 'success';
       case 'lost':
         return 'error';
       default:
@@ -191,7 +200,11 @@ export const ClientProfileModal = ({
                   <div className="font-semibold text-surface-900 dark:text-surface-100">
                     {lead.companyName || lead.contactName}
                   </div>
-                  <Badge variant={getLeadStatusVariant(lead.status)}>
+                  <Badge
+                    variant={getLeadStatusVariant(lead.status, {
+                      convertedToAccountId: lead.convertedToAccountId,
+                    })}
+                  >
                     {getLeadStatusLabel(lead.status)}
                   </Badge>
                 </div>
