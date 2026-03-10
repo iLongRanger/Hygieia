@@ -47,6 +47,10 @@ const LEAD_STATUSES = [
   { value: 'reopened', label: 'Reopened' },
 ];
 
+const LEAD_STATUS_LABELS = new Map(
+  LEAD_STATUSES.map((status) => [status.value, status.label])
+);
+
 const CREATE_LEAD_SOURCE_OPTIONS = [
   { value: 'Website', label: 'Website' },
   { value: 'Referral', label: 'Referral' },
@@ -181,6 +185,10 @@ const getInitials = (name: string): string => {
 const isValidLeadStatus = (value: string | null): value is string => {
   if (!value) return false;
   return LEAD_STATUSES.some((status) => status.value === value);
+};
+
+const getLeadStatusLabel = (status: string): string => {
+  return LEAD_STATUS_LABELS.get(status) ?? status;
 };
 
 const LeadsList = () => {
@@ -588,7 +596,7 @@ const LeadsList = () => {
       header: 'Status',
       cell: (item: Lead) => (
         <Badge variant={getStatusVariant(item.status)}>
-          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+          {getLeadStatusLabel(item.status)}
         </Badge>
       ),
     },

@@ -132,6 +132,24 @@ describe('LeadsList', () => {
     });
   });
 
+  it('uses the user-facing label for multi-word statuses in the table', async () => {
+    listLeadsMock.mockResolvedValueOnce({
+      data: [
+        {
+          ...lead,
+          id: 'lead-2',
+          status: 'walk_through_booked',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    render(<LeadsList />);
+
+    expect(await screen.findByText('Walk Through Booked')).toBeInTheDocument();
+    expect(screen.queryByText('Walk_through_booked')).not.toBeInTheDocument();
+  });
+
   it('creates a lead from modal', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadsList />);
