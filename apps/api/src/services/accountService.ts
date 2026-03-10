@@ -139,8 +139,13 @@ export async function listAccounts(
   if (readyForProposal) {
     where.sourceLead = {
       is: {
-        status: 'walk_through_completed',
         archivedAt: null,
+        appointments: {
+          some: {
+            type: 'walk_through',
+            status: 'completed',
+          },
+        },
       },
     };
   }

@@ -506,7 +506,7 @@ const ProposalForm = () => {
     try {
       const [accountsRes, facilitiesRes, plansRes, templatesRes] = await Promise.all([
         listAccounts({ limit: 100, readyForProposal: true }),
-        listFacilities({ limit: 100, withoutProposal: true }),
+        listFacilities({ limit: 100 }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
       ]);

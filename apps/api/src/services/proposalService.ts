@@ -11,6 +11,7 @@ import {
 } from './pricing';
 import { normalizeServiceSchedule } from './serviceScheduleService';
 import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
+import { BadRequestError } from '../middleware/errorHandler';
 
 export interface ProposalListParams {
   page?: number;
@@ -247,6 +248,91 @@ function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
   return items.filter((item) => Number(item.totalPrice) > 0);
 }
 
+async function assertProposalCreateReadiness(input: ProposalCreateInput): Promise<void> {
+  const account = await prisma.account.findUnique({
+    where: { id: input.accountId },
+    select: {
+      id: true,
+      archivedAt: true,
+      sourceLead: {
+        select: {
+          id: true,
+          archivedAt: true,
+          appointments: {
+            where: {
+              type: 'walk_through',
+              status: 'completed',
+            },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+
+  if (!account || account.archivedAt) {
+    throw new BadRequestError('Account not found or archived');
+  }
+
+  if (!account.sourceLead || account.sourceLead.archivedAt) {
+    throw new BadRequestError('Proposal creation requires a converted lead with a completed walkthrough');
+  }
+
+  if (account.sourceLead.appointments.length === 0) {
+    throw new BadRequestError('Walkthrough must be completed before creating a proposal');
+  }
+
+  if (!input.facilityId) {
+    return;
+  }
+
+  const facility = await prisma.facility.findUnique({
+    where: { id: input.facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+      status: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found or archived');
+  }
+
+  if (facility.accountId !== input.accountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
+
+  if (facility.status !== 'active') {
+    throw new BadRequestError('Facility must be active before creating a proposal');
+  }
+
+  const [areaCount, taskCount] = await Promise.all([
+    prisma.area.count({
+      where: {
+        facilityId: facility.id,
+        archivedAt: null,
+      },
+    }),
+    prisma.facilityTask.count({
+      where: {
+        facilityId: facility.id,
+        archivedAt: null,
+      },
+    }),
+  ]);
+
+  if (areaCount === 0) {
+    throw new BadRequestError('Facility must have at least one area before creating a proposal');
+  }
+
+  if (taskCount === 0) {
+    throw new BadRequestError('Facility must have at least one task before creating a proposal');
+  }
+}
+
 export async function listProposals(
   params: ProposalListParams,
   access: ProposalAccessOptions = {}
@@ -350,6 +436,8 @@ export async function getProposalByNumber(proposalNumber: string) {
 }
 
 export async function createProposal(input: ProposalCreateInput) {
+  await assertProposalCreateReadiness(input);
+
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;
   const serviceFrequency = input.serviceFrequency || '5x_week';

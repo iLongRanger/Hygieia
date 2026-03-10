@@ -21,6 +21,15 @@ jest.mock('../../lib/prisma', () => ({
     account: {
       findUnique: jest.fn(),
     },
+    facility: {
+      findUnique: jest.fn(),
+    },
+    area: {
+      count: jest.fn(),
+    },
+    facilityTask: {
+      count: jest.fn(),
+    },
   },
 }));
 
@@ -76,6 +85,23 @@ describe('proposalService', () => {
       name: 'Standard',
       pricingType: 'square_foot',
     } as any);
+    (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+      id: 'account-1',
+      archivedAt: null,
+      sourceLead: {
+        id: 'lead-1',
+        archivedAt: null,
+        appointments: [{ id: 'appt-1' }],
+      },
+    });
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      accountId: 'account-1',
+      archivedAt: null,
+      status: 'active',
+    });
+    (prisma.area.count as jest.Mock).mockResolvedValue(1);
+    (prisma.facilityTask.count as jest.Mock).mockResolvedValue(1);
   });
 
   afterEach(() => {
@@ -618,6 +644,63 @@ describe('proposalService', () => {
         select: expect.any(Object),
       });
       expect(result).toEqual(mockProposal);
+    });
+
+    it('should allow creating another proposal for a facility that already had proposals', async () => {
+      const mockProposal = createTestProposal();
+      (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
+
+      const result = await proposalService.createProposal({
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        title: 'Repeat Proposal',
+        createdByUserId: 'user-1',
+      });
+
+      expect(result).toEqual(mockProposal);
+      expect(prisma.facility.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'facility-1' },
+        })
+      );
+    });
+
+    it('should require a completed walkthrough before creating a proposal', async () => {
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        id: 'account-1',
+        archivedAt: null,
+        sourceLead: {
+          id: 'lead-1',
+          archivedAt: null,
+          appointments: [],
+        },
+      });
+
+      await expect(
+        proposalService.createProposal({
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          title: 'Blocked Proposal',
+          createdByUserId: 'user-1',
+        })
+      ).rejects.toThrow('Walkthrough must be completed before creating a proposal');
+
+      expect(prisma.proposal.create).not.toHaveBeenCalled();
+    });
+
+    it('should require facility scope data before creating a proposal', async () => {
+      (prisma.area.count as jest.Mock).mockResolvedValue(0);
+
+      await expect(
+        proposalService.createProposal({
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          title: 'Blocked Proposal',
+          createdByUserId: 'user-1',
+        })
+      ).rejects.toThrow('Facility must have at least one area before creating a proposal');
+
+      expect(prisma.proposal.create).not.toHaveBeenCalled();
     });
   });
 

@@ -320,7 +320,6 @@ describe('ProposalForm', () => {
       expect(listFacilitiesMock).toHaveBeenCalledWith(
         expect.objectContaining({
           limit: 100,
-          withoutProposal: true,
         })
       );
     });
