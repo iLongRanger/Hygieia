@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import LeadsList from '../leads/LeadsList';
-import type { Lead, LeadSource, Account } from '../../types/crm';
+import type { Lead, LeadSource } from '../../types/crm';
 import type { User } from '../../types/user';
-import type { Facility } from '../../types/facility';
 import { useAuthStore } from '../../stores/authStore';
 
 const listLeadsMock = vi.fn();
@@ -12,11 +11,7 @@ const createLeadMock = vi.fn();
 const archiveLeadMock = vi.fn();
 const restoreLeadMock = vi.fn();
 const listLeadSourcesMock = vi.fn();
-const canConvertLeadMock = vi.fn();
-const convertLeadMock = vi.fn();
 const listUsersMock = vi.fn();
-const listAccountsMock = vi.fn();
-const listFacilitiesMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 
@@ -26,20 +21,10 @@ vi.mock('../../lib/leads', () => ({
   archiveLead: (...args: unknown[]) => archiveLeadMock(...args),
   restoreLead: (...args: unknown[]) => restoreLeadMock(...args),
   listLeadSources: (...args: unknown[]) => listLeadSourcesMock(...args),
-  canConvertLead: (...args: unknown[]) => canConvertLeadMock(...args),
-  convertLead: (...args: unknown[]) => convertLeadMock(...args),
 }));
 
 vi.mock('../../lib/users', () => ({
   listUsers: (...args: unknown[]) => listUsersMock(...args),
-}));
-
-vi.mock('../../lib/accounts', () => ({
-  listAccounts: (...args: unknown[]) => listAccountsMock(...args),
-}));
-
-vi.mock('../../lib/facilities', () => ({
-  listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -101,48 +86,6 @@ const user: User = {
   roles: [],
 };
 
-const account: Account = {
-  id: 'account-1',
-  name: 'Acme Corporation',
-  type: 'commercial',
-  industry: null,
-  website: null,
-  billingEmail: null,
-  billingPhone: null,
-  billingAddress: null,
-  qboCustomerId: null,
-  taxId: null,
-  paymentTerms: 'NET30',
-  creditLimit: null,
-  notes: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  archivedAt: null,
-  accountManager: null,
-  createdByUser: { id: 'user-2', fullName: 'Admin User' },
-  _count: { contacts: 1, facilities: 1 },
-};
-
-const facility: Facility = {
-  id: 'facility-1',
-  name: 'HQ',
-  address: {},
-  squareFeet: null,
-  buildingType: null,
-  accessInstructions: null,
-  parkingInfo: null,
-  specialRequirements: null,
-  status: 'active',
-  notes: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  archivedAt: null,
-  account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
-  facilityManager: null,
-  createdByUser: { id: 'user-2', fullName: 'Admin User' },
-  _count: { areas: 0, facilityTasks: 0 },
-};
-
 describe('LeadsList', () => {
   beforeEach(() => {
     toastSuccessMock.mockReset();
@@ -159,13 +102,9 @@ describe('LeadsList', () => {
     });
     listLeadSourcesMock.mockResolvedValue({ data: [leadSource] });
     listUsersMock.mockResolvedValue({ data: [user], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
-    listAccountsMock.mockResolvedValue({ data: [account], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
-    listFacilitiesMock.mockResolvedValue({ data: [facility], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     createLeadMock.mockResolvedValue({ id: 'lead-2' });
     archiveLeadMock.mockResolvedValue({ ...lead, archivedAt: new Date().toISOString() });
     restoreLeadMock.mockResolvedValue(lead);
-    canConvertLeadMock.mockResolvedValue({ canConvert: true });
-    convertLeadMock.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -284,6 +223,5 @@ describe('LeadsList', () => {
 
     await screen.findAllByText('Jane Smith');
     expect(screen.queryByTitle(/convert to account/i)).not.toBeInTheDocument();
-    expect(convertLeadMock).not.toHaveBeenCalled();
   });
 });
