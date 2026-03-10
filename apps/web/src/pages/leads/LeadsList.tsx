@@ -35,6 +35,7 @@ import { listUsers } from '../../lib/users';
 import type { Lead, CreateLeadInput, LeadSource } from '../../types/crm';
 import type { User } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
+import { getLeadStatusLabel } from '../../lib/leadStatus';
 
 const LEAD_STATUSES = [
   { value: 'lead', label: 'Lead' },
@@ -46,10 +47,6 @@ const LEAD_STATUSES = [
   { value: 'lost', label: 'Lost' },
   { value: 'reopened', label: 'Reopened' },
 ];
-
-const LEAD_STATUS_LABELS = new Map(
-  LEAD_STATUSES.map((status) => [status.value, status.label])
-);
 
 const CREATE_LEAD_SOURCE_OPTIONS = [
   { value: 'Website', label: 'Website' },
@@ -185,10 +182,6 @@ const getInitials = (name: string): string => {
 const isValidLeadStatus = (value: string | null): value is string => {
   if (!value) return false;
   return LEAD_STATUSES.some((status) => status.value === value);
-};
-
-const getLeadStatusLabel = (status: string): string => {
-  return LEAD_STATUS_LABELS.get(status) ?? status;
 };
 
 const LeadsList = () => {

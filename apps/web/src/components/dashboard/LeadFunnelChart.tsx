@@ -10,6 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import { Card } from '../ui/Card';
+import { getLeadStatusLabel } from '../../lib/leadStatus';
 
 interface LeadFunnelChartProps {
   data: { status: string; count: number }[];
@@ -26,21 +27,10 @@ const STATUS_COLORS: Record<string, string> = {
   reopened: '#64748b',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  lead: 'New Lead',
-  walk_through_booked: 'Walk-through Booked',
-  walk_through_completed: 'Walk-through Done',
-  proposal_sent: 'Proposal Sent',
-  negotiation: 'Negotiation',
-  won: 'Won',
-  lost: 'Lost',
-  reopened: 'Reopened',
-};
-
 const LeadFunnelChart: React.FC<LeadFunnelChartProps> = ({ data }) => {
   const chartData = data.map((d) => ({
     ...d,
-    label: STATUS_LABELS[d.status] || d.status,
+    label: getLeadStatusLabel(d.status),
     fill: STATUS_COLORS[d.status] || '#94a3b8',
   }));
 

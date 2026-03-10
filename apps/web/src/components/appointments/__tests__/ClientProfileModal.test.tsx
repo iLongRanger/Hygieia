@@ -285,6 +285,23 @@ describe('ClientProfileModal', () => {
       expect(screen.getByText(/unconverted lead/i)).toBeInTheDocument();
     });
 
+    it('should use the canonical crm status label for walkthrough statuses', async () => {
+      (getLead as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...mockLead,
+        status: 'walk_through_completed',
+      });
+
+      render(
+        <ClientProfileModal
+          isOpen={true}
+          onClose={() => {}}
+          leadId="lead-1"
+        />
+      );
+
+      expect(await screen.findByText('Walk Through Completed')).toBeInTheDocument();
+    });
+
     it('should fetch account data for converted lead', async () => {
       (getLead as ReturnType<typeof vi.fn>).mockResolvedValue(mockConvertedLead);
       (getAccount as ReturnType<typeof vi.fn>).mockResolvedValue(mockAccount);

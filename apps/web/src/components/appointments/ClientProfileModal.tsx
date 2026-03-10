@@ -24,6 +24,7 @@ import type { Account, Lead } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import type { Proposal } from '../../types/proposal';
 import type { Contract, ContractStatus } from '../../types/contract';
+import { getLeadStatusLabel } from '../../lib/leadStatus';
 
 interface ClientProfileModalProps {
   isOpen: boolean;
@@ -191,7 +192,7 @@ export const ClientProfileModal = ({
                     {lead.companyName || lead.contactName}
                   </div>
                   <Badge variant={getLeadStatusVariant(lead.status)}>
-                    {lead.status.replace('_', ' ')}
+                    {getLeadStatusLabel(lead.status)}
                   </Badge>
                 </div>
               </div>
