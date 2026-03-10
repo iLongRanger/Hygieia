@@ -6,6 +6,19 @@ import { createNotification } from '../notificationService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
+    $transaction: jest.fn(),
+    account: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    contact: {
+      create: jest.fn(),
+    },
+    facility: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
     lead: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -19,6 +32,10 @@ jest.mock('../../lib/prisma', () => ({
 
 jest.mock('../notificationService', () => ({
   createNotification: jest.fn(),
+}));
+
+jest.mock('../geocodingService', () => ({
+  geocodeAddressIfNeeded: jest.fn(async (address) => address),
 }));
 
 describe('leadService', () => {
@@ -458,6 +475,73 @@ describe('leadService', () => {
         select: { id: true },
       });
       expect(result).toEqual({ id: 'lead-123' });
+    });
+  });
+
+  describe('convertLead', () => {
+    it('should preserve existing lead status when converting without a walkthrough booking', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      const updatedLead = {
+        ...existingLead,
+        convertedToAccountId: 'account-1',
+        convertedAt: new Date('2026-03-10T10:00:00Z'),
+        convertedByUserId: 'user-1',
+      };
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
+            findUnique: jest.fn(),
+          },
+          contact: {
+            create: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              name: 'Jane Smith',
+              email: 'jane@example.com',
+            }),
+          },
+          facility: {
+            create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+          },
+          lead: {
+            update: jest.fn().mockResolvedValue(updatedLead),
+          },
+        })
+      );
+
+      const result = await leadService.convertLead(leadId, {
+        createNewAccount: true,
+        accountData: {
+          name: 'Acme Corporation',
+          type: 'commercial',
+        },
+        facilityOption: 'new',
+        facilityData: {
+          name: 'HQ',
+          address: {
+            street: '123 Main St',
+          },
+        },
+        userId: 'user-1',
+      });
+
+      expect(result.lead.status).toBe('lead');
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
 });

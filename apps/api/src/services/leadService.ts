@@ -13,8 +13,6 @@ const AUTO_LEAD_STATUS_RANK: Record<string, number> = {
   negotiation: 4,
   won: 5,
 };
-const CONVERSION_TARGET_STATUS = 'walk_through_booked';
-
 function shouldAutoAdvanceLeadStatus(currentStatus: string, targetStatus: string): boolean {
   // Do not auto-override terminal/manual outcomes.
   if (currentStatus === 'won' || currentStatus === 'lost') {
@@ -645,16 +643,9 @@ export async function convertLead(
       facility = { id: existingFacility.id, name: existingFacility.name };
     }
 
-    // Update lead with conversion tracking
-    const shouldAdvanceStatusOnConversion = shouldAutoAdvanceLeadStatus(
-      lead.status,
-      CONVERSION_TARGET_STATUS
-    );
-
     const updatedLead = await tx.lead.update({
       where: { id: leadId },
       data: {
-        ...(shouldAdvanceStatusOnConversion ? { status: CONVERSION_TARGET_STATUS } : {}),
         convertedToAccountId: accountId,
         convertedAt: new Date(),
         convertedByUserId: input.userId,
