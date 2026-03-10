@@ -294,6 +294,20 @@ describe('LeadDetail', () => {
     });
   });
 
+  it('does not offer walkthrough statuses in edit modal when no walkthrough exists', async () => {
+    const userEventInstance = userEvent.setup();
+    listAppointmentsMock.mockResolvedValue([]);
+
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /edit lead/i }));
+    const statusSelect = await screen.findByLabelText(/status/i);
+
+    expect(within(statusSelect).queryByRole('option', { name: /walk through booked/i })).not.toBeInTheDocument();
+    expect(within(statusSelect).queryByRole('option', { name: /walk through completed/i })).not.toBeInTheDocument();
+    expect(within(statusSelect).queryByRole('option', { name: /proposal sent/i })).not.toBeInTheDocument();
+  });
+
   it('requires review before submitting walkthrough completion', async () => {
     const userEventInstance = userEvent.setup();
     getLeadMock.mockResolvedValue({

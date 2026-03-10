@@ -19,6 +19,9 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    appointment: {
+      findFirst: jest.fn(),
+    },
     lead: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -427,6 +430,14 @@ describe('leadService', () => {
           }),
         })
       );
+    });
+
+    it('should reject walkthrough booked status when no walkthrough is scheduled', async () => {
+      (prisma.appointment.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        leadService.updateLead('lead-123', { status: 'walk_through_booked' })
+      ).rejects.toThrow('Walkthrough must be scheduled before marking lead as walkthrough booked');
     });
   });
 

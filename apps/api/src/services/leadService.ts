@@ -306,14 +306,30 @@ export async function createLead(input: LeadCreateInput) {
 export async function updateLead(id: string, input: LeadUpdateInput) {
   const updateData: Prisma.LeadUpdateInput = {};
 
-  if (input.status === 'proposal_sent') {
+  if (
+    input.status === 'walk_through_booked'
+    || input.status === 'walk_through_completed'
+    || input.status === 'proposal_sent'
+  ) {
     const latestAppointment = await prisma.appointment.findFirst({
       where: { leadId: id, type: 'walk_through' },
       orderBy: { scheduledStart: 'desc' },
       select: { status: true },
     });
 
-    if (!latestAppointment || latestAppointment.status !== 'completed') {
+    if (input.status === 'walk_through_booked') {
+      if (!latestAppointment || !['scheduled', 'rescheduled', 'completed'].includes(latestAppointment.status)) {
+        throw new BadRequestError('Walkthrough must be scheduled before marking lead as walkthrough booked');
+      }
+    }
+
+    if (input.status === 'walk_through_completed') {
+      if (!latestAppointment || latestAppointment.status !== 'completed') {
+        throw new BadRequestError('Walkthrough must be completed before marking lead as walkthrough completed');
+      }
+    }
+
+    if (input.status === 'proposal_sent' && (!latestAppointment || latestAppointment.status !== 'completed')) {
       throw new BadRequestError('Walkthrough must be completed before sending proposal');
     }
   }

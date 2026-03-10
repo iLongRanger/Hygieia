@@ -54,6 +54,8 @@ const ACCOUNT_TYPES = [
   { value: 'non_profit', label: 'Non-Profit' },
 ];
 
+const TERMINAL_EDITABLE_STATUSES = new Set(['negotiation', 'won', 'lost', 'reopened']);
+
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const hour = String(Math.floor(index / 2)).padStart(2, '0');
@@ -190,6 +192,26 @@ const LeadDetail = () => {
     () => users.filter(isLeadAssignableUser),
     [users]
   );
+  const editableLeadStatuses = useMemo(() => {
+    const options = [LEAD_STATUSES[0]];
+    const hasWalkthroughAppointment = appointments.some((appointment) => appointment.type === 'walk_through');
+    const hasCompletedWalkthrough = appointments.some(
+      (appointment) => appointment.type === 'walk_through' && appointment.status === 'completed'
+    );
+
+    if (hasWalkthroughAppointment) {
+      options.push(LEAD_STATUSES[1]);
+    }
+
+    if (hasCompletedWalkthrough) {
+      options.push(LEAD_STATUSES[2], LEAD_STATUSES[3]);
+    }
+
+    return [
+      ...options,
+      ...LEAD_STATUSES.filter((status) => TERMINAL_EDITABLE_STATUSES.has(status.value)),
+    ];
+  }, [appointments]);
 
   const fetchLead = useCallback(async () => {
     if (!id) return;
@@ -1157,7 +1179,7 @@ const LeadDetail = () => {
             />
             <Select
               label="Status"
-              options={LEAD_STATUSES}
+              options={editableLeadStatuses}
               value={editFormData.status || 'lead'}
               onChange={(value) => setEditFormData({ ...editFormData, status: value })}
             />
