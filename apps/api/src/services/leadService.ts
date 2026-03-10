@@ -171,8 +171,17 @@ function deriveOpportunityTitle(lead: {
   return lead.companyName?.trim() || lead.contactName.trim();
 }
 
+type OpportunityPipelineStatus =
+  | 'lead'
+  | 'walk_through_booked'
+  | 'walk_through_completed'
+  | 'proposal_sent'
+  | 'negotiation'
+  | 'won'
+  | 'lost';
+
 function getOpportunityStatusUpdate(
-  targetStatus: AutoLeadStatusTarget
+  targetStatus: OpportunityPipelineStatus
 ): {
   status: string;
   wonAt?: Date | null;
@@ -201,6 +210,9 @@ function getOpportunityStatusUpdate(
 
   return {
     status: targetStatus,
+    wonAt: null,
+    lostAt: null,
+    closedAt: null,
   };
 }
 
@@ -257,7 +269,7 @@ async function syncOpportunityFromLead(
       lostReason: lead.lostReason ?? null,
       ownerUserId: lead.assignedToUserId ?? null,
       archivedAt: lead.archivedAt ?? null,
-      ...getOpportunityStatusUpdate(lead.status as AutoLeadStatusTarget),
+      ...getOpportunityStatusUpdate(lead.status as OpportunityPipelineStatus),
     },
   });
 }
@@ -927,7 +939,7 @@ export async function convertLead(
       createdAt: lead.createdAt,
       updatedAt: lead.updatedAt,
       archivedAt: lead.archivedAt,
-      ...getOpportunityStatusUpdate(lead.status as AutoLeadStatusTarget),
+      ...getOpportunityStatusUpdate(lead.status as OpportunityPipelineStatus),
     } satisfies Prisma.OpportunityUncheckedCreateInput;
 
     const existingOpportunity = await tx.opportunity.findFirst({

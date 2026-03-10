@@ -460,6 +460,31 @@ describe('leadService', () => {
         leadService.updateLead('lead-123', { status: 'walk_through_booked' })
       ).rejects.toThrow('Walkthrough must be scheduled before marking lead as walkthrough booked');
     });
+
+    it('should clear opportunity closed timestamps when a lost lead is reopened', async () => {
+      const mockLead = createTestLead({
+        id: 'lead-123',
+        status: 'negotiation',
+        contactName: 'Updated Name',
+        assignedToUser: null,
+        archivedAt: null,
+      });
+
+      (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({ id: 'opp-1' });
+      (prisma.lead.update as jest.Mock).mockResolvedValue(mockLead);
+
+      await leadService.updateLead('lead-123', { status: 'negotiation' });
+
+      expect(prisma.opportunity.update).toHaveBeenCalledWith({
+        where: { id: 'opp-1' },
+        data: expect.objectContaining({
+          status: 'negotiation',
+          wonAt: null,
+          lostAt: null,
+          closedAt: null,
+        }),
+      });
+    });
   });
 
   describe('archiveLead', () => {
@@ -987,6 +1012,38 @@ describe('leadService', () => {
       await leadService.autoSetLeadStatusForAccount('account-1', 'lost');
 
       expect(prisma.lead.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('autoSetLeadStatusForOpportunity', () => {
+    it('should clear closed timestamps when reopening a lost opportunity', async () => {
+      (prisma.opportunity.findUnique as jest.Mock).mockResolvedValue({
+        id: 'opp-1',
+        status: 'lost',
+        archivedAt: null,
+        leadId: 'lead-1',
+      });
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lead-1',
+        status: 'lost',
+        archivedAt: null,
+      });
+
+      await leadService.autoSetLeadStatusForOpportunity('opp-1', 'negotiation');
+
+      expect(prisma.opportunity.update).toHaveBeenCalledWith({
+        where: { id: 'opp-1' },
+        data: {
+          status: 'negotiation',
+          wonAt: null,
+          lostAt: null,
+          closedAt: null,
+        },
+      });
+      expect(prisma.lead.update).toHaveBeenCalledWith({
+        where: { id: 'lead-1' },
+        data: { status: 'negotiation' },
+      });
     });
   });
 });
