@@ -11,6 +11,7 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     contact: {
       create: jest.fn(),
@@ -22,6 +23,7 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     appointment: {
       findFirst: jest.fn(),
@@ -50,6 +52,8 @@ describe('leadService', () => {
     jest.clearAllMocks();
     (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.account.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.facility.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   describe('listLeads', () => {
@@ -81,17 +85,17 @@ describe('leadService', () => {
     });
 
     it('should filter by status', async () => {
-      const mockLeads = [createTestLead({ status: 'qualified' })];
+      const mockLeads = [createTestLead({ status: 'lead' })];
 
       (prisma.lead.findMany as jest.Mock).mockResolvedValue(mockLeads);
       (prisma.lead.count as jest.Mock).mockResolvedValue(1);
 
-      await leadService.listLeads({ status: 'qualified' });
+      await leadService.listLeads({ status: 'lead' });
 
       expect(prisma.lead.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            status: 'qualified',
+            status: 'lead',
             archivedAt: null,
           }),
         })
@@ -355,7 +359,7 @@ describe('leadService', () => {
   describe('updateLead', () => {
     it('should update lead with provided fields', async () => {
       const input: leadService.LeadUpdateInput = {
-        status: 'qualified',
+        status: 'negotiation',
         contactName: 'Updated Name',
         estimatedValue: 15000,
       };
@@ -369,7 +373,7 @@ describe('leadService', () => {
       expect(prisma.lead.update).toHaveBeenCalledWith({
         where: { id: 'lead-123' },
         data: expect.objectContaining({
-          status: 'qualified',
+          status: 'negotiation',
           contactName: 'Updated Name',
           estimatedValue: 15000,
         }),
@@ -523,6 +527,7 @@ describe('leadService', () => {
             create: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
             findUnique: jest.fn(),
             findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           contact: {
             findFirst: jest.fn().mockResolvedValue(null),
@@ -538,6 +543,7 @@ describe('leadService', () => {
             findUnique: jest.fn(),
             update: jest.fn(),
             findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
@@ -599,6 +605,7 @@ describe('leadService', () => {
             create: jest.fn(),
             findUnique: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
             findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           contact: {
             findFirst: jest.fn().mockResolvedValue({
@@ -616,6 +623,7 @@ describe('leadService', () => {
             findUnique: jest.fn(),
             update: jest.fn(),
             findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
@@ -668,10 +676,15 @@ describe('leadService', () => {
           account: {
             create: jest.fn(),
             findUnique: jest.fn(),
-            findFirst: jest.fn().mockResolvedValue({
-              id: 'account-1',
-              name: 'Acme Corporation',
-            }),
+            findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([
+              {
+                id: 'account-1',
+                name: 'Acme Corporation',
+                billingEmail: null,
+                billingPhone: null,
+              },
+            ]),
           },
           contact: {
             findFirst: jest.fn(),
@@ -683,6 +696,7 @@ describe('leadService', () => {
             findUnique: jest.fn(),
             update: jest.fn(),
             findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           lead: {
             update: jest.fn(),
@@ -729,6 +743,7 @@ describe('leadService', () => {
             create: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
             findUnique: jest.fn(),
             findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           contact: {
             findFirst: jest.fn().mockResolvedValue(null),
@@ -743,10 +758,13 @@ describe('leadService', () => {
             create: jest.fn(),
             findUnique: jest.fn(),
             update: jest.fn(),
-            findFirst: jest.fn().mockResolvedValue({
-              id: 'facility-1',
-              name: 'HQ',
-            }),
+            findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([
+              {
+                id: 'facility-1',
+                name: 'HQ',
+              },
+            ]),
           },
           lead: {
             update: jest.fn(),
@@ -799,6 +817,7 @@ describe('leadService', () => {
               },
             }),
             findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           contact: {
             findFirst: jest.fn(),
@@ -810,6 +829,7 @@ describe('leadService', () => {
             findUnique: jest.fn(),
             update: jest.fn(),
             findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
           },
           lead: {
             update: jest.fn(),
@@ -826,6 +846,72 @@ describe('leadService', () => {
           userId: 'user-1',
         })
       ).rejects.toThrow('already linked to another lead');
+    });
+
+    it('should block creating a duplicate account during conversion by normalized name', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corp',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([
+              {
+                id: 'account-1',
+                name: 'Acme Corporation, LLC',
+                billingEmail: null,
+                billingPhone: null,
+              },
+            ]),
+          },
+          contact: {
+            findFirst: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+          },
+          facility: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
+          },
+          lead: {
+            update: jest.fn(),
+          },
+        })
+      );
+
+      await expect(
+        leadService.convertLead(leadId, {
+          createNewAccount: true,
+          accountData: {
+            name: ' ACME Corp ',
+            type: 'commercial',
+          },
+          facilityOption: 'new',
+          facilityData: {
+            name: 'HQ',
+            address: {
+              street: '123 Main St',
+            },
+          },
+          userId: 'user-1',
+        })
+      ).rejects.toThrow('A matching account already exists');
     });
   });
 

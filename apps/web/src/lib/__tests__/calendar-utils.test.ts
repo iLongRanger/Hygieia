@@ -215,7 +215,7 @@ describe('calendar-utils', () => {
       notes: null,
       completedAt: null,
       rescheduledFromId: null,
-      lead: { id: 'lead-1', contactName: 'Test', companyName: null, status: 'new' },
+      lead: { id: 'lead-1', contactName: 'Test', companyName: null, status: 'lead' },
       account: null,
       assignedToUser: { id: 'user-1', fullName: 'Test User', email: 'test@example.com' },
       createdByUser: { id: 'user-1', fullName: 'Test User' },

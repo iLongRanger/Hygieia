@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { geocodeAddressIfNeeded } from './geocodingService';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { completeAppointment } from './appointmentService';
+import { hasNormalizedNameMatch, normalizeComparableName } from '../lib/dedupe';
 
 export interface FacilityListParams {
   page?: number;
@@ -113,23 +114,26 @@ async function assertNoDuplicateFacility(
   },
   excludeFacilityId?: string
 ): Promise<void> {
-  const normalizedName = input.name?.trim();
+  const normalizedName = normalizeComparableName(input.name);
   if (!normalizedName) {
     return;
   }
 
-  const duplicate = await prisma.facility.findFirst({
+  const candidates = await prisma.facility.findMany({
     where: {
       accountId: input.accountId,
       archivedAt: null,
       ...(excludeFacilityId ? { id: { not: excludeFacilityId } } : {}),
-      name: { equals: normalizedName, mode: 'insensitive' },
     },
     select: {
       id: true,
       name: true,
     },
   });
+
+  const duplicate = candidates.find((candidate) =>
+    hasNormalizedNameMatch(candidate.name, normalizedName)
+  );
 
   if (duplicate) {
     throw new BadRequestError(

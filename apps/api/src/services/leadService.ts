@@ -4,6 +4,14 @@ import { BadRequestError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import { geocodeAddressIfNeeded } from './geocodingService';
 import logger from '../lib/logger';
+import {
+  hasNormalizedEmailMatch,
+  hasNormalizedNameMatch,
+  hasNormalizedPhoneMatch,
+  normalizeComparableEmail,
+  normalizeComparableName,
+  normalizeComparablePhone,
+} from '../lib/dedupe';
 
 const AUTO_LEAD_STATUS_RANK: Record<string, number> = {
   lead: 0,
@@ -26,10 +34,6 @@ function shouldAutoAdvanceLeadStatus(currentStatus: string, targetStatus: string
   if (currentRank === undefined) return true;
 
   return targetRank > currentRank;
-}
-
-function normalizeComparableEmail(value: string | null | undefined): string {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 export interface LeadListParams {
@@ -546,22 +550,28 @@ export async function convertLead(
       const proposedBillingEmail = normalizeComparableEmail(
         input.accountData.billingEmail || lead.primaryEmail
       );
+      const proposedBillingPhone = normalizeComparablePhone(
+        input.accountData.billingPhone || lead.primaryPhone
+      );
+      const rawBillingPhone = input.accountData.billingPhone || lead.primaryPhone;
 
-      const duplicateAccount = await tx.account.findFirst({
+      const accountCandidates = await tx.account.findMany({
         where: {
           archivedAt: null,
-          OR: [
-            { name: { equals: proposedAccountName, mode: 'insensitive' } },
-            ...(proposedBillingEmail
-              ? [{ billingEmail: { equals: proposedBillingEmail, mode: 'insensitive' } }]
-              : []),
-          ],
         },
         select: {
           id: true,
           name: true,
+          billingEmail: true,
+          billingPhone: true,
         },
       });
+
+      const duplicateAccount = accountCandidates.find((candidate) => (
+        hasNormalizedNameMatch(candidate.name, proposedAccountName)
+        || hasNormalizedEmailMatch(candidate.billingEmail, proposedBillingEmail)
+        || hasNormalizedPhoneMatch(candidate.billingPhone, proposedBillingPhone)
+      ));
 
       if (duplicateAccount) {
         throw new BadRequestError(
@@ -576,8 +586,8 @@ export async function convertLead(
           type: input.accountData.type,
           industry: input.accountData.industry,
           website: input.accountData.website,
-          billingEmail: input.accountData.billingEmail || lead.primaryEmail,
-          billingPhone: input.accountData.billingPhone || lead.primaryPhone,
+          billingEmail: proposedBillingEmail || null,
+          billingPhone: rawBillingPhone || null,
           billingAddress: lead.address as Prisma.InputJsonValue,
           paymentTerms: input.accountData.paymentTerms || 'NET30',
           notes: input.accountData.notes,
@@ -685,17 +695,20 @@ export async function convertLead(
       }
 
       const proposedFacilityName = input.facilityData.name.trim();
-      const duplicateFacility = await tx.facility.findFirst({
+      const facilityCandidates = await tx.facility.findMany({
         where: {
           accountId,
           archivedAt: null,
-          name: { equals: proposedFacilityName, mode: 'insensitive' },
         },
         select: {
           id: true,
           name: true,
         },
       });
+
+      const duplicateFacility = facilityCandidates.find((candidate) =>
+        hasNormalizedNameMatch(candidate.name, proposedFacilityName)
+      );
 
       if (duplicateFacility) {
         throw new BadRequestError(

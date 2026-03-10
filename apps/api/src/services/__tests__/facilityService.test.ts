@@ -40,7 +40,7 @@ jest.mock('../geocodingService', () => ({
 describe('facilityService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.facility.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   describe('listFacilities', () => {
@@ -201,10 +201,12 @@ describe('facilityService', () => {
     });
 
     it('should block duplicate facility creation for the same account', async () => {
-      (prisma.facility.findFirst as jest.Mock).mockResolvedValue({
-        id: 'facility-1',
-        name: 'HQ Building',
-      });
+      (prisma.facility.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'facility-1',
+          name: 'HQ Building',
+        },
+      ]);
 
       await expect(
         facilityService.createFacility({
@@ -216,6 +218,24 @@ describe('facilityService', () => {
       ).rejects.toThrow('already exists for this account');
 
       expect(prisma.facility.create).not.toHaveBeenCalled();
+    });
+
+    it('should block duplicate facility creation by normalized name', async () => {
+      (prisma.facility.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'facility-1',
+          name: 'HQ-East',
+        },
+      ]);
+
+      await expect(
+        facilityService.createFacility({
+          accountId: 'account-123',
+          name: ' hq east ',
+          address: { street: '123 Main St' },
+          createdByUserId: 'user-123',
+        })
+      ).rejects.toThrow('already exists for this account');
     });
   });
 
@@ -285,10 +305,12 @@ describe('facilityService', () => {
         accountId: 'account-123',
         name: 'Original Name',
       });
-      (prisma.facility.findFirst as jest.Mock).mockResolvedValue({
-        id: 'facility-999',
-        name: 'HQ Building',
-      });
+      (prisma.facility.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'facility-999',
+          name: 'HQ Building',
+        },
+      ]);
 
       await expect(
         facilityService.updateFacility('facility-123', {

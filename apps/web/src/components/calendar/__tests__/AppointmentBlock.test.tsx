@@ -69,7 +69,7 @@ describe('AppointmentBlock', () => {
           id: 'lead-1',
           contactName: 'John Smith',
           companyName: null,
-          status: 'new',
+          status: 'lead',
         },
       });
       render(

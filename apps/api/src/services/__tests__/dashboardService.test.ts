@@ -54,8 +54,8 @@ describe('dashboardService', () => {
       .mockResolvedValueOnce(2) // acceptedInPeriod
       .mockResolvedValueOnce(1); // rejectedInPeriod
     (prisma.lead.groupBy as jest.Mock).mockResolvedValue([
-      { status: 'new', _count: { id: 6 } },
-      { status: 'qualified', _count: { id: 4 } },
+      { status: 'lead', _count: { id: 6 } },
+      { status: 'walk_through_booked', _count: { id: 4 } },
     ]);
     (prisma.lead.aggregate as jest.Mock).mockResolvedValue({ _sum: { estimatedValue: 9000 } });
     (prisma.proposal.groupBy as jest.Mock).mockResolvedValue([
@@ -90,8 +90,8 @@ describe('dashboardService', () => {
       activeTeams: 2,
     });
     expect(result.leadsByStatus).toEqual([
-      { status: 'new', count: 6 },
-      { status: 'qualified', count: 4 },
+      { status: 'lead', count: 6 },
+      { status: 'walk_through_booked', count: 4 },
     ]);
     expect(result.proposalsByStatus).toEqual([
       { status: 'sent', count: 3, totalAmount: 3000 },

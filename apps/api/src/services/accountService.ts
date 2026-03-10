@@ -1,6 +1,14 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
+import {
+  hasNormalizedEmailMatch,
+  hasNormalizedNameMatch,
+  hasNormalizedPhoneMatch,
+  normalizeComparableEmail,
+  normalizeComparableName,
+  normalizeComparablePhone,
+} from '../lib/dedupe';
 
 export interface AccountListParams {
   page?: number;
@@ -98,47 +106,41 @@ const accountSelect = {
   },
 } satisfies Prisma.AccountSelect;
 
-function normalizeComparableEmail(value: string | null | undefined): string {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
-
 async function assertNoDuplicateAccount(
   input: {
     name?: string;
     billingEmail?: string | null;
+    billingPhone?: string | null;
   },
   excludeAccountId?: string
 ): Promise<void> {
-  const normalizedName = input.name?.trim();
+  const normalizedName = normalizeComparableName(input.name);
   const normalizedBillingEmail = normalizeComparableEmail(input.billingEmail);
-  const duplicateFilters: Prisma.AccountWhereInput[] = [];
+  const normalizedBillingPhone = normalizeComparablePhone(input.billingPhone);
 
-  if (normalizedName) {
-    duplicateFilters.push({
-      name: { equals: normalizedName, mode: 'insensitive' },
-    });
-  }
-
-  if (normalizedBillingEmail) {
-    duplicateFilters.push({
-      billingEmail: { equals: normalizedBillingEmail, mode: 'insensitive' },
-    });
-  }
-
-  if (duplicateFilters.length === 0) {
+  if (!normalizedName && !normalizedBillingEmail && !normalizedBillingPhone) {
     return;
   }
 
-  const duplicate = await prisma.account.findFirst({
+  const candidates = await prisma.account.findMany({
     where: {
       archivedAt: null,
       ...(excludeAccountId ? { id: { not: excludeAccountId } } : {}),
-      OR: duplicateFilters,
     },
     select: {
       id: true,
       name: true,
+      billingEmail: true,
+      billingPhone: true,
     },
+  });
+
+  const duplicate = candidates.find((candidate) => {
+    return (
+      hasNormalizedNameMatch(candidate.name, normalizedName)
+      || hasNormalizedEmailMatch(candidate.billingEmail, normalizedBillingEmail)
+      || hasNormalizedPhoneMatch(candidate.billingPhone, normalizedBillingPhone)
+    );
   });
 
   if (duplicate) {
@@ -259,6 +261,7 @@ export async function createAccount(input: AccountCreateInput) {
   await assertNoDuplicateAccount({
     name: normalizedName,
     billingEmail: normalizedBillingEmail,
+    billingPhone: input.billingPhone,
   });
 
   return prisma.account.create({
@@ -287,6 +290,7 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
     | {
         name: string;
         billingEmail: string | null;
+        billingPhone: string | null;
       }
     | null = null;
 
@@ -300,6 +304,7 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
       select: {
         name: true,
         billingEmail: true,
+        billingPhone: true,
       },
     });
 
@@ -310,7 +315,11 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
     return currentAccount;
   };
 
-  if (input.name !== undefined || input.billingEmail !== undefined) {
+  if (
+    input.name !== undefined
+    || input.billingEmail !== undefined
+    || input.billingPhone !== undefined
+  ) {
     const existingAccount = await getCurrentAccount();
     await assertNoDuplicateAccount(
       {
@@ -319,6 +328,10 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
           input.billingEmail !== undefined
             ? input.billingEmail
             : existingAccount.billingEmail,
+        billingPhone:
+          input.billingPhone !== undefined
+            ? input.billingPhone
+            : existingAccount.billingPhone,
       },
       id
     );

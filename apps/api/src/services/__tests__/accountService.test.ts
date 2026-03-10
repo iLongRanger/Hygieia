@@ -20,7 +20,7 @@ jest.mock('../../lib/prisma', () => ({
 describe('accountService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.account.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   describe('listAccounts', () => {
@@ -277,10 +277,14 @@ describe('accountService', () => {
     });
 
     it('should block duplicate account creation by name', async () => {
-      (prisma.account.findFirst as jest.Mock).mockResolvedValue({
-        id: 'account-1',
-        name: 'ACME Corp',
-      });
+      (prisma.account.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'account-1',
+          name: 'ACME Corp',
+          billingEmail: null,
+          billingPhone: null,
+        },
+      ]);
 
       await expect(
         accountService.createAccount({
@@ -291,6 +295,45 @@ describe('accountService', () => {
       ).rejects.toThrow('A matching account already exists');
 
       expect(prisma.account.create).not.toHaveBeenCalled();
+    });
+
+    it('should block duplicate account creation by normalized company name', async () => {
+      (prisma.account.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'account-1',
+          name: 'Acme Corporation, LLC',
+          billingEmail: null,
+          billingPhone: null,
+        },
+      ]);
+
+      await expect(
+        accountService.createAccount({
+          name: ' ACME Corp ',
+          type: 'commercial',
+          createdByUserId: 'user-123',
+        })
+      ).rejects.toThrow('A matching account already exists');
+    });
+
+    it('should block duplicate account creation by normalized phone', async () => {
+      (prisma.account.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'account-1',
+          name: 'Different Name',
+          billingEmail: null,
+          billingPhone: '(555) 0100',
+        },
+      ]);
+
+      await expect(
+        accountService.createAccount({
+          name: 'Fresh Name',
+          type: 'commercial',
+          billingPhone: '555-0100',
+          createdByUserId: 'user-123',
+        })
+      ).rejects.toThrow('A matching account already exists');
     });
   });
 
@@ -307,6 +350,7 @@ describe('accountService', () => {
       (prisma.account.findUnique as jest.Mock).mockResolvedValue({
         name: 'Original Name',
         billingEmail: 'old@email.com',
+        billingPhone: '555-0000',
       });
       (prisma.account.update as jest.Mock).mockResolvedValue(mockAccount);
 
@@ -368,11 +412,16 @@ describe('accountService', () => {
       (prisma.account.findUnique as jest.Mock).mockResolvedValue({
         name: 'Original Co',
         billingEmail: null,
+        billingPhone: null,
       });
-      (prisma.account.findFirst as jest.Mock).mockResolvedValue({
-        id: 'account-999',
-        name: 'ACME Corp',
-      });
+      (prisma.account.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'account-999',
+          name: 'ACME Corp',
+          billingEmail: null,
+          billingPhone: null,
+        },
+      ]);
 
       await expect(
         accountService.updateAccount('account-123', {
@@ -381,6 +430,28 @@ describe('accountService', () => {
       ).rejects.toThrow('A matching account already exists');
 
       expect(prisma.account.update).not.toHaveBeenCalled();
+    });
+
+    it('should block updating an account to a normalized duplicate phone', async () => {
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Original Co',
+        billingEmail: null,
+        billingPhone: '555-9999',
+      });
+      (prisma.account.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'account-999',
+          name: 'Another Co',
+          billingEmail: null,
+          billingPhone: '(555) 555-0100',
+        },
+      ]);
+
+      await expect(
+        accountService.updateAccount('account-123', {
+          billingPhone: '1 (555) 555-0100',
+        })
+      ).rejects.toThrow('A matching account already exists');
     });
   });
 
