@@ -294,18 +294,60 @@ describe('LeadDetail', () => {
     });
   });
 
-  it('does not offer walkthrough statuses in edit modal when no walkthrough exists', async () => {
+  it('shows status as read-only in edit modal', async () => {
     const userEventInstance = userEvent.setup();
-    listAppointmentsMock.mockResolvedValue([]);
-
     render(<LeadDetail />);
 
     await userEventInstance.click(await screen.findByRole('button', { name: /edit lead/i }));
-    const statusSelect = await screen.findByLabelText(/status/i);
+    const modal = await screen.findByRole('dialog', { name: /edit lead/i });
 
-    expect(within(statusSelect).queryByRole('option', { name: /walk through booked/i })).not.toBeInTheDocument();
-    expect(within(statusSelect).queryByRole('option', { name: /walk through completed/i })).not.toBeInTheDocument();
-    expect(within(statusSelect).queryByRole('option', { name: /proposal sent/i })).not.toBeInTheDocument();
+    expect(within(modal).queryByLabelText(/status/i)).not.toBeInTheDocument();
+    expect(within(modal).getByText(/^status$/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/^lead$/i)).toBeInTheDocument();
+  });
+
+  it('marks a lead as lost from the dedicated action', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /mark lost/i }));
+    const modal = await screen.findByRole('dialog', { name: /mark lead as lost/i });
+
+    await userEventInstance.type(within(modal).getByLabelText(/lost reason/i), 'Budget was cut');
+    await userEventInstance.click(within(modal).getByRole('button', { name: /^mark lost$/i }));
+
+    await waitFor(() => {
+      expect(updateLeadMock).toHaveBeenCalledWith(
+        'lead-1',
+        expect.objectContaining({
+          status: 'lost',
+          lostReason: 'Budget was cut',
+        })
+      );
+    });
+  });
+
+  it('shows reopen action for lost leads', async () => {
+    const userEventInstance = userEvent.setup();
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      status: 'lost',
+      lostReason: 'Budget was cut',
+    });
+
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /reopen lead/i }));
+
+    await waitFor(() => {
+      expect(updateLeadMock).toHaveBeenCalledWith(
+        'lead-1',
+        expect.objectContaining({
+          status: 'reopened',
+          lostReason: null,
+        })
+      );
+    });
   });
 
   it('requires review before submitting walkthrough completion', async () => {

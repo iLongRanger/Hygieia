@@ -35,17 +35,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { maxLengths } from '../../lib/validation';
 
-const LEAD_STATUSES = [
-  { value: 'lead', label: 'Lead' },
-  { value: 'walk_through_booked', label: 'Walk Through Booked' },
-  { value: 'walk_through_completed', label: 'Walk Through Completed' },
-  { value: 'proposal_sent', label: 'Proposal Sent' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
-  { value: 'reopened', label: 'Reopened' },
-];
-
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
   { value: 'residential', label: 'Residential' },
@@ -53,8 +42,6 @@ const ACCOUNT_TYPES = [
   { value: 'government', label: 'Government' },
   { value: 'non_profit', label: 'Non-Profit' },
 ];
-
-const TERMINAL_EDITABLE_STATUSES = new Set(['negotiation', 'won', 'lost', 'reopened']);
 
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
@@ -149,6 +136,7 @@ const LeadDetail = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showLostModal, setShowLostModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -181,6 +169,7 @@ const LeadDetail = () => {
     notes: '',
   });
   const [completeStep, setCompleteStep] = useState<'details' | 'review'>('details');
+  const [lostReason, setLostReason] = useState('');
 
   const [saving, setSaving] = useState(false);
 
@@ -192,26 +181,6 @@ const LeadDetail = () => {
     () => users.filter(isLeadAssignableUser),
     [users]
   );
-  const editableLeadStatuses = useMemo(() => {
-    const options = [LEAD_STATUSES[0]];
-    const hasWalkthroughAppointment = appointments.some((appointment) => appointment.type === 'walk_through');
-    const hasCompletedWalkthrough = appointments.some(
-      (appointment) => appointment.type === 'walk_through' && appointment.status === 'completed'
-    );
-
-    if (hasWalkthroughAppointment) {
-      options.push(LEAD_STATUSES[1]);
-    }
-
-    if (hasCompletedWalkthrough) {
-      options.push(LEAD_STATUSES[2], LEAD_STATUSES[3]);
-    }
-
-    return [
-      ...options,
-      ...LEAD_STATUSES.filter((status) => TERMINAL_EDITABLE_STATUSES.has(status.value)),
-    ];
-  }, [appointments]);
 
   const fetchLead = useCallback(async () => {
     if (!id) return;
@@ -525,13 +494,11 @@ const LeadDetail = () => {
       secondaryEmail: lead.secondaryEmail,
       secondaryPhone: lead.secondaryPhone,
       leadSourceId: lead.leadSource?.id || null,
-      status: lead.status,
       estimatedValue: lead.estimatedValue ? Number(lead.estimatedValue) : null,
       probability: lead.probability ?? null,
       expectedCloseDate: lead.expectedCloseDate || null,
       assignedToUserId: lead.assignedToUser?.id || null,
       notes: lead.notes,
-      lostReason: lead.lostReason,
     });
     setShowEditModal(true);
   };
@@ -550,6 +517,50 @@ const LeadDetail = () => {
       fetchLead();
     } catch (error) {
       console.error('Failed to update lead:', error);
+      toast.error('Failed to update lead');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleMarkLost = async () => {
+    if (!lead) return;
+    if (!lostReason.trim()) {
+      toast.error('Lost reason is required');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await updateLead(lead.id, {
+        status: 'lost',
+        lostReason: lostReason.trim(),
+      });
+      toast.success('Lead marked as lost');
+      setShowLostModal(false);
+      setLostReason('');
+      fetchLead();
+    } catch (error) {
+      console.error('Failed to mark lead as lost:', error);
+      toast.error('Failed to update lead');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleReopenLead = async () => {
+    if (!lead) return;
+
+    try {
+      setUpdating(true);
+      await updateLead(lead.id, {
+        status: 'reopened',
+        lostReason: null,
+      });
+      toast.success('Lead reopened');
+      fetchLead();
+    } catch (error) {
+      console.error('Failed to reopen lead:', error);
       toast.error('Failed to update lead');
     } finally {
       setUpdating(false);
@@ -585,6 +596,18 @@ const LeadDetail = () => {
         </div>
         {canWriteLeads && (
           <div className="flex items-center gap-2">
+            {lead.status === 'lost' ? (
+              <Button variant="secondary" onClick={handleReopenLead} disabled={updating}>
+                Reopen Lead
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => {
+                setLostReason(lead.lostReason || '');
+                setShowLostModal(true);
+              }}>
+                Mark Lost
+              </Button>
+            )}
             <Button variant="secondary" onClick={openEditModal}>
               Edit Lead
             </Button>
@@ -1177,12 +1200,10 @@ const LeadDetail = () => {
                 setEditFormData({ ...editFormData, leadSourceId: value || null })
               }
             />
-            <Select
-              label="Status"
-              options={editableLeadStatuses}
-              value={editFormData.status || 'lead'}
-              onChange={(value) => setEditFormData({ ...editFormData, status: value })}
-            />
+            <div className="rounded-lg border border-white/10 bg-navy-darker/30 px-3 py-2">
+              <div className="text-sm text-gray-400">Status</div>
+              <div className="text-white">{lead.status.replace(/_/g, ' ')}</div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1251,19 +1272,6 @@ const LeadDetail = () => {
             showCharacterCount
           />
 
-          {editFormData.status === 'lost' && (
-            <Textarea
-              label="Lost Reason"
-              placeholder="Why was this lead lost?"
-              value={editFormData.lostReason || ''}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, lostReason: e.target.value || null })
-              }
-              maxLength={maxLengths.lostReason}
-              showCharacterCount
-            />
-          )}
-
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>
               Cancel
@@ -1274,6 +1282,35 @@ const LeadDetail = () => {
               disabled={!editFormData.contactName}
             >
               Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showLostModal}
+        onClose={() => setShowLostModal(false)}
+        title="Mark Lead as Lost"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            This marks the lead as lost without changing the operational workflow stages manually.
+          </p>
+          <Textarea
+            label="Lost Reason"
+            placeholder="Why was this lead lost?"
+            value={lostReason}
+            onChange={(e) => setLostReason(e.target.value)}
+            maxLength={maxLengths.lostReason}
+            showCharacterCount
+          />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowLostModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMarkLost} isLoading={updating}>
+              Mark Lost
             </Button>
           </div>
         </div>
