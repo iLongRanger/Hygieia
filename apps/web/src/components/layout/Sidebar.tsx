@@ -69,6 +69,7 @@ const navSections: NavSection[] = [
       { to: '/leads', icon: Users, label: 'Leads' },
       { to: '/accounts', icon: Building2, label: 'Accounts' },
       { to: '/contacts', icon: Contact, label: 'Contacts' },
+      { to: '/facilities', icon: Warehouse, label: 'Facilities' },
     ],
   },
   {
@@ -109,7 +110,6 @@ const navSections: NavSection[] = [
     title: 'Manage',
     icon: Settings,
     items: [
-      { to: '/facilities', icon: Warehouse, label: 'Facilities' },
       { to: '/teams', icon: Handshake, label: 'Teams' },
       { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
       { to: '/pricing', icon: Calculator, label: 'Pricing Plans' },
