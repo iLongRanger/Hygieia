@@ -481,6 +481,15 @@ const LeadDetail = () => {
       toast.error('Select a facility before continuing');
       return;
     }
+    const facility = facilities.find((item) => item.id === completeForm.facilityId);
+    if ((facility?._count.areas ?? 0) === 0) {
+      toast.error('Add at least one area before completing walkthrough');
+      return;
+    }
+    if ((facility?._count.facilityTasks ?? 0) === 0) {
+      toast.error('Add at least one task before completing walkthrough');
+      return;
+    }
     setCompleteStep('review');
   };
 
@@ -571,6 +580,16 @@ const LeadDetail = () => {
     if (!appointments.length) return null;
     return appointments[appointments.length - 1];
   }, [appointments]);
+  const selectedFacility = useMemo(
+    () => facilities.find((facility) => facility.id === completeForm.facilityId) || null,
+    [completeForm.facilityId, facilities]
+  );
+  const selectedFacilityAreaCount = selectedFacility?._count.areas ?? 0;
+  const selectedFacilityTaskCount = selectedFacility?._count.facilityTasks ?? 0;
+  const canCompleteSelectedFacility =
+    !!selectedFacility
+    && selectedFacilityAreaCount > 0
+    && selectedFacilityTaskCount > 0;
 
   if (loading) {
     return (
@@ -1021,6 +1040,13 @@ const LeadDetail = () => {
                     value={completeForm.facilityId}
                     onChange={(value) => setCompleteForm({ ...completeForm, facilityId: value })}
                   />
+                  {selectedFacility && !canCompleteSelectedFacility && (
+                    <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-300">
+                      {selectedFacilityAreaCount === 0
+                        ? 'Add at least one area to this facility before completing the walkthrough.'
+                        : 'Add at least one task to this facility before completing the walkthrough.'}
+                    </div>
+                  )}
                   <Textarea
                     label="Completion Notes"
                     placeholder="Add walkthrough notes..."
@@ -1031,7 +1057,6 @@ const LeadDetail = () => {
               ) : (
                 <div className="space-y-3 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
                   {(() => {
-                    const selectedFacility = facilities.find((f) => f.id === completeForm.facilityId);
                     return (
                       <>
                         <div>
@@ -1082,7 +1107,7 @@ const LeadDetail = () => {
             {completeStep === 'details' ? (
               <Button
                 onClick={handleProceedToReview}
-                disabled={!lead.convertedToAccount}
+                disabled={!lead.convertedToAccount || (!!selectedFacility && !canCompleteSelectedFacility)}
               >
                 Review
               </Button>

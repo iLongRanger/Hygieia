@@ -176,6 +176,13 @@ const facility: Facility = {
   _count: { areas: 1, facilityTasks: 1 },
 };
 
+const incompleteFacility: Facility = {
+  ...facility,
+  id: 'facility-2',
+  name: 'Incomplete Facility',
+  _count: { areas: 0, facilityTasks: 1 },
+};
+
 describe('LeadDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -383,5 +390,30 @@ describe('LeadDetail', () => {
         })
       );
     });
+  });
+
+  it('blocks walkthrough review when selected facility has no areas or tasks', async () => {
+    const userEventInstance = userEvent.setup();
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      convertedToAccountId: 'account-1',
+      convertedAt: new Date().toISOString(),
+      convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+    });
+    listFacilitiesMock.mockResolvedValue({
+      data: [incompleteFacility],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /complete walkthrough/i }));
+    const modal = await screen.findByRole('dialog', { name: /complete walkthrough/i });
+
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/facility/i), 'facility-2');
+
+    expect(within(modal).getByText(/add at least one area to this facility/i)).toBeInTheDocument();
+    expect(within(modal).getByRole('button', { name: /^review$/i })).toBeDisabled();
+    expect(completeAppointmentMock).not.toHaveBeenCalled();
   });
 });
