@@ -6,6 +6,9 @@ import { geocodeAddressIfNeeded } from '../geocodingService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
+    account: {
+      findUnique: jest.fn(),
+    },
     facility: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -13,6 +16,18 @@ jest.mock('../../lib/prisma', () => ({
       update: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
+    },
+    area: {
+      count: jest.fn(),
+    },
+    facilityTask: {
+      count: jest.fn(),
+    },
+    appointment: {
+      findFirst: jest.fn(),
+    },
+    lead: {
+      update: jest.fn(),
     },
   },
 }));
@@ -281,6 +296,50 @@ describe('facilityService', () => {
       const result = await facilityService.deleteFacility('facility-123');
 
       expect(result).toEqual({ id: 'facility-123' });
+    });
+  });
+
+  describe('submitFacilityForProposal', () => {
+    it('should use the account source lead when submitting a facility', async () => {
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-123',
+        accountId: 'account-123',
+        archivedAt: null,
+      });
+      (prisma.area.count as jest.Mock).mockResolvedValue(1);
+      (prisma.facilityTask.count as jest.Mock).mockResolvedValue(1);
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        sourceLead: {
+          id: 'lead-source',
+          status: 'walk_through_booked',
+          archivedAt: null,
+        },
+      });
+      (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({
+        id: 'appt-1',
+        status: 'completed',
+      });
+      (prisma.lead.update as jest.Mock).mockResolvedValue({ id: 'lead-source' });
+
+      const result = await facilityService.submitFacilityForProposal('facility-123', {
+        userId: 'user-1',
+        notes: null,
+      });
+
+      expect(prisma.account.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'account-123' },
+        })
+      );
+      expect(prisma.appointment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            leadId: 'lead-source',
+            type: 'walk_through',
+          }),
+        })
+      );
+      expect(result.leadId).toBe('lead-source');
     });
   });
 });

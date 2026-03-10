@@ -146,6 +146,16 @@ const leadSelect = {
   },
 } satisfies Prisma.LeadSelect;
 
+const SOURCE_LEAD_STATUS_SELECT = {
+  sourceLead: {
+    select: {
+      id: true,
+      status: true,
+      archivedAt: true,
+    },
+  },
+} satisfies Prisma.AccountSelect;
+
 function hasAddressCoordinates(address: unknown): boolean {
   if (!address || typeof address !== 'object') return false;
   const raw = address as Record<string, unknown>;
@@ -569,22 +579,58 @@ export async function convertLead(
       accountName = existingAccount.name;
     }
 
-    // Create primary contact from lead data
-    const contact = await tx.contact.create({
-      data: {
+    const existingPrimaryOrMatch = await tx.contact.findFirst({
+      where: {
         accountId,
-        name: lead.contactName,
-        email: lead.primaryEmail,
-        phone: lead.primaryPhone,
-        isPrimary: true,
-        createdByUserId: input.userId,
+        OR: [
+          { isPrimary: true },
+          ...(lead.primaryEmail
+            ? [{ email: lead.primaryEmail }]
+            : []),
+        ],
       },
       select: {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        isPrimary: true,
       },
+      orderBy: [
+        { isPrimary: 'desc' },
+        { createdAt: 'asc' },
+      ],
     });
+
+    const contact = existingPrimaryOrMatch
+      ? await tx.contact.update({
+          where: { id: existingPrimaryOrMatch.id },
+          data: {
+            name: existingPrimaryOrMatch.name || lead.contactName,
+            email: existingPrimaryOrMatch.email || lead.primaryEmail,
+            phone: existingPrimaryOrMatch.phone || lead.primaryPhone,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        })
+      : await tx.contact.create({
+          data: {
+            accountId,
+            name: lead.contactName,
+            email: lead.primaryEmail,
+            phone: lead.primaryPhone,
+            isPrimary: true,
+            createdByUserId: input.userId,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        });
 
     // Handle facility based on facilityOption
     let facility: { id: string; name: string } | undefined;
@@ -739,22 +785,14 @@ export async function autoSetLeadStatusForAccount(
   options: AutoLeadStatusOptions = {}
 ): Promise<void> {
   try {
-    const lead = await prisma.lead.findFirst({
-      where: {
-        convertedToAccountId: accountId,
-        archivedAt: null,
-      },
-      orderBy: [
-        { convertedAt: 'desc' },
-        { updatedAt: 'desc' },
-      ],
-      select: {
-        id: true,
-        status: true,
-      },
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: SOURCE_LEAD_STATUS_SELECT,
     });
 
-    if (!lead) return;
+    const lead = account?.sourceLead;
+
+    if (!lead || lead.archivedAt) return;
     if (options.mode === 'advance') {
       if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
     } else {

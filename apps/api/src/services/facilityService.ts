@@ -326,22 +326,21 @@ export async function submitFacilityForProposal(
     throw new BadRequestError('Add at least one task before submitting this facility');
   }
 
-  const lead = await prisma.lead.findFirst({
-    where: {
-      convertedToAccountId: facility.accountId,
-      archivedAt: null,
-    },
-    orderBy: [
-      { convertedAt: 'desc' },
-      { updatedAt: 'desc' },
-    ],
+  const account = await prisma.account.findUnique({
+    where: { id: facility.accountId },
     select: {
-      id: true,
-      status: true,
+      sourceLead: {
+        select: {
+          id: true,
+          status: true,
+          archivedAt: true,
+        },
+      },
     },
   });
+  const lead = account?.sourceLead;
 
-  if (!lead) {
+  if (!lead || lead.archivedAt) {
     throw new BadRequestError('No converted lead found for this facility account');
   }
 

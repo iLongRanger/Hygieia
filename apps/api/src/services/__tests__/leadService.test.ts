@@ -13,6 +13,8 @@ jest.mock('../../lib/prisma', () => ({
     },
     contact: {
       create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
     },
     facility: {
       create: jest.fn(),
@@ -518,11 +520,13 @@ describe('leadService', () => {
             findUnique: jest.fn(),
           },
           contact: {
+            findFirst: jest.fn().mockResolvedValue(null),
             create: jest.fn().mockResolvedValue({
               id: 'contact-1',
               name: 'Jane Smith',
               email: 'jane@example.com',
             }),
+            update: jest.fn(),
           },
           facility: {
             create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
@@ -553,6 +557,88 @@ describe('leadService', () => {
 
       expect(result.lead.status).toBe('lead');
       expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should reuse the existing primary contact when converting into an existing account', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      const updatedLead = {
+        ...existingLead,
+        convertedToAccountId: 'account-1',
+        convertedAt: new Date('2026-03-10T10:00:00Z'),
+        convertedByUserId: 'user-1',
+      };
+
+      const updateContactMock = jest.fn().mockResolvedValue({
+        id: 'contact-1',
+        name: 'Existing Primary',
+        email: 'existing@example.com',
+      });
+      const createContactMock = jest.fn();
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn(),
+            findUnique: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
+          },
+          contact: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              name: 'Existing Primary',
+              email: 'existing@example.com',
+              phone: null,
+              isPrimary: true,
+            }),
+            create: createContactMock,
+            update: updateContactMock,
+          },
+          facility: {
+            create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+          },
+          lead: {
+            update: jest.fn().mockResolvedValue(updatedLead),
+          },
+        })
+      );
+
+      const result = await leadService.convertLead(leadId, {
+        createNewAccount: false,
+        existingAccountId: 'account-1',
+        facilityOption: 'new',
+        facilityData: {
+          name: 'HQ',
+          address: {
+            street: '123 Main St',
+          },
+        },
+        userId: 'user-1',
+      });
+
+      expect(updateContactMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'contact-1' },
+          data: expect.objectContaining({
+            email: 'existing@example.com',
+            phone: '555-0100',
+          }),
+        })
+      );
+      expect(createContactMock).not.toHaveBeenCalled();
+      expect(result.contact.id).toBe('contact-1');
     });
   });
 });
