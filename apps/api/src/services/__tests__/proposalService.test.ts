@@ -542,6 +542,72 @@ describe('proposalService', () => {
       expect(result).toEqual(mockProposal);
     });
 
+    it('should re-run readiness checks when changing facility', async () => {
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValueOnce({
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        taxRate: 0.08,
+      });
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-2',
+        accountId: 'account-1',
+        archivedAt: null,
+        status: 'active',
+      });
+      (prisma.area.count as jest.Mock).mockResolvedValue(0);
+
+      await expect(
+        proposalService.updateProposal('proposal-1', {
+          facilityId: 'facility-2',
+        })
+      ).rejects.toThrow('Facility must have at least one area before creating a proposal');
+
+      expect(prisma.proposal.update).not.toHaveBeenCalled();
+    });
+
+    it('should re-run readiness checks when changing account and facility', async () => {
+      const mockProposal = createTestProposal({
+        accountId: 'account-2',
+        facilityId: 'facility-2',
+      });
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValueOnce({
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        taxRate: 0.08,
+      });
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        id: 'account-2',
+        archivedAt: null,
+        sourceLead: {
+          id: 'lead-2',
+          archivedAt: null,
+          appointments: [{ id: 'appt-2' }],
+        },
+      });
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-2',
+        accountId: 'account-2',
+        archivedAt: null,
+        status: 'active',
+      });
+      (prisma.proposal.update as jest.Mock).mockResolvedValue(mockProposal);
+
+      const result = await proposalService.updateProposal('proposal-1', {
+        accountId: 'account-2',
+        facilityId: 'facility-2',
+      });
+
+      expect(prisma.proposal.update).toHaveBeenCalledWith({
+        where: { id: 'proposal-1' },
+        data: expect.objectContaining({
+          account: { connect: { id: 'account-2' } },
+          facility: { connect: { id: 'facility-2' } },
+        }),
+        select: expect.any(Object),
+      });
+      expect(result).toEqual(mockProposal);
+    });
+
     it('should recalculate totals when items are updated', async () => {
       const currentProposal = createTestProposal({
         proposalItems: [],

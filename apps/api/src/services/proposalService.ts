@@ -513,6 +513,44 @@ export async function createProposal(input: ProposalCreateInput) {
 
 export async function updateProposal(id: string, input: ProposalUpdateInput) {
   const updateData: Prisma.ProposalUpdateInput = {};
+  let currentProposalForUpdate:
+    | { accountId: string; facilityId: string | null; taxRate: Prisma.Decimal | number }
+    | null = null;
+
+  const getCurrentProposalForUpdate = async () => {
+    if (currentProposalForUpdate) {
+      return currentProposalForUpdate;
+    }
+
+    currentProposalForUpdate = await prisma.proposal.findUnique({
+      where: { id },
+      select: {
+        accountId: true,
+        facilityId: true,
+        taxRate: true,
+      },
+    });
+
+    if (!currentProposalForUpdate) {
+      throw new Error('Proposal not found');
+    }
+
+    return currentProposalForUpdate;
+  };
+
+  if (input.accountId !== undefined || input.facilityId !== undefined) {
+    const currentProposal = await getCurrentProposalForUpdate();
+    const effectiveAccountId = input.accountId ?? currentProposal.accountId;
+    const effectiveFacilityId =
+      input.facilityId !== undefined ? input.facilityId : currentProposal.facilityId;
+
+    await assertProposalCreateReadiness({
+      accountId: effectiveAccountId,
+      facilityId: effectiveFacilityId,
+      title: input.title ?? 'Existing Proposal',
+      createdByUserId: 'system',
+    });
+  }
 
   if (input.accountId !== undefined) {
     updateData.account = { connect: { id: input.accountId } };
