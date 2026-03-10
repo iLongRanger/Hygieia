@@ -15,91 +15,93 @@ datasource db {
 // ============================================================
 
 model User {
-  id             String    @id @default(uuid()) @db.Uuid
-  supabaseUserId String?   @unique @map("supabase_user_id") @db.Uuid
-  email          String    @unique @db.VarChar(255)
-  passwordHash   String?   @map("password_hash") @db.VarChar(255)
-  fullName       String    @map("full_name") @db.VarChar(255)
-  phone          String?   @db.VarChar(20)
-  avatarUrl      String?   @map("avatar_url") @db.Text
-  teamId         String?   @map("team_id") @db.Uuid
-  status         String    @default("active") @db.VarChar(20)
-  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
-  preferences              Json      @default("{}") @db.JsonB
-  notificationPreferences  Json      @default("{}") @map("notification_preferences") @db.JsonB
-  payType                  String?   @map("pay_type") @db.VarChar(20)
-  hourlyPayRate            Decimal?  @map("hourly_pay_rate") @db.Decimal(10, 2)
-  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      String    @id @default(uuid()) @db.Uuid
+  supabaseUserId          String?   @unique @map("supabase_user_id") @db.Uuid
+  email                   String    @unique @db.VarChar(255)
+  passwordHash            String?   @map("password_hash") @db.VarChar(255)
+  fullName                String    @map("full_name") @db.VarChar(255)
+  phone                   String?   @db.VarChar(20)
+  avatarUrl               String?   @map("avatar_url") @db.Text
+  teamId                  String?   @map("team_id") @db.Uuid
+  status                  String    @default("active") @db.VarChar(20)
+  lastLoginAt             DateTime? @map("last_login_at") @db.Timestamptz(6)
+  preferences             Json      @default("{}") @db.JsonB
+  notificationPreferences Json      @default("{}") @map("notification_preferences") @db.JsonB
+  payType                 String?   @map("pay_type") @db.VarChar(20)
+  hourlyPayRate           Decimal?  @map("hourly_pay_rate") @db.Decimal(10, 2)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  team                     Team?             @relation(fields: [teamId], references: [id])
-  roles                    UserRole[]        @relation("UserRoles")
-  refreshTokens            RefreshToken[]    @relation("UserRefreshTokens")
-  passwordSetTokens        PasswordSetToken[]
-  createdLeads             Lead[]            @relation("CreatedLeads")
-  createdAccounts          Account[]         @relation("CreatedAccounts")
-  createdContacts          Contact[]         @relation("CreatedContacts")
-  createdFacilities        Facility[]        @relation("CreatedFacilities")
-  createdAreas             Area[]            @relation("CreatedAreas")
-  createdTasks             FacilityTask[]    @relation("CreatedTasks")
-  assignedToLeads          Lead[]            @relation("AssignedToLeads")
-  convertedLeads           Lead[]            @relation("ConvertedLeads")
-  managedAccounts          Account[]         @relation("AccountManager")
-  facilities               Facility[]        @relation("FacilityManager")
-  createdTaskTemplates     TaskTemplate[]    @relation("CreatedTaskTemplates")
-  createdAreaTemplates     AreaTemplate[]    @relation("CreatedAreaTemplates")
-  createdProposals         Proposal[]        @relation("CreatedProposals")
-  proposalActivities       ProposalActivity[] @relation("ProposalActivities")
-  createdProposalTemplates ProposalTemplate[] @relation("CreatedProposalTemplates")
-  proposalVersions         ProposalVersion[] @relation("ProposalVersions")
-  createdContracts         Contract[]        @relation("CreatedContracts")
-  assignedContracts        Contract[]        @relation("AssignedContracts")
-  pendingAssignedContracts Contract[]        @relation("PendingAssignedContracts")
-  createdTeams             Team[]            @relation("CreatedTeams")
-  approvedContracts        Contract[]        @relation("ApprovedContracts")
-  initialCleanCompletedContracts Contract[]  @relation("InitialCleanCompletedContracts")
-  scheduledAssignmentOverrideContracts Contract[] @relation("AssignmentOverrideSetByUser")
-  createdContractAmendments ContractAmendment[] @relation("CreatedContractAmendments")
-  approvedContractAmendments ContractAmendment[] @relation("ApprovedContractAmendments")
-  appliedContractAmendments ContractAmendment[] @relation("AppliedContractAmendments")
-  contractAmendmentActivities ContractAmendmentActivity[] @relation("ContractAmendmentActivities")
-  contractActivities             ContractActivity[] @relation("ContractActivities")
-  createdAppointments      Appointment[]     @relation("CreatedAppointments")
-  assignedAppointments     Appointment[]     @relation("AssignedAppointments")
-  notifications            Notification[]    @relation("UserNotifications")
-  accountActivities        AccountActivity[] @relation("AccountActivities")
-  assignedJobs             Job[]             @relation("AssignedJobs")
-  createdJobs              Job[]             @relation("CreatedJobs")
-  completedJobTasks        JobTask[]         @relation("CompletedJobTasks")
-  createdJobNotes          JobNote[]         @relation("CreatedJobNotes")
-  jobActivities            JobActivity[]     @relation("JobActivities")
-  createdInspectionTemplates InspectionTemplate[] @relation("CreatedInspectionTemplates")
-  inspectorInspections     Inspection[]      @relation("InspectorInspections")
-  inspectionActivities     InspectionActivity[] @relation("InspectionActivities")
-  createdInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("CreatedInspectionCorrectiveActions")
-  assignedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("AssignedInspectionCorrectiveActions")
-  resolvedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("ResolvedInspectionCorrectiveActions")
-  verifiedInspectionCorrectiveActions InspectionCorrectiveAction[] @relation("VerifiedInspectionCorrectiveActions")
-  inspectionSignoffs       InspectionSignoff[] @relation("InspectionSignoffs")
-  timeEntries              TimeEntry[]          @relation("UserTimeEntries")
-  approvedTimeEntries      TimeEntry[]          @relation("ApprovedTimeEntries")
-  editedTimeEntries        TimeEntry[]          @relation("EditedTimeEntries")
-  timesheets               Timesheet[]          @relation("UserTimesheets")
-  approvedTimesheets       Timesheet[]          @relation("ApprovedTimesheets")
-  createdInvoices          Invoice[]            @relation("CreatedInvoices")
-  invoiceActivities        InvoiceActivity[]    @relation("InvoiceActivities")
-  recordedPayments         InvoicePayment[]     @relation("RecordedPayments")
-  createdQuotations        Quotation[]          @relation("CreatedQuotations")
-  quotationActivities      QuotationActivity[]  @relation("QuotationActivities")
-  createdOneTimeServiceCatalogItems OneTimeServiceCatalogItem[] @relation("CreatedOneTimeServiceCatalogItems")
-  requestedPricingApprovals Quotation[]         @relation("QuotationPricingApprovalRequestedBy")
-  approvedPricingApprovals  Quotation[]         @relation("QuotationPricingApprovalApprovedBy")
-  updatedBackgroundServiceSettings BackgroundServiceSetting[] @relation("BackgroundServiceSettingUpdatedBy")
-  createdExpenses        Expense[]      @relation("CreatedExpenses")
-  approvedExpenses       Expense[]      @relation("ApprovedExpenses")
-  approvedPayrollRuns    PayrollRun[]   @relation("ApprovedPayrollRuns")
-  payrollEntries         PayrollEntry[] @relation("UserPayrollEntries")
-  adjustedPayrollEntries PayrollEntry[] @relation("AdjustedPayrollEntries")
+  team                                 Team?                        @relation(fields: [teamId], references: [id])
+  roles                                UserRole[]                   @relation("UserRoles")
+  refreshTokens                        RefreshToken[]               @relation("UserRefreshTokens")
+  passwordSetTokens                    PasswordSetToken[]
+  createdLeads                         Lead[]                       @relation("CreatedLeads")
+  opportunitiesOwned                   Opportunity[]                @relation("OpportunityOwner")
+  createdOpportunities                 Opportunity[]                @relation("CreatedOpportunities")
+  createdAccounts                      Account[]                    @relation("CreatedAccounts")
+  createdContacts                      Contact[]                    @relation("CreatedContacts")
+  createdFacilities                    Facility[]                   @relation("CreatedFacilities")
+  createdAreas                         Area[]                       @relation("CreatedAreas")
+  createdTasks                         FacilityTask[]               @relation("CreatedTasks")
+  assignedToLeads                      Lead[]                       @relation("AssignedToLeads")
+  convertedLeads                       Lead[]                       @relation("ConvertedLeads")
+  managedAccounts                      Account[]                    @relation("AccountManager")
+  facilities                           Facility[]                   @relation("FacilityManager")
+  createdTaskTemplates                 TaskTemplate[]               @relation("CreatedTaskTemplates")
+  createdAreaTemplates                 AreaTemplate[]               @relation("CreatedAreaTemplates")
+  createdProposals                     Proposal[]                   @relation("CreatedProposals")
+  proposalActivities                   ProposalActivity[]           @relation("ProposalActivities")
+  createdProposalTemplates             ProposalTemplate[]           @relation("CreatedProposalTemplates")
+  proposalVersions                     ProposalVersion[]            @relation("ProposalVersions")
+  createdContracts                     Contract[]                   @relation("CreatedContracts")
+  assignedContracts                    Contract[]                   @relation("AssignedContracts")
+  pendingAssignedContracts             Contract[]                   @relation("PendingAssignedContracts")
+  createdTeams                         Team[]                       @relation("CreatedTeams")
+  approvedContracts                    Contract[]                   @relation("ApprovedContracts")
+  initialCleanCompletedContracts       Contract[]                   @relation("InitialCleanCompletedContracts")
+  scheduledAssignmentOverrideContracts Contract[]                   @relation("AssignmentOverrideSetByUser")
+  createdContractAmendments            ContractAmendment[]          @relation("CreatedContractAmendments")
+  approvedContractAmendments           ContractAmendment[]          @relation("ApprovedContractAmendments")
+  appliedContractAmendments            ContractAmendment[]          @relation("AppliedContractAmendments")
+  contractAmendmentActivities          ContractAmendmentActivity[]  @relation("ContractAmendmentActivities")
+  contractActivities                   ContractActivity[]           @relation("ContractActivities")
+  createdAppointments                  Appointment[]                @relation("CreatedAppointments")
+  assignedAppointments                 Appointment[]                @relation("AssignedAppointments")
+  notifications                        Notification[]               @relation("UserNotifications")
+  accountActivities                    AccountActivity[]            @relation("AccountActivities")
+  assignedJobs                         Job[]                        @relation("AssignedJobs")
+  createdJobs                          Job[]                        @relation("CreatedJobs")
+  completedJobTasks                    JobTask[]                    @relation("CompletedJobTasks")
+  createdJobNotes                      JobNote[]                    @relation("CreatedJobNotes")
+  jobActivities                        JobActivity[]                @relation("JobActivities")
+  createdInspectionTemplates           InspectionTemplate[]         @relation("CreatedInspectionTemplates")
+  inspectorInspections                 Inspection[]                 @relation("InspectorInspections")
+  inspectionActivities                 InspectionActivity[]         @relation("InspectionActivities")
+  createdInspectionCorrectiveActions   InspectionCorrectiveAction[] @relation("CreatedInspectionCorrectiveActions")
+  assignedInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("AssignedInspectionCorrectiveActions")
+  resolvedInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("ResolvedInspectionCorrectiveActions")
+  verifiedInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("VerifiedInspectionCorrectiveActions")
+  inspectionSignoffs                   InspectionSignoff[]          @relation("InspectionSignoffs")
+  timeEntries                          TimeEntry[]                  @relation("UserTimeEntries")
+  approvedTimeEntries                  TimeEntry[]                  @relation("ApprovedTimeEntries")
+  editedTimeEntries                    TimeEntry[]                  @relation("EditedTimeEntries")
+  timesheets                           Timesheet[]                  @relation("UserTimesheets")
+  approvedTimesheets                   Timesheet[]                  @relation("ApprovedTimesheets")
+  createdInvoices                      Invoice[]                    @relation("CreatedInvoices")
+  invoiceActivities                    InvoiceActivity[]            @relation("InvoiceActivities")
+  recordedPayments                     InvoicePayment[]             @relation("RecordedPayments")
+  createdQuotations                    Quotation[]                  @relation("CreatedQuotations")
+  quotationActivities                  QuotationActivity[]          @relation("QuotationActivities")
+  createdOneTimeServiceCatalogItems    OneTimeServiceCatalogItem[]  @relation("CreatedOneTimeServiceCatalogItems")
+  requestedPricingApprovals            Quotation[]                  @relation("QuotationPricingApprovalRequestedBy")
+  approvedPricingApprovals             Quotation[]                  @relation("QuotationPricingApprovalApprovedBy")
+  updatedBackgroundServiceSettings     BackgroundServiceSetting[]   @relation("BackgroundServiceSettingUpdatedBy")
+  createdExpenses                      Expense[]                    @relation("CreatedExpenses")
+  approvedExpenses                     Expense[]                    @relation("ApprovedExpenses")
+  approvedPayrollRuns                  PayrollRun[]                 @relation("ApprovedPayrollRuns")
+  payrollEntries                       PayrollEntry[]               @relation("UserPayrollEntries")
+  adjustedPayrollEntries               PayrollEntry[]               @relation("AdjustedPayrollEntries")
 
   @@index([email])
   @@index([status])
@@ -107,15 +109,15 @@ model User {
 }
 
 model RefreshToken {
-  id           String    @id @default(uuid()) @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  tokenJti     String    @unique @map("token_jti") @db.VarChar(255)
-  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokedReason String?  @map("revoked_reason") @db.VarChar(50)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  ipAddress    String?   @map("ip_address") @db.VarChar(45)
-  userAgent    String?   @map("user_agent") @db.Text
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  tokenJti      String    @unique @map("token_jti") @db.VarChar(255)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason") @db.VarChar(50)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  ipAddress     String?   @map("ip_address") @db.VarChar(45)
+  userAgent     String?   @map("user_agent") @db.Text
 
   user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -216,12 +218,13 @@ model Lead {
   convertedAt          DateTime? @map("converted_at") @db.Timestamptz(6)
   convertedByUserId    String?   @map("converted_by_user_id") @db.Uuid
 
-  leadSource         LeadSource? @relation(fields: [leadSourceId], references: [id])
-  assignedToUser     User?       @relation("AssignedToLeads", fields: [assignedToUserId], references: [id])
-  createdByUser      User        @relation("CreatedLeads", fields: [createdByUserId], references: [id])
-  convertedToAccount Account?    @relation("LeadToAccount", fields: [convertedToAccountId], references: [id])
-  convertedByUser    User?       @relation("ConvertedLeads", fields: [convertedByUserId], references: [id])
+  leadSource         LeadSource?   @relation(fields: [leadSourceId], references: [id])
+  assignedToUser     User?         @relation("AssignedToLeads", fields: [assignedToUserId], references: [id])
+  createdByUser      User          @relation("CreatedLeads", fields: [createdByUserId], references: [id])
+  convertedToAccount Account?      @relation("LeadToAccount", fields: [convertedToAccountId], references: [id])
+  convertedByUser    User?         @relation("ConvertedLeads", fields: [convertedByUserId], references: [id])
   appointments       Appointment[] @relation("LeadAppointments")
+  opportunities      Opportunity[]
 
   @@index([status])
   @@index([leadSourceId])
@@ -237,6 +240,7 @@ model Appointment {
   id                String    @id @default(uuid()) @db.Uuid
   leadId            String?   @map("lead_id") @db.Uuid
   accountId         String?   @map("account_id") @db.Uuid
+  opportunityId     String?   @map("opportunity_id") @db.Uuid
   type              String    @default("walk_through") @db.VarChar(30)
   status            String    @default("scheduled") @db.VarChar(30)
   scheduledStart    DateTime  @map("scheduled_start") @db.Timestamptz(6)
@@ -255,18 +259,20 @@ model Appointment {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  lead            Lead?        @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
-  account         Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  assignedToUser  User         @relation("AssignedAppointments", fields: [assignedToUserId], references: [id])
-  assignedTeam    Team?        @relation("AssignedTeamAppointments", fields: [assignedTeamId], references: [id], onDelete: SetNull)
-  createdByUser   User         @relation("CreatedAppointments", fields: [createdByUserId], references: [id])
-  inspectionId    String?      @unique @map("inspection_id") @db.Uuid
-  rescheduledFrom Appointment? @relation("AppointmentReschedules", fields: [rescheduledFromId], references: [id])
+  lead            Lead?         @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
+  account         Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunity     Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  assignedToUser  User          @relation("AssignedAppointments", fields: [assignedToUserId], references: [id])
+  assignedTeam    Team?         @relation("AssignedTeamAppointments", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  createdByUser   User          @relation("CreatedAppointments", fields: [createdByUserId], references: [id])
+  inspectionId    String?       @unique @map("inspection_id") @db.Uuid
+  rescheduledFrom Appointment?  @relation("AppointmentReschedules", fields: [rescheduledFromId], references: [id])
   reschedules     Appointment[] @relation("AppointmentReschedules")
-  inspection      Inspection?  @relation("AppointmentInspection", fields: [inspectionId], references: [id], onDelete: SetNull)
+  inspection      Inspection?   @relation("AppointmentInspection", fields: [inspectionId], references: [id], onDelete: SetNull)
 
   @@index([leadId])
   @@index([accountId])
+  @@index([opportunityId])
   @@index([assignedToUserId])
   @@index([assignedTeamId])
   @@index([scheduledStart])
@@ -316,20 +322,21 @@ model Account {
   // Default pricing plan for this account
   defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
-  contacts       Contact[]
-  facilities     Facility[]
-  proposals      Proposal[]
-  contracts      Contract[]
-  appointments   Appointment[]
-  accountManager User?      @relation("AccountManager", fields: [accountManagerId], references: [id])
-  createdByUser  User       @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
-  sourceLead     Lead?      @relation("LeadToAccount")
-  defaultPricingPlan PricingSettings? @relation("AccountDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
+  contacts           Contact[]
+  facilities         Facility[]
+  opportunities      Opportunity[]
+  proposals          Proposal[]
+  contracts          Contract[]
+  appointments       Appointment[]
+  accountManager     User?             @relation("AccountManager", fields: [accountManagerId], references: [id])
+  createdByUser      User              @relation("CreatedAccounts", fields: [createdByUserId], references: [id])
+  sourceLead         Lead?             @relation("LeadToAccount")
+  defaultPricingPlan PricingSettings?  @relation("AccountDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
   activities         AccountActivity[]
-  jobs               Job[] @relation("AccountJobs")
-  inspections        Inspection[] @relation("AccountInspections")
-  invoices           Invoice[]    @relation("AccountInvoices")
-  quotations         Quotation[]  @relation("AccountQuotations")
+  jobs               Job[]             @relation("AccountJobs")
+  inspections        Inspection[]      @relation("AccountInspections")
+  invoices           Invoice[]         @relation("AccountInvoices")
+  quotations         Quotation[]       @relation("AccountQuotations")
 
   @@index([type])
   @@index([accountManagerId])
@@ -355,8 +362,9 @@ model Contact {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  account       Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  createdByUser User     @relation("CreatedContacts", fields: [createdByUserId], references: [id])
+  account       Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+  createdByUser User          @relation("CreatedContacts", fields: [createdByUserId], references: [id])
 
   @@unique([accountId, isPrimary])
   @@index([accountId])
@@ -381,6 +389,45 @@ model AccountActivity {
   @@index([entryType])
   @@index([createdAt])
   @@map("account_activities")
+}
+
+model Opportunity {
+  id                String    @id @default(uuid()) @db.Uuid
+  leadId            String?   @map("lead_id") @db.Uuid
+  accountId         String?   @map("account_id") @db.Uuid
+  primaryContactId  String?   @map("primary_contact_id") @db.Uuid
+  title             String    @db.VarChar(255)
+  status            String    @default("lead") @db.VarChar(30)
+  source            String?   @db.VarChar(100)
+  estimatedValue    Decimal?  @map("estimated_value") @db.Decimal(12, 2)
+  probability       Int?      @default(0)
+  expectedCloseDate DateTime? @map("expected_close_date") @db.Date
+  lostReason        String?   @map("lost_reason") @db.Text
+  ownerUserId       String?   @map("owner_user_id") @db.Uuid
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  wonAt             DateTime? @map("won_at") @db.Timestamptz(6)
+  lostAt            DateTime? @map("lost_at") @db.Timestamptz(6)
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  account        Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  primaryContact Contact?      @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
+  ownerUser      User?         @relation("OpportunityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdByUser  User          @relation("CreatedOpportunities", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  appointments   Appointment[]
+  proposals      Proposal[]
+  contracts      Contract[]
+
+  @@index([leadId])
+  @@index([accountId])
+  @@index([primaryContactId])
+  @@index([ownerUserId])
+  @@index([status])
+  @@index([expectedCloseDate])
+  @@map("opportunities")
 }
 
 // ============================================================
@@ -426,21 +473,21 @@ model Facility {
   // Default pricing plan for this facility (overrides account default)
   defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
-  account          Account           @relation(fields: [accountId], references: [id])
-  areas            Area[]
-  taskTemplates    TaskTemplate[]    @relation("FacilityTaskTemplates")
-  facilityTasks    FacilityTask[]    @relation("FacilityTasks")
-  proposals        Proposal[]
-  contracts        Contract[]
-  facilityManager  User?             @relation("FacilityManager", fields: [facilityManagerId], references: [id])
-  createdByUser    User              @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
+  account            Account          @relation(fields: [accountId], references: [id])
+  areas              Area[]
+  taskTemplates      TaskTemplate[]   @relation("FacilityTaskTemplates")
+  facilityTasks      FacilityTask[]   @relation("FacilityTasks")
+  proposals          Proposal[]
+  contracts          Contract[]
+  facilityManager    User?            @relation("FacilityManager", fields: [facilityManagerId], references: [id])
+  createdByUser      User             @relation("CreatedFacilities", fields: [createdByUserId], references: [id])
   defaultPricingPlan PricingSettings? @relation("FacilityDefaultPricingPlan", fields: [defaultPricingPlanId], references: [id])
-  jobs             Job[]             @relation("FacilityJobs")
-  inspections      Inspection[]     @relation("FacilityInspections")
-  timeEntries      TimeEntry[]      @relation("FacilityTimeEntries")
-  invoices         Invoice[]        @relation("FacilityInvoices")
-  quotations       Quotation[]      @relation("FacilityQuotations")
-  expenses         Expense[]        @relation("FacilityExpenses")
+  jobs               Job[]            @relation("FacilityJobs")
+  inspections        Inspection[]     @relation("FacilityInspections")
+  timeEntries        TimeEntry[]      @relation("FacilityTimeEntries")
+  invoices           Invoice[]        @relation("FacilityInvoices")
+  quotations         Quotation[]      @relation("FacilityQuotations")
+  expenses           Expense[]        @relation("FacilityExpenses")
 
   @@unique([accountId, name])
   @@index([accountId])
@@ -513,12 +560,12 @@ model TaskTemplate {
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  areaType             AreaType?            @relation(fields: [areaTypeId], references: [id])
-  facility             Facility?            @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
-  facilityTasks        FacilityTask[]
-  fixtureMinutes       TaskFixtureMinutes[]
-  areaTemplateTasks    AreaTemplateTask[]
-  createdByUser        User                 @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
+  areaType          AreaType?            @relation(fields: [areaTypeId], references: [id])
+  facility          Facility?            @relation("FacilityTaskTemplates", fields: [facilityId], references: [id])
+  facilityTasks     FacilityTask[]
+  fixtureMinutes    TaskFixtureMinutes[]
+  areaTemplateTasks AreaTemplateTask[]
+  createdByUser     User                 @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
 
   @@index([cleaningType])
   @@index([areaTypeId])
@@ -529,32 +576,32 @@ model TaskTemplate {
 }
 
 model FacilityTask {
-  id                  String    @id @default(uuid()) @db.Uuid
-  facilityId          String    @map("facility_id") @db.Uuid
-  areaId              String?   @map("area_id") @db.Uuid
-  taskTemplateId      String?   @map("task_template_id") @db.Uuid
-  customName          String?   @map("custom_name") @db.VarChar(255)
-  customInstructions  String?   @map("custom_instructions") @db.Text
-  estimatedMinutes    Int?      @map("estimated_minutes")
-  baseMinutesOverride    Decimal? @map("base_minutes_override") @db.Decimal(10, 4)
-  perSqftMinutesOverride Decimal? @map("per_sqft_minutes_override") @db.Decimal(10, 4)
-  perUnitMinutesOverride Decimal? @map("per_unit_minutes_override") @db.Decimal(10, 4)
-  perRoomMinutesOverride Decimal? @map("per_room_minutes_override") @db.Decimal(10, 4)
-  isRequired          Boolean   @default(true) @map("is_required")
-  cleaningFrequency   String    @default("daily") @map("cleaning_frequency") @db.VarChar(20)
-  conditionMultiplier Decimal   @default(1.0) @map("condition_multiplier") @db.Decimal(3, 2)
-  priority            Int       @default(3)
-  createdByUserId     String    @map("created_by_user_id") @db.Uuid
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                     String    @id @default(uuid()) @db.Uuid
+  facilityId             String    @map("facility_id") @db.Uuid
+  areaId                 String?   @map("area_id") @db.Uuid
+  taskTemplateId         String?   @map("task_template_id") @db.Uuid
+  customName             String?   @map("custom_name") @db.VarChar(255)
+  customInstructions     String?   @map("custom_instructions") @db.Text
+  estimatedMinutes       Int?      @map("estimated_minutes")
+  baseMinutesOverride    Decimal?  @map("base_minutes_override") @db.Decimal(10, 4)
+  perSqftMinutesOverride Decimal?  @map("per_sqft_minutes_override") @db.Decimal(10, 4)
+  perUnitMinutesOverride Decimal?  @map("per_unit_minutes_override") @db.Decimal(10, 4)
+  perRoomMinutesOverride Decimal?  @map("per_room_minutes_override") @db.Decimal(10, 4)
+  isRequired             Boolean   @default(true) @map("is_required")
+  cleaningFrequency      String    @default("daily") @map("cleaning_frequency") @db.VarChar(20)
+  conditionMultiplier    Decimal   @default(1.0) @map("condition_multiplier") @db.Decimal(3, 2)
+  priority               Int       @default(3)
+  createdByUserId        String    @map("created_by_user_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt             DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  facility            Facility                   @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
-  area                Area?                      @relation(fields: [areaId], references: [id])
-  taskTemplate        TaskTemplate?              @relation(fields: [taskTemplateId], references: [id])
-  fixtureMinutes      FacilityTaskFixtureMinutes[]
-  createdByUser       User                       @relation("CreatedTasks", fields: [createdByUserId], references: [id])
-  jobTasks            JobTask[]                  @relation("JobFacilityTasks")
+  facility       Facility                     @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
+  area           Area?                        @relation(fields: [areaId], references: [id])
+  taskTemplate   TaskTemplate?                @relation(fields: [taskTemplateId], references: [id])
+  fixtureMinutes FacilityTaskFixtureMinutes[]
+  createdByUser  User                         @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  jobTasks       JobTask[]                    @relation("JobFacilityTasks")
 
   @@index([facilityId])
   @@index([areaId])
@@ -569,8 +616,8 @@ model FacilityTask {
 // ============================================================
 
 model PricingSettings {
-  id   String @id @default(uuid()) @db.Uuid
-  name String @unique @db.VarChar(100)
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(100)
   pricingType String @default("square_foot") @map("pricing_type") @db.VarChar(20)
 
   // Base Rate
@@ -579,9 +626,9 @@ model PricingSettings {
   hourlyRate           Decimal @default(35.00) @map("hourly_rate") @db.Decimal(8, 2)
 
   // Labor Cost Settings
-  laborCostPerHour       Decimal @default(18.00) @map("labor_cost_per_hour") @db.Decimal(8, 2) // Average hourly wage
-  laborBurdenPercentage  Decimal @default(0.25) @map("labor_burden_percentage") @db.Decimal(5, 4) // Payroll taxes, benefits (25%)
-  sqftPerLaborHour       Json @default("{\"office\": 2500, \"medical\": 1500, \"industrial\": 2200, \"retail\": 2400, \"educational\": 2000, \"warehouse\": 3500, \"residential\": 2200, \"mixed\": 2200, \"other\": 2500}") @map("sqft_per_labor_hour") @db.JsonB // Productivity rate per building type: sq ft cleaned per hour
+  laborCostPerHour      Decimal @default(18.00) @map("labor_cost_per_hour") @db.Decimal(8, 2) // Average hourly wage
+  laborBurdenPercentage Decimal @default(0.25) @map("labor_burden_percentage") @db.Decimal(5, 4) // Payroll taxes, benefits (25%)
+  sqftPerLaborHour      Json    @default("{\"office\": 2500, \"medical\": 1500, \"industrial\": 2200, \"retail\": 2400, \"educational\": 2000, \"warehouse\": 3500, \"residential\": 2200, \"mixed\": 2200, \"other\": 2500}") @map("sqft_per_labor_hour") @db.JsonB // Productivity rate per building type: sq ft cleaned per hour
 
   // Overhead Cost Settings (as percentages of labor cost)
   insurancePercentage     Decimal @default(0.08) @map("insurance_percentage") @db.Decimal(5, 4) // Liability + workers comp (8%)
@@ -590,7 +637,7 @@ model PricingSettings {
   equipmentPercentage     Decimal @default(0.05) @map("equipment_percentage") @db.Decimal(5, 4) // Equipment depreciation (5%)
 
   // Supply Cost Settings
-  supplyCostPercentage Decimal @default(0.04) @map("supply_cost_percentage") @db.Decimal(5, 4) // Supplies as % of labor+overhead (4%)
+  supplyCostPercentage Decimal  @default(0.04) @map("supply_cost_percentage") @db.Decimal(5, 4) // Supplies as % of labor+overhead (4%)
   supplyCostPerSqFt    Decimal? @map("supply_cost_per_sq_ft") @db.Decimal(8, 4) // Alternative: flat rate per sq ft
 
   // Profit Settings
@@ -600,19 +647,19 @@ model PricingSettings {
   subcontractorPercentage Decimal @default(0.60) @map("subcontractor_percentage") @db.Decimal(5, 4) // Sub gets 60% of monthly total
 
   // Multipliers stored as JSON
-  floorTypeMultipliers    Json @default("{\"vct\": 1.0, \"carpet\": 1.15, \"tile\": 1.1, \"hardwood\": 1.2, \"concrete\": 0.9, \"other\": 1.0}") @map("floor_type_multipliers") @db.JsonB
-  frequencyMultipliers    Json @default("{\"1x_week\": 1.0, \"2x_week\": 1.8, \"3x_week\": 2.5, \"4x_week\": 3.2, \"5x_week\": 4.0, \"daily\": 4.33, \"weekly\": 1.0, \"biweekly\": 0.5, \"monthly\": 0.25, \"quarterly\": 0.083}") @map("frequency_multipliers") @db.JsonB
-  conditionMultipliers    Json @default("{\"standard\": 1.0, \"medium\": 1.25, \"hard\": 1.33}") @map("condition_multipliers") @db.JsonB
-  trafficMultipliers      Json @default("{\"low\": 0.9, \"medium\": 1.0, \"high\": 1.15}") @map("traffic_multipliers") @db.JsonB
-  taskComplexityAddOns    Json @default("{\"standard\": 0, \"sanitization\": 0.15, \"biohazard\": 0.5, \"high_security\": 0.2}") @map("task_complexity_add_ons") @db.JsonB
+  floorTypeMultipliers Json @default("{\"vct\": 1.0, \"carpet\": 1.15, \"tile\": 1.1, \"hardwood\": 1.2, \"concrete\": 0.9, \"other\": 1.0}") @map("floor_type_multipliers") @db.JsonB
+  frequencyMultipliers Json @default("{\"1x_week\": 1.0, \"2x_week\": 1.8, \"3x_week\": 2.5, \"4x_week\": 3.2, \"5x_week\": 4.0, \"daily\": 4.33, \"weekly\": 1.0, \"biweekly\": 0.5, \"monthly\": 0.25, \"quarterly\": 0.083}") @map("frequency_multipliers") @db.JsonB
+  conditionMultipliers Json @default("{\"standard\": 1.0, \"medium\": 1.25, \"hard\": 1.33}") @map("condition_multipliers") @db.JsonB
+  trafficMultipliers   Json @default("{\"low\": 0.9, \"medium\": 1.0, \"high\": 1.15}") @map("traffic_multipliers") @db.JsonB
+  taskComplexityAddOns Json @default("{\"standard\": 0, \"sanitization\": 0.15, \"biohazard\": 0.5, \"high_security\": 0.2}") @map("task_complexity_add_ons") @db.JsonB
 
-  isActive  Boolean   @default(true) @map("is_active")
-  isDefault Boolean   @default(false) @map("is_default")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  isActive   Boolean   @default(true) @map("is_active")
+  isDefault  Boolean   @default(false) @map("is_default")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  defaultForAccounts  Account[]  @relation("AccountDefaultPricingPlan")
+  defaultForAccounts   Account[]  @relation("AccountDefaultPricingPlan")
   defaultForFacilities Facility[] @relation("FacilityDefaultPricingPlan")
   proposals            Proposal[] @relation("ProposalPricingPlan")
 
@@ -623,32 +670,32 @@ model PricingSettings {
 }
 
 model FixtureType {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  category    String   @default("fixture") @db.VarChar(20)
-  defaultMinutesPerItem Decimal @default(0) @map("default_minutes_per_item") @db.Decimal(10, 4)
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                    String   @id @default(uuid()) @db.Uuid
+  name                  String   @unique @db.VarChar(100)
+  description           String?  @db.Text
+  category              String   @default("fixture") @db.VarChar(20)
+  defaultMinutesPerItem Decimal  @default(0) @map("default_minutes_per_item") @db.Decimal(10, 4)
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  areaFixtures              AreaFixture[]
-  taskFixtureMinutes        TaskFixtureMinutes[]
+  areaFixtures               AreaFixture[]
+  taskFixtureMinutes         TaskFixtureMinutes[]
   facilityTaskFixtureMinutes FacilityTaskFixtureMinutes[]
-  areaTemplateItems         AreaTemplateItem[]
+  areaTemplateItems          AreaTemplateItem[]
 
   @@index([isActive])
   @@map("fixture_types")
 }
 
 model AreaFixture {
-  id            String    @id @default(uuid()) @db.Uuid
-  areaId        String    @map("area_id") @db.Uuid
-  fixtureTypeId String    @map("fixture_type_id") @db.Uuid
-  count         Int       @default(0)
+  id             String   @id @default(uuid()) @db.Uuid
+  areaId         String   @map("area_id") @db.Uuid
+  fixtureTypeId  String   @map("fixture_type_id") @db.Uuid
+  count          Int      @default(0)
   minutesPerItem Decimal  @default(0) @map("minutes_per_item") @db.Decimal(10, 4)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   area        Area        @relation(fields: [areaId], references: [id], onDelete: Cascade)
   fixtureType FixtureType @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
@@ -660,32 +707,32 @@ model AreaFixture {
 }
 
 model AreaTemplate {
-  id                String    @id @default(uuid()) @db.Uuid
-  areaTypeId        String    @unique @map("area_type_id") @db.Uuid
-  name              String?   @db.VarChar(255)
-  defaultSquareFeet Decimal?  @map("default_square_feet") @db.Decimal(10, 2)
-  createdByUserId   String    @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  areaTypeId        String   @unique @map("area_type_id") @db.Uuid
+  name              String?  @db.VarChar(255)
+  defaultSquareFeet Decimal? @map("default_square_feet") @db.Decimal(10, 2)
+  createdByUserId   String   @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  areaType    AreaType          @relation(fields: [areaTypeId], references: [id])
-  items       AreaTemplateItem[]
-  tasks       AreaTemplateTask[]
-  createdByUser User            @relation("CreatedAreaTemplates", fields: [createdByUserId], references: [id])
+  areaType      AreaType           @relation(fields: [areaTypeId], references: [id])
+  items         AreaTemplateItem[]
+  tasks         AreaTemplateTask[]
+  createdByUser User               @relation("CreatedAreaTemplates", fields: [createdByUserId], references: [id])
 
   @@index([areaTypeId])
   @@map("area_templates")
 }
 
 model AreaTemplateItem {
-  id             String    @id @default(uuid()) @db.Uuid
-  areaTemplateId String    @map("area_template_id") @db.Uuid
-  fixtureTypeId  String    @map("fixture_type_id") @db.Uuid
-  defaultCount   Int       @default(0) @map("default_count")
-  minutesPerItem Decimal   @default(0) @map("minutes_per_item") @db.Decimal(10, 4)
-  sortOrder      Int       @default(0) @map("sort_order")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.Uuid
+  areaTemplateId String   @map("area_template_id") @db.Uuid
+  fixtureTypeId  String   @map("fixture_type_id") @db.Uuid
+  defaultCount   Int      @default(0) @map("default_count")
+  minutesPerItem Decimal  @default(0) @map("minutes_per_item") @db.Decimal(10, 4)
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   areaTemplate AreaTemplate @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
   fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
@@ -697,19 +744,19 @@ model AreaTemplateItem {
 }
 
 model AreaTemplateTask {
-  id             String    @id @default(uuid()) @db.Uuid
-  areaTemplateId String    @map("area_template_id") @db.Uuid
-  taskTemplateId String?   @map("task_template_id") @db.Uuid
-  name           String?   @db.VarChar(255)
-  baseMinutes    Decimal?  @map("base_minutes") @db.Decimal(10, 4)
-  perSqftMinutes Decimal?  @map("per_sqft_minutes") @db.Decimal(10, 4)
-  perUnitMinutes Decimal?  @map("per_unit_minutes") @db.Decimal(10, 4)
-  perRoomMinutes Decimal?  @map("per_room_minutes") @db.Decimal(10, 4)
-  sortOrder      Int       @default(0) @map("sort_order")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.Uuid
+  areaTemplateId String   @map("area_template_id") @db.Uuid
+  taskTemplateId String?  @map("task_template_id") @db.Uuid
+  name           String?  @db.VarChar(255)
+  baseMinutes    Decimal? @map("base_minutes") @db.Decimal(10, 4)
+  perSqftMinutes Decimal? @map("per_sqft_minutes") @db.Decimal(10, 4)
+  perUnitMinutes Decimal? @map("per_unit_minutes") @db.Decimal(10, 4)
+  perRoomMinutes Decimal? @map("per_room_minutes") @db.Decimal(10, 4)
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  areaTemplate AreaTemplate @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
+  areaTemplate AreaTemplate  @relation(fields: [areaTemplateId], references: [id], onDelete: Cascade)
   taskTemplate TaskTemplate? @relation(fields: [taskTemplateId], references: [id], onDelete: SetNull)
 
   @@index([areaTemplateId])
@@ -719,12 +766,12 @@ model AreaTemplateTask {
 }
 
 model TaskFixtureMinutes {
-  id                String    @id @default(uuid()) @db.Uuid
-  taskTemplateId    String    @map("task_template_id") @db.Uuid
-  fixtureTypeId     String    @map("fixture_type_id") @db.Uuid
-  minutesPerFixture Decimal   @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  taskTemplateId    String   @map("task_template_id") @db.Uuid
+  fixtureTypeId     String   @map("fixture_type_id") @db.Uuid
+  minutesPerFixture Decimal  @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   taskTemplate TaskTemplate @relation(fields: [taskTemplateId], references: [id], onDelete: Cascade)
   fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
@@ -736,12 +783,12 @@ model TaskFixtureMinutes {
 }
 
 model FacilityTaskFixtureMinutes {
-  id                String    @id @default(uuid()) @db.Uuid
-  facilityTaskId    String    @map("facility_task_id") @db.Uuid
-  fixtureTypeId     String    @map("fixture_type_id") @db.Uuid
-  minutesPerFixture Decimal   @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  facilityTaskId    String   @map("facility_task_id") @db.Uuid
+  fixtureTypeId     String   @map("fixture_type_id") @db.Uuid
+  minutesPerFixture Decimal  @default(0) @map("minutes_per_fixture") @db.Decimal(10, 4)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   facilityTask FacilityTask @relation(fields: [facilityTaskId], references: [id], onDelete: Cascade)
   fixtureType  FixtureType  @relation(fields: [fixtureTypeId], references: [id], onDelete: Cascade)
@@ -760,6 +807,7 @@ model Proposal {
   id                 String    @id @default(uuid()) @db.Uuid
   accountId          String    @map("account_id") @db.Uuid
   facilityId         String?   @map("facility_id") @db.Uuid
+  opportunityId      String?   @map("opportunity_id") @db.Uuid
   proposalNumber     String    @unique @map("proposal_number") @db.VarChar(50)
   title              String    @db.VarChar(255)
   status             String    @default("draft") @db.VarChar(20)
@@ -784,22 +832,23 @@ model Proposal {
   archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
 
   // Pricing plan fields
-  pricingPlanId          String?   @map("pricing_plan_id") @db.Uuid
-  pricingSnapshot        Json?     @map("pricing_snapshot") @db.JsonB
-  pricingLocked          Boolean   @default(false) @map("pricing_locked")
-  pricingLockedAt        DateTime? @map("pricing_locked_at") @db.Timestamptz(6)
+  pricingPlanId   String?   @map("pricing_plan_id") @db.Uuid
+  pricingSnapshot Json?     @map("pricing_snapshot") @db.JsonB
+  pricingLocked   Boolean   @default(false) @map("pricing_locked")
+  pricingLockedAt DateTime? @map("pricing_locked_at") @db.Timestamptz(6)
 
   // Public access fields
-  publicToken            String?   @unique @map("public_token") @db.VarChar(64)
-  publicTokenExpiresAt   DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
-  signatureName          String?   @map("signature_name") @db.VarChar(255)
-  signatureDate          DateTime? @map("signature_date") @db.Timestamptz(6)
-  signatureIp            String?   @map("signature_ip") @db.VarChar(45)
+  publicToken          String?   @unique @map("public_token") @db.VarChar(64)
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  signatureName        String?   @map("signature_name") @db.VarChar(255)
+  signatureDate        DateTime? @map("signature_date") @db.Timestamptz(6)
+  signatureIp          String?   @map("signature_ip") @db.VarChar(45)
 
-  account          Account           @relation(fields: [accountId], references: [id])
-  facility         Facility?         @relation(fields: [facilityId], references: [id])
-  pricingPlan      PricingSettings?  @relation("ProposalPricingPlan", fields: [pricingPlanId], references: [id])
-  createdByUser    User              @relation("CreatedProposals", fields: [createdByUserId], references: [id])
+  account          Account            @relation(fields: [accountId], references: [id])
+  facility         Facility?          @relation(fields: [facilityId], references: [id])
+  opportunity      Opportunity?       @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  pricingPlan      PricingSettings?   @relation("ProposalPricingPlan", fields: [pricingPlanId], references: [id])
+  createdByUser    User               @relation("CreatedProposals", fields: [createdByUserId], references: [id])
   proposalItems    ProposalItem[]
   proposalServices ProposalService[]
   contracts        Contract[]
@@ -808,6 +857,7 @@ model Proposal {
 
   @@index([accountId])
   @@index([facilityId])
+  @@index([opportunityId])
   @@index([status])
   @@index([proposalNumber])
   @@index([validUntil])
@@ -859,16 +909,16 @@ model ProposalService {
 }
 
 model ProposalActivity {
-  id              String   @id @default(uuid()) @db.Uuid
-  proposalId      String   @map("proposal_id") @db.Uuid
-  action          String   @db.VarChar(50)
-  performedByUserId String? @map("performed_by_user_id") @db.Uuid
-  metadata        Json     @default("{}") @db.JsonB
-  ipAddress       String?  @map("ip_address") @db.VarChar(45)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  proposalId        String   @map("proposal_id") @db.Uuid
+  action            String   @db.VarChar(50)
+  performedByUserId String?  @map("performed_by_user_id") @db.Uuid
+  metadata          Json     @default("{}") @db.JsonB
+  ipAddress         String?  @map("ip_address") @db.VarChar(45)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  proposal      Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  performedByUser User?  @relation("ProposalActivities", fields: [performedByUserId], references: [id])
+  proposal        Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  performedByUser User?    @relation("ProposalActivities", fields: [performedByUserId], references: [id])
 
   @@index([proposalId])
   @@index([action])
@@ -914,24 +964,25 @@ model ProposalVersion {
 // ============================================================
 
 model Contract {
-  id             String  @id @default(uuid()) @db.Uuid
-  contractNumber String  @unique @map("contract_number") @db.VarChar(50)
-  title          String  @db.VarChar(255)
-  status         String  @default("draft") @db.VarChar(30)
-  accountId      String  @map("account_id") @db.Uuid
-  facilityId     String? @map("facility_id") @db.Uuid
-  proposalId     String? @map("proposal_id") @db.Uuid
-  assignedTeamId String? @map("assigned_team_id") @db.Uuid
-  assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
-  pendingAssignedTeamId String? @map("pending_assigned_team_id") @db.Uuid
-  pendingAssignedToUserId String? @map("pending_assigned_to_user_id") @db.Uuid
-  pendingSubcontractorTier String? @map("pending_subcontractor_tier") @db.VarChar(20)
+  id                              String    @id @default(uuid()) @db.Uuid
+  contractNumber                  String    @unique @map("contract_number") @db.VarChar(50)
+  title                           String    @db.VarChar(255)
+  status                          String    @default("draft") @db.VarChar(30)
+  accountId                       String    @map("account_id") @db.Uuid
+  facilityId                      String?   @map("facility_id") @db.Uuid
+  proposalId                      String?   @map("proposal_id") @db.Uuid
+  opportunityId                   String?   @map("opportunity_id") @db.Uuid
+  assignedTeamId                  String?   @map("assigned_team_id") @db.Uuid
+  assignedToUserId                String?   @map("assigned_to_user_id") @db.Uuid
+  pendingAssignedTeamId           String?   @map("pending_assigned_team_id") @db.Uuid
+  pendingAssignedToUserId         String?   @map("pending_assigned_to_user_id") @db.Uuid
+  pendingSubcontractorTier        String?   @map("pending_subcontractor_tier") @db.VarChar(20)
   assignmentOverrideEffectiveDate DateTime? @map("assignment_override_effective_date") @db.Date
-  assignmentOverrideSetByUserId String? @map("assignment_override_set_by_user_id") @db.Uuid
-  assignmentOverrideSetAt DateTime? @map("assignment_override_set_at") @db.Timestamptz(6)
+  assignmentOverrideSetByUserId   String?   @map("assignment_override_set_by_user_id") @db.Uuid
+  assignmentOverrideSetAt         DateTime? @map("assignment_override_set_at") @db.Timestamptz(6)
 
   // Renewal tracking
-  renewalNumber         Int     @default(0) @map("renewal_number")
+  renewalNumber Int @default(0) @map("renewal_number")
 
   // Service Terms
   startDate         DateTime  @map("start_date") @db.Date
@@ -942,18 +993,18 @@ model Contract {
   renewalNoticeDays Int?      @default(30) @map("renewal_notice_days")
 
   // Financial Terms
-  monthlyValue Decimal  @map("monthly_value") @db.Decimal(12, 2)
-  totalValue   Decimal? @map("total_value") @db.Decimal(12, 2)
-  billingCycle String   @default("monthly") @map("billing_cycle") @db.VarChar(20)
-  paymentTerms String   @default("Net 30") @map("payment_terms") @db.VarChar(50)
-  subcontractorTier String? @map("subcontractor_tier") @db.VarChar(20)
+  monthlyValue      Decimal  @map("monthly_value") @db.Decimal(12, 2)
+  totalValue        Decimal? @map("total_value") @db.Decimal(12, 2)
+  billingCycle      String   @default("monthly") @map("billing_cycle") @db.VarChar(20)
+  paymentTerms      String   @default("Net 30") @map("payment_terms") @db.VarChar(50)
+  subcontractorTier String?  @map("subcontractor_tier") @db.VarChar(20)
 
   // Contract Details
-  termsAndConditions  String? @map("terms_and_conditions") @db.Text
-  termsDocumentName   String? @map("terms_document_name") @db.VarChar(255)
+  termsAndConditions    String? @map("terms_and_conditions") @db.Text
+  termsDocumentName     String? @map("terms_document_name") @db.VarChar(255)
   termsDocumentMimeType String? @map("terms_document_mime_type") @db.VarChar(100)
-  termsDocumentDataUrl String? @map("terms_document_data_url") @db.Text
-  specialInstructions String? @map("special_instructions") @db.Text
+  termsDocumentDataUrl  String? @map("terms_document_data_url") @db.Text
+  specialInstructions   String? @map("special_instructions") @db.Text
 
   // Document Management
   signedDocumentUrl String?   @map("signed_document_url") @db.Text
@@ -968,10 +1019,10 @@ model Contract {
   terminatedAt      DateTime? @map("terminated_at") @db.Timestamptz(6)
 
   // Initial Clean Tracking
-  includesInitialClean        Boolean   @default(true) @map("includes_initial_clean")
-  initialCleanCompleted       Boolean   @default(false) @map("initial_clean_completed")
-  initialCleanCompletedAt     DateTime? @map("initial_clean_completed_at") @db.Timestamptz(6)
-  initialCleanCompletedByUserId String?  @map("initial_clean_completed_by_user_id") @db.Uuid
+  includesInitialClean          Boolean   @default(true) @map("includes_initial_clean")
+  initialCleanCompleted         Boolean   @default(false) @map("initial_clean_completed")
+  initialCleanCompletedAt       DateTime? @map("initial_clean_completed_at") @db.Timestamptz(6)
+  initialCleanCompletedByUserId String?   @map("initial_clean_completed_by_user_id") @db.Uuid
 
   // Public access
   publicToken          String?   @unique @map("public_token") @db.VarChar(64)
@@ -987,23 +1038,35 @@ model Contract {
   archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
   // Relations
-  account                    Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  facility                   Facility? @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  proposal                   Proposal? @relation(fields: [proposalId], references: [id])
-  assignedTeam               Team?     @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
-  assignedToUser             User?     @relation("AssignedContracts", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  pendingAssignedTeam        Team?     @relation("PendingAssignedTeamContracts", fields: [pendingAssignedTeamId], references: [id], onDelete: SetNull)
-  pendingAssignedToUser      User?     @relation("PendingAssignedContracts", fields: [pendingAssignedToUserId], references: [id], onDelete: SetNull)
-  assignmentOverrideSetByUser User?    @relation("AssignmentOverrideSetByUser", fields: [assignmentOverrideSetByUserId], references: [id], onDelete: SetNull)
-  approvedByUser             User?     @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
-  createdByUser              User      @relation("CreatedContracts", fields: [createdByUserId], references: [id])
-  initialCleanCompletedByUser User?    @relation("InitialCleanCompletedContracts", fields: [initialCleanCompletedByUserId], references: [id])
+  account                     Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  facility                    Facility?    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  proposal                    Proposal?    @relation(fields: [proposalId], references: [id])
+  opportunity                 Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  assignedTeam                Team?        @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  assignedToUser              User?        @relation("AssignedContracts", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  pendingAssignedTeam         Team?        @relation("PendingAssignedTeamContracts", fields: [pendingAssignedTeamId], references: [id], onDelete: SetNull)
+  pendingAssignedToUser       User?        @relation("PendingAssignedContracts", fields: [pendingAssignedToUserId], references: [id], onDelete: SetNull)
+  assignmentOverrideSetByUser User?        @relation("AssignmentOverrideSetByUser", fields: [assignmentOverrideSetByUserId], references: [id], onDelete: SetNull)
+  approvedByUser              User?        @relation("ApprovedContracts", fields: [approvedByUserId], references: [id])
+  createdByUser               User         @relation("CreatedContracts", fields: [createdByUserId], references: [id])
+  initialCleanCompletedByUser User?        @relation("InitialCleanCompletedContracts", fields: [initialCleanCompletedByUserId], references: [id])
+
+  activities          ContractActivity[]
+  jobs                Job[]                @relation("ContractJobs")
+  inspections         Inspection[]         @relation("ContractInspections")
+  inspectionTemplates InspectionTemplate[] @relation("ContractInspectionTemplates")
+  timeEntries         TimeEntry[]          @relation("ContractTimeEntries")
+  invoices            Invoice[]            @relation("ContractInvoices")
+  amendments          ContractAmendment[]
+  expenses            Expense[]            @relation("ContractExpenses")
+  payrollEntries      PayrollEntry[]       @relation("ContractPayrollEntries")
 
   @@index([contractNumber])
   @@index([status])
   @@index([accountId])
   @@index([facilityId])
   @@index([proposalId])
+  @@index([opportunityId])
   @@index([assignedTeamId])
   @@index([assignedToUserId])
   @@index([pendingAssignedTeamId])
@@ -1015,26 +1078,16 @@ model Contract {
   @@index([publicToken])
   @@index([createdAt])
   @@map("contracts")
-
-  activities ContractActivity[]
-  jobs       Job[] @relation("ContractJobs")
-  inspections          Inspection[]          @relation("ContractInspections")
-  inspectionTemplates  InspectionTemplate[]  @relation("ContractInspectionTemplates")
-  timeEntries          TimeEntry[]           @relation("ContractTimeEntries")
-  invoices    Invoice[]    @relation("ContractInvoices")
-  amendments   ContractAmendment[]
-  expenses       Expense[]      @relation("ContractExpenses")
-  payrollEntries PayrollEntry[] @relation("ContractPayrollEntries")
 }
 
 model ContractActivity {
-  id              String   @id @default(uuid()) @db.Uuid
-  contractId      String   @map("contract_id") @db.Uuid
-  action          String   @db.VarChar(50)
-  performedByUserId String? @map("performed_by_user_id") @db.Uuid
-  metadata        Json     @default("{}") @db.JsonB
-  ipAddress       String?  @map("ip_address") @db.VarChar(45)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String   @id @default(uuid()) @db.Uuid
+  contractId        String   @map("contract_id") @db.Uuid
+  action            String   @db.VarChar(50)
+  performedByUserId String?  @map("performed_by_user_id") @db.Uuid
+  metadata          Json     @default("{}") @db.JsonB
+  ipAddress         String?  @map("ip_address") @db.VarChar(45)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   performedByUser User?    @relation("ContractActivities", fields: [performedByUserId], references: [id])
@@ -1046,42 +1099,42 @@ model ContractActivity {
 }
 
 model ContractAmendment {
-  id                 String    @id @default(uuid()) @db.Uuid
-  contractId         String    @map("contract_id") @db.Uuid
-  amendmentNumber    Int       @map("amendment_number")
-  status             String    @default("draft") @db.VarChar(30)
-  amendmentType      String    @default("scope_change") @map("amendment_type") @db.VarChar(30)
-  title              String    @db.VarChar(255)
-  summary            String?   @db.Text
-  reason             String?   @db.Text
-  effectiveDate      DateTime  @map("effective_date") @db.Date
-  pricingPlanId      String?   @map("pricing_plan_id") @db.Uuid
-  oldMonthlyValue    Decimal   @map("old_monthly_value") @db.Decimal(12, 2)
-  newMonthlyValue    Decimal?  @map("new_monthly_value") @db.Decimal(12, 2)
-  monthlyDelta       Decimal?  @map("monthly_delta") @db.Decimal(12, 2)
-  oldServiceFrequency String?  @map("old_service_frequency") @db.VarChar(30)
-  newServiceFrequency String?  @map("new_service_frequency") @db.VarChar(30)
-  oldServiceSchedule Json?     @map("old_service_schedule") @db.JsonB
-  newServiceSchedule Json?     @map("new_service_schedule") @db.JsonB
-  pricingSnapshot    Json?     @map("pricing_snapshot") @db.JsonB
-  approvedAt         DateTime? @map("approved_at") @db.Timestamptz(6)
-  appliedAt          DateTime? @map("applied_at") @db.Timestamptz(6)
-  canceledAt         DateTime? @map("canceled_at") @db.Timestamptz(6)
-  rejectedAt         DateTime? @map("rejected_at") @db.Timestamptz(6)
-  rejectedReason     String?   @map("rejected_reason") @db.Text
-  createdByUserId    String    @map("created_by_user_id") @db.Uuid
-  approvedByUserId   String?   @map("approved_by_user_id") @db.Uuid
-  appliedByUserId    String?   @map("applied_by_user_id") @db.Uuid
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                  String    @id @default(uuid()) @db.Uuid
+  contractId          String    @map("contract_id") @db.Uuid
+  amendmentNumber     Int       @map("amendment_number")
+  status              String    @default("draft") @db.VarChar(30)
+  amendmentType       String    @default("scope_change") @map("amendment_type") @db.VarChar(30)
+  title               String    @db.VarChar(255)
+  summary             String?   @db.Text
+  reason              String?   @db.Text
+  effectiveDate       DateTime  @map("effective_date") @db.Date
+  pricingPlanId       String?   @map("pricing_plan_id") @db.Uuid
+  oldMonthlyValue     Decimal   @map("old_monthly_value") @db.Decimal(12, 2)
+  newMonthlyValue     Decimal?  @map("new_monthly_value") @db.Decimal(12, 2)
+  monthlyDelta        Decimal?  @map("monthly_delta") @db.Decimal(12, 2)
+  oldServiceFrequency String?   @map("old_service_frequency") @db.VarChar(30)
+  newServiceFrequency String?   @map("new_service_frequency") @db.VarChar(30)
+  oldServiceSchedule  Json?     @map("old_service_schedule") @db.JsonB
+  newServiceSchedule  Json?     @map("new_service_schedule") @db.JsonB
+  pricingSnapshot     Json?     @map("pricing_snapshot") @db.JsonB
+  approvedAt          DateTime? @map("approved_at") @db.Timestamptz(6)
+  appliedAt           DateTime? @map("applied_at") @db.Timestamptz(6)
+  canceledAt          DateTime? @map("canceled_at") @db.Timestamptz(6)
+  rejectedAt          DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectedReason      String?   @map("rejected_reason") @db.Text
+  createdByUserId     String    @map("created_by_user_id") @db.Uuid
+  approvedByUserId    String?   @map("approved_by_user_id") @db.Uuid
+  appliedByUserId     String?   @map("applied_by_user_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  contract        Contract                    @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  createdByUser   User                        @relation("CreatedContractAmendments", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  approvedByUser  User?                       @relation("ApprovedContractAmendments", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  appliedByUser   User?                       @relation("AppliedContractAmendments", fields: [appliedByUserId], references: [id], onDelete: SetNull)
-  snapshots       ContractAmendmentScopeSnapshot[]
-  activities      ContractAmendmentActivity[]
+  contract       Contract                         @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdByUser  User                             @relation("CreatedContractAmendments", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedByUser User?                            @relation("ApprovedContractAmendments", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  appliedByUser  User?                            @relation("AppliedContractAmendments", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+  snapshots      ContractAmendmentScopeSnapshot[]
+  activities     ContractAmendmentActivity[]
 
   @@unique([contractId, amendmentNumber])
   @@index([contractId])
@@ -1127,25 +1180,25 @@ model ContractAmendmentActivity {
 }
 
 model Team {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String    @unique @db.VarChar(255)
-  contactName   String?   @map("contact_name") @db.VarChar(255)
-  contactEmail  String?   @map("contact_email") @db.VarChar(255)
-  contactPhone  String?   @map("contact_phone") @db.VarChar(20)
-  notes         String?   @db.Text
-  isActive      Boolean   @default(true) @map("is_active")
-  calendarColor String?   @map("calendar_color") @db.VarChar(7)
-  createdByUserId String  @map("created_by_user_id") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt    DateTime? @map("archived_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @unique @db.VarChar(255)
+  contactName     String?   @map("contact_name") @db.VarChar(255)
+  contactEmail    String?   @map("contact_email") @db.VarChar(255)
+  contactPhone    String?   @map("contact_phone") @db.VarChar(20)
+  notes           String?   @db.Text
+  isActive        Boolean   @default(true) @map("is_active")
+  calendarColor   String?   @map("calendar_color") @db.VarChar(7)
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  createdByUser User          @relation("CreatedTeams", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  users         User[]
-  contracts     Contract[]    @relation("AssignedTeamContracts")
-  pendingContracts Contract[] @relation("PendingAssignedTeamContracts")
-  appointments  Appointment[] @relation("AssignedTeamAppointments")
-  jobs          Job[]         @relation("AssignedTeamJobs")
+  createdByUser    User          @relation("CreatedTeams", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  users            User[]
+  contracts        Contract[]    @relation("AssignedTeamContracts")
+  pendingContracts Contract[]    @relation("PendingAssignedTeamContracts")
+  appointments     Appointment[] @relation("AssignedTeamAppointments")
+  jobs             Job[]         @relation("AssignedTeamJobs")
 
   @@index([isActive])
   @@index([createdByUserId])
@@ -1158,18 +1211,18 @@ model Team {
 // ============================================================
 
 model Job {
-  id               String    @id @default(uuid()) @db.Uuid
-  jobNumber        String    @unique @map("job_number") @db.VarChar(50)
-  contractId       String?   @map("contract_id") @db.Uuid
-  quotationId      String?   @unique @map("quotation_id") @db.Uuid
-  facilityId       String    @map("facility_id") @db.Uuid
-  accountId        String    @map("account_id") @db.Uuid
-  assignedTeamId   String?   @map("assigned_team_id") @db.Uuid
-  assignedToUserId String?   @map("assigned_to_user_id") @db.Uuid
-  jobType          String    @default("scheduled_service") @map("job_type") @db.VarChar(30)
-  jobCategory      String    @default("one_time") @map("job_category") @db.VarChar(20)
-  status           String    @default("scheduled") @db.VarChar(30)
-  scheduledDate    DateTime  @map("scheduled_date") @db.Date
+  id                 String    @id @default(uuid()) @db.Uuid
+  jobNumber          String    @unique @map("job_number") @db.VarChar(50)
+  contractId         String?   @map("contract_id") @db.Uuid
+  quotationId        String?   @unique @map("quotation_id") @db.Uuid
+  facilityId         String    @map("facility_id") @db.Uuid
+  accountId          String    @map("account_id") @db.Uuid
+  assignedTeamId     String?   @map("assigned_team_id") @db.Uuid
+  assignedToUserId   String?   @map("assigned_to_user_id") @db.Uuid
+  jobType            String    @default("scheduled_service") @map("job_type") @db.VarChar(30)
+  jobCategory        String    @default("one_time") @map("job_category") @db.VarChar(20)
+  status             String    @default("scheduled") @db.VarChar(30)
+  scheduledDate      DateTime  @map("scheduled_date") @db.Date
   scheduledStartTime DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
   scheduledEndTime   DateTime? @map("scheduled_end_time") @db.Timestamptz(6)
   actualStartTime    DateTime? @map("actual_start_time") @db.Timestamptz(6)
@@ -1190,12 +1243,12 @@ model Job {
   assignedToUser User?      @relation("AssignedJobs", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   createdByUser  User       @relation("CreatedJobs", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
-  tasks          JobTask[]
-  notes_         JobNote[]
-  activities     JobActivity[]
-  inspections    Inspection[] @relation("JobInspections")
-  timeEntries    TimeEntry[]  @relation("JobTimeEntries")
-  expenses       Expense[]    @relation("JobExpenses")
+  tasks       JobTask[]
+  notes_      JobNote[]
+  activities  JobActivity[]
+  inspections Inspection[]  @relation("JobInspections")
+  timeEntries TimeEntry[]   @relation("JobTimeEntries")
+  expenses    Expense[]     @relation("JobExpenses")
 
   @@index([jobNumber])
   @@index([contractId])
@@ -1213,19 +1266,19 @@ model Job {
 }
 
 model JobTask {
-  id               String    @id @default(uuid()) @db.Uuid
-  jobId            String    @map("job_id") @db.Uuid
-  facilityTaskId   String?   @map("facility_task_id") @db.Uuid
-  taskName         String    @map("task_name") @db.VarChar(255)
-  description      String?   @db.Text
-  status           String    @default("pending") @db.VarChar(30)
-  estimatedMinutes Int?      @map("estimated_minutes")
-  actualMinutes    Int?      @map("actual_minutes")
-  completedByUserId String?  @map("completed_by_user_id") @db.Uuid
-  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
-  notes            String?   @db.Text
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid()) @db.Uuid
+  jobId             String    @map("job_id") @db.Uuid
+  facilityTaskId    String?   @map("facility_task_id") @db.Uuid
+  taskName          String    @map("task_name") @db.VarChar(255)
+  description       String?   @db.Text
+  status            String    @default("pending") @db.VarChar(30)
+  estimatedMinutes  Int?      @map("estimated_minutes")
+  actualMinutes     Int?      @map("actual_minutes")
+  completedByUserId String?   @map("completed_by_user_id") @db.Uuid
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   job             Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
   facilityTask    FacilityTask? @relation("JobFacilityTasks", fields: [facilityTaskId], references: [id], onDelete: SetNull)
@@ -1246,8 +1299,8 @@ model JobNote {
   createdByUserId String   @map("created_by_user_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  job             Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdByUser   User @relation("CreatedJobNotes", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  job           Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdByUser User @relation("CreatedJobNotes", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([jobId])
   @@index([noteType])
@@ -1276,20 +1329,20 @@ model JobActivity {
 // ============================================================
 
 model InspectionTemplate {
-  id                  String    @id @default(uuid()) @db.Uuid
-  name                String    @db.VarChar(255)
-  description         String?   @db.Text
-  facilityTypeFilter  String?   @map("facility_type_filter") @db.VarChar(50)
-  contractId          String?   @map("contract_id") @db.Uuid
-  createdByUserId     String    @map("created_by_user_id") @db.Uuid
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String    @db.VarChar(255)
+  description        String?   @db.Text
+  facilityTypeFilter String?   @map("facility_type_filter") @db.VarChar(50)
+  contractId         String?   @map("contract_id") @db.Uuid
+  createdByUserId    String    @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt         DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  items               InspectionTemplateItem[]
-  inspections         Inspection[]
-  contract            Contract? @relation("ContractInspectionTemplates", fields: [contractId], references: [id], onDelete: SetNull)
-  createdByUser       User @relation("CreatedInspectionTemplates", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  items         InspectionTemplateItem[]
+  inspections   Inspection[]
+  contract      Contract?                @relation("ContractInspectionTemplates", fields: [contractId], references: [id], onDelete: SetNull)
+  createdByUser User                     @relation("CreatedInspectionTemplates", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([contractId])
   @@index([archivedAt])
@@ -1304,43 +1357,43 @@ model InspectionTemplateItem {
   sortOrder  Int    @default(0) @map("sort_order")
   weight     Int    @default(1)
 
-  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@index([templateId])
   @@map("inspection_template_items")
 }
 
 model Inspection {
-  id                String    @id @default(uuid()) @db.Uuid
-  inspectionNumber  String    @unique @map("inspection_number") @db.VarChar(50)
-  templateId        String?   @map("template_id") @db.Uuid
-  jobId             String?   @map("job_id") @db.Uuid
-  contractId        String?   @map("contract_id") @db.Uuid
-  facilityId        String    @map("facility_id") @db.Uuid
-  accountId         String    @map("account_id") @db.Uuid
-  inspectorUserId   String    @map("inspector_user_id") @db.Uuid
-  status            String    @default("scheduled") @db.VarChar(30)
-  scheduledDate     DateTime  @map("scheduled_date") @db.Date
-  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
-  overallScore      Decimal?  @map("overall_score") @db.Decimal(5, 2)
-  overallRating     String?   @map("overall_rating") @db.VarChar(20)
-  notes             String?   @db.Text
-  summary           String?   @db.Text
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid()) @db.Uuid
+  inspectionNumber String    @unique @map("inspection_number") @db.VarChar(50)
+  templateId       String?   @map("template_id") @db.Uuid
+  jobId            String?   @map("job_id") @db.Uuid
+  contractId       String?   @map("contract_id") @db.Uuid
+  facilityId       String    @map("facility_id") @db.Uuid
+  accountId        String    @map("account_id") @db.Uuid
+  inspectorUserId  String    @map("inspector_user_id") @db.Uuid
+  status           String    @default("scheduled") @db.VarChar(30)
+  scheduledDate    DateTime  @map("scheduled_date") @db.Date
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  overallScore     Decimal?  @map("overall_score") @db.Decimal(5, 2)
+  overallRating    String?   @map("overall_rating") @db.VarChar(20)
+  notes            String?   @db.Text
+  summary          String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  template          InspectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  job               Job?                @relation("JobInspections", fields: [jobId], references: [id], onDelete: SetNull)
-  contract          Contract?           @relation("ContractInspections", fields: [contractId], references: [id], onDelete: SetNull)
-  facility          Facility            @relation("FacilityInspections", fields: [facilityId], references: [id], onDelete: Restrict)
-  account           Account             @relation("AccountInspections", fields: [accountId], references: [id], onDelete: Restrict)
-  inspectorUser     User                @relation("InspectorInspections", fields: [inspectorUserId], references: [id], onDelete: Restrict)
+  template      InspectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  job           Job?                @relation("JobInspections", fields: [jobId], references: [id], onDelete: SetNull)
+  contract      Contract?           @relation("ContractInspections", fields: [contractId], references: [id], onDelete: SetNull)
+  facility      Facility            @relation("FacilityInspections", fields: [facilityId], references: [id], onDelete: Restrict)
+  account       Account             @relation("AccountInspections", fields: [accountId], references: [id], onDelete: Restrict)
+  inspectorUser User                @relation("InspectorInspections", fields: [inspectorUserId], references: [id], onDelete: Restrict)
 
   items             InspectionItem[]
   activities        InspectionActivity[]
   correctiveActions InspectionCorrectiveAction[]
   signoffs          InspectionSignoff[]
-  appointment       Appointment?   @relation("AppointmentInspection")
+  appointment       Appointment?                 @relation("AppointmentInspection")
 
   @@index([inspectionNumber])
   @@index([templateId])
@@ -1355,18 +1408,18 @@ model Inspection {
 }
 
 model InspectionItem {
-  id               String   @id @default(uuid()) @db.Uuid
-  inspectionId     String   @map("inspection_id") @db.Uuid
-  templateItemId   String?  @map("template_item_id") @db.Uuid
-  category         String   @db.VarChar(100)
-  itemText         String   @map("item_text") @db.VarChar(500)
-  score            String?  @db.VarChar(10)
-  rating           Int?
-  notes            String?  @db.Text
-  photoUrl         String?  @map("photo_url") @db.Text
-  sortOrder        Int      @default(0) @map("sort_order")
+  id             String  @id @default(uuid()) @db.Uuid
+  inspectionId   String  @map("inspection_id") @db.Uuid
+  templateItemId String? @map("template_item_id") @db.Uuid
+  category       String  @db.VarChar(100)
+  itemText       String  @map("item_text") @db.VarChar(500)
+  score          String? @db.VarChar(10)
+  rating         Int?
+  notes          String? @db.Text
+  photoUrl       String? @map("photo_url") @db.Text
+  sortOrder      Int     @default(0) @map("sort_order")
 
-  inspection       Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  inspection        Inspection                   @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   correctiveActions InspectionCorrectiveAction[]
 
   @@index([inspectionId])
@@ -1381,8 +1434,8 @@ model InspectionActivity {
   metadata          Json     @default("{}") @db.JsonB
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  inspection        Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  performedByUser   User?      @relation("InspectionActivities", fields: [performedByUserId], references: [id], onDelete: SetNull)
+  inspection      Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  performedByUser User?      @relation("InspectionActivities", fields: [performedByUserId], references: [id], onDelete: SetNull)
 
   @@index([inspectionId])
   @@index([action])
@@ -1391,31 +1444,31 @@ model InspectionActivity {
 }
 
 model InspectionCorrectiveAction {
-  id                  String    @id @default(uuid()) @db.Uuid
-  inspectionId        String    @map("inspection_id") @db.Uuid
-  inspectionItemId    String?   @map("inspection_item_id") @db.Uuid
-  title               String    @db.VarChar(255)
-  description         String?   @db.Text
-  severity            String    @default("major") @db.VarChar(20)
-  status              String    @default("open") @db.VarChar(30)
-  dueDate             DateTime? @map("due_date") @db.Date
-  assigneeUserId      String?   @map("assignee_user_id") @db.Uuid
-  createdByUserId     String    @map("created_by_user_id") @db.Uuid
-  resolvedByUserId    String?   @map("resolved_by_user_id") @db.Uuid
-  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
-  resolutionNotes     String?   @map("resolution_notes") @db.Text
-  verifiedByUserId    String?   @map("verified_by_user_id") @db.Uuid
-  verifiedAt          DateTime? @map("verified_at") @db.Timestamptz(6)
-  followUpInspectionId String?  @map("follow_up_inspection_id") @db.Uuid
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String    @id @default(uuid()) @db.Uuid
+  inspectionId         String    @map("inspection_id") @db.Uuid
+  inspectionItemId     String?   @map("inspection_item_id") @db.Uuid
+  title                String    @db.VarChar(255)
+  description          String?   @db.Text
+  severity             String    @default("major") @db.VarChar(20)
+  status               String    @default("open") @db.VarChar(30)
+  dueDate              DateTime? @map("due_date") @db.Date
+  assigneeUserId       String?   @map("assignee_user_id") @db.Uuid
+  createdByUserId      String    @map("created_by_user_id") @db.Uuid
+  resolvedByUserId     String?   @map("resolved_by_user_id") @db.Uuid
+  resolvedAt           DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolutionNotes      String?   @map("resolution_notes") @db.Text
+  verifiedByUserId     String?   @map("verified_by_user_id") @db.Uuid
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamptz(6)
+  followUpInspectionId String?   @map("follow_up_inspection_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  inspection          Inspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  inspectionItem      InspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
-  assigneeUser        User?           @relation("AssignedInspectionCorrectiveActions", fields: [assigneeUserId], references: [id], onDelete: SetNull)
-  createdByUser       User            @relation("CreatedInspectionCorrectiveActions", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  resolvedByUser      User?           @relation("ResolvedInspectionCorrectiveActions", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
-  verifiedByUser      User?           @relation("VerifiedInspectionCorrectiveActions", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  inspection     Inspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  inspectionItem InspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  assigneeUser   User?           @relation("AssignedInspectionCorrectiveActions", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  createdByUser  User            @relation("CreatedInspectionCorrectiveActions", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  resolvedByUser User?           @relation("ResolvedInspectionCorrectiveActions", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  verifiedByUser User?           @relation("VerifiedInspectionCorrectiveActions", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
 
   @@index([inspectionId])
   @@index([inspectionItemId])
@@ -1450,34 +1503,34 @@ model InspectionSignoff {
 // ============================================================
 
 model TimeEntry {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  jobId           String?   @map("job_id") @db.Uuid
-  contractId      String?   @map("contract_id") @db.Uuid
-  facilityId      String?   @map("facility_id") @db.Uuid
-  entryType       String    @default("clock_in") @map("entry_type") @db.VarChar(20)
-  clockIn         DateTime  @map("clock_in") @db.Timestamptz(6)
-  clockOut        DateTime? @map("clock_out") @db.Timestamptz(6)
-  breakMinutes    Int       @default(0) @map("break_minutes")
-  totalHours      Decimal?  @map("total_hours") @db.Decimal(6, 2)
-  notes           String?   @db.Text
-  status          String    @default("active") @db.VarChar(20)
-  approvedByUserId String?  @map("approved_by_user_id") @db.Uuid
-  approvedAt      DateTime? @map("approved_at") @db.Timestamptz(6)
-  editedByUserId  String?   @map("edited_by_user_id") @db.Uuid
-  editReason      String?   @map("edit_reason") @db.Text
-  geoLocation     Json?     @map("geo_location") @db.JsonB
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  jobId            String?   @map("job_id") @db.Uuid
+  contractId       String?   @map("contract_id") @db.Uuid
+  facilityId       String?   @map("facility_id") @db.Uuid
+  entryType        String    @default("clock_in") @map("entry_type") @db.VarChar(20)
+  clockIn          DateTime  @map("clock_in") @db.Timestamptz(6)
+  clockOut         DateTime? @map("clock_out") @db.Timestamptz(6)
+  breakMinutes     Int       @default(0) @map("break_minutes")
+  totalHours       Decimal?  @map("total_hours") @db.Decimal(6, 2)
+  notes            String?   @db.Text
+  status           String    @default("active") @db.VarChar(20)
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
+  editedByUserId   String?   @map("edited_by_user_id") @db.Uuid
+  editReason       String?   @map("edit_reason") @db.Text
+  geoLocation      Json?     @map("geo_location") @db.JsonB
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user            User      @relation("UserTimeEntries", fields: [userId], references: [id], onDelete: Restrict)
-  job             Job?      @relation("JobTimeEntries", fields: [jobId], references: [id], onDelete: SetNull)
-  contract        Contract? @relation("ContractTimeEntries", fields: [contractId], references: [id], onDelete: SetNull)
-  facility        Facility? @relation("FacilityTimeEntries", fields: [facilityId], references: [id], onDelete: SetNull)
-  approvedByUser  User?     @relation("ApprovedTimeEntries", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  editedByUser    User?     @relation("EditedTimeEntries", fields: [editedByUserId], references: [id], onDelete: SetNull)
-  timesheetId     String?   @map("timesheet_id") @db.Uuid
-  timesheet       Timesheet? @relation("TimesheetEntries", fields: [timesheetId], references: [id], onDelete: SetNull)
+  user           User       @relation("UserTimeEntries", fields: [userId], references: [id], onDelete: Restrict)
+  job            Job?       @relation("JobTimeEntries", fields: [jobId], references: [id], onDelete: SetNull)
+  contract       Contract?  @relation("ContractTimeEntries", fields: [contractId], references: [id], onDelete: SetNull)
+  facility       Facility?  @relation("FacilityTimeEntries", fields: [facilityId], references: [id], onDelete: SetNull)
+  approvedByUser User?      @relation("ApprovedTimeEntries", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  editedByUser   User?      @relation("EditedTimeEntries", fields: [editedByUserId], references: [id], onDelete: SetNull)
+  timesheetId    String?    @map("timesheet_id") @db.Uuid
+  timesheet      Timesheet? @relation("TimesheetEntries", fields: [timesheetId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([jobId])
@@ -1490,23 +1543,23 @@ model TimeEntry {
 }
 
 model Timesheet {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  periodStart     DateTime  @map("period_start") @db.Date
-  periodEnd       DateTime  @map("period_end") @db.Date
-  status          String    @default("draft") @db.VarChar(20)
-  totalHours      Decimal   @default(0) @map("total_hours") @db.Decimal(6, 2)
-  regularHours    Decimal   @default(0) @map("regular_hours") @db.Decimal(6, 2)
-  overtimeHours   Decimal   @default(0) @map("overtime_hours") @db.Decimal(6, 2)
-  approvedByUserId String?  @map("approved_by_user_id") @db.Uuid
-  approvedAt      DateTime? @map("approved_at") @db.Timestamptz(6)
-  notes           String?   @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  periodStart      DateTime  @map("period_start") @db.Date
+  periodEnd        DateTime  @map("period_end") @db.Date
+  status           String    @default("draft") @db.VarChar(20)
+  totalHours       Decimal   @default(0) @map("total_hours") @db.Decimal(6, 2)
+  regularHours     Decimal   @default(0) @map("regular_hours") @db.Decimal(6, 2)
+  overtimeHours    Decimal   @default(0) @map("overtime_hours") @db.Decimal(6, 2)
+  approvedByUserId String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user            User       @relation("UserTimesheets", fields: [userId], references: [id], onDelete: Restrict)
-  approvedByUser  User?      @relation("ApprovedTimesheets", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  entries         TimeEntry[] @relation("TimesheetEntries")
+  user           User        @relation("UserTimesheets", fields: [userId], references: [id], onDelete: Restrict)
+  approvedByUser User?       @relation("ApprovedTimesheets", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  entries        TimeEntry[] @relation("TimesheetEntries")
 
   @@unique([userId, periodStart, periodEnd])
   @@index([userId])
@@ -1520,41 +1573,41 @@ model Timesheet {
 // ============================================================
 
 model Invoice {
-  id                    String    @id @default(uuid()) @db.Uuid
-  invoiceNumber         String    @unique @map("invoice_number") @db.VarChar(50)
-  contractId            String?   @map("contract_id") @db.Uuid
-  accountId             String    @map("account_id") @db.Uuid
-  facilityId            String?   @map("facility_id") @db.Uuid
-  status                String    @default("draft") @db.VarChar(20)
-  issueDate             DateTime  @map("issue_date") @db.Date
-  dueDate               DateTime  @map("due_date") @db.Date
-  periodStart           DateTime? @map("period_start") @db.Date
-  periodEnd             DateTime? @map("period_end") @db.Date
-  subtotal              Decimal   @default(0) @db.Decimal(12, 2)
-  taxRate               Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
-  taxAmount             Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
-  totalAmount           Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
-  amountPaid            Decimal   @default(0) @map("amount_paid") @db.Decimal(12, 2)
-  balanceDue            Decimal   @default(0) @map("balance_due") @db.Decimal(12, 2)
-  notes                 String?   @db.Text
-  paymentInstructions   String?   @map("payment_instructions") @db.Text
-  publicToken           String?   @unique @map("public_token") @db.VarChar(100)
-  publicTokenExpiresAt  DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
-  sentAt                DateTime? @map("sent_at") @db.Timestamptz(6)
-  viewedAt              DateTime? @map("viewed_at") @db.Timestamptz(6)
-  paidAt                DateTime? @map("paid_at") @db.Timestamptz(6)
-  createdByUserId       String    @map("created_by_user_id") @db.Uuid
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt            DateTime? @map("archived_at") @db.Timestamptz(6)
+  id                   String    @id @default(uuid()) @db.Uuid
+  invoiceNumber        String    @unique @map("invoice_number") @db.VarChar(50)
+  contractId           String?   @map("contract_id") @db.Uuid
+  accountId            String    @map("account_id") @db.Uuid
+  facilityId           String?   @map("facility_id") @db.Uuid
+  status               String    @default("draft") @db.VarChar(20)
+  issueDate            DateTime  @map("issue_date") @db.Date
+  dueDate              DateTime  @map("due_date") @db.Date
+  periodStart          DateTime? @map("period_start") @db.Date
+  periodEnd            DateTime? @map("period_end") @db.Date
+  subtotal             Decimal   @default(0) @db.Decimal(12, 2)
+  taxRate              Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  taxAmount            Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  amountPaid           Decimal   @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  balanceDue           Decimal   @default(0) @map("balance_due") @db.Decimal(12, 2)
+  notes                String?   @db.Text
+  paymentInstructions  String?   @map("payment_instructions") @db.Text
+  publicToken          String?   @unique @map("public_token") @db.VarChar(100)
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  sentAt               DateTime? @map("sent_at") @db.Timestamptz(6)
+  viewedAt             DateTime? @map("viewed_at") @db.Timestamptz(6)
+  paidAt               DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdByUserId      String    @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  contract              Contract?         @relation("ContractInvoices", fields: [contractId], references: [id], onDelete: SetNull)
-  account               Account           @relation("AccountInvoices", fields: [accountId], references: [id], onDelete: Restrict)
-  facility              Facility?         @relation("FacilityInvoices", fields: [facilityId], references: [id], onDelete: SetNull)
-  createdByUser         User              @relation("CreatedInvoices", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  items                 InvoiceItem[]
-  payments              InvoicePayment[]
-  activities            InvoiceActivity[]
+  contract      Contract?         @relation("ContractInvoices", fields: [contractId], references: [id], onDelete: SetNull)
+  account       Account           @relation("AccountInvoices", fields: [accountId], references: [id], onDelete: Restrict)
+  facility      Facility?         @relation("FacilityInvoices", fields: [facilityId], references: [id], onDelete: SetNull)
+  createdByUser User              @relation("CreatedInvoices", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  items         InvoiceItem[]
+  payments      InvoicePayment[]
+  activities    InvoiceActivity[]
 
   @@index([invoiceNumber])
   @@index([contractId])
@@ -1576,7 +1629,7 @@ model InvoiceItem {
   totalPrice  Decimal @default(0) @map("total_price") @db.Decimal(12, 2)
   sortOrder   Int     @default(0) @map("sort_order")
 
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
   @@map("invoice_items")
@@ -1593,8 +1646,8 @@ model InvoicePayment {
   recordedByUserId String   @map("recorded_by_user_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  invoice          Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  recordedByUser   User    @relation("RecordedPayments", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedByUser User    @relation("RecordedPayments", fields: [recordedByUserId], references: [id], onDelete: Restrict)
 
   @@index([invoiceId])
   @@map("invoice_payments")
@@ -1608,8 +1661,8 @@ model InvoiceActivity {
   metadata          Json     @default("{}") @db.JsonB
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  invoice           Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  performedByUser   User?   @relation("InvoiceActivities", fields: [performedByUserId], references: [id], onDelete: SetNull)
+  invoice         Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  performedByUser User?   @relation("InvoiceActivities", fields: [performedByUserId], references: [id], onDelete: SetNull)
 
   @@index([invoiceId])
   @@index([action])
@@ -1622,56 +1675,56 @@ model InvoiceActivity {
 // ============================================================
 
 model Quotation {
-  id                   String    @id @default(uuid()) @db.Uuid
-  accountId            String    @map("account_id") @db.Uuid
-  facilityId           String?   @map("facility_id") @db.Uuid
-  quotationNumber      String    @unique @map("quotation_number") @db.VarChar(50)
-  title                String    @db.VarChar(255)
-  status               String    @default("draft") @db.VarChar(20)
-  description          String?   @db.Text
-  subtotal             Decimal   @default(0) @db.Decimal(12, 2)
-  taxRate              Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
-  taxAmount            Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
-  totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
-  validUntil           DateTime? @map("valid_until") @db.Date
-  scheduledDate        DateTime? @map("scheduled_date") @db.Date
-  scheduledStartTime   DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
-  scheduledEndTime     DateTime? @map("scheduled_end_time") @db.Timestamptz(6)
-  notes                String?   @db.Text
-  termsAndConditions   String?   @map("terms_and_conditions") @db.Text
-  sentAt               DateTime? @map("sent_at") @db.Timestamptz(6)
-  viewedAt             DateTime? @map("viewed_at") @db.Timestamptz(6)
-  acceptedAt           DateTime? @map("accepted_at") @db.Timestamptz(6)
-  rejectedAt           DateTime? @map("rejected_at") @db.Timestamptz(6)
-  rejectionReason      String?   @map("rejection_reason") @db.Text
-  pricingApprovalStatus String   @default("not_required") @map("pricing_approval_status") @db.VarChar(20)
-  pricingApprovalReason String?  @map("pricing_approval_reason") @db.Text
-  pricingApprovalRequestedByUserId String? @map("pricing_approval_requested_by_user_id") @db.Uuid
-  pricingApprovalRequestedAt DateTime? @map("pricing_approval_requested_at") @db.Timestamptz(6)
-  pricingApprovedByUserId String? @map("pricing_approved_by_user_id") @db.Uuid
-  pricingApprovedAt DateTime? @map("pricing_approved_at") @db.Timestamptz(6)
-  pricingApprovalRejectedAt DateTime? @map("pricing_approval_rejected_at") @db.Timestamptz(6)
+  id                               String    @id @default(uuid()) @db.Uuid
+  accountId                        String    @map("account_id") @db.Uuid
+  facilityId                       String?   @map("facility_id") @db.Uuid
+  quotationNumber                  String    @unique @map("quotation_number") @db.VarChar(50)
+  title                            String    @db.VarChar(255)
+  status                           String    @default("draft") @db.VarChar(20)
+  description                      String?   @db.Text
+  subtotal                         Decimal   @default(0) @db.Decimal(12, 2)
+  taxRate                          Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  taxAmount                        Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount                      Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  validUntil                       DateTime? @map("valid_until") @db.Date
+  scheduledDate                    DateTime? @map("scheduled_date") @db.Date
+  scheduledStartTime               DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
+  scheduledEndTime                 DateTime? @map("scheduled_end_time") @db.Timestamptz(6)
+  notes                            String?   @db.Text
+  termsAndConditions               String?   @map("terms_and_conditions") @db.Text
+  sentAt                           DateTime? @map("sent_at") @db.Timestamptz(6)
+  viewedAt                         DateTime? @map("viewed_at") @db.Timestamptz(6)
+  acceptedAt                       DateTime? @map("accepted_at") @db.Timestamptz(6)
+  rejectedAt                       DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectionReason                  String?   @map("rejection_reason") @db.Text
+  pricingApprovalStatus            String    @default("not_required") @map("pricing_approval_status") @db.VarChar(20)
+  pricingApprovalReason            String?   @map("pricing_approval_reason") @db.Text
+  pricingApprovalRequestedByUserId String?   @map("pricing_approval_requested_by_user_id") @db.Uuid
+  pricingApprovalRequestedAt       DateTime? @map("pricing_approval_requested_at") @db.Timestamptz(6)
+  pricingApprovedByUserId          String?   @map("pricing_approved_by_user_id") @db.Uuid
+  pricingApprovedAt                DateTime? @map("pricing_approved_at") @db.Timestamptz(6)
+  pricingApprovalRejectedAt        DateTime? @map("pricing_approval_rejected_at") @db.Timestamptz(6)
 
   // Public access fields
-  publicToken            String?   @unique @map("public_token") @db.VarChar(64)
-  publicTokenExpiresAt   DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
-  signatureName          String?   @map("signature_name") @db.VarChar(255)
-  signatureDate          DateTime? @map("signature_date") @db.Timestamptz(6)
-  signatureIp            String?   @map("signature_ip") @db.VarChar(45)
+  publicToken          String?   @unique @map("public_token") @db.VarChar(64)
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  signatureName        String?   @map("signature_name") @db.VarChar(255)
+  signatureDate        DateTime? @map("signature_date") @db.Timestamptz(6)
+  signatureIp          String?   @map("signature_ip") @db.VarChar(45)
 
-  createdByUserId      String    @map("created_by_user_id") @db.Uuid
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  account              Account           @relation("AccountQuotations", fields: [accountId], references: [id])
-  facility             Facility?         @relation("FacilityQuotations", fields: [facilityId], references: [id])
-  createdByUser        User              @relation("CreatedQuotations", fields: [createdByUserId], references: [id])
-  pricingApprovalRequestedByUser User?   @relation("QuotationPricingApprovalRequestedBy", fields: [pricingApprovalRequestedByUserId], references: [id], onDelete: SetNull)
-  pricingApprovedByUser User?            @relation("QuotationPricingApprovalApprovedBy", fields: [pricingApprovedByUserId], references: [id], onDelete: SetNull)
-  generatedJob         Job?              @relation("QuotationGeneratedJob")
-  services             QuotationService[]
-  activities           QuotationActivity[]
+  account                        Account             @relation("AccountQuotations", fields: [accountId], references: [id])
+  facility                       Facility?           @relation("FacilityQuotations", fields: [facilityId], references: [id])
+  createdByUser                  User                @relation("CreatedQuotations", fields: [createdByUserId], references: [id])
+  pricingApprovalRequestedByUser User?               @relation("QuotationPricingApprovalRequestedBy", fields: [pricingApprovalRequestedByUserId], references: [id], onDelete: SetNull)
+  pricingApprovedByUser          User?               @relation("QuotationPricingApprovalApprovedBy", fields: [pricingApprovedByUserId], references: [id], onDelete: SetNull)
+  generatedJob                   Job?                @relation("QuotationGeneratedJob")
+  services                       QuotationService[]
+  activities                     QuotationActivity[]
 
   @@index([accountId])
   @@index([facilityId])
@@ -1688,20 +1741,20 @@ model Quotation {
 }
 
 model QuotationService {
-  id             String   @id @default(uuid()) @db.Uuid
-  quotationId    String   @map("quotation_id") @db.Uuid
-  catalogItemId  String?  @map("catalog_item_id") @db.Uuid
-  serviceName    String   @map("service_name") @db.VarChar(255)
-  description    String?  @db.Text
-  price          Decimal  @db.Decimal(12, 2)
-  includedTasks  Json     @default("[]") @map("included_tasks") @db.JsonB
-  pricingMeta    Json     @default("{}") @map("pricing_meta") @db.JsonB
-  sortOrder      Int      @default(0) @map("sort_order")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String   @id @default(uuid()) @db.Uuid
+  quotationId   String   @map("quotation_id") @db.Uuid
+  catalogItemId String?  @map("catalog_item_id") @db.Uuid
+  serviceName   String   @map("service_name") @db.VarChar(255)
+  description   String?  @db.Text
+  price         Decimal  @db.Decimal(12, 2)
+  includedTasks Json     @default("[]") @map("included_tasks") @db.JsonB
+  pricingMeta   Json     @default("{}") @map("pricing_meta") @db.JsonB
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  catalogItem    OneTimeServiceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  quotation   Quotation                  @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  catalogItem OneTimeServiceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
 
   @@index([quotationId])
   @@index([catalogItemId])
@@ -1709,24 +1762,24 @@ model QuotationService {
 }
 
 model OneTimeServiceCatalogItem {
-  id                String   @id @default(uuid()) @db.Uuid
-  name              String   @db.VarChar(255)
-  code              String   @unique @db.VarChar(100)
-  description       String?  @db.Text
-  serviceType       String   @default("custom") @map("service_type") @db.VarChar(50)
-  unitType          String   @map("unit_type") @db.VarChar(30)
-  baseRate          Decimal  @map("base_rate") @db.Decimal(12, 2)
-  defaultQuantity   Decimal  @default(1) @map("default_quantity") @db.Decimal(10, 2)
-  minimumCharge     Decimal? @map("minimum_charge") @db.Decimal(12, 2)
-  maxDiscountPercent Decimal @default(10) @map("max_discount_percent") @db.Decimal(5, 2)
-  requiresSchedule  Boolean  @default(true) @map("requires_schedule")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdByUserId   String   @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String   @db.VarChar(255)
+  code               String   @unique @db.VarChar(100)
+  description        String?  @db.Text
+  serviceType        String   @default("custom") @map("service_type") @db.VarChar(50)
+  unitType           String   @map("unit_type") @db.VarChar(30)
+  baseRate           Decimal  @map("base_rate") @db.Decimal(12, 2)
+  defaultQuantity    Decimal  @default(1) @map("default_quantity") @db.Decimal(10, 2)
+  minimumCharge      Decimal? @map("minimum_charge") @db.Decimal(12, 2)
+  maxDiscountPercent Decimal  @default(10) @map("max_discount_percent") @db.Decimal(5, 2)
+  requiresSchedule   Boolean  @default(true) @map("requires_schedule")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdByUserId    String   @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  createdByUser User @relation("CreatedOneTimeServiceCatalogItems", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  addOns        OneTimeServiceCatalogAddon[]
+  createdByUser     User                         @relation("CreatedOneTimeServiceCatalogItems", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  addOns            OneTimeServiceCatalogAddon[]
   quotationServices QuotationService[]
 
   @@index([isActive])
@@ -1736,16 +1789,16 @@ model OneTimeServiceCatalogItem {
 }
 
 model OneTimeServiceCatalogAddon {
-  id             String   @id @default(uuid()) @db.Uuid
-  catalogItemId  String   @map("catalog_item_id") @db.Uuid
-  name           String   @db.VarChar(255)
-  code           String   @db.VarChar(100)
-  price          Decimal  @db.Decimal(12, 2)
-  defaultQuantity Decimal @default(1) @map("default_quantity") @db.Decimal(10, 2)
-  isActive       Boolean  @default(true) @map("is_active")
-  sortOrder      Int      @default(0) @map("sort_order")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String   @id @default(uuid()) @db.Uuid
+  catalogItemId   String   @map("catalog_item_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  code            String   @db.VarChar(100)
+  price           Decimal  @db.Decimal(12, 2)
+  defaultQuantity Decimal  @default(1) @map("default_quantity") @db.Decimal(10, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   catalogItem OneTimeServiceCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
 
@@ -1764,8 +1817,8 @@ model QuotationActivity {
   ipAddress         String?  @map("ip_address") @db.VarChar(45)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  quotation         Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  performedByUser   User?     @relation("QuotationActivities", fields: [performedByUserId], references: [id])
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  performedByUser User?     @relation("QuotationActivities", fields: [performedByUserId], references: [id])
 
   @@index([quotationId])
   @@index([action])

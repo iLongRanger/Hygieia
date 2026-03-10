@@ -7,7 +7,11 @@ import {
   mapProposalFrequencyToContractFrequency,
   normalizeServiceSchedule,
 } from './serviceScheduleService';
-import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
+import {
+  autoAdvanceLeadStatusForAccount,
+  autoSetLeadStatusForAccount,
+  autoSetLeadStatusForOpportunity,
+} from './leadService';
 
 export interface ContractListParams {
   page?: number;
@@ -128,6 +132,7 @@ function applyContractAccessScope(
 
 const contractSelect = {
   id: true,
+  opportunityId: true,
   contractNumber: true,
   title: true,
   status: true,
@@ -202,6 +207,13 @@ const contractSelect = {
       id: true,
       proposalNumber: true,
       title: true,
+    },
+  },
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
     },
   },
   assignedTeam: {
@@ -300,7 +312,7 @@ function withLegacyPendingDefaults<T extends Record<string, any>>(contract: T) {
   };
 }
 
-async function createContractWithLegacyFallback(data: Prisma.ContractCreateInput) {
+async function createContractWithLegacyFallback(data: Prisma.ContractCreateArgs['data']) {
   try {
     const contract = await prisma.contract.create({
       data,
@@ -322,7 +334,7 @@ async function createContractWithLegacyFallback(data: Prisma.ContractCreateInput
 
 async function updateContractWithLegacyFallback(
   where: Prisma.ContractWhereUniqueInput,
-  data: Prisma.ContractUpdateInput
+  data: Prisma.ContractUpdateArgs['data']
 ) {
   try {
     const contract = await prisma.contract.update({
@@ -556,7 +568,7 @@ export async function createContract(data: ContractCreateInput) {
   // If proposalId is provided, validate the proposal
   const proposal = await prisma.proposal.findUnique({
     where: { id: data.proposalId },
-    select: { status: true },
+    select: { status: true, opportunityId: true },
   });
 
   if (!proposal) {
@@ -613,12 +625,31 @@ export async function createContract(data: ContractCreateInput) {
 
   return createContractWithLegacyFallback({
     contractNumber,
-    ...data,
+    title: data.title,
+    status: 'draft',
+    account: { connect: { id: data.accountId } },
+    ...(data.facilityId && { facility: { connect: { id: data.facilityId } } }),
+    proposal: { connect: { id: data.proposalId! } },
+    ...(proposal.opportunityId && { opportunity: { connect: { id: proposal.opportunityId } } }),
+    startDate: data.startDate,
+    endDate: data.endDate,
+    serviceFrequency: data.serviceFrequency,
     serviceSchedule:
       (normalizedSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+    autoRenew: data.autoRenew,
+    renewalNoticeDays: data.renewalNoticeDays,
+    monthlyValue: data.monthlyValue,
+    totalValue: data.totalValue,
+    billingCycle: data.billingCycle,
+    paymentTerms: data.paymentTerms,
     termsAndConditions,
-    status: 'draft',
+    termsDocumentName: data.termsDocumentName,
+    termsDocumentMimeType: data.termsDocumentMimeType,
+    termsDocumentDataUrl: data.termsDocumentDataUrl,
+    specialInstructions: data.specialInstructions,
+    subcontractorTier: data.subcontractorTier,
     includesInitialClean: true,
+    createdByUser: { connect: { id: data.createdByUserId } },
   });
 }
 
@@ -687,6 +718,7 @@ export async function createContractFromProposal(
     account: { connect: { id: proposal.accountId } },
     ...(proposal.facilityId && { facility: { connect: { id: proposal.facilityId } } }),
     proposal: { connect: { id: proposalId } },
+    ...(proposal.opportunityId && { opportunity: { connect: { id: proposal.opportunityId } } }),
     startDate: overrides?.startDate || new Date(),
     endDate: overrides?.endDate || null,
     serviceFrequency: resolvedServiceFrequency,
@@ -782,10 +814,20 @@ export async function updateContractStatus(
   const contract = await updateContractWithLegacyFallback({ id }, updateData);
 
   if (status === 'active') {
-    await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
+    if (contract.opportunityId) {
+      await autoSetLeadStatusForOpportunity(contract.opportunityId, 'won', {
+        mode: 'advance',
+      });
+    } else {
+      await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
+    }
   }
   if (status === 'terminated') {
-    await autoSetLeadStatusForAccount(contract.account.id, 'lost');
+    if (contract.opportunityId) {
+      await autoSetLeadStatusForOpportunity(contract.opportunityId, 'lost');
+    } else {
+      await autoSetLeadStatusForAccount(contract.account.id, 'lost');
+    }
   }
 
   return contract;
@@ -866,7 +908,7 @@ export async function getContractsSummary(
 export async function sendContract(id: string) {
   const contract = await prisma.contract.findUnique({
     where: { id },
-    select: { status: true, accountId: true },
+    select: { status: true, accountId: true, opportunityId: true },
   });
 
   // Don't regress an active contract back to 'sent'
@@ -881,7 +923,11 @@ export async function sendContract(id: string) {
     select: contractSelect,
   });
 
-  if (contract?.accountId) {
+  if (contract?.opportunityId) {
+    await autoSetLeadStatusForOpportunity(contract.opportunityId, 'negotiation', {
+      mode: 'advance',
+    });
+  } else if (contract?.accountId) {
     await autoAdvanceLeadStatusForAccount(contract.accountId, 'negotiation');
   }
 
@@ -903,6 +949,7 @@ export async function assignContractTeam(
       id: true,
       status: true,
       accountId: true,
+      opportunityId: true,
     },
   });
 
@@ -962,7 +1009,13 @@ export async function assignContractTeam(
   }
 
   if (teamId || assignedToUserId) {
-    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+    if (contract.opportunityId) {
+      await autoSetLeadStatusForOpportunity(contract.opportunityId, 'won', {
+        mode: 'advance',
+      });
+    } else {
+      await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+    }
   }
 
   return withLegacyPendingDefaults(updatedContract);
@@ -1076,7 +1129,13 @@ export async function signContract(id: string, signData: ContractSignInput) {
     }
   );
 
-  await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
+  if (contract.opportunityId) {
+    await autoSetLeadStatusForOpportunity(contract.opportunityId, 'won', {
+      mode: 'advance',
+    });
+  } else {
+    await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
+  }
   return contract;
 }
 
@@ -1093,7 +1152,11 @@ export async function terminateContract(id: string, reason: string) {
     }
   );
 
-  await autoSetLeadStatusForAccount(contract.account.id, 'lost');
+  if (contract.opportunityId) {
+    await autoSetLeadStatusForOpportunity(contract.opportunityId, 'lost');
+  } else {
+    await autoSetLeadStatusForAccount(contract.account.id, 'lost');
+  }
   return contract;
 }
 

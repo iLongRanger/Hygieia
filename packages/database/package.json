@@ -11,6 +11,8 @@
     "migrate:deploy:local": "prisma migrate deploy && prisma generate",
     "migrate:reset": "prisma migrate reset",
     "generate": "prisma generate",
+    "backfill:opportunities": "tsx prisma/backfill-opportunities.ts",
+    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
     "format": "prisma format",

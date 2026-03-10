@@ -164,6 +164,104 @@ const SOURCE_LEAD_STATUS_SELECT = {
   },
 } satisfies Prisma.AccountSelect;
 
+function deriveOpportunityTitle(lead: {
+  companyName?: string | null;
+  contactName: string;
+}): string {
+  return lead.companyName?.trim() || lead.contactName.trim();
+}
+
+function getOpportunityStatusUpdate(
+  targetStatus: AutoLeadStatusTarget
+): {
+  status: string;
+  wonAt?: Date | null;
+  lostAt?: Date | null;
+  closedAt?: Date | null;
+} {
+  const now = new Date();
+
+  if (targetStatus === 'won') {
+    return {
+      status: targetStatus,
+      wonAt: now,
+      lostAt: null,
+      closedAt: now,
+    };
+  }
+
+  if (targetStatus === 'lost') {
+    return {
+      status: targetStatus,
+      wonAt: null,
+      lostAt: now,
+      closedAt: now,
+    };
+  }
+
+  return {
+    status: targetStatus,
+  };
+}
+
+function shouldApplyPipelineStatus(
+  currentStatus: string,
+  targetStatus: AutoLeadStatusTarget,
+  mode: 'advance' | 'set'
+): boolean {
+  if (currentStatus === 'won' && targetStatus !== 'won') {
+    return false;
+  }
+
+  if (mode === 'advance') {
+    return shouldAutoAdvanceLeadStatus(currentStatus, targetStatus);
+  }
+
+  return currentStatus !== targetStatus;
+}
+
+async function syncOpportunityFromLead(
+  leadId: string,
+  lead: {
+    status: string;
+    companyName?: string | null;
+    contactName: string;
+    estimatedValue?: number | Prisma.Decimal | null;
+    probability?: number | null;
+    expectedCloseDate?: Date | null;
+    lostReason?: string | null;
+    assignedToUserId?: string | null;
+    archivedAt?: Date | null;
+  }
+): Promise<void> {
+  const opportunity = await prisma.opportunity.findFirst({
+    where: {
+      leadId,
+      archivedAt: null,
+    },
+    select: { id: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!opportunity) {
+    return;
+  }
+
+  await prisma.opportunity.update({
+    where: { id: opportunity.id },
+    data: {
+      title: deriveOpportunityTitle(lead),
+      estimatedValue: lead.estimatedValue ?? null,
+      probability: lead.probability ?? 0,
+      expectedCloseDate: lead.expectedCloseDate ?? null,
+      lostReason: lead.lostReason ?? null,
+      ownerUserId: lead.assignedToUserId ?? null,
+      archivedAt: lead.archivedAt ?? null,
+      ...getOpportunityStatusUpdate(lead.status as AutoLeadStatusTarget),
+    },
+  });
+}
+
 function hasAddressCoordinates(address: unknown): boolean {
   if (!address || typeof address !== 'object') return false;
   const raw = address as Record<string, unknown>;
@@ -402,6 +500,25 @@ export async function updateLead(id: string, input: LeadUpdateInput) {
     select: leadSelect,
   });
 
+  try {
+    await syncOpportunityFromLead(id, {
+      status: lead.status,
+      companyName: lead.companyName,
+      contactName: lead.contactName,
+      estimatedValue: lead.estimatedValue,
+      probability: lead.probability,
+      expectedCloseDate: lead.expectedCloseDate,
+      lostReason: lead.lostReason,
+      assignedToUserId: lead.assignedToUser?.id ?? null,
+      archivedAt: lead.archivedAt,
+    });
+  } catch (error) {
+    logger.warn('Failed to sync opportunity from lead update', {
+      leadId: id,
+      error,
+    });
+  }
+
   // Notify new assignee if assignment changed
   if (
     input.assignedToUserId &&
@@ -522,6 +639,19 @@ export async function convertLead(
       notes: true,
       convertedToAccountId: true,
       archivedAt: true,
+      estimatedValue: true,
+      probability: true,
+      expectedCloseDate: true,
+      lostReason: true,
+      assignedToUserId: true,
+      createdByUserId: true,
+      createdAt: true,
+      updatedAt: true,
+      leadSource: {
+        select: {
+          name: true,
+        },
+      },
     },
   });
 
@@ -782,6 +912,52 @@ export async function convertLead(
       facility = { id: existingFacility.id, name: existingFacility.name };
     }
 
+    const opportunityPayload = {
+      leadId,
+      accountId,
+      primaryContactId: contact.id,
+      title: deriveOpportunityTitle(lead),
+      source: lead.leadSource?.name ?? null,
+      estimatedValue: lead.estimatedValue,
+      probability: lead.probability,
+      expectedCloseDate: lead.expectedCloseDate,
+      lostReason: lead.lostReason,
+      ownerUserId: lead.assignedToUserId,
+      createdByUserId: lead.createdByUserId,
+      createdAt: lead.createdAt,
+      updatedAt: lead.updatedAt,
+      archivedAt: lead.archivedAt,
+      ...getOpportunityStatusUpdate(lead.status as AutoLeadStatusTarget),
+    } satisfies Prisma.OpportunityUncheckedCreateInput;
+
+    const existingOpportunity = await tx.opportunity.findFirst({
+      where: { leadId },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const opportunity = existingOpportunity
+      ? await tx.opportunity.update({
+          where: { id: existingOpportunity.id },
+          data: opportunityPayload,
+          select: { id: true },
+        })
+      : await tx.opportunity.create({
+          data: opportunityPayload,
+          select: { id: true },
+        });
+
+    await tx.appointment.updateMany({
+      where: {
+        leadId,
+        opportunityId: null,
+      },
+      data: {
+        accountId,
+        opportunityId: opportunity.id,
+      },
+    });
+
     const updatedLead = await tx.lead.update({
       where: { id: leadId },
       data: {
@@ -850,6 +1026,59 @@ interface AutoLeadStatusOptions {
   mode?: 'advance' | 'set';
 }
 
+export async function autoSetLeadStatusForOpportunity(
+  opportunityId: string,
+  targetStatus: AutoLeadStatusTarget,
+  options: AutoLeadStatusOptions = {}
+): Promise<void> {
+  try {
+    const mode = options.mode ?? 'set';
+    const opportunity = await prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      select: {
+        id: true,
+        status: true,
+        archivedAt: true,
+        leadId: true,
+      },
+    });
+
+    if (!opportunity || opportunity.archivedAt) return;
+
+    if (shouldApplyPipelineStatus(opportunity.status, targetStatus, mode)) {
+      await prisma.opportunity.update({
+        where: { id: opportunity.id },
+        data: getOpportunityStatusUpdate(targetStatus),
+      });
+    }
+
+    if (!opportunity.leadId) return;
+
+    const lead = await prisma.lead.findUnique({
+      where: { id: opportunity.leadId },
+      select: {
+        id: true,
+        status: true,
+        archivedAt: true,
+      },
+    });
+
+    if (!lead || lead.archivedAt) return;
+    if (!shouldApplyPipelineStatus(lead.status, targetStatus, mode)) return;
+
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: { status: targetStatus },
+    });
+  } catch (error) {
+    logger.warn('Failed to auto-set lead status for opportunity', {
+      opportunityId,
+      targetStatus,
+      error,
+    });
+  }
+}
+
 /**
  * Update the newest active converted lead for an account.
  * - `advance` mode only moves forward in the pipeline.
@@ -862,20 +1091,32 @@ export async function autoSetLeadStatusForAccount(
   options: AutoLeadStatusOptions = {}
 ): Promise<void> {
   try {
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        accountId,
+        archivedAt: null,
+      },
+      select: {
+        id: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (opportunity) {
+      await autoSetLeadStatusForOpportunity(opportunity.id, targetStatus, options);
+      return;
+    }
+
     const account = await prisma.account.findUnique({
       where: { id: accountId },
       select: SOURCE_LEAD_STATUS_SELECT,
     });
 
     const lead = account?.sourceLead;
+    const mode = options.mode ?? 'set';
 
     if (!lead || lead.archivedAt) return;
-    if (lead.status === 'won') return;
-    if (options.mode === 'advance') {
-      if (!shouldAutoAdvanceLeadStatus(lead.status, targetStatus)) return;
-    } else {
-      if (lead.status === targetStatus) return;
-    }
+    if (!shouldApplyPipelineStatus(lead.status, targetStatus, mode)) return;
 
     await prisma.lead.update({
       where: { id: lead.id },

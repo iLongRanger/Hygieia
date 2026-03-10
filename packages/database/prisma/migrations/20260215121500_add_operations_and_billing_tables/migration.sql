@@ -1,0 +1,3 @@
+-- Placeholder migration restored to align local Prisma history with the dev database.
+-- The database already records this migration as applied, but the folder was missing
+-- from the repository. Later migrations contain the current authoritative schema.

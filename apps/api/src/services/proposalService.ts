@@ -10,7 +10,11 @@ import {
   type PricingSettingsSnapshot,
 } from './pricing';
 import { normalizeServiceSchedule } from './serviceScheduleService';
-import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
+import {
+  autoAdvanceLeadStatusForAccount,
+  autoSetLeadStatusForAccount,
+  autoSetLeadStatusForOpportunity,
+} from './leadService';
 import { BadRequestError } from '../middleware/errorHandler';
 
 export interface ProposalListParams {
@@ -54,6 +58,7 @@ export interface ProposalServiceInput {
 export interface ProposalCreateInput {
   accountId: string;
   facilityId?: string | null;
+  opportunityId?: string | null;
   title: string;
   description?: string | null;
   validUntil?: Date | null;
@@ -72,6 +77,7 @@ export interface ProposalCreateInput {
 export interface ProposalUpdateInput {
   accountId?: string;
   facilityId?: string | null;
+  opportunityId?: string | null;
   title?: string;
   status?: string;
   description?: string | null;
@@ -99,6 +105,7 @@ export interface PaginatedResult<T> {
 
 const proposalSelect = {
   id: true,
+  opportunityId: true,
   proposalNumber: true,
   title: true,
   status: true,
@@ -149,6 +156,13 @@ const proposalSelect = {
       name: true,
       address: true,
       defaultPricingPlanId: true,
+    },
+  },
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
     },
   },
   createdByUser: {
@@ -248,26 +262,57 @@ function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
   return items.filter((item) => Number(item.totalPrice) > 0);
 }
 
-async function assertProposalCreateReadiness(input: ProposalCreateInput): Promise<void> {
+async function resolveOpportunityForAccount(
+  accountId: string,
+  opportunityId?: string | null
+) {
+  if (opportunityId) {
+    const opportunity = await prisma.opportunity.findUnique({
+      where: { id: opportunityId },
+      select: {
+        id: true,
+        accountId: true,
+        leadId: true,
+        archivedAt: true,
+      },
+    });
+
+    if (!opportunity || opportunity.archivedAt) {
+      throw new BadRequestError('Opportunity not found or archived');
+    }
+
+    if (opportunity.accountId !== accountId) {
+      throw new BadRequestError('Opportunity does not belong to the selected account');
+    }
+
+    return opportunity;
+  }
+
+  return prisma.opportunity.findFirst({
+    where: {
+      accountId,
+      archivedAt: null,
+    },
+    select: {
+      id: true,
+      accountId: true,
+      leadId: true,
+    },
+    orderBy: [
+      { updatedAt: 'desc' },
+      { createdAt: 'desc' },
+    ],
+  });
+}
+
+async function assertProposalCreateReadiness(
+  input: ProposalCreateInput
+): Promise<{ opportunityId: string | null }> {
   const account = await prisma.account.findUnique({
     where: { id: input.accountId },
     select: {
       id: true,
       archivedAt: true,
-      sourceLead: {
-        select: {
-          id: true,
-          archivedAt: true,
-          appointments: {
-            where: {
-              type: 'walk_through',
-              status: 'completed',
-            },
-            select: { id: true },
-            take: 1,
-          },
-        },
-      },
     },
   });
 
@@ -275,16 +320,34 @@ async function assertProposalCreateReadiness(input: ProposalCreateInput): Promis
     throw new BadRequestError('Account not found or archived');
   }
 
-  if (!account.sourceLead || account.sourceLead.archivedAt) {
+  const opportunity = await resolveOpportunityForAccount(
+    input.accountId,
+    input.opportunityId
+  );
+
+  if (!opportunity) {
     throw new BadRequestError('Proposal creation requires a converted lead with a completed walkthrough');
   }
 
-  if (account.sourceLead.appointments.length === 0) {
+  const completedWalkthrough = await prisma.appointment.findFirst({
+    where: {
+      type: 'walk_through',
+      status: 'completed',
+      OR: [
+        { opportunityId: opportunity.id },
+        ...(opportunity.leadId ? [{ leadId: opportunity.leadId }] : []),
+      ],
+    },
+    select: { id: true },
+    orderBy: { scheduledStart: 'desc' },
+  });
+
+  if (!completedWalkthrough) {
     throw new BadRequestError('Walkthrough must be completed before creating a proposal');
   }
 
   if (!input.facilityId) {
-    return;
+    return { opportunityId: opportunity.id };
   }
 
   const facility = await prisma.facility.findUnique({
@@ -331,6 +394,8 @@ async function assertProposalCreateReadiness(input: ProposalCreateInput): Promis
   if (taskCount === 0) {
     throw new BadRequestError('Facility must have at least one task before creating a proposal');
   }
+
+  return { opportunityId: opportunity.id };
 }
 
 export async function listProposals(
@@ -436,7 +501,7 @@ export async function getProposalByNumber(proposalNumber: string) {
 }
 
 export async function createProposal(input: ProposalCreateInput) {
-  await assertProposalCreateReadiness(input);
+  const readiness = await assertProposalCreateReadiness(input);
 
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;
@@ -477,6 +542,7 @@ export async function createProposal(input: ProposalCreateInput) {
         (serviceSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       accountId: input.accountId,
       facilityId: input.facilityId,
+      opportunityId: readiness.opportunityId,
       createdByUserId: input.createdByUserId,
       // Pricing plan fields
       pricingPlanId: pricingPlan.id,
@@ -547,6 +613,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     await assertProposalCreateReadiness({
       accountId: effectiveAccountId,
       facilityId: effectiveFacilityId,
+      opportunityId: input.opportunityId,
       title: input.title ?? 'Existing Proposal',
       createdByUserId: 'system',
     });
@@ -558,6 +625,11 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
   if (input.facilityId !== undefined) {
     updateData.facility = input.facilityId
       ? { connect: { id: input.facilityId } }
+      : { disconnect: true };
+  }
+  if (input.opportunityId !== undefined) {
+    updateData.opportunity = input.opportunityId
+      ? { connect: { id: input.opportunityId } }
       : { disconnect: true };
   }
   if (input.title !== undefined) updateData.title = input.title;
@@ -680,7 +752,13 @@ export async function sendProposal(id: string) {
     select: proposalSelect,
   });
 
-  await autoAdvanceLeadStatusForAccount(proposal.account.id, 'proposal_sent');
+  if (proposal.opportunityId) {
+    await autoSetLeadStatusForOpportunity(proposal.opportunityId, 'proposal_sent', {
+      mode: 'advance',
+    });
+  } else {
+    await autoAdvanceLeadStatusForAccount(proposal.account.id, 'proposal_sent');
+  }
   return proposal;
 }
 
@@ -719,7 +797,13 @@ export async function acceptProposal(id: string) {
     select: proposalSelect,
   });
 
-  await autoAdvanceLeadStatusForAccount(proposal.account.id, 'negotiation');
+  if (proposal.opportunityId) {
+    await autoSetLeadStatusForOpportunity(proposal.opportunityId, 'negotiation', {
+      mode: 'advance',
+    });
+  } else {
+    await autoAdvanceLeadStatusForAccount(proposal.account.id, 'negotiation');
+  }
   return proposal;
 }
 
@@ -734,7 +818,11 @@ export async function rejectProposal(id: string, rejectionReason: string) {
     select: proposalSelect,
   });
 
-  await autoSetLeadStatusForAccount(proposal.account.id, 'lost');
+  if (proposal.opportunityId) {
+    await autoSetLeadStatusForOpportunity(proposal.opportunityId, 'lost');
+  } else {
+    await autoSetLeadStatusForAccount(proposal.account.id, 'lost');
+  }
   return proposal;
 }
 

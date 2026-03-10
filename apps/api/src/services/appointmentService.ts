@@ -57,6 +57,7 @@ export interface AppointmentCompleteInput {
 
 const appointmentSelect = {
   id: true,
+  opportunityId: true,
   type: true,
   status: true,
   scheduledStart: true,
@@ -91,6 +92,13 @@ const appointmentSelect = {
       id: true,
       name: true,
       type: true,
+    },
+  },
+  opportunity: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
     },
   },
   assignedToUser: {
@@ -169,6 +177,8 @@ export async function getAppointmentById(id: string) {
 }
 
 export async function createAppointment(input: AppointmentCreateInput) {
+  let walkthroughLeadAccountId: string | null = null;
+
   if (input.type === 'walk_through') {
     if (!input.leadId) {
       throw new BadRequestError('Lead is required for walkthrough appointments');
@@ -176,7 +186,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     const lead = await prisma.lead.findUnique({
       where: { id: input.leadId },
-      select: { id: true, archivedAt: true },
+      select: { id: true, archivedAt: true, convertedToAccountId: true },
     });
 
     if (!lead) {
@@ -186,6 +196,8 @@ export async function createAppointment(input: AppointmentCreateInput) {
     if (lead.archivedAt) {
       throw new BadRequestError('Cannot schedule appointment for archived lead');
     }
+
+    walkthroughLeadAccountId = lead.convertedToAccountId;
   } else {
     if (!input.accountId) {
       throw new BadRequestError('Account is required for visit or inspection appointments');
@@ -215,10 +227,23 @@ export async function createAppointment(input: AppointmentCreateInput) {
   }
 
   const appointment = await prisma.$transaction(async (tx) => {
+    const opportunity =
+      input.type === 'walk_through' && input.leadId
+        ? await tx.opportunity.findFirst({
+            where: {
+              leadId: input.leadId,
+              archivedAt: null,
+            },
+            select: { id: true },
+            orderBy: { createdAt: 'desc' },
+          })
+        : null;
+
     const appointment = await tx.appointment.create({
       data: {
         leadId: input.leadId ?? null,
-        accountId: input.accountId ?? null,
+        accountId: input.accountId ?? walkthroughLeadAccountId ?? null,
+        opportunityId: opportunity?.id ?? null,
         assignedToUserId: input.assignedToUserId,
         type: input.type,
         status: input.status,
@@ -238,6 +263,13 @@ export async function createAppointment(input: AppointmentCreateInput) {
         where: { id: input.leadId },
         data: { status: 'walk_through_booked' },
       });
+
+      if (opportunity) {
+        await tx.opportunity.update({
+          where: { id: opportunity.id },
+          data: { status: 'walk_through_booked' },
+        });
+      }
     }
 
     return appointment;
@@ -368,6 +400,7 @@ export async function rescheduleAppointment(
       id: true,
       leadId: true,
       accountId: true,
+      opportunityId: true,
       assignedToUserId: true,
       status: true,
       type: true,
@@ -392,6 +425,7 @@ export async function rescheduleAppointment(
       data: {
         leadId: existing.leadId ?? null,
         accountId: existing.accountId ?? null,
+        opportunityId: existing.opportunityId ?? null,
         assignedToUserId: existing.assignedToUserId,
         type: existing.type,
         status: 'scheduled',
@@ -437,6 +471,8 @@ export async function completeAppointment(
       type: true,
       status: true,
       leadId: true,
+      accountId: true,
+      opportunityId: true,
       assignedToUserId: true,
     },
   });
@@ -512,6 +548,13 @@ export async function completeAppointment(
         where: { id: appointment.leadId! },
         data: { status: 'walk_through_completed' },
       });
+
+      if (appointment.opportunityId) {
+        await tx.opportunity.update({
+          where: { id: appointment.opportunityId },
+          data: { status: 'walk_through_completed' },
+        });
+      }
     }
 
     return updated;

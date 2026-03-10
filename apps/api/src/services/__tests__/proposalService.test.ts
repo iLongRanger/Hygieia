@@ -24,6 +24,13 @@ jest.mock('../../lib/prisma', () => ({
     facility: {
       findUnique: jest.fn(),
     },
+    opportunity: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    appointment: {
+      findFirst: jest.fn(),
+    },
     area: {
       count: jest.fn(),
     },
@@ -88,12 +95,13 @@ describe('proposalService', () => {
     (prisma.account.findUnique as jest.Mock).mockResolvedValue({
       id: 'account-1',
       archivedAt: null,
-      sourceLead: {
-        id: 'lead-1',
-        archivedAt: null,
-        appointments: [{ id: 'appt-1' }],
-      },
     });
+    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({
+      id: 'opp-1',
+      accountId: 'account-1',
+      leadId: 'lead-1',
+    });
+    (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({ id: 'appt-1' });
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',
       accountId: 'account-1',
@@ -578,11 +586,11 @@ describe('proposalService', () => {
       (prisma.account.findUnique as jest.Mock).mockResolvedValue({
         id: 'account-2',
         archivedAt: null,
-        sourceLead: {
-          id: 'lead-2',
-          archivedAt: null,
-          appointments: [{ id: 'appt-2' }],
-        },
+      });
+      (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({
+        id: 'opp-2',
+        accountId: 'account-2',
+        leadId: 'lead-2',
       });
       (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
         id: 'facility-2',
@@ -735,12 +743,8 @@ describe('proposalService', () => {
       (prisma.account.findUnique as jest.Mock).mockResolvedValue({
         id: 'account-1',
         archivedAt: null,
-        sourceLead: {
-          id: 'lead-1',
-          archivedAt: null,
-          appointments: [],
-        },
       });
+      (prisma.appointment.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(
         proposalService.createProposal({

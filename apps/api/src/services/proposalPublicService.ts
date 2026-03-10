@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
-import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForAccount } from './leadService';
+import {
+  autoAdvanceLeadStatusForAccount,
+  autoSetLeadStatusForAccount,
+  autoSetLeadStatusForOpportunity,
+} from './leadService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -134,7 +138,7 @@ export async function acceptProposalPublic(
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true },
+    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true, opportunityId: true },
   });
 
   if (!proposal) {
@@ -162,7 +166,13 @@ export async function acceptProposalPublic(
       },
     });
 
-    await autoAdvanceLeadStatusForAccount(proposal.accountId, 'negotiation');
+    if (proposal.opportunityId) {
+      await autoSetLeadStatusForOpportunity(proposal.opportunityId, 'negotiation', {
+        mode: 'advance',
+      });
+    } else {
+      await autoAdvanceLeadStatusForAccount(proposal.accountId, 'negotiation');
+    }
   }
 
   const resolvedProposal = await prisma.proposal.findUniqueOrThrow({
@@ -183,7 +193,7 @@ export async function rejectProposalPublic(
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: token },
-    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true },
+    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true, opportunityId: true },
   });
 
   if (!proposal) {
@@ -209,7 +219,11 @@ export async function rejectProposalPublic(
       },
     });
 
-    await autoSetLeadStatusForAccount(proposal.accountId, 'lost');
+    if (proposal.opportunityId) {
+      await autoSetLeadStatusForOpportunity(proposal.opportunityId, 'lost');
+    } else {
+      await autoSetLeadStatusForAccount(proposal.accountId, 'lost');
+    }
   }
 
   const resolvedProposal = await prisma.proposal.findUniqueOrThrow({

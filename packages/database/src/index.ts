@@ -11,6 +11,7 @@ export type {
   Area,
   AreaType,
   LeadSource,
+  Opportunity,
   TaskTemplate,
   FacilityTask,
   Proposal,

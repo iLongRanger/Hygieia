@@ -173,7 +173,8 @@ describe('contractService', () => {
     expect(prisma.contract.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          proposalId: 'proposal-1',
+          proposal: { connect: { id: 'proposal-1' } },
+          account: { connect: { id: 'account-1' } },
           status: 'draft',
         }),
       })

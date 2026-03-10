@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
-import { autoAdvanceLeadStatusForAccount } from './leadService';
+import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForOpportunity } from './leadService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -119,6 +119,7 @@ export async function signContractPublic(
       status: true,
       publicTokenExpiresAt: true,
       accountId: true,
+      opportunityId: true,
       signedByName: true,
       signedByEmail: true,
       signedDate: true,
@@ -154,7 +155,13 @@ export async function signContractPublic(
       },
     });
 
-    await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+    if (contract.opportunityId) {
+      await autoSetLeadStatusForOpportunity(contract.opportunityId, 'won', {
+        mode: 'advance',
+      });
+    } else {
+      await autoAdvanceLeadStatusForAccount(contract.accountId, 'won');
+    }
   }
 
   const resolvedContract = await prisma.contract.findUniqueOrThrow({

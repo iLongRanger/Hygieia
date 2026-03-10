@@ -27,6 +27,13 @@ jest.mock('../../lib/prisma', () => ({
     },
     appointment: {
       findFirst: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    opportunity: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
     },
     lead: {
       findMany: jest.fn(),
@@ -54,6 +61,10 @@ describe('leadService', () => {
     (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.account.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.facility.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.opportunity.create as jest.Mock).mockResolvedValue({ id: 'opp-1' });
+    (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
+    (prisma.appointment.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
   });
 
   describe('listLeads', () => {
@@ -545,6 +556,14 @@ describe('leadService', () => {
             findFirst: jest.fn().mockResolvedValue(null),
             findMany: jest.fn().mockResolvedValue([]),
           },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+          },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
           },
@@ -625,6 +644,14 @@ describe('leadService', () => {
             findFirst: jest.fn().mockResolvedValue(null),
             findMany: jest.fn().mockResolvedValue([]),
           },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+          },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
           },
@@ -698,6 +725,14 @@ describe('leadService', () => {
             findFirst: jest.fn(),
             findMany: jest.fn().mockResolvedValue([]),
           },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+          },
           lead: {
             update: jest.fn(),
           },
@@ -766,6 +801,14 @@ describe('leadService', () => {
               },
             ]),
           },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+          },
           lead: {
             update: jest.fn(),
           },
@@ -831,6 +874,14 @@ describe('leadService', () => {
             findFirst: jest.fn(),
             findMany: jest.fn().mockResolvedValue([]),
           },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+          },
           lead: {
             update: jest.fn(),
           },
@@ -888,6 +939,14 @@ describe('leadService', () => {
             update: jest.fn(),
             findFirst: jest.fn(),
             findMany: jest.fn().mockResolvedValue([]),
+          },
+          appointment: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          opportunity: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
+            update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
           lead: {
             update: jest.fn(),
