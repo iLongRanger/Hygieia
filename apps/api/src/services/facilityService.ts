@@ -15,7 +15,6 @@ export interface FacilityListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
-  withoutProposal?: boolean;
 }
 
 export interface FacilityCreateInput {
@@ -124,7 +123,6 @@ export async function listFacilities(
     sortBy = 'createdAt',
     sortOrder = 'desc',
     includeArchived = false,
-    withoutProposal = false,
   } = params;
 
   const where: Prisma.FacilityWhereInput = {};
@@ -154,14 +152,6 @@ export async function listFacilities(
       { name: { contains: search, mode: 'insensitive' } },
       { account: { name: { contains: search, mode: 'insensitive' } } },
     ];
-  }
-
-  if (withoutProposal) {
-    where.proposals = {
-      none: {
-        archivedAt: null,
-      },
-    };
   }
 
   // RBAC scoping
