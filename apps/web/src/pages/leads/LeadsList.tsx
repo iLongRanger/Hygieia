@@ -1259,21 +1259,13 @@ const LeadsList = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Lead Source"
-              placeholder="Select source"
-              options={CREATE_LEAD_SOURCE_OPTIONS}
-              value={createLeadSourceOption}
-              onChange={setCreateLeadSourceOption}
-            />
-            <Select
-              label="Status"
-              options={LEAD_STATUSES}
-              value={formData.status || 'lead'}
-              onChange={(value) => setFormData({ ...formData, status: value })}
-            />
-          </div>
+          <Select
+            label="Lead Source"
+            placeholder="Select source"
+            options={CREATE_LEAD_SOURCE_OPTIONS}
+            value={createLeadSourceOption}
+            onChange={setCreateLeadSourceOption}
+          />
 
           {createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE && (
             <Input
