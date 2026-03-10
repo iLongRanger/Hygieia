@@ -1042,9 +1042,23 @@ const LeadDetail = () => {
                   />
                   {selectedFacility && !canCompleteSelectedFacility && (
                     <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-300">
-                      {selectedFacilityAreaCount === 0
-                        ? 'Add at least one area to this facility before completing the walkthrough.'
-                        : 'Add at least one task to this facility before completing the walkthrough.'}
+                      <p>
+                        {selectedFacilityAreaCount === 0
+                          ? 'Add at least one area to this facility before completing the walkthrough.'
+                          : 'Add at least one task to this facility before completing the walkthrough.'}
+                      </p>
+                      <div className="mt-3">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setShowCompleteModal(false);
+                            navigate(`/facilities/${selectedFacility.id}`);
+                          }}
+                        >
+                          Open Facility
+                        </Button>
+                      </div>
                     </div>
                   )}
                   <Textarea
