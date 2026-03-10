@@ -845,20 +845,6 @@ const LeadsList = () => {
       header: 'Actions',
       cell: (item: Lead) => (
         <div className="flex gap-2">
-          {/* Show Convert button only for non-archived, non-converted leads */}
-          {!item.archivedAt && !item.convertedAt && canWriteLeads && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                openConvertModal(item);
-              }}
-              title="Convert to Account"
-            >
-              <ArrowRightCircle className="h-4 w-4" />
-            </Button>
-          )}
           {/* Show converted badge if already converted */}
           {item.convertedAt && (
             <Badge variant="success" className="text-xs">

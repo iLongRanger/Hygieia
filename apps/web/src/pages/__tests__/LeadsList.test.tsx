@@ -279,18 +279,11 @@ describe('LeadsList', () => {
     });
   });
 
-  it('blocks lead conversion when facility street address is missing', async () => {
-    const userEventInstance = userEvent.setup();
+  it('does not show convert action in table rows', async () => {
     render(<LeadsList />);
 
-    await userEventInstance.click(await screen.findByTitle(/convert to account/i));
-    const modal = await screen.findByRole('dialog', { name: /convert lead to account/i });
-    await userEventInstance.clear(within(modal).getByLabelText(/street address/i));
-    await userEventInstance.click(within(modal).getByRole('button', { name: /convert lead/i }));
-
+    await screen.findAllByText('Jane Smith');
+    expect(screen.queryByTitle(/convert to account/i)).not.toBeInTheDocument();
     expect(convertLeadMock).not.toHaveBeenCalled();
-    expect(toastErrorMock).toHaveBeenCalledWith(
-      'Facility address is required before converting this lead'
-    );
   });
 });
