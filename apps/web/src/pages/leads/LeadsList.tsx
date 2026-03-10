@@ -925,8 +925,11 @@ const LeadsList = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto p-3">
-          <div className="flex min-w-max gap-3">
+        <div className="p-3">
+          <div
+            className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:[grid-template-columns:repeat(var(--pipeline-stage-count),minmax(0,1fr))]"
+            style={{ ['--pipeline-stage-count' as string]: String(pipelineStages.length) }}
+          >
             {pipelineStages.map((stage) => {
               const isActiveStage = statusFilter === stage.value;
               const colors = STAGE_COLORS[stage.value] || DEFAULT_STAGE_COLOR;
@@ -937,7 +940,7 @@ const LeadsList = () => {
               return (
                 <section
                   key={stage.value}
-                  className={`flex w-[270px] flex-col rounded-lg border border-t-[3px] ${colors.border} ${
+                  className={`flex min-w-0 flex-col rounded-lg border border-t-[3px] ${colors.border} ${
                     isActiveStage
                       ? 'border-primary-400 bg-white/80 shadow-md dark:border-primary-500 dark:bg-surface-800/80'
                       : 'border-surface-200 bg-surface-50/80 dark:border-surface-700 dark:bg-surface-800/40'
@@ -956,11 +959,11 @@ const LeadsList = () => {
                         <p className={`truncate text-sm font-semibold ${colors.text}`}>
                           {stage.label}
                         </p>
-                        <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface-200 px-1.5 text-[11px] font-medium text-surface-700 dark:bg-surface-700 dark:text-surface-300">
+                        <span className="inline-flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-surface-200 px-1.5 text-[11px] font-medium text-surface-700 dark:bg-surface-700 dark:text-surface-300">
                           {stage.leads.length}
                         </span>
                       </div>
-                      <p className="mt-0.5 pl-4 text-xs font-medium text-surface-500 dark:text-surface-400">
+                      <p className="mt-0.5 truncate pl-4 text-xs font-medium text-surface-500 dark:text-surface-400">
                         {formatCompactCurrency(String(stageTotal))} total
                       </p>
                     </div>
@@ -1868,4 +1871,3 @@ const LeadsList = () => {
 };
 
 export default LeadsList;
-
