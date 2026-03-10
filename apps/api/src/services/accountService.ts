@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { BadRequestError } from '../middleware/errorHandler';
 
 export interface AccountListParams {
   page?: number;
@@ -96,6 +97,56 @@ const accountSelect = {
     },
   },
 } satisfies Prisma.AccountSelect;
+
+function normalizeComparableEmail(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+async function assertNoDuplicateAccount(
+  input: {
+    name?: string;
+    billingEmail?: string | null;
+  },
+  excludeAccountId?: string
+): Promise<void> {
+  const normalizedName = input.name?.trim();
+  const normalizedBillingEmail = normalizeComparableEmail(input.billingEmail);
+  const duplicateFilters: Prisma.AccountWhereInput[] = [];
+
+  if (normalizedName) {
+    duplicateFilters.push({
+      name: { equals: normalizedName, mode: 'insensitive' },
+    });
+  }
+
+  if (normalizedBillingEmail) {
+    duplicateFilters.push({
+      billingEmail: { equals: normalizedBillingEmail, mode: 'insensitive' },
+    });
+  }
+
+  if (duplicateFilters.length === 0) {
+    return;
+  }
+
+  const duplicate = await prisma.account.findFirst({
+    where: {
+      archivedAt: null,
+      ...(excludeAccountId ? { id: { not: excludeAccountId } } : {}),
+      OR: duplicateFilters,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (duplicate) {
+    throw new BadRequestError(
+      `A matching account already exists (${duplicate.name}). Use the existing account instead.`
+    );
+  }
+}
 
 export async function listAccounts(
   params: AccountListParams,
@@ -202,13 +253,21 @@ export async function getAccountByName(name: string) {
 }
 
 export async function createAccount(input: AccountCreateInput) {
+  const normalizedName = input.name.trim();
+  const normalizedBillingEmail = normalizeComparableEmail(input.billingEmail);
+
+  await assertNoDuplicateAccount({
+    name: normalizedName,
+    billingEmail: normalizedBillingEmail,
+  });
+
   return prisma.account.create({
     data: {
-      name: input.name,
+      name: normalizedName,
       type: input.type,
       industry: input.industry,
       website: input.website,
-      billingEmail: input.billingEmail,
+      billingEmail: normalizedBillingEmail || null,
       billingPhone: input.billingPhone,
       billingAddress: input.billingAddress as Prisma.InputJsonValue,
       taxId: input.taxId,
@@ -224,13 +283,53 @@ export async function createAccount(input: AccountCreateInput) {
 
 export async function updateAccount(id: string, input: AccountUpdateInput) {
   const updateData: Prisma.AccountUpdateInput = {};
+  let currentAccount:
+    | {
+        name: string;
+        billingEmail: string | null;
+      }
+    | null = null;
 
-  if (input.name !== undefined) updateData.name = input.name;
+  const getCurrentAccount = async () => {
+    if (currentAccount) {
+      return currentAccount;
+    }
+
+    currentAccount = await prisma.account.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        billingEmail: true,
+      },
+    });
+
+    if (!currentAccount) {
+      throw new Error('Account not found');
+    }
+
+    return currentAccount;
+  };
+
+  if (input.name !== undefined || input.billingEmail !== undefined) {
+    const existingAccount = await getCurrentAccount();
+    await assertNoDuplicateAccount(
+      {
+        name: input.name ?? existingAccount.name,
+        billingEmail:
+          input.billingEmail !== undefined
+            ? input.billingEmail
+            : existingAccount.billingEmail,
+      },
+      id
+    );
+  }
+
+  if (input.name !== undefined) updateData.name = input.name.trim();
   if (input.type !== undefined) updateData.type = input.type;
   if (input.industry !== undefined) updateData.industry = input.industry;
   if (input.website !== undefined) updateData.website = input.website;
   if (input.billingEmail !== undefined)
-    updateData.billingEmail = input.billingEmail;
+    updateData.billingEmail = normalizeComparableEmail(input.billingEmail) || null;
   if (input.billingPhone !== undefined)
     updateData.billingPhone = input.billingPhone;
   if (input.billingAddress !== undefined) {

@@ -12,6 +12,7 @@ jest.mock('../../lib/prisma', () => ({
     facility: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -39,6 +40,7 @@ jest.mock('../geocodingService', () => ({
 describe('facilityService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
   });
 
   describe('listFacilities', () => {
@@ -197,6 +199,24 @@ describe('facilityService', () => {
         })
       );
     });
+
+    it('should block duplicate facility creation for the same account', async () => {
+      (prisma.facility.findFirst as jest.Mock).mockResolvedValue({
+        id: 'facility-1',
+        name: 'HQ Building',
+      });
+
+      await expect(
+        facilityService.createFacility({
+          accountId: 'account-123',
+          name: ' hq building ',
+          address: { street: '123 Main St' },
+          createdByUserId: 'user-123',
+        })
+      ).rejects.toThrow('already exists for this account');
+
+      expect(prisma.facility.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateFacility', () => {
@@ -208,6 +228,10 @@ describe('facilityService', () => {
 
       const mockFacility = createTestFacility(input);
 
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        accountId: 'account-123',
+        name: 'Original Name',
+      });
       (prisma.facility.update as jest.Mock).mockResolvedValue(mockFacility);
 
       const result = await facilityService.updateFacility('facility-123', input);
@@ -254,6 +278,25 @@ describe('facilityService', () => {
           }),
         })
       );
+    });
+
+    it('should block renaming a facility to a duplicate name on the same account', async () => {
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        accountId: 'account-123',
+        name: 'Original Name',
+      });
+      (prisma.facility.findFirst as jest.Mock).mockResolvedValue({
+        id: 'facility-999',
+        name: 'HQ Building',
+      });
+
+      await expect(
+        facilityService.updateFacility('facility-123', {
+          name: ' HQ Building ',
+        })
+      ).rejects.toThrow('already exists for this account');
+
+      expect(prisma.facility.update).not.toHaveBeenCalled();
     });
   });
 

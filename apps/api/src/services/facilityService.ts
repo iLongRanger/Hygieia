@@ -106,6 +106,38 @@ const facilitySelect = {
   },
 } satisfies Prisma.FacilitySelect;
 
+async function assertNoDuplicateFacility(
+  input: {
+    accountId: string;
+    name?: string;
+  },
+  excludeFacilityId?: string
+): Promise<void> {
+  const normalizedName = input.name?.trim();
+  if (!normalizedName) {
+    return;
+  }
+
+  const duplicate = await prisma.facility.findFirst({
+    where: {
+      accountId: input.accountId,
+      archivedAt: null,
+      ...(excludeFacilityId ? { id: { not: excludeFacilityId } } : {}),
+      name: { equals: normalizedName, mode: 'insensitive' },
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (duplicate) {
+    throw new BadRequestError(
+      `A facility named "${duplicate.name}" already exists for this account. Use the existing facility instead.`
+    );
+  }
+}
+
 export async function listFacilities(
   params: FacilityListParams,
   options?: { userRole?: string; userId?: string; userTeamId?: string }
@@ -194,12 +226,18 @@ export async function getFacilityById(id: string) {
 }
 
 export async function createFacility(input: FacilityCreateInput) {
+  const normalizedName = input.name.trim();
+  await assertNoDuplicateFacility({
+    accountId: input.accountId,
+    name: normalizedName,
+  });
+
   const normalizedAddress = await geocodeAddressIfNeeded(input.address);
 
   return prisma.facility.create({
     data: {
       accountId: input.accountId,
-      name: input.name,
+      name: normalizedName,
       address: normalizedAddress as Prisma.InputJsonValue,
       squareFeet: input.squareFeet,
       buildingType: input.buildingType,
@@ -217,8 +255,45 @@ export async function createFacility(input: FacilityCreateInput) {
 
 export async function updateFacility(id: string, input: FacilityUpdateInput) {
   const updateData: Prisma.FacilityUpdateInput = {};
+  let currentFacility:
+    | {
+        accountId: string;
+        name: string;
+      }
+    | null = null;
 
-  if (input.name !== undefined) updateData.name = input.name;
+  const getCurrentFacility = async () => {
+    if (currentFacility) {
+      return currentFacility;
+    }
+
+    currentFacility = await prisma.facility.findUnique({
+      where: { id },
+      select: {
+        accountId: true,
+        name: true,
+      },
+    });
+
+    if (!currentFacility) {
+      throw new NotFoundError('Facility not found');
+    }
+
+    return currentFacility;
+  };
+
+  if (input.name !== undefined) {
+    const existingFacility = await getCurrentFacility();
+    await assertNoDuplicateFacility(
+      {
+        accountId: existingFacility.accountId,
+        name: input.name,
+      },
+      id
+    );
+  }
+
+  if (input.name !== undefined) updateData.name = input.name.trim();
   if (input.address !== undefined) {
     const normalizedAddress = await geocodeAddressIfNeeded(input.address);
     updateData.address = normalizedAddress as Prisma.InputJsonValue;

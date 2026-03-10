@@ -8,6 +8,7 @@ jest.mock('../../lib/prisma', () => ({
     account: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -19,6 +20,7 @@ jest.mock('../../lib/prisma', () => ({
 describe('accountService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
   });
 
   describe('listAccounts', () => {
@@ -273,6 +275,23 @@ describe('accountService', () => {
         })
       );
     });
+
+    it('should block duplicate account creation by name', async () => {
+      (prisma.account.findFirst as jest.Mock).mockResolvedValue({
+        id: 'account-1',
+        name: 'ACME Corp',
+      });
+
+      await expect(
+        accountService.createAccount({
+          name: ' ACME Corp ',
+          type: 'commercial',
+          createdByUserId: 'user-123',
+        })
+      ).rejects.toThrow('A matching account already exists');
+
+      expect(prisma.account.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateAccount', () => {
@@ -285,6 +304,10 @@ describe('accountService', () => {
 
       const mockAccount = createTestAccount({ ...input, id: 'account-123' });
 
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Original Name',
+        billingEmail: 'old@email.com',
+      });
       (prisma.account.update as jest.Mock).mockResolvedValue(mockAccount);
 
       const result = await accountService.updateAccount('account-123', input);
@@ -339,6 +362,25 @@ describe('accountService', () => {
           }),
         })
       );
+    });
+
+    it('should block renaming an account to a duplicate name', async () => {
+      (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+        name: 'Original Co',
+        billingEmail: null,
+      });
+      (prisma.account.findFirst as jest.Mock).mockResolvedValue({
+        id: 'account-999',
+        name: 'ACME Corp',
+      });
+
+      await expect(
+        accountService.updateAccount('account-123', {
+          name: ' ACME Corp ',
+        })
+      ).rejects.toThrow('A matching account already exists');
+
+      expect(prisma.account.update).not.toHaveBeenCalled();
     });
   });
 
