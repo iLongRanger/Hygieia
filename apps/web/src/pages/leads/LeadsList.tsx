@@ -950,26 +950,28 @@ const LeadsList = () => {
                   {/* Sticky column header */}
                   <button
                     type="button"
-                    className="sticky top-0 z-10 flex items-center justify-between rounded-t-lg px-3 py-2.5 text-left transition hover:bg-surface-100/60 dark:hover:bg-surface-700/30"
+                    className={`sticky top-0 z-10 w-full rounded-t-lg border-b px-3 py-3.5 text-left transition ${colors.bg} hover:brightness-[0.98] dark:hover:brightness-110 ${
+                      isActiveStage
+                        ? 'border-primary-200 dark:border-primary-800'
+                        : 'border-surface-200 dark:border-surface-700'
+                    }`}
                     onClick={() => setStatusFilterWithRoute(stage.value)}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${colors.dot}`} />
-                        <p className={`truncate text-sm font-semibold ${colors.text}`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        <span className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${colors.dot}`} />
+                        <p className={`min-w-0 whitespace-normal break-normal text-[13px] font-semibold leading-4 ${colors.text}`}>
                           {stage.label}
                         </p>
                         <span className="inline-flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-surface-200 px-1.5 text-[11px] font-medium text-surface-700 dark:bg-surface-700 dark:text-surface-300">
                           {stage.leads.length}
                         </span>
                       </div>
-                      <p className="mt-0.5 truncate pl-4 text-xs font-medium text-surface-500 dark:text-surface-400">
+                      <p className="mt-2 whitespace-normal break-words pl-[18px] text-xs font-medium leading-4 text-surface-500 dark:text-surface-400">
                         {formatCompactCurrency(String(stageTotal))} total
                       </p>
                     </div>
                   </button>
-
-                  <div className="mx-2 border-t border-surface-200 dark:border-surface-700" />
 
                   {/* Scrollable cards */}
                   <div className="flex-1 space-y-2 overflow-y-auto px-2 py-2">
