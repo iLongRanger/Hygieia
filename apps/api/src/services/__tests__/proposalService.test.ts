@@ -616,6 +616,29 @@ describe('proposalService', () => {
       expect(result).toEqual(mockProposal);
     });
 
+    it('should validate opportunity ownership when only opportunityId changes', async () => {
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValueOnce({
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        opportunityId: 'opp-1',
+        taxRate: 0.08,
+      });
+      (prisma.opportunity.findUnique as jest.Mock).mockResolvedValue({
+        id: 'opp-foreign',
+        accountId: 'account-2',
+        leadId: 'lead-2',
+        archivedAt: null,
+      });
+
+      await expect(
+        proposalService.updateProposal('proposal-1', {
+          opportunityId: 'opp-foreign',
+        })
+      ).rejects.toThrow('Opportunity does not belong to the selected account');
+
+      expect(prisma.proposal.update).not.toHaveBeenCalled();
+    });
+
     it('should recalculate totals when items are updated', async () => {
       const currentProposal = createTestProposal({
         proposalItems: [],

@@ -14,6 +14,9 @@ jest.mock('../../lib/prisma', () => ({
       delete: jest.fn(),
       count: jest.fn(),
     },
+    opportunity: {
+      findFirst: jest.fn(),
+    },
   },
 }));
 
@@ -148,6 +151,30 @@ describe('accountService', () => {
       expect(prisma.account.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { name: 'asc' },
+        })
+      );
+    });
+
+    it('should filter ready-for-proposal accounts by opportunity walkthrough completion', async () => {
+      (prisma.account.count as jest.Mock).mockResolvedValue(0);
+
+      await accountService.listAccounts({ readyForProposal: true });
+
+      expect(prisma.account.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            opportunities: {
+              some: {
+                archivedAt: null,
+                appointments: {
+                  some: {
+                    type: 'walk_through',
+                    status: 'completed',
+                  },
+                },
+              },
+            },
+          }),
         })
       );
     });

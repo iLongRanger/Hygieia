@@ -580,7 +580,12 @@ export async function createProposal(input: ProposalCreateInput) {
 export async function updateProposal(id: string, input: ProposalUpdateInput) {
   const updateData: Prisma.ProposalUpdateInput = {};
   let currentProposalForUpdate:
-    | { accountId: string; facilityId: string | null; taxRate: Prisma.Decimal | number }
+    | {
+        accountId: string;
+        facilityId: string | null;
+        opportunityId: string | null;
+        taxRate: Prisma.Decimal | number;
+      }
     | null = null;
 
   const getCurrentProposalForUpdate = async () => {
@@ -593,6 +598,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       select: {
         accountId: true,
         facilityId: true,
+        opportunityId: true,
         taxRate: true,
       },
     });
@@ -604,16 +610,22 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     return currentProposalForUpdate;
   };
 
-  if (input.accountId !== undefined || input.facilityId !== undefined) {
+  if (
+    input.accountId !== undefined
+    || input.facilityId !== undefined
+    || input.opportunityId !== undefined
+  ) {
     const currentProposal = await getCurrentProposalForUpdate();
     const effectiveAccountId = input.accountId ?? currentProposal.accountId;
     const effectiveFacilityId =
       input.facilityId !== undefined ? input.facilityId : currentProposal.facilityId;
+    const effectiveOpportunityId =
+      input.opportunityId !== undefined ? input.opportunityId : currentProposal.opportunityId;
 
     await assertProposalCreateReadiness({
       accountId: effectiveAccountId,
       facilityId: effectiveFacilityId,
-      opportunityId: input.opportunityId,
+      opportunityId: effectiveOpportunityId,
       title: input.title ?? 'Existing Proposal',
       createdByUserId: 'system',
     });

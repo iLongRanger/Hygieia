@@ -395,28 +395,31 @@ export async function submitFacilityForProposal(
     throw new BadRequestError('Add at least one task before submitting this facility');
   }
 
-  const account = await prisma.account.findUnique({
-    where: { id: facility.accountId },
-    select: {
-      sourceLead: {
-        select: {
-          id: true,
-          status: true,
-          archivedAt: true,
-        },
-      },
+  const opportunity = await prisma.opportunity.findFirst({
+    where: {
+      accountId: facility.accountId,
+      leadId: { not: null },
+      archivedAt: null,
     },
+    select: {
+      id: true,
+      leadId: true,
+      status: true,
+    },
+    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
   });
-  const lead = account?.sourceLead;
 
-  if (!lead || lead.archivedAt) {
-    throw new BadRequestError('No converted lead found for this facility account');
+  if (!opportunity?.leadId) {
+    throw new BadRequestError('No active opportunity found for this facility account');
   }
 
   const appointment = await prisma.appointment.findFirst({
     where: {
-      leadId: lead.id,
       type: 'walk_through',
+      OR: [
+        { opportunityId: opportunity.id },
+        { leadId: opportunity.leadId },
+      ],
     },
     orderBy: {
       scheduledStart: 'desc',
@@ -424,11 +427,12 @@ export async function submitFacilityForProposal(
     select: {
       id: true,
       status: true,
+      opportunityId: true,
     },
   });
 
   if (!appointment) {
-    throw new BadRequestError('No walkthrough appointment found for this lead');
+    throw new BadRequestError('No walkthrough appointment found for this opportunity');
   }
 
   if (appointment.status === 'canceled' || appointment.status === 'no_show') {
@@ -438,16 +442,23 @@ export async function submitFacilityForProposal(
   }
 
   if (appointment.status === 'completed') {
-    if (lead.status !== 'walk_through_completed') {
+    if (opportunity.status !== 'walk_through_completed') {
+      await prisma.opportunity.update({
+        where: { id: appointment.opportunityId ?? opportunity.id },
+        data: { status: 'walk_through_completed' },
+      });
+    }
+
+    if (opportunity.leadId) {
       await prisma.lead.update({
-        where: { id: lead.id },
+        where: { id: opportunity.leadId },
         data: { status: 'walk_through_completed' },
       });
     }
 
     return {
       facilityId: facility.id,
-      leadId: lead.id,
+      leadId: opportunity.leadId,
       appointmentId: appointment.id,
       appointmentStatus: 'completed',
       leadStatus: 'walk_through_completed',
@@ -463,7 +474,7 @@ export async function submitFacilityForProposal(
 
   return {
     facilityId: facility.id,
-    leadId: lead.id,
+    leadId: opportunity.leadId,
     appointmentId: appointment.id,
     appointmentStatus: 'completed',
     leadStatus: 'walk_through_completed',

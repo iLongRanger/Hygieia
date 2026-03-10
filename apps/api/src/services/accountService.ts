@@ -190,8 +190,8 @@ export async function listAccounts(
   }
 
   if (readyForProposal) {
-    where.sourceLead = {
-      is: {
+    where.opportunities = {
+      some: {
         archivedAt: null,
         appointments: {
           some: {
