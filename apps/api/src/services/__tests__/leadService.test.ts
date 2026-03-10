@@ -10,6 +10,7 @@ jest.mock('../../lib/prisma', () => ({
     account: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     contact: {
       create: jest.fn(),
@@ -20,6 +21,7 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      findFirst: jest.fn(),
     },
     appointment: {
       findFirst: jest.fn(),
@@ -46,6 +48,8 @@ jest.mock('../geocodingService', () => ({
 describe('leadService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
   });
 
   describe('listLeads', () => {
@@ -518,6 +522,7 @@ describe('leadService', () => {
           account: {
             create: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
             findUnique: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue(null),
           },
           contact: {
             findFirst: jest.fn().mockResolvedValue(null),
@@ -532,6 +537,7 @@ describe('leadService', () => {
             create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
             findUnique: jest.fn(),
             update: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue(null),
           },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
@@ -592,6 +598,7 @@ describe('leadService', () => {
           account: {
             create: jest.fn(),
             findUnique: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
+            findFirst: jest.fn(),
           },
           contact: {
             findFirst: jest.fn().mockResolvedValue({
@@ -608,6 +615,7 @@ describe('leadService', () => {
             create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
             findUnique: jest.fn(),
             update: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue(null),
           },
           lead: {
             update: jest.fn().mockResolvedValue(updatedLead),
@@ -639,6 +647,130 @@ describe('leadService', () => {
       );
       expect(createContactMock).not.toHaveBeenCalled();
       expect(result.contact.id).toBe('contact-1');
+    });
+
+    it('should block creating a duplicate account during conversion', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'account-1',
+              name: 'Acme Corporation',
+            }),
+          },
+          contact: {
+            findFirst: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+          },
+          facility: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            findFirst: jest.fn(),
+          },
+          lead: {
+            update: jest.fn(),
+          },
+        })
+      );
+
+      await expect(
+        leadService.convertLead(leadId, {
+          createNewAccount: true,
+          accountData: {
+            name: ' Acme Corporation ',
+            type: 'commercial',
+          },
+          facilityOption: 'new',
+          facilityData: {
+            name: 'HQ',
+            address: {
+              street: '123 Main St',
+            },
+          },
+          userId: 'user-1',
+        })
+      ).rejects.toThrow('A matching account already exists');
+    });
+
+    it('should block creating a duplicate facility during conversion', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn().mockResolvedValue({ id: 'account-1', name: 'Acme Corporation' }),
+            findUnique: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+          contact: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({
+              id: 'contact-1',
+              name: 'Jane Smith',
+              email: 'jane@example.com',
+            }),
+            update: jest.fn(),
+          },
+          facility: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'facility-1',
+              name: 'HQ',
+            }),
+          },
+          lead: {
+            update: jest.fn(),
+          },
+        })
+      );
+
+      await expect(
+        leadService.convertLead(leadId, {
+          createNewAccount: true,
+          accountData: {
+            name: 'Acme Corporation',
+            type: 'commercial',
+          },
+          facilityOption: 'new',
+          facilityData: {
+            name: ' hq ',
+            address: {
+              street: '123 Main St',
+            },
+          },
+          userId: 'user-1',
+        })
+      ).rejects.toThrow('already exists for this account');
     });
   });
 

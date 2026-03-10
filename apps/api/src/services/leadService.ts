@@ -28,6 +28,10 @@ function shouldAutoAdvanceLeadStatus(currentStatus: string, targetStatus: string
   return targetRank > currentRank;
 }
 
+function normalizeComparableEmail(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 export interface LeadListParams {
   page?: number;
   limit?: number;
@@ -538,10 +542,37 @@ export async function convertLead(
         throw new Error('Account data is required when creating a new account');
       }
 
+      const proposedAccountName = input.accountData.name.trim();
+      const proposedBillingEmail = normalizeComparableEmail(
+        input.accountData.billingEmail || lead.primaryEmail
+      );
+
+      const duplicateAccount = await tx.account.findFirst({
+        where: {
+          archivedAt: null,
+          OR: [
+            { name: { equals: proposedAccountName, mode: 'insensitive' } },
+            ...(proposedBillingEmail
+              ? [{ billingEmail: { equals: proposedBillingEmail, mode: 'insensitive' } }]
+              : []),
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (duplicateAccount) {
+        throw new BadRequestError(
+          `A matching account already exists (${duplicateAccount.name}). Convert this lead into the existing account instead.`
+        );
+      }
+
       // Create new account
       const account = await tx.account.create({
         data: {
-          name: input.accountData.name,
+          name: proposedAccountName,
           type: input.accountData.type,
           industry: input.accountData.industry,
           website: input.accountData.website,
@@ -639,6 +670,25 @@ export async function convertLead(
         throw new BadRequestError('Facility address is required before converting this lead');
       }
 
+      const proposedFacilityName = input.facilityData.name.trim();
+      const duplicateFacility = await tx.facility.findFirst({
+        where: {
+          accountId,
+          archivedAt: null,
+          name: { equals: proposedFacilityName, mode: 'insensitive' },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (duplicateFacility) {
+        throw new BadRequestError(
+          `A facility named "${duplicateFacility.name}" already exists for this account. Select the existing facility instead.`
+        );
+      }
+
       const normalizedAddress = await geocodeAddressIfNeeded(
         input.facilityData.address as Record<string, unknown>
       );
@@ -647,7 +697,7 @@ export async function convertLead(
       const createdFacility = await tx.facility.create({
         data: {
           accountId,
-          name: input.facilityData.name,
+          name: proposedFacilityName,
           address: normalizedAddress as Prisma.InputJsonValue,
           buildingType: input.facilityData.buildingType,
           squareFeet: input.facilityData.squareFeet,
