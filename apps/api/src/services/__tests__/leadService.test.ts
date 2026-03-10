@@ -772,6 +772,61 @@ describe('leadService', () => {
         })
       ).rejects.toThrow('already exists for this account');
     });
+
+    it('should block converting into an account already linked to another lead', async () => {
+      const leadId = 'lead-123';
+      const existingLead = createTestLead({
+        id: leadId,
+        status: 'lead',
+        convertedToAccountId: null,
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        primaryEmail: 'jane@example.com',
+        primaryPhone: '555-0100',
+        archivedAt: null,
+      });
+
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback({
+          account: {
+            create: jest.fn(),
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'account-1',
+              name: 'Acme Corporation',
+              sourceLead: {
+                id: 'lead-other',
+              },
+            }),
+            findFirst: jest.fn(),
+          },
+          contact: {
+            findFirst: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+          },
+          facility: {
+            create: jest.fn(),
+            findUnique: jest.fn(),
+            update: jest.fn(),
+            findFirst: jest.fn(),
+          },
+          lead: {
+            update: jest.fn(),
+          },
+        })
+      );
+
+      await expect(
+        leadService.convertLead(leadId, {
+          createNewAccount: false,
+          existingAccountId: 'account-1',
+          facilityOption: 'existing',
+          existingFacilityId: 'facility-1',
+          userId: 'user-1',
+        })
+      ).rejects.toThrow('already linked to another lead');
+    });
   });
 
   describe('autoSetLeadStatusForAccount', () => {

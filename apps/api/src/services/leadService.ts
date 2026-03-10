@@ -599,11 +599,25 @@ export async function convertLead(
       // Verify existing account exists
       const existingAccount = await tx.account.findUnique({
         where: { id: input.existingAccountId },
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          sourceLead: {
+            select: {
+              id: true,
+            },
+          },
+        },
       });
 
       if (!existingAccount) {
         throw new Error('Existing account not found');
+      }
+
+      if (existingAccount.sourceLead && existingAccount.sourceLead.id !== leadId) {
+        throw new BadRequestError(
+          'This account is already linked to another lead. Create a new account for this lead instead.'
+        );
       }
 
       accountId = existingAccount.id;
