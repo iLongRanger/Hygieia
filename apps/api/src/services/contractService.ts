@@ -779,11 +779,7 @@ export async function updateContractStatus(
     updateData.terminatedAt = new Date();
   }
 
-  const contract = await prisma.contract.update({
-    where: { id },
-    data: updateData,
-    select: contractSelect,
-  });
+  const contract = await updateContractWithLegacyFallback({ id }, updateData);
 
   if (status === 'active') {
     await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
@@ -792,19 +788,7 @@ export async function updateContractStatus(
     await autoSetLeadStatusForAccount(contract.account.id, 'lost');
   }
 
-  return {
-    ...contract,
-    assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
-    pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
-    pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
-    pendingSubcontractorTier:
-      'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
-    assignmentOverrideEffectiveDate:
-      'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
-    assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
-    pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
-    pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
-  };
+  return contract;
 }
 
 export async function getContractsSummary(
@@ -1084,14 +1068,13 @@ export async function scheduleContractAssignmentOverride(
  * Sign contract
  */
 export async function signContract(id: string, signData: ContractSignInput) {
-  const contract = await prisma.contract.update({
-    where: { id },
-    data: {
+  const contract = await updateContractWithLegacyFallback(
+    { id },
+    {
       ...signData,
       status: 'pending_signature',
-    },
-    select: contractSelect,
-  });
+    }
+  );
 
   await autoAdvanceLeadStatusForAccount(contract.account.id, 'won');
   return contract;
@@ -1101,15 +1084,14 @@ export async function signContract(id: string, signData: ContractSignInput) {
  * Terminate contract
  */
 export async function terminateContract(id: string, reason: string) {
-  const contract = await prisma.contract.update({
-    where: { id },
-    data: {
+  const contract = await updateContractWithLegacyFallback(
+    { id },
+    {
       status: 'terminated',
       terminationReason: reason,
       terminatedAt: new Date(),
-    },
-    select: contractSelect,
-  });
+    }
+  );
 
   await autoSetLeadStatusForAccount(contract.account.id, 'lost');
   return contract;
@@ -1394,15 +1376,14 @@ export async function completeInitialClean(contractId: string, completedByUserId
     throw new Error('Initial clean has already been completed');
   }
 
-  return prisma.contract.update({
-    where: { id: contractId },
-    data: {
+  return updateContractWithLegacyFallback(
+    { id: contractId },
+    {
       initialCleanCompleted: true,
       initialCleanCompletedAt: new Date(),
       initialCleanCompletedByUserId: completedByUserId,
-    },
-    select: contractSelect,
-  });
+    }
+  );
 }
 
 // ============================================================

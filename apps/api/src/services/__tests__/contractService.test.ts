@@ -521,4 +521,48 @@ describe('contractService', () => {
       })
     );
   });
+
+  it('updateContractStatus should fall back when activating with legacy contract columns missing', async () => {
+    (prisma.contract.update as jest.Mock)
+      .mockRejectedValueOnce(new Error('column contracts.assigned_to_user_id does not exist'))
+      .mockResolvedValueOnce({
+        id: 'contract-active',
+        status: 'active',
+        account: { id: 'account-1' },
+      });
+
+    const result = await contractService.updateContractStatus('contract-active', 'active', 'user-1');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'contract-active',
+        status: 'active',
+        assignedToUser: null,
+        pendingAssignedTeamId: null,
+      })
+    );
+    expect(prisma.contract.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: 'contract-active' },
+        data: expect.objectContaining({
+          approvedAt: expect.any(Date),
+          approvedByUser: { connect: { id: 'user-1' } },
+          status: 'active',
+        }),
+        select: expect.objectContaining({
+          assignedToUser: expect.any(Object),
+        }),
+      })
+    );
+    expect(prisma.contract.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { id: 'contract-active' },
+        select: expect.not.objectContaining({
+          assignedToUser: expect.anything(),
+        }),
+      })
+    );
+  });
 });
