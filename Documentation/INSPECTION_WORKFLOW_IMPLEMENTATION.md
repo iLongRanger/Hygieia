@@ -107,5 +107,6 @@ Validated with focused tests:
 ## Known Notes
 
 - Repository-wide typecheck currently has pre-existing errors outside inspections scope.
-- Prisma client was regenerated with `--no-engine` to avoid local Windows file lock on query engine binary.
+- Prisma client should be regenerated with the normal `prisma generate` flow for local development.
+- Do not use `--no-engine` for the local app/API stack, because it can generate a client that expects `prisma://` and break runtime database access such as login.
 - This implementation avoids touching unrelated modules and keeps changes isolated to inspection workflow paths.

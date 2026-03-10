@@ -19,7 +19,6 @@ npm install
 
 # 2. Configure environment variables
 cp .env.example .env
-cp apps/web/.env.example apps/web/.env
 
 # 3. Run database migrations
 npm run db:migrate
@@ -45,8 +44,9 @@ By default this starts:
 - Quality: Inspections + templates
 - Workforce: Time tracking + timesheets
 - Billing: Invoices (manual + bulk generation)
-- Settings: Global settings, pricing plans, area/proposal templates, users
-- Public links: Proposal, quotation, contract, and invoice public views
+- Finance: Expenses, payroll, finance reporting
+- Settings: Global settings, pricing plans, area/proposal templates, users, background service settings
+- Public links: Proposal, quotation, and contract public views
 - Notifications: In-app realtime + optional email
 
 ## Architecture
@@ -74,6 +74,8 @@ hygieia/
   - reminder scheduler
   - recurring job auto-regeneration scheduler
   - job nearing-end alert scheduler
+  - contract assignment override scheduler
+  - contract amendment auto-apply scheduler
 
 ### Frontend Runtime
 - Entry: `apps/web/src/main.tsx`
@@ -107,9 +109,9 @@ hygieia/
 ## Environment Notes
 
 - API defaults come from `.env.example`.
-- Web defaults come from `apps/web/.env.example`.
+- Web dev proxy defaults are defined in `apps/web/vite.config.ts`.
 - Ensure `CORS_ORIGIN` and `VITE_API_BASE_URL` match your local/prod URLs.
-- In production, set `FRONTEND_URL`/`WEB_APP_URL` so outbound public links do not fallback to localhost.
+- In production, set `FRONTEND_URL` and `WEB_APP_URL` so outbound public and app links can be generated correctly.
 
 ## Documentation
 
@@ -121,7 +123,12 @@ Core docs live in `Documentation/` and project root:
 
 ## Project Status
 
-This project is in active development and feature-hardening. Before production deployment:
+This project is in active development and feature-hardening. As of 2026-03-09:
+- full automated tests pass
+- API typecheck passes
+- web typecheck still fails and should be treated as an active release risk
+
+Before production deployment:
 - keep migrations clean and applied in all environments
 - require passing tests and typechecks
 - run manual UAT on critical business flows
