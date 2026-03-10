@@ -25,7 +25,7 @@ jest.mock('../../lib/prisma', () => ({
       findFirst: jest.fn(),
     },
     opportunity: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
     },
     lead: {
@@ -374,11 +374,15 @@ describe('facilityService', () => {
       });
       (prisma.area.count as jest.Mock).mockResolvedValue(1);
       (prisma.facilityTask.count as jest.Mock).mockResolvedValue(1);
-      (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
         id: 'opp-1',
         leadId: 'lead-source',
         status: 'walk_through_booked',
-      });
+        updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+        createdAt: new Date('2026-03-10T09:00:00.000Z'),
+      },
+      ]);
       (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({
         id: 'appt-1',
         status: 'completed',
@@ -392,7 +396,7 @@ describe('facilityService', () => {
         notes: null,
       });
 
-      expect(prisma.opportunity.findFirst).toHaveBeenCalledWith(
+      expect(prisma.opportunity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ accountId: 'account-123' }),
         })

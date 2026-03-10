@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import logger from '../lib/logger';
+import { findPreferredOpportunityForLead } from './opportunityResolver';
 
 export interface AppointmentListParams {
   leadId?: string;
@@ -229,14 +230,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
   const appointment = await prisma.$transaction(async (tx) => {
     const opportunity =
       input.type === 'walk_through' && input.leadId
-        ? await tx.opportunity.findFirst({
-            where: {
-              leadId: input.leadId,
-              archivedAt: null,
-            },
-            select: { id: true },
-            orderBy: { createdAt: 'desc' },
-          })
+        ? await findPreferredOpportunityForLead(tx, input.leadId)
         : null;
 
     const appointment = await tx.appointment.create({

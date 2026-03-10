@@ -24,7 +24,7 @@ jest.mock('../../lib/prisma', () => ({
       findFirst: jest.fn(),
     },
     opportunity: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
     },
     facility: {
@@ -54,7 +54,7 @@ describe('appointmentService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
-    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });

@@ -5,6 +5,10 @@ import { createNotification } from './notificationService';
 import { geocodeAddressIfNeeded } from './geocodingService';
 import logger from '../lib/logger';
 import {
+  findPreferredOpportunityForAccount,
+  findPreferredOpportunityForLead,
+} from './opportunityResolver';
+import {
   hasNormalizedEmailMatch,
   hasNormalizedNameMatch,
   hasNormalizedPhoneMatch,
@@ -246,14 +250,7 @@ async function syncOpportunityFromLead(
     archivedAt?: Date | null;
   }
 ): Promise<void> {
-  const opportunity = await prisma.opportunity.findFirst({
-    where: {
-      leadId,
-      archivedAt: null,
-    },
-    select: { id: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  const opportunity = await findPreferredOpportunityForLead(prisma, leadId);
 
   if (!opportunity) {
     return;
@@ -942,11 +939,7 @@ export async function convertLead(
       ...getOpportunityStatusUpdate(lead.status as OpportunityPipelineStatus),
     } satisfies Prisma.OpportunityUncheckedCreateInput;
 
-    const existingOpportunity = await tx.opportunity.findFirst({
-      where: { leadId },
-      select: { id: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const existingOpportunity = await findPreferredOpportunityForLead(tx, leadId);
 
     const opportunity = existingOpportunity
       ? await tx.opportunity.update({
@@ -1103,16 +1096,7 @@ export async function autoSetLeadStatusForAccount(
   options: AutoLeadStatusOptions = {}
 ): Promise<void> {
   try {
-    const opportunity = await prisma.opportunity.findFirst({
-      where: {
-        accountId,
-        archivedAt: null,
-      },
-      select: {
-        id: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const opportunity = await findPreferredOpportunityForAccount(prisma, accountId);
 
     if (opportunity) {
       await autoSetLeadStatusForOpportunity(opportunity.id, targetStatus, options);

@@ -30,7 +30,7 @@ jest.mock('../../lib/prisma', () => ({
       updateMany: jest.fn(),
     },
     opportunity: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -61,7 +61,7 @@ describe('leadService', () => {
     (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.account.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.facility.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.opportunity.create as jest.Mock).mockResolvedValue({ id: 'opp-1' });
     (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
     (prisma.appointment.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
@@ -470,7 +470,16 @@ describe('leadService', () => {
         archivedAt: null,
       });
 
-      (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({ id: 'opp-1' });
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-1',
+          accountId: 'account-1',
+          leadId: 'lead-123',
+          status: 'lost',
+          updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+          createdAt: new Date('2026-03-10T09:00:00.000Z'),
+        },
+      ]);
       (prisma.lead.update as jest.Mock).mockResolvedValue(mockLead);
 
       await leadService.updateLead('lead-123', { status: 'negotiation' });
@@ -585,7 +594,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
@@ -673,7 +682,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
@@ -754,7 +763,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
@@ -830,7 +839,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
@@ -903,7 +912,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },
@@ -969,7 +978,7 @@ describe('leadService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           },
           opportunity: {
-            findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({ id: 'opp-1' }),
             update: jest.fn().mockResolvedValue({ id: 'opp-1' }),
           },

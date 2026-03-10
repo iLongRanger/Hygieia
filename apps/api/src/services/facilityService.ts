@@ -4,6 +4,7 @@ import { geocodeAddressIfNeeded } from './geocodingService';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { completeAppointment } from './appointmentService';
 import { hasNormalizedNameMatch, normalizeComparableName } from '../lib/dedupe';
+import { findPreferredOpportunityForAccount } from './opportunityResolver';
 
 export interface FacilityListParams {
   page?: number;
@@ -395,18 +396,8 @@ export async function submitFacilityForProposal(
     throw new BadRequestError('Add at least one task before submitting this facility');
   }
 
-  const opportunity = await prisma.opportunity.findFirst({
-    where: {
-      accountId: facility.accountId,
-      leadId: { not: null },
-      archivedAt: null,
-    },
-    select: {
-      id: true,
-      leadId: true,
-      status: true,
-    },
-    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+  const opportunity = await findPreferredOpportunityForAccount(prisma, facility.accountId, {
+    requireLeadId: true,
   });
 
   if (!opportunity?.leadId) {

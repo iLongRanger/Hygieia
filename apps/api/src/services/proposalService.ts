@@ -16,6 +16,7 @@ import {
   autoSetLeadStatusForOpportunity,
 } from './leadService';
 import { BadRequestError } from '../middleware/errorHandler';
+import { findPreferredOpportunityForAccount } from './opportunityResolver';
 
 export interface ProposalListParams {
   page?: number;
@@ -288,21 +289,7 @@ async function resolveOpportunityForAccount(
     return opportunity;
   }
 
-  return prisma.opportunity.findFirst({
-    where: {
-      accountId,
-      archivedAt: null,
-    },
-    select: {
-      id: true,
-      accountId: true,
-      leadId: true,
-    },
-    orderBy: [
-      { updatedAt: 'desc' },
-      { createdAt: 'desc' },
-    ],
-  });
+  return findPreferredOpportunityForAccount(prisma, accountId);
 }
 
 async function assertProposalCreateReadiness(

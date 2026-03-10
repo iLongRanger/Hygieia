@@ -25,7 +25,7 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
     },
     opportunity: {
-      findFirst: jest.fn(),
+      findMany: jest.fn(),
       findUnique: jest.fn(),
     },
     appointment: {
@@ -96,11 +96,16 @@ describe('proposalService', () => {
       id: 'account-1',
       archivedAt: null,
     });
-    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({
-      id: 'opp-1',
-      accountId: 'account-1',
-      leadId: 'lead-1',
-    });
+    (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'opp-1',
+        accountId: 'account-1',
+        leadId: 'lead-1',
+        status: 'walk_through_completed',
+        updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+        createdAt: new Date('2026-03-10T09:00:00.000Z'),
+      },
+    ]);
     (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({ id: 'appt-1' });
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',
@@ -587,11 +592,16 @@ describe('proposalService', () => {
         id: 'account-2',
         archivedAt: null,
       });
-      (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue({
-        id: 'opp-2',
-        accountId: 'account-2',
-        leadId: 'lead-2',
-      });
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-2',
+          accountId: 'account-2',
+          leadId: 'lead-2',
+          status: 'walk_through_completed',
+          updatedAt: new Date('2026-03-10T11:00:00.000Z'),
+          createdAt: new Date('2026-03-10T09:00:00.000Z'),
+        },
+      ]);
       (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
         id: 'facility-2',
         accountId: 'account-2',
