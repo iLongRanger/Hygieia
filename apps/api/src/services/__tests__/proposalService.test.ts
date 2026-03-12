@@ -27,9 +27,17 @@ jest.mock('../../lib/prisma', () => ({
     opportunity: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
     },
     appointment: {
       findFirst: jest.fn(),
+    },
+    contact: {
+      findFirst: jest.fn(),
+    },
+    lead: {
+      findUnique: jest.fn(),
     },
     area: {
       count: jest.fn(),
@@ -96,17 +104,52 @@ describe('proposalService', () => {
       id: 'account-1',
       archivedAt: null,
     });
-    (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'opp-1',
-        accountId: 'account-1',
-        leadId: 'lead-1',
-        status: 'walk_through_completed',
-        updatedAt: new Date('2026-03-10T10:00:00.000Z'),
-        createdAt: new Date('2026-03-10T09:00:00.000Z'),
-      },
-    ]);
+    (prisma.opportunity.findMany as jest.Mock).mockImplementation(({ where }) => {
+      if (where?.facilityId === 'facility-2') {
+        return Promise.resolve([]);
+      }
+
+      return Promise.resolve([
+        {
+          id: 'opp-1',
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          leadId: 'lead-1',
+          status: 'walk_through_completed',
+          updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+          createdAt: new Date('2026-03-10T09:00:00.000Z'),
+        },
+      ]);
+    });
+    (prisma.opportunity.findUnique as jest.Mock).mockResolvedValue({
+      id: 'opp-1',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      leadId: 'lead-1',
+      primaryContactId: 'contact-1',
+      title: 'Opportunity One',
+      source: null,
+      estimatedValue: 5000,
+      probability: 60,
+      expectedCloseDate: new Date('2026-03-30'),
+      ownerUserId: 'user-2',
+      createdByUserId: 'user-1',
+      archivedAt: null,
+    });
+    (prisma.opportunity.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.opportunity.create as jest.Mock).mockResolvedValue({ id: 'opp-2' });
     (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({ id: 'appt-1' });
+    (prisma.contact.findFirst as jest.Mock).mockResolvedValue({ id: 'contact-1' });
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      companyName: 'Test Account',
+      contactName: 'John Doe',
+      estimatedValue: 5000,
+      probability: 60,
+      expectedCloseDate: new Date('2026-03-30'),
+      assignedToUserId: 'user-2',
+      createdByUserId: 'user-1',
+    });
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',
       accountId: 'account-1',
@@ -804,6 +847,43 @@ describe('proposalService', () => {
       ).rejects.toThrow('Facility must have at least one area before creating a proposal');
 
       expect(prisma.proposal.create).not.toHaveBeenCalled();
+    });
+
+    it('should create a facility-scoped opportunity when the selected facility differs from the account-level opportunity', async () => {
+      const mockProposal = createTestProposal({ facilityId: 'facility-2' });
+      (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-2',
+        accountId: 'account-1',
+        archivedAt: null,
+        status: 'active',
+      });
+
+      const result = await proposalService.createProposal({
+        accountId: 'account-1',
+        facilityId: 'facility-2',
+        title: 'Facility Two Proposal',
+        createdByUserId: 'user-1',
+      });
+
+      expect(prisma.opportunity.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accountId: 'account-1',
+          facilityId: 'facility-2',
+          leadId: 'lead-1',
+          status: 'walk_through_completed',
+        }),
+        select: { id: true },
+      });
+      expect(prisma.proposal.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            facilityId: 'facility-2',
+            opportunityId: 'opp-2',
+          }),
+        })
+      );
+      expect(result).toEqual(mockProposal);
     });
   });
 

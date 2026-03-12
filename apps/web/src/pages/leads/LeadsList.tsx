@@ -31,8 +31,9 @@ import {
   restoreLead,
   listLeadSources,
 } from '../../lib/leads';
+import { listOpportunities } from '../../lib/opportunities';
 import { listUsers } from '../../lib/users';
-import type { Lead, CreateLeadInput, LeadSource } from '../../types/crm';
+import type { Lead, Opportunity, CreateLeadInput, LeadSource } from '../../types/crm';
 import type { User } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
 import { getLeadStatusLabel } from '../../lib/leadStatus';
@@ -120,6 +121,31 @@ const getLeadSourceDisplay = (lead: Lead): string => {
   return lead.leadSource?.name || getLeadSourceFromNotes(lead.notes) || 'Unknown';
 };
 
+const getOpportunitySourceDisplay = (opportunity: Opportunity): string => {
+  return opportunity.source || 'Unknown';
+};
+
+const getOpportunityPrimaryLabel = (opportunity: Opportunity): string => {
+  return opportunity.facility?.name
+    || opportunity.account?.name
+    || opportunity.title
+    || opportunity.lead?.companyName
+    || opportunity.lead?.contactName
+    || 'Untitled opportunity';
+};
+
+const getOpportunitySecondaryLabel = (opportunity: Opportunity): string => {
+  if (opportunity.facility && opportunity.account) {
+    return opportunity.account.name;
+  }
+
+  if (opportunity.account && opportunity.lead?.contactName) {
+    return opportunity.lead.contactName;
+  }
+
+  return opportunity.title;
+};
+
 const STAGE_COLORS: Record<string, { border: string; bg: string; text: string; dot: string }> = {
   lead: { border: 'border-t-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-400' },
   walk_through_booked: { border: 'border-t-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-400' },
@@ -189,7 +215,7 @@ const LeadsList = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [pipelineLeads, setPipelineLeads] = useState<Lead[]>([]);
+  const [pipelineOpportunities, setPipelineOpportunities] = useState<Opportunity[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(true);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -268,29 +294,29 @@ const LeadsList = () => {
     []
   );
 
-  const fetchPipelineLeads = useCallback(async () => {
+  const fetchPipelineOpportunities = useCallback(async () => {
     try {
       setPipelineLoading(true);
-      const allLeads: Lead[] = [];
+      const allOpportunities: Opportunity[] = [];
       const limit = 100;
       let currentPage = 1;
       let totalPagesCount = 1;
 
       while (currentPage <= totalPagesCount) {
-        const response = await listLeads({
+        const response = await listOpportunities({
           page: currentPage,
           limit,
           includeArchived: false,
         });
-        allLeads.push(...(response?.data || []));
+        allOpportunities.push(...(response?.data || []));
         totalPagesCount = response?.pagination?.totalPages || currentPage;
         currentPage += 1;
       }
 
-      setPipelineLeads(allLeads);
+      setPipelineOpportunities(allOpportunities);
     } catch (error) {
-      console.error('Failed to fetch pipeline leads:', error);
-      setPipelineLeads([]);
+      console.error('Failed to fetch pipeline opportunities:', error);
+      setPipelineOpportunities([]);
     } finally {
       setPipelineLoading(false);
     }
@@ -327,22 +353,22 @@ const LeadsList = () => {
     fetchLeadSources();
     fetchUsers();
     if (canViewPipelines) {
-      fetchPipelineLeads();
+      fetchPipelineOpportunities();
     } else {
-      setPipelineLeads([]);
+      setPipelineOpportunities([]);
       setPipelineLoading(false);
     }
-  }, [fetchLeadSources, fetchUsers, fetchPipelineLeads, canViewPipelines]);
+  }, [fetchLeadSources, fetchUsers, fetchPipelineOpportunities, canViewPipelines]);
 
   useEffect(() => {
     if (!canViewPipelines) return;
     const handleWindowFocus = () => {
-      fetchPipelineLeads();
+      fetchPipelineOpportunities();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchPipelineLeads();
+        fetchPipelineOpportunities();
       }
     };
 
@@ -353,7 +379,7 @@ const LeadsList = () => {
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchPipelineLeads, canViewPipelines]);
+  }, [fetchPipelineOpportunities, canViewPipelines]);
 
   useEffect(() => {
     const routeStatus = new URLSearchParams(location.search).get('status');
@@ -382,6 +408,17 @@ const LeadsList = () => {
     setStatusFilter(nextStatus);
     setPage(1);
   }, [location.pathname, location.search, navigate]);
+
+  const navigateToOpportunity = useCallback((opportunity: Opportunity) => {
+    if (opportunity.account?.id) {
+      navigate(`/accounts/${opportunity.account.id}`);
+      return;
+    }
+
+    if (opportunity.lead?.id) {
+      navigate(`/leads/${opportunity.lead.id}`);
+    }
+  }, [navigate]);
 
   const handleCreate = async () => {
     if (!formData.contactName) {
@@ -432,7 +469,7 @@ const LeadsList = () => {
         includeArchived,
       });
       if (canViewPipelines) {
-        fetchPipelineLeads();
+        fetchPipelineOpportunities();
       }
     } catch (error) {
       console.error('Failed to create lead:', error);
@@ -486,7 +523,7 @@ const LeadsList = () => {
         includeArchived,
       });
       if (canViewPipelines) {
-        fetchPipelineLeads();
+        fetchPipelineOpportunities();
       }
     } catch (error) {
       console.error('Failed to archive lead:', error);
@@ -505,7 +542,7 @@ const LeadsList = () => {
         includeArchived,
       });
       if (canViewPipelines) {
-        fetchPipelineLeads();
+        fetchPipelineOpportunities();
       }
     } catch (error) {
       console.error('Failed to restore lead:', error);
@@ -542,9 +579,11 @@ const LeadsList = () => {
   const pipelineStages = useMemo(
     () => LEAD_STATUSES.map((stage) => ({
       ...stage,
-      leads: pipelineLeads.filter((lead) => lead.status === stage.value && !lead.archivedAt),
+      opportunities: pipelineOpportunities.filter(
+        (opportunity) => opportunity.status === stage.value && !opportunity.archivedAt
+      ),
     })),
-    [pipelineLeads]
+    [pipelineOpportunities]
   );
 
   const columns = [
@@ -666,9 +705,9 @@ const LeadsList = () => {
         <div className="border-b border-surface-200 bg-gradient-to-r from-surface-50 to-white p-4 dark:border-surface-700 dark:from-surface-800/60 dark:to-surface-800">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Lead Pipeline</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Opportunity Pipeline</h2>
               <p className="text-sm text-surface-500 dark:text-surface-400">
-                {pipelineLoading ? 'Refreshing stage counts...' : `${pipelineLeads.length} active leads`}
+                {pipelineLoading ? 'Refreshing stage counts...' : `${pipelineOpportunities.length} active opportunities`}
               </p>
             </div>
             {statusFilter && (
@@ -685,8 +724,8 @@ const LeadsList = () => {
             {pipelineStages.map((stage) => {
               const isActiveStage = statusFilter === stage.value;
               const colors = STAGE_COLORS[stage.value] || DEFAULT_STAGE_COLOR;
-              const stageTotal = stage.leads.reduce(
-                (sum, l) => sum + (l.estimatedValue ? Number(l.estimatedValue) : 0),
+              const stageTotal = stage.opportunities.reduce(
+                (sum, opportunity) => sum + (opportunity.estimatedValue ? Number(opportunity.estimatedValue) : 0),
                 0,
               );
               return (
@@ -716,7 +755,7 @@ const LeadsList = () => {
                           {stage.label}
                         </p>
                         <span className="inline-flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-surface-200 px-1.5 text-[11px] font-medium text-surface-700 dark:bg-surface-700 dark:text-surface-300">
-                          {stage.leads.length}
+                          {stage.opportunities.length}
                         </span>
                       </div>
                       <p className="mt-2 whitespace-normal break-words pl-[18px] text-xs font-medium leading-4 text-surface-500 dark:text-surface-400">
@@ -727,54 +766,50 @@ const LeadsList = () => {
 
                   {/* Scrollable cards */}
                   <div className="flex-1 space-y-2 overflow-y-auto px-2 py-2">
-                    {stage.leads.map((lead) => {
-                      const staleness = getStaleness(lead.updatedAt);
-                      const closeUrgency = getCloseDateUrgency(lead.expectedCloseDate);
+                    {stage.opportunities.map((opportunity) => {
+                      const staleness = getStaleness(opportunity.updatedAt);
+                      const closeUrgency = getCloseDateUrgency(opportunity.expectedCloseDate);
                       return (
                         <button
-                          key={lead.id}
+                          key={opportunity.id}
                           type="button"
                           className={`group w-full min-w-0 rounded-lg border bg-white p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-surface-900 ${
                             isActiveStage
                               ? 'border-primary-200 hover:border-primary-400 dark:border-primary-800 dark:hover:border-primary-500'
                               : 'border-surface-200 hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600'
                           }`}
-                          onClick={() => navigate(`/leads/${lead.id}`)}
+                          onClick={() => navigateToOpportunity(opportunity)}
                         >
-                          {/* Company & contact */}
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-[13px] font-semibold text-surface-900 dark:text-surface-100">
-                                {lead.companyName || lead.contactName}
+                                {getOpportunityPrimaryLabel(opportunity)}
                               </p>
-                              {lead.companyName && (
+                              {getOpportunitySecondaryLabel(opportunity) && (
                                 <p className="truncate text-[11px] text-surface-500 dark:text-surface-400">
-                                  {lead.contactName}
+                                  {getOpportunitySecondaryLabel(opportunity)}
                                 </p>
                               )}
                             </div>
-                            {/* Lead source dot */}
                             <span
                               className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${colors.dot}`}
-                              title={getLeadSourceDisplay(lead)}
+                              title={getOpportunitySourceDisplay(opportunity)}
                             />
                           </div>
 
-                          {/* Value badge */}
                           <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
                             <span className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-2 py-0.5 text-[11px] font-semibold text-surface-800 dark:bg-surface-800 dark:text-surface-200">
                               <DollarSign className="h-3 w-3" />
-                              {lead.estimatedValue ? Number(lead.estimatedValue).toLocaleString() : '0'}
+                              {opportunity.estimatedValue ? Number(opportunity.estimatedValue).toLocaleString() : '0'}
                             </span>
                             <span
                               className="truncate text-[10px] text-surface-400 dark:text-surface-500"
-                              title={getLeadSourceDisplay(lead)}
+                              title={getOpportunitySourceDisplay(opportunity)}
                             >
-                              {getLeadSourceDisplay(lead)}
+                              {getOpportunitySourceDisplay(opportunity)}
                             </span>
                           </div>
 
-                          {/* Meta row: activity + close date */}
                           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
                             <span className={`inline-flex items-center gap-1 ${
                               staleness === 'stale'
@@ -784,13 +819,13 @@ const LeadsList = () => {
                                   : 'text-surface-400 dark:text-surface-500'
                             }`}>
                               <Clock className="h-3 w-3" />
-                              {getRelativeTime(lead.updatedAt)}
+                              {getRelativeTime(opportunity.updatedAt)}
                               {staleness !== 'fresh' && (
                                 <span className={`h-1.5 w-1.5 rounded-full ${staleness === 'stale' ? 'bg-red-400' : 'bg-amber-400'}`} />
                               )}
                             </span>
 
-                            {lead.expectedCloseDate && (
+                            {opportunity.expectedCloseDate && (
                               <span className={`inline-flex items-center gap-1 ${
                                 closeUrgency === 'overdue'
                                   ? 'text-red-500 dark:text-red-400'
@@ -799,20 +834,25 @@ const LeadsList = () => {
                                     : 'text-surface-400 dark:text-surface-500'
                               }`}>
                                 <CalendarClock className="h-3 w-3" />
-                                {new Date(lead.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {new Date(opportunity.expectedCloseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+
+                            {opportunity.facility?.name && (
+                              <span className="inline-flex items-center gap-1 text-surface-400 dark:text-surface-500">
+                                <span className="truncate">{opportunity.facility.name}</span>
                               </span>
                             )}
                           </div>
 
-                          {/* Assigned user */}
                           <div className="mt-2 flex items-center justify-between">
-                            {lead.assignedToUser ? (
+                            {opportunity.ownerUser ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-[10px] font-semibold text-primary-700 dark:bg-primary-900 dark:text-primary-300">
-                                  {getInitials(lead.assignedToUser.fullName)}
+                                  {getInitials(opportunity.ownerUser.fullName)}
                                 </span>
                                 <span className="max-w-[88px] truncate text-[10px] text-surface-600 dark:text-surface-400">
-                                  {lead.assignedToUser.fullName}
+                                  {opportunity.ownerUser.fullName}
                                 </span>
                               </span>
                             ) : (
@@ -823,24 +863,23 @@ const LeadsList = () => {
                             )}
                           </div>
 
-                          {/* Probability bar */}
                           <div className="mt-2">
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-100 dark:bg-surface-800">
                               <div
-                                className={`h-full rounded-full transition-all ${getProbabilityColor(lead.probability)}`}
-                                style={{ width: `${Math.max(lead.probability ?? 0, 4)}%` }}
+                                className={`h-full rounded-full transition-all ${getProbabilityColor(opportunity.probability)}`}
+                                style={{ width: `${Math.max(opportunity.probability ?? 0, 4)}%` }}
                               />
                             </div>
                             <p className="mt-0.5 text-right text-[10px] text-surface-400 dark:text-surface-500">
-                              {lead.probability ?? 0}% probability
+                              {opportunity.probability ?? 0}% probability
                             </p>
                           </div>
                         </button>
                       );
                     })}
-                    {stage.leads.length === 0 && (
+                    {stage.opportunities.length === 0 && (
                       <div className="rounded-lg border border-dashed border-surface-300 p-4 text-center text-xs text-surface-500 dark:border-surface-600 dark:text-surface-400">
-                        No leads in this stage
+                        No opportunities in this stage
                       </div>
                     )}
                   </div>

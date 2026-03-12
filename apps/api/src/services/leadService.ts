@@ -924,6 +924,7 @@ export async function convertLead(
     const opportunityPayload = {
       leadId,
       accountId,
+      facilityId: facility?.id ?? null,
       primaryContactId: contact.id,
       title: deriveOpportunityTitle(lead),
       source: lead.leadSource?.name ?? null,

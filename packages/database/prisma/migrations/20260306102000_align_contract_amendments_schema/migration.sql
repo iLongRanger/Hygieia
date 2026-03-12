@@ -17,29 +17,79 @@ ALTER TABLE "contract_amendments"
     ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMPTZ(6),
     ADD COLUMN IF NOT EXISTS "created_by_user_id" UUID;
 
-UPDATE "contract_amendments"
-SET "summary" = COALESCE("summary", "description")
-WHERE "description" IS NOT NULL;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'contract_amendments'
+          AND column_name = 'description'
+    ) THEN
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "summary" = COALESCE("summary", "description")
+            WHERE "description" IS NOT NULL
+        ';
+    END IF;
 
-UPDATE "contract_amendments"
-SET "new_monthly_value" = COALESCE("new_monthly_value", "monthly_value")
-WHERE "monthly_value" IS NOT NULL;
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'contract_amendments'
+          AND column_name = 'monthly_value'
+    ) THEN
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "new_monthly_value" = COALESCE("new_monthly_value", "monthly_value")
+            WHERE "monthly_value" IS NOT NULL
+        ';
 
-UPDATE "contract_amendments"
-SET "old_monthly_value" = COALESCE("old_monthly_value", "monthly_value", 0)
-WHERE "old_monthly_value" IS NULL;
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "old_monthly_value" = COALESCE("old_monthly_value", "monthly_value", 0)
+            WHERE "old_monthly_value" IS NULL
+        ';
+    END IF;
 
-UPDATE "contract_amendments"
-SET "new_service_frequency" = COALESCE("new_service_frequency", "service_frequency")
-WHERE "service_frequency" IS NOT NULL;
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'contract_amendments'
+          AND column_name = 'service_frequency'
+    ) THEN
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "new_service_frequency" = COALESCE("new_service_frequency", "service_frequency")
+            WHERE "service_frequency" IS NOT NULL
+        ';
+    END IF;
 
-UPDATE "contract_amendments"
-SET "new_service_schedule" = COALESCE("new_service_schedule", "service_schedule")
-WHERE "service_schedule" IS NOT NULL;
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'contract_amendments'
+          AND column_name = 'service_schedule'
+    ) THEN
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "new_service_schedule" = COALESCE("new_service_schedule", "service_schedule")
+            WHERE "service_schedule" IS NOT NULL
+        ';
+    END IF;
 
-UPDATE "contract_amendments"
-SET "created_by_user_id" = COALESCE("created_by_user_id", "proposed_by_user_id")
-WHERE "proposed_by_user_id" IS NOT NULL;
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'contract_amendments'
+          AND column_name = 'proposed_by_user_id'
+    ) THEN
+        EXECUTE '
+            UPDATE "contract_amendments"
+            SET "created_by_user_id" = COALESCE("created_by_user_id", "proposed_by_user_id")
+            WHERE "proposed_by_user_id" IS NOT NULL
+        ';
+    END IF;
+END $$;
 
 WITH ranked AS (
     SELECT

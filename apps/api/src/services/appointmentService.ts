@@ -19,6 +19,7 @@ export interface AppointmentListParams {
 export interface AppointmentCreateInput {
   leadId?: string;
   accountId?: string;
+  facilityId?: string | null;
   assignedToUserId: string;
   type: string;
   status: string;
@@ -54,6 +55,13 @@ export interface AppointmentCompleteInput {
   facilityId: string;
   notes?: string | null;
   userId: string;
+}
+
+function deriveOpportunityTitle(lead: {
+  companyName?: string | null;
+  contactName: string;
+}): string {
+  return lead.companyName?.trim() || lead.contactName.trim();
 }
 
 const appointmentSelect = {
@@ -187,7 +195,19 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     const lead = await prisma.lead.findUnique({
       where: { id: input.leadId },
-      select: { id: true, archivedAt: true, convertedToAccountId: true },
+      select: {
+        id: true,
+        archivedAt: true,
+        convertedToAccountId: true,
+        companyName: true,
+        contactName: true,
+        estimatedValue: true,
+        probability: true,
+        expectedCloseDate: true,
+        lostReason: true,
+        assignedToUserId: true,
+        createdByUserId: true,
+      },
     });
 
     if (!lead) {
@@ -199,6 +219,25 @@ export async function createAppointment(input: AppointmentCreateInput) {
     }
 
     walkthroughLeadAccountId = lead.convertedToAccountId;
+
+    if (input.facilityId) {
+      if (!lead.convertedToAccountId) {
+        throw new BadRequestError('Lead must be converted before assigning a walkthrough to a facility');
+      }
+
+      const facility = await prisma.facility.findFirst({
+        where: {
+          id: input.facilityId,
+          accountId: lead.convertedToAccountId,
+          archivedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (!facility) {
+        throw new BadRequestError('Facility not found for the selected lead account');
+      }
+    }
   } else {
     if (!input.accountId) {
       throw new BadRequestError('Account is required for visit or inspection appointments');
@@ -228,10 +267,80 @@ export async function createAppointment(input: AppointmentCreateInput) {
   }
 
   const appointment = await prisma.$transaction(async (tx) => {
-    const opportunity =
+    let opportunity =
       input.type === 'walk_through' && input.leadId
-        ? await findPreferredOpportunityForLead(tx, input.leadId)
+        ? await findPreferredOpportunityForLead(tx, input.leadId, {
+            facilityId: input.facilityId ?? undefined,
+          })
         : null;
+
+    if (input.type === 'walk_through' && input.leadId && input.facilityId && !opportunity) {
+      const [lead, primaryContact] = await Promise.all([
+        tx.lead.findUnique({
+          where: { id: input.leadId },
+          select: {
+            id: true,
+            convertedToAccountId: true,
+            companyName: true,
+            contactName: true,
+            estimatedValue: true,
+            probability: true,
+            expectedCloseDate: true,
+            lostReason: true,
+            assignedToUserId: true,
+            createdByUserId: true,
+          },
+        }),
+        walkthroughLeadAccountId
+          ? tx.contact.findFirst({
+              where: {
+                accountId: walkthroughLeadAccountId,
+              },
+              select: {
+                id: true,
+              },
+              orderBy: [
+                { isPrimary: 'desc' },
+                { createdAt: 'asc' },
+              ],
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (!lead?.convertedToAccountId) {
+        throw new BadRequestError('Lead must be converted before creating a facility opportunity');
+      }
+
+      opportunity = await tx.opportunity.create({
+        data: {
+          leadId: lead.id,
+          accountId: lead.convertedToAccountId,
+          facilityId: input.facilityId,
+          primaryContactId: primaryContact?.id ?? null,
+          title: deriveOpportunityTitle(lead),
+          estimatedValue: lead.estimatedValue ?? null,
+          probability: lead.probability ?? 0,
+          expectedCloseDate: lead.expectedCloseDate ?? null,
+          lostReason: lead.lostReason ?? null,
+          ownerUserId: lead.assignedToUserId ?? null,
+          createdByUserId: lead.createdByUserId,
+          status: 'walk_through_booked',
+        },
+        select: {
+          id: true,
+          accountId: true,
+          facilityId: true,
+          leadId: true,
+          status: true,
+          updatedAt: true,
+          createdAt: true,
+        },
+      });
+    }
+
+    if (input.type === 'walk_through' && input.leadId && !opportunity) {
+      opportunity = await findPreferredOpportunityForLead(tx, input.leadId);
+    }
 
     const appointment = await tx.appointment.create({
       data: {
@@ -261,7 +370,10 @@ export async function createAppointment(input: AppointmentCreateInput) {
       if (opportunity) {
         await tx.opportunity.update({
           where: { id: opportunity.id },
-          data: { status: 'walk_through_booked' },
+          data: {
+            status: 'walk_through_booked',
+            ...(input.facilityId ? { facilityId: input.facilityId } : {}),
+          },
         });
       }
     }

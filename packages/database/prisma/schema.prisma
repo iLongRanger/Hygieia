@@ -395,6 +395,7 @@ model Opportunity {
   id                String    @id @default(uuid()) @db.Uuid
   leadId            String?   @map("lead_id") @db.Uuid
   accountId         String?   @map("account_id") @db.Uuid
+  facilityId        String?   @map("facility_id") @db.Uuid
   primaryContactId  String?   @map("primary_contact_id") @db.Uuid
   title             String    @db.VarChar(255)
   status            String    @default("lead") @db.VarChar(30)
@@ -414,6 +415,7 @@ model Opportunity {
 
   lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   account        Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  facility       Facility?     @relation(fields: [facilityId], references: [id], onDelete: SetNull)
   primaryContact Contact?      @relation(fields: [primaryContactId], references: [id], onDelete: SetNull)
   ownerUser      User?         @relation("OpportunityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   createdByUser  User          @relation("CreatedOpportunities", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -423,6 +425,7 @@ model Opportunity {
 
   @@index([leadId])
   @@index([accountId])
+  @@index([facilityId])
   @@index([primaryContactId])
   @@index([ownerUserId])
   @@index([status])
@@ -474,6 +477,7 @@ model Facility {
   defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
   account            Account          @relation(fields: [accountId], references: [id])
+  opportunities      Opportunity[]
   areas              Area[]
   taskTemplates      TaskTemplate[]   @relation("FacilityTaskTemplates")
   facilityTasks      FacilityTask[]   @relation("FacilityTasks")

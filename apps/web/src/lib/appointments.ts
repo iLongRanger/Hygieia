@@ -15,6 +15,7 @@ export interface ListAppointmentsParams {
 export interface CreateAppointmentInput {
   leadId?: string;
   accountId?: string;
+  facilityId?: string | null;
   assignedToUserId: string;
   type?: AppointmentType;
   scheduledStart: string;

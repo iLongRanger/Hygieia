@@ -6,6 +6,7 @@ type OpportunityClient = {
       Array<{
         id: string;
         accountId: string | null;
+        facilityId: string | null;
         leadId: string | null;
         status: string;
         updatedAt: Date;
@@ -56,17 +57,19 @@ function selectPreferredOpportunity<T extends {
 export async function findPreferredOpportunityForAccount(
   client: OpportunityClient,
   accountId: string,
-  options: { requireLeadId?: boolean } = {}
+  options: { requireLeadId?: boolean; facilityId?: string } = {}
 ) {
   const opportunities = await client.opportunity.findMany({
     where: {
       accountId,
       archivedAt: null,
+      ...(options.facilityId ? { facilityId: options.facilityId } : {}),
       ...(options.requireLeadId ? { leadId: { not: null } } : {}),
     },
     select: {
       id: true,
       accountId: true,
+      facilityId: true,
       leadId: true,
       status: true,
       updatedAt: true,
@@ -79,16 +82,19 @@ export async function findPreferredOpportunityForAccount(
 
 export async function findPreferredOpportunityForLead(
   client: OpportunityClient,
-  leadId: string
+  leadId: string,
+  options: { facilityId?: string } = {}
 ) {
   const opportunities = await client.opportunity.findMany({
     where: {
       leadId,
       archivedAt: null,
+      ...(options.facilityId ? { facilityId: options.facilityId } : {}),
     },
     select: {
       id: true,
       accountId: true,
+      facilityId: true,
       leadId: true,
       status: true,
       updatedAt: true,

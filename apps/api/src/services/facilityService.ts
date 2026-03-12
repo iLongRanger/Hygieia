@@ -398,6 +398,7 @@ export async function submitFacilityForProposal(
 
   const opportunity = await findPreferredOpportunityForAccount(prisma, facility.accountId, {
     requireLeadId: true,
+    facilityId: facility.id,
   });
 
   if (!opportunity?.leadId) {

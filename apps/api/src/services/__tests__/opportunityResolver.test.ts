@@ -12,6 +12,7 @@ describe('opportunityResolver', () => {
           {
             id: 'opp-lost',
             accountId: 'account-1',
+            facilityId: null,
             leadId: 'lead-1',
             status: 'lost',
             updatedAt: new Date('2026-03-10T12:00:00.000Z'),
@@ -20,6 +21,7 @@ describe('opportunityResolver', () => {
           {
             id: 'opp-open',
             accountId: 'account-1',
+            facilityId: null,
             leadId: 'lead-2',
             status: 'negotiation',
             updatedAt: new Date('2026-03-10T08:00:00.000Z'),
@@ -41,6 +43,7 @@ describe('opportunityResolver', () => {
           {
             id: 'opp-booked',
             accountId: 'account-1',
+            facilityId: null,
             leadId: 'lead-1',
             status: 'walk_through_booked',
             updatedAt: new Date('2026-03-10T09:00:00.000Z'),
@@ -49,6 +52,7 @@ describe('opportunityResolver', () => {
           {
             id: 'opp-proposal',
             accountId: 'account-1',
+            facilityId: null,
             leadId: 'lead-1',
             status: 'proposal_sent',
             updatedAt: new Date('2026-03-10T08:00:00.000Z'),

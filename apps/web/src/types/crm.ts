@@ -66,6 +66,53 @@ export interface Lead {
   } | null;
 }
 
+export interface Opportunity {
+  id: string;
+  title: string;
+  status: string;
+  source: string | null;
+  estimatedValue: string | null;
+  probability: number | null;
+  expectedCloseDate: string | null;
+  lostReason: string | null;
+  wonAt: string | null;
+  lostAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  lead: {
+    id: string;
+    companyName: string | null;
+    contactName: string;
+    status: string;
+  } | null;
+  account: {
+    id: string;
+    name: string;
+    type: string;
+  } | null;
+  facility: {
+    id: string;
+    name: string;
+  } | null;
+  primaryContact: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  ownerUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+  _count: {
+    appointments: number;
+    proposals: number;
+    contracts: number;
+  };
+}
+
 export type AppointmentType = 'walk_through' | 'inspection' | 'visit';
 export type AppointmentStatus =
   | 'scheduled'

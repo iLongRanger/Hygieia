@@ -1041,9 +1041,10 @@ const ProposalForm = () => {
       navigate('/proposals');
     } catch (error: any) {
       console.error('Failed to save proposal:', error);
-      toast.error(
-        error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} proposal`
-      );
+      toast.error(getApiErrorMessage(
+        error,
+        `Failed to ${isEditMode ? 'update' : 'create'} proposal`
+      ));
     } finally {
       setSaving(false);
     }
@@ -1773,3 +1774,7 @@ const ProposalForm = () => {
 };
 
 export default ProposalForm;
+  const getApiErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.error?.message
+    || error?.response?.data?.message
+    || fallback;

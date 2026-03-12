@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import LeadsList from '../leads/LeadsList';
-import type { Lead, LeadSource } from '../../types/crm';
+import type { Lead, LeadSource, Opportunity } from '../../types/crm';
 import type { User } from '../../types/user';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -11,6 +11,7 @@ const createLeadMock = vi.fn();
 const archiveLeadMock = vi.fn();
 const restoreLeadMock = vi.fn();
 const listLeadSourcesMock = vi.fn();
+const listOpportunitiesMock = vi.fn();
 const listUsersMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
@@ -25,6 +26,10 @@ vi.mock('../../lib/leads', () => ({
 
 vi.mock('../../lib/users', () => ({
   listUsers: (...args: unknown[]) => listUsersMock(...args),
+}));
+
+vi.mock('../../lib/opportunities', () => ({
+  listOpportunities: (...args: unknown[]) => listOpportunitiesMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -86,6 +91,53 @@ const user: User = {
   roles: [],
 };
 
+const opportunity: Opportunity = {
+  id: 'opp-1',
+  title: 'Acme Opportunity',
+  status: 'walk_through_booked',
+  source: 'Website',
+  estimatedValue: '5000',
+  probability: 50,
+  expectedCloseDate: null,
+  lostReason: null,
+  wonAt: null,
+  lostAt: null,
+  closedAt: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  lead: {
+    id: 'lead-1',
+    companyName: 'Acme Corporation',
+    contactName: 'Jane Smith',
+    status: 'walk_through_booked',
+  },
+  account: {
+    id: 'account-1',
+    name: 'Acme Corporation',
+    type: 'commercial',
+  },
+  facility: {
+    id: 'facility-1',
+    name: 'Acme HQ',
+  },
+  primaryContact: {
+    id: 'contact-1',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+  },
+  ownerUser: {
+    id: 'user-1',
+    fullName: 'Sales Rep',
+    email: 'rep@example.com',
+  },
+  _count: {
+    appointments: 1,
+    proposals: 0,
+    contracts: 0,
+  },
+};
+
 describe('LeadsList', () => {
   beforeEach(() => {
     toastSuccessMock.mockReset();
@@ -98,6 +150,10 @@ describe('LeadsList', () => {
     });
     listLeadsMock.mockResolvedValue({
       data: [lead],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    listOpportunitiesMock.mockResolvedValue({
+      data: [opportunity],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
     listLeadSourcesMock.mockResolvedValue({ data: [leadSource] });
@@ -122,7 +178,7 @@ describe('LeadsList', () => {
     const userEventInstance = userEvent.setup();
     render(<LeadsList />);
 
-    expect(await screen.findByText(/lead pipeline/i)).toBeInTheDocument();
+    expect(await screen.findByText(/opportunity pipeline/i)).toBeInTheDocument();
     await userEventInstance.click(screen.getByRole('button', { name: /walk through booked/i }));
 
     await waitFor(() => {

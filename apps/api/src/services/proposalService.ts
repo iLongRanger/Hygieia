@@ -265,6 +265,7 @@ function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
 
 async function resolveOpportunityForAccount(
   accountId: string,
+  facilityId?: string | null,
   opportunityId?: string | null
 ) {
   if (opportunityId) {
@@ -273,7 +274,16 @@ async function resolveOpportunityForAccount(
       select: {
         id: true,
         accountId: true,
+        facilityId: true,
         leadId: true,
+        primaryContactId: true,
+        title: true,
+        source: true,
+        estimatedValue: true,
+        probability: true,
+        expectedCloseDate: true,
+        ownerUserId: true,
+        createdByUserId: true,
         archivedAt: true,
       },
     });
@@ -289,7 +299,123 @@ async function resolveOpportunityForAccount(
     return opportunity;
   }
 
+  if (facilityId) {
+    const facilityOpportunity = await findPreferredOpportunityForAccount(prisma, accountId, {
+      facilityId,
+    });
+
+    if (facilityOpportunity) {
+      return facilityOpportunity;
+    }
+  }
+
   return findPreferredOpportunityForAccount(prisma, accountId);
+}
+
+function deriveOpportunityTitle(lead: {
+  companyName?: string | null;
+  contactName?: string | null;
+} | null) {
+  return lead?.companyName?.trim()
+    || lead?.contactName?.trim()
+    || 'Sales Opportunity';
+}
+
+async function ensureFacilityScopedOpportunity(
+  input: ProposalCreateInput,
+  opportunityId: string | null
+) {
+  if (!input.facilityId || !opportunityId) {
+    return opportunityId;
+  }
+
+  const sourceOpportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    select: {
+      id: true,
+      accountId: true,
+      facilityId: true,
+      leadId: true,
+      primaryContactId: true,
+      title: true,
+      source: true,
+      estimatedValue: true,
+      probability: true,
+      expectedCloseDate: true,
+      ownerUserId: true,
+      createdByUserId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!sourceOpportunity || sourceOpportunity.archivedAt) {
+    return opportunityId;
+  }
+
+  if (sourceOpportunity.facilityId === input.facilityId) {
+    return sourceOpportunity.id;
+  }
+
+  const existingFacilityOpportunity = await prisma.opportunity.findFirst({
+    where: {
+      accountId: input.accountId,
+      facilityId: input.facilityId,
+      archivedAt: null,
+      ...(sourceOpportunity.leadId ? { leadId: sourceOpportunity.leadId } : {}),
+    },
+    select: { id: true },
+  });
+
+  if (existingFacilityOpportunity) {
+    return existingFacilityOpportunity.id;
+  }
+
+  if (!sourceOpportunity.leadId) {
+    return sourceOpportunity.id;
+  }
+
+  const [lead, primaryContact] = await Promise.all([
+    prisma.lead.findUnique({
+      where: { id: sourceOpportunity.leadId },
+      select: {
+        id: true,
+        companyName: true,
+        contactName: true,
+        estimatedValue: true,
+        probability: true,
+        expectedCloseDate: true,
+        assignedToUserId: true,
+        createdByUserId: true,
+      },
+    }),
+    prisma.contact.findFirst({
+      where: { accountId: input.accountId, archivedAt: null },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: { id: true },
+    }),
+  ]);
+
+  const createdOpportunity = await prisma.opportunity.create({
+    data: {
+      leadId: sourceOpportunity.leadId,
+      accountId: input.accountId,
+      facilityId: input.facilityId,
+      primaryContactId: primaryContact?.id ?? sourceOpportunity.primaryContactId ?? null,
+      title: sourceOpportunity.title || deriveOpportunityTitle(lead),
+      source: sourceOpportunity.source ?? null,
+      estimatedValue: sourceOpportunity.estimatedValue ?? lead?.estimatedValue ?? null,
+      probability: sourceOpportunity.probability ?? lead?.probability ?? 0,
+      expectedCloseDate:
+        sourceOpportunity.expectedCloseDate ?? lead?.expectedCloseDate ?? null,
+      ownerUserId: sourceOpportunity.ownerUserId ?? lead?.assignedToUserId ?? null,
+      createdByUserId:
+        sourceOpportunity.createdByUserId ?? lead?.createdByUserId ?? input.createdByUserId,
+      status: 'walk_through_completed',
+    },
+    select: { id: true },
+  });
+
+  return createdOpportunity.id;
 }
 
 async function assertProposalCreateReadiness(
@@ -309,6 +435,7 @@ async function assertProposalCreateReadiness(
 
   const opportunity = await resolveOpportunityForAccount(
     input.accountId,
+    input.facilityId,
     input.opportunityId
   );
 
@@ -382,7 +509,9 @@ async function assertProposalCreateReadiness(
     throw new BadRequestError('Facility must have at least one task before creating a proposal');
   }
 
-  return { opportunityId: opportunity.id };
+  const resolvedOpportunityId = await ensureFacilityScopedOpportunity(input, opportunity.id);
+
+  return { opportunityId: resolvedOpportunityId };
 }
 
 export async function listProposals(

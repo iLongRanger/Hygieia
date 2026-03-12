@@ -141,6 +141,7 @@ const LeadDetail = () => {
 
   const [scheduleForm, setScheduleForm] = useState({
     assignedToUserId: '',
+    facilityId: '',
     scheduledStart: '',
     scheduledEnd: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
@@ -324,6 +325,11 @@ const LeadDetail = () => {
       setSaving(true);
       const wasConvertedDuringBooking = !lead?.convertedToAccountId;
 
+      if (!wasConvertedDuringBooking && !scheduleForm.facilityId) {
+        toast.error('Select a facility before scheduling');
+        return;
+      }
+
       if (wasConvertedDuringBooking) {
         await convertLead(id, {
           createNewAccount: true,
@@ -352,6 +358,7 @@ const LeadDetail = () => {
 
       await createAppointment({
         leadId: id,
+        facilityId: wasConvertedDuringBooking ? null : scheduleForm.facilityId,
         assignedToUserId: scheduleForm.assignedToUserId,
         type: 'walk_through',
         scheduledStart: startDateTime.toISOString(),
@@ -368,6 +375,7 @@ const LeadDetail = () => {
       setShowScheduleModal(false);
       setScheduleForm({
         assignedToUserId: '',
+        facilityId: '',
         scheduledStart: '',
         scheduledEnd: '',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
@@ -405,6 +413,16 @@ const LeadDetail = () => {
     setScheduleDate(defaults.date);
     setScheduleStartTime(defaults.startTime);
     setScheduleEndTime(defaults.endTime);
+    setScheduleForm((current) => ({
+      ...current,
+      assignedToUserId: '',
+      facilityId: facilities.length === 1 ? facilities[0].id : '',
+      scheduledStart: '',
+      scheduledEnd: '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      location: '',
+      notes: '',
+    }));
     setScheduleConversionForm({
       accountName: lead?.companyName || lead?.contactName || '',
       accountType: 'commercial',
@@ -738,6 +756,7 @@ const LeadDetail = () => {
                                 setSelectedAppointment(appointment);
                                 setScheduleForm({
                                   assignedToUserId: appointment.assignedToUser.id,
+                                  facilityId: '',
                                   scheduledStart: toLocalInputValue(appointment.scheduledStart),
                                   scheduledEnd: toLocalInputValue(appointment.scheduledEnd),
                                   timezone: appointment.timezone,
@@ -896,6 +915,19 @@ const LeadDetail = () => {
                 maxLength={maxLengths.notes}
               />
             </div>
+          )}
+
+          {lead.convertedToAccountId && (
+            <Select
+              label="Facility"
+              placeholder="Select facility"
+              options={facilities.map((facility) => ({
+                value: facility.id,
+                label: facility.name,
+              }))}
+              value={scheduleForm.facilityId}
+              onChange={(value) => setScheduleForm({ ...scheduleForm, facilityId: value })}
+            />
           )}
 
           <Select
