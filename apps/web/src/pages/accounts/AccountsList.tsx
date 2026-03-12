@@ -31,6 +31,21 @@ import type { Account, CreateAccountInput } from '../../types/crm';
 import type { User } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
 
+const ACCOUNT_MANAGER_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
+function canBeAccountManager(user: User): boolean {
+  const primaryRoleKey =
+    typeof user.role === 'string'
+      ? user.role
+      : user.roles[0]?.role.key;
+
+  if (primaryRoleKey && ACCOUNT_MANAGER_ROLE_KEYS.has(primaryRoleKey)) {
+    return true;
+  }
+
+  return user.roles.some(({ role }) => ACCOUNT_MANAGER_ROLE_KEYS.has(role.key));
+}
+
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
   { value: 'residential', label: 'Residential' },
@@ -74,6 +89,7 @@ const AccountsList = () => {
   const [includeArchived, setIncludeArchived] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canAdminAccounts = hasPermission(PERMISSIONS.ACCOUNTS_ADMIN);
+  const assignableAccountManagers = users.filter(canBeAccountManager);
 
   const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
@@ -372,7 +388,7 @@ const AccountsList = () => {
               <Select
                 label="Account Manager"
                 placeholder="All Managers"
-                options={users.map((u) => ({
+                options={assignableAccountManagers.map((u) => ({
                   value: u.id,
                   label: u.fullName,
                 }))}
@@ -481,7 +497,7 @@ const AccountsList = () => {
             <Select
               label="Account Manager"
               placeholder="Select manager"
-              options={users.map((u) => ({
+              options={assignableAccountManagers.map((u) => ({
                 value: u.id,
                 label: u.fullName,
               }))}

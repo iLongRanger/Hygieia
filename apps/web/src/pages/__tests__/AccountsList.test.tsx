@@ -73,6 +73,22 @@ const user: User = {
   preferences: {},
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  role: 'manager',
+  roles: [],
+};
+
+const cleanerUser: User = {
+  id: 'user-2',
+  email: 'cleaner@example.com',
+  fullName: 'Cleaner User',
+  phone: null,
+  avatarUrl: null,
+  status: 'active',
+  lastLoginAt: null,
+  preferences: {},
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  role: 'cleaner',
   roles: [],
 };
 
@@ -89,8 +105,8 @@ describe('AccountsList', () => {
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
     listUsersMock.mockResolvedValue({
-      data: [user],
-      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+      data: [user, cleanerUser],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
     });
     createAccountMock.mockResolvedValue({ id: 'account-2' });
     archiveAccountMock.mockResolvedValue({ ...account, archivedAt: new Date().toISOString() });
@@ -125,6 +141,18 @@ describe('AccountsList', () => {
         type: 'commercial',
       })
     );
+  });
+
+  it('only shows owner admin and manager users in account manager options', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<AccountsList />);
+
+    await userEventInstance.click(screen.getByRole('button', { name: /add new account/i }));
+    const accountManagerSelect = await screen.findByLabelText(/account manager/i);
+    await userEventInstance.click(accountManagerSelect);
+
+    expect(within(accountManagerSelect).getByRole('option', { name: 'Account Manager' })).toBeInTheDocument();
+    expect(screen.queryByText('Cleaner User')).not.toBeInTheDocument();
   });
 
   it('archives an account from list action', async () => {

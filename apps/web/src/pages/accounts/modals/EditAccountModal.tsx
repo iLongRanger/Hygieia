@@ -9,6 +9,21 @@ import type { UpdateAccountInput } from '../../../types/crm';
 import type { User } from '../../../types/user';
 import type { Contract } from '../../../types/contract';
 
+const ACCOUNT_MANAGER_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
+function canBeAccountManager(user: User): boolean {
+  const primaryRoleKey =
+    typeof user.role === 'string'
+      ? user.role
+      : user.roles[0]?.role.key;
+
+  if (primaryRoleKey && ACCOUNT_MANAGER_ROLE_KEYS.has(primaryRoleKey)) {
+    return true;
+  }
+
+  return user.roles.some(({ role }) => ACCOUNT_MANAGER_ROLE_KEYS.has(role.key));
+}
+
 interface EditAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,6 +45,8 @@ export function EditAccountModal({
   onSave,
   saving,
 }: EditAccountModalProps) {
+  const assignableAccountManagers = users.filter(canBeAccountManager);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Account" size="lg">
       <div className="space-y-4">
@@ -63,7 +80,7 @@ export function EditAccountModal({
           <Select
             label="Account Manager"
             placeholder="Select manager"
-            options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+            options={assignableAccountManagers.map((u) => ({ value: u.id, label: u.fullName }))}
             value={formData.accountManagerId || ''}
             onChange={(value) => setFormData({ ...formData, accountManagerId: value || null })}
           />
