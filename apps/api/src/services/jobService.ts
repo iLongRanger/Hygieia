@@ -4,6 +4,7 @@ import { getCoordinatesFromAddress, validateGeofence } from '../lib/geofence';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createBulkNotifications, createNotification } from './notificationService';
 import { sendSms } from './smsService';
+import { completeInitialClean as completeContractInitialClean } from './contractService';
 import {
   extractFacilityTimezone,
   normalizeServiceSchedule,
@@ -105,6 +106,14 @@ type WorkforceAssignmentType =
   | 'internal_employee'
   | 'subcontractor_team';
 
+type InitialCleanStatus = {
+  included: boolean;
+  completed: boolean;
+  completedAt: Date | null;
+  eligibleJobId: string | null;
+  canCompleteOnThisJob: boolean;
+};
+
 function readCalendarColor(source: unknown): string | null {
   if (!source || typeof source !== 'object' || Array.isArray(source)) {
     return null;
@@ -184,6 +193,17 @@ const jobSelect = {
 
 const jobDetailSelect = {
   ...jobSelect,
+  contract: {
+    select: {
+      id: true,
+      contractNumber: true,
+      title: true,
+      status: true,
+      includesInitialClean: true,
+      initialCleanCompleted: true,
+      initialCleanCompletedAt: true,
+    },
+  },
   tasks: {
     select: {
       id: true,
@@ -352,6 +372,63 @@ function withWorkforceMetadata<T extends {
   };
 }
 
+async function getEligibleInitialCleanJobId(contractId: string): Promise<string | null> {
+  const firstEligibleJob = await prisma.job.findFirst({
+    where: {
+      contractId,
+      jobType: 'scheduled_service',
+      status: {
+        notIn: ['canceled', 'missed'],
+      },
+    },
+    orderBy: [
+      { scheduledDate: 'asc' },
+      { scheduledStartTime: 'asc' },
+      { createdAt: 'asc' },
+    ],
+    select: { id: true },
+  });
+
+  return firstEligibleJob?.id ?? null;
+}
+
+async function buildInitialCleanStatus(job: {
+  id: string;
+  status: string;
+  contract: {
+    id: string;
+    status?: string;
+    includesInitialClean?: boolean;
+    initialCleanCompleted?: boolean;
+    initialCleanCompletedAt?: Date | null;
+  } | null;
+}): Promise<InitialCleanStatus> {
+  if (!job.contract?.id || !job.contract.includesInitialClean) {
+    return {
+      included: false,
+      completed: false,
+      completedAt: null,
+      eligibleJobId: null,
+      canCompleteOnThisJob: false,
+    };
+  }
+
+  const eligibleJobId = await getEligibleInitialCleanJobId(job.contract.id);
+  const canCompleteOnThisJob =
+    job.contract.status === 'active' &&
+    !job.contract.initialCleanCompleted &&
+    eligibleJobId === job.id &&
+    ['in_progress', 'completed'].includes(job.status);
+
+  return {
+    included: true,
+    completed: Boolean(job.contract.initialCleanCompleted),
+    completedAt: job.contract.initialCleanCompletedAt ?? null,
+    eligibleJobId,
+    canCompleteOnThisJob,
+  };
+}
+
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -475,7 +552,15 @@ export async function getJobById(id: string) {
     where: { id },
     select: jobDetailSelect,
   });
-  return job ? withWorkforceMetadata(job) : null;
+  if (!job) {
+    return null;
+  }
+
+  const initialClean = await buildInitialCleanStatus(job);
+  return {
+    ...withWorkforceMetadata(job),
+    initialClean,
+  };
 }
 
 export async function createJob(input: JobCreateInput) {
@@ -847,6 +932,84 @@ export async function completeJob(id: string, input: JobCompleteInput) {
 
     return withWorkforceMetadata(job);
   });
+}
+
+export async function completeInitialCleanForJob(jobId: string, completedByUserId: string) {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: {
+      ...jobDetailSelect,
+      contract: {
+        select: {
+          id: true,
+          contractNumber: true,
+          title: true,
+          status: true,
+          includesInitialClean: true,
+          initialCleanCompleted: true,
+          initialCleanCompletedAt: true,
+        },
+      },
+    },
+  });
+
+  if (!job) {
+    throw new NotFoundError('Job not found');
+  }
+
+  if (!job.contract?.id) {
+    throw new BadRequestError('This job is not linked to a contract');
+  }
+
+  if (job.contract.status !== 'active') {
+    throw new BadRequestError('Contract must be active to complete initial clean');
+  }
+
+  if (job.jobType !== 'scheduled_service') {
+    throw new BadRequestError('Initial clean can only be completed from a scheduled service job');
+  }
+
+  if (['canceled', 'missed'].includes(job.status)) {
+    throw new BadRequestError('Initial clean cannot be completed from a canceled or missed job');
+  }
+
+  const initialClean = await buildInitialCleanStatus(job);
+  if (!initialClean.included) {
+    throw new BadRequestError('This contract does not include initial clean');
+  }
+
+  if (job.contract.initialCleanCompleted) {
+    throw new BadRequestError('Initial clean has already been completed');
+  }
+
+  if (initialClean.eligibleJobId !== job.id) {
+    throw new BadRequestError('Initial clean can only be completed from the first eligible job');
+  }
+
+  if (!['in_progress', 'completed'].includes(job.status)) {
+    throw new BadRequestError('Initial clean can only be completed once the first job has started');
+  }
+
+  await completeContractInitialClean(job.contract.id, completedByUserId);
+
+  await prisma.jobActivity.create({
+    data: {
+      jobId,
+      action: 'initial_clean_completed',
+      performedByUserId: completedByUserId,
+      metadata: {
+        contractId: job.contract.id,
+        contractNumber: job.contract.contractNumber,
+      },
+    },
+  });
+
+  const refreshedJob = await getJobById(jobId);
+  if (!refreshedJob) {
+    throw new NotFoundError('Job not found');
+  }
+
+  return refreshedJob;
 }
 
 export async function cancelJob(id: string, reason: string | null, userId: string) {

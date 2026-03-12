@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { prisma } from '../../lib/prisma';
 import { createBulkNotifications, createNotification } from '../notificationService';
 import { sendSms } from '../smsService';
+import { completeInitialClean as completeContractInitialClean } from '../contractService';
 import {
   assignJob,
   autoGenerateRecurringJobsForContract,
+  completeInitialCleanForJob,
   completeJob,
   createJob,
   generateJobsFromContract,
@@ -58,6 +60,10 @@ jest.mock('../notificationService', () => ({
 
 jest.mock('../smsService', () => ({
   sendSms: jest.fn(),
+}));
+
+jest.mock('../contractService', () => ({
+  completeInitialClean: jest.fn(),
 }));
 
 describe('jobService', () => {
@@ -772,6 +778,114 @@ describe('jobService', () => {
         data: expect.objectContaining({
           status: 'completed',
         }),
+      })
+    );
+  });
+
+  it('completeInitialCleanForJob rejects non-first eligible jobs', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-2',
+      jobType: 'scheduled_service',
+      status: 'completed',
+      contract: {
+        id: 'contract-1',
+        contractNumber: 'CONT-001',
+        title: 'Office Cleaning',
+        status: 'active',
+        includesInitialClean: true,
+        initialCleanCompleted: false,
+        initialCleanCompletedAt: null,
+      },
+      tasks: [],
+      notes_: [],
+      activities: [],
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({ id: 'job-1' });
+
+    await expect(
+      completeInitialCleanForJob('job-2', 'admin-1')
+    ).rejects.toThrow('Initial clean can only be completed from the first eligible job');
+
+    expect(completeContractInitialClean).not.toHaveBeenCalled();
+  });
+
+  it('completeInitialCleanForJob marks initial clean from the first eligible job', async () => {
+    (prisma.job.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'job-1',
+        jobType: 'scheduled_service',
+        status: 'completed',
+        contract: {
+          id: 'contract-1',
+          contractNumber: 'CONT-001',
+          title: 'Office Cleaning',
+          status: 'active',
+          includesInitialClean: true,
+          initialCleanCompleted: false,
+          initialCleanCompletedAt: null,
+        },
+        tasks: [],
+        notes_: [],
+        activities: [],
+      })
+      .mockResolvedValueOnce({
+        id: 'job-1',
+        jobNumber: 'WO-2026-0001',
+        jobType: 'scheduled_service',
+        jobCategory: 'recurring',
+        status: 'completed',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        scheduledStartTime: null,
+        scheduledEndTime: null,
+        actualStartTime: null,
+        actualEndTime: null,
+        estimatedHours: null,
+        actualHours: null,
+        notes: null,
+        completionNotes: null,
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+        contract: {
+          id: 'contract-1',
+          contractNumber: 'CONT-001',
+          title: 'Office Cleaning',
+          status: 'active',
+          includesInitialClean: true,
+          initialCleanCompleted: true,
+          initialCleanCompletedAt: new Date('2026-03-01T18:00:00.000Z'),
+        },
+        quotation: null,
+        facility: { id: 'facility-1', name: 'Main Office' },
+        account: { id: 'account-1', name: 'Acme' },
+        assignedTeam: null,
+        assignedToUser: null,
+        createdByUser: { id: 'admin-1', fullName: 'Admin User' },
+        tasks: [],
+        notes_: [],
+        activities: [],
+      });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({ id: 'job-1' });
+    (prisma.jobActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
+    (completeContractInitialClean as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+
+    const result = await completeInitialCleanForJob('job-1', 'admin-1');
+
+    expect(completeContractInitialClean).toHaveBeenCalledWith('contract-1', 'admin-1');
+    expect(prisma.jobActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          jobId: 'job-1',
+          action: 'initial_clean_completed',
+          performedByUserId: 'admin-1',
+        }),
+      })
+    );
+    expect(result.initialClean).toEqual(
+      expect.objectContaining({
+        included: true,
+        completed: true,
+        eligibleJobId: 'job-1',
+        canCompleteOnThisJob: false,
       })
     );
   });

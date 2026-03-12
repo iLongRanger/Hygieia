@@ -8,6 +8,7 @@ import {
   createJobSchema,
   updateJobSchema,
   completeJobSchema,
+  completeInitialCleanForJobSchema,
   cancelJobSchema,
   assignJobSchema,
   startJobSchema,
@@ -23,6 +24,7 @@ import {
   updateJob,
   startJob,
   completeJob,
+  completeInitialCleanForJob,
   cancelJob,
   assignJob,
   generateJobsFromContract,
@@ -215,6 +217,25 @@ router.post(
         userId: req.user!.id,
         userRole: req.user?.role,
       });
+      res.json({ data: job });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Mark initial clean complete from the first eligible job
+router.post(
+  '/:id/complete-initial-clean',
+  authenticate,
+  requirePermission(PERMISSIONS.JOBS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      assertCanEditJob(req);
+      const parsed = completeInitialCleanForJobSchema.safeParse(req.body || {});
+      if (!parsed.success) throw handleZodError(parsed.error);
+
+      const job = await completeInitialCleanForJob(req.params.id, req.user!.id);
       res.json({ data: job });
     } catch (error) {
       next(error);

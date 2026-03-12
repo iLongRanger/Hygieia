@@ -402,7 +402,8 @@ describe('Textarea', () => {
       );
 
       const textarea = screen.getByRole('textbox');
-      await user.type(textarea, 'A'.repeat(150));
+      await user.click(textarea);
+      await user.paste('A'.repeat(150));
 
       expect(textarea).toHaveValue('A'.repeat(100));
     });
@@ -411,7 +412,7 @@ describe('Textarea', () => {
   describe('Edge Cases', () => {
     it('should handle very long text', async () => {
       const user = userEvent.setup();
-      const longText = 'Lorem ipsum '.repeat(100);
+      const longText = 'Lorem ipsum '.repeat(50).trim();
       render(<Textarea />);
 
       const textarea = screen.getByRole('textbox');

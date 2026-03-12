@@ -74,6 +74,11 @@ export async function completeJob(
   return response.data.data;
 }
 
+export async function completeInitialCleanForJob(id: string): Promise<JobDetail> {
+  const response = await api.post(`/jobs/${id}/complete-initial-clean`, {});
+  return response.data.data;
+}
+
 export async function cancelJob(
   id: string,
   reason?: string | null

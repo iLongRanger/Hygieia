@@ -59,6 +59,13 @@ export interface Job {
 }
 
 export interface JobDetail extends Job {
+  initialClean: {
+    included: boolean;
+    completed: boolean;
+    completedAt: string | null;
+    eligibleJobId: string | null;
+    canCompleteOnThisJob: boolean;
+  };
   tasks: JobTask[];
   notes_: JobNote[];
   activities: JobActivity[];

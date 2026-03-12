@@ -49,7 +49,6 @@ import {
   restoreContract,
   renewContract,
   assignContractTeam,
-  completeInitialClean as completeInitialCleanApi,
   downloadContractPdf,
   downloadContractTermsDocument,
   generateContractTerms,
@@ -1004,19 +1003,6 @@ const ContractDetail = () => {
       toast.error(error.response?.data?.message || 'Failed to renew contract');
     } finally {
       setRenewing(false);
-    }
-  };
-
-  const handleCompleteInitialClean = async () => {
-    if (!contract || !confirm('Mark the initial clean as completed?')) return;
-
-    try {
-      const updated = await completeInitialCleanApi(contract.id);
-      setContract(updated);
-      setActivityRefresh((n) => n + 1);
-      toast.success('Initial clean marked as completed');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to complete initial clean');
     }
   };
 
@@ -2649,40 +2635,6 @@ const ContractDetail = () => {
           <div className="text-gray-300 whitespace-pre-wrap">
             {contract.specialInstructions}
           </div>
-        </Card>
-      )}
-
-      {/* Initial Clean — hidden for subcontractors */}
-      {contract.includesInitialClean && !isLimitedContractViewer && (
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-lg font-semibold text-white">Initial Clean</h2>
-          </div>
-          {contract.initialCleanCompleted ? (
-            <div className="flex items-center gap-2 text-emerald-400">
-              <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">Completed</span>
-              <span className="text-sm text-gray-400 ml-2">
-                {formatDate(contract.initialCleanCompletedAt)}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-yellow-400 font-medium">Pending</span>
-                <p className="text-sm text-gray-400 mt-1">
-                  The initial deep clean has not been completed yet.
-                </p>
-              </div>
-              {contract.status === 'active' && canWriteContracts && (
-                <Button onClick={handleCompleteInitialClean}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Mark Complete
-                </Button>
-              )}
-            </div>
-          )}
         </Card>
       )}
 

@@ -26,6 +26,7 @@ import {
   getJob,
   startJob,
   completeJob,
+  completeInitialCleanForJob,
   cancelJob,
   createJobTask,
   updateJobTask,
@@ -207,6 +208,19 @@ const JobDetail = () => {
     }
   };
 
+  const handleCompleteInitialClean = async () => {
+    if (!id) return;
+    try {
+      await completeInitialCleanForJob(id);
+      toast.success('Initial clean marked complete');
+      fetchJob();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error?.message || 'Failed to mark initial clean complete'
+      );
+    }
+  };
+
   const handleAddTask = async () => {
     if (!id || !newTaskName.trim()) return;
     try {
@@ -341,6 +355,12 @@ const JobDetail = () => {
               Edit
             </Button>
           )}
+          {job.initialClean.canCompleteOnThisJob && !isSubcontractor && (
+            <Button variant="secondary" size="sm" onClick={handleCompleteInitialClean}>
+              <CheckCircle className="mr-1.5 h-4 w-4" />
+              Mark Initial Clean Complete
+            </Button>
+          )}
           {!isSubcontractor && ['scheduled', 'in_progress'].includes(job.status) && (
             <Button variant="secondary" size="sm" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
@@ -462,6 +482,24 @@ const JobDetail = () => {
             {job.completionNotes && (
               <div className="mt-4 rounded-lg bg-success-50 p-3 text-sm text-success-800 dark:bg-success-900/20 dark:text-success-300">
                 <strong>Completion Notes:</strong> {job.completionNotes}
+              </div>
+            )}
+            {job.initialClean.included && (
+              <div
+                className={`mt-4 rounded-lg border p-3 text-sm ${
+                  job.initialClean.completed
+                    ? 'border-success-200 bg-success-50 text-success-800 dark:border-success-800 dark:bg-success-900/20 dark:text-success-300'
+                    : job.initialClean.canCompleteOnThisJob
+                      ? 'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300'
+                      : 'border-surface-200 bg-surface-50 text-surface-700 dark:border-surface-700 dark:bg-surface-800/50 dark:text-surface-300'
+                }`}
+              >
+                <strong>Initial Clean:</strong>{' '}
+                {job.initialClean.completed
+                  ? `Completed${job.initialClean.completedAt ? ` on ${new Date(job.initialClean.completedAt).toLocaleDateString('en-US')}` : ''}`
+                  : job.initialClean.canCompleteOnThisJob
+                    ? 'This is the first eligible job for initial clean completion.'
+                    : 'Tracked on the first eligible scheduled service job for this contract.'}
               </div>
             )}
           </Card>

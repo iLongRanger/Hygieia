@@ -20,6 +20,7 @@ vi.mock('react-router-dom', async () => {
 const getJobMock = vi.fn();
 const startJobMock = vi.fn();
 const completeJobMock = vi.fn();
+const completeInitialCleanForJobMock = vi.fn();
 const cancelJobMock = vi.fn();
 const createJobTaskMock = vi.fn();
 const updateJobTaskMock = vi.fn();
@@ -30,6 +31,7 @@ vi.mock('../../lib/jobs', () => ({
   getJob: (...args: unknown[]) => getJobMock(...args),
   startJob: (...args: unknown[]) => startJobMock(...args),
   completeJob: (...args: unknown[]) => completeJobMock(...args),
+  completeInitialCleanForJob: (...args: unknown[]) => completeInitialCleanForJobMock(...args),
   cancelJob: (...args: unknown[]) => cancelJobMock(...args),
   createJobTask: (...args: unknown[]) => createJobTaskMock(...args),
   updateJobTask: (...args: unknown[]) => updateJobTaskMock(...args),
@@ -70,6 +72,7 @@ describe('JobDetail', () => {
     getJobMock.mockResolvedValue(scheduledJob);
     startJobMock.mockResolvedValue({});
     completeJobMock.mockResolvedValue({});
+    completeInitialCleanForJobMock.mockResolvedValue({});
     createJobTaskMock.mockResolvedValue({});
     updateJobTaskMock.mockResolvedValue({});
     deleteJobTaskMock.mockResolvedValue(undefined);
@@ -200,5 +203,54 @@ describe('JobDetail', () => {
     expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add task/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
+  });
+
+  it('shows initial clean action on the first eligible job', async () => {
+    getJobMock.mockResolvedValue(
+      mockJobDetail({
+        ...scheduledJob,
+        status: 'completed',
+        initialClean: {
+          included: true,
+          completed: false,
+          completedAt: null,
+          eligibleJobId: 'job-1',
+          canCompleteOnThisJob: true,
+        },
+      })
+    );
+    const user = userEvent.setup();
+
+    render(<JobDetail />);
+
+    const button = await screen.findByRole('button', { name: /mark initial clean complete/i });
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(completeInitialCleanForJobMock).toHaveBeenCalledWith('job-1');
+    });
+  });
+
+  it('does not show initial clean action on non-eligible jobs', async () => {
+    getJobMock.mockResolvedValue(
+      mockJobDetail({
+        ...scheduledJob,
+        status: 'completed',
+        initialClean: {
+          included: true,
+          completed: false,
+          completedAt: null,
+          eligibleJobId: 'job-9',
+          canCompleteOnThisJob: false,
+        },
+      })
+    );
+
+    render(<JobDetail />);
+
+    await screen.findByText('JOB-202602-0001');
+    expect(
+      screen.queryByRole('button', { name: /mark initial clean complete/i })
+    ).not.toBeInTheDocument();
   });
 });

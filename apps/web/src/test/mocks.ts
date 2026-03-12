@@ -221,6 +221,13 @@ export const mockJob = (overrides?: Partial<Job>): Job => ({
 
 export const mockJobDetail = (overrides?: Partial<JobDetail>): JobDetail => ({
   ...mockJob(),
+  initialClean: {
+    included: false,
+    completed: false,
+    completedAt: null,
+    eligibleJobId: null,
+    canCompleteOnThisJob: false,
+  },
   tasks: [],
   notes_: [],
   activities: [],

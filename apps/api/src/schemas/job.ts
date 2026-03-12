@@ -79,6 +79,8 @@ export const completeJobSchema = z.object({
     .optional(),
 });
 
+export const completeInitialCleanForJobSchema = z.object({});
+
 export const cancelJobSchema = z.object({
   reason: z.string().nullable().optional(),
 });
