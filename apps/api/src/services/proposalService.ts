@@ -476,6 +476,7 @@ async function assertProposalCreateReadiness(
     where: {
       type: 'walk_through',
       status: 'completed',
+      facilityId: input.facilityId,
       OR: [
         { opportunityId: opportunity.id },
         ...(opportunity.leadId ? [{ leadId: opportunity.leadId }] : []),
@@ -486,7 +487,9 @@ async function assertProposalCreateReadiness(
   });
 
   if (!completedWalkthrough) {
-    throw new BadRequestError('Walkthrough must be completed before creating a proposal');
+    throw new BadRequestError(
+      'Walkthrough must be completed for the selected facility before creating a proposal'
+    );
   }
 
   const facility = await prisma.facility.findUnique({

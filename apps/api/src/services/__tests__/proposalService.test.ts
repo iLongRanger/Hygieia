@@ -878,8 +878,48 @@ describe('proposalService', () => {
           title: 'Blocked Proposal',
           createdByUserId: 'user-1',
         })
-      ).rejects.toThrow('Walkthrough must be completed before creating a proposal');
+      ).rejects.toThrow(
+        'Walkthrough must be completed for the selected facility before creating a proposal'
+      );
 
+      expect(prisma.proposal.create).not.toHaveBeenCalled();
+    });
+
+    it('should require the completed walkthrough to be linked to the selected facility', async () => {
+      (prisma.appointment.findFirst as jest.Mock).mockImplementation(({ where }) => {
+        if (where?.facilityId === 'facility-2') {
+          return Promise.resolve(null);
+        }
+
+        return Promise.resolve({ id: 'appt-1' });
+      });
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-2',
+        accountId: 'account-1',
+        archivedAt: null,
+        status: 'active',
+      });
+
+      await expect(
+        proposalService.createProposal({
+          accountId: 'account-1',
+          facilityId: 'facility-2',
+          title: 'Blocked Proposal',
+          createdByUserId: 'user-1',
+        })
+      ).rejects.toThrow(
+        'Walkthrough must be completed for the selected facility before creating a proposal'
+      );
+
+      expect(prisma.appointment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: 'walk_through',
+            status: 'completed',
+            facilityId: 'facility-2',
+          }),
+        })
+      );
       expect(prisma.proposal.create).not.toHaveBeenCalled();
     });
 

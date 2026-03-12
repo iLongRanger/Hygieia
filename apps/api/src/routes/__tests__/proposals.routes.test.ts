@@ -10,6 +10,7 @@ import * as pdfService from '../../services/pdfService';
 import * as emailService from '../../services/emailService';
 import * as emailConfig from '../../config/email';
 import { ensureOwnershipAccess } from '../../middleware/ownership';
+import { BadRequestError } from '../../middleware/errorHandler';
 import { prisma } from '../../lib/prisma';
 
 const mockAuthUser: { id: string; role: string } = {
@@ -244,6 +245,27 @@ describe('Proposal Routes', () => {
       .post('/api/v1/proposals')
       .send({ title: 'Missing accountId' })
       .expect(422);
+  });
+
+  it('POST / should surface facility walkthrough validation failures', async () => {
+    (proposalService.createProposal as jest.Mock).mockRejectedValue(
+      new BadRequestError(
+        'Walkthrough must be completed for the selected facility before creating a proposal'
+      )
+    );
+
+    const response = await request(app)
+      .post('/api/v1/proposals')
+      .send({
+        accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
+        title: 'New Proposal',
+      })
+      .expect(400);
+
+    expect(
+      JSON.stringify(response.body)
+    ).toContain('Walkthrough must be completed for the selected facility before creating a proposal');
   });
 
   it('PATCH /:id should update proposal', async () => {
