@@ -55,6 +55,7 @@ const facility: Facility = {
     id: 'user-1',
     fullName: 'Admin User',
   },
+  areas: [],
   _count: {
     areas: 2,
     facilityTasks: 5,
@@ -101,5 +102,17 @@ describe('FacilitiesList', () => {
         name: 'New Facility',
       })
     );
+  });
+
+  it('does not show a square feet field in the create modal', async () => {
+    const user = userEvent.setup();
+    render(<FacilitiesList />);
+
+    await user.click(screen.getByRole('button', { name: /add facility/i }));
+
+    expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/total square feet will be auto-calculated from areas/i)
+    ).toBeInTheDocument();
   });
 });

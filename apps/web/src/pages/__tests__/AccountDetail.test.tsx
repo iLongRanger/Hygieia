@@ -132,6 +132,7 @@ const facility: Facility = {
     id: 'admin-1',
     fullName: 'Admin User',
   },
+  areas: [],
   _count: {
     areas: 1,
     facilityTasks: 1,
@@ -372,5 +373,18 @@ describe('AccountDetail', () => {
 
     await userEventInstance.click(screen.getByRole('button', { name: /^edit$/i }));
     expect(await screen.findByLabelText(/assigned team/i)).toHaveValue('Alpha Team');
+  });
+
+  it('does not show a square feet field when adding a facility from the account page', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Acme Corporation' });
+    await userEventInstance.click(screen.getByRole('button', { name: /add facility/i }));
+
+    expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/total square feet will be auto-calculated from the areas added to this facility/i)
+    ).toBeInTheDocument();
   });
 });

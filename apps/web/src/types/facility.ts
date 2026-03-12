@@ -74,7 +74,6 @@ export interface CreateFacilityInput {
   accountId: string;
   name: string;
   address: Address;
-  squareFeet?: number | null;
   buildingType?: string | null;
   accessInstructions?: string | null;
   parkingInfo?: string | null;
@@ -86,7 +85,6 @@ export interface CreateFacilityInput {
 export interface UpdateFacilityInput {
   name?: string;
   address?: Address;
-  squareFeet?: number | null;
   buildingType?: string | null;
   accessInstructions?: string | null;
   parkingInfo?: string | null;

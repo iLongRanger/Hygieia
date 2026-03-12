@@ -75,7 +75,6 @@ const FacilitiesList = () => {
     name: '',
     address: {},
     buildingType: null,
-    squareFeet: null,
     notes: null,
   });
 
@@ -150,7 +149,6 @@ const FacilitiesList = () => {
         name: '',
         address: {},
         buildingType: null,
-        squareFeet: null,
         notes: null,
       });
       fetchFacilities(page, search, {

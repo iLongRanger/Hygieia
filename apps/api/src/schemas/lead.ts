@@ -130,7 +130,6 @@ export const convertLeadSchema = z.object({
         country: z.string().max(100).optional().nullable(),
       }),
       buildingType: z.string().max(50).optional().nullable(),
-      squareFeet: z.coerce.number().positive().optional().nullable(),
       accessInstructions: z.string().max(5000).optional().nullable(),
       notes: z.string().max(10000).optional().nullable(),
     })

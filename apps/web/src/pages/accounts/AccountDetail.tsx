@@ -82,7 +82,6 @@ const AccountDetail = () => {
   const [facilityFormData, setFacilityFormData] = useState<Omit<CreateFacilityInput, 'accountId'>>({
     name: '',
     address: {},
-    squareFeet: null,
     buildingType: null,
     accessInstructions: null,
     parkingInfo: null,
@@ -290,7 +289,6 @@ const AccountDetail = () => {
       setFacilityFormData({
         name: '',
         address: {},
-        squareFeet: null,
         buildingType: null,
         accessInstructions: null,
         parkingInfo: null,

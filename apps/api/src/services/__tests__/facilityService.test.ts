@@ -134,7 +134,6 @@ describe('facilityService', () => {
         accountId: 'account-123',
         name: 'New Building',
         address: { street: '123 Main St', city: 'Test City' },
-        squareFeet: 10000,
         buildingType: 'office',
         status: 'active',
         createdByUserId: 'user-123',
@@ -244,7 +243,6 @@ describe('facilityService', () => {
     it('should update facility', async () => {
       const input: facilityService.FacilityUpdateInput = {
         name: 'Updated Name',
-        squareFeet: 15000,
       };
 
       const mockFacility = createTestFacility(input);
@@ -258,6 +256,29 @@ describe('facilityService', () => {
       const result = await facilityService.updateFacility('facility-123', input);
 
       expect(result).toEqual(mockFacility);
+    });
+
+    it('should not persist manual square footage on create', async () => {
+      const input = {
+        accountId: 'account-123',
+        name: 'New Building',
+        address: { street: '123 Main St', city: 'Test City' },
+        buildingType: 'office',
+        status: 'active',
+        createdByUserId: 'user-123',
+      } satisfies facilityService.FacilityCreateInput;
+
+      (prisma.facility.create as jest.Mock).mockResolvedValue(createTestFacility(input));
+
+      await facilityService.createFacility(input);
+
+      expect(prisma.facility.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({
+            squareFeet: expect.anything(),
+          }),
+        })
+      );
     });
 
     it('should geocode updated address when coordinates are missing', async () => {

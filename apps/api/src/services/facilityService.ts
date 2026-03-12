@@ -23,7 +23,6 @@ export interface FacilityCreateInput {
   accountId: string;
   name: string;
   address: Record<string, unknown>;
-  squareFeet?: number | null;
   buildingType?: string | null;
   accessInstructions?: string | null;
   parkingInfo?: string | null;
@@ -37,7 +36,6 @@ export interface FacilityCreateInput {
 export interface FacilityUpdateInput {
   name?: string;
   address?: Record<string, unknown>;
-  squareFeet?: number | null;
   buildingType?: string | null;
   accessInstructions?: string | null;
   parkingInfo?: string | null;
@@ -246,7 +244,6 @@ export async function createFacility(input: FacilityCreateInput) {
       accountId: input.accountId,
       name: normalizedName,
       address: normalizedAddress as Prisma.InputJsonValue,
-      squareFeet: input.squareFeet,
       buildingType: input.buildingType,
       accessInstructions: input.accessInstructions,
       parkingInfo: input.parkingInfo,
@@ -306,7 +303,6 @@ export async function updateFacility(id: string, input: FacilityUpdateInput) {
     updateData.address = normalizedAddress as Prisma.InputJsonValue;
   }
 
-  if (input.squareFeet !== undefined) updateData.squareFeet = input.squareFeet;
   if (input.buildingType !== undefined)
     updateData.buildingType = input.buildingType;
   if (input.accessInstructions !== undefined)

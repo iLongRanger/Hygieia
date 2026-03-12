@@ -118,7 +118,6 @@ export interface ConvertLeadInput {
       country?: string | null;
     };
     buildingType?: string | null;
-    squareFeet?: number | null;
     accessInstructions?: string | null;
     notes?: string | null;
   };

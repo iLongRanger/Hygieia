@@ -33,7 +33,6 @@ export const createFacilitySchema = z.object({
   accountId: z.string().uuid('Invalid account ID'),
   name: z.string().min(1, 'Name is required').max(255),
   address: addressSchema,
-  squareFeet: z.coerce.number().min(0).optional().nullable(),
   buildingType: buildingTypeSchema.optional().nullable(),
   accessInstructions: z.string().max(10000).optional().nullable(),
   parkingInfo: z.string().max(5000).optional().nullable(),
@@ -46,7 +45,6 @@ export const createFacilitySchema = z.object({
 export const updateFacilitySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   address: addressSchema.optional(),
-  squareFeet: z.coerce.number().min(0).optional().nullable(),
   buildingType: buildingTypeSchema.optional().nullable(),
   accessInstructions: z.string().max(10000).optional().nullable(),
   parkingInfo: z.string().max(5000).optional().nullable(),

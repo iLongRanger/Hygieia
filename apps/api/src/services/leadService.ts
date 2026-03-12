@@ -605,7 +605,6 @@ export interface ConvertLeadInput {
       country?: string | null;
     };
     buildingType?: string | null;
-    squareFeet?: number | null;
     accessInstructions?: string | null;
     notes?: string | null;
   };
@@ -866,7 +865,6 @@ export async function convertLead(
           name: proposedFacilityName,
           address: normalizedAddress as Prisma.InputJsonValue,
           buildingType: input.facilityData.buildingType,
-          squareFeet: input.facilityData.squareFeet,
           accessInstructions: input.facilityData.accessInstructions,
           notes: input.facilityData.notes,
           createdByUserId: input.userId,

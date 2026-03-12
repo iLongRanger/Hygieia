@@ -91,6 +91,26 @@ describe('Facility Routes', () => {
     );
   });
 
+  it('POST / should strip manual squareFeet from facility creation payloads', async () => {
+    (facilityService.createFacility as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+
+    await request(app)
+      .post('/api/v1/facilities')
+      .send({
+        name: 'Main Facility',
+        accountId: '11111111-1111-1111-1111-111111111111',
+        address: {},
+        squareFeet: 12000,
+      })
+      .expect(201);
+
+    expect(facilityService.createFacility).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        squareFeet: expect.anything(),
+      })
+    );
+  });
+
   it('POST / should return 422 for invalid payload', async () => {
     await request(app)
       .post('/api/v1/facilities')

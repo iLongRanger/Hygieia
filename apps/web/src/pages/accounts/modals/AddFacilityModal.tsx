@@ -55,18 +55,9 @@ export function AddFacilityModal({
             }
           />
         </div>
-        <Input
-          label="Square Feet"
-          type="number"
-          placeholder="50000"
-          value={facilityFormData.squareFeet || ''}
-          onChange={(e) =>
-            setFacilityFormData({
-              ...facilityFormData,
-              squareFeet: e.target.value ? Number(e.target.value) : null,
-            })
-          }
-        />
+        <p className="text-xs text-gray-400">
+          Total square feet will be auto-calculated from the areas added to this facility.
+        </p>
         <div className="border-t border-white/10 pt-4">
           <h4 className="text-sm font-medium text-white mb-3">Address</h4>
           <div className="space-y-4">
