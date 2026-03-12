@@ -25,7 +25,11 @@ jest.mock('../../lib/prisma', () => ({
     },
     opportunity: {
       findMany: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
+    },
+    contact: {
+      findFirst: jest.fn(),
     },
     facility: {
       findFirst: jest.fn(),
@@ -55,7 +59,17 @@ describe('appointmentService', () => {
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
     (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.opportunity.create as jest.Mock).mockResolvedValue({
+      id: 'opp-1',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      leadId: 'lead-1',
+      status: 'walk_through_booked',
+      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+      createdAt: new Date('2026-02-01T10:00:00.000Z'),
+    });
     (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
+    (prisma.contact.findFirst as jest.Mock).mockResolvedValue({ id: 'contact-1' });
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
   });
@@ -80,6 +94,7 @@ describe('appointmentService', () => {
     await expect(
       appointmentService.createAppointment({
         assignedToUserId: 'user-1',
+        facilityId: 'facility-1',
         type: 'walk_through',
         status: 'scheduled',
         scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
@@ -92,11 +107,13 @@ describe('appointmentService', () => {
 
   it('createAppointment should require active contract for non-walkthrough', async () => {
     (prisma.account.findUnique as jest.Mock).mockResolvedValue({ id: 'account-1', archivedAt: null });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
     (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
       appointmentService.createAppointment({
         accountId: 'account-1',
+        facilityId: 'facility-1',
         assignedToUserId: 'user-1',
         type: 'visit',
         status: 'scheduled',
@@ -109,17 +126,32 @@ describe('appointmentService', () => {
   });
 
   it('createAppointment should execute transaction for valid walkthrough input', async () => {
-    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({ id: 'lead-1', archivedAt: null });
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      archivedAt: null,
+      convertedToAccountId: 'account-1',
+      companyName: 'Acme Corp',
+      contactName: 'Jane Doe',
+      estimatedValue: null,
+      probability: 0,
+      expectedCloseDate: null,
+      lostReason: null,
+      assignedToUserId: null,
+      createdByUserId: 'admin-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
     (prisma.appointment.create as jest.Mock).mockResolvedValue({
       id: 'appt-1',
       type: 'walk_through',
       lead: { id: 'lead-1' },
-      account: null,
+      account: { id: 'account-1' },
+      facility: { id: 'facility-1' },
       scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
     });
 
     await appointmentService.createAppointment({
       leadId: 'lead-1',
+      facilityId: 'facility-1',
       assignedToUserId: 'user-1',
       type: 'walk_through',
       status: 'scheduled',
@@ -137,6 +169,7 @@ describe('appointmentService', () => {
       type: 'walk_through',
       status: 'scheduled',
       leadId: 'lead-1',
+      facilityId: 'facility-1',
       assignedToUserId: 'user-1',
     });
     (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
@@ -158,6 +191,9 @@ describe('appointmentService', () => {
   it('updateAppointment should notify assigned user with serialized schedule metadata', async () => {
     (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
       id: 'appt-1',
+      type: 'visit',
+      accountId: 'account-1',
+      leadId: null,
       assignedToUserId: 'user-1',
     });
     (prisma.appointment.update as jest.Mock).mockResolvedValue({

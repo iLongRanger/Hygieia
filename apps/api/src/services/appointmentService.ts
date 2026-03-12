@@ -8,6 +8,7 @@ import { findPreferredOpportunityForLead } from './opportunityResolver';
 export interface AppointmentListParams {
   leadId?: string;
   accountId?: string;
+  facilityId?: string;
   assignedToUserId?: string;
   type?: string;
   status?: string;
@@ -19,7 +20,7 @@ export interface AppointmentListParams {
 export interface AppointmentCreateInput {
   leadId?: string;
   accountId?: string;
-  facilityId?: string | null;
+  facilityId: string;
   assignedToUserId: string;
   type: string;
   status: string;
@@ -34,6 +35,7 @@ export interface AppointmentCreateInput {
 }
 
 export interface AppointmentUpdateInput {
+  facilityId?: string;
   assignedToUserId?: string;
   status?: string;
   scheduledStart?: Date;
@@ -103,6 +105,12 @@ const appointmentSelect = {
       type: true,
     },
   },
+  facility: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
   opportunity: {
     select: {
       id: true,
@@ -135,6 +143,7 @@ export async function listAppointments(params: AppointmentListParams) {
   const {
     leadId,
     accountId,
+    facilityId,
     assignedToUserId,
     type,
     status,
@@ -147,6 +156,7 @@ export async function listAppointments(params: AppointmentListParams) {
 
   if (leadId) where.leadId = leadId;
   if (accountId) where.accountId = accountId;
+  if (facilityId) where.facilityId = facilityId;
   if (assignedToUserId) where.assignedToUserId = assignedToUserId;
   if (type) where.type = type;
   if (status) where.status = status;
@@ -220,23 +230,21 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     walkthroughLeadAccountId = lead.convertedToAccountId;
 
-    if (input.facilityId) {
-      if (!lead.convertedToAccountId) {
-        throw new BadRequestError('Lead must be converted before assigning a walkthrough to a facility');
-      }
+    if (!lead.convertedToAccountId) {
+      throw new BadRequestError('Lead must be converted before assigning a walkthrough to a facility');
+    }
 
-      const facility = await prisma.facility.findFirst({
-        where: {
-          id: input.facilityId,
-          accountId: lead.convertedToAccountId,
-          archivedAt: null,
-        },
-        select: { id: true },
-      });
+    const facility = await prisma.facility.findFirst({
+      where: {
+        id: input.facilityId,
+        accountId: lead.convertedToAccountId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
 
-      if (!facility) {
-        throw new BadRequestError('Facility not found for the selected lead account');
-      }
+    if (!facility) {
+      throw new BadRequestError('Facility not found for the selected lead account');
     }
   } else {
     if (!input.accountId) {
@@ -252,9 +260,23 @@ export async function createAppointment(input: AppointmentCreateInput) {
       throw new BadRequestError('Account not found or archived');
     }
 
+    const facility = await prisma.facility.findFirst({
+      where: {
+        id: input.facilityId,
+        accountId: input.accountId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!facility) {
+      throw new BadRequestError('Facility not found for the selected account');
+    }
+
     const activeContract = await prisma.contract.findFirst({
       where: {
         accountId: input.accountId,
+        facilityId: input.facilityId,
         status: 'active',
         archivedAt: null,
       },
@@ -346,6 +368,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
       data: {
         leadId: input.leadId ?? null,
         accountId: input.accountId ?? walkthroughLeadAccountId ?? null,
+        facilityId: input.facilityId,
         opportunityId: opportunity?.id ?? null,
         assignedToUserId: input.assignedToUserId,
         type: input.type,
@@ -372,7 +395,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
           where: { id: opportunity.id },
           data: {
             status: 'walk_through_booked',
-            ...(input.facilityId ? { facilityId: input.facilityId } : {}),
+            facilityId: input.facilityId,
           },
         });
       }
@@ -385,26 +408,19 @@ export async function createAppointment(input: AppointmentCreateInput) {
   if (input.type === 'inspection' && !input.skipAutoCreate && !input.inspectionId && input.accountId) {
     try {
       const { createInspection } = await import('./inspectionService');
-      // Find a facility for this account
-      const facility = await prisma.facility.findFirst({
-        where: { accountId: input.accountId, archivedAt: null },
-        select: { id: true },
+      const inspection = await createInspection({
+        facilityId: input.facilityId,
+        accountId: input.accountId,
+        inspectorUserId: input.assignedToUserId,
+        scheduledDate: input.scheduledStart,
+        createdByUserId: input.createdByUserId,
+        skipAutoCreate: true,
       });
-      if (facility) {
-        const inspection = await createInspection({
-          facilityId: facility.id,
-          accountId: input.accountId,
-          inspectorUserId: input.assignedToUserId,
-          scheduledDate: input.scheduledStart,
-          createdByUserId: input.createdByUserId,
-          skipAutoCreate: true,
-        });
-        // Link inspection to appointment
-        await prisma.appointment.update({
-          where: { id: appointment.id },
-          data: { inspectionId: inspection.id },
-        });
-      }
+      // Link inspection to appointment
+      await prisma.appointment.update({
+        where: { id: appointment.id },
+        data: { inspectionId: inspection.id },
+      });
     } catch (e) {
       // Don't fail appointment creation if inspection auto-create fails
       console.error('Failed to auto-create inspection for appointment:', e);
@@ -420,6 +436,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
       appointmentId: appointment.id,
       leadId: appointment.lead?.id,
       accountId: appointment.account?.id,
+      facilityId: appointment.facility?.id,
       type: appointment.type,
       scheduledStart: appointment.scheduledStart.toISOString(),
     },
@@ -433,6 +450,9 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
     where: { id },
     select: {
       id: true,
+      leadId: true,
+      accountId: true,
+      type: true,
       assignedToUserId: true,
     },
   });
@@ -441,9 +461,57 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
     throw new NotFoundError('Appointment not found');
   }
 
+  if (input.facilityId) {
+    if (existing.type === 'walk_through') {
+      if (!existing.leadId) {
+        throw new BadRequestError('Walkthrough appointment is missing a lead');
+      }
+
+      const lead = await prisma.lead.findUnique({
+        where: { id: existing.leadId },
+        select: { convertedToAccountId: true },
+      });
+
+      if (!lead?.convertedToAccountId) {
+        throw new BadRequestError('Lead must be converted before assigning a walkthrough to a facility');
+      }
+
+      const facility = await prisma.facility.findFirst({
+        where: {
+          id: input.facilityId,
+          accountId: lead.convertedToAccountId,
+          archivedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (!facility) {
+        throw new BadRequestError('Facility not found for the selected lead account');
+      }
+    } else {
+      if (!existing.accountId) {
+        throw new BadRequestError('Appointment account not found');
+      }
+
+      const facility = await prisma.facility.findFirst({
+        where: {
+          id: input.facilityId,
+          accountId: existing.accountId,
+          archivedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (!facility) {
+        throw new BadRequestError('Facility not found for the selected account');
+      }
+    }
+  }
+
   const appointment = await prisma.appointment.update({
     where: { id },
     data: {
+      facilityId: input.facilityId,
       assignedToUserId: input.assignedToUserId,
       status: input.status,
       scheduledStart: input.scheduledStart,
@@ -506,6 +574,7 @@ export async function rescheduleAppointment(
       id: true,
       leadId: true,
       accountId: true,
+      facilityId: true,
       opportunityId: true,
       assignedToUserId: true,
       status: true,
@@ -531,6 +600,7 @@ export async function rescheduleAppointment(
       data: {
         leadId: existing.leadId ?? null,
         accountId: existing.accountId ?? null,
+        facilityId: existing.facilityId ?? null,
         opportunityId: existing.opportunityId ?? null,
         assignedToUserId: existing.assignedToUserId,
         type: existing.type,
@@ -577,6 +647,7 @@ export async function completeAppointment(
       type: true,
       status: true,
       leadId: true,
+      facilityId: true,
       accountId: true,
       opportunityId: true,
       assignedToUserId: true,
@@ -621,6 +692,10 @@ export async function completeAppointment(
     throw new BadRequestError('Facility not found for this lead account');
   }
 
+  if (appointment.facilityId && appointment.facilityId !== facility.id) {
+    throw new BadRequestError('Walkthrough must be completed for the same facility it was scheduled for');
+  }
+
   const [areaCount, taskCount] = await Promise.all([
     prisma.area.count({
       where: { facilityId: facility.id, archivedAt: null },
@@ -644,6 +719,7 @@ export async function completeAppointment(
       data: {
         status: 'completed',
         completedAt: new Date(),
+        facilityId: facility.id,
         notes: input.notes ?? undefined,
       },
       select: appointmentSelect,

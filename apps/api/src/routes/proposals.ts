@@ -227,23 +227,29 @@ router.patch(
         throw new NotFoundError('Proposal not found');
       }
 
-      // Prevent editing accepted or rejected proposals
-      if (['accepted', 'rejected'].includes(proposal.status)) {
+      // Accepted proposals are terminal because they are contract-ready.
+      if (proposal.status === 'accepted') {
         throw new ValidationError(
-          `Cannot edit proposal with status: ${proposal.status}. Please create a new proposal instead.`
+          `Cannot edit proposal with status: ${proposal.status}. Create an amendment or new sales cycle instead.`
         );
       }
 
-      // Revert sent/viewed proposals back to draft when editing
-      if (['sent', 'viewed'].includes(proposal.status)) {
-        await createVersion(req.params.id, req.user!.id, 'Revised after sending');
+      // Preserve a historical snapshot before revising any customer-facing draft thread.
+      if (['sent', 'viewed', 'rejected'].includes(proposal.status)) {
+        const changeReason =
+          proposal.status === 'rejected'
+            ? 'Revised after rejection'
+            : 'Revised after sending';
+        await createVersion(req.params.id, req.user!.id, changeReason);
       }
 
       const updateData: any = {
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
         title: parsed.data.title,
-        status: ['sent', 'viewed'].includes(proposal.status) ? 'draft' : parsed.data.status,
+        status: ['sent', 'viewed', 'rejected'].includes(proposal.status)
+          ? 'draft'
+          : parsed.data.status,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,

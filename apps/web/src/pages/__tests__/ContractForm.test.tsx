@@ -21,6 +21,7 @@ vi.mock('react-router-dom', async () => {
 const getContractMock = vi.fn();
 const updateContractMock = vi.fn();
 const createContractFromProposalMock = vi.fn();
+const listContractsMock = vi.fn();
 const getProposalsAvailableForContractMock = vi.fn();
 const getProposalMock = vi.fn();
 
@@ -28,6 +29,7 @@ vi.mock('../../lib/contracts', () => ({
   getContract: (...args: unknown[]) => getContractMock(...args),
   updateContract: (...args: unknown[]) => updateContractMock(...args),
   createContractFromProposal: (...args: unknown[]) => createContractFromProposalMock(...args),
+  listContracts: (...args: unknown[]) => listContractsMock(...args),
 }));
 
 vi.mock('../../lib/proposals', () => ({
@@ -99,8 +101,15 @@ describe('ContractForm', () => {
     ]);
     getProposalMock.mockResolvedValue({
       id: 'proposal-1',
+      serviceFrequency: '5x_week',
+      serviceSchedule: null,
+      facility: { id: 'facility-1', name: 'HQ' },
       termsAndConditions: 'Standard terms',
       notes: 'Special note',
+    });
+    listContractsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 5, total: 0, totalPages: 0 },
     });
     getContractMock.mockResolvedValue(draftContract);
     updateContractMock.mockResolvedValue(draftContract);
@@ -131,6 +140,11 @@ describe('ContractForm', () => {
     await user.click(screen.getByRole('button', { name: /create contract/i }));
 
     await waitFor(() => {
+      expect(listContractsMock).toHaveBeenCalledWith({
+        facilityId: 'facility-1',
+        status: 'active',
+        limit: 5,
+      });
       expect(createContractFromProposalMock).toHaveBeenCalledWith(
         'proposal-1',
         expect.objectContaining({
@@ -140,6 +154,34 @@ describe('ContractForm', () => {
       );
       expect(navigateMock).toHaveBeenCalledWith('/contracts');
     });
+  });
+
+  it('blocks contract creation when the facility already has an active contract', async () => {
+    const user = userEvent.setup();
+    listContractsMock.mockResolvedValue({
+      data: [
+        {
+          ...draftContract,
+          id: 'contract-9',
+          contractNumber: 'CONT-202602-0009',
+          status: 'active',
+          facility: { id: 'facility-1', name: 'HQ' },
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+    });
+
+    render(<ContractForm />);
+
+    await screen.findByText('New Contract');
+    await user.selectOptions(
+      await screen.findByLabelText(/accepted proposal/i),
+      'proposal-1'
+    );
+
+    expect(await screen.findByText(/active contract already exists for this facility/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create contract/i })).toBeDisabled();
+    expect(createContractFromProposalMock).not.toHaveBeenCalled();
   });
 
   it('updates existing draft contract in edit mode', async () => {

@@ -485,13 +485,13 @@ const ProposalDetail = () => {
         </div>
         <div className="flex items-center gap-2">
           {/* Primary actions based on status */}
-          {['draft', 'sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
+          {['draft', 'sent', 'viewed', 'rejected'].includes(proposal.status) && canWriteProposals && (
             <Button
               variant="secondary"
               onClick={() => navigate(`/proposals/${id}/edit`)}
             >
               <Edit2 className="mr-2 h-4 w-4" />
-              Edit
+              {proposal.status === 'rejected' ? 'Revise' : 'Edit'}
             </Button>
           )}
           {proposal.status === 'draft' && canWriteProposals && (

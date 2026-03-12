@@ -355,7 +355,7 @@ const QuotationForm = () => {
       if (isEditing && id) {
         const data: UpdateQuotationInput = {
           accountId,
-          facilityId: facilityId || null,
+          facilityId,
           title,
           description: description || null,
           validUntil: validUntil || null,
@@ -373,7 +373,7 @@ const QuotationForm = () => {
       } else {
         const data: CreateQuotationInput = {
           accountId,
-          facilityId: facilityId || null,
+          facilityId,
           title,
           description: description || null,
           validUntil: validUntil || null,
@@ -390,7 +390,7 @@ const QuotationForm = () => {
         navigate(`/quotations/${result.id}`);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save quotation');
+      toast.error(error.response?.data?.error?.message || error.response?.data?.message || 'Failed to save quotation');
     } finally {
       setSaving(false);
     }

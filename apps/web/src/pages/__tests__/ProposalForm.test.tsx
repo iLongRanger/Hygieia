@@ -294,7 +294,11 @@ describe('ProposalForm', () => {
         name: 'Acme Corp',
         type: 'commercial',
       },
-      facility: null,
+      facility: {
+        id: 'facility-1',
+        name: 'Main Facility',
+        address: { city: 'Vancouver', state: 'BC' },
+      },
       createdByUser: {
         id: 'user-1',
         fullName: 'Admin User',
@@ -335,10 +339,13 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
+    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Cleaning Proposal');
     const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
+    await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
+    await user.click(await screen.findByRole('button', { name: /confirm tasks accuracy/i }));
 
     const createButtons = screen.getAllByRole('button', { name: /create proposal/i });
     await user.click(createButtons[0]);
@@ -415,8 +422,75 @@ describe('ProposalForm', () => {
     const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
+    await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
+    await user.click(await screen.findByRole('button', { name: /confirm tasks accuracy/i }));
     const updateButtons = screen.getAllByRole('button', { name: /update proposal/i });
     await user.click(updateButtons[0]);
+
+    await waitFor(() => {
+      expect(updateProposalMock).toHaveBeenCalledWith('proposal-1', expect.any(Object));
+      expect(navigateMock).toHaveBeenCalledWith('/proposals');
+    });
+  });
+
+  it('revises a rejected proposal in edit mode', async () => {
+    mockParams = { id: 'proposal-1' };
+    getProposalMock.mockResolvedValueOnce({
+      id: 'proposal-1',
+      proposalNumber: 'PROP-001',
+      title: 'Rejected Proposal',
+      status: 'rejected',
+      description: null,
+      subtotal: 0,
+      taxRate: 0,
+      taxAmount: 0,
+      totalAmount: 0,
+      validUntil: null,
+      sentAt: null,
+      viewedAt: null,
+      acceptedAt: null,
+      rejectedAt: new Date().toISOString(),
+      rejectionReason: 'Pricing too high',
+      notes: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      archivedAt: null,
+      pricingStrategyKey: 'sqft_settings_v1',
+      pricingStrategyVersion: '1.0.0',
+      pricingPlanId: 'pricing-1',
+      pricingSnapshot: null,
+      pricingLocked: false,
+      pricingLockedAt: null,
+      facility: {
+        id: 'facility-1',
+        name: 'Main Facility',
+        address: { city: 'Vancouver', state: 'BC' },
+      },
+      account: {
+        id: 'account-1',
+        name: 'Acme Corp',
+        type: 'commercial',
+      },
+      proposalItems: [],
+      proposalServices: [],
+    } as Proposal);
+    const user = userEvent.setup();
+
+    render(<ProposalForm />);
+
+    expect(await screen.findByText('Revise Proposal')).toBeInTheDocument();
+    expect(screen.getByText(/reopens the proposal as a draft/i)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(/proposal title/i));
+    await user.type(screen.getByLabelText(/proposal title/i), 'Revised Proposal');
+    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
+    await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
+    await user.click(await screen.findByRole('button', { name: /confirm tasks accuracy/i }));
+
+    const reviseButtons = screen.getAllByRole('button', { name: /revise proposal/i });
+    await user.click(reviseButtons[0]);
 
     await waitFor(() => {
       expect(updateProposalMock).toHaveBeenCalledWith('proposal-1', expect.any(Object));

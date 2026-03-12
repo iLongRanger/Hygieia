@@ -466,6 +466,23 @@ export async function getInspectionById(id: string) {
 }
 
 export async function createInspection(input: InspectionCreateInput) {
+  const facility = await prisma.facility.findUnique({
+    where: { id: input.facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found or archived');
+  }
+
+  if (facility.accountId !== input.accountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
+
   await assertEligibleInspectorUser(input.inspectorUserId);
 
   const inspectionNumber = await generateInspectionNumber();
@@ -541,6 +558,7 @@ export async function createInspection(input: InspectionCreateInput) {
 
       await createAppointment({
         accountId: input.accountId,
+        facilityId: input.facilityId,
         assignedToUserId: input.inspectorUserId,
         type: 'inspection',
         status: 'scheduled',
@@ -1157,6 +1175,7 @@ export async function createReinspection(
 
     await createAppointment({
       accountId: inspection.accountId,
+      facilityId: inspection.facilityId,
       assignedToUserId: assigneeUserId,
       type: 'inspection',
       status: 'scheduled',

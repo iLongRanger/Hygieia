@@ -33,7 +33,7 @@ export interface QuotationServiceInput {
 
 export interface QuotationCreateInput {
   accountId: string;
-  facilityId?: string | null;
+  facilityId: string;
   title: string;
   description?: string | null;
   validUntil?: Date | null;
@@ -354,6 +354,24 @@ export async function getQuotationByNumber(quotationNumber: string) {
 }
 
 export async function createQuotation(input: QuotationCreateInput) {
+  const facility = await prisma.facility.findUnique({
+    where: { id: input.facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+      status: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found or archived');
+  }
+
+  if (facility.accountId !== input.accountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
+
   const quotationNumber = await generateQuotationNumber();
   const taxRate = input.taxRate ?? 0;
   const services = input.services ?? [];
@@ -408,6 +426,30 @@ export async function createQuotation(input: QuotationCreateInput) {
 export async function updateQuotation(id: string, input: QuotationUpdateInput) {
   const existing = await prisma.quotation.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Quotation not found');
+
+  const effectiveAccountId = input.accountId ?? existing.accountId;
+  const effectiveFacilityId = input.facilityId ?? existing.facilityId;
+
+  if (!effectiveFacilityId) {
+    throw new BadRequestError('Facility is required for quotations');
+  }
+
+  const facility = await prisma.facility.findUnique({
+    where: { id: effectiveFacilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found or archived');
+  }
+
+  if (facility.accountId !== effectiveAccountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
 
   return prisma.$transaction(async (tx) => {
     // Rebuild services if provided

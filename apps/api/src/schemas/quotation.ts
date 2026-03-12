@@ -49,7 +49,7 @@ export const quotationServiceUpdateSchema = quotationServiceSchema.extend({
 // Create Quotation Schema
 export const createQuotationSchema = z.object({
   accountId: z.string().uuid(),
-  facilityId: z.string().uuid().optional().nullable(),
+  facilityId: z.string().uuid(),
   title: z.string().min(1, 'Quotation title is required').max(255),
   description: z.string().max(10000).optional().nullable(),
   validUntil: z.coerce.date().optional().nullable(),

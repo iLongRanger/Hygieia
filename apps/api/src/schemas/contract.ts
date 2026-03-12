@@ -68,7 +68,7 @@ export const createContractSchema = z
   .object({
     title: z.string().min(1, 'Contract title is required').max(255),
     accountId: z.string().uuid(),
-    facilityId: z.string().uuid().optional().nullable(),
+    facilityId: z.string().uuid(),
     proposalId: z.string().uuid().optional().nullable(),
     startDate: z.coerce.date(),
     endDate: z.coerce.date().optional().nullable(),

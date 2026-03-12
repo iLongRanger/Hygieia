@@ -324,6 +324,7 @@ const LeadDetail = () => {
     try {
       setSaving(true);
       const wasConvertedDuringBooking = !lead?.convertedToAccountId;
+      let facilityIdForAppointment = scheduleForm.facilityId;
 
       if (!wasConvertedDuringBooking && !scheduleForm.facilityId) {
         toast.error('Select a facility before scheduling');
@@ -331,7 +332,7 @@ const LeadDetail = () => {
       }
 
       if (wasConvertedDuringBooking) {
-        await convertLead(id, {
+        const conversionResult = await convertLead(id, {
           createNewAccount: true,
           accountData: {
             name: scheduleConversionForm.accountName.trim(),
@@ -354,11 +355,17 @@ const LeadDetail = () => {
             notes: scheduleConversionForm.notes.trim() || null,
           },
         });
+        facilityIdForAppointment = conversionResult.facility?.id || '';
+      }
+
+      if (!facilityIdForAppointment) {
+        toast.error('Select a facility before scheduling');
+        return;
       }
 
       await createAppointment({
         leadId: id,
-        facilityId: wasConvertedDuringBooking ? null : scheduleForm.facilityId,
+        facilityId: facilityIdForAppointment,
         assignedToUserId: scheduleForm.assignedToUserId,
         type: 'walk_through',
         scheduledStart: startDateTime.toISOString(),

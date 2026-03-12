@@ -58,7 +58,7 @@ export interface ProposalServiceInput {
 
 export interface ProposalCreateInput {
   accountId: string;
-  facilityId?: string | null;
+  facilityId: string;
   opportunityId?: string | null;
   title: string;
   description?: string | null;
@@ -205,6 +205,35 @@ const proposalSelect = {
     },
   },
 } satisfies Prisma.ProposalSelect;
+
+const ACTIVE_PROPOSAL_STATUSES = ['draft', 'sent', 'viewed', 'accepted'] as const;
+
+async function ensureSingleActiveProposalForFacility(
+  accountId: string,
+  facilityId: string,
+  excludeProposalId?: string
+) {
+  const existingProposal = await prisma.proposal.findFirst({
+    where: {
+      accountId,
+      facilityId,
+      archivedAt: null,
+      status: { in: [...ACTIVE_PROPOSAL_STATUSES] },
+      ...(excludeProposalId ? { id: { not: excludeProposalId } } : {}),
+    },
+    select: {
+      id: true,
+      proposalNumber: true,
+      status: true,
+    },
+  });
+
+  if (existingProposal) {
+    throw new BadRequestError(
+      `Facility already has an active proposal (${existingProposal.proposalNumber}) with status ${existingProposal.status}`
+    );
+  }
+}
 
 /**
  * Generate a unique proposal number in the format: PROP-YYYYMMDD-XXXX
@@ -460,10 +489,6 @@ async function assertProposalCreateReadiness(
     throw new BadRequestError('Walkthrough must be completed before creating a proposal');
   }
 
-  if (!input.facilityId) {
-    return { opportunityId: opportunity.id };
-  }
-
   const facility = await prisma.facility.findUnique({
     where: { id: input.facilityId },
     select: {
@@ -485,6 +510,8 @@ async function assertProposalCreateReadiness(
   if (facility.status !== 'active') {
     throw new BadRequestError('Facility must be active before creating a proposal');
   }
+
+  await ensureSingleActiveProposalForFacility(input.accountId, facility.id);
 
   const [areaCount, taskCount] = await Promise.all([
     prisma.area.count({
@@ -738,6 +765,16 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     const effectiveOpportunityId =
       input.opportunityId !== undefined ? input.opportunityId : currentProposal.opportunityId;
 
+    if (!effectiveFacilityId) {
+      throw new BadRequestError('Facility is required for proposals');
+    }
+
+    await ensureSingleActiveProposalForFacility(
+      effectiveAccountId,
+      effectiveFacilityId,
+      id
+    );
+
     await assertProposalCreateReadiness({
       accountId: effectiveAccountId,
       facilityId: effectiveFacilityId,
@@ -759,6 +796,13 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     updateData.opportunity = input.opportunityId
       ? { connect: { id: input.opportunityId } }
       : { disconnect: true };
+  }
+  if (input.status === 'draft') {
+    updateData.sentAt = null;
+    updateData.viewedAt = null;
+    updateData.acceptedAt = null;
+    updateData.rejectedAt = null;
+    updateData.rejectionReason = null;
   }
   if (input.title !== undefined) updateData.title = input.title;
   if (input.status !== undefined) updateData.status = input.status;

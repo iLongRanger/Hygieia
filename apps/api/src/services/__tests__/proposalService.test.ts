@@ -551,9 +551,11 @@ describe('proposalService', () => {
     });
 
     it('should generate sequential proposal numbers for same day', async () => {
-      (prisma.proposal.findFirst as jest.Mock).mockResolvedValueOnce({
-        proposalNumber: 'PROP-20260116-0005',
-      });
+      (prisma.proposal.findFirst as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          proposalNumber: 'PROP-20260116-0005',
+        });
 
       const mockProposal = createTestProposal();
       (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
@@ -572,6 +574,27 @@ describe('proposalService', () => {
         }),
         select: expect.any(Object),
       });
+    });
+
+    it('should reject creating a second active proposal for the same facility', async () => {
+      (prisma.proposal.findFirst as jest.Mock).mockResolvedValueOnce({
+        id: 'proposal-existing',
+        proposalNumber: 'PROP-20260116-0003',
+        status: 'sent',
+      });
+
+      await expect(
+        proposalService.createProposal({
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          title: 'Duplicate Active Proposal',
+          createdByUserId: 'user-1',
+        })
+      ).rejects.toThrow(
+        'Facility already has an active proposal (PROP-20260116-0003) with status sent'
+      );
+
+      expect(prisma.proposal.create).not.toHaveBeenCalled();
     });
   });
 
@@ -776,6 +799,34 @@ describe('proposalService', () => {
         })
       );
     });
+
+    it('should clear send and rejection metadata when reverting to draft', async () => {
+      const currentProposal = createTestProposal({
+        status: 'rejected',
+        proposalItems: [],
+        proposalServices: [],
+      });
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValue(currentProposal);
+      (prisma.proposal.update as jest.Mock).mockResolvedValue(currentProposal);
+
+      await proposalService.updateProposal('proposal-1', {
+        status: 'draft',
+      });
+
+      expect(prisma.proposal.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'proposal-1' },
+          data: expect.objectContaining({
+            status: 'draft',
+            sentAt: null,
+            viewedAt: null,
+            acceptedAt: null,
+            rejectedAt: null,
+            rejectionReason: null,
+          }),
+        })
+      );
+    });
   });
 
   describe('sendProposal', () => {
@@ -796,8 +847,11 @@ describe('proposalService', () => {
       expect(result).toEqual(mockProposal);
     });
 
-    it('should allow creating another proposal for a facility that already had proposals', async () => {
+    it('should allow creating another proposal for a facility after previous proposals are no longer active', async () => {
       const mockProposal = createTestProposal();
+      (prisma.proposal.findFirst as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
       (prisma.proposal.create as jest.Mock).mockResolvedValue(mockProposal);
 
       const result = await proposalService.createProposal({

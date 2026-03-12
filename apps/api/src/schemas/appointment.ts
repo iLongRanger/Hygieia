@@ -17,7 +17,7 @@ export const appointmentStatusSchema = z.enum([
 export const createAppointmentSchema = z.object({
   leadId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
-  facilityId: z.string().uuid().optional().nullable(),
+  facilityId: z.string().uuid(),
   assignedToUserId: z.string().uuid(),
   type: appointmentTypeSchema.default('walk_through'),
   status: appointmentStatusSchema.optional().default('scheduled'),
@@ -43,6 +43,7 @@ export const createAppointmentSchema = z.object({
 );
 
 export const updateAppointmentSchema = z.object({
+  facilityId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
   status: appointmentStatusSchema.optional(),
   scheduledStart: z.coerce.date().optional(),
@@ -64,6 +65,7 @@ export const updateAppointmentSchema = z.object({
 export const listAppointmentsQuerySchema = z.object({
   leadId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
+  facilityId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
   type: appointmentTypeSchema.optional(),
   status: appointmentStatusSchema.optional(),

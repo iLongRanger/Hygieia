@@ -24,6 +24,7 @@ import {
   updateContract,
   createContractFromProposal,
   generateContractTerms,
+  listContracts,
 } from '../../lib/contracts';
 import {
   getProposalsAvailableForContract,
@@ -31,6 +32,7 @@ import {
   type ProposalForContract,
 } from '../../lib/proposals';
 import type {
+  Contract,
   UpdateContractInput,
   ServiceFrequency,
   BillingCycle,
@@ -144,6 +146,7 @@ const ContractForm = () => {
   const [availableProposals, setAvailableProposals] = useState<ProposalForContract[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<ProposalForContract | null>(null);
   const [selectedProposalSchedule, setSelectedProposalSchedule] = useState<Record<string, unknown> | null>(null);
+  const [activeFacilityContract, setActiveFacilityContract] = useState<Contract | null>(null);
 
   // Form data
   const [formData, setFormData] = useState<ContractFormData>({
@@ -262,6 +265,7 @@ const ContractForm = () => {
     if (!proposal) {
       setSelectedProposal(null);
       setSelectedProposalSchedule(null);
+      setActiveFacilityContract(null);
       setFormData(prev => ({
         ...prev,
         proposalId: '',
@@ -272,12 +276,25 @@ const ContractForm = () => {
     }
 
     setSelectedProposal(proposal);
+    setActiveFacilityContract(null);
 
     // Fetch full proposal details for terms and conditions
     try {
       const fullProposal = await getProposal(proposalId);
       const mappedFrequency = mapProposalFrequencyToContractFrequency(fullProposal.serviceFrequency);
       setSelectedProposalSchedule((fullProposal.serviceSchedule as Record<string, unknown> | null) || null);
+
+      if (fullProposal.facility?.id) {
+        const existingContracts = await listContracts({
+          facilityId: fullProposal.facility.id,
+          status: 'active',
+          limit: 5,
+        });
+        const competingContract = (existingContracts.data || []).find(
+          (contract) => contract.facility?.id === fullProposal.facility?.id
+        ) || null;
+        setActiveFacilityContract(competingContract);
+      }
 
       setFormData(prev => ({
         ...prev,
@@ -294,6 +311,7 @@ const ContractForm = () => {
     } catch (error) {
       // If we can't get full details, use what we have
       setSelectedProposalSchedule(null);
+      setActiveFacilityContract(null);
       setFormData(prev => ({
         ...prev,
         proposalId,
@@ -331,6 +349,10 @@ const ContractForm = () => {
       newErrors.proposalId = 'Please select an accepted proposal';
     }
 
+    if (!isEditMode && activeFacilityContract) {
+      newErrors.proposalId = 'This facility already has an active contract';
+    }
+
     if (!formData.title.trim()) {
       newErrors.title = 'Contract title is required';
     }
@@ -360,6 +382,11 @@ const ContractForm = () => {
 
     if (!validate()) {
       toast.error('Please fix validation errors');
+      return;
+    }
+
+    if (!isEditMode && activeFacilityContract) {
+      toast.error('This facility already has an active contract');
       return;
     }
 
@@ -596,6 +623,20 @@ const ContractForm = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeFacilityContract && (
+              <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-300" />
+                  <div>
+                    <p className="font-medium text-red-100">Active contract already exists for this facility</p>
+                    <p className="mt-1 text-sm text-red-100/80">
+                      {activeFacilityContract.contractNumber} is currently active. Archive, terminate, or replace that contract before creating another one for this facility.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -880,7 +921,7 @@ const ContractForm = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} isLoading={saving}>
+              <Button type="submit" disabled={saving || (!isEditMode && !!activeFacilityContract)} isLoading={saving}>
                 <Save className="mr-2 h-4 w-4" />
                 {isEditMode ? 'Update Contract' : 'Create Contract'}
               </Button>

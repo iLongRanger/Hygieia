@@ -308,7 +308,7 @@ export interface ContractAmendment {
 export interface CreateContractInput {
   title: string;
   accountId: string;
-  facilityId?: string | null;
+  facilityId: string;
   proposalId?: string | null;
   startDate: string;
   endDate?: string | null;

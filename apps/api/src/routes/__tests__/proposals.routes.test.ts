@@ -222,6 +222,7 @@ describe('Proposal Routes', () => {
       .post('/api/v1/proposals')
       .send({
         accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
         title: 'New Proposal',
       })
       .expect(201);
@@ -230,6 +231,7 @@ describe('Proposal Routes', () => {
     expect(proposalService.createProposal).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
         title: 'New Proposal',
         createdByUserId: 'user-1',
       })
@@ -282,6 +284,33 @@ describe('Proposal Routes', () => {
       .patch('/api/v1/proposals/proposal-1')
       .send({ title: 'Updated' })
       .expect(422);
+  });
+
+  it('PATCH /:id should revise rejected proposals back to draft with a version snapshot', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'rejected',
+      pricingPlanId: 'plan-1',
+    });
+    (proposalService.updateProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+
+    await request(app)
+      .patch('/api/v1/proposals/proposal-1')
+      .send({ title: 'Revised proposal' })
+      .expect(200);
+
+    expect(proposalVersionService.createVersion).toHaveBeenCalledWith(
+      'proposal-1',
+      'user-1',
+      'Revised after rejection'
+    );
+    expect(proposalService.updateProposal).toHaveBeenCalledWith(
+      'proposal-1',
+      expect.objectContaining({
+        title: 'Revised proposal',
+        status: 'draft',
+      })
+    );
   });
 
   it('POST /:id/send should send proposal', async () => {
@@ -371,8 +400,10 @@ describe('Proposal Routes', () => {
     expect(proposalService.getProposalById).not.toHaveBeenCalled();
   });
 
-  it('POST /:id/send should return 422 when FRONTEND_URL is missing', async () => {
+  it('POST /:id/send should return 422 when no frontend base URL is configured', async () => {
     delete process.env.FRONTEND_URL;
+    delete process.env.WEB_APP_URL;
+    delete process.env.CORS_ORIGIN;
     (proposalService.getProposalById as jest.Mock).mockResolvedValue({
       id: 'proposal-1',
       status: 'draft',

@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import { BadRequestError } from '../middleware/errorHandler';
 import { generateContractTerms } from './contractTemplateService';
 import { tierToPercentage, percentageToTier } from '../lib/subcontractorTiers';
 import {
@@ -39,7 +40,7 @@ export interface ContractSummaryParams {
 export interface ContractCreateInput {
   title: string;
   accountId: string;
-  facilityId?: string | null;
+  facilityId: string;
   proposalId?: string | null;
   startDate: Date;
   endDate?: Date | null;
@@ -312,6 +313,54 @@ function withLegacyPendingDefaults<T extends Record<string, any>>(contract: T) {
   };
 }
 
+async function validateFacilityOwnership(
+  accountId: string,
+  facilityId: string
+) {
+  const facility = await prisma.facility.findUnique({
+    where: { id: facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found');
+  }
+
+  if (facility.accountId !== accountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
+
+  return facility;
+}
+
+async function ensureNoOtherActiveContractForFacility(
+  facilityId: string,
+  excludeContractId?: string
+) {
+  const existingActiveContract = await prisma.contract.findFirst({
+    where: {
+      facilityId,
+      archivedAt: null,
+      status: 'active',
+      ...(excludeContractId ? { id: { not: excludeContractId } } : {}),
+    },
+    select: {
+      id: true,
+      contractNumber: true,
+    },
+  });
+
+  if (existingActiveContract) {
+    throw new BadRequestError(
+      `Facility already has an active contract (${existingActiveContract.contractNumber})`
+    );
+  }
+}
+
 async function createContractWithLegacyFallback(data: Prisma.ContractCreateArgs['data']) {
   try {
     const contract = await prisma.contract.create({
@@ -556,6 +605,8 @@ export async function getContractById(id: string) {
  * This function is now primarily used internally or for standalone/legacy contracts.
  */
 export async function createContract(data: ContractCreateInput) {
+  await validateFacilityOwnership(data.accountId, data.facilityId);
+
   // Enforce that contracts require a proposal unless explicitly marked as imported/legacy
   // This validation ensures all new contracts come from accepted proposals
   if (!data.proposalId) {
@@ -798,10 +849,25 @@ export async function updateContractStatus(
   status: string,
   userId?: string
 ) {
+  const currentContract = await prisma.contract.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      facilityId: true,
+    },
+  });
+
+  if (!currentContract) {
+    throw new Error('Contract not found');
+  }
+
   const updateData: Prisma.ContractUpdateInput = { status };
 
   // If activating contract, set approval details
   if (status === 'active' && userId) {
+    if (currentContract.facilityId) {
+      await ensureNoOtherActiveContractForFacility(currentContract.facilityId, id);
+    }
     updateData.approvedByUser = { connect: { id: userId } };
     updateData.approvedAt = new Date();
   }
@@ -1317,6 +1383,10 @@ export interface StandaloneContractCreateInput {
  * Create a standalone contract (imported or legacy, without proposal)
  */
 export async function createStandaloneContract(data: StandaloneContractCreateInput) {
+  if (data.facilityId) {
+    await validateFacilityOwnership(data.accountId, data.facilityId);
+  }
+
   const contractNumber = await generateContractNumber();
   const normalizedSchedule = normalizeServiceSchedule(
     data.serviceSchedule,

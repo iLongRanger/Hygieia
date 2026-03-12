@@ -240,6 +240,7 @@ model Appointment {
   id                String    @id @default(uuid()) @db.Uuid
   leadId            String?   @map("lead_id") @db.Uuid
   accountId         String?   @map("account_id") @db.Uuid
+  facilityId        String?   @map("facility_id") @db.Uuid
   opportunityId     String?   @map("opportunity_id") @db.Uuid
   type              String    @default("walk_through") @db.VarChar(30)
   status            String    @default("scheduled") @db.VarChar(30)
@@ -261,6 +262,7 @@ model Appointment {
 
   lead            Lead?         @relation("LeadAppointments", fields: [leadId], references: [id], onDelete: Cascade)
   account         Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  facility        Facility?     @relation(fields: [facilityId], references: [id], onDelete: SetNull)
   opportunity     Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   assignedToUser  User          @relation("AssignedAppointments", fields: [assignedToUserId], references: [id])
   assignedTeam    Team?         @relation("AssignedTeamAppointments", fields: [assignedTeamId], references: [id], onDelete: SetNull)
@@ -272,6 +274,7 @@ model Appointment {
 
   @@index([leadId])
   @@index([accountId])
+  @@index([facilityId])
   @@index([opportunityId])
   @@index([assignedToUserId])
   @@index([assignedTeamId])
@@ -478,6 +481,7 @@ model Facility {
 
   account            Account          @relation(fields: [accountId], references: [id])
   opportunities      Opportunity[]
+  appointments       Appointment[]
   areas              Area[]
   taskTemplates      TaskTemplate[]   @relation("FacilityTaskTemplates")
   facilityTasks      FacilityTask[]   @relation("FacilityTasks")

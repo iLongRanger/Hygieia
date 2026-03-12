@@ -37,6 +37,11 @@ describe('contractService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)
     );
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      accountId: 'account-1',
+      archivedAt: null,
+    });
   });
 
   it('listContracts should return paginated contracts', async () => {
@@ -148,6 +153,7 @@ describe('contractService', () => {
       contractService.createContract({
         title: 'Contract A',
         accountId: 'account-1',
+        facilityId: 'facility-1',
         startDate: new Date('2026-02-01'),
         monthlyValue: 1000,
         createdByUserId: 'user-1',
@@ -163,6 +169,7 @@ describe('contractService', () => {
     const result = await contractService.createContract({
       title: 'Contract A',
       accountId: 'account-1',
+      facilityId: 'facility-1',
       proposalId: 'proposal-1',
       startDate: new Date('2026-02-01'),
       monthlyValue: 1000,
@@ -524,6 +531,11 @@ describe('contractService', () => {
   });
 
   it('updateContractStatus should fall back when activating with legacy contract columns missing', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'contract-active',
+      facilityId: 'facility-1',
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.contract.update as jest.Mock)
       .mockRejectedValueOnce(new Error('column contracts.assigned_to_user_id does not exist'))
       .mockResolvedValueOnce({
@@ -565,5 +577,45 @@ describe('contractService', () => {
         }),
       })
     );
+  });
+
+  it('updateContractStatus should reject activating a second active contract for the same facility', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'contract-2',
+      facilityId: 'facility-1',
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-202603-0001',
+    });
+
+    await expect(
+      contractService.updateContractStatus('contract-2', 'active', 'user-1')
+    ).rejects.toThrow(
+      'Facility already has an active contract (CONT-202603-0001)'
+    );
+
+    expect(prisma.contract.update).not.toHaveBeenCalled();
+  });
+
+  it('createStandaloneContract should validate facility ownership', async () => {
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      accountId: 'account-2',
+      archivedAt: null,
+    });
+
+    await expect(
+      contractService.createStandaloneContract({
+        title: 'Standalone',
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        startDate: new Date('2026-02-01'),
+        monthlyValue: 1000,
+        createdByUserId: 'user-1',
+      })
+    ).rejects.toThrow('Facility does not belong to the selected account');
+
+    expect(prisma.contract.create).not.toHaveBeenCalled();
   });
 });

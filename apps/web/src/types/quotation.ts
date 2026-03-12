@@ -108,7 +108,7 @@ export interface Quotation {
 
 export interface CreateQuotationInput {
   accountId: string;
-  facilityId?: string | null;
+  facilityId: string;
   title: string;
   description?: string | null;
   validUntil?: string | null;

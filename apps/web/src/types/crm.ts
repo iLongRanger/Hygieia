@@ -148,6 +148,10 @@ export interface Appointment {
     name: string;
     type: string;
   } | null;
+  facility: {
+    id: string;
+    name: string;
+  } | null;
   assignedToUser: {
     id: string;
     fullName: string;

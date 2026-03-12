@@ -17,10 +17,12 @@ import { listAppointments, createAppointment, updateAppointment, deleteAppointme
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
+import { listFacilities } from '../../lib/facilities';
 import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Contract } from '../../types/contract';
+import type { Facility } from '../../types/facility';
 
 type ViewMode = 'table' | 'calendar';
 type CalendarView = 'month' | 'week' | 'day';
@@ -49,6 +51,7 @@ const AppointmentsPage = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeContracts, setActiveContracts] = useState<Contract[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -88,6 +91,7 @@ const AppointmentsPage = () => {
   const [formData, setFormData] = useState({
     leadId: '',
     accountId: '',
+    facilityId: '',
     assignedToUserId: '',
     type: 'walk_through' as AppointmentType,
     status: 'scheduled' as AppointmentStatus,
@@ -188,6 +192,15 @@ const AppointmentsPage = () => {
     }
   }, []);
 
+  const fetchFacilities = useCallback(async () => {
+    try {
+      const response = await listFacilities({ limit: 200, includeArchived: false });
+      setFacilities(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch facilities:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (viewMode === 'table') {
       fetchAppointments();
@@ -212,7 +225,8 @@ const AppointmentsPage = () => {
     fetchLeads();
     fetchUsers();
     fetchActiveContracts();
-  }, [fetchLeads, fetchUsers, fetchActiveContracts]);
+    fetchFacilities();
+  }, [fetchLeads, fetchUsers, fetchActiveContracts, fetchFacilities]);
 
   // Save view mode preference
   useEffect(() => {
@@ -239,6 +253,24 @@ const AppointmentsPage = () => {
     });
     return Array.from(map.values());
   }, [activeContracts]);
+
+  const selectedLead = useMemo(
+    () => leads.find((lead) => lead.id === formData.leadId) || null,
+    [formData.leadId, leads]
+  );
+
+  const appointmentAccountId =
+    formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
+
+  const filteredFacilities = useMemo(
+    () => facilities.filter((facility) => facility.account?.id === appointmentAccountId),
+    [appointmentAccountId, facilities]
+  );
+
+  const convertedLeads = useMemo(
+    () => leads.filter((lead) => Boolean(lead.convertedToAccountId)),
+    [leads]
+  );
 
   const statusVariant = (status: AppointmentStatus) => {
     switch (status) {
@@ -300,6 +332,11 @@ const AppointmentsPage = () => {
       return;
     }
 
+    if (!formData.facilityId) {
+      toast.error('Please select a facility');
+      return;
+    }
+
     if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
       toast.error('Please fill all required fields');
       return;
@@ -310,6 +347,7 @@ const AppointmentsPage = () => {
       await createAppointment({
         leadId: formData.type === 'walk_through' ? formData.leadId : undefined,
         accountId: formData.type !== 'walk_through' ? formData.accountId : undefined,
+        facilityId: formData.facilityId,
         assignedToUserId: formData.assignedToUserId,
         type: formData.type,
         scheduledStart: new Date(formData.scheduledStart).toISOString(),
@@ -323,6 +361,7 @@ const AppointmentsPage = () => {
       setFormData({
         leadId: '',
         accountId: '',
+        facilityId: '',
         assignedToUserId: '',
         type: 'walk_through',
         status: 'scheduled',
@@ -352,6 +391,7 @@ const AppointmentsPage = () => {
     setFormData({
       leadId: appointment.lead?.id || '',
       accountId: appointment.account?.id || '',
+      facilityId: appointment.facility?.id || '',
       assignedToUserId: appointment.assignedToUser.id,
       type: appointment.type,
       status: appointment.status,
@@ -375,14 +415,20 @@ const AppointmentsPage = () => {
 
   const handleUpdate = async () => {
     if (!selectedAppointment) return;
-    if (!formData.leadId || !formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
+    if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
       toast.error('Please fill all required fields');
+      return;
+    }
+
+    if (!formData.facilityId) {
+      toast.error('Please select a facility');
       return;
     }
 
     try {
       setUpdating(true);
       await updateAppointment(selectedAppointment.id, {
+        facilityId: formData.facilityId,
         assignedToUserId: formData.assignedToUserId,
         status: formData.status,
         scheduledStart: new Date(formData.scheduledStart).toISOString(),
@@ -445,10 +491,11 @@ const AppointmentsPage = () => {
     const endDate = new Date(startDate);
     endDate.setMinutes(endDate.getMinutes() + 60);
 
-    setFormData({
-      leadId: '',
-      accountId: '',
-      assignedToUserId: '',
+      setFormData({
+        leadId: '',
+        accountId: '',
+        facilityId: '',
+        assignedToUserId: '',
       type: 'walk_through',
       status: 'scheduled',
       scheduledStart: new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
@@ -832,6 +879,7 @@ const AppointmentsPage = () => {
                 type: value as AppointmentType,
                 leadId: '',
                 accountId: '',
+                facilityId: '',
               })
             }
           />
@@ -840,12 +888,12 @@ const AppointmentsPage = () => {
             <Select
               label="Lead"
               placeholder="Select lead"
-              options={leads.map((lead) => ({
+              options={convertedLeads.map((lead) => ({
                 value: lead.id,
                 label: lead.companyName || lead.contactName,
               }))}
               value={formData.leadId}
-              onChange={(value) => setFormData({ ...formData, leadId: value })}
+              onChange={(value) => setFormData({ ...formData, leadId: value, facilityId: '' })}
             />
           ) : (
             <Select
@@ -856,9 +904,20 @@ const AppointmentsPage = () => {
                 label: account.name,
               }))}
               value={formData.accountId}
-              onChange={(value) => setFormData({ ...formData, accountId: value })}
+              onChange={(value) => setFormData({ ...formData, accountId: value, facilityId: '' })}
             />
           )}
+
+          <Select
+            label="Facility"
+            placeholder="Select facility"
+            options={filteredFacilities.map((facility) => ({
+              value: facility.id,
+              label: facility.name,
+            }))}
+            value={formData.facilityId}
+            onChange={(value) => setFormData({ ...formData, facilityId: value })}
+          />
 
           <Select
             label="Assigned Rep"
@@ -1001,6 +1060,17 @@ const AppointmentsPage = () => {
               disabled
             />
           )}
+
+          <Select
+            label="Facility"
+            placeholder="Select facility"
+            options={filteredFacilities.map((facility) => ({
+              value: facility.id,
+              label: facility.name,
+            }))}
+            value={formData.facilityId}
+            onChange={(value) => setFormData({ ...formData, facilityId: value })}
+          />
 
           <Select
             label="Assigned Rep"

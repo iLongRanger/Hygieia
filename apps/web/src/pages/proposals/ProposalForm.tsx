@@ -49,6 +49,7 @@ import type {
   ProposalItem,
   ProposalService,
   ProposalItemType,
+  ProposalStatus,
   ServiceType,
   ServiceFrequency,
   ProposalScheduleFrequency,
@@ -365,6 +366,7 @@ const ProposalForm = () => {
   // Loading states
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalStatus, setOriginalStatus] = useState<ProposalStatus | null>(null);
 
   // Reference data
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -376,7 +378,7 @@ const ProposalForm = () => {
     accountId: '',
     title: '',
     description: null,
-    facilityId: null,
+    facilityId: '',
     validUntil: null,
     taxRate: 0,
     notes: null,
@@ -436,6 +438,7 @@ const ProposalForm = () => {
 
   const selectedPricingPlan = pricingPlans.find((plan) => plan.id === selectedPricingPlanId);
   const isHourlyPlan = selectedPricingPlan?.pricingType === 'hourly';
+  const isRejectedRevision = isEditMode && originalStatus === 'rejected';
   const selectedFacility = useMemo(
     () => facilities.find((facility) => facility.id === formData.facilityId),
     [facilities, formData.facilityId]
@@ -546,6 +549,7 @@ const ProposalForm = () => {
   const fetchProposal = useCallback(async (proposalId: string) => {
     try {
       const proposal = await getProposal(proposalId);
+      setOriginalStatus(proposal.status);
       const scheduleFrequency = proposal.serviceFrequency || '5x_week';
       const incomingSchedule = proposal.serviceSchedule || createDefaultSchedule(scheduleFrequency);
       const normalizedDays = normalizeScheduleDays(incomingSchedule.days || [], scheduleFrequency);
@@ -553,7 +557,7 @@ const ProposalForm = () => {
         accountId: proposal.account.id,
         title: proposal.title,
         description: proposal.description || null,
-        facilityId: proposal.facility?.id || null,
+        facilityId: proposal.facility?.id || '',
         validUntil: proposal.validUntil
           ? proposal.validUntil.split('T')[0]
           : null,
@@ -825,7 +829,7 @@ const ProposalForm = () => {
       const updated = { ...prev, [field]: value };
       // Clear facility when account changes
       if (field === 'accountId') {
-        updated.facilityId = null;
+        updated.facilityId = '';
         setPricingBreakdown(null);
         setScheduleTouchedByUser(false);
       }
@@ -999,6 +1003,11 @@ const ProposalForm = () => {
       return;
     }
 
+    if (!formData.facilityId) {
+      toast.error('Select a facility before creating the proposal');
+      return;
+    }
+
     if (requiresFacilityReview && loadingFacilityReview) {
       toast.error('Please wait for facility review checks to finish');
       return;
@@ -1026,7 +1035,7 @@ const ProposalForm = () => {
           pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
         };
         await updateProposal(id, updateData);
-        toast.success('Proposal updated successfully');
+        toast.success(isRejectedRevision ? 'Proposal revised successfully' : 'Proposal updated successfully');
       } else {
         await createProposal({
           ...formData,
@@ -1072,20 +1081,36 @@ const ProposalForm = () => {
           </Button>
           <div>
             <h1 className="text-xl font-bold text-white sm:text-3xl">
-              {isEditMode ? 'Edit Proposal' : 'New Proposal'}
+              {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Edit Proposal') : 'New Proposal'}
             </h1>
             <p className="text-gray-400 mt-1">
               {isEditMode
-                ? 'Update the proposal details below'
+                ? (isRejectedRevision
+                  ? 'Revise the rejected proposal and reopen it as a draft'
+                  : 'Update the proposal details below')
                 : 'Fill in the details to create a new proposal'}
             </p>
           </div>
         </div>
         <Button type="submit" isLoading={saving} disabled={!canSubmitProposal}>
           <Save className="w-5 h-5 mr-2" />
-          {isEditMode ? 'Update Proposal' : 'Create Proposal'}
+          {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Update Proposal') : 'Create Proposal'}
         </Button>
       </div>
+
+      {isRejectedRevision && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <div className="flex gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-300" />
+            <div>
+              <p className="font-medium text-amber-100">Revision mode</p>
+              <p className="mt-1 text-sm text-amber-100/80">
+                Saving this rejected proposal creates a new historical version and reopens the proposal as a draft.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Main Form */}
@@ -1113,17 +1138,14 @@ const ProposalForm = () => {
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
               />
               <Select
-                label="Facility"
-                placeholder="Select a facility (optional)"
+                label="Facility *"
+                placeholder="Select a facility"
                 value={formData.facilityId || ''}
-                onChange={(value) => handleChange('facilityId', value || null)}
-                options={[
-                  { value: '', label: 'None' },
-                  ...filteredFacilities.map((f) => ({
-                    value: f.id,
-                    label: f.name,
-                  })),
-                ]}
+                onChange={(value) => handleChange('facilityId', value)}
+                options={filteredFacilities.map((f) => ({
+                  value: f.id,
+                  label: f.name,
+                }))}
               />
               <div className="flex flex-col gap-1">
                 <Select
@@ -1755,7 +1777,7 @@ const ProposalForm = () => {
                 disabled={!canSubmitProposal}
               >
                 <Save className="w-5 h-5 mr-2" />
-                {isEditMode ? 'Update Proposal' : 'Create Proposal'}
+                {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Update Proposal') : 'Create Proposal'}
               </Button>
               <Button
                 type="button"
