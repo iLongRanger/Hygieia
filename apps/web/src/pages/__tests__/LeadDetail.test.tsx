@@ -102,7 +102,10 @@ const appointment: Appointment = {
   timezone: 'America/New_York',
   location: null,
   notes: null,
+  completionNotes: null,
+  actualDuration: null,
   completedAt: null,
+  reminderSentAt: null,
   rescheduledFromId: null,
   lead: {
     id: 'lead-1',
@@ -111,8 +114,14 @@ const appointment: Appointment = {
     status: 'lead',
   },
   account: null,
+  facility: { id: 'facility-1', name: 'HQ' },
   assignedToUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+  assignedTeam: null,
   createdByUser: { id: 'user-2', fullName: 'Owner User' },
+  inspectionId: null,
+  inspection: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 const leadSource: LeadSource = {
@@ -173,6 +182,7 @@ const facility: Facility = {
   account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
   facilityManager: null,
   createdByUser: { id: 'user-2', fullName: 'Owner User' },
+  areas: [],
   _count: { areas: 1, facilityTasks: 1 },
 };
 

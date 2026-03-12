@@ -87,6 +87,7 @@ const facility: Facility = {
     id: 'user-1',
     fullName: 'Admin User',
   },
+  areas: [],
   _count: {
     areas: 1,
     facilityTasks: 0,
@@ -113,6 +114,8 @@ const areas: Area[] = [
     id: 'area-1',
     name: 'Office A',
     quantity: 1,
+    length: null,
+    width: null,
     squareFeet: '500',
     floorType: 'vct',
     conditionLevel: 'standard',

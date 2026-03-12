@@ -12,7 +12,10 @@ const createMockAppointment = (id: string, date: string): Appointment => ({
   timezone: 'UTC',
   location: null,
   notes: null,
+  completionNotes: null,
+  actualDuration: null,
   completedAt: null,
+  reminderSentAt: null,
   rescheduledFromId: null,
   lead: {
     id: 'lead-1',
@@ -21,15 +24,21 @@ const createMockAppointment = (id: string, date: string): Appointment => ({
     status: 'walk_through_booked',
   },
   account: null,
+  facility: { id: 'facility-1', name: 'Main Facility' },
   assignedToUser: {
     id: 'user-1',
     fullName: 'Rep User',
     email: 'rep@example.com',
   },
+  assignedTeam: null,
   createdByUser: {
     id: 'user-1',
     fullName: 'Admin',
   },
+  inspectionId: null,
+  inspection: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
 });
 
 describe('DayCalendar', () => {

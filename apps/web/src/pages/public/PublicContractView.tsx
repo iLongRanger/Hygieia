@@ -101,7 +101,10 @@ const PublicContractView: React.FC = () => {
       setLoading(true);
       const response = await getPublicContract(token!);
       setContract(response.data);
-      setBranding(response.branding);
+      setBranding({
+        companyTimezone: 'UTC',
+        ...response.branding,
+      });
     } catch (err: any) {
       setError(
         err.response?.status === 404

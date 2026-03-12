@@ -1433,9 +1433,9 @@ const ContractDetail = () => {
         ? [...current.newServiceSchedule.days]
         : defaultScheduleDays(frequency);
       const hasDay = currentDays.includes(day);
-      const nextDays = (hasDay
+      const nextDays = hasDay
         ? currentDays.filter((value) => value !== day)
-        : [...currentDays, day]) as ServiceSchedule['days'];
+        : [...currentDays, day];
       if (!hasDay && expected > 0 && nextDays.length > expected) {
         return current;
       }
@@ -1443,7 +1443,7 @@ const ContractDetail = () => {
         ...current,
         newServiceSchedule: {
           ...(current.newServiceSchedule || {}),
-          days: nextDays,
+          days: nextDays as ServiceSchedule['days'],
         },
       };
     });

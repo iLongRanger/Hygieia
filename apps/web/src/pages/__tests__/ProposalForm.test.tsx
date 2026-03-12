@@ -107,6 +107,7 @@ const facility: Facility = {
   },
   facilityManager: null,
   createdByUser: { id: 'user-1', fullName: 'Admin User' },
+  areas: [],
   _count: { areas: 2, facilityTasks: 10 },
 };
 
@@ -164,6 +165,8 @@ describe('ProposalForm', () => {
           id: 'area-1',
           name: 'Lobby',
           quantity: 1,
+          length: null,
+          width: null,
           squareFeet: '500',
           floorType: 'vct',
           conditionLevel: 'standard',
@@ -470,6 +473,11 @@ describe('ProposalForm', () => {
         id: 'account-1',
         name: 'Acme Corp',
         type: 'commercial',
+      },
+      createdByUser: {
+        id: 'user-1',
+        fullName: 'Admin User',
+        email: 'admin@example.com',
       },
       proposalItems: [],
       proposalServices: [],

@@ -4,35 +4,56 @@ import userEvent from '@testing-library/user-event';
 import { AppointmentBlock } from '../AppointmentBlock';
 import type { Appointment } from '../../../types/crm';
 
-const createMockAppointment = (overrides: Partial<Appointment> = {}): Appointment => ({
-  id: 'appt-1',
-  type: 'walk_through',
-  status: 'scheduled',
-  scheduledStart: '2026-01-15T10:00:00Z',
-  scheduledEnd: '2026-01-15T11:00:00Z',
-  timezone: 'UTC',
-  location: null,
-  notes: null,
-  completedAt: null,
-  rescheduledFromId: null,
-  lead: {
-    id: 'lead-1',
-    contactName: 'Jane Doe',
-    companyName: 'Acme Corp',
-    status: 'walk_through_booked',
-  },
-  account: null,
-  assignedToUser: {
-    id: 'user-1',
-    fullName: 'Rep User',
-    email: 'rep@example.com',
-  },
-  createdByUser: {
-    id: 'user-1',
-    fullName: 'Admin',
-  },
-  ...overrides,
-});
+const createMockAppointment = (overrides: Partial<Appointment> = {}): Appointment => {
+  const appointment: Appointment = {
+    id: 'appt-1',
+    type: 'walk_through',
+    status: 'scheduled',
+    scheduledStart: '2026-01-15T10:00:00Z',
+    scheduledEnd: '2026-01-15T11:00:00Z',
+    timezone: 'UTC',
+    location: null,
+    notes: null,
+    completionNotes: null,
+    actualDuration: null,
+    completedAt: null,
+    reminderSentAt: null,
+    rescheduledFromId: null,
+    lead: {
+      id: 'lead-1',
+      contactName: 'Jane Doe',
+      companyName: 'Acme Corp',
+      status: 'walk_through_booked',
+    },
+    account: null,
+    facility: { id: 'facility-1', name: 'Main Facility' },
+    assignedToUser: {
+      id: 'user-1',
+      fullName: 'Rep User',
+      email: 'rep@example.com',
+    },
+    assignedTeam: null,
+    createdByUser: {
+      id: 'user-1',
+      fullName: 'Admin',
+    },
+    inspectionId: null,
+    inspection: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+
+  return {
+    ...appointment,
+    completionNotes: appointment.completionNotes ?? null,
+    notes: appointment.notes ?? null,
+    facility: appointment.facility ?? { id: 'facility-1', name: 'Main Facility' },
+    assignedTeam: appointment.assignedTeam ?? null,
+    inspectionId: appointment.inspectionId ?? null,
+    inspection: appointment.inspection ?? null,
+  };
+};
 
 describe('AppointmentBlock', () => {
   describe('Rendering', () => {

@@ -188,7 +188,10 @@ const PublicProposalView: React.FC = () => {
       setLoading(true);
       const response = await getPublicProposal(token!);
       setProposal(response.data);
-      setBranding(response.branding);
+      setBranding({
+        companyTimezone: 'UTC',
+        ...response.branding,
+      });
     } catch (err: any) {
       setError(
         err.response?.status === 404

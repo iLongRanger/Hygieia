@@ -4,9 +4,9 @@ import type { Contract } from '../../types/contract';
 import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
 import { formatCurrency, formatShortDate, getTypeVariant } from './account-constants';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Card } from '../../components/ui/card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
 import {
   ArrowLeft,
   Edit2,

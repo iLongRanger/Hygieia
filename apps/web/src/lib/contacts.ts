@@ -4,7 +4,7 @@ import type {
   CreateContactInput,
   UpdateContactInput,
   PaginatedResponse,
-} from '../types/crm';
+} from '../types/contact';
 
 export async function listContacts(params?: {
   page?: number;

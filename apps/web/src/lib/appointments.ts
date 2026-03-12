@@ -27,6 +27,7 @@ export interface CreateAppointmentInput {
 }
 
 export interface UpdateAppointmentInput {
+  facilityId?: string;
   assignedToUserId?: string;
   status?: AppointmentStatus;
   scheduledStart?: string;

@@ -138,14 +138,15 @@ const jobToAppointment = (job: Job): Appointment => {
     scheduledEnd: `${dateBase}T${endTime}`,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     location: null,
-    notes: job.notes,
-    completionNotes: job.completionNotes,
+    notes: job.notes ?? null,
+    completionNotes: job.completionNotes ?? null,
     actualDuration: job.actualHours ? parseFloat(job.actualHours) * 60 : null,
-    completedAt: job.actualEndTime,
+    completedAt: job.actualEndTime ?? null,
     reminderSentAt: null,
     rescheduledFromId: null,
     lead: null,
     account: { id: job.account.id, name: job.account.name, type: '' },
+    facility: { id: job.facility.id, name: job.facility.name },
     assignedToUser: job.assignedToUser
       ? { id: job.assignedToUser.id, fullName: displayName, email: job.assignedToUser.email }
       : { id: '', fullName: displayName, email: '' },
