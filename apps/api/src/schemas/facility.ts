@@ -1,4 +1,37 @@
 import { z } from 'zod';
+import {
+  expectedDaysForScheduleFrequency,
+  proposalScheduleFrequencySchema,
+  scheduleWeekdaySchema,
+} from './serviceSchedule';
+
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must use HH:mm (24-hour)');
+
+const addressServiceScheduleSchema = z
+  .object({
+    frequency: proposalScheduleFrequencySchema,
+    days: z.array(scheduleWeekdaySchema).min(1).max(7),
+    allowedWindowStart: timeSchema,
+    allowedWindowEnd: timeSchema,
+  })
+  .superRefine((value, ctx) => {
+    const expected = expectedDaysForScheduleFrequency(value.frequency);
+    if (value.days.length !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${value.frequency} requires exactly ${expected} day(s)`,
+        path: ['days'],
+      });
+    }
+
+    if (new Set(value.days).size !== value.days.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Service days must be unique',
+        path: ['days'],
+      });
+    }
+  });
 
 export const addressSchema = z.object({
   street: z.string().optional(),
@@ -13,7 +46,83 @@ export const addressSchema = z.object({
   geofenceRadiusMeters: z.coerce.number().positive().optional(),
   timezone: z.string().optional(),
   timeZone: z.string().optional(),
-}).passthrough();
+  serviceSchedule: addressServiceScheduleSchema.optional(),
+  clientServiceSchedule: addressServiceScheduleSchema.optional(),
+  serviceFrequency: proposalScheduleFrequencySchema.optional(),
+  serviceDays: z.array(scheduleWeekdaySchema).optional(),
+  allowedWindowStart: timeSchema.optional(),
+  allowedWindowEnd: timeSchema.optional(),
+}).passthrough().superRefine((value, ctx) => {
+  const schedule = value.serviceSchedule ?? value.clientServiceSchedule;
+  const topLevelScheduleProvided =
+    value.serviceFrequency !== undefined ||
+    value.serviceDays !== undefined ||
+    value.allowedWindowStart !== undefined ||
+    value.allowedWindowEnd !== undefined;
+
+  if (schedule && topLevelScheduleProvided) {
+    if (value.serviceFrequency !== undefined && value.serviceFrequency !== schedule.frequency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Top-level serviceFrequency must match address.serviceSchedule.frequency',
+        path: ['serviceFrequency'],
+      });
+    }
+
+    if (
+      value.serviceDays !== undefined &&
+      JSON.stringify(value.serviceDays) !== JSON.stringify(schedule.days)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Top-level serviceDays must match address.serviceSchedule.days',
+        path: ['serviceDays'],
+      });
+    }
+
+    if (
+      value.allowedWindowStart !== undefined &&
+      value.allowedWindowStart !== schedule.allowedWindowStart
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Top-level allowedWindowStart must match address.serviceSchedule.allowedWindowStart',
+        path: ['allowedWindowStart'],
+      });
+    }
+
+    if (
+      value.allowedWindowEnd !== undefined &&
+      value.allowedWindowEnd !== schedule.allowedWindowEnd
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Top-level allowedWindowEnd must match address.serviceSchedule.allowedWindowEnd',
+        path: ['allowedWindowEnd'],
+      });
+    }
+
+    return;
+  }
+
+  if (topLevelScheduleProvided) {
+    const normalized = addressServiceScheduleSchema.safeParse({
+      frequency: value.serviceFrequency,
+      days: value.serviceDays,
+      allowedWindowStart: value.allowedWindowStart,
+      allowedWindowEnd: value.allowedWindowEnd,
+    });
+
+    if (!normalized.success) {
+      for (const issue of normalized.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: issue.path.length > 0 ? issue.path : ['serviceFrequency'],
+        });
+      }
+    }
+  }
+});
 
 export const facilityStatusSchema = z.enum(['active', 'inactive', 'pending']);
 

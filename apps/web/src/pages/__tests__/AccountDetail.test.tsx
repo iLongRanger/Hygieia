@@ -387,4 +387,26 @@ describe('AccountDetail', () => {
       screen.getByText(/total square feet will be auto-calculated from the areas added to this facility/i)
     ).toBeInTheDocument();
   });
+
+  it('limits service day selection to the chosen facility frequency on the account add-facility modal', async () => {
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Acme Corporation' });
+    await userEventInstance.click(screen.getByRole('button', { name: /add facility/i }));
+    await userEventInstance.selectOptions(await screen.findByLabelText(/service frequency/i), '3x_week');
+
+    const monday = screen.getByLabelText(/mon/i) as HTMLInputElement;
+    const wednesday = screen.getByLabelText(/wed/i) as HTMLInputElement;
+    const friday = screen.getByLabelText(/fri/i) as HTMLInputElement;
+    const sunday = screen.getByLabelText(/sun/i) as HTMLInputElement;
+
+    expect(monday.checked).toBe(true);
+    expect(wednesday.checked).toBe(true);
+    expect(friday.checked).toBe(true);
+    expect(sunday.disabled).toBe(true);
+
+    await userEventInstance.click(friday);
+    expect(sunday.disabled).toBe(false);
+  });
 });

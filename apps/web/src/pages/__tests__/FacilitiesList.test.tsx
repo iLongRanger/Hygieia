@@ -115,4 +115,25 @@ describe('FacilitiesList', () => {
       screen.getByText(/total square feet will be auto-calculated from areas/i)
     ).toBeInTheDocument();
   });
+
+  it('limits service day selection to the chosen facility frequency in the create modal', async () => {
+    const user = userEvent.setup();
+    render(<FacilitiesList />);
+
+    await user.click(screen.getByRole('button', { name: /add facility/i }));
+    await user.selectOptions(await screen.findByLabelText(/service frequency/i), '3x_week');
+
+    const monday = screen.getByLabelText(/mon/i) as HTMLInputElement;
+    const wednesday = screen.getByLabelText(/wed/i) as HTMLInputElement;
+    const friday = screen.getByLabelText(/fri/i) as HTMLInputElement;
+    const sunday = screen.getByLabelText(/sun/i) as HTMLInputElement;
+
+    expect(monday.checked).toBe(true);
+    expect(wednesday.checked).toBe(true);
+    expect(friday.checked).toBe(true);
+    expect(sunday.disabled).toBe(true);
+
+    await user.click(friday);
+    expect(sunday.disabled).toBe(false);
+  });
 });

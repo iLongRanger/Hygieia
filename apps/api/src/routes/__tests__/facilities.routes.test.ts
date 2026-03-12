@@ -118,6 +118,30 @@ describe('Facility Routes', () => {
       .expect(422);
   });
 
+  it('POST / should reject facility schedules with too many selected days for the chosen frequency', async () => {
+    await request(app)
+      .post('/api/v1/facilities')
+      .send({
+        name: 'Main Facility',
+        accountId: '11111111-1111-1111-1111-111111111111',
+        address: {
+          serviceSchedule: {
+            frequency: '3x_week',
+            days: ['monday', 'wednesday', 'friday', 'saturday'],
+            allowedWindowStart: '18:00',
+            allowedWindowEnd: '06:00',
+          },
+          serviceFrequency: '3x_week',
+          serviceDays: ['monday', 'wednesday', 'friday', 'saturday'],
+          allowedWindowStart: '18:00',
+          allowedWindowEnd: '06:00',
+        },
+      })
+      .expect(422);
+
+    expect(facilityService.createFacility).not.toHaveBeenCalled();
+  });
+
   it('PATCH /:id should update facility', async () => {
     (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1' });
     (facilityService.updateFacility as jest.Mock).mockResolvedValue({ id: 'facility-1' });

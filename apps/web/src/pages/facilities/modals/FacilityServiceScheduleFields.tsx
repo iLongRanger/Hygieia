@@ -41,6 +41,28 @@ const DAY_OPTIONS: { value: ServiceScheduleDay; label: string }[] = [
   { value: 'sunday', label: 'Sun' },
 ];
 
+function getRequiredDaysForFrequency(frequency: string): number {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'biweekly':
+    case 'monthly':
+    case 'quarterly':
+      return 1;
+    case '2x_week':
+      return 2;
+    case '3x_week':
+      return 3;
+    case '4x_week':
+      return 4;
+    case '7x_week':
+      return 7;
+    case '5x_week':
+    default:
+      return 5;
+  }
+}
+
 function getDefaultDaysForFrequency(frequency: string): ServiceScheduleDay[] {
   switch (frequency) {
     case '1x_week':
@@ -90,6 +112,7 @@ export function FacilityServiceScheduleFields({
   onChange,
 }: FacilityServiceScheduleFieldsProps): React.JSX.Element {
   const schedule = readSchedule(address);
+  const requiredDays = getRequiredDaysForFrequency(schedule.frequency);
 
   const updateSchedule = (patch: Partial<FacilitySchedule>) => {
     const nextSchedule = { ...schedule, ...patch };
@@ -105,6 +128,9 @@ export function FacilityServiceScheduleFields({
 
   const toggleDay = (day: ServiceScheduleDay) => {
     const exists = schedule.days.includes(day);
+    if (!exists && schedule.days.length >= requiredDays) {
+      return;
+    }
     const nextDays = exists
       ? schedule.days.filter((d) => d !== day)
       : [...schedule.days, day];
@@ -140,23 +166,32 @@ export function FacilityServiceScheduleFields({
         />
       </div>
       <div>
-        <div className="mb-2 text-sm text-gray-300">Service Days</div>
+        <div className="mb-2 flex items-center justify-between gap-3 text-sm text-gray-300">
+          <span>Service Days</span>
+          <span className="text-xs text-gray-400">
+            Select {requiredDays} day{requiredDays === 1 ? '' : 's'}
+          </span>
+        </div>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
           {DAY_OPTIONS.map((day) => {
             const checked = schedule.days.includes(day.value);
+            const disabled = !checked && schedule.days.length >= requiredDays;
             return (
               <label
                 key={day.value}
-                className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-xs cursor-pointer ${
+                className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-xs ${
                   checked
                     ? 'border-emerald bg-emerald/10 text-white'
-                    : 'border-white/10 text-gray-400'
+                    : disabled
+                      ? 'border-white/5 text-gray-600 cursor-not-allowed'
+                      : 'border-white/10 text-gray-400 cursor-pointer'
                 }`}
               >
                 <input
                   type="checkbox"
                   className="sr-only"
                   checked={checked}
+                  disabled={disabled}
                   onChange={() => toggleDay(day.value)}
                 />
                 {day.label}
