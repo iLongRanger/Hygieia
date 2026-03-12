@@ -129,12 +129,7 @@ export async function listContacts(
   if (access.userRole === 'manager' && access.userId) {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { createdByUserId: access.userId },
-          { account: { accountManagerId: access.userId } },
-        ],
-      },
+      { account: { accountManagerId: access.userId } },
     ];
   }
 

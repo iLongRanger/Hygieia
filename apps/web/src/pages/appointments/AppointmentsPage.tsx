@@ -19,10 +19,12 @@ import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
 import { listFacilities } from '../../lib/facilities';
 import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
+import { PERMISSIONS } from '../../lib/permissions';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Contract } from '../../types/contract';
 import type { Facility } from '../../types/facility';
+import { useAuthStore } from '../../stores/authStore';
 
 type ViewMode = 'table' | 'calendar';
 type CalendarView = 'month' | 'week' | 'day';
@@ -47,6 +49,7 @@ const APPOINTMENT_STATUSES: { value: AppointmentStatus; label: string }[] = [
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -104,6 +107,7 @@ const AppointmentsPage = () => {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const canWriteAppointments = hasPermission(PERMISSIONS.APPOINTMENTS_WRITE);
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -317,6 +321,11 @@ const AppointmentsPage = () => {
     typeFilter || statusFilter || assignedFilter || leadFilter || accountFilter || includePast;
 
   const handleCreate = async () => {
+    if (!canWriteAppointments) {
+      toast.error('You do not have permission to schedule appointments');
+      return;
+    }
+
     if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
       toast.error('Please fill all required fields');
       return;
@@ -385,6 +394,11 @@ const AppointmentsPage = () => {
   };
 
   const openEditModal = (appointment: Appointment) => {
+    if (!canWriteAppointments) {
+      navigate(`/appointments/${appointment.id}`);
+      return;
+    }
+
     setSelectedAppointment(appointment);
     const startLocal = new Date(appointment.scheduledStart);
     const endLocal = new Date(appointment.scheduledEnd);
@@ -414,6 +428,11 @@ const AppointmentsPage = () => {
   };
 
   const handleUpdate = async () => {
+    if (!canWriteAppointments) {
+      toast.error('You do not have permission to update appointments');
+      return;
+    }
+
     if (!selectedAppointment) return;
     if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
       toast.error('Please fill all required fields');
@@ -454,6 +473,11 @@ const AppointmentsPage = () => {
   };
 
   const handleDelete = async () => {
+    if (!canWriteAppointments) {
+      toast.error('You do not have permission to delete appointments');
+      return;
+    }
+
     if (!selectedAppointment) return;
     try {
       setDeleting(true);
@@ -482,6 +506,10 @@ const AppointmentsPage = () => {
   };
 
   const handleCalendarCreateClick = (date: Date) => {
+    if (!canWriteAppointments) {
+      return;
+    }
+
     // Pre-fill the form with the selected date
     const startDate = new Date(date);
     const hasTime = startDate.getHours() !== 0 || startDate.getMinutes() !== 0;
@@ -583,7 +611,7 @@ const AppointmentsPage = () => {
         </Badge>
       ),
     },
-    {
+    ...(canWriteAppointments ? [{
       header: 'Actions',
       cell: (item: Appointment) => (
         <div className="flex gap-2">
@@ -606,7 +634,7 @@ const AppointmentsPage = () => {
           </Button>
         </div>
       ),
-    },
+    }] : []),
   ];
 
   return (
@@ -646,10 +674,12 @@ const AppointmentsPage = () => {
               <span className="hidden sm:inline">Calendar</span>
             </button>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
+          {canWriteAppointments && (
+            <Button onClick={() => setShowCreateModal(true)}>
             <CalendarPlus className="mr-2 h-4 w-4" />
             Schedule Appointment
-          </Button>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -863,7 +893,7 @@ const AppointmentsPage = () => {
       )}
 
       <Modal
-        isOpen={showCreateModal}
+        isOpen={showCreateModal && canWriteAppointments}
         onClose={() => setShowCreateModal(false)}
         title="Schedule Appointment"
         size="lg"
@@ -1029,7 +1059,7 @@ const AppointmentsPage = () => {
       </Modal>
 
       <Modal
-        isOpen={showEditModal}
+        isOpen={showEditModal && canWriteAppointments}
         onClose={() => setShowEditModal(false)}
         title="Edit Appointment"
         size="lg"
@@ -1215,7 +1245,7 @@ const AppointmentsPage = () => {
       </Modal>
 
       <ConfirmDialog
-        isOpen={showDeleteDialog}
+        isOpen={showDeleteDialog && canWriteAppointments}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={handleDelete}
         title="Delete Appointment"

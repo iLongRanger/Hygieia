@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { ensureOwnershipAccess } from '../middleware/ownership';
 import {
   listAreas,
   getAreaById,
@@ -43,7 +44,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listAreas(parsed.data);
+      const result = await listAreas(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -61,6 +65,14 @@ router.get(
       if (!area) {
         throw new NotFoundError('Area not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: area.facility.id,
+        path: req.path,
+        method: req.method,
+      });
+
       res.json({ data: area });
     } catch (error) {
       next(error);
@@ -82,6 +94,13 @@ router.post(
       if (!req.user) {
         throw new ValidationError('User not authenticated');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: parsed.data.facilityId,
+        path: req.path,
+        method: req.method,
+      });
 
       const area = await createArea({
         ...parsed.data,
@@ -105,6 +124,13 @@ router.patch(
       if (!existing) {
         throw new NotFoundError('Area not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       const parsed = updateAreaSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -130,6 +156,13 @@ router.post(
         throw new NotFoundError('Area not found');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const area = await archiveArea(req.params.id);
       res.json({ data: area });
     } catch (error) {
@@ -149,6 +182,13 @@ router.post(
         throw new NotFoundError('Area not found');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const area = await restoreArea(req.params.id);
       res.json({ data: area });
     } catch (error) {
@@ -167,6 +207,13 @@ router.delete(
       if (!existing) {
         throw new NotFoundError('Area not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       await deleteArea(req.params.id);
       res.status(204).send();

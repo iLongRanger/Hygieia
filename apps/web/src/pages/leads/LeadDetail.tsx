@@ -178,6 +178,10 @@ const LeadDetail = () => {
     () => hasPermission(PERMISSIONS.LEADS_WRITE),
     [hasPermission]
   );
+  const canWriteAppointments = useMemo(
+    () => hasPermission(PERMISSIONS.APPOINTMENTS_WRITE),
+    [hasPermission]
+  );
   const leadAssignableUsers = useMemo(
     () => users.filter(isLeadAssignableUser),
     [users]
@@ -638,9 +642,9 @@ const LeadDetail = () => {
           <h1 className="text-2xl font-bold text-white">{lead.contactName}</h1>
           <p className="text-gray-400">{lead.companyName || 'No company name'}</p>
         </div>
-        {canWriteLeads && (
+        {(canWriteLeads || canWriteAppointments) && (
           <div className="flex items-center gap-2">
-            {lead.status === 'lost' ? (
+            {canWriteLeads && (lead.status === 'lost' ? (
               <Button variant="secondary" onClick={handleReopenLead} disabled={updating}>
                 Reopen Lead
               </Button>
@@ -651,14 +655,18 @@ const LeadDetail = () => {
               }}>
                 Mark Lost
               </Button>
+            ))}
+            {canWriteLeads && (
+              <Button variant="secondary" onClick={openEditModal}>
+                Edit Lead
+              </Button>
             )}
-            <Button variant="secondary" onClick={openEditModal}>
-              Edit Lead
-            </Button>
-            <Button onClick={openScheduleModal}>
+            {canWriteAppointments && (
+              <Button onClick={openScheduleModal}>
               <Plus className="mr-2 h-4 w-4" />
               Schedule Walkthrough
-            </Button>
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -755,7 +763,7 @@ const LeadDetail = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {canWriteLeads && appointment.status === 'scheduled' && (
+                          {canWriteAppointments && appointment.status === 'scheduled' && (
                             <Button
                               size="sm"
                               variant="secondary"
@@ -777,7 +785,7 @@ const LeadDetail = () => {
                               Reschedule
                             </Button>
                           )}
-                          {(isAssigned || canWriteLeads) && appointment.status === 'scheduled' && (
+                          {(isAssigned || canWriteAppointments) && appointment.status === 'scheduled' && (
                             <Button
                               size="sm"
                               onClick={() => {

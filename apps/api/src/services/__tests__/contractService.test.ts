@@ -62,7 +62,7 @@ describe('contractService', () => {
     );
   });
 
-  it('listContracts should scope managers to owned or managed accounts', async () => {
+  it('listContracts should scope managers to assigned accounts', async () => {
     (prisma.contract.count as jest.Mock).mockResolvedValue(0);
     (prisma.contract.findMany as jest.Mock).mockResolvedValue([]);
 
@@ -75,12 +75,7 @@ describe('contractService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           AND: [
-            {
-              OR: [
-                { createdByUserId: 'manager-1' },
-                { account: { accountManagerId: 'manager-1' } },
-              ],
-            },
+            { account: { accountManagerId: 'manager-1' } },
           ],
         }),
       })
@@ -105,7 +100,7 @@ describe('contractService', () => {
     );
   });
 
-  it('getContractsSummary should scope managers to owned or managed accounts', async () => {
+  it('getContractsSummary should scope managers to assigned accounts', async () => {
     (prisma.contract.count as jest.Mock).mockResolvedValue(0);
 
     await contractService.getContractsSummary(
@@ -117,12 +112,7 @@ describe('contractService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           AND: [
-            {
-              OR: [
-                { createdByUserId: 'manager-1' },
-                { account: { accountManagerId: 'manager-1' } },
-              ],
-            },
+            { account: { accountManagerId: 'manager-1' } },
           ],
         }),
       })

@@ -12,6 +12,9 @@ import {
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
+    facility: {
+      findUnique: jest.fn(),
+    },
     inspection: {
       findMany: jest.fn(),
       count: jest.fn(),
@@ -57,6 +60,12 @@ describe('inspectionService', () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({
       id: 'user-1',
       roles: [{ role: { key: 'manager' } }],
+    });
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      accountId: 'account-1',
+      archivedAt: null,
+      status: 'active',
     });
   });
 

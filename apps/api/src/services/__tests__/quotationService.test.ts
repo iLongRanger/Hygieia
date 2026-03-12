@@ -13,6 +13,9 @@ import {
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
+    facility: {
+      findUnique: jest.fn(),
+    },
     quotation: {
       findMany: jest.fn(),
       count: jest.fn(),
@@ -50,6 +53,12 @@ describe('quotationService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
+    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+      id: 'facility-1',
+      accountId: 'account-1',
+      archivedAt: null,
+      status: 'active',
+    });
   });
 
   it('listQuotations applies default archive filter and search', async () => {
@@ -83,6 +92,7 @@ describe('quotationService', () => {
 
     await createQuotation({
       accountId: 'account-1',
+      facilityId: 'facility-1',
       title: 'Monthly Cleaning',
       taxRate: 0.1,
       createdByUserId: 'user-1',
@@ -146,12 +156,23 @@ describe('quotationService', () => {
   it('updateQuotation rebuilds services and recalculates totals', async () => {
     (prisma.quotation.findUnique as jest.Mock).mockResolvedValue({
       id: 'qt-1',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
       subtotal: 200,
       taxRate: 0.08,
+      pricingApprovalStatus: 'not_required',
+      pricingApprovalRequestedByUserId: null,
+      pricingApprovalRequestedAt: null,
+      pricingApprovedByUserId: null,
+      pricingApprovedAt: null,
+      pricingApprovalRejectedAt: null,
+      pricingApprovalReason: null,
+      createdByUserId: 'user-1',
     });
     (prisma.quotation.update as jest.Mock).mockResolvedValue({ id: 'qt-1' });
 
     await updateQuotation('qt-1', {
+      facilityId: 'facility-1',
       taxRate: 0.05,
       services: [
         { serviceName: 'A', price: 80 },

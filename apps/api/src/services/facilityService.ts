@@ -196,6 +196,8 @@ export async function listFacilities(
     where.jobs = { some: { assignedToUserId: options.userId } };
   } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
     where.contracts = { some: { assignedTeamId: options.userTeamId } };
+  } else if (options?.userRole === 'manager' && options.userId) {
+    where.account = { accountManagerId: options.userId };
   }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'squareFeet'];

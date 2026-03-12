@@ -125,6 +125,26 @@ describe('AppointmentsPage', () => {
       const tableButton = screen.getByRole('button', { name: /table/i });
       expect(tableButton).toHaveClass('bg-primary-600');
     });
+
+    it('hides scheduling controls without appointments write permission', async () => {
+      useAuthStore.setState({
+        user: {
+          id: 'viewer-1',
+          email: 'viewer@example.com',
+          fullName: 'Viewer User',
+          role: 'viewer',
+          permissions: {
+            appointments_read: true,
+          },
+        },
+        token: 'token',
+        isAuthenticated: true,
+      });
+
+      await renderAppointmentsPage();
+
+      expect(screen.queryByRole('button', { name: /schedule appointment/i })).not.toBeInTheDocument();
+    });
   });
 
   describe('View toggle', () => {

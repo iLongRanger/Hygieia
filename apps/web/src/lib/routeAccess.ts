@@ -36,6 +36,14 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.JOBS_READ],
   },
   {
+    path: '/appointments',
+    requiredPermissions: [PERMISSIONS.APPOINTMENTS_READ],
+  },
+  {
+    path: '/appointments/:id',
+    requiredPermissions: [PERMISSIONS.APPOINTMENTS_READ],
+  },
+  {
     path: '/inspections',
     requiredPermissions: [PERMISSIONS.INSPECTIONS_READ],
   },

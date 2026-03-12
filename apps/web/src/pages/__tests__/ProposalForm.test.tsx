@@ -478,7 +478,7 @@ describe('ProposalForm', () => {
 
     render(<ProposalForm />);
 
-    expect(await screen.findByText('Revise Proposal')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Revise Proposal' })).toBeInTheDocument();
     expect(screen.getByText(/reopens the proposal as a draft/i)).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText(/proposal title/i));

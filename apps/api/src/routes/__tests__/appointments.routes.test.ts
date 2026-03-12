@@ -3,6 +3,7 @@ import request from 'supertest';
 import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as appointmentService from '../../services/appointmentService';
+import { ensureOwnershipAccess } from '../../middleware/ownership';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -14,6 +15,11 @@ jest.mock('../../middleware/auth', () => ({
 jest.mock('../../middleware/rbac', () => ({
   requireAnyRole: (_req: any, _res: any, next: any) => next(),
   requireManager: (_req: any, _res: any, next: any) => next(),
+}));
+
+jest.mock('../../middleware/ownership', () => ({
+  ensureOwnershipAccess: jest.fn(async () => undefined),
+  ensureManagerAccountAccess: jest.fn(async () => undefined),
 }));
 
 jest.mock('../../services/appointmentService');
@@ -34,7 +40,13 @@ describe('Appointments Routes', () => {
     const response = await request(app).get('/api/v1/appointments').expect(200);
 
     expect(response.body.data).toHaveLength(1);
-    expect(appointmentService.listAppointments).toHaveBeenCalled();
+    expect(appointmentService.listAppointments).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 
   it('GET / should return 422 for invalid query', async () => {
@@ -52,6 +64,13 @@ describe('Appointments Routes', () => {
     const response = await request(app).get('/api/v1/appointments/appt-1').expect(200);
 
     expect(response.body.data.id).toBe('appt-1');
+    expect(ensureOwnershipAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1', role: 'owner' }),
+      expect.objectContaining({
+        resourceType: 'appointment',
+        resourceId: 'appt-1',
+      })
+    );
   });
 
   it('GET /:id should return 404 when not found', async () => {
@@ -65,6 +84,7 @@ describe('Appointments Routes', () => {
 
     const payload = {
       leadId: '11111111-1111-1111-1111-111111111111',
+      facilityId: '33333333-3333-3333-3333-333333333333',
       assignedToUserId: '22222222-2222-2222-2222-222222222222',
       type: 'walk_through',
       scheduledStart: '2026-02-10T10:00:00.000Z',

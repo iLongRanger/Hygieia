@@ -51,6 +51,7 @@ jest.mock('../../middleware/ownership', () => {
         throw new ForbiddenError('Access denied');
       }
     }),
+    ensureManagerAccountAccess: jest.fn(async () => undefined),
   };
 });
 

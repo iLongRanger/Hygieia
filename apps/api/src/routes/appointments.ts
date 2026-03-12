@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireAnyRole, requireManager } from '../middleware/rbac';
 import { NotFoundError, ValidationError, BadRequestError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
 import { ZodError } from 'zod';
 import {
   createAppointmentSchema,
@@ -50,7 +51,10 @@ router.get(
         params.assignedToUserId = req.user.id;
       }
 
-      const appointments = await listAppointments(params);
+      const appointments = await listAppointments(params, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: appointments });
     } catch (error) {
       next(error);
@@ -68,6 +72,13 @@ router.get(
       if (!appointment) {
         throw new NotFoundError('Appointment not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'appointment',
+        resourceId: appointment.id,
+        path: req.path,
+        method: req.method,
+      });
 
       if (req.user?.role === 'cleaner' && appointment.assignedToUser.id !== req.user.id) {
         throw new ValidationError('Insufficient permissions');
@@ -95,6 +106,13 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
+      if (parsed.data.accountId) {
+        await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
+      }
+
       const appointment = await createAppointment({
         ...parsed.data,
         createdByUserId: req.user.id,
@@ -117,6 +135,13 @@ router.patch(
       if (!existing) {
         throw new NotFoundError('Appointment not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'appointment',
+        resourceId: existing.id,
+        path: req.path,
+        method: req.method,
+      });
 
       const parsed = updateAppointmentSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -146,6 +171,13 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'appointment',
+        resourceId: req.params.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const appointment = await rescheduleAppointment(req.params.id, parsed.data, req.user.id);
       res.status(201).json({ data: appointment });
     } catch (error) {
@@ -174,6 +206,13 @@ router.post(
         throw new NotFoundError('Appointment not found');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'appointment',
+        resourceId: appointment.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const isManager = ['owner', 'admin', 'manager'].includes(req.user.role);
       if (!isManager && appointment.assignedToUser.id !== req.user.id) {
         throw new BadRequestError('Only the assigned rep can complete this appointment');
@@ -201,6 +240,13 @@ router.delete(
       if (!existing) {
         throw new NotFoundError('Appointment not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'appointment',
+        resourceId: existing.id,
+        path: req.path,
+        method: req.method,
+      });
 
       await deleteAppointment(req.params.id);
       res.status(204).send();

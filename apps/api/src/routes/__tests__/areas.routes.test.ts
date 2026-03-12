@@ -15,6 +15,10 @@ jest.mock('../../middleware/rbac', () => ({
   requirePermission: () => (_req: any, _res: any, next: any) => next(),
 }));
 
+jest.mock('../../middleware/ownership', () => ({
+  ensureOwnershipAccess: jest.fn(async () => undefined),
+}));
+
 jest.mock('../../services/areaService');
 
 describe('Area Routes', () => {
@@ -38,7 +42,13 @@ describe('Area Routes', () => {
       .expect(200);
 
     expect(response.body.data).toHaveLength(1);
-    expect(areaService.listAreas).toHaveBeenCalled();
+    expect(areaService.listAreas).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 
   it('GET / should return 422 for invalid query', async () => {
@@ -78,7 +88,10 @@ describe('Area Routes', () => {
   });
 
   it('PATCH /:id should update area', async () => {
-    (areaService.getAreaById as jest.Mock).mockResolvedValue({ id: 'area-1' });
+    (areaService.getAreaById as jest.Mock).mockResolvedValue({
+      id: 'area-1',
+      facility: { id: 'facility-1' },
+    });
     (areaService.updateArea as jest.Mock).mockResolvedValue({ id: 'area-1' });
 
     const response = await request(app)
@@ -90,7 +103,10 @@ describe('Area Routes', () => {
   });
 
   it('POST /:id/archive should archive area', async () => {
-    (areaService.getAreaById as jest.Mock).mockResolvedValue({ id: 'area-1' });
+    (areaService.getAreaById as jest.Mock).mockResolvedValue({
+      id: 'area-1',
+      facility: { id: 'facility-1' },
+    });
     (areaService.archiveArea as jest.Mock).mockResolvedValue({ id: 'area-1' });
 
     const response = await request(app)
@@ -101,7 +117,10 @@ describe('Area Routes', () => {
   });
 
   it('POST /:id/restore should restore area', async () => {
-    (areaService.getAreaById as jest.Mock).mockResolvedValue({ id: 'area-1' });
+    (areaService.getAreaById as jest.Mock).mockResolvedValue({
+      id: 'area-1',
+      facility: { id: 'facility-1' },
+    });
     (areaService.restoreArea as jest.Mock).mockResolvedValue({ id: 'area-1' });
 
     const response = await request(app)
@@ -112,7 +131,10 @@ describe('Area Routes', () => {
   });
 
   it('DELETE /:id should delete area', async () => {
-    (areaService.getAreaById as jest.Mock).mockResolvedValue({ id: 'area-1' });
+    (areaService.getAreaById as jest.Mock).mockResolvedValue({
+      id: 'area-1',
+      facility: { id: 'facility-1' },
+    });
     (areaService.deleteArea as jest.Mock).mockResolvedValue({ id: 'area-1' });
 
     await request(app)

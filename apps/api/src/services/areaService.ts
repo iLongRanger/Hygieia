@@ -15,6 +15,11 @@ export interface AreaListParams {
   includeArchived?: boolean;
 }
 
+interface AreaAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface AreaCreateInput {
   facilityId: string;
   areaTypeId: string;
@@ -121,7 +126,8 @@ const areaSelect = {
 } satisfies Prisma.AreaSelect;
 
 export async function listAreas(
-  params: AreaListParams
+  params: AreaListParams,
+  access: AreaAccessOptions = {}
 ): Promise<
   PaginatedResult<Prisma.AreaGetPayload<{ select: typeof areaSelect }>>
 > {
@@ -170,6 +176,10 @@ export async function listAreas(
       { name: { contains: search, mode: 'insensitive' } },
       { areaType: { name: { contains: search, mode: 'insensitive' } } },
     ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.facility = { account: { accountManagerId: access.userId } };
   }
 
   const validSortFields = ['createdAt', 'name', 'squareFeet', 'floorType'];

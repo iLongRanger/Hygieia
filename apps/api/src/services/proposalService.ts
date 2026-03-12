@@ -587,12 +587,7 @@ export async function listProposals(
   if (access.userRole === 'manager' && access.userId) {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { createdByUserId: access.userId },
-          { account: { accountManagerId: access.userId } },
-        ],
-      },
+      { account: { accountManagerId: access.userId } },
     ];
   }
 
@@ -1045,12 +1040,7 @@ export async function getProposalsAvailableForContract(
   if (access.userRole === 'manager' && access.userId) {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { createdByUserId: access.userId },
-          { account: { accountManagerId: access.userId } },
-        ],
-      },
+      { account: { accountManagerId: access.userId } },
     ];
   }
 

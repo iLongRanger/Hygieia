@@ -26,6 +26,15 @@ interface OwnershipCheckContext {
   method?: string;
 }
 
+async function hasManagerAccountScope(userId: string, accountId: string): Promise<boolean> {
+  const account = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { accountManagerId: true },
+  });
+
+  return account?.accountManagerId === userId;
+}
+
 /**
  * Checks if a manager has access to a resource.
  * Managers can access resources they created or are assigned to.
@@ -46,104 +55,73 @@ async function hasManagerAccess(
     }
 
     case 'account': {
-      const account = await prisma.account.findUnique({
-        where: { id: resourceId },
-        select: { createdByUserId: true, accountManagerId: true },
-      });
-      if (!account) return false;
-      return account.createdByUserId === userId || account.accountManagerId === userId;
+      return hasManagerAccountScope(userId, resourceId);
     }
 
     case 'facility': {
       const facility = await prisma.facility.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
-          facilityManagerId: true,
           account: { select: { accountManagerId: true } },
         },
       });
       if (!facility) return false;
-      return (
-        facility.createdByUserId === userId ||
-        facility.facilityManagerId === userId ||
-        facility.account.accountManagerId === userId
-      );
+      return facility.account.accountManagerId === userId;
     }
 
     case 'proposal': {
       const proposal = await prisma.proposal.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
           account: { select: { accountManagerId: true } },
         },
       });
       if (!proposal) return false;
-      return (
-        proposal.createdByUserId === userId ||
-        proposal.account.accountManagerId === userId
-      );
+      return proposal.account.accountManagerId === userId;
     }
 
     case 'quotation': {
       const quotation = await prisma.quotation.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
           account: { select: { accountManagerId: true } },
         },
       });
       if (!quotation) return false;
-      return (
-        quotation.createdByUserId === userId ||
-        quotation.account.accountManagerId === userId
-      );
+      return quotation.account.accountManagerId === userId;
     }
 
     case 'contract': {
       const contract = await prisma.contract.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
           account: { select: { accountManagerId: true } },
         },
       });
       if (!contract) return false;
-      return (
-        contract.createdByUserId === userId ||
-        contract.account.accountManagerId === userId
-      );
+      return contract.account.accountManagerId === userId;
     }
 
     case 'contact': {
       const contact = await prisma.contact.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
           account: { select: { accountManagerId: true } },
         },
       });
       if (!contact) return false;
-      return (
-        contact.createdByUserId === userId ||
-        (contact.account?.accountManagerId === userId)
-      );
+      return contact.account?.accountManagerId === userId;
     }
 
     case 'appointment': {
       const appointment = await prisma.appointment.findUnique({
         where: { id: resourceId },
         select: {
-          createdByUserId: true,
-          assignedToUserId: true,
+          account: { select: { accountManagerId: true } },
         },
       });
       if (!appointment) return false;
-      return (
-        appointment.createdByUserId === userId ||
-        appointment.assignedToUserId === userId
-      );
+      return appointment.account?.accountManagerId === userId;
     }
 
     default:
@@ -278,4 +256,34 @@ export function verifyAccountAccess(paramName = 'accountId') {
  */
 export function verifyFacilityAccess(paramName = 'facilityId') {
   return verifyOwnership({ resourceType: 'facility', paramName });
+}
+
+export async function ensureManagerAccountAccess(
+  user: AuthenticatedUser | undefined,
+  accountId: string,
+  context?: Pick<OwnershipCheckContext, 'path' | 'method'>
+): Promise<void> {
+  if (!user) {
+    throw new ForbiddenError('Authentication required');
+  }
+
+  if (user.role === 'owner' || user.role === 'admin') {
+    return;
+  }
+
+  if (user.role !== 'manager') {
+    throw new ForbiddenError('Insufficient permissions');
+  }
+
+  const hasAccess = await hasManagerAccountScope(user.id, accountId);
+  if (!hasAccess) {
+    logSecurityEvent('idor_attempt_blocked', {
+      userId: user.id,
+      resourceType: 'account',
+      resourceId: accountId,
+      path: context?.path,
+      method: context?.method,
+    });
+    throw new ForbiddenError('You do not have access to this account');
+  }
 }

@@ -121,12 +121,7 @@ function applyContractAccessScope(
   if (options?.userRole === 'manager' && options.userId) {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { createdByUserId: options.userId },
-          { account: { accountManagerId: options.userId } },
-        ],
-      },
+      { account: { accountManagerId: options.userId } },
     ];
   }
 }

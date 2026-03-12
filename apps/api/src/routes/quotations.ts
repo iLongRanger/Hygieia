@@ -1,7 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { ensureOwnershipAccess, verifyOwnership } from '../middleware/ownership';
+import {
+  ensureManagerAccountAccess,
+  ensureOwnershipAccess,
+  verifyOwnership,
+} from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listQuotations,
@@ -122,6 +126,11 @@ router.post(
     try {
       const parsed = createQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+
+      await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+        path: req.path,
+        method: req.method,
+      });
 
       const quotation = await createQuotation({
         ...parsed.data,

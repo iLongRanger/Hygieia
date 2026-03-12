@@ -143,8 +143,7 @@ describe('ownership middleware', () => {
       mockReq.user = { id: 'user-123', email: 'test@test.com', role: 'manager' };
 
       (prisma.account.findUnique as jest.Mock).mockResolvedValue({
-        createdByUserId: 'user-123',
-        accountManagerId: null,
+        accountManagerId: 'user-123',
       });
 
       const middleware = verifyOwnership({ resourceType: 'account' });
@@ -152,7 +151,7 @@ describe('ownership middleware', () => {
 
       expect(prisma.account.findUnique).toHaveBeenCalledWith({
         where: { id: 'resource-123' },
-        select: { createdByUserId: true, accountManagerId: true },
+        select: { accountManagerId: true },
       });
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -161,8 +160,6 @@ describe('ownership middleware', () => {
       mockReq.user = { id: 'user-123', email: 'test@test.com', role: 'manager' };
 
       (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
-        createdByUserId: 'other-user',
-        facilityManagerId: null,
         account: { accountManagerId: 'user-123' },
       });
 

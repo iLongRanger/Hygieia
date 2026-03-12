@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { verifyOwnership } from '../middleware/ownership';
+import { ensureManagerAccountAccess, verifyOwnership } from '../middleware/ownership';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   listFacilities,
@@ -102,6 +102,11 @@ router.post(
       if (!req.user) {
         throw new ValidationError('User not authenticated');
       }
+
+      await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+        path: req.path,
+        method: req.method,
+      });
 
       const facility = await createFacility({
         ...parsed.data,

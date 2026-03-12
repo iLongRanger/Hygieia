@@ -1,10 +1,13 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, '../../../.env');
+const envPathCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../../.env'),
+  path.resolve(process.cwd(), '../../../.env'),
+];
+const envPath = envPathCandidates.find((candidate) => fs.existsSync(candidate)) ?? envPathCandidates[0];
 const shouldOverrideProcessEnv = process.env.NODE_ENV !== 'production';
 const result = dotenv.config({ path: envPath, override: shouldOverrideProcessEnv });
 const loadedEnv = result.parsed ?? {};

@@ -17,6 +17,11 @@ export interface AppointmentListParams {
   includePast?: boolean;
 }
 
+interface AppointmentAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface AppointmentCreateInput {
   leadId?: string;
   accountId?: string;
@@ -139,7 +144,10 @@ const appointmentSelect = {
   },
 } satisfies Prisma.AppointmentSelect;
 
-export async function listAppointments(params: AppointmentListParams) {
+export async function listAppointments(
+  params: AppointmentListParams,
+  access: AppointmentAccessOptions = {}
+) {
   const {
     leadId,
     accountId,
@@ -179,6 +187,10 @@ export async function listAppointments(params: AppointmentListParams) {
     }
   } else if (!includePast) {
     where.scheduledEnd = { gte: new Date() };
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.account = { accountManagerId: access.userId };
   }
 
   return prisma.appointment.findMany({

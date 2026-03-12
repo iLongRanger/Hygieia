@@ -206,12 +206,7 @@ export async function listAccounts(
   if (access.userRole === 'manager' && access.userId) {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { createdByUserId: access.userId },
-          { accountManagerId: access.userId },
-        ],
-      },
+      { accountManagerId: access.userId },
     ];
   }
 

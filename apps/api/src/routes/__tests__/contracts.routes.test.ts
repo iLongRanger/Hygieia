@@ -52,6 +52,7 @@ jest.mock('../../middleware/ownership', () => ({
       throw new ForbiddenError('Access denied');
     }
   }),
+  ensureManagerAccountAccess: jest.fn(async () => undefined),
 }));
 
 jest.mock('../../services/contractService');
@@ -450,6 +451,7 @@ describe('Contract Routes', () => {
       .send({
         title: 'New Contract',
         accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
         startDate: '2026-01-01',
         monthlyValue: 1000,
       })
@@ -460,6 +462,7 @@ describe('Contract Routes', () => {
       expect.objectContaining({
         title: 'New Contract',
         accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
         createdByUserId: 'user-1',
       })
     );
@@ -744,6 +747,8 @@ describe('Contract Routes', () => {
 
   it('POST /:id/send should return 422 when FRONTEND_URL is missing', async () => {
     delete process.env.FRONTEND_URL;
+    delete process.env.WEB_APP_URL;
+    delete process.env.CORS_ORIGIN;
     (contractService.getContractById as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'draft',

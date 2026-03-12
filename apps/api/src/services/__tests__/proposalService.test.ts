@@ -378,12 +378,7 @@ describe('proposalService', () => {
             status: 'accepted',
             archivedAt: null,
             AND: [
-              {
-                OR: [
-                  { createdByUserId: 'manager-123' },
-                  { account: { accountManagerId: 'manager-123' } },
-                ],
-              },
+              { account: { accountManagerId: 'manager-123' } },
             ],
           }),
         })
