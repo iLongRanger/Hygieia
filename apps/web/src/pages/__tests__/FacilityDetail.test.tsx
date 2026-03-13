@@ -335,6 +335,28 @@ describe('FacilityDetail', () => {
     });
   });
 
+  it('deduplicates matching area and global templates by name and frequency', async () => {
+    const user = userEvent.setup();
+    listTaskTemplatesMock.mockResolvedValue({
+      data: [
+        areaSpecificTemplate,
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-global-duplicate',
+          isGlobal: true,
+          areaType: null,
+        },
+      ],
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add task/i }));
+
+    expect(await screen.findAllByText('Dust desks')).toHaveLength(1);
+  });
+
   it('submits facility for proposal from header action', async () => {
     const user = userEvent.setup();
     listFacilityTasksMock.mockResolvedValue({

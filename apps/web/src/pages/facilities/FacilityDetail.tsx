@@ -403,6 +403,12 @@ const FacilityDetail = () => {
   const normalizeTaskName = (name: string) =>
     name.trim().replace(/\s+/g, ' ').toLowerCase();
 
+  const templateSpecificity = (template: TaskTemplate, areaTypeId: string) => {
+    if (template.areaType?.id === areaTypeId) return 0;
+    if (template.isGlobal) return 1;
+    return 2;
+  };
+
   const findDuplicateTask = (params: {
     areaId?: string | null;
     cleaningFrequency: CleaningFrequency;
@@ -780,6 +786,9 @@ const FacilityDetail = () => {
           )
       )
       .sort((a, b) => {
+        const aSpecificity = templateSpecificity(a, area.areaType.id);
+        const bSpecificity = templateSpecificity(b, area.areaType.id);
+        if (aSpecificity !== bSpecificity) return aSpecificity - bSpecificity;
         const aIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
           isCleaningFrequency(a.cleaningType) ? a.cleaningType : 'daily'
         );
@@ -790,7 +799,17 @@ const FacilityDetail = () => {
         return a.name.localeCompare(b.name);
       });
 
-    return matchingTemplates.map((template) => ({
+    const uniqueTemplates = matchingTemplates.filter((template, index, templates) => {
+      const normalizedKey = `${normalizeTaskName(template.name)}::${template.cleaningType}`;
+      return (
+        templates.findIndex(
+          (candidate) =>
+            `${normalizeTaskName(candidate.name)}::${candidate.cleaningType}` === normalizedKey
+        ) === index
+      );
+    });
+
+    return uniqueTemplates.map((template) => ({
       id: `task-template-${template.id}`,
       taskTemplateId: template.id,
       name: template.name,
