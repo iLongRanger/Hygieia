@@ -202,6 +202,58 @@ const formatFrequency = (value: string | null | undefined) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
+const normalizeServiceBullet = (value: string): string =>
+  value.replace(/^[\s*-•]+/, '').trim();
+
+const parseServiceDescriptionBullets = (
+  description: string | null | undefined,
+  includedTasks: string[] | undefined
+) => {
+  const lines = (description || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const areaSummary = lines[0] || '';
+  const bullets: string[] = [];
+  const seen = new Set<string>();
+
+  const addBullet = (value: string) => {
+    let normalized = value.trim();
+    while (normalized.startsWith('-') || normalized.startsWith('*')) {
+      normalized = normalized.slice(1).trimStart();
+    }
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    bullets.push(normalized);
+  };
+
+  for (const line of lines.slice(1)) {
+    const match = line.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      for (const task of match[2].split(',')) {
+        addBullet(task);
+      }
+      continue;
+    }
+    addBullet(line);
+  }
+
+  for (const taskLine of includedTasks || []) {
+    const match = taskLine.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      for (const task of match[2].split(',')) {
+        addBullet(task);
+      }
+      continue;
+    }
+    addBullet(taskLine);
+  }
+
+  return { areaSummary, bullets };
+};
+
 const getFrequencyOrder = (value: string | null | undefined) => {
   const key = (value || '').toLowerCase();
   const order: Record<string, number> = {
@@ -2197,6 +2249,56 @@ const ContractDetail = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </Card>
+        )}
+
+        {contract.proposal?.proposalServices && contract.proposal.proposalServices.length > 0 && (
+          <Card className="lg:col-span-2">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-gold" />
+              <h2 className="text-lg font-semibold text-white">Services</h2>
+            </div>
+            <div className="space-y-5">
+              {contract.proposal.proposalServices.map((service) => {
+                const { areaSummary, bullets } = parseServiceDescriptionBullets(
+                  service.description,
+                  service.includedTasks
+                );
+
+                return (
+                  <div
+                    key={service.id}
+                    className="rounded-lg border border-white/10 bg-white/[0.02] p-4"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="font-medium text-white">{service.serviceName}</div>
+                        {areaSummary && (
+                          <div className="mt-1 text-sm text-gray-400">{areaSummary}</div>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {formatFrequency(service.frequency)}
+                        {service.monthlyPrice != null && (
+                          <span className="ml-2 font-medium text-emerald-300">
+                            {formatCurrency(Number(service.monthlyPrice))}/month
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {bullets.length > 0 ? (
+                      <ul className="mt-3 space-y-1.5 pl-5 text-sm text-gray-200 list-disc">
+                        {bullets.map((bullet) => (
+                          <li key={`${service.id}-${bullet}`}>{bullet}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Card>
         )}

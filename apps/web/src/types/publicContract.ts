@@ -30,6 +30,21 @@ export interface PublicContract {
     name: string;
     address: any;
   } | null;
+  proposal?: {
+    id: string;
+    proposalNumber: string;
+    title: string;
+    proposalServices?: Array<{
+      id: string;
+      serviceName: string;
+      frequency?: string | null;
+      description?: string | null;
+      monthlyPrice?: number | null;
+      estimatedHours?: number | null;
+      hourlyRate?: number | null;
+      includedTasks?: string[];
+    }>;
+  } | null;
 }
 
 export interface PublicContractResponse {

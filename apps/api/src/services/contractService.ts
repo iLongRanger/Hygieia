@@ -203,6 +203,19 @@ const contractSelect = {
       id: true,
       proposalNumber: true,
       title: true,
+      proposalServices: {
+        orderBy: { sortOrder: 'asc' },
+        select: {
+          id: true,
+          serviceName: true,
+          frequency: true,
+          description: true,
+          monthlyPrice: true,
+          estimatedHours: true,
+          hourlyRate: true,
+          includedTasks: true,
+        },
+      },
     },
   },
   opportunity: {

@@ -41,6 +41,23 @@ const response = {
     sentAt: '2026-02-01T00:00:00.000Z',
     account: { name: 'Acme Corp' },
     facility: { name: 'HQ', address: { street: '123 Main', city: 'Austin', state: 'TX' } },
+    proposal: {
+      id: 'proposal-1',
+      proposalNumber: 'PROP-001',
+      title: 'Proposal Title',
+      proposalServices: [
+        {
+          id: 'proposal-service-1',
+          serviceName: 'Lobby Cleaning',
+          frequency: 'weekly',
+          description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats',
+          monthlyPrice: 1200,
+          estimatedHours: null,
+          hourlyRate: null,
+          includedTasks: ['Weekly: Empty trash'],
+        },
+      ],
+    },
   },
   branding: {
     companyName: 'Hygieia',
@@ -75,6 +92,9 @@ describe('PublicContractView', () => {
 
     expect(await screen.findByText('Monthly Janitorial Services')).toBeInTheDocument();
     expect(screen.getByText('Contract CONT-2026-0001')).toBeInTheDocument();
+    expect(screen.getByText('Dust desks')).toBeInTheDocument();
+    expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
+    expect(screen.getByText('Empty trash')).toBeInTheDocument();
   });
 
   it('signs contract from modal', async () => {

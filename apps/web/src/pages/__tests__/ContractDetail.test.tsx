@@ -122,7 +122,23 @@ const draftContract: Contract = {
   archivedAt: null,
   account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
   facility: null,
-  proposal: { id: 'proposal-1', proposalNumber: 'PROP-001', title: 'Proposal Title' },
+  proposal: {
+    id: 'proposal-1',
+    proposalNumber: 'PROP-001',
+    title: 'Proposal Title',
+    proposalServices: [
+      {
+        id: 'proposal-service-1',
+        serviceName: 'Lobby Cleaning',
+        frequency: 'weekly',
+        description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats',
+        monthlyPrice: 1200,
+        estimatedHours: null,
+        hourlyRate: null,
+        includedTasks: ['Weekly: Empty trash'],
+      },
+    ],
+  },
   approvedByUser: null,
   createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
 };
@@ -716,6 +732,15 @@ describe('ContractDetail', () => {
     await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
 
     expect(await screen.findByText('Global Mop')).toBeInTheDocument();
+  });
+
+  it('renders contract services as bullet items', async () => {
+    render(<ContractDetail />);
+
+    expect(await screen.findByText('Lobby Cleaning')).toBeInTheDocument();
+    expect(screen.getByText('Dust desks')).toBeInTheDocument();
+    expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
+    expect(screen.getByText('Empty trash')).toBeInTheDocument();
   });
 
   it('requires explicit confirmation to apply a future contract change early', async () => {

@@ -78,6 +78,58 @@ const formatTime24h = (value: string): string => {
   return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
 };
 
+const normalizeServiceBullet = (value: string): string =>
+  value.replace(/^[\s*-•]+/, '').trim();
+
+const parseServiceDescriptionBullets = (
+  description: string | null | undefined,
+  includedTasks: string[] | undefined
+) => {
+  const lines = (description || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const areaSummary = lines[0] || '';
+  const bullets: string[] = [];
+  const seen = new Set<string>();
+
+  const addBullet = (value: string) => {
+    let normalized = value.trim();
+    while (normalized.startsWith('-') || normalized.startsWith('*')) {
+      normalized = normalized.slice(1).trimStart();
+    }
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    bullets.push(normalized);
+  };
+
+  for (const line of lines.slice(1)) {
+    const match = line.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      for (const task of match[2].split(',')) {
+        addBullet(task);
+      }
+      continue;
+    }
+    addBullet(line);
+  }
+
+  for (const taskLine of includedTasks || []) {
+    const match = taskLine.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      for (const task of match[2].split(',')) {
+        addBullet(task);
+      }
+      continue;
+    }
+    addBullet(taskLine);
+  }
+
+  return { areaSummary, bullets };
+};
+
 const PublicContractView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [contract, setContract] = useState<PublicContract | null>(null);
@@ -362,6 +414,48 @@ const PublicContractView: React.FC = () => {
             <div className="bg-white rounded-lg border border-gray-200 p-5">
               <div className="font-medium text-gray-900">{contract.facility.name}</div>
               <div className="text-sm text-gray-500 mt-1">{formatAddress(contract.facility.address)}</div>
+            </div>
+          </div>
+        )}
+
+        {contract.proposal?.proposalServices && contract.proposal.proposalServices.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Services</h3>
+            <div className="space-y-4">
+              {contract.proposal.proposalServices.map((service) => {
+                const { areaSummary, bullets } = parseServiceDescriptionBullets(
+                  service.description,
+                  service.includedTasks
+                );
+
+                return (
+                  <div
+                    key={service.id}
+                    className="bg-white rounded-lg border border-gray-200 p-5"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900">{service.serviceName}</div>
+                        {areaSummary && (
+                          <div className="mt-1 text-sm text-gray-500">{areaSummary}</div>
+                        )}
+                      </div>
+                      <div className="text-sm font-medium text-gray-700">
+                        {frequencyLabels[service.frequency || ''] || service.frequency || 'As scheduled'}
+                      </div>
+                    </div>
+                    {bullets.length > 0 ? (
+                      <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
+                        {bullets.map((bullet) => (
+                          <li key={`${service.id}-${bullet}`}>{bullet}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

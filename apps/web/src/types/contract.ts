@@ -135,6 +135,16 @@ export interface Contract {
     id: string;
     proposalNumber: string;
     title: string;
+    proposalServices?: {
+      id: string;
+      serviceName: string;
+      frequency?: string | null;
+      description?: string | null;
+      monthlyPrice?: number | null;
+      estimatedHours?: number | null;
+      hourlyRate?: number | null;
+      includedTasks?: string[];
+    }[];
   } | null;
   assignedTeam?: {
     id: string;
