@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Send } from 'lucide-react';
+import { ArrowLeft, Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import {
@@ -176,6 +176,7 @@ const FacilityDetail = () => {
   const hasSelectedTaskSelectionTasks = taskSelectionTasks.some((task) => task.include);
   const hasExistingProposalOrContract =
     (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
+  const hasSubmittedForProposal = Boolean(facility?.submittedForProposal);
 
   // --- Effects ---
   useEffect(() => {
@@ -755,13 +756,17 @@ const FacilityDetail = () => {
     try {
       setSubmittingForProposal(true);
       const result = await submitFacilityForProposal(id, submitProposalNotes || null);
+      setFacility((prev) => (
+        prev
+          ? {
+              ...prev,
+              submittedForProposal: true,
+            }
+          : prev
+      ));
       setShowSubmitProposalModal(false);
       setSubmitProposalNotes('');
-      if (result.alreadyCompleted) {
-        toast.success('Facility submitted. Walkthrough was already completed.');
-      } else {
-        toast.success('Facility submitted. Walkthrough marked completed and lead updated.');
-      }
+      toast.success('Facility submitted. Walkthrough marked completed and pipeline updated.');
     } catch (error: any) {
       console.error('Failed to submit facility for proposal:', error);
       const message =
@@ -1105,7 +1110,7 @@ const FacilityDetail = () => {
           <p className="text-gray-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          {!hasExistingProposalOrContract && (
+          {!hasExistingProposalOrContract && !hasSubmittedForProposal && (
             <Button
               onClick={() => setShowSubmitProposalModal(true)}
               disabled={activeAreasCount === 0 || activeTasksCount === 0}
@@ -1120,6 +1125,20 @@ const FacilityDetail = () => {
           </Button>
         </div>
       </div>
+
+      {hasSubmittedForProposal && !hasExistingProposalOrContract && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="flex items-start gap-3">
+            <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+            <div>
+              <div className="font-medium text-amber-200">Submitted for Proposal</div>
+              <div className="mt-1 text-amber-100/90">
+                This facility has already been submitted for proposal preparation. A second submission is blocked.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Bar */}
       <div className="flex gap-1 border-b border-white/10">

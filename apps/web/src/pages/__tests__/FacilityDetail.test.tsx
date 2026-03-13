@@ -94,6 +94,7 @@ const facility: Facility = {
     proposals: 0,
     contracts: 0,
   },
+  submittedForProposal: false,
 };
 
 const areaTypes: AreaType[] = [
@@ -427,6 +428,21 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await screen.findByText('Main Facility');
+    expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
+  });
+
+  it('shows submitted alert and blocks repeat submission when facility is already submitted for proposal', async () => {
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      submittedForProposal: true,
+    });
+
+    render(<FacilityDetail />);
+
+    expect(await screen.findByText('Submitted for Proposal')).toBeInTheDocument();
+    expect(
+      screen.getByText(/already been submitted for proposal preparation/i)
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
   });
 });

@@ -68,6 +68,7 @@ export interface Facility {
     proposals?: number;
     contracts?: number;
   };
+  submittedForProposal?: boolean;
 }
 
 export interface CreateFacilityInput {

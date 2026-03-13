@@ -224,10 +224,28 @@ export async function listFacilities(
 }
 
 export async function getFacilityById(id: string) {
-  return prisma.facility.findUnique({
+  const facility = await prisma.facility.findUnique({
     where: { id },
     select: facilitySelect,
   });
+
+  if (!facility) {
+    return null;
+  }
+
+  const opportunity = await findPreferredOpportunityForAccount(prisma, facility.account.id, {
+    requireLeadId: true,
+    facilityId: facility.id,
+  });
+
+  return {
+    ...facility,
+    submittedForProposal:
+      opportunity?.status === 'walk_through_completed'
+      || opportunity?.status === 'proposal_sent'
+      || opportunity?.status === 'negotiation'
+      || opportunity?.status === 'won',
+  };
 }
 
 export async function createFacility(input: FacilityCreateInput) {
@@ -481,28 +499,7 @@ export async function submitFacilityForProposal(
   }
 
   if (appointment.status === 'completed') {
-    if (opportunity.status !== 'walk_through_completed') {
-      await prisma.opportunity.update({
-        where: { id: appointment.opportunityId ?? opportunity.id },
-        data: { status: 'walk_through_completed' },
-      });
-    }
-
-    if (opportunity.leadId) {
-      await prisma.lead.update({
-        where: { id: opportunity.leadId },
-        data: { status: 'walk_through_completed' },
-      });
-    }
-
-    return {
-      facilityId: facility.id,
-      leadId: opportunity.leadId,
-      appointmentId: appointment.id,
-      appointmentStatus: 'completed',
-      leadStatus: 'walk_through_completed',
-      alreadyCompleted: true,
-    };
+    throw new BadRequestError('Facility has already been submitted for proposal');
   }
 
   await completeAppointment(appointment.id, {

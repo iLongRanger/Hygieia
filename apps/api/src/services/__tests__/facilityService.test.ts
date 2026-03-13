@@ -126,13 +126,36 @@ describe('facilityService', () => {
 
   describe('getFacilityById', () => {
     it('should return facility by id', async () => {
-      const mockFacility = createTestFacility({ id: 'facility-123' });
+      const mockFacility = createTestFacility({
+        id: 'facility-123',
+        account: {
+          id: 'account-123',
+          name: 'Acme Corp',
+          type: 'commercial',
+        },
+      });
 
       (prisma.facility.findUnique as jest.Mock).mockResolvedValue(mockFacility);
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-1',
+          accountId: mockFacility.account.id,
+          facilityId: 'facility-123',
+          leadId: 'lead-1',
+          status: 'walk_through_completed',
+          updatedAt: new Date('2026-03-13T10:00:00.000Z'),
+          createdAt: new Date('2026-03-13T09:00:00.000Z'),
+        },
+      ]);
 
       const result = await facilityService.getFacilityById('facility-123');
 
-      expect(result).toEqual(mockFacility);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...mockFacility,
+          submittedForProposal: true,
+        })
+      );
     });
   });
 
@@ -465,13 +488,13 @@ describe('facilityService', () => {
         status: 'completed',
         opportunityId: 'opp-1',
       });
-      (prisma.lead.update as jest.Mock).mockResolvedValue({ id: 'lead-source' });
-      (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
 
-      const result = await facilityService.submitFacilityForProposal('facility-123', {
-        userId: 'user-1',
-        notes: null,
-      });
+      await expect(
+        facilityService.submitFacilityForProposal('facility-123', {
+          userId: 'user-1',
+          notes: null,
+        })
+      ).rejects.toThrow('Facility has already been submitted for proposal');
 
       expect(prisma.opportunity.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -489,7 +512,6 @@ describe('facilityService', () => {
           }),
         })
       );
-      expect(result.leadId).toBe('lead-source');
     });
   });
 });
