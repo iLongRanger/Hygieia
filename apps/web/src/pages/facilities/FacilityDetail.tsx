@@ -20,7 +20,6 @@ import {
   updateFacilityTask,
   deleteFacilityTask,
   listTaskTemplates,
-  bulkCreateFacilityTasks,
   submitFacilityForProposal,
 } from '../../lib/facilities';
 import type {
@@ -43,7 +42,7 @@ import { FacilityAreaDetail } from './FacilityAreaDetail';
 import { EditFacilityModal } from './modals/EditFacilityModal';
 import { AreaModal } from './modals/AreaModal';
 import { TaskModal } from './modals/TaskModal';
-import { BulkTaskModal } from './modals/BulkTaskModal';
+import { TaskSelectionModal } from './modals/TaskSelectionModal';
 import { SubmitProposalModal } from './modals/SubmitProposalModal';
 import {
   isCleaningFrequency,
@@ -81,12 +80,15 @@ const FacilityDetail = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showBulkTaskModal, setShowBulkTaskModal] = useState(false);
+  const [showTaskSelectionModal, setShowTaskSelectionModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingTask, setEditingTask] = useState<FacilityTask | null>(null);
   const [selectedAreaForTask, setSelectedAreaForTask] = useState<Area | null>(null);
-  const [selectedTaskTemplateIds, setSelectedTaskTemplateIds] = useState<Set<string>>(new Set());
-  const [bulkFrequency, setBulkFrequency] = useState<string>('daily');
+  const [taskSelectionTasks, setTaskSelectionTasks] = useState<AreaTemplateTaskSelection[]>([]);
+  const [taskSelectionStep, setTaskSelectionStep] = useState(0);
+  const [reviewedTaskSelectionFrequencies, setReviewedTaskSelectionFrequencies] =
+    useState<Set<CleaningFrequency>>(new Set());
+  const [newTaskSelectionCustomName, setNewTaskSelectionCustomName] = useState('');
   const [saving, setSaving] = useState(false);
   const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
@@ -149,16 +151,10 @@ const FacilityDetail = () => {
     return matchingTemplates.length > 0 ? matchingTemplates : taskTemplates;
   }, [taskTemplates, taskForm.cleaningFrequency]);
 
-  const filteredBulkTaskTemplates = useMemo(
-    () => {
-      const matchingTemplates = taskTemplates.filter((template) => template.cleaningType === bulkFrequency);
-      return matchingTemplates.length > 0 ? matchingTemplates : taskTemplates;
-    },
-    [taskTemplates, bulkFrequency]
-  );
-
   const currentAreaTaskFrequency =
     ORDERED_CLEANING_FREQUENCIES[areaTaskPipelineStep] || 'daily';
+  const currentTaskSelectionFrequency =
+    ORDERED_CLEANING_FREQUENCIES[taskSelectionStep] || 'daily';
 
   const filteredAreaTemplateTasks = useMemo(
     () =>
@@ -167,9 +163,17 @@ const FacilityDetail = () => {
       ),
     [areaTemplateTasks, currentAreaTaskFrequency]
   );
+  const filteredTaskSelectionTasks = useMemo(
+    () =>
+      taskSelectionTasks.filter(
+        (task) => task.cleaningType === currentTaskSelectionFrequency
+      ),
+    [taskSelectionTasks, currentTaskSelectionFrequency]
+  );
 
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
+  const hasSelectedTaskSelectionTasks = taskSelectionTasks.some((task) => task.include);
   const hasExistingProposalOrContract =
     (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
 
@@ -186,14 +190,6 @@ const FacilityDetail = () => {
       }));
     }
   }, [filteredTaskTemplates, taskForm.taskTemplateId]);
-
-  useEffect(() => {
-    setSelectedTaskTemplateIds((prev) => {
-      const allowed = new Set(filteredBulkTaskTemplates.map((t) => t.id));
-      const next = new Set([...prev].filter((id) => allowed.has(id)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [filteredBulkTaskTemplates]);
 
   // --- Data fetching ---
   const fetchFacility = useCallback(async () => {
@@ -491,6 +487,13 @@ const FacilityDetail = () => {
     });
   };
 
+  const resetTaskSelectionState = () => {
+    setTaskSelectionTasks([]);
+    setTaskSelectionStep(0);
+    setReviewedTaskSelectionFrequencies(new Set());
+    setNewTaskSelectionCustomName('');
+  };
+
   // --- Handlers ---
   const handleUpdateFacility = async () => {
     if (!id) return;
@@ -672,45 +675,66 @@ const FacilityDetail = () => {
     }
   };
 
-  const handleBulkAddTasks = async () => {
-    if (!id || selectedTaskTemplateIds.size === 0) return;
+  const handleSaveSelectedTasks = async () => {
+    if (!id) return;
 
     const selectedAreaId = selectedAreaForTask?.id || null;
-    const selectedTemplateIds = Array.from(selectedTaskTemplateIds);
-    const duplicateTemplateIds = selectedTemplateIds.filter((taskTemplateId) =>
+    const includedTasks = taskSelectionTasks.filter((task) => task.include);
+
+    if (includedTasks.length === 0) {
+      toast.error('Select at least one task to add');
+      return;
+    }
+
+    const duplicateTasks = includedTasks.filter((task) =>
       Boolean(
         findDuplicateTask({
           areaId: selectedAreaId,
-          cleaningFrequency: bulkFrequency as CleaningFrequency,
-          taskTemplateId,
+          cleaningFrequency: isCleaningFrequency(task.cleaningType)
+            ? task.cleaningType
+            : 'daily',
+          taskTemplateId: task.taskTemplateId,
+          customName: task.taskTemplateId ? null : task.name,
         })
       )
     );
-    const templateIdsToCreate = selectedTemplateIds.filter(
-      (taskTemplateId) => !duplicateTemplateIds.includes(taskTemplateId)
+
+    const tasksToCreate = includedTasks.filter(
+      (task) => !duplicateTasks.some((duplicate) => duplicate.id === task.id)
     );
 
-    if (templateIdsToCreate.length === 0) {
+    if (tasksToCreate.length === 0) {
       toast.error('All selected tasks already exist for this area and frequency');
       return;
     }
 
     try {
       setSaving(true);
-      const result = await bulkCreateFacilityTasks(
-        id,
-        templateIdsToCreate,
-        selectedAreaId,
-        bulkFrequency
+      await Promise.all(
+        tasksToCreate.map((task) =>
+          createFacilityTask({
+            facilityId: id,
+            areaId: selectedAreaId,
+            taskTemplateId: task.taskTemplateId,
+            customName: task.taskTemplateId ? null : task.name,
+            baseMinutesOverride: task.taskTemplateId ? null : task.baseMinutes,
+            perSqftMinutesOverride: task.taskTemplateId ? null : task.perSqftMinutes,
+            perUnitMinutesOverride: task.taskTemplateId ? null : task.perUnitMinutes,
+            perRoomMinutesOverride: task.taskTemplateId ? null : task.perRoomMinutes,
+            cleaningFrequency: isCleaningFrequency(task.cleaningType)
+              ? task.cleaningType
+              : 'daily',
+            priority: 3,
+          } as CreateFacilityTaskInput)
+        )
       );
-      if (duplicateTemplateIds.length > 0) {
+      if (duplicateTasks.length > 0) {
         toast('Skipped duplicate tasks that already exist');
       }
-      toast.success(`Added ${result.count} tasks`);
-      setShowBulkTaskModal(false);
-      setSelectedTaskTemplateIds(new Set());
+      toast.success(`Added ${tasksToCreate.length} task${tasksToCreate.length === 1 ? '' : 's'}`);
+      setShowTaskSelectionModal(false);
       setSelectedAreaForTask(null);
-      setBulkFrequency('daily');
+      resetTaskSelectionState();
       fetchTasks();
     } catch (error) {
       console.error('Failed to add tasks:', error);
@@ -744,45 +768,58 @@ const FacilityDetail = () => {
     }
   };
 
-  const toggleTaskTemplateSelection = (templateId: string) => {
-    setSelectedTaskTemplateIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(templateId)) {
-        newSet.delete(templateId);
-      } else {
-        newSet.add(templateId);
-      }
-      return newSet;
-    });
+  const buildTaskSelectionsForArea = (area: Area) => {
+    const matchingTemplates = taskTemplates
+      .filter(
+        (template) =>
+          template.isActive
+          && (
+            template.areaType?.id === area.areaType.id
+            || template.isGlobal
+            || !template.areaType?.id
+          )
+      )
+      .sort((a, b) => {
+        const aIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
+          isCleaningFrequency(a.cleaningType) ? a.cleaningType : 'daily'
+        );
+        const bIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
+          isCleaningFrequency(b.cleaningType) ? b.cleaningType : 'daily'
+        );
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return a.name.localeCompare(b.name);
+      });
+
+    return matchingTemplates.map((template) => ({
+      id: `task-template-${template.id}`,
+      taskTemplateId: template.id,
+      name: template.name,
+      cleaningType: isCleaningFrequency(template.cleaningType)
+        ? template.cleaningType
+        : 'daily',
+      estimatedMinutes: template.estimatedMinutes ?? null,
+      baseMinutes: Number(template.baseMinutes) || 0,
+      perSqftMinutes: Number(template.perSqftMinutes) || 0,
+      perUnitMinutes: Number(template.perUnitMinutes) || 0,
+      perRoomMinutes: Number(template.perRoomMinutes) || 0,
+      include: true,
+    }));
   };
 
-  const selectAllTaskTemplates = () => {
-    setSelectedTaskTemplateIds(
-      new Set(filteredBulkTaskTemplates.map((t) => t.id))
-    );
-  };
-
-  const clearAllTaskTemplates = () => {
-    setSelectedTaskTemplateIds(new Set());
+  const openTaskSelectionForArea = (area: Area) => {
+    setSelectedAreaForTask(area);
+    setEditingTask(null);
+    resetTaskSelectionState();
+    setTaskSelectionTasks(buildTaskSelectionsForArea(area));
+    setShowTaskSelectionModal(true);
   };
 
   const openBulkTaskForArea = (area: Area) => {
-    setSelectedAreaForTask(area);
-    setSelectedTaskTemplateIds(new Set());
-    setBulkFrequency(getPreferredTaskFrequency());
-    setShowBulkTaskModal(true);
+    openTaskSelectionForArea(area);
   };
 
   const openAddTaskForArea = (area: Area) => {
-    setSelectedAreaForTask(area);
-    setEditingTask(null);
-    resetTaskForm();
-    setTaskForm((prev) => ({
-      ...prev,
-      areaId: area.id,
-      cleaningFrequency: getPreferredTaskFrequency(prev.cleaningFrequency),
-    }));
-    setShowTaskModal(true);
+    openTaskSelectionForArea(area);
   };
 
   const openEditTask = (task: FacilityTask) => {
@@ -891,6 +928,70 @@ const FacilityDetail = () => {
 
   const removeCustomAreaTemplateTask = (taskId: string) => {
     setAreaTemplateTasks((prev) => prev.filter((task) => task.id !== taskId));
+  };
+
+  const toggleTaskSelectionInclude = (taskId: string, include: boolean) => {
+    setTaskSelectionTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, include } : task))
+    );
+  };
+
+  const markCurrentTaskSelectionFrequencyReviewed = () => {
+    setReviewedTaskSelectionFrequencies((prev) => {
+      const next = new Set(prev);
+      next.add(currentTaskSelectionFrequency);
+      return next;
+    });
+  };
+
+  const goToNextTaskSelectionStep = () => {
+    markCurrentTaskSelectionFrequencyReviewed();
+    setTaskSelectionStep((prev) =>
+      Math.min(prev + 1, ORDERED_CLEANING_FREQUENCIES.length - 1)
+    );
+  };
+
+  const goToPreviousTaskSelectionStep = () => {
+    setTaskSelectionStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const addCustomTaskSelectionTask = () => {
+    const name = newTaskSelectionCustomName.trim();
+    if (!name) {
+      toast.error('Enter a task name');
+      return;
+    }
+
+    const duplicate = taskSelectionTasks.some(
+      (task) =>
+        task.cleaningType === currentTaskSelectionFrequency
+        && task.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) {
+      toast.error('Task already exists in this frequency');
+      return;
+    }
+
+    setTaskSelectionTasks((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        taskTemplateId: null,
+        name,
+        cleaningType: currentTaskSelectionFrequency,
+        estimatedMinutes: null,
+        baseMinutes: 0,
+        perSqftMinutes: 0,
+        perUnitMinutes: 0,
+        perRoomMinutes: 0,
+        include: true,
+      },
+    ]);
+    setNewTaskSelectionCustomName('');
+  };
+
+  const removeCustomTaskSelectionTask = (taskId: string) => {
+    setTaskSelectionTasks((prev) => prev.filter((task) => task.id !== taskId));
   };
 
   const openEditArea = (area: Area) => {
@@ -1142,24 +1243,28 @@ const FacilityDetail = () => {
         onSave={handleSaveTask}
         saving={saving}
       />
-      <BulkTaskModal
-        isOpen={showBulkTaskModal}
+      <TaskSelectionModal
+        isOpen={showTaskSelectionModal}
         onClose={() => {
-          setShowBulkTaskModal(false);
-          setSelectedTaskTemplateIds(new Set());
+          setShowTaskSelectionModal(false);
           setSelectedAreaForTask(null);
-          setBulkFrequency('daily');
+          resetTaskSelectionState();
         }}
         selectedAreaForTask={selectedAreaForTask}
-        bulkFrequency={bulkFrequency}
-        setBulkFrequency={setBulkFrequency}
-        filteredBulkTaskTemplates={filteredBulkTaskTemplates}
-        selectedTaskTemplateIds={selectedTaskTemplateIds}
-        toggleTaskTemplateSelection={toggleTaskTemplateSelection}
-        selectAllTaskTemplates={selectAllTaskTemplates}
-        clearAllTaskTemplates={clearAllTaskTemplates}
-        onSave={handleBulkAddTasks}
+        filteredTaskSelectionTasks={filteredTaskSelectionTasks}
+        currentTaskSelectionFrequency={currentTaskSelectionFrequency}
+        taskSelectionStep={taskSelectionStep}
+        reviewedTaskSelectionFrequencies={reviewedTaskSelectionFrequencies}
+        newTaskSelectionCustomName={newTaskSelectionCustomName}
+        setNewTaskSelectionCustomName={setNewTaskSelectionCustomName}
+        toggleTaskSelectionInclude={toggleTaskSelectionInclude}
+        addCustomTaskSelectionTask={addCustomTaskSelectionTask}
+        removeCustomTaskSelectionTask={removeCustomTaskSelectionTask}
+        goToNextTaskSelectionStep={goToNextTaskSelectionStep}
+        goToPreviousTaskSelectionStep={goToPreviousTaskSelectionStep}
+        onSave={handleSaveSelectedTasks}
         saving={saving}
+        hasSelectedTasks={hasSelectedTaskSelectionTasks}
       />
       <SubmitProposalModal
         isOpen={showSubmitProposalModal}

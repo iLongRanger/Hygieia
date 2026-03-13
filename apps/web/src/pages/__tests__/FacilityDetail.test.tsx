@@ -289,7 +289,7 @@ describe('FacilityDetail', () => {
     expect(await screen.findByText('Global Mop')).toBeInTheDocument();
   });
 
-  it('defaults add-task template frequency to the first available task template frequency', async () => {
+  it('uses the stepped selector UI when adding tasks to an area', async () => {
     const user = userEvent.setup();
     listTaskTemplatesMock.mockResolvedValue({
       data: [
@@ -306,9 +306,33 @@ describe('FacilityDetail', () => {
 
     await user.click(await screen.findByText(/areas \(\d+\)/i));
     await user.click(await screen.findByRole('button', { name: /add task/i }));
-    await user.click(await screen.findByRole('button', { name: /from template/i }));
 
-    expect(await screen.findByText(/weekly dusting \(weekly\)/i)).toBeInTheDocument();
+    expect(await screen.findByText(/step 1 of 7/i)).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /next category/i }));
+    expect(await screen.findByText('Weekly Dusting')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /include/i })).toBeChecked();
+  });
+
+  it('creates selected tasks from the stepped task selector', async () => {
+    const user = userEvent.setup();
+    listTaskTemplatesMock.mockResolvedValue({ data: [areaSpecificTemplate] });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add task/i }));
+    await user.click(await screen.findByRole('button', { name: /^add tasks$/i }));
+
+    await waitFor(() => {
+      expect(createFacilityTaskMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          facilityId: 'facility-1',
+          areaId: 'area-1',
+          taskTemplateId: 'task-template-1',
+          cleaningFrequency: 'daily',
+        })
+      );
+    });
   });
 
   it('submits facility for proposal from header action', async () => {
