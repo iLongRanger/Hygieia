@@ -1216,11 +1216,24 @@ async function main() {
   })
 
   const existingTemplates = await prisma.areaTemplate.findMany({
-    select: { areaTypeId: true }
+    select: {
+      id: true,
+      areaTypeId: true,
+      items: {
+        select: {
+          fixtureTypeId: true
+        }
+      },
+      tasks: {
+        select: {
+          taskTemplateId: true
+        }
+      }
+    }
   })
 
-  const existingTemplateAreaTypeIds = new Set(
-    existingTemplates.map((template) => template.areaTypeId)
+  const existingTemplateByAreaTypeId = new Map(
+    existingTemplates.map((template) => [template.areaTypeId, template])
   )
 
   const fixtureRows = await prisma.fixtureType.findMany({
@@ -1276,9 +1289,9 @@ async function main() {
   }
 
   let createdAreaTemplates = 0
+  let backfilledAreaTemplateItems = 0
+  let backfilledAreaTemplateTasks = 0
   for (const areaType of areaTypesForTemplates) {
-    if (existingTemplateAreaTypeIds.has(areaType.id)) continue
-
     const fixtureNames = areaTemplateFixtureMap[areaType.name] || []
     const missingFixtures = fixtureNames.filter(
       (name) => !fixtureTypeMap.has(name)
@@ -1314,25 +1327,83 @@ async function main() {
       sortOrder: index
     }))
 
-    await prisma.areaTemplate.create({
-      data: {
-        areaTypeId: areaType.id,
-        name: null,
-        defaultSquareFeet: null,
-        createdByUserId: seedUser.id,
-        items: itemsData.length > 0 ? { create: itemsData } : undefined,
-        tasks: taskData.length > 0 ? { create: taskData } : undefined
-      },
-      select: { id: true }
-    })
+    const existingTemplate = existingTemplateByAreaTypeId.get(areaType.id)
 
-    createdAreaTemplates += 1
+    if (!existingTemplate) {
+      await prisma.areaTemplate.create({
+        data: {
+          areaTypeId: areaType.id,
+          name: null,
+          defaultSquareFeet: null,
+          createdByUserId: seedUser.id,
+          items: itemsData.length > 0 ? { create: itemsData } : undefined,
+          tasks: taskData.length > 0 ? { create: taskData } : undefined
+        },
+        select: { id: true }
+      })
+
+      createdAreaTemplates += 1
+      continue
+    }
+
+    const existingFixtureTypeIds = new Set(
+      existingTemplate.items.map((item) => item.fixtureTypeId)
+    )
+    const missingItems = itemsData.filter(
+      (item) => !existingFixtureTypeIds.has(item.fixtureTypeId)
+    )
+
+    if (missingItems.length > 0) {
+      const createdItems = await prisma.areaTemplateItem.createMany({
+        data: missingItems.map((item) => ({
+          areaTemplateId: existingTemplate.id,
+          fixtureTypeId: item.fixtureTypeId,
+          defaultCount: item.defaultCount,
+          minutesPerItem: item.minutesPerItem,
+          sortOrder: item.sortOrder
+        })),
+        skipDuplicates: true
+      })
+      backfilledAreaTemplateItems += createdItems.count
+    }
+
+    const existingTaskTemplateIds = new Set(
+      existingTemplate.tasks
+        .map((task) => task.taskTemplateId)
+        .filter((taskTemplateId): taskTemplateId is string => Boolean(taskTemplateId))
+    )
+    const missingTasks = taskData.filter(
+      (task) => !existingTaskTemplateIds.has(task.taskTemplateId)
+    )
+
+    if (missingTasks.length > 0) {
+      const createdTasks = await prisma.areaTemplateTask.createMany({
+        data: missingTasks.map((task) => ({
+          areaTemplateId: existingTemplate.id,
+          taskTemplateId: task.taskTemplateId,
+          sortOrder: task.sortOrder
+        }))
+      })
+      backfilledAreaTemplateTasks += createdTasks.count
+    }
   }
 
   if (createdAreaTemplates > 0) {
     console.log(`Created ${createdAreaTemplates} area templates`)
   } else {
     console.log('No new area templates to create')
+  }
+
+  if (backfilledAreaTemplateItems > 0) {
+    console.log(`Backfilled ${backfilledAreaTemplateItems} missing area template items`)
+  } else {
+    console.log('No missing area template items to backfill')
+  }
+
+  if (backfilledAreaTemplateTasks > 0) {
+    console.log(`Backfilled ${backfilledAreaTemplateTasks} missing area template tasks`)
+  } else {
+    console.log('No missing area template tasks to backfill')
   }
 
   console.log('Database seed completed successfully')
