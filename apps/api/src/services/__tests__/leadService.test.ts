@@ -277,7 +277,6 @@ describe('leadService', () => {
         probability: 75,
         expectedCloseDate: new Date('2024-12-31'),
         notes: 'Test notes',
-        assignedToUserId: 'user-123',
         createdByUserId: 'creator-123',
       };
 
@@ -297,13 +296,7 @@ describe('leadService', () => {
         select: expect.any(Object),
       });
       expect(result).toEqual(mockLead);
-      expect(createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-123',
-          type: 'lead_assigned',
-          metadata: { leadId: mockLead.id },
-        })
-      );
+      expect(createNotification).not.toHaveBeenCalled();
     });
 
     it('should create lead with minimal required fields', async () => {
@@ -343,27 +336,6 @@ describe('leadService', () => {
         })
       );
       expect(createNotification).not.toHaveBeenCalled();
-    });
-
-    it('should notify assignee even when creator is assignee', async () => {
-      const input: leadService.LeadCreateInput = {
-        contactName: 'Self Assigned',
-        assignedToUserId: 'creator-123',
-        createdByUserId: 'creator-123',
-      };
-      const mockLead = createTestLead({ ...input, id: 'lead-self' });
-
-      (prisma.lead.create as jest.Mock).mockResolvedValue(mockLead);
-      (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
-
-      await leadService.createLead(input);
-
-      expect(createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'creator-123',
-          metadata: { leadId: 'lead-self' },
-        })
-      );
     });
   });
 

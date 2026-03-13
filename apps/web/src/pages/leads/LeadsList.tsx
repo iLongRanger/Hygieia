@@ -61,38 +61,6 @@ const CREATE_LEAD_SOURCE_OPTIONS = [
 ];
 
 const OTHER_LEAD_SOURCE_VALUE = 'others';
-const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
-
-const isLeadAssignableUser = (user: User): boolean => {
-  const roleKeys = new Set<string>();
-  const primaryRole = (user as User & { role?: unknown }).role;
-
-  if (typeof primaryRole === 'string') {
-    roleKeys.add(primaryRole.toLowerCase());
-  } else if (
-    primaryRole
-    && typeof primaryRole === 'object'
-    && 'key' in primaryRole
-    && typeof (primaryRole as { key?: unknown }).key === 'string'
-  ) {
-    roleKeys.add((primaryRole as { key: string }).key.toLowerCase());
-  }
-
-  for (const userRole of user.roles ?? []) {
-    if (typeof userRole?.role?.key === 'string') {
-      roleKeys.add(userRole.role.key.toLowerCase());
-    }
-  }
-
-  for (const roleKey of roleKeys) {
-    if (LEAD_ASSIGNABLE_ROLES.has(roleKey)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
 const normalizeLeadSourceName = (value: string) => value.trim().toLowerCase();
 
 const getLeadSourceFromNotes = (notes: string | null | undefined): string | null => {
@@ -243,7 +211,6 @@ const LeadsList = () => {
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canWriteLeads = hasPermission(PERMISSIONS.LEADS_WRITE);
   const canAdminLeads = hasPermission(PERMISSIONS.LEADS_ADMIN);
-  const leadAssignableUsers = users.filter(isLeadAssignableUser);
   const isCreateRoute = location.pathname === '/leads/new';
   const isCreateModalOpen = canWriteLeads && isCreateRoute;
 
@@ -257,7 +224,6 @@ const LeadsList = () => {
     estimatedValue: null,
     probability: null,
     expectedCloseDate: null,
-    assignedToUserId: null,
     notes: null,
   });
 
@@ -490,7 +456,6 @@ const LeadsList = () => {
       estimatedValue: null,
       probability: null,
       expectedCloseDate: null,
-      assignedToUserId: null,
       notes: null,
     });
     setCreateLeadSourceOption('');
@@ -1095,21 +1060,6 @@ const LeadsList = () => {
                 })
               }
             />
-            <Select
-              label="Assigned To"
-              placeholder="Select user"
-              options={leadAssignableUsers.map((u) => ({
-                value: u.id,
-                label: u.fullName,
-              }))}
-              value={formData.assignedToUserId || ''}
-              onChange={(value) =>
-                setFormData({ ...formData, assignedToUserId: value || null })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Probability (%)"
               type="number"
@@ -1124,6 +1074,9 @@ const LeadsList = () => {
                 })
               }
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Expected Close Date"
               type="date"

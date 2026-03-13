@@ -200,7 +200,6 @@ export interface CreateLeadInput {
   probability?: number | null;
   expectedCloseDate?: string | null;
   notes?: string | null;
-  assignedToUserId?: string | null;
 }
 
 export interface UpdateLeadInput {

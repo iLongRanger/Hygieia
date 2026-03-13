@@ -71,7 +71,6 @@ export interface LeadCreateInput {
   probability?: number;
   expectedCloseDate?: Date | null;
   notes?: string | null;
-  assignedToUserId?: string | null;
   createdByUserId: string;
 }
 
@@ -400,30 +399,10 @@ export async function createLead(input: LeadCreateInput) {
       probability: input.probability ?? 0,
       expectedCloseDate: input.expectedCloseDate,
       notes: input.notes,
-      assignedToUserId: input.assignedToUserId,
       createdByUserId: input.createdByUserId,
     },
     select: leadSelect,
   });
-
-  // Notify assigned user whenever a lead is created with an assignee.
-  if (input.assignedToUserId) {
-    try {
-      await createNotification({
-        userId: input.assignedToUserId,
-        type: 'lead_assigned',
-        title: 'New lead assigned to you',
-        body: `Lead "${input.contactName}" has been assigned to you.`,
-        metadata: { leadId: lead.id },
-      });
-    } catch (error) {
-      logger.error('Failed to create lead assignment notification', {
-        leadId: lead.id,
-        assignedToUserId: input.assignedToUserId,
-        error,
-      });
-    }
-  }
 
   return lead;
 }

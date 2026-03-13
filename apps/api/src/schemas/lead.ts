@@ -47,7 +47,6 @@ export const createLeadSchema = z.object({
   probability: z.coerce.number().int().min(0).max(100).optional().default(0),
   expectedCloseDate: z.coerce.date().optional().nullable(),
   notes: z.string().max(10000).optional().nullable(),
-  assignedToUserId: z.string().uuid().optional().nullable(),
 });
 
 export const updateLeadSchema = z.object({

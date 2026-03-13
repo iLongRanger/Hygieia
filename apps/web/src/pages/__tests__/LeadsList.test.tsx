@@ -212,6 +212,7 @@ describe('LeadsList', () => {
 
     await userEventInstance.click(screen.getByRole('button', { name: /add new lead/i }));
     await userEventInstance.type(await screen.findByLabelText(/contact name/i), 'John Prospect');
+    expect(screen.queryByLabelText(/assigned to/i)).not.toBeInTheDocument();
     await userEventInstance.click(screen.getByRole('button', { name: /create lead/i }));
 
     expect(createLeadMock).toHaveBeenCalledWith(
