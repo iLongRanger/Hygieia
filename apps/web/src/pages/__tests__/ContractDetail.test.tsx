@@ -682,6 +682,42 @@ describe('ContractDetail', () => {
     expect(screen.getByText('Dust Desks (Lobby)')).toBeInTheDocument();
   });
 
+  it('shows global task templates in amendment area task selection fallback', async () => {
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    listTaskTemplatesMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'task-template-global',
+          name: 'Global Mop',
+          description: null,
+          cleaningType: 'daily',
+          areaType: null,
+          isGlobal: true,
+          estimatedMinutes: 15,
+          baseMinutes: 15,
+          perSqftMinutes: 0,
+          perRoomMinutes: 0,
+          perUnitMinutes: 0,
+          isActive: true,
+          createdAt: '',
+          updatedAt: '',
+          _count: { tasks: 0 },
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+    await user.click(await screen.findByRole('button', { name: /add area/i }));
+    await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
+
+    expect(await screen.findByText('Global Mop')).toBeInTheDocument();
+  });
+
   it('requires explicit confirmation to apply a future contract change early', async () => {
     const futureApprovedAmendment = {
       id: 'amend-1',

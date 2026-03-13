@@ -92,6 +92,21 @@ const FacilityDetail = () => {
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
   const [submittingForProposal, setSubmittingForProposal] = useState(false);
 
+  const getPreferredTaskFrequency = useCallback(
+    (preferred?: string | null): CleaningFrequency => {
+      const availableFrequencies = ORDERED_CLEANING_FREQUENCIES.filter((frequency) =>
+        taskTemplates.some((template) => template.cleaningType === frequency)
+      );
+
+      if (preferred && isCleaningFrequency(preferred) && availableFrequencies.includes(preferred)) {
+        return preferred;
+      }
+
+      return availableFrequencies[0] || 'daily';
+    },
+    [taskTemplates]
+  );
+
   // --- Form state ---
   const [facilityForm, setFacilityForm] = useState<UpdateFacilityInput>({});
   const [areaForm, setAreaForm] = useState<CreateAreaInput | UpdateAreaInput>({
@@ -128,14 +143,17 @@ const FacilityDetail = () => {
   // --- Memos ---
   const filteredTaskTemplates = useMemo(() => {
     const frequency = taskForm.cleaningFrequency || 'daily';
-    return taskTemplates.filter(
+    const matchingTemplates = taskTemplates.filter(
       (template) => template.cleaningType === frequency
     );
+    return matchingTemplates.length > 0 ? matchingTemplates : taskTemplates;
   }, [taskTemplates, taskForm.cleaningFrequency]);
 
   const filteredBulkTaskTemplates = useMemo(
-    () =>
-      taskTemplates.filter((template) => template.cleaningType === bulkFrequency),
+    () => {
+      const matchingTemplates = taskTemplates.filter((template) => template.cleaningType === bulkFrequency);
+      return matchingTemplates.length > 0 ? matchingTemplates : taskTemplates;
+    },
     [taskTemplates, bulkFrequency]
   );
 
@@ -267,7 +285,12 @@ const FacilityDetail = () => {
       taskTemplates
         .filter(
           (template) =>
-            template.isActive && template.areaType?.id === areaTypeId
+            template.isActive
+            && (
+              template.areaType?.id === areaTypeId
+              || template.isGlobal
+              || !template.areaType?.id
+            )
         )
         .map((template) => ({
           id: `task-template-${template.id}`,
@@ -458,7 +481,7 @@ const FacilityDetail = () => {
       areaId: null,
       taskTemplateId: null,
       customName: '',
-      cleaningFrequency: 'daily',
+      cleaningFrequency: getPreferredTaskFrequency(),
       priority: 3,
       baseMinutesOverride: null,
       perSqftMinutesOverride: null,
@@ -746,7 +769,7 @@ const FacilityDetail = () => {
   const openBulkTaskForArea = (area: Area) => {
     setSelectedAreaForTask(area);
     setSelectedTaskTemplateIds(new Set());
-    setBulkFrequency('daily');
+    setBulkFrequency(getPreferredTaskFrequency());
     setShowBulkTaskModal(true);
   };
 
@@ -757,6 +780,7 @@ const FacilityDetail = () => {
     setTaskForm((prev) => ({
       ...prev,
       areaId: area.id,
+      cleaningFrequency: getPreferredTaskFrequency(prev.cleaningFrequency),
     }));
     setShowTaskModal(true);
   };

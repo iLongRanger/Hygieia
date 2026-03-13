@@ -201,6 +201,49 @@ describe('AppointmentsPage', () => {
       expect(screen.getByLabelText(/end time/i)).toBeInTheDocument();
       expect(screen.queryByLabelText(/end date/i)).not.toBeInTheDocument();
     });
+
+    it('only shows walkthrough facilities without an existing walkthrough booking', async () => {
+      const user = userEvent.setup();
+      listAppointmentsMock.mockResolvedValue([
+        {
+          ...mockAppointment,
+          facility: { id: 'facility-booked', name: 'Booked Facility' },
+        },
+      ]);
+      listLeadsMock.mockResolvedValue({
+        data: [
+          {
+            id: 'lead-1',
+            contactName: 'Jane Doe',
+            companyName: 'Acme Corp',
+            convertedToAccountId: 'account-1',
+          },
+        ],
+      });
+      listFacilitiesMock.mockResolvedValue({
+        data: [
+          {
+            id: 'facility-booked',
+            name: 'Booked Facility',
+            account: { id: 'account-1', name: 'Acme Corp' },
+          },
+          {
+            id: 'facility-open',
+            name: 'Open Facility',
+            account: { id: 'account-1', name: 'Acme Corp' },
+          },
+        ],
+      });
+
+      await renderAppointmentsPage();
+
+      await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
+      await user.selectOptions(await screen.findByLabelText(/^lead$/i), 'lead-1');
+      await user.click(screen.getByLabelText(/facility/i));
+
+      expect(await screen.findByText('Open Facility')).toBeInTheDocument();
+      expect(screen.queryByText('Booked Facility')).not.toBeInTheDocument();
+    });
   });
 
   describe('View toggle', () => {
@@ -327,14 +370,14 @@ describe('AppointmentsPage', () => {
       await waitFor(() => {
         const today = new Date();
         const { dateFrom, dateTo } = getDateRange(today.getFullYear(), today.getMonth());
-        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
-        expect(lastCall).toEqual(
-          expect.objectContaining({
-            dateFrom,
-            dateTo,
-            includePast: true,
-          })
-        );
+        expect(
+          listAppointmentsMock.mock.calls.some(
+            ([params]) =>
+              params?.dateFrom === dateFrom
+              && params?.dateTo === dateTo
+              && params?.includePast === true
+          )
+        ).toBe(true);
       });
     });
 
@@ -349,14 +392,14 @@ describe('AppointmentsPage', () => {
 
       await waitFor(() => {
         const { dateFrom, dateTo } = getWeekRange(new Date());
-        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
-        expect(lastCall).toEqual(
-          expect.objectContaining({
-            dateFrom,
-            dateTo,
-            includePast: true,
-          })
-        );
+        expect(
+          listAppointmentsMock.mock.calls.some(
+            ([params]) =>
+              params?.dateFrom === dateFrom
+              && params?.dateTo === dateTo
+              && params?.includePast === true
+          )
+        ).toBe(true);
       });
     });
 
@@ -371,14 +414,14 @@ describe('AppointmentsPage', () => {
 
       await waitFor(() => {
         const { dateFrom, dateTo } = getDayRange(new Date());
-        const lastCall = listAppointmentsMock.mock.calls[listAppointmentsMock.mock.calls.length - 1][0];
-        expect(lastCall).toEqual(
-          expect.objectContaining({
-            dateFrom,
-            dateTo,
-            includePast: true,
-          })
-        );
+        expect(
+          listAppointmentsMock.mock.calls.some(
+            ([params]) =>
+              params?.dateFrom === dateFrom
+              && params?.dateTo === dateTo
+              && params?.includePast === true
+          )
+        ).toBe(true);
       });
     });
 

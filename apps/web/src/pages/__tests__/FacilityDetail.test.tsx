@@ -265,6 +265,52 @@ describe('FacilityDetail', () => {
     expect(screen.getByRole('checkbox', { name: /include/i })).toBeChecked();
   });
 
+  it('shows global task templates in area task selection fallback', async () => {
+    const user = userEvent.setup();
+    listTaskTemplatesMock.mockResolvedValue({
+      data: [
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-global',
+          name: 'Global Mop',
+          areaType: null,
+          isGlobal: true,
+          cleaningType: 'daily',
+        },
+      ],
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add area/i }));
+    await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
+
+    expect(await screen.findByText('Global Mop')).toBeInTheDocument();
+  });
+
+  it('defaults add-task template frequency to the first available task template frequency', async () => {
+    const user = userEvent.setup();
+    listTaskTemplatesMock.mockResolvedValue({
+      data: [
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-weekly',
+          name: 'Weekly Dusting',
+          cleaningType: 'weekly',
+        },
+      ],
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add task/i }));
+    await user.click(await screen.findByRole('button', { name: /from template/i }));
+
+    expect(await screen.findByText(/weekly dusting \(weekly\)/i)).toBeInTheDocument();
+  });
+
   it('submits facility for proposal from header action', async () => {
     const user = userEvent.setup();
     listFacilityTasksMock.mockResolvedValue({

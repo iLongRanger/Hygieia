@@ -98,6 +98,7 @@ const AppointmentsPage = () => {
   const navigate = useNavigate();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [walkthroughAppointments, setWalkthroughAppointments] = useState<Appointment[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeContracts, setActiveContracts] = useState<Contract[]>([]);
@@ -177,6 +178,19 @@ const AppointmentsPage = () => {
       setLoading(false);
     }
   }, [accountFilter, assignedFilter, includePast, leadFilter, statusFilter, typeFilter]);
+
+  const fetchWalkthroughAppointments = useCallback(async () => {
+    try {
+      const data = await listAppointments({
+        type: 'walk_through',
+        includePast: true,
+      });
+      setWalkthroughAppointments(data || []);
+    } catch (error) {
+      console.error('Failed to fetch walkthrough appointments:', error);
+      setWalkthroughAppointments([]);
+    }
+  }, []);
 
   const fetchCalendarAppointments = useCallback(async () => {
     try {
@@ -278,7 +292,8 @@ const AppointmentsPage = () => {
     fetchUsers();
     fetchActiveContracts();
     fetchFacilities();
-  }, [fetchLeads, fetchUsers, fetchActiveContracts, fetchFacilities]);
+    fetchWalkthroughAppointments();
+  }, [fetchLeads, fetchUsers, fetchActiveContracts, fetchFacilities, fetchWalkthroughAppointments]);
 
   // Save view mode preference
   useEffect(() => {
@@ -314,9 +329,30 @@ const AppointmentsPage = () => {
   const appointmentAccountId =
     formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
 
+  const walkthroughBookedFacilityIds = useMemo(() => {
+    const selectedFacilityId = formData.type === 'walk_through' ? formData.facilityId : '';
+    return new Set(
+      walkthroughAppointments
+        .filter((appointment) => appointment.facility?.id)
+        .map((appointment) => appointment.facility!.id)
+        .filter((facilityId) => facilityId !== selectedFacilityId)
+    );
+  }, [formData.facilityId, formData.type, walkthroughAppointments]);
+
   const filteredFacilities = useMemo(
-    () => facilities.filter((facility) => facility.account?.id === appointmentAccountId),
-    [appointmentAccountId, facilities]
+    () =>
+      facilities.filter((facility) => {
+        if (facility.account?.id !== appointmentAccountId) {
+          return false;
+        }
+
+        if (formData.type !== 'walk_through') {
+          return true;
+        }
+
+        return !walkthroughBookedFacilityIds.has(facility.id);
+      }),
+    [appointmentAccountId, facilities, formData.type, walkthroughBookedFacilityIds]
   );
 
   const convertedLeads = useMemo(
@@ -428,6 +464,7 @@ const AppointmentsPage = () => {
       } else {
         fetchAppointments();
       }
+      fetchWalkthroughAppointments();
     } catch (error) {
       console.error('Failed to create appointment:', error);
       toast.error('Failed to schedule appointment');
@@ -507,6 +544,7 @@ const AppointmentsPage = () => {
       } else {
         fetchAppointments();
       }
+      fetchWalkthroughAppointments();
     } catch (error) {
       console.error('Failed to update appointment:', error);
       toast.error('Failed to update appointment');
@@ -533,6 +571,7 @@ const AppointmentsPage = () => {
       } else {
         fetchAppointments();
       }
+      fetchWalkthroughAppointments();
     } catch (error) {
       console.error('Failed to delete appointment:', error);
       toast.error('Failed to delete appointment');

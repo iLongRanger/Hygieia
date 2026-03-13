@@ -439,7 +439,11 @@ const buildFallbackTemplateTasks = (
   taskTemplates: TaskTemplate[]
 ): AreaTemplateTaskSelection[] =>
   taskTemplates
-    .filter((template) => template.isActive && template.areaType?.id === areaTypeId)
+    .filter(
+      (template) =>
+        template.isActive &&
+        (template.areaType?.id === areaTypeId || template.isGlobal || !template.areaType?.id)
+    )
     .map((template) => ({
       id: `task-template-${template.id}`,
       taskTemplateId: template.id,
