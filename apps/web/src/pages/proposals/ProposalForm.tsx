@@ -122,6 +122,63 @@ const BUSINESS_DAY_ORDER = DAY_ORDER.filter((day) =>
   ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day)
 ) as ServiceScheduleDay[];
 
+type ServiceDescriptionGroup = {
+  label: string;
+  tasks: string[];
+};
+
+const serviceDescriptionLabel = (value: string): string => {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (normalized.includes('annual') || normalized.includes('yearly')) return 'Annual';
+  if (normalized.includes('quarterly')) return 'Quarterly';
+  if (normalized.includes('monthly')) return 'Monthly';
+  if (normalized.includes('biweekly')) return 'Bi-Weekly';
+  if (normalized.includes('weekly')) return 'Weekly';
+  if (normalized.includes('daily')) return 'Daily';
+  return value.trim();
+};
+
+const parseServiceDescription = (
+  description: string | null | undefined
+): { areaSummary: string; groups: ServiceDescriptionGroup[] } => {
+  const lines = (description || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return { areaSummary: '', groups: [] };
+  }
+
+  const grouped = new Map<string, Set<string>>();
+  const addTask = (label: string, task: string) => {
+    const cleanTask = task.trim();
+    if (!cleanTask) return;
+    const cleanLabel = serviceDescriptionLabel(label);
+    if (!grouped.has(cleanLabel)) grouped.set(cleanLabel, new Set<string>());
+    grouped.get(cleanLabel)!.add(cleanTask);
+  };
+
+  for (const line of lines.slice(1)) {
+    const match = line.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      for (const task of match[2].split(',')) {
+        addTask(match[1], task);
+      }
+      continue;
+    }
+    addTask('Scope', line);
+  }
+
+  return {
+    areaSummary: lines[0] || '',
+    groups: Array.from(grouped.entries()).map(([label, tasks]) => ({
+      label,
+      tasks: Array.from(tasks),
+    })),
+  };
+};
+
 const expectedDaysForFrequency = (frequency: ProposalScheduleFrequency): number => {
   switch (frequency) {
     case '1x_week':
@@ -1526,6 +1583,7 @@ const ProposalForm = () => {
                   const isExpanded = expandedServices.has(index);
                   const typeLabel = SERVICE_TYPES.find((t) => t.value === service.serviceType)?.label;
                   const freqLabel = SERVICE_FREQUENCIES.find((f) => f.value === service.frequency)?.label;
+                  const parsedDescription = parseServiceDescription(service.description);
 
                   return (
                     <div
@@ -1624,13 +1682,39 @@ const ProposalForm = () => {
                               }
                             />
                           </div>
-                          <Textarea
-                            label="Service Description"
-                            placeholder="Describe the service..."
-                            value={service.description || ''}
-                            onChange={(e) => updateService(index, 'description', e.target.value || null)}
-                            rows={2}
-                          />
+                          {(parsedDescription.areaSummary || parsedDescription.groups.length > 0) && (
+                            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-sm font-medium text-white">Service Scope</div>
+                                <div className="text-xs text-gray-400">Generated from facility scope and tasks</div>
+                              </div>
+                              {parsedDescription.areaSummary && (
+                                <div className="mb-3 text-sm text-gray-300">
+                                  {parsedDescription.areaSummary}
+                                </div>
+                              )}
+                              {parsedDescription.groups.length > 0 ? (
+                                <div className="space-y-3">
+                                  {parsedDescription.groups.map((group) => (
+                                    <div key={`${service.id || index}-${group.label}`}>
+                                      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
+                                        {group.label}
+                                      </div>
+                                      <ul className="list-disc space-y-1 pl-5 text-sm text-gray-200">
+                                        {group.tasks.map((task) => (
+                                          <li key={`${service.id || index}-${group.label}-${task}`}>{task}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-400">
+                                  Scope summary only.
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

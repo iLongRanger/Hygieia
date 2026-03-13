@@ -258,7 +258,7 @@ describe('ProposalForm', () => {
           serviceType: 'daily',
           frequency: 'daily',
           monthlyPrice: 250,
-          description: 'Standard cleaning',
+          description: 'Lobby - 500 sq ft\nDaily: Wipe surfaces, Empty trash',
           includedTasks: [],
         },
       ],
@@ -374,6 +374,10 @@ describe('ProposalForm', () => {
     await user.click(calculateButton);
 
     expect(await screen.findByText('Daily Cleaning')).toBeInTheDocument();
+    expect(await screen.findByText('Service Scope')).toBeInTheDocument();
+    expect(screen.getByText('Lobby - 500 sq ft')).toBeInTheDocument();
+    expect(screen.getByText('Wipe surfaces')).toBeInTheDocument();
+    expect(screen.getByText('Empty trash')).toBeInTheDocument();
     await waitFor(() => {
       expect(getFacilityProposalTemplateMock).toHaveBeenCalledWith(
         'facility-1',
