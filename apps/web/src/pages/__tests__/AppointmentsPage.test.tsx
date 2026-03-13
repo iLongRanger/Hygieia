@@ -12,6 +12,7 @@ const deleteAppointmentMock = vi.fn();
 const listLeadsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listContractsMock = vi.fn();
+const listFacilitiesMock = vi.fn();
 
 vi.mock('../../lib/appointments', () => ({
   listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
@@ -30,6 +31,10 @@ vi.mock('../../lib/users', () => ({
 
 vi.mock('../../lib/contracts', () => ({
   listContracts: (...args: unknown[]) => listContractsMock(...args),
+}));
+
+vi.mock('../../lib/facilities', () => ({
+  listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
 }));
 
 const mockAppointment = {
@@ -68,6 +73,7 @@ const renderAppointmentsPage = async () => {
     expect(listLeadsMock).toHaveBeenCalled();
     expect(listUsersMock).toHaveBeenCalled();
     expect(listContractsMock).toHaveBeenCalled();
+    expect(listFacilitiesMock).toHaveBeenCalled();
   });
 };
 
@@ -88,12 +94,14 @@ describe('AppointmentsPage', () => {
     listLeadsMock.mockReset();
     listUsersMock.mockReset();
     listContractsMock.mockReset();
+    listFacilitiesMock.mockReset();
 
     // Default mock responses
     listAppointmentsMock.mockResolvedValue([]);
     listLeadsMock.mockResolvedValue({ data: [] });
     listUsersMock.mockResolvedValue({ data: [] });
     listContractsMock.mockResolvedValue({ data: [] });
+    listFacilitiesMock.mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -144,6 +152,54 @@ describe('AppointmentsPage', () => {
       await renderAppointmentsPage();
 
       expect(screen.queryByRole('button', { name: /schedule appointment/i })).not.toBeInTheDocument();
+    });
+
+    it('only shows owner admin and manager users in assigned rep options', async () => {
+      const user = userEvent.setup();
+      listUsersMock.mockResolvedValue({
+        data: [
+          {
+            id: 'owner-1',
+            fullName: 'Owner User',
+            email: 'owner@example.com',
+            roles: [{ role: { key: 'owner' } }],
+          },
+          {
+            id: 'manager-1',
+            fullName: 'Manager User',
+            email: 'manager@example.com',
+            roles: [{ role: { key: 'manager' } }],
+          },
+          {
+            id: 'cleaner-1',
+            fullName: 'Cleaner User',
+            email: 'cleaner@example.com',
+            roles: [{ role: { key: 'cleaner' } }],
+          },
+        ],
+      });
+
+      await renderAppointmentsPage();
+
+      await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
+      await user.click(await screen.findByLabelText(/assigned rep/i));
+
+      expect(await screen.findByText('Owner User')).toBeInTheDocument();
+      expect(screen.getByText('Manager User')).toBeInTheDocument();
+      expect(screen.queryByText('Cleaner User')).not.toBeInTheDocument();
+    });
+
+    it('uses one date field instead of a separate end date when scheduling', async () => {
+      const user = userEvent.setup();
+
+      await renderAppointmentsPage();
+
+      await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
+
+      expect(await screen.findByLabelText(/start date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/start time/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/end time/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/end date/i)).not.toBeInTheDocument();
     });
   });
 

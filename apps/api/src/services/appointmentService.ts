@@ -64,11 +64,43 @@ export interface AppointmentCompleteInput {
   userId: string;
 }
 
+const APPOINTMENT_ASSIGNEE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
 function deriveOpportunityTitle(lead: {
   companyName?: string | null;
   contactName: string;
 }): string {
   return lead.companyName?.trim() || lead.contactName.trim();
+}
+
+async function assertAssignableAppointmentRep(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      roles: {
+        select: {
+          role: {
+            select: {
+              key: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new BadRequestError('Assigned rep not found');
+  }
+
+  const hasEligibleRole = user.roles.some((assignment) =>
+    APPOINTMENT_ASSIGNEE_ROLE_KEYS.has(assignment.role.key)
+  );
+
+  if (!hasEligibleRole) {
+    throw new BadRequestError('Assigned rep must be an owner, admin, or manager');
+  }
 }
 
 const appointmentSelect = {
@@ -208,6 +240,7 @@ export async function getAppointmentById(id: string) {
 }
 
 export async function createAppointment(input: AppointmentCreateInput) {
+  await assertAssignableAppointmentRep(input.assignedToUserId);
   let walkthroughLeadAccountId: string | null = null;
 
   if (input.type === 'walk_through') {
@@ -518,6 +551,10 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
         throw new BadRequestError('Facility not found for the selected account');
       }
     }
+  }
+
+  if (input.assignedToUserId) {
+    await assertAssignableAppointmentRep(input.assignedToUserId);
   }
 
   const appointment = await prisma.appointment.update({

@@ -47,6 +47,53 @@ const APPOINTMENT_STATUSES: { value: AppointmentStatus; label: string }[] = [
   { value: 'no_show', label: 'No Show' },
 ];
 
+const APPOINTMENT_ASSIGNABLE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+const TIME_OPTIONS = Array.from({ length: 34 }, (_, index) => {
+  const totalMinutes = (6 * 60) + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const labelHour = hour % 12 || 12;
+  const labelPeriod = hour < 12 ? 'AM' : 'PM';
+  return { value, label: `${labelHour}:${String(minute).padStart(2, '0')} ${labelPeriod}` };
+});
+
+const toLocalDateTimeInputValue = (date: Date): string => (
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+);
+
+const canBeAppointmentRep = (user: User): boolean => {
+  const roleKeys = new Set<string>();
+  const primaryRole = (user as User & { role?: unknown }).role;
+
+  if (typeof primaryRole === 'string') {
+    roleKeys.add(primaryRole.toLowerCase());
+  } else if (
+    primaryRole
+    && typeof primaryRole === 'object'
+    && 'key' in primaryRole
+    && typeof (primaryRole as { key?: unknown }).key === 'string'
+  ) {
+    roleKeys.add((primaryRole as { key: string }).key.toLowerCase());
+  }
+
+  for (const userRole of user.roles ?? []) {
+    if (typeof userRole?.role?.key === 'string') {
+      roleKeys.add(userRole.role.key.toLowerCase());
+    }
+  }
+
+  for (const roleKey of roleKeys) {
+    if (APPOINTMENT_ASSIGNABLE_ROLE_KEYS.has(roleKey)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const combineLocalDateAndTime = (date: string, time: string): string => `${date}T${time}`;
+
 const AppointmentsPage = () => {
   const navigate = useNavigate();
   const hasPermission = useAuthStore((state) => state.hasPermission);
@@ -108,6 +155,7 @@ const AppointmentsPage = () => {
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const canWriteAppointments = hasPermission(PERMISSIONS.APPOINTMENTS_WRITE);
+  const assignableUsers = useMemo(() => users.filter(canBeAppointmentRep), [users]);
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -346,11 +394,6 @@ const AppointmentsPage = () => {
       return;
     }
 
-    if (!formData.assignedToUserId || !formData.scheduledStart || !formData.scheduledEnd) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
     try {
       setCreating(true);
       await createAppointment({
@@ -409,8 +452,8 @@ const AppointmentsPage = () => {
       assignedToUserId: appointment.assignedToUser.id,
       type: appointment.type,
       status: appointment.status,
-      scheduledStart: new Date(startLocal.getTime() - startLocal.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-      scheduledEnd: new Date(endLocal.getTime() - endLocal.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      scheduledStart: toLocalDateTimeInputValue(startLocal),
+      scheduledEnd: toLocalDateTimeInputValue(endLocal),
       timezone: appointment.timezone,
       location: appointment.location || '',
       notes: appointment.notes || '',
@@ -519,19 +562,15 @@ const AppointmentsPage = () => {
     const endDate = new Date(startDate);
     endDate.setMinutes(endDate.getMinutes() + 60);
 
-      setFormData({
-        leadId: '',
-        accountId: '',
-        facilityId: '',
-        assignedToUserId: '',
+    setFormData({
+      leadId: '',
+      accountId: '',
+      facilityId: '',
+      assignedToUserId: '',
       type: 'walk_through',
       status: 'scheduled',
-      scheduledStart: new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16),
-      scheduledEnd: new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16),
+      scheduledStart: toLocalDateTimeInputValue(startDate),
+      scheduledEnd: toLocalDateTimeInputValue(endDate),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       location: '',
       notes: '',
@@ -724,7 +763,7 @@ const AppointmentsPage = () => {
                 <Select
                   label="Assigned To"
                   placeholder="All Reps"
-                  options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+                  options={assignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
                   value={assignedFilter}
                   onChange={setAssignedFilter}
                 />
@@ -952,7 +991,7 @@ const AppointmentsPage = () => {
           <Select
             label="Assigned Rep"
             placeholder="Select rep"
-            options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+            options={assignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
             value={formData.assignedToUserId}
             onChange={(value) => setFormData({ ...formData, assignedToUserId: value })}
           />
@@ -963,58 +1002,35 @@ const AppointmentsPage = () => {
               type="date"
               value={formData.scheduledStart?.split('T')[0] || ''}
               onChange={(e) => {
-                const time = formData.scheduledStart?.split('T')[1] || '09:00';
-                setFormData({ ...formData, scheduledStart: `${e.target.value}T${time}` });
+                const nextDate = e.target.value;
+                const startTime = formData.scheduledStart?.split('T')[1] || '09:00';
+                const endTime = formData.scheduledEnd?.split('T')[1] || '10:00';
+                setFormData({
+                  ...formData,
+                  scheduledStart: combineLocalDateAndTime(nextDate, startTime),
+                  scheduledEnd: combineLocalDateAndTime(nextDate, endTime),
+                });
               }}
             />
             <Select
               label="Start Time"
-              options={(() => {
-                const times = [];
-                for (let h = 6; h <= 22; h++) {
-                  for (let m = 0; m < 60; m += 30) {
-                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                    times.push({ value: hour24, label: hour12 });
-                  }
-                }
-                return times;
-              })()}
+              options={TIME_OPTIONS}
               value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
-                setFormData({ ...formData, scheduledStart: `${date}T${value}` });
+                setFormData({ ...formData, scheduledStart: combineLocalDateAndTime(date, value) });
               }}
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="End Date"
-              type="date"
-              value={formData.scheduledEnd?.split('T')[0] || ''}
-              onChange={(e) => {
-                const time = formData.scheduledEnd?.split('T')[1] || '10:00';
-                setFormData({ ...formData, scheduledEnd: `${e.target.value}T${time}` });
-              }}
-            />
+          <div className="grid grid-cols-1 gap-4">
             <Select
               label="End Time"
-              options={(() => {
-                const times = [];
-                for (let h = 6; h <= 22; h++) {
-                  for (let m = 0; m < 60; m += 30) {
-                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                    times.push({ value: hour24, label: hour12 });
-                  }
-                }
-                return times;
-              })()}
+              options={TIME_OPTIONS}
               value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
               onChange={(value) => {
-                const date = formData.scheduledEnd?.split('T')[0] || new Date().toISOString().split('T')[0];
-                setFormData({ ...formData, scheduledEnd: `${date}T${value}` });
+                const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledEnd: combineLocalDateAndTime(date, value) });
               }}
             />
           </div>
@@ -1105,7 +1121,7 @@ const AppointmentsPage = () => {
           <Select
             label="Assigned Rep"
             placeholder="Select rep"
-            options={users.map((u) => ({ value: u.id, label: u.fullName }))}
+            options={assignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
             value={formData.assignedToUserId}
             onChange={(value) => setFormData({ ...formData, assignedToUserId: value })}
           />
@@ -1131,58 +1147,35 @@ const AppointmentsPage = () => {
               type="date"
               value={formData.scheduledStart?.split('T')[0] || ''}
               onChange={(e) => {
-                const time = formData.scheduledStart?.split('T')[1] || '09:00';
-                setFormData({ ...formData, scheduledStart: `${e.target.value}T${time}` });
+                const nextDate = e.target.value;
+                const startTime = formData.scheduledStart?.split('T')[1] || '09:00';
+                const endTime = formData.scheduledEnd?.split('T')[1] || '10:00';
+                setFormData({
+                  ...formData,
+                  scheduledStart: combineLocalDateAndTime(nextDate, startTime),
+                  scheduledEnd: combineLocalDateAndTime(nextDate, endTime),
+                });
               }}
             />
             <Select
               label="Start Time"
-              options={(() => {
-                const times = [];
-                for (let h = 6; h <= 22; h++) {
-                  for (let m = 0; m < 60; m += 30) {
-                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                    times.push({ value: hour24, label: hour12 });
-                  }
-                }
-                return times;
-              })()}
+              options={TIME_OPTIONS}
               value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
-                setFormData({ ...formData, scheduledStart: `${date}T${value}` });
+                setFormData({ ...formData, scheduledStart: combineLocalDateAndTime(date, value) });
               }}
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="End Date"
-              type="date"
-              value={formData.scheduledEnd?.split('T')[0] || ''}
-              onChange={(e) => {
-                const time = formData.scheduledEnd?.split('T')[1] || '10:00';
-                setFormData({ ...formData, scheduledEnd: `${e.target.value}T${time}` });
-              }}
-            />
+          <div className="grid grid-cols-1 gap-4">
             <Select
               label="End Time"
-              options={(() => {
-                const times = [];
-                for (let h = 6; h <= 22; h++) {
-                  for (let m = 0; m < 60; m += 30) {
-                    const hour24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    const hour12 = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                    times.push({ value: hour24, label: hour12 });
-                  }
-                }
-                return times;
-              })()}
+              options={TIME_OPTIONS}
               value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
               onChange={(value) => {
-                const date = formData.scheduledEnd?.split('T')[0] || new Date().toISOString().split('T')[0];
-                setFormData({ ...formData, scheduledEnd: `${date}T${value}` });
+                const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setFormData({ ...formData, scheduledEnd: combineLocalDateAndTime(date, value) });
               }}
             />
           </div>

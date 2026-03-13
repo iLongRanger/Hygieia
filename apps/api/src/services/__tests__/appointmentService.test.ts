@@ -20,6 +20,9 @@ jest.mock('../../lib/prisma', () => ({
     account: {
       findUnique: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     contract: {
       findFirst: jest.fn(),
     },
@@ -70,6 +73,10 @@ describe('appointmentService', () => {
     });
     (prisma.opportunity.update as jest.Mock).mockResolvedValue({ id: 'opp-1' });
     (prisma.contact.findFirst as jest.Mock).mockResolvedValue({ id: 'contact-1' });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      roles: [{ role: { key: 'manager' } }],
+    });
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
   });
@@ -161,6 +168,27 @@ describe('appointmentService', () => {
       createdByUserId: 'admin-1',
     });
     expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('createAppointment should reject cleaner assignees', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      roles: [{ role: { key: 'cleaner' } }],
+    });
+
+    await expect(
+      appointmentService.createAppointment({
+        leadId: 'lead-1',
+        facilityId: 'facility-1',
+        assignedToUserId: 'user-1',
+        type: 'walk_through',
+        status: 'scheduled',
+        scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+        scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+        timezone: 'America/New_York',
+        createdByUserId: 'admin-1',
+      })
+    ).rejects.toThrow('Assigned rep must be an owner, admin, or manager');
   });
 
   it('completeAppointment should reject when no tasks exist for facility', async () => {
