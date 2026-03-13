@@ -15,7 +15,8 @@ interface SubmitProposalModalProps {
   activeTasksCount: number;
   submitProposalNotes: string;
   setSubmitProposalNotes: (notes: string) => void;
-  onSubmit: () => void;
+  onCompleteWalkthrough: () => void;
+  onSaveDraft: () => void;
   submitting: boolean;
 }
 
@@ -31,7 +32,8 @@ export function SubmitProposalModal({
   activeTasksCount,
   submitProposalNotes,
   setSubmitProposalNotes,
-  onSubmit,
+  onCompleteWalkthrough,
+  onSaveDraft,
   submitting,
 }: SubmitProposalModalProps): React.JSX.Element {
   const activeAreas = areas.filter((area) => !area.archivedAt);
@@ -115,8 +117,8 @@ export function SubmitProposalModal({
             )}
           </div>
           <div className="mt-3 text-sm text-gray-300">
-            This submits the facility as reviewed and ready for proposal creation.
-            It also marks the walkthrough as completed and updates lead status.
+            Choose whether to keep working on this facility later or finish the walkthrough now.
+            Completing the walkthrough will mark it complete and move the pipeline forward to proposal-ready.
           </div>
         </div>
 
@@ -131,17 +133,17 @@ export function SubmitProposalModal({
         <div className="flex justify-end gap-3 pt-2">
           <Button
             variant="secondary"
-            onClick={onClose}
+            onClick={onSaveDraft}
             disabled={submitting}
           >
-            Cancel
+            Save as Draft
           </Button>
           <Button
-            onClick={onSubmit}
+            onClick={onCompleteWalkthrough}
             isLoading={submitting}
             disabled={activeAreasCount === 0 || activeTasksCount === 0}
           >
-            Submit Facility
+            Complete Walkthrough
           </Button>
         </div>
       </div>

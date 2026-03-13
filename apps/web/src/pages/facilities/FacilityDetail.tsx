@@ -774,6 +774,11 @@ const FacilityDetail = () => {
     }
   };
 
+  const handleSaveFacilityDraft = () => {
+    setShowSubmitProposalModal(false);
+    toast.success('Facility details saved as draft. Walkthrough remains in progress.');
+  };
+
   const buildTaskSelectionsForArea = (area: Area) => {
     const matchingTemplates = taskTemplates
       .filter(
@@ -1300,7 +1305,8 @@ const FacilityDetail = () => {
         activeTasksCount={activeTasksCount}
         submitProposalNotes={submitProposalNotes}
         setSubmitProposalNotes={setSubmitProposalNotes}
-        onSubmit={handleSubmitForProposal}
+        onCompleteWalkthrough={handleSubmitForProposal}
+        onSaveDraft={handleSaveFacilityDraft}
         submitting={submittingForProposal}
       />
     </div>

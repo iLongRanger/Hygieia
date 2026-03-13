@@ -377,7 +377,7 @@ describe('FacilityDetail', () => {
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
     const modal = await screen.findByRole('dialog', { name: /submit facility for proposal/i });
     await user.type(screen.getByLabelText(/review notes/i), 'Ready for proposal');
-    await user.click(within(modal).getByRole('button', { name: /submit facility/i }));
+    await user.click(within(modal).getByRole('button', { name: /complete walkthrough/i }));
 
     await waitFor(() => {
       expect(submitFacilityForProposalMock).toHaveBeenCalledWith(
@@ -385,6 +385,33 @@ describe('FacilityDetail', () => {
         'Ready for proposal'
       );
     });
+  });
+
+  it('allows saving facility details as draft without completing the walkthrough', async () => {
+    const user = userEvent.setup();
+    listFacilityTasksMock.mockResolvedValue({
+      data: [
+        {
+          id: 'task-1',
+          customName: 'Vacuum',
+          cleaningFrequency: 'daily',
+          priority: 3,
+          archivedAt: null,
+          area: { id: 'area-1', name: 'Office A' },
+          taskTemplate: null,
+        },
+      ],
+    });
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
+    const modal = await screen.findByRole('dialog', { name: /submit facility for proposal/i });
+    await user.click(within(modal).getByRole('button', { name: /save as draft/i }));
+
+    await waitFor(() => {
+      expect(submitFacilityForProposalMock).not.toHaveBeenCalled();
+    });
+    expect(screen.queryByRole('dialog', { name: /submit facility for proposal/i })).not.toBeInTheDocument();
   });
 
   it('hides submit for proposal when facility already has proposal or contract', async () => {
