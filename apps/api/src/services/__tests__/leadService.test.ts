@@ -57,6 +57,7 @@ jest.mock('../geocodingService', () => ({
 describe('leadService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => callback(prisma));
     (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.facility.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.account.findMany as jest.Mock).mockResolvedValue([]);
@@ -295,6 +296,14 @@ describe('leadService', () => {
         }),
         select: expect.any(Object),
       });
+      expect(prisma.opportunity.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          leadId: mockLead.id,
+          title: 'Test Company',
+          status: 'new',
+          createdByUserId: input.createdByUserId,
+        }),
+      });
       expect(result).toEqual(mockLead);
       expect(createNotification).not.toHaveBeenCalled();
     });
@@ -328,6 +337,13 @@ describe('leadService', () => {
 
       await leadService.createLead(input);
 
+      expect(prisma.opportunity.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          leadId: mockLead.id,
+          title: mockLead.companyName ?? mockLead.contactName,
+          probability: 0,
+        }),
+      });
       expect(prisma.lead.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({

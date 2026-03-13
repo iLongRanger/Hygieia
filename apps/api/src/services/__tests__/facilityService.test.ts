@@ -24,11 +24,16 @@ jest.mock('../../lib/prisma', () => ({
     appointment: {
       findFirst: jest.fn(),
     },
+    contact: {
+      findFirst: jest.fn(),
+    },
     opportunity: {
       findMany: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
     },
     lead: {
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
   },
@@ -42,6 +47,9 @@ describe('facilityService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.facility.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.contact.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue(null);
   });
 
   describe('listFacilities', () => {
@@ -147,6 +155,54 @@ describe('facilityService', () => {
 
       expect(result).toEqual(mockFacility);
       expect(geocodeAddressIfNeeded).toHaveBeenCalled();
+    });
+
+    it('should create a facility-scoped opportunity when the account already has a lead pipeline record', async () => {
+      const input: facilityService.FacilityCreateInput = {
+        accountId: 'account-123',
+        name: 'Second Site',
+        address: { street: '123 Main St', city: 'Test City' },
+        createdByUserId: 'user-123',
+      };
+
+      const mockFacility = createTestFacility({ ...input, id: 'facility-2' });
+
+      (prisma.facility.create as jest.Mock).mockResolvedValue(mockFacility);
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-1',
+          accountId: 'account-123',
+          facilityId: 'facility-1',
+          leadId: 'lead-1',
+          status: 'walk_through_completed',
+          updatedAt: new Date('2026-03-13T10:00:00Z'),
+          createdAt: new Date('2026-03-13T09:00:00Z'),
+        },
+      ]);
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lead-1',
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        estimatedValue: 5000,
+        probability: 40,
+        expectedCloseDate: new Date('2026-03-20T00:00:00Z'),
+        assignedToUserId: null,
+        createdByUserId: 'creator-1',
+      });
+      (prisma.contact.findFirst as jest.Mock).mockResolvedValue({ id: 'contact-1' });
+
+      await facilityService.createFacility(input);
+
+      expect(prisma.opportunity.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          leadId: 'lead-1',
+          accountId: 'account-123',
+          facilityId: 'facility-2',
+          primaryContactId: 'contact-1',
+          title: 'Acme Corporation',
+          status: 'lead',
+        }),
+      });
     });
 
     it('should default status to active', async () => {

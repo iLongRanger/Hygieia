@@ -239,7 +239,7 @@ export async function createFacility(input: FacilityCreateInput) {
 
   const normalizedAddress = await geocodeAddressIfNeeded(input.address);
 
-  return prisma.facility.create({
+  const facility = await prisma.facility.create({
     data: {
       accountId: input.accountId,
       name: normalizedName,
@@ -255,6 +255,55 @@ export async function createFacility(input: FacilityCreateInput) {
     },
     select: facilitySelect,
   });
+
+  const sourceOpportunity = await findPreferredOpportunityForAccount(prisma, input.accountId, {
+    requireLeadId: true,
+  });
+
+  if (sourceOpportunity?.leadId) {
+    const [lead, primaryContact] = await Promise.all([
+      prisma.lead.findUnique({
+        where: { id: sourceOpportunity.leadId },
+        select: {
+          id: true,
+          companyName: true,
+          contactName: true,
+          estimatedValue: true,
+          probability: true,
+          expectedCloseDate: true,
+          assignedToUserId: true,
+          createdByUserId: true,
+        },
+      }),
+      prisma.contact.findFirst({
+        where: {
+          accountId: input.accountId,
+          archivedAt: null,
+        },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      }),
+    ]);
+
+    await prisma.opportunity.create({
+      data: {
+        leadId: sourceOpportunity.leadId,
+        accountId: input.accountId,
+        facilityId: facility.id,
+        primaryContactId: primaryContact?.id ?? null,
+        title: lead?.companyName?.trim() || lead?.contactName?.trim() || normalizedName,
+        source: null,
+        estimatedValue: lead?.estimatedValue ?? null,
+        probability: lead?.probability ?? 0,
+        expectedCloseDate: lead?.expectedCloseDate ?? null,
+        ownerUserId: lead?.assignedToUserId ?? null,
+        createdByUserId: sourceOpportunity.leadId ? (lead?.createdByUserId ?? input.createdByUserId) : input.createdByUserId,
+        status: 'lead',
+      } satisfies Prisma.OpportunityUncheckedCreateInput,
+    });
+  }
+
+  return facility;
 }
 
 export async function updateFacility(id: string, input: FacilityUpdateInput) {

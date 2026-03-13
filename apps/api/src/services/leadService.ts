@@ -385,26 +385,49 @@ export async function getLeadById(id: string) {
 }
 
 export async function createLead(input: LeadCreateInput) {
-  const lead = await prisma.lead.create({
-    data: {
-      leadSourceId: input.leadSourceId,
-      companyName: input.companyName,
-      contactName: input.contactName,
-      primaryEmail: input.primaryEmail,
-      primaryPhone: input.primaryPhone,
-      secondaryEmail: input.secondaryEmail,
-      secondaryPhone: input.secondaryPhone,
-      address: input.address as Prisma.InputJsonValue,
-      estimatedValue: input.estimatedValue,
-      probability: input.probability ?? 0,
-      expectedCloseDate: input.expectedCloseDate,
-      notes: input.notes,
-      createdByUserId: input.createdByUserId,
-    },
-    select: leadSelect,
-  });
+  return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.create({
+      data: {
+        leadSourceId: input.leadSourceId,
+        companyName: input.companyName,
+        contactName: input.contactName,
+        primaryEmail: input.primaryEmail,
+        primaryPhone: input.primaryPhone,
+        secondaryEmail: input.secondaryEmail,
+        secondaryPhone: input.secondaryPhone,
+        address: input.address as Prisma.InputJsonValue,
+        estimatedValue: input.estimatedValue,
+        probability: input.probability ?? 0,
+        expectedCloseDate: input.expectedCloseDate,
+        notes: input.notes,
+        createdByUserId: input.createdByUserId,
+      },
+      select: leadSelect,
+    });
 
-  return lead;
+    await tx.opportunity.create({
+      data: {
+        leadId: lead.id,
+        accountId: null,
+        facilityId: null,
+        primaryContactId: null,
+        title: deriveOpportunityTitle(lead),
+        source: lead.leadSource?.name ?? null,
+        estimatedValue: lead.estimatedValue,
+        probability: lead.probability ?? 0,
+        expectedCloseDate: lead.expectedCloseDate,
+        lostReason: lead.lostReason,
+        ownerUserId: lead.assignedToUser?.id ?? null,
+        createdByUserId: input.createdByUserId,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+        archivedAt: lead.archivedAt,
+        ...getOpportunityStatusUpdate(lead.status as OpportunityPipelineStatus),
+      } satisfies Prisma.OpportunityUncheckedCreateInput,
+    });
+
+    return lead;
+  });
 }
 
 export async function updateLead(id: string, input: LeadUpdateInput) {
