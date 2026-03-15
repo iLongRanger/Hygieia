@@ -336,6 +336,58 @@ describe('Proposal Routes', () => {
     );
   });
 
+  it('PATCH /:id should keep sent proposals in sent status when saving edits', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'sent',
+      pricingPlanId: 'plan-1',
+    });
+    (proposalService.updateProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+
+    await request(app)
+      .patch('/api/v1/proposals/proposal-1')
+      .send({ title: 'Negotiated revision' })
+      .expect(200);
+
+    expect(proposalVersionService.createVersion).toHaveBeenCalledWith(
+      'proposal-1',
+      'user-1',
+      'Revised after sending'
+    );
+    expect(proposalService.updateProposal).toHaveBeenCalledWith(
+      'proposal-1',
+      expect.not.objectContaining({
+        status: 'draft',
+      })
+    );
+  });
+
+  it('PATCH /:id should keep viewed proposals in viewed status when saving edits', async () => {
+    (proposalService.getProposalById as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      status: 'viewed',
+      pricingPlanId: 'plan-1',
+    });
+    (proposalService.updateProposal as jest.Mock).mockResolvedValue({ id: 'proposal-1' });
+
+    await request(app)
+      .patch('/api/v1/proposals/proposal-1')
+      .send({ title: 'Viewed revision' })
+      .expect(200);
+
+    expect(proposalVersionService.createVersion).toHaveBeenCalledWith(
+      'proposal-1',
+      'user-1',
+      'Revised after sending'
+    );
+    expect(proposalService.updateProposal).toHaveBeenCalledWith(
+      'proposal-1',
+      expect.not.objectContaining({
+        status: 'draft',
+      })
+    );
+  });
+
   it('POST /:id/send should send proposal', async () => {
     const mockProposal = {
       id: 'proposal-1',

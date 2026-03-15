@@ -243,7 +243,7 @@ router.patch(
         );
       }
 
-      // Preserve a historical snapshot before revising any customer-facing draft thread.
+      // Preserve a historical snapshot before revising any customer-facing proposal thread.
       if (['sent', 'viewed', 'rejected'].includes(proposal.status)) {
         const changeReason =
           proposal.status === 'rejected'
@@ -256,9 +256,7 @@ router.patch(
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
         title: parsed.data.title,
-        status: ['sent', 'viewed', 'rejected'].includes(proposal.status)
-          ? 'draft'
-          : parsed.data.status,
+        status: proposal.status === 'rejected' ? 'draft' : parsed.data.status,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
         taxRate: parsed.data.taxRate,
