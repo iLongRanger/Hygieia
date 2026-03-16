@@ -21,6 +21,7 @@ const getContractsSummaryMock = vi.fn();
 const archiveContractMock = vi.fn();
 const restoreContractMock = vi.fn();
 const updateContractStatusMock = vi.fn();
+const getProposalsAvailableForContractMock = vi.fn();
 
 vi.mock('../../lib/contracts', () => ({
   listContracts: (...args: unknown[]) => listContractsMock(...args),
@@ -28,6 +29,10 @@ vi.mock('../../lib/contracts', () => ({
   archiveContract: (...args: unknown[]) => archiveContractMock(...args),
   restoreContract: (...args: unknown[]) => restoreContractMock(...args),
   updateContractStatus: (...args: unknown[]) => updateContractStatusMock(...args),
+}));
+
+vi.mock('../../lib/proposals', () => ({
+  getProposalsAvailableForContract: (...args: unknown[]) => getProposalsAvailableForContractMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -112,6 +117,23 @@ describe('ContractsList', () => {
     archiveContractMock.mockResolvedValue({ ...contract, archivedAt: new Date().toISOString() });
     restoreContractMock.mockResolvedValue(contract);
     updateContractStatusMock.mockResolvedValue({ ...contract, status: 'active' });
+    getProposalsAvailableForContractMock.mockResolvedValue([
+      {
+        id: 'proposal-1',
+        proposalNumber: 'PROP-001',
+        title: 'Accepted Proposal',
+        totalAmount: '1200',
+        acceptedAt: new Date().toISOString(),
+        account: {
+          id: 'account-1',
+          name: 'Acme Corporation',
+        },
+        facility: {
+          id: 'facility-1',
+          name: 'Main Facility',
+        },
+      },
+    ]);
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
@@ -126,6 +148,9 @@ describe('ContractsList', () => {
     await waitFor(() => {
       expect(screen.getByText('CONT-202602-0001')).toBeInTheDocument();
       expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
+      expect(screen.getByText('Ready From Proposals')).toBeInTheDocument();
+      expect(screen.getByText('accepted and contract-ready')).toBeInTheDocument();
+      expect(getProposalsAvailableForContractMock).toHaveBeenCalled();
     });
   });
 

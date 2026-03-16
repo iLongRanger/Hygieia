@@ -33,6 +33,7 @@ import {
   restoreContract,
   updateContractStatus,
 } from '../../lib/contracts';
+import { getProposalsAvailableForContract } from '../../lib/proposals';
 import type { Contract, ContractStatus, ContractSummary } from '../../types/contract';
 
 const CONTRACT_STATUSES = [
@@ -115,6 +116,7 @@ const ContractsList = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<ContractSummary | null>(null);
+  const [readyProposalCount, setReadyProposalCount] = useState(0);
   const [summaryCardFilter, setSummaryCardFilter] = useState<SummaryCardFilter | null>(null);
 
   // Filter states
@@ -172,15 +174,20 @@ const ContractsList = () => {
   const fetchSummary = useCallback(async () => {
     try {
       setSummaryLoading(true);
-      const data = await getContractsSummary({
-        accountId: accountIdFilter,
-        includeArchived,
-      });
-      setSummary(data);
+      const [summaryData, availableProposals] = await Promise.all([
+        getContractsSummary({
+          accountId: accountIdFilter,
+          includeArchived,
+        }),
+        getProposalsAvailableForContract(accountIdFilter),
+      ]);
+      setSummary(summaryData);
+      setReadyProposalCount(availableProposals.length);
     } catch (error) {
       console.error('Failed to load contracts summary:', error);
       toast.error('Failed to load contract summary');
       setSummary(null);
+      setReadyProposalCount(0);
     } finally {
       setSummaryLoading(false);
     }
@@ -209,6 +216,7 @@ const ContractsList = () => {
   useEffect(() => {
     if (!canViewPipelines) {
       setSummary(null);
+      setReadyProposalCount(0);
       setSummaryLoading(false);
       return;
     }
@@ -436,7 +444,7 @@ const ContractsList = () => {
       </div>
 
       {canViewPipelines && (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         <button
           type="button"
           onClick={() => handleSummaryCardClick('draft')}
@@ -495,6 +503,19 @@ const ContractsList = () => {
           <div className="text-xs text-gray-400 uppercase tracking-wide">Active</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.active ?? 0)}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/contracts/new')}
+          className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 p-3 text-left transition hover:border-emerald-300/50"
+        >
+          <div className="text-xs text-emerald-200 uppercase tracking-wide">Ready From Proposals</div>
+          <div className="mt-1 text-xl font-semibold text-emerald-100">
+            {summaryLoading ? '-' : readyProposalCount}
+          </div>
+          <div className="text-[11px] text-emerald-200/80">
+            accepted and contract-ready
           </div>
         </button>
         <button
