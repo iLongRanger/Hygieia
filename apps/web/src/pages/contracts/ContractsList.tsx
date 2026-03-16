@@ -299,8 +299,21 @@ const ContractsList = () => {
             <FileText className="h-5 w-5 text-indigo-400" />
           </div>
           <div>
-            <div className="font-medium text-white">{contract.contractNumber}</div>
-            <div className="text-sm text-gray-400">{contract.title}</div>
+            <button
+              type="button"
+              className="text-left"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(`/contracts/${contract.id}`);
+              }}
+            >
+              <div className="font-medium text-white transition hover:text-indigo-300">
+                {contract.contractNumber}
+              </div>
+              <div className="text-sm text-gray-400 transition hover:text-gray-200">
+                {contract.title}
+              </div>
+            </button>
           </div>
         </div>
       ),
@@ -664,7 +677,12 @@ const ContractsList = () => {
           )}
         </div>
 
-        <Table data={contracts} columns={columns} isLoading={loading} />
+        <Table
+          data={contracts}
+          columns={columns}
+          isLoading={loading}
+          onRowClick={(contract) => navigate(`/contracts/${contract.id}`)}
+        />
 
         <div className="border-t border-white/10 bg-navy-dark/30 p-4">
           <div className="flex items-center justify-between text-sm text-gray-400">

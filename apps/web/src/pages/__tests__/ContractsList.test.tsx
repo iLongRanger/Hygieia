@@ -154,6 +154,18 @@ describe('ContractsList', () => {
     });
   });
 
+  it('navigates to contract detail when contract name is clicked', async () => {
+    const user = userEvent.setup();
+    render(<ContractsList />);
+
+    const contractNameButton = await screen.findByRole('button', {
+      name: /cont-202602-0001 office cleaning agreement/i,
+    });
+    await user.click(contractNameButton);
+
+    expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
+  });
+
   it('archives a draft contract from row action', async () => {
     const user = userEvent.setup();
     render(<ContractsList />);
