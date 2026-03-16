@@ -448,7 +448,8 @@ async function ensureFacilityScopedOpportunity(
 }
 
 async function assertProposalCreateReadiness(
-  input: ProposalCreateInput
+  input: ProposalCreateInput,
+  options: { excludeProposalId?: string } = {}
 ): Promise<{ opportunityId: string | null }> {
   const account = await prisma.account.findUnique({
     where: { id: input.accountId },
@@ -514,7 +515,11 @@ async function assertProposalCreateReadiness(
     throw new BadRequestError('Facility must be active before creating a proposal');
   }
 
-  await ensureSingleActiveProposalForFacility(input.accountId, facility.id);
+  await ensureSingleActiveProposalForFacility(
+    input.accountId,
+    facility.id,
+    options.excludeProposalId
+  );
 
   const [areaCount, taskCount] = await Promise.all([
     prisma.area.count({
@@ -773,13 +778,16 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       id
     );
 
-    await assertProposalCreateReadiness({
-      accountId: effectiveAccountId,
-      facilityId: effectiveFacilityId,
-      opportunityId: effectiveOpportunityId,
-      title: input.title ?? 'Existing Proposal',
-      createdByUserId: 'system',
-    });
+    await assertProposalCreateReadiness(
+      {
+        accountId: effectiveAccountId,
+        facilityId: effectiveFacilityId,
+        opportunityId: effectiveOpportunityId,
+        title: input.title ?? 'Existing Proposal',
+        createdByUserId: 'system',
+      },
+      { excludeProposalId: id }
+    );
   }
 
   if (input.accountId !== undefined) {

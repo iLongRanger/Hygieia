@@ -822,6 +822,52 @@ describe('proposalService', () => {
         })
       );
     });
+
+    it('should allow updating a sent proposal without tripping the active proposal duplicate guard', async () => {
+      const currentProposal = createTestProposal({
+        status: 'sent',
+        proposalItems: [],
+        proposalServices: [],
+      });
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValue(currentProposal);
+      (prisma.proposal.findFirst as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      (prisma.proposal.update as jest.Mock).mockResolvedValue(currentProposal);
+
+      await expect(
+        proposalService.updateProposal('proposal-1', {
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          title: 'Negotiated Proposal',
+          serviceFrequency: '5x_week',
+          serviceSchedule: {
+            days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+            allowedWindowStart: '18:00',
+            allowedWindowEnd: '06:00',
+            windowAnchor: 'start_day',
+            timezoneSource: 'facility',
+          },
+        })
+      ).resolves.toEqual(currentProposal);
+
+      expect(prisma.proposal.findFirst).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { not: 'proposal-1' },
+          }),
+        })
+      );
+      expect(prisma.proposal.findFirst).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { not: 'proposal-1' },
+          }),
+        })
+      );
+    });
   });
 
   describe('sendProposal', () => {
