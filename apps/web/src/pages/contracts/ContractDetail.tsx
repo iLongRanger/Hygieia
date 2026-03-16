@@ -1247,9 +1247,10 @@ const ContractDetail = () => {
     try {
       setAmendmentSubmitting(true);
       const created = await createContractAmendmentApi(contract.id, amendmentFormData);
+      const detail = await getContractAmendmentApi(contract.id, created.id);
       setShowAmendmentModal(false);
       setAppliedRecurringJobsSummary(null);
-      setSelectedAmendment(created);
+      setSelectedAmendment(detail);
       setShowAmendmentDetailModal(true);
       toast.success('Amendment draft created');
       refreshAll(contract.id);

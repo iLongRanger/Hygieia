@@ -469,6 +469,33 @@ describe('ContractDetail', () => {
 
   it('creates amendment draft from contract detail', async () => {
     getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    getContractAmendmentMock.mockResolvedValueOnce({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'scope_change',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [
+        {
+          id: 'snapshot-working',
+          snapshotType: 'working',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            areas: [{ id: 'area-1', name: 'Lobby' }],
+            tasks: [],
+          },
+        },
+      ],
+      activities: [],
+    });
     const user = userEvent.setup();
 
     render(<ContractDetail />);
@@ -484,6 +511,7 @@ describe('ContractDetail', () => {
           reason: 'Client requested scope change',
         })
       );
+      expect(getContractAmendmentMock).toHaveBeenCalledWith('contract-1', 'amend-1');
     });
   });
 
