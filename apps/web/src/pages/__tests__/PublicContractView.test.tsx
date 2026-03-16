@@ -92,6 +92,7 @@ describe('PublicContractView', () => {
 
     expect(await screen.findByText('Monthly Janitorial Services')).toBeInTheDocument();
     expect(screen.getByText('Contract CONT-2026-0001')).toBeInTheDocument();
+    expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();

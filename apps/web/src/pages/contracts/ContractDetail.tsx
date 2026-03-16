@@ -205,7 +205,24 @@ const formatFrequency = (value: string | null | undefined) => {
 const normalizeServiceBullet = (value: string): string =>
   value.replace(/^[\s*-•]+/, '').trim();
 
-const parseServiceDescriptionBullets = (
+type ServiceTaskGroup = {
+  label: string;
+  tasks: string[];
+};
+
+const serviceTaskGroupLabel = (value: string): string => {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (normalized.includes('annual') || normalized.includes('yearly')) return 'Annual';
+  if (normalized.includes('quarterly')) return 'Quarterly';
+  if (normalized.includes('monthly')) return 'Monthly';
+  if (normalized.includes('biweekly')) return 'Bi-Weekly';
+  if (normalized.includes('weekly')) return 'Weekly';
+  if (normalized.includes('daily')) return 'Daily';
+  if (normalized.includes('manual') || normalized.includes('scope')) return 'Scope';
+  return value.trim();
+};
+
+const buildServiceTaskGroups = (
   description: string | null | undefined,
   includedTasks: string[] | undefined
 ) => {
@@ -215,43 +232,50 @@ const parseServiceDescriptionBullets = (
     .filter(Boolean);
 
   const areaSummary = lines[0] || '';
-  const bullets: string[] = [];
-  const seen = new Set<string>();
+  const grouped = new Map<string, Set<string>>();
 
-  const addBullet = (value: string) => {
+  const addTask = (label: string, value: string) => {
     let normalized = value.trim();
     while (normalized.startsWith('-') || normalized.startsWith('*')) {
       normalized = normalized.slice(1).trimStart();
     }
-    const key = normalized.toLowerCase();
-    if (!normalized || seen.has(key)) return;
-    seen.add(key);
-    bullets.push(normalized);
+    if (!normalized) return;
+    const normalizedLabel = serviceTaskGroupLabel(label);
+    if (!grouped.has(normalizedLabel)) {
+      grouped.set(normalizedLabel, new Set<string>());
+    }
+    grouped.get(normalizedLabel)!.add(normalized);
   };
 
   for (const line of lines.slice(1)) {
     const match = line.match(/^(.+?):\s*(.+)$/);
     if (match) {
       for (const task of match[2].split(',')) {
-        addBullet(task);
+        addTask(match[1], task);
       }
       continue;
     }
-    addBullet(line);
+    addTask('Scope', line);
   }
 
   for (const taskLine of includedTasks || []) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
     if (match) {
       for (const task of match[2].split(',')) {
-        addBullet(task);
+        addTask(match[1], task);
       }
       continue;
     }
-    addBullet(taskLine);
+    addTask('Scope', taskLine);
   }
 
-  return { areaSummary, bullets };
+  return {
+    areaSummary,
+    groups: Array.from(grouped.entries()).map(([label, tasks]) => ({
+      label,
+      tasks: Array.from(tasks),
+    })),
+  };
 };
 
 const getFrequencyOrder = (value: string | null | undefined) => {
@@ -2261,7 +2285,7 @@ const ContractDetail = () => {
             </div>
             <div className="space-y-5">
               {contract.proposal.proposalServices.map((service) => {
-                const { areaSummary, bullets } = parseServiceDescriptionBullets(
+                const { areaSummary, groups } = buildServiceTaskGroups(
                   service.description,
                   service.includedTasks
                 );
@@ -2287,12 +2311,21 @@ const ContractDetail = () => {
                         )}
                       </div>
                     </div>
-                    {bullets.length > 0 ? (
-                      <ul className="mt-3 space-y-1.5 pl-5 text-sm text-gray-200 list-disc">
-                        {bullets.map((bullet) => (
-                          <li key={`${service.id}-${bullet}`}>{bullet}</li>
+                    {groups.length > 0 ? (
+                      <div className="mt-3 space-y-3">
+                        {groups.map((group) => (
+                          <div key={`${service.id}-${group.label}`}>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                              {group.label}
+                            </div>
+                            <ul className="mt-1.5 list-disc space-y-1.5 pl-5 text-sm text-gray-200">
+                              {group.tasks.map((task) => (
+                                <li key={`${service.id}-${group.label}-${task}`}>{task}</li>
+                              ))}
+                            </ul>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     ) : (
                       <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>
                     )}
