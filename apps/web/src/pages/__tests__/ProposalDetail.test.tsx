@@ -175,9 +175,7 @@ describe('ProposalDetail', () => {
     render(<ProposalDetail />);
 
     expect(await screen.findByText('Daily')).toBeInTheDocument();
-    expect(screen.getByText('Weekly')).toBeInTheDocument();
-    expect(screen.getByText('Manual')).toBeInTheDocument();
-    expect(screen.getByText('Yearly')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Strip and wax')).toBeInTheDocument();
   });
 

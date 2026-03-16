@@ -171,6 +171,83 @@ const findAppliedFrequencyMultiplier = (
 
 type TaskGroup = { key: string; label: string; tasks: string[] };
 
+const TaskGroupStepper = ({
+  serviceId,
+  groups,
+}: {
+  serviceId: string;
+  groups: TaskGroup[];
+}) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [serviceId, groups.length]);
+
+  if (groups.length === 0) return null;
+
+  const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
+
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-3">
+      <div className="flex flex-wrap gap-2">
+        {groups.map((group, index) => (
+          <button
+            key={`${serviceId}-${group.key}`}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+              index === activeIndex
+                ? 'bg-gold text-navy'
+                : 'border border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:text-white'
+            }`}
+          >
+            {group.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          {activeGroup.label}
+        </p>
+        <span className="text-xs text-gray-500">
+          {activeIndex + 1} of {groups.length}
+        </span>
+      </div>
+      <ul className="mt-2 space-y-1 ml-1">
+        {activeGroup.tasks.map((task, index) => (
+          <li key={`${serviceId}-${activeGroup.key}-${index}`} className="flex items-start gap-2 text-sm text-gray-300">
+            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
+            {task}
+          </li>
+        ))}
+      </ul>
+      {groups.length > 1 && (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={activeIndex === 0}
+            onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={activeIndex >= groups.length - 1}
+            onClick={() => setActiveIndex((current) => Math.min(groups.length - 1, current + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TASK_GROUP_ORDER = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'manual'];
 
 const taskGroupLabel = (key: string): string => {
@@ -823,25 +900,7 @@ const ProposalDetail = () => {
                       )}
 
                       {/* Tasks grouped by category/frequency */}
-                      {taskGroups.length > 0 && (
-                        <div className="mt-3 space-y-3">
-                          {taskGroups.map((group, gIdx) => (
-                            <div key={gIdx}>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                                {group.label}
-                              </p>
-                              <ul className="space-y-1 ml-1">
-                                {group.tasks.map((task, tIdx) => (
-                                  <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-300">
-                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
-                                    {task}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <TaskGroupStepper serviceId={service.id || String(idx)} groups={taskGroups} />
                     </div>
                   );
                 })}

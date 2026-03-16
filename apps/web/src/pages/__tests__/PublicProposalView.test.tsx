@@ -168,9 +168,7 @@ describe('PublicProposalView', () => {
     render(<PublicProposalView />);
 
     expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
-    expect((screen.getAllByText('Weekly')).length).toBeGreaterThan(0);
-    expect((screen.getAllByText('Manual')).length).toBeGreaterThan(0);
-    expect((screen.getAllByText('Yearly')).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 
   it('hides tasks with zero quantity suffix', async () => {

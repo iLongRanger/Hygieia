@@ -80,6 +80,82 @@ const formatAddress = (
 };
 
 type TaskGroup = { key: string; label: string; tasks: string[] };
+const TaskGroupStepper: React.FC<{
+  serviceId: string;
+  groups: TaskGroup[];
+  accentColor: string;
+}> = ({ serviceId, groups, accentColor }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [serviceId, groups.length]);
+
+  if (groups.length === 0) return null;
+
+  const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
+
+  return (
+    <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <div className="flex flex-wrap gap-2">
+        {groups.map((group, index) => (
+          <button
+            key={`${serviceId}-${group.key}`}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+              index === activeIndex
+                ? 'text-white'
+                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+            }`}
+            style={index === activeIndex ? { backgroundColor: accentColor } : undefined}
+          >
+            {group.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          {activeGroup.label}
+        </p>
+        <span className="text-xs text-gray-500">
+          {activeIndex + 1} of {groups.length}
+        </span>
+      </div>
+      <ul className="mt-2 space-y-1 ml-1">
+        {activeGroup.tasks.map((task, index) => (
+          <li key={`${serviceId}-${activeGroup.key}-${index}`} className="flex items-start gap-2 text-sm text-gray-600">
+            <span
+              className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: accentColor }}
+            />
+            {task}
+          </li>
+        ))}
+      </ul>
+      {groups.length > 1 && (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
+            disabled={activeIndex === 0}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.min(groups.length - 1, current + 1))}
+            disabled={activeIndex >= groups.length - 1}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 const TASK_GROUP_ORDER = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'manual'];
 
 const taskGroupLabel = (key: string): string => {
@@ -486,28 +562,13 @@ const PublicProposalView: React.FC = () => {
                     </div>
 
                     {/* Tasks grouped by frequency */}
-                    {taskGroups.length > 0 && (
-                      <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
-                        {taskGroups.map((group, gIdx) => (
-                          <div key={gIdx}>
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                              {group.label}
-                            </p>
-                            <ul className="space-y-1 ml-1">
-                              {group.tasks.map((task, tIdx) => (
-                                <li key={tIdx} className="flex items-start gap-2 text-sm text-gray-600">
-                                  <span
-                                    className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: accentColor }}
-                                  />
-                                  {task}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="border-t border-gray-100 pt-3">
+                      <TaskGroupStepper
+                        serviceId={service.serviceName || String(idx)}
+                        groups={taskGroups}
+                        accentColor={accentColor}
+                      />
+                    </div>
 
                   </div>
                 );
