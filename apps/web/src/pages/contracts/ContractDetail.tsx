@@ -392,6 +392,132 @@ const groupTasksByFrequency = <T extends { cleaningFrequency?: string | null }>(
     .map(([label, value]) => [label, value.tasks] as const);
 };
 
+const AmendmentTaskFrequencyEditor = ({
+  sectionKey,
+  tasks,
+  updateTask,
+  removeTask,
+}: {
+  sectionKey: string;
+  tasks: ContractAmendmentWorkingScope['tasks'];
+  updateTask: (
+    taskKey: string,
+    updates: Partial<ContractAmendmentWorkingScope['tasks'][number]>
+  ) => void;
+  removeTask: (taskKey: string) => void;
+}) => {
+  const frequencyGroups = groupTasksByFrequency(tasks);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [sectionKey, frequencyGroups.length]);
+
+  if (tasks.length === 0) {
+    return (
+      <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
+        No tasks in this section yet.
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(activeIndex, Math.max(frequencyGroups.length - 1, 0));
+  const [activeFrequency, activeTasks] = frequencyGroups[safeIndex];
+
+  return (
+    <div className="space-y-3">
+      {frequencyGroups.length > 1 && (
+        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+          <div className="flex flex-wrap gap-2">
+            {frequencyGroups.map(([frequency], index) => (
+              <button
+                key={`${sectionKey}-${frequency}`}
+                type="button"
+                onClick={() => setActiveIndex(index)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+                  index === safeIndex
+                    ? 'bg-emerald-400 text-slate-950'
+                    : 'border border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:text-white'
+                }`}
+              >
+                {frequency}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              {activeFrequency}
+            </div>
+            <div className="text-xs text-gray-500">
+              {safeIndex + 1} of {frequencyGroups.length}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={safeIndex === 0}
+              onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={safeIndex >= frequencyGroups.length - 1}
+              onClick={() =>
+                setActiveIndex((current) => Math.min(frequencyGroups.length - 1, current + 1))
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeTasks.map((task, taskIndex) => {
+        const taskKey = task.id || task.tempId || `${sectionKey}-${safeIndex}-${taskIndex}`;
+        return (
+          <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Input
+                label="Task Name"
+                value={task.customName || task.taskTemplate?.name || ''}
+                onChange={(e) => updateTask(taskKey, { customName: e.target.value })}
+              />
+              <Select
+                label="Frequency"
+                options={TASK_FREQUENCY_OPTIONS}
+                value={task.cleaningFrequency || 'daily'}
+                onChange={(value) => updateTask(taskKey, { cleaningFrequency: value })}
+              />
+              <Input
+                label="Estimated Minutes"
+                type="number"
+                min="0"
+                value={task.estimatedMinutes ?? task.baseMinutesOverride ?? 0}
+                onChange={(e) =>
+                  updateTask(taskKey, {
+                    estimatedMinutes: e.target.value ? Number(e.target.value) : 0,
+                    baseMinutesOverride: e.target.value ? Number(e.target.value) : 0,
+                  })
+                }
+              />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" variant="secondary" onClick={() => removeTask(taskKey)}>
+                Remove Task
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const DAY_LABELS: Record<string, string> = {
   monday: 'Mon',
   tuesday: 'Tue',
@@ -3662,51 +3788,12 @@ const ContractDetail = () => {
                           </div>
                           {!isCollapsed && (
                             <div className="space-y-3 border-t border-white/10 px-3 py-3">
-                              {group.tasks.length === 0 ? (
-                                <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
-                                  No tasks in this area yet.
-                                </div>
-                              ) : (
-                                group.tasks.map((task, taskIndex) => {
-                                  const taskKey = task.id || task.tempId || `draft-task-${taskIndex + 1}`;
-                                  return (
-                                    <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                        <Input
-                                          label="Task Name"
-                                          value={task.customName || task.taskTemplate?.name || ''}
-                                          onChange={(e) => updateAmendmentTask(taskKey, { customName: e.target.value })}
-                                        />
-                                        <Select
-                                          label="Frequency"
-                                          options={TASK_FREQUENCY_OPTIONS}
-                                          value={task.cleaningFrequency || 'daily'}
-                                          onChange={(value) =>
-                                            updateAmendmentTask(taskKey, { cleaningFrequency: value })
-                                          }
-                                        />
-                                        <Input
-                                          label="Estimated Minutes"
-                                          type="number"
-                                          min="0"
-                                          value={task.estimatedMinutes ?? task.baseMinutesOverride ?? 0}
-                                          onChange={(e) =>
-                                            updateAmendmentTask(taskKey, {
-                                              estimatedMinutes: e.target.value ? Number(e.target.value) : 0,
-                                              baseMinutesOverride: e.target.value ? Number(e.target.value) : 0,
-                                            })
-                                          }
-                                        />
-                                      </div>
-                                      <div className="mt-3 flex justify-end">
-                                        <Button size="sm" variant="secondary" onClick={() => removeDraftTask(taskKey)}>
-                                          Remove Task
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
+                              <AmendmentTaskFrequencyEditor
+                                sectionKey={group.key}
+                                tasks={group.tasks}
+                                updateTask={updateAmendmentTask}
+                                removeTask={removeDraftTask}
+                              />
                             </div>
                           )}
                         </div>
@@ -3742,51 +3829,12 @@ const ContractDetail = () => {
                       </div>
                       {!(collapsedAmendmentTaskGroups.facilityWide ?? false) && (
                         <div className="space-y-3 border-t border-white/10 px-3 py-3">
-                          {facilityWideDraftTasks.length === 0 ? (
-                            <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
-                              No facility-wide tasks yet.
-                            </div>
-                          ) : (
-                            facilityWideDraftTasks.map((task, taskIndex) => {
-                              const taskKey = task.id || task.tempId || `draft-facility-task-${taskIndex + 1}`;
-                              return (
-                                <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                    <Input
-                                      label="Task Name"
-                                      value={task.customName || task.taskTemplate?.name || ''}
-                                      onChange={(e) => updateAmendmentTask(taskKey, { customName: e.target.value })}
-                                    />
-                                    <Select
-                                      label="Frequency"
-                                      options={TASK_FREQUENCY_OPTIONS}
-                                      value={task.cleaningFrequency || 'daily'}
-                                      onChange={(value) =>
-                                        updateAmendmentTask(taskKey, { cleaningFrequency: value })
-                                      }
-                                    />
-                                    <Input
-                                      label="Estimated Minutes"
-                                      type="number"
-                                      min="0"
-                                      value={task.estimatedMinutes ?? task.baseMinutesOverride ?? 0}
-                                      onChange={(e) =>
-                                        updateAmendmentTask(taskKey, {
-                                          estimatedMinutes: e.target.value ? Number(e.target.value) : 0,
-                                          baseMinutesOverride: e.target.value ? Number(e.target.value) : 0,
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="mt-3 flex justify-end">
-                                    <Button size="sm" variant="secondary" onClick={() => removeDraftTask(taskKey)}>
-                                      Remove Task
-                                    </Button>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
+                          <AmendmentTaskFrequencyEditor
+                            sectionKey="facility-wide"
+                            tasks={facilityWideDraftTasks}
+                            updateTask={updateAmendmentTask}
+                            removeTask={removeDraftTask}
+                          />
                         </div>
                       )}
                     </div>
