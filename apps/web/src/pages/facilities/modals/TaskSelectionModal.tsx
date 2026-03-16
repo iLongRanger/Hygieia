@@ -3,7 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
-import type { Area, CleaningFrequency } from '../../../types/facility';
+import type { CleaningFrequency } from '../../../types/facility';
 import type { AreaTemplateTaskSelection } from '../facility-constants';
 import {
   CLEANING_FREQUENCIES,
@@ -13,7 +13,12 @@ import {
 interface TaskSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedAreaForTask: Area | null;
+  selectedAreaForTask: {
+    name?: string | null;
+    areaType?: {
+      name?: string | null;
+    } | null;
+  } | null;
   filteredTaskSelectionTasks: AreaTemplateTaskSelection[];
   currentTaskSelectionFrequency: string;
   taskSelectionStep: number;
@@ -53,7 +58,11 @@ export function TaskSelectionModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Add Tasks${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
+      title={`Add Tasks${
+        selectedAreaForTask
+          ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType?.name || 'Area'}`
+          : ''
+      }`}
       size="xl"
     >
       <div className="space-y-4">

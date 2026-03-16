@@ -67,6 +67,7 @@ import {
   AmendmentAreaSetupModal,
   buildAmendmentTasksFromSelections,
 } from '../../components/contracts/AmendmentAreaSetupModal';
+import { TaskSelectionModal } from '../facilities/modals/TaskSelectionModal';
 import SendContractModal from '../../components/contracts/SendContractModal';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
@@ -586,6 +587,16 @@ const defaultScheduleDays = (frequency: string | null | undefined): string[] => 
 const createTempId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const normalizeTaskName = (name: string) =>
+  name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const templateSpecificity = (template: TaskTemplate, areaTypeId: string) => {
+  if (template.areaType?.id === areaTypeId) return 0;
+  if (template.isGlobal) return 1;
+  if (!template.areaType?.id) return 2;
+  return 3;
+};
+
 const buildFallbackTemplateTasks = (
   areaTypeId: string,
   taskTemplates: TaskTemplate[]
@@ -883,6 +894,14 @@ const ContractDetail = () => {
   const [reviewedAreaTaskFrequencies, setReviewedAreaTaskFrequencies] =
     useState<Set<CleaningFrequency>>(new Set());
   const [newAreaCustomTaskName, setNewAreaCustomTaskName] = useState('');
+  const [showAmendmentTaskSelectionModal, setShowAmendmentTaskSelectionModal] = useState(false);
+  const [selectedAmendmentAreaForTask, setSelectedAmendmentAreaForTask] =
+    useState<ContractAmendmentWorkingScope['areas'][number] | null>(null);
+  const [amendmentTaskSelectionTasks, setAmendmentTaskSelectionTasks] = useState<AreaTemplateTaskSelection[]>([]);
+  const [amendmentTaskSelectionStep, setAmendmentTaskSelectionStep] = useState(0);
+  const [reviewedAmendmentTaskSelectionFrequencies, setReviewedAmendmentTaskSelectionFrequencies] =
+    useState<Set<CleaningFrequency>>(new Set());
+  const [newAmendmentTaskSelectionCustomName, setNewAmendmentTaskSelectionCustomName] = useState('');
   const [amendmentScopeDirty, setAmendmentScopeDirty] = useState(false);
   const [collapsedAmendmentAreas, setCollapsedAmendmentAreas] = useState<Record<string, boolean>>({});
   const [collapsedAmendmentTaskGroups, setCollapsedAmendmentTaskGroups] = useState<Record<string, boolean>>({});
@@ -1331,9 +1350,82 @@ const ContractDetail = () => {
     setNewAreaCustomTaskName('');
   };
 
+  const resetAmendmentTaskSelectionState = () => {
+    setSelectedAmendmentAreaForTask(null);
+    setAmendmentTaskSelectionTasks([]);
+    setAmendmentTaskSelectionStep(0);
+    setReviewedAmendmentTaskSelectionFrequencies(new Set());
+    setNewAmendmentTaskSelectionCustomName('');
+  };
+
   const openAmendmentAreaModal = () => {
     resetAmendmentAreaSetup();
     setShowAmendmentAreaModal(true);
+  };
+
+  const buildTaskSelectionsForAmendmentArea = (
+    area: ContractAmendmentWorkingScope['areas'][number]
+  ) => {
+    const areaTypeId = area.areaTypeId || area.areaType?.id;
+    const matchingTemplates = taskTemplates
+      .filter(
+        (template) =>
+          template.isActive &&
+          (areaTypeId
+            ? (
+                template.areaType?.id === areaTypeId
+                || template.isGlobal
+                || !template.areaType?.id
+              )
+            : (template.isGlobal || !template.areaType?.id))
+      )
+      .sort((a, b) => {
+        const aSpecificity = areaTypeId ? templateSpecificity(a, areaTypeId) : (a.isGlobal ? 1 : 2);
+        const bSpecificity = areaTypeId ? templateSpecificity(b, areaTypeId) : (b.isGlobal ? 1 : 2);
+        if (aSpecificity !== bSpecificity) return aSpecificity - bSpecificity;
+        const aIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
+          isCleaningFrequency(a.cleaningType) ? a.cleaningType : 'daily'
+        );
+        const bIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
+          isCleaningFrequency(b.cleaningType) ? b.cleaningType : 'daily'
+        );
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return a.name.localeCompare(b.name);
+      });
+
+    const uniqueTemplates = matchingTemplates.filter((template, index, templates) => {
+      const normalizedKey = `${normalizeTaskName(template.name)}::${template.cleaningType}`;
+      return (
+        templates.findIndex(
+          (candidate) =>
+            `${normalizeTaskName(candidate.name)}::${candidate.cleaningType}` === normalizedKey
+        ) === index
+      );
+    });
+
+    return uniqueTemplates.map((template) => ({
+      id: `task-template-${template.id}`,
+      taskTemplateId: template.id,
+      name: template.name,
+      cleaningType: isCleaningFrequency(template.cleaningType)
+        ? template.cleaningType
+        : 'daily',
+      estimatedMinutes: template.estimatedMinutes ?? null,
+      baseMinutes: Number(template.baseMinutes) || 0,
+      perSqftMinutes: Number(template.perSqftMinutes) || 0,
+      perUnitMinutes: Number(template.perUnitMinutes) || 0,
+      perRoomMinutes: Number(template.perRoomMinutes) || 0,
+      include: true,
+    }));
+  };
+
+  const openAmendmentTaskSelectionForArea = (
+    area: ContractAmendmentWorkingScope['areas'][number]
+  ) => {
+    resetAmendmentTaskSelectionState();
+    setSelectedAmendmentAreaForTask(area);
+    setAmendmentTaskSelectionTasks(buildTaskSelectionsForAmendmentArea(area));
+    setShowAmendmentTaskSelectionModal(true);
   };
 
   const applyAmendmentAreaTemplate = async (areaTypeId: string) => {
@@ -1427,6 +1519,66 @@ const ContractDetail = () => {
     setAreaTemplateTasks((current) => current.filter((task) => task.id !== taskId));
   };
 
+  const toggleAmendmentTaskSelectionInclude = (taskId: string, include: boolean) => {
+    setAmendmentTaskSelectionTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, include } : task))
+    );
+  };
+
+  const goToNextAmendmentTaskSelectionStep = () => {
+    setReviewedAmendmentTaskSelectionFrequencies((current) => {
+      const next = new Set(current);
+      next.add(currentAmendmentTaskSelectionFrequency as CleaningFrequency);
+      return next;
+    });
+    setAmendmentTaskSelectionStep((current) =>
+      Math.min(current + 1, ORDERED_CLEANING_FREQUENCIES.length - 1)
+    );
+  };
+
+  const goToPreviousAmendmentTaskSelectionStep = () => {
+    setAmendmentTaskSelectionStep((current) => Math.max(current - 1, 0));
+  };
+
+  const addCustomAmendmentTaskSelectionTask = () => {
+    const name = newAmendmentTaskSelectionCustomName.trim();
+    if (!name) {
+      toast.error('Enter a task name');
+      return;
+    }
+
+    const duplicate = amendmentTaskSelectionTasks.some(
+      (task) =>
+        task.cleaningType === currentAmendmentTaskSelectionFrequency &&
+        task.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) {
+      toast.error('Task already exists in this frequency');
+      return;
+    }
+
+    setAmendmentTaskSelectionTasks((current) => [
+      ...current,
+      {
+        id: createTempId('custom-task'),
+        taskTemplateId: null,
+        name,
+        cleaningType: currentAmendmentTaskSelectionFrequency,
+        estimatedMinutes: null,
+        baseMinutes: 0,
+        perSqftMinutes: 0,
+        perUnitMinutes: 0,
+        perRoomMinutes: 0,
+        include: true,
+      },
+    ]);
+    setNewAmendmentTaskSelectionCustomName('');
+  };
+
+  const removeCustomAmendmentTaskSelectionTask = (taskId: string) => {
+    setAmendmentTaskSelectionTasks((current) => current.filter((task) => task.id !== taskId));
+  };
+
   const goToNextAmendmentAreaTaskFrequencyStep = () => {
     setReviewedAreaTaskFrequencies((current) => {
       const next = new Set(current);
@@ -1477,6 +1629,28 @@ const ContractDetail = () => {
     setAmendmentScopeDirty(true);
     setShowAmendmentAreaModal(false);
     resetAmendmentAreaSetup();
+  };
+
+  const saveSelectedAmendmentTasks = () => {
+    const selectedArea = selectedAmendmentAreaForTask;
+    const areaKey = selectedArea?.id || selectedArea?.tempId;
+    if (!areaKey) {
+      toast.error('Select an area before adding tasks');
+      return;
+    }
+
+    const seededTasks = buildAmendmentTasksFromSelections(areaKey, amendmentTaskSelectionTasks).map((task) => ({
+      ...task,
+      tempId: task.tempId || createTempId('task'),
+    }));
+
+    setAmendmentWorkingScope((current) => ({
+      ...current,
+      tasks: [...current.tasks, ...seededTasks],
+    }));
+    setAmendmentScopeDirty(true);
+    setShowAmendmentTaskSelectionModal(false);
+    resetAmendmentTaskSelectionState();
   };
 
   const removeDraftArea = (areaKey: string) => {
@@ -1808,11 +1982,17 @@ const ContractDetail = () => {
   const hasCurrentAssignment = Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id);
   const currentAreaTaskFrequency =
     ORDERED_CLEANING_FREQUENCIES[areaTaskPipelineStep] || 'daily';
+  const currentAmendmentTaskSelectionFrequency =
+    ORDERED_CLEANING_FREQUENCIES[amendmentTaskSelectionStep] || 'daily';
   const filteredAreaTemplateTasks = areaTemplateTasks.filter(
     (task) => task.cleaningType === currentAreaTaskFrequency
   );
+  const filteredAmendmentTaskSelectionTasks = amendmentTaskSelectionTasks.filter(
+    (task) => task.cleaningType === currentAmendmentTaskSelectionFrequency
+  );
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
+  const hasSelectedAmendmentTaskSelectionTasks = amendmentTaskSelectionTasks.some((task) => task.include);
   const amendmentAreaTaskGroups = amendmentWorkingScope.areas.map((area, index) => {
     const areaKey = area.id || area.tempId || `draft-area-${index + 1}`;
     return {
@@ -3430,7 +3610,7 @@ const ContractDetail = () => {
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-white">Tasks</div>
                     <Button size="sm" variant="secondary" onClick={() => addDraftTask(null)}>
-                      Add Facility-Wide Task
+                      Add Custom Facility-Wide Task
                     </Button>
                   </div>
                   <div className="space-y-3">
@@ -3461,9 +3641,24 @@ const ContractDetail = () => {
                                 </div>
                               </div>
                             </button>
-                            <Button size="sm" variant="secondary" onClick={() => addDraftTask(group.key)}>
-                              Add Task
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  const area = amendmentWorkingScope.areas.find(
+                                    (entry) => (entry.id || entry.tempId) === group.key
+                                  );
+                                  if (!area) return;
+                                  openAmendmentTaskSelectionForArea(area);
+                                }}
+                              >
+                                Add From Templates
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => addDraftTask(group.key)}>
+                                Add Custom Task
+                              </Button>
+                            </div>
                           </div>
                           {!isCollapsed && (
                             <div className="space-y-3 border-t border-white/10 px-3 py-3">
@@ -3542,7 +3737,7 @@ const ContractDetail = () => {
                           </div>
                         </button>
                         <Button size="sm" variant="secondary" onClick={() => addDraftTask(null)}>
-                          Add Task
+                          Add Custom Task
                         </Button>
                       </div>
                       {!(collapsedAmendmentTaskGroups.facilityWide ?? false) && (
@@ -3980,6 +4175,41 @@ const ContractDetail = () => {
         applyAreaTemplate={applyAmendmentAreaTemplate}
         onSave={saveAmendmentAreaWithTasks}
         saving={amendmentSubmitting}
+      />
+
+      <TaskSelectionModal
+        isOpen={showAmendmentTaskSelectionModal}
+        onClose={() => {
+          setShowAmendmentTaskSelectionModal(false);
+          resetAmendmentTaskSelectionState();
+        }}
+        selectedAreaForTask={
+          selectedAmendmentAreaForTask
+            ? {
+                name: selectedAmendmentAreaForTask.name || null,
+                areaType: {
+                  name:
+                    selectedAmendmentAreaForTask.areaType?.name
+                    || selectedAmendmentAreaForTask.name
+                    || 'Area',
+                },
+              }
+            : null
+        }
+        filteredTaskSelectionTasks={filteredAmendmentTaskSelectionTasks}
+        currentTaskSelectionFrequency={currentAmendmentTaskSelectionFrequency}
+        taskSelectionStep={amendmentTaskSelectionStep}
+        reviewedTaskSelectionFrequencies={reviewedAmendmentTaskSelectionFrequencies}
+        newTaskSelectionCustomName={newAmendmentTaskSelectionCustomName}
+        setNewTaskSelectionCustomName={setNewAmendmentTaskSelectionCustomName}
+        toggleTaskSelectionInclude={toggleAmendmentTaskSelectionInclude}
+        addCustomTaskSelectionTask={addCustomAmendmentTaskSelectionTask}
+        removeCustomTaskSelectionTask={removeCustomAmendmentTaskSelectionTask}
+        goToNextTaskSelectionStep={goToNextAmendmentTaskSelectionStep}
+        goToPreviousTaskSelectionStep={goToPreviousAmendmentTaskSelectionStep}
+        onSave={saveSelectedAmendmentTasks}
+        saving={amendmentSubmitting}
+        hasSelectedTasks={hasSelectedAmendmentTaskSelectionTasks}
       />
     </div>
   );

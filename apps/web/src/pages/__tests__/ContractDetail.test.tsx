@@ -513,6 +513,7 @@ describe('ContractDetail', () => {
       );
       expect(getContractAmendmentMock).toHaveBeenCalledWith('contract-1', 'amend-1');
     });
+    expect(await screen.findByRole('button', { name: /add from templates/i })).toBeInTheDocument();
   });
 
   it('recalculates amendment pricing from draft scope editor', async () => {
@@ -715,7 +716,7 @@ describe('ContractDetail', () => {
     const removeAreaButtons = screen.getAllByRole('button', { name: /remove area/i });
     await user.click(removeAreaButtons[1]);
 
-    const addTaskButtons = screen.getAllByRole('button', { name: /add task/i });
+    const addTaskButtons = screen.getAllByRole('button', { name: /add custom task/i });
     await user.click(addTaskButtons[0]);
 
     const taskNameInputs = screen.getAllByLabelText(/task name/i);
