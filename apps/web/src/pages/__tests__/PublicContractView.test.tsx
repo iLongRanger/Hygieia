@@ -50,7 +50,7 @@ const response = {
           id: 'proposal-service-1',
           serviceName: 'Lobby Cleaning',
           frequency: 'weekly',
-          description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats',
+          description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats\nMonthly: Baseboards',
           monthlyPrice: 1200,
           estimatedHours: null,
           hourlyRate: null,
@@ -93,6 +93,7 @@ describe('PublicContractView', () => {
     expect(await screen.findByText('Monthly Janitorial Services')).toBeInTheDocument();
     expect(screen.getByText('Contract CONT-2026-0001')).toBeInTheDocument();
     expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();

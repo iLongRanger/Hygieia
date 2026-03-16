@@ -131,7 +131,7 @@ const draftContract: Contract = {
         id: 'proposal-service-1',
         serviceName: 'Lobby Cleaning',
         frequency: 'weekly',
-        description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats',
+        description: 'Lobby - 3,000 sq ft\nWeekly: Dust desks, Vacuum mats\nMonthly: Baseboards',
         monthlyPrice: 1200,
         estimatedHours: null,
         hourlyRate: null,
@@ -739,6 +739,7 @@ describe('ContractDetail', () => {
 
     expect(await screen.findByText('Lobby Cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();

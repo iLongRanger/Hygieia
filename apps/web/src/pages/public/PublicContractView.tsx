@@ -86,6 +86,77 @@ type ServiceTaskGroup = {
   tasks: string[];
 };
 
+const ServiceTaskStepper: React.FC<{
+  serviceId: string;
+  groups: ServiceTaskGroup[];
+}> = ({ serviceId, groups }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [serviceId, groups.length]);
+
+  if (groups.length === 0) {
+    return <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>;
+  }
+
+  const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
+
+  return (
+    <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {groups.map((group, index) => (
+          <button
+            key={`${serviceId}-${group.label}`}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+              index === activeIndex
+                ? 'bg-gray-900 text-white'
+                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+            }`}
+          >
+            {group.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+          {activeGroup.label}
+        </div>
+        <div className="text-xs text-gray-500">
+          {activeIndex + 1} of {groups.length}
+        </div>
+      </div>
+      <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-gray-700">
+        {activeGroup.tasks.map((task) => (
+          <li key={`${serviceId}-${activeGroup.label}-${task}`}>{task}</li>
+        ))}
+      </ul>
+      {groups.length > 1 && (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
+            disabled={activeIndex === 0}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.min(groups.length - 1, current + 1))}
+            disabled={activeIndex >= groups.length - 1}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const serviceTaskGroupLabel = (value: string): string => {
   const normalized = value.trim().toLowerCase().replace(/[^a-z]/g, '');
   if (normalized.includes('annual') || normalized.includes('yearly')) return 'Annual';
@@ -468,24 +539,7 @@ const PublicContractView: React.FC = () => {
                         {frequencyLabels[service.frequency || ''] || service.frequency || 'As scheduled'}
                       </div>
                     </div>
-                    {groups.length > 0 ? (
-                      <div className="mt-3 space-y-3">
-                        {groups.map((group) => (
-                          <div key={`${service.id}-${group.label}`}>
-                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              {group.label}
-                            </div>
-                            <ul className="mt-1 list-disc pl-5 space-y-1 text-sm text-gray-700">
-                              {group.tasks.map((task) => (
-                                <li key={`${service.id}-${group.label}-${task}`}>{task}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>
-                    )}
+                    <ServiceTaskStepper serviceId={service.id} groups={groups} />
                   </div>
                 );
               })}
