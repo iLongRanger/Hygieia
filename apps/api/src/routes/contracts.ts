@@ -85,6 +85,9 @@ import {
   rejectContractAmendment,
   updateContractAmendment,
 } from '../services/contractAmendmentService';
+import {
+  generatePublicToken as generateAmendmentPublicToken,
+} from '../services/contractAmendmentPublicService';
 import { applyContractAmendmentWorkflow } from '../services/contractAmendmentWorkflowService';
 import { getWebAppBaseUrl, requireFrontendBaseUrl } from '../lib/appUrl';
 import { getProposalById } from '../services/proposalService';
@@ -177,6 +180,33 @@ async function getContractNotificationRecipients(contractId: string) {
     contractNumber: contract.contractNumber,
     title: contract.title,
   };
+}
+
+async function getContractAmendmentClientRecipients(contractId: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      account: {
+        select: {
+          name: true,
+          contacts: {
+            where: {
+              archivedAt: null,
+              email: { not: null },
+            },
+            select: {
+              name: true,
+              email: true,
+              isPrimary: true,
+            },
+            orderBy: [{ isPrimary: 'desc' as const }, { createdAt: 'asc' as const }],
+          },
+        },
+      },
+    },
+  });
+
+  return (contract?.account.contacts || []).filter((contact) => Boolean(contact.email));
 }
 
 async function getSubcontractorTeamUsers(
@@ -1723,6 +1753,80 @@ router.post(
       });
 
       res.json({ data: amendment });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/amendments/:amendmentId/send',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_ADMIN),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      const existing = await getContractAmendmentById(req.params.amendmentId);
+      if (!existing || existing.contractId !== req.params.id) {
+        throw new NotFoundError('Amendment not found');
+      }
+
+      if (!['approved', 'sent', 'viewed', 'signed'].includes(existing.status)) {
+        throw new ValidationError('Only approved amendments can be sent to the client');
+      }
+
+      const clientRecipients = await getContractAmendmentClientRecipients(req.params.id);
+      if (clientRecipients.length === 0) {
+        throw new ValidationError('No client contact email found for this contract');
+      }
+
+      const publicToken =
+        existing.publicToken || (await generateAmendmentPublicToken(req.params.amendmentId));
+      const webAppUrl = requireFrontendBaseUrl();
+      const publicViewUrl = `${webAppUrl}/ca/${publicToken}`;
+
+      const nextStatus = existing.status === 'approved' ? 'sent' : existing.status;
+
+      await prisma.contractAmendment.update({
+        where: { id: req.params.amendmentId },
+        data: {
+          status: nextStatus,
+          sentAt: new Date(),
+        },
+      });
+
+      const amendment = await getContractAmendmentById(req.params.amendmentId);
+
+      const subject = `Contract amendment #${amendment!.amendmentNumber} ready for your signature`;
+      const html = `
+        <p>Hello,</p>
+        <p>Please review and sign contract amendment <strong>#${amendment!.amendmentNumber}: ${amendment!.title}</strong>.</p>
+        <p><a href="${publicViewUrl}">${publicViewUrl}</a></p>
+      `;
+
+      await Promise.allSettled(
+        clientRecipients
+          .map((contact) => contact.email)
+          .filter((email): email is string => Boolean(email))
+          .map((email) => sendNotificationEmail(email, subject, html))
+      );
+
+      await logContractActivity({
+        contractId: req.params.id,
+        action: 'amendment_sent_to_client',
+        performedByUserId: req.user.id,
+        metadata: {
+          amendmentId: amendment!.id,
+          amendmentNumber: amendment!.amendmentNumber,
+          publicViewUrl,
+        },
+      });
+
+      res.json({ data: { amendment: await getContractAmendmentById(req.params.amendmentId), publicViewUrl } });
     } catch (error) {
       next(error);
     }

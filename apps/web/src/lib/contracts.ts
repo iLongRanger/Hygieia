@@ -274,6 +274,14 @@ export async function approveContractAmendment(
   return response.data.data;
 }
 
+export async function sendContractAmendment(
+  contractId: string,
+  amendmentId: string
+): Promise<{ amendment: ContractAmendment; publicViewUrl: string }> {
+  const response = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/send`);
+  return response.data.data;
+}
+
 export async function rejectContractAmendment(
   contractId: string,
   amendmentId: string,

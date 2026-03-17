@@ -4,6 +4,7 @@ import { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractService from '../../services/contractService';
 import * as contractPublicService from '../../services/contractPublicService';
+import * as contractAmendmentPublicService from '../../services/contractAmendmentPublicService';
 import * as contractAmendmentService from '../../services/contractAmendmentService';
 import * as contractAmendmentWorkflowService from '../../services/contractAmendmentWorkflowService';
 import * as emailService from '../../services/emailService';
@@ -76,6 +77,9 @@ jest.mock('../../services/emailService', () => ({
 jest.mock('../../services/contractPublicService', () => ({
   generatePublicToken: jest.fn().mockResolvedValue('contract-public-token'),
 }));
+jest.mock('../../services/contractAmendmentPublicService', () => ({
+  generatePublicToken: jest.fn().mockResolvedValue('amendment-public-token'),
+}));
 
 jest.mock('../../services/notificationService', () => ({
   createBulkNotifications: jest.fn().mockResolvedValue([]),
@@ -135,6 +139,7 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
     },
   },
 }));
@@ -1038,6 +1043,98 @@ describe('Contract Routes', () => {
     expect(contractAmendmentService.approveContractAmendment).toHaveBeenCalledWith(
       'amend-1',
       'user-1'
+    );
+  });
+
+  it('POST /:id/amendments/:amendmentId/send should send approved amendment to client', async () => {
+    (contractAmendmentPublicService.generatePublicToken as jest.Mock).mockResolvedValueOnce(
+      'amendment-public-token'
+    );
+    (contractAmendmentService.getContractAmendmentById as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        title: 'Scope change',
+        status: 'approved',
+        publicToken: null,
+      })
+      .mockResolvedValueOnce({
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        title: 'Scope change',
+        status: 'sent',
+        publicToken: 'amendment-public-token',
+      });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      account: {
+        name: 'Acme Corp',
+        contacts: [{ name: 'Jane Client', email: 'jane@acme.test', isPrimary: true }],
+      },
+    });
+
+    const response = await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/send')
+      .send({})
+      .expect(200);
+
+    expect(contractAmendmentPublicService.generatePublicToken).toHaveBeenCalledWith('amend-1');
+    expect(prisma.contractAmendment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'amend-1' },
+        data: expect.objectContaining({
+          status: 'sent',
+          sentAt: expect.any(Date),
+        }),
+      })
+    );
+    expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+      'jane@acme.test',
+      expect.stringContaining('Contract amendment #1 ready for your signature'),
+      expect.stringContaining('/ca/amendment-public-token')
+    );
+    expect(response.body.data.publicViewUrl).toContain('/ca/amendment-public-token');
+  });
+
+  it('POST /:id/amendments/:amendmentId/send should preserve viewed status on resend', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        title: 'Scope change',
+        status: 'viewed',
+        publicToken: 'amendment-public-token',
+      })
+      .mockResolvedValueOnce({
+        id: 'amend-1',
+        contractId: 'contract-1',
+        amendmentNumber: 1,
+        title: 'Scope change',
+        status: 'viewed',
+        publicToken: 'amendment-public-token',
+      });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      account: {
+        name: 'Acme Corp',
+        contacts: [{ name: 'Jane Client', email: 'jane@acme.test', isPrimary: true }],
+      },
+    });
+
+    await request(app)
+      .post('/api/v1/contracts/contract-1/amendments/amend-1/send')
+      .send({})
+      .expect(200);
+
+    expect(prisma.contractAmendment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'amend-1' },
+        data: expect.objectContaining({
+          status: 'viewed',
+          sentAt: expect.any(Date),
+        }),
+      })
     );
   });
 

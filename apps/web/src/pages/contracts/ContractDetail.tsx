@@ -59,6 +59,7 @@ import {
   approveContractAmendment as approveContractAmendmentApi,
   applyContractAmendment as applyContractAmendmentApi,
   rejectContractAmendment as rejectContractAmendmentApi,
+  sendContractAmendment as sendContractAmendmentApi,
   updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
 import { getAreaTemplateByAreaType, listTaskTemplates } from '../../lib/facilities';
@@ -600,6 +601,8 @@ const AMENDMENT_STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
   submitted: 'Sent for Approval',
   approved: 'Approved',
+  sent: 'Sent to Client',
+  viewed: 'Viewed by Client',
   rejected: 'Rejected',
   signed: 'Signed',
   applied: 'Applied',
@@ -615,6 +618,8 @@ const getAmendmentStatusVariant = (
     case 'signed':
       return 'success';
     case 'submitted':
+    case 'sent':
+    case 'viewed':
       return 'info';
     case 'rejected':
     case 'canceled':
@@ -870,6 +875,12 @@ const getAmendmentActivityLabel = (action: string) => {
       return 'Sent for approval';
     case 'approved':
       return 'Approved';
+    case 'sent_to_client':
+      return 'Sent to client';
+    case 'public_viewed':
+      return 'Viewed by client';
+    case 'public_signed':
+      return 'Signed by client';
     case 'rejected':
       return 'Rejected';
     case 'applied':
@@ -1963,6 +1974,21 @@ const ContractDetail = () => {
       fetchAmendments(contract.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to approve amendment');
+    } finally {
+      setAmendmentSubmitting(false);
+    }
+  };
+
+  const handleSendAmendmentToClient = async () => {
+    if (!contract || !selectedAmendment) return;
+    try {
+      setAmendmentSubmitting(true);
+      const result = await sendContractAmendmentApi(contract.id, selectedAmendment.id);
+      setSelectedAmendment(result.amendment);
+      toast.success('Amendment sent to client');
+      fetchAmendments(contract.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to send amendment');
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -4230,8 +4256,22 @@ const ContractDetail = () => {
                 </>
               )}
               {selectedAmendment.status === 'approved' && canAdminContracts && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={handleSendAmendmentToClient}
+                    isLoading={amendmentSubmitting}
+                  >
+                    Send to Client
+                  </Button>
+                  <Button onClick={handleApplyAmendment} isLoading={amendmentSubmitting}>
+                    Apply Change
+                  </Button>
+                </>
+              )}
+              {selectedAmendment.status === 'signed' && canAdminContracts && (
                 <Button onClick={handleApplyAmendment} isLoading={amendmentSubmitting}>
-                  Apply Change
+                  Apply Signed Change
                 </Button>
               )}
               {selectedAmendment.status === 'draft' && canWriteContracts && (

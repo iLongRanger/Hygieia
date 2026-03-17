@@ -56,6 +56,7 @@ import FinanceOverviewPage from './pages/finance/FinanceOverviewPage';
 import FinanceReportsPage from './pages/finance/FinanceReportsPage';
 import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
+import PublicContractAmendmentView from './pages/public/PublicContractAmendmentView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
 import SetPassword from './pages/auth/SetPassword';
 import Unauthorized from './pages/Unauthorized';
@@ -109,6 +110,7 @@ function App() {
           <Route path="/auth/set-password" element={<SetPassword />} />
           <Route path="/p/:token" element={<PublicProposalView />} />
           <Route path="/c/:token" element={<PublicContractView />} />
+          <Route path="/ca/:token" element={<PublicContractAmendmentView />} />
           <Route path="/q/:token" element={<PublicQuotationView />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 

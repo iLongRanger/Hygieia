@@ -411,6 +411,8 @@ export const contractAmendmentStatusSchema = z.enum([
   'draft',
   'submitted',
   'approved',
+  'sent',
+  'viewed',
   'rejected',
   'signed',
   'applied',

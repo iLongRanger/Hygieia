@@ -13,7 +13,7 @@ import type {
   UpdateContractAmendmentInput,
 } from '../schemas/contract';
 
-const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'signed'] as const;
+const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'approved', 'sent', 'viewed', 'signed'] as const;
 
 const amendmentListSelect = {
   id: true,
@@ -32,6 +32,13 @@ const amendmentListSelect = {
   oldServiceFrequency: true,
   newServiceFrequency: true,
   approvedAt: true,
+  sentAt: true,
+  viewedAt: true,
+  publicToken: true,
+  publicTokenExpiresAt: true,
+  signedDate: true,
+  signedByName: true,
+  signedByEmail: true,
   appliedAt: true,
   canceledAt: true,
   rejectedAt: true,
@@ -899,7 +906,7 @@ export async function applyContractAmendment(
     throw new Error('Amendment not found');
   }
 
-  if (existing.status !== 'approved') {
+  if (!['approved', 'signed'].includes(existing.status)) {
     throw new Error(`Cannot apply amendment in ${existing.status} status`);
   }
 

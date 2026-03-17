@@ -43,6 +43,7 @@ import invoicesRoutes from './routes/invoices';
 import publicProposalsRoutes from './routes/publicProposals';
 import publicInvoicesRoutes from './routes/publicInvoices';
 import publicContractsRoutes from './routes/publicContracts';
+import publicContractAmendmentsRoutes from './routes/publicContractAmendments';
 import quotationsRoutes from './routes/quotations';
 import publicQuotationsRoutes from './routes/publicQuotations';
 import oneTimeServiceCatalogRoutes from './routes/oneTimeServiceCatalog';
@@ -163,6 +164,7 @@ app.use('/api/v1/finance', financeRoutes);
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
 app.use('/api/v1/public/contracts', publicContractsRoutes);
+app.use('/api/v1/public/contract-amendments', publicContractAmendmentsRoutes);
 app.use('/api/v1/public/invoices', publicInvoicesRoutes);
 app.use('/api/v1/public/quotations', publicQuotationsRoutes);
 

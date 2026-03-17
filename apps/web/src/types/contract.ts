@@ -188,6 +188,8 @@ export type ContractAmendmentStatus =
   | 'draft'
   | 'submitted'
   | 'approved'
+  | 'sent'
+  | 'viewed'
   | 'rejected'
   | 'signed'
   | 'applied'
@@ -290,6 +292,12 @@ export interface ContractAmendment {
   newServiceSchedule?: ServiceSchedule | null;
   pricingSnapshot?: Record<string, any> | null;
   approvedAt?: string | null;
+  sentAt?: string | null;
+  viewedAt?: string | null;
+  signedDate?: string | null;
+  signedByName?: string | null;
+  signedByEmail?: string | null;
+  publicToken?: string | null;
   appliedAt?: string | null;
   canceledAt?: string | null;
   rejectedAt?: string | null;
