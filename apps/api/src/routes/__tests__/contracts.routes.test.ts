@@ -904,6 +904,54 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('PATCH /:id/amendments/:amendmentId should notify approvers when submitted', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+    });
+    (contractAmendmentService.updateContractAmendment as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'submitted',
+    });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'C-1001',
+      title: 'Downtown Janitorial',
+      createdByUserId: 'creator-1',
+      createdByUser: { email: 'creator@example.com' },
+      account: {
+        accountManagerId: 'manager-1',
+        accountManager: { email: 'manager@example.com' },
+      },
+    });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([
+      { user: { id: 'owner-1', email: 'owner@example.com' } },
+      { user: { id: 'admin-1', email: 'admin@example.com' } },
+    ]);
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/amendments/amend-1')
+      .send({ status: 'submitted' })
+      .expect(200);
+
+    expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
+      expect.arrayContaining(['creator-1', 'manager-1', 'owner-1', 'admin-1']),
+      expect.objectContaining({
+        type: 'contract_amendment_submitted',
+        metadata: expect.objectContaining({
+          contractId: 'contract-1',
+          amendmentId: 'amend-1',
+          amendmentNumber: 1,
+          status: 'submitted',
+        }),
+      })
+    );
+  });
+
   it('POST /:id/amendments/:amendmentId/recalculate should recalculate amendment pricing', async () => {
     (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
       id: 'amend-1',

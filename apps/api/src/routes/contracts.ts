@@ -123,6 +123,9 @@ async function getContractNotificationRecipients(contractId: string) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     select: {
+      id: true,
+      contractNumber: true,
+      title: true,
       createdByUserId: true,
       createdByUser: { select: { email: true } },
       account: {
@@ -133,7 +136,14 @@ async function getContractNotificationRecipients(contractId: string) {
       },
     },
   });
-  if (!contract) return { userIds: new Set<string>(), emails: new Set<string>() };
+  if (!contract) {
+    return {
+      userIds: new Set<string>(),
+      emails: new Set<string>(),
+      contractNumber: null,
+      title: null,
+    };
+  }
 
   const userIds = new Set<string>();
   const emails = new Set<string>();
@@ -161,7 +171,12 @@ async function getContractNotificationRecipients(contractId: string) {
     emails.add(ur.user.email);
   }
 
-  return { userIds, emails };
+  return {
+    userIds,
+    emails,
+    contractNumber: contract.contractNumber,
+    title: contract.title,
+  };
 }
 
 async function getSubcontractorTeamUsers(
@@ -1602,6 +1617,29 @@ router.patch(
           fields: Object.keys(parsed.data),
         },
       });
+
+      if (parsed.data.status === 'submitted' && existing.status !== 'submitted') {
+        const { userIds, contractNumber, title } = await getContractNotificationRecipients(
+          req.params.id
+        );
+        userIds.delete(req.user.id);
+
+        if (userIds.size > 0) {
+          await createBulkNotifications([...userIds], {
+            type: 'contract_amendment_submitted',
+            title: `Contract amendment submitted for approval`,
+            body:
+              `Amendment #${amendment.amendmentNumber} for ` +
+              `${contractNumber || title || 'this contract'} was submitted for approval.`,
+            metadata: {
+              contractId: req.params.id,
+              amendmentId: amendment.id,
+              amendmentNumber: amendment.amendmentNumber,
+              status: amendment.status,
+            },
+          });
+        }
+      }
 
       res.json({ data: amendment });
     } catch (error) {
