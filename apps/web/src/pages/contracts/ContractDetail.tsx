@@ -4269,6 +4269,16 @@ const ContractDetail = () => {
                   </Button>
                 </>
               )}
+              {(selectedAmendment.status === 'sent' || selectedAmendment.status === 'viewed') &&
+                canAdminContracts && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleSendAmendmentToClient}
+                    isLoading={amendmentSubmitting}
+                  >
+                    Resend to Client
+                  </Button>
+                )}
               {selectedAmendment.status === 'signed' && canAdminContracts && (
                 <Button onClick={handleApplyAmendment} isLoading={amendmentSubmitting}>
                   Apply Signed Change
