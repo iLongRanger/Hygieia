@@ -61,6 +61,10 @@ import { getDefaultBranding, getGlobalSettings } from '../services/globalSetting
 import { buildContractActivatedHtmlWithBranding, buildContractActivatedSubject } from '../templates/contractActivated';
 import { buildContractTerminatedHtmlWithBranding, buildContractTerminatedSubject } from '../templates/contractTerminated';
 import { buildContractTeamAssignedHtmlWithBranding, buildContractTeamAssignedSubject } from '../templates/contractTeamAssigned';
+import {
+  buildContractAmendmentSentHtmlWithBranding,
+  buildContractAmendmentSentSubject,
+} from '../templates/contractAmendmentSent';
 import { buildSubcontractorWelcomeSubject, buildSubcontractorWelcomeHtml } from '../templates/subcontractorWelcome';
 import { createSubcontractorUser } from '../services/authService';
 import { prisma } from '../lib/prisma';
@@ -116,9 +120,35 @@ function handleZodError(error: ZodError): ValidationError {
 
 async function getBrandingSafe() {
   try {
-    return await getGlobalSettings();
+    const branding = await getGlobalSettings();
+    return {
+      companyName: branding?.companyName || 'Hygieia',
+      companyAddress: branding?.companyAddress || null,
+      companyPhone: branding?.companyPhone || null,
+      companyEmail: branding?.companyEmail || null,
+      companyWebsite: branding?.companyWebsite || null,
+      companyTimezone: branding?.companyTimezone || 'UTC',
+      logoDataUrl: branding?.logoDataUrl || null,
+      themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
+      themeAccentColor: branding?.themeAccentColor || '#d4af37',
+      themeBackgroundColor: branding?.themeBackgroundColor || '#f5f5f5',
+      themeTextColor: branding?.themeTextColor || '#333333',
+    };
   } catch {
-    return getDefaultBranding();
+    const branding = getDefaultBranding();
+    return {
+      companyName: branding?.companyName || 'Hygieia',
+      companyAddress: branding?.companyAddress || null,
+      companyPhone: branding?.companyPhone || null,
+      companyEmail: branding?.companyEmail || null,
+      companyWebsite: branding?.companyWebsite || null,
+      companyTimezone: branding?.companyTimezone || 'UTC',
+      logoDataUrl: branding?.logoDataUrl || null,
+      themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
+      themeAccentColor: branding?.themeAccentColor || '#d4af37',
+      themeBackgroundColor: branding?.themeBackgroundColor || '#f5f5f5',
+      themeTextColor: branding?.themeTextColor || '#333333',
+    };
   }
 }
 
@@ -1800,19 +1830,33 @@ router.post(
       });
 
       const amendment = await getContractAmendmentById(req.params.amendmentId);
-
-      const subject = `Contract amendment #${amendment!.amendmentNumber} ready for your signature`;
-      const html = `
-        <p>Hello,</p>
-        <p>Please review and sign contract amendment <strong>#${amendment!.amendmentNumber}: ${amendment!.title}</strong>.</p>
-        <p><a href="${publicViewUrl}">${publicViewUrl}</a></p>
-      `;
+      const branding = await getBrandingSafe();
 
       await Promise.allSettled(
         clientRecipients
-          .map((contact) => contact.email)
-          .filter((email): email is string => Boolean(email))
-          .map((email) => sendNotificationEmail(email, subject, html))
+          .filter((contact) => Boolean(contact.email))
+          .map((contact) =>
+            sendNotificationEmail(
+              contact.email!,
+              buildContractAmendmentSentSubject(amendment!.amendmentNumber, amendment!.title),
+              buildContractAmendmentSentHtmlWithBranding(
+                {
+                  amendmentNumber: amendment!.amendmentNumber,
+                  title: amendment!.title,
+                  contractNumber: amendment!.contract?.contractNumber || 'Contract',
+                  accountName: amendment!.contract?.account?.name || 'Client',
+                  newMonthlyValue: new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                  }).format(Number(amendment!.newMonthlyValue || amendment!.oldMonthlyValue || 0)),
+                  effectiveDate: new Date(amendment!.effectiveDate).toLocaleDateString(),
+                  recipientName: contact.name || undefined,
+                  publicViewUrl,
+                },
+                branding
+              )
+            )
+          )
       );
 
       await logContractActivity({

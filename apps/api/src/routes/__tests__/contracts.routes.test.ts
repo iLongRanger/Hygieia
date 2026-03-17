@@ -95,8 +95,32 @@ jest.mock('../../config/email', () => ({
 }));
 
 jest.mock('../../services/globalSettingsService', () => ({
-  getGlobalSettings: jest.fn().mockResolvedValue({}),
-  getDefaultBranding: jest.fn().mockReturnValue({}),
+  getGlobalSettings: jest.fn().mockResolvedValue({
+    companyName: 'Hygieia',
+    companyEmail: 'ops@hygieia.test',
+    companyPhone: '555-111-2222',
+    companyWebsite: 'https://hygieia.test',
+    companyAddress: '123 Main St',
+    logoDataUrl: null,
+    themePrimaryColor: '#1a1a2e',
+    themeAccentColor: '#d4af37',
+    themeBackgroundColor: '#f5f5f5',
+    themeTextColor: '#333333',
+    companyTimezone: 'UTC',
+  }),
+  getDefaultBranding: jest.fn().mockReturnValue({
+    companyName: 'Hygieia',
+    companyEmail: 'ops@hygieia.test',
+    companyPhone: '555-111-2222',
+    companyWebsite: 'https://hygieia.test',
+    companyAddress: '123 Main St',
+    logoDataUrl: null,
+    themePrimaryColor: '#1a1a2e',
+    themeAccentColor: '#d4af37',
+    themeBackgroundColor: '#f5f5f5',
+    themeTextColor: '#333333',
+    companyTimezone: 'UTC',
+  }),
 }));
 
 jest.mock('../../templates/contractActivated', () => ({
@@ -1066,6 +1090,13 @@ describe('Contract Routes', () => {
         title: 'Scope change',
         status: 'sent',
         publicToken: 'amendment-public-token',
+        contract: {
+          contractNumber: 'CONT-001',
+          account: { name: 'Acme Corp' },
+        },
+        oldMonthlyValue: 1000,
+        newMonthlyValue: 1200,
+        effectiveDate: '2026-03-20',
       });
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       account: {
@@ -1091,7 +1122,7 @@ describe('Contract Routes', () => {
     );
     expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
       'jane@acme.test',
-      expect.stringContaining('Contract amendment #1 ready for your signature'),
+      expect.stringContaining('Contract Amendment #1: Scope change'),
       expect.stringContaining('/ca/amendment-public-token')
     );
     expect(response.body.data.publicViewUrl).toContain('/ca/amendment-public-token');
@@ -1106,6 +1137,13 @@ describe('Contract Routes', () => {
         title: 'Scope change',
         status: 'viewed',
         publicToken: 'amendment-public-token',
+        contract: {
+          contractNumber: 'CONT-001',
+          account: { name: 'Acme Corp' },
+        },
+        oldMonthlyValue: 1000,
+        newMonthlyValue: 1200,
+        effectiveDate: '2026-03-20',
       })
       .mockResolvedValueOnce({
         id: 'amend-1',
@@ -1114,6 +1152,13 @@ describe('Contract Routes', () => {
         title: 'Scope change',
         status: 'viewed',
         publicToken: 'amendment-public-token',
+        contract: {
+          contractNumber: 'CONT-001',
+          account: { name: 'Acme Corp' },
+        },
+        oldMonthlyValue: 1000,
+        newMonthlyValue: 1200,
+        effectiveDate: '2026-03-20',
       });
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       account: {
