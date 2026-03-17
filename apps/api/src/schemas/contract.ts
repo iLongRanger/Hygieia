@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { scheduleWeekdaySchema } from './serviceSchedule';
 
 export const contractStatusSchema = z.enum([
   'draft',
@@ -31,6 +32,74 @@ export const billingCycleSchema = z.enum([
   'semi_annual',
   'annual',
 ]);
+
+const contractServiceScheduleSchema = z
+  .object({
+    days: z.array(scheduleWeekdaySchema).min(1).max(7),
+    allowedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must use HH:mm (24-hour)').optional(),
+    allowedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must use HH:mm (24-hour)').optional(),
+    windowAnchor: z.enum(['start_day']).optional(),
+    timezoneSource: z.enum(['facility']).optional(),
+    time: z.string().optional(),
+    customDetails: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const unique = new Set(value.days);
+    if (unique.size !== value.days.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Service days must be unique',
+        path: ['days'],
+      });
+    }
+  });
+
+function expectedContractScheduleDays(
+  frequency: z.infer<typeof serviceFrequencySchema> | null | undefined
+): number | null {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+    case 'bi_weekly':
+    case 'monthly':
+    case 'quarterly':
+      return 1;
+    case '2x_week':
+      return 2;
+    case '3x_week':
+      return 3;
+    case '4x_week':
+      return 4;
+    case '5x_week':
+    case 'daily':
+      return 5;
+    case '7x_week':
+      return 7;
+    default:
+      return null;
+  }
+}
+
+function withServiceScheduleValidation<T extends z.ZodTypeAny>(
+  schema: T,
+  frequencyKey: string,
+  scheduleKey: string
+) {
+  return schema.superRefine((data: any, ctx) => {
+    const frequency = data[frequencyKey] as z.infer<typeof serviceFrequencySchema> | null | undefined;
+    const schedule = data[scheduleKey] as z.infer<typeof contractServiceScheduleSchema> | null | undefined;
+    if (!frequency || !schedule) return;
+
+    const expected = expectedContractScheduleDays(frequency);
+    if (expected !== null && schedule.days.length !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Selected frequency requires exactly ${expected} service day${expected === 1 ? '' : 's'}`,
+        path: [scheduleKey, 'days'],
+      });
+    }
+  });
+}
 
 const ALLOWED_TERMS_DOCUMENT_MIME_TYPES = [
   'application/pdf',
@@ -73,7 +142,7 @@ export const createContractSchema = z
     startDate: z.coerce.date(),
     endDate: z.coerce.date().optional().nullable(),
     serviceFrequency: serviceFrequencySchema.optional().nullable(),
-    serviceSchedule: z.any().optional().nullable(),
+    serviceSchedule: contractServiceScheduleSchema.optional().nullable(),
     autoRenew: z.boolean().optional().default(false),
     renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
     monthlyValue: z.coerce.number().positive('Monthly value must be positive'),
@@ -94,8 +163,14 @@ export const createContractSchema = z
     }
   );
 
+export const createContractSchemaValidated = withServiceScheduleValidation(
+  createContractSchema,
+  'serviceFrequency',
+  'serviceSchedule'
+);
+
 export const createContractSchemaWithDocumentValidation =
-  withTermsDocumentValidation(createContractSchema);
+  withTermsDocumentValidation(createContractSchemaValidated);
 
 // Create Contract from Proposal Schema
 export const createContractFromProposalSchema = z
@@ -135,7 +210,7 @@ export const updateContractSchema = z
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional().nullable(),
     serviceFrequency: serviceFrequencySchema.optional().nullable(),
-    serviceSchedule: z.any().optional().nullable(),
+    serviceSchedule: contractServiceScheduleSchema.optional().nullable(),
     autoRenew: z.boolean().optional(),
     renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
     monthlyValue: z.coerce.number().positive().optional(),
@@ -156,8 +231,14 @@ export const updateContractSchema = z
     }
   );
 
+export const updateContractSchemaValidated = withServiceScheduleValidation(
+  updateContractSchema,
+  'serviceFrequency',
+  'serviceSchedule'
+);
+
 export const updateContractSchemaWithDocumentValidation =
-  withTermsDocumentValidation(updateContractSchema);
+  withTermsDocumentValidation(updateContractSchemaValidated);
 
 // Update Contract Status Schema
 export const updateContractStatusSchema = z.object({
@@ -196,7 +277,7 @@ export const renewContractSchema = z
     endDate: z.coerce.date().optional().nullable(),
     monthlyValue: z.coerce.number().positive().optional(),
     serviceFrequency: serviceFrequencySchema.optional().nullable(),
-    serviceSchedule: z.any().optional().nullable(),
+    serviceSchedule: contractServiceScheduleSchema.optional().nullable(),
     autoRenew: z.boolean().optional(),
     renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
     billingCycle: billingCycleSchema.optional(),
@@ -215,8 +296,14 @@ export const renewContractSchema = z
     }
   );
 
+export const renewContractSchemaValidated = withServiceScheduleValidation(
+  renewContractSchema,
+  'serviceFrequency',
+  'serviceSchedule'
+);
+
 export const renewContractSchemaWithDocumentValidation =
-  withTermsDocumentValidation(renewContractSchema);
+  withTermsDocumentValidation(renewContractSchemaValidated);
 
 // Create Standalone Contract Schema (for imported/legacy contracts)
 export const createStandaloneContractSchema = z
@@ -227,7 +314,7 @@ export const createStandaloneContractSchema = z
     startDate: z.coerce.date(),
     endDate: z.coerce.date().optional().nullable(),
     serviceFrequency: serviceFrequencySchema.optional().nullable(),
-    serviceSchedule: z.any().optional().nullable(),
+    serviceSchedule: contractServiceScheduleSchema.optional().nullable(),
     autoRenew: z.boolean().optional().default(false),
     renewalNoticeDays: z.coerce.number().int().positive().optional().nullable(),
     monthlyValue: z.coerce.number().positive('Monthly value must be positive'),
@@ -248,8 +335,14 @@ export const createStandaloneContractSchema = z
     }
   );
 
+export const createStandaloneContractSchemaValidated = withServiceScheduleValidation(
+  createStandaloneContractSchema,
+  'serviceFrequency',
+  'serviceSchedule'
+);
+
 export const createStandaloneContractSchemaWithDocumentValidation =
-  withTermsDocumentValidation(createStandaloneContractSchema);
+  withTermsDocumentValidation(createStandaloneContractSchemaValidated);
 
 // List Contracts Query Schema
 export const listContractsQuerySchema = z.object({
@@ -326,41 +419,53 @@ export const contractAmendmentStatusSchema = z.enum([
 
 export const contractAmendmentScopeSchema = z.record(z.any()).optional().nullable();
 
-export const createContractAmendmentSchema = z.object({
-  title: z.string().min(1).max(255).optional(),
-  summary: z.string().max(10000).optional().nullable(),
-  reason: z.string().max(10000).optional().nullable(),
-  effectiveDate: z.coerce.date(),
-  pricingPlanId: z.string().uuid().optional().nullable(),
-  amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
-  newMonthlyValue: z.coerce.number().positive().optional().nullable(),
-  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
-  newServiceSchedule: z.any().optional().nullable(),
-  pricingSnapshot: z.record(z.any()).optional().nullable(),
-  workingScope: contractAmendmentScopeSchema,
-});
+export const createContractAmendmentSchema = withServiceScheduleValidation(
+  z.object({
+    title: z.string().min(1).max(255).optional(),
+    summary: z.string().max(10000).optional().nullable(),
+    reason: z.string().max(10000).optional().nullable(),
+    effectiveDate: z.coerce.date(),
+    pricingPlanId: z.string().uuid().optional().nullable(),
+    amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
+    newMonthlyValue: z.coerce.number().positive().optional().nullable(),
+    newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+    newServiceSchedule: contractServiceScheduleSchema.optional().nullable(),
+    pricingSnapshot: z.record(z.any()).optional().nullable(),
+    workingScope: contractAmendmentScopeSchema,
+  }),
+  'newServiceFrequency',
+  'newServiceSchedule'
+);
 
-export const updateContractAmendmentSchema = z.object({
-  title: z.string().min(1).max(255).optional(),
-  summary: z.string().max(10000).optional().nullable(),
-  reason: z.string().max(10000).optional().nullable(),
-  effectiveDate: z.coerce.date().optional(),
-  pricingPlanId: z.string().uuid().optional().nullable(),
-  amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
-  newMonthlyValue: z.coerce.number().positive().optional().nullable(),
-  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
-  newServiceSchedule: z.any().optional().nullable(),
-  pricingSnapshot: z.record(z.any()).optional().nullable(),
-  workingScope: contractAmendmentScopeSchema,
-  status: z.enum(['draft', 'submitted', 'canceled']).optional(),
-});
+export const updateContractAmendmentSchema = withServiceScheduleValidation(
+  z.object({
+    title: z.string().min(1).max(255).optional(),
+    summary: z.string().max(10000).optional().nullable(),
+    reason: z.string().max(10000).optional().nullable(),
+    effectiveDate: z.coerce.date().optional(),
+    pricingPlanId: z.string().uuid().optional().nullable(),
+    amendmentType: z.enum(['scope_change', 'pricing_change', 'schedule_change', 'terms_change', 'mixed']).optional(),
+    newMonthlyValue: z.coerce.number().positive().optional().nullable(),
+    newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+    newServiceSchedule: contractServiceScheduleSchema.optional().nullable(),
+    pricingSnapshot: z.record(z.any()).optional().nullable(),
+    workingScope: contractAmendmentScopeSchema,
+    status: z.enum(['draft', 'submitted', 'canceled']).optional(),
+  }),
+  'newServiceFrequency',
+  'newServiceSchedule'
+);
 
-export const recalculateContractAmendmentSchema = z.object({
-  pricingPlanId: z.string().uuid().optional().nullable(),
-  newServiceFrequency: serviceFrequencySchema.optional().nullable(),
-  newServiceSchedule: z.any().optional().nullable(),
-  workingScope: contractAmendmentScopeSchema,
-});
+export const recalculateContractAmendmentSchema = withServiceScheduleValidation(
+  z.object({
+    pricingPlanId: z.string().uuid().optional().nullable(),
+    newServiceFrequency: serviceFrequencySchema.optional().nullable(),
+    newServiceSchedule: contractServiceScheduleSchema.optional().nullable(),
+    workingScope: contractAmendmentScopeSchema,
+  }),
+  'newServiceFrequency',
+  'newServiceSchedule'
+);
 
 export const rejectContractAmendmentSchema = z.object({
   rejectedReason: z.string().min(1).max(10000),

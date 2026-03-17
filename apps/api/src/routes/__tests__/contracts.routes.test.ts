@@ -952,6 +952,30 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('PATCH /:id/amendments/:amendmentId should reject mismatched frequency day counts', async () => {
+    (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+    });
+
+    const response = await request(app)
+      .patch('/api/v1/contracts/contract-1/amendments/amend-1')
+      .send({
+        newServiceFrequency: '5x_week',
+        newServiceSchedule: {
+          days: ['monday'],
+          allowedWindowStart: '18:00',
+          allowedWindowEnd: '06:00',
+        },
+      })
+      .expect(422);
+
+    expect(response.body.error.message).toContain('exactly 5 service days');
+    expect(contractAmendmentService.updateContractAmendment).not.toHaveBeenCalled();
+  });
+
   it('POST /:id/amendments/:amendmentId/recalculate should recalculate amendment pricing', async () => {
     (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
       id: 'amend-1',
@@ -1077,6 +1101,28 @@ describe('Contract Routes', () => {
         source: 'manual',
       })
     );
+  });
+
+  it('POST / should reject mismatched contract service day counts', async () => {
+    const response = await request(app)
+      .post('/api/v1/contracts')
+      .send({
+        title: 'Invalid Schedule Contract',
+        accountId: '11111111-1111-1111-1111-111111111111',
+        facilityId: '22222222-2222-2222-2222-222222222222',
+        startDate: '2026-03-17',
+        serviceFrequency: '5x_week',
+        serviceSchedule: {
+          days: ['monday'],
+          allowedWindowStart: '18:00',
+          allowedWindowEnd: '06:00',
+        },
+        monthlyValue: 2400,
+      })
+      .expect(422);
+
+    expect(response.body.error.message).toContain('exactly 5 service days');
+    expect(contractService.createContract).not.toHaveBeenCalled();
   });
 
   it('POST /:id/amendments/:amendmentId/apply should block early apply without override', async () => {

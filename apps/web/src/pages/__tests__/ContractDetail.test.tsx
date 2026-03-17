@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
+import toast from 'react-hot-toast';
 import ContractDetail from '../contracts/ContractDetail';
 import type { Contract } from '../../types/contract';
 import { useAuthStore } from '../../stores/authStore';
@@ -531,6 +532,7 @@ describe('ContractDetail', () => {
       monthlyDelta: 0,
       pricingPlanId: 'plan-1',
       newServiceFrequency: 'weekly',
+      newServiceSchedule: { days: ['monday'], allowedWindowStart: '18:00', allowedWindowEnd: '06:00' },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
@@ -725,6 +727,73 @@ describe('ContractDetail', () => {
     expect(await screen.findByText('Being Removed')).toBeInTheDocument();
     expect(screen.getByText('Break Room')).toBeInTheDocument();
     expect(screen.getByText('Dust Desks (Lobby)')).toBeInTheDocument();
+  });
+
+  it('requires the exact service day count before recalculating an amendment', async () => {
+    const amendmentWithDraftScope = {
+      id: 'amend-1',
+      contractId: 'contract-1',
+      amendmentNumber: 1,
+      status: 'draft',
+      amendmentType: 'mixed',
+      title: 'Office Cleaning Agreement Amendment',
+      effectiveDate: new Date().toISOString(),
+      oldMonthlyValue: 2500,
+      newMonthlyValue: 2500,
+      monthlyDelta: 0,
+      pricingPlanId: 'plan-1',
+      newServiceFrequency: 'weekly',
+      newServiceSchedule: { days: ['monday'], allowedWindowStart: '18:00', allowedWindowEnd: '06:00' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+      snapshots: [
+        {
+          id: 'snap-before',
+          snapshotType: 'before',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: 'weekly',
+              serviceSchedule: { days: ['monday'] },
+            },
+            areas: [],
+            tasks: [],
+          },
+        },
+        {
+          id: 'snap-working',
+          snapshotType: 'working',
+          createdAt: new Date().toISOString(),
+          scopeJson: {
+            contract: {
+              serviceFrequency: 'weekly',
+              serviceSchedule: { days: ['monday'] },
+            },
+            areas: [],
+            tasks: [],
+          },
+        },
+      ],
+      activities: [],
+    };
+
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'active' });
+    createContractAmendmentMock.mockResolvedValueOnce(amendmentWithDraftScope);
+    getContractAmendmentMock.mockResolvedValueOnce(amendmentWithDraftScope);
+    const user = userEvent.setup();
+
+    render(<ContractDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /create contract change/i }));
+    await user.click(screen.getByRole('button', { name: /create draft/i }));
+
+    await user.selectOptions(await screen.findByLabelText(/service frequency/i), '5x_week');
+    await user.click(screen.getByRole('button', { name: 'Mon' }));
+    await user.click(screen.getByRole('button', { name: /update price/i }));
+
+    expect(recalculateContractAmendmentMock).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Select exactly 5 service days for this frequency');
   });
 
   it('shows global task templates in amendment area task selection fallback', async () => {

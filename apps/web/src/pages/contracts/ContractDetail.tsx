@@ -710,6 +710,17 @@ const defaultScheduleDays = (frequency: string | null | undefined): string[] => 
   }
 };
 
+const getAmendmentScheduleValidationMessage = (
+  frequency: string | null | undefined,
+  days: string[] | null | undefined
+): string | null => {
+  const expected = expectedScheduleDays(frequency);
+  if (!expected) return null;
+  const selectedCount = Array.isArray(days) ? days.length : 0;
+  if (selectedCount === expected) return null;
+  return `Select exactly ${expected} service day${expected === 1 ? '' : 's'} for this frequency`;
+};
+
 const createTempId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -1821,6 +1832,14 @@ const ContractDetail = () => {
 
   const handleSaveAmendmentScope = async () => {
     if (!contract || !selectedAmendment) return;
+    const scheduleValidationMessage = getAmendmentScheduleValidationMessage(
+      selectedAmendment.newServiceFrequency || selectedAmendment.oldServiceFrequency || null,
+      selectedAmendment.newServiceSchedule?.days as string[] | undefined
+    );
+    if (scheduleValidationMessage) {
+      toast.error(scheduleValidationMessage);
+      return;
+    }
     try {
       setAmendmentSubmitting(true);
       const updated = await updateContractAmendmentApi(contract.id, selectedAmendment.id, {
@@ -1842,6 +1861,14 @@ const ContractDetail = () => {
 
   const handleRecalculateAmendment = async () => {
     if (!contract || !selectedAmendment) return;
+    const scheduleValidationMessage = getAmendmentScheduleValidationMessage(
+      selectedAmendment.newServiceFrequency || selectedAmendment.oldServiceFrequency || null,
+      selectedAmendment.newServiceSchedule?.days as string[] | undefined
+    );
+    if (scheduleValidationMessage) {
+      toast.error(scheduleValidationMessage);
+      return;
+    }
     try {
       setAmendmentPricingLoading(true);
       const payload: RecalculateContractAmendmentInput = {
@@ -1895,6 +1922,14 @@ const ContractDetail = () => {
 
   const handleSubmitAmendmentDraft = async () => {
     if (!contract || !selectedAmendment) return;
+    const scheduleValidationMessage = getAmendmentScheduleValidationMessage(
+      selectedAmendment.newServiceFrequency || selectedAmendment.oldServiceFrequency || null,
+      selectedAmendment.newServiceSchedule?.days as string[] | undefined
+    );
+    if (scheduleValidationMessage) {
+      toast.error(scheduleValidationMessage);
+      return;
+    }
     if (amendmentScopeDirty) {
       toast.error('Save or recalculate the amendment before submitting');
       return;
@@ -3578,6 +3613,11 @@ const ContractDetail = () => {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {AMENDMENT_SCHEDULE_DAY_OPTIONS.map((day) => {
+                      const requiredDays = expectedScheduleDays(
+                        selectedAmendment.newServiceFrequency ||
+                          selectedAmendment.oldServiceFrequency ||
+                          null
+                      );
                       const selectedDays = Array.isArray(selectedAmendment.newServiceSchedule?.days)
                         ? selectedAmendment.newServiceSchedule?.days
                         : defaultScheduleDays(
@@ -3586,15 +3626,19 @@ const ContractDetail = () => {
                               null
                           );
                       const isSelected = selectedDays.includes(day.value);
+                      const disabled = !isSelected && requiredDays > 0 && selectedDays.length >= requiredDays;
                       return (
                         <button
                           key={day.value}
                           type="button"
                           onClick={() => handleToggleAmendmentServiceDay(day.value)}
+                          disabled={disabled}
                           className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                             isSelected
                               ? 'border-emerald bg-emerald/15 text-white'
-                              : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20'
+                              : disabled
+                                ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-gray-500'
+                                : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20'
                           }`}
                         >
                           {day.label}
@@ -3602,6 +3646,21 @@ const ContractDetail = () => {
                       );
                     })}
                   </div>
+                  {getAmendmentScheduleValidationMessage(
+                    selectedAmendment.newServiceFrequency ||
+                      selectedAmendment.oldServiceFrequency ||
+                      null,
+                    selectedAmendment.newServiceSchedule?.days as string[] | undefined
+                  ) && (
+                    <div className="mt-2 text-xs text-amber-300">
+                      {getAmendmentScheduleValidationMessage(
+                        selectedAmendment.newServiceFrequency ||
+                          selectedAmendment.oldServiceFrequency ||
+                          null,
+                        selectedAmendment.newServiceSchedule?.days as string[] | undefined
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3">
