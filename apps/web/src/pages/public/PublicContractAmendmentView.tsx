@@ -64,6 +64,157 @@ const formatFrequency = (value: string | null | undefined) => {
   return frequencyLabels[value] || value.replace(/_/g, ' ');
 };
 
+type AmendmentWorkingScope = {
+  areas?: Array<Record<string, any>>;
+  tasks?: Array<Record<string, any>>;
+};
+
+const getLatestWorkingScope = (
+  amendment: PublicContractAmendment
+): { areas: Array<Record<string, any>>; tasks: Array<Record<string, any>> } => {
+  const workingSnapshot = [...(amendment.snapshots || [])]
+    .reverse()
+    .find((snapshot) => snapshot.snapshotType === 'working');
+  const scope = (workingSnapshot?.scopeJson || {}) as AmendmentWorkingScope;
+  return {
+    areas: Array.isArray(scope.areas) ? scope.areas : [],
+    tasks: Array.isArray(scope.tasks) ? scope.tasks : [],
+  };
+};
+
+const getAreaDisplayName = (area: Record<string, any>, index: number) =>
+  area.name || area.areaType?.name || `Area ${index + 1}`;
+
+const getTaskDisplayName = (task: Record<string, any>, index: number) =>
+  task.customName || task.taskTemplate?.name || task.name || `Task ${index + 1}`;
+
+const getFrequencyOrder = (value: string | null | undefined) => {
+  const order: Record<string, number> = {
+    daily: 1,
+    '1x_week': 2,
+    weekly: 2,
+    '2x_week': 3,
+    '3x_week': 4,
+    '4x_week': 5,
+    '5x_week': 6,
+    '7x_week': 7,
+    biweekly: 8,
+    bi_weekly: 8,
+    monthly: 9,
+    quarterly: 10,
+    annually: 11,
+  };
+  return order[(value || '').toLowerCase()] ?? 99;
+};
+
+const groupTasksByFrequency = (tasks: Array<Record<string, any>>) => {
+  const grouped = new Map<string, { tasks: Array<Record<string, any>>; order: number }>();
+  for (const task of tasks) {
+    const label = formatFrequency(task.cleaningFrequency);
+    const current = grouped.get(label) || {
+      tasks: [],
+      order: getFrequencyOrder(task.cleaningFrequency),
+    };
+    current.tasks.push(task);
+    grouped.set(label, current);
+  }
+  return [...grouped.entries()]
+    .sort((a, b) => {
+      if (a[1].order !== b[1].order) return a[1].order - b[1].order;
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([label, value]) => [label, value.tasks] as const);
+};
+
+const FrequencyTaskStepper = ({
+  sectionKey,
+  groupedTasks,
+  accentColor,
+  primaryColor,
+}: {
+  sectionKey: string;
+  groupedTasks: Array<readonly [string, Array<Record<string, any>>]>;
+  accentColor: string;
+  primaryColor: string;
+}) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [sectionKey, groupedTasks.length]);
+
+  if (groupedTasks.length === 0) {
+    return <div className="mt-4 text-sm text-gray-500">No tasks listed.</div>;
+  }
+
+  const safeIndex = Math.min(activeIndex, Math.max(groupedTasks.length - 1, 0));
+  const [activeFrequency, activeTasks] = groupedTasks[safeIndex];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div className="flex flex-wrap gap-2">
+        {groupedTasks.map(([frequency], index) => (
+          <button
+            key={`${sectionKey}-${frequency}`}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+              index === safeIndex
+                ? 'text-white'
+                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+            }`}
+            style={index === safeIndex ? { backgroundColor: primaryColor } : undefined}
+          >
+            {frequency}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+          {activeFrequency}
+        </div>
+        <div className="text-xs text-gray-500">
+          {safeIndex + 1} of {groupedTasks.length}
+        </div>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {activeTasks.map((task, taskIndex) => (
+          <li
+            key={`${sectionKey}-${activeFrequency}-${task.id || task.tempId || taskIndex}`}
+            className="flex items-start gap-2 text-sm text-gray-700"
+          >
+            <span
+              className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: accentColor }}
+            />
+            {getTaskDisplayName(task, taskIndex)}
+          </li>
+        ))}
+      </ul>
+      {groupedTasks.length > 1 && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
+            disabled={safeIndex === 0}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => Math.min(groupedTasks.length - 1, current + 1))}
+            disabled={safeIndex >= groupedTasks.length - 1}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function PublicContractAmendmentView(): React.JSX.Element {
   const { token } = useParams();
   const [amendment, setAmendment] = useState<PublicContractAmendment | null>(null);
@@ -154,6 +305,13 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
   const accentColor = branding?.themeAccentColor || '#d4af37';
   const backgroundColor = branding?.themeBackgroundColor || '#f8fafc';
   const textColor = branding?.themeTextColor || '#111827';
+  const workingScope = getLatestWorkingScope(amendment);
+  const scopeAreaKeySet = new Set(
+    workingScope.areas
+      .map((area) => area.id || area.tempId)
+      .filter((value): value is string => Boolean(value))
+  );
+  const facilityWideTasks = workingScope.tasks.filter((task) => !task.areaId || !scopeAreaKeySet.has(task.areaId));
 
   return (
     <div className="min-h-screen" style={{ backgroundColor }}>
@@ -297,6 +455,55 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
             )}
           </div>
         </div>
+
+        {(workingScope.areas.length > 0 || facilityWideTasks.length > 0) && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Updated Areas & Tasks</h3>
+            <div className="space-y-4">
+              {workingScope.areas.map((area, areaIndex) => {
+                const areaId = area.id || area.tempId;
+                const areaTasks = workingScope.tasks.filter((task) => task.areaId && task.areaId === areaId);
+                const groupedTasks = groupTasksByFrequency(areaTasks);
+                return (
+                  <div key={areaId || `area-${areaIndex}`} className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900">{getAreaDisplayName(area, areaIndex)}</div>
+                        <div className="text-sm text-gray-500">
+                          {area.areaType?.name || area.type || 'Area'}
+                          {area.squareFeet ? ` • ${area.squareFeet} sqft` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    {groupedTasks.length > 0 ? (
+                      <FrequencyTaskStepper
+                        sectionKey={String(areaId || areaIndex)}
+                        groupedTasks={groupedTasks}
+                        accentColor={accentColor}
+                        primaryColor={primaryColor}
+                      />
+                    ) : (
+                      <div className="mt-4 text-sm text-gray-500">No area-specific tasks listed.</div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {facilityWideTasks.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div className="font-medium text-gray-900">Facility-Wide Tasks</div>
+                  <div className="text-sm text-gray-500">Tasks that apply across the full facility</div>
+                  <FrequencyTaskStepper
+                    sectionKey="facility-wide"
+                    groupedTasks={groupTasksByFrequency(facilityWideTasks)}
+                    accentColor={accentColor}
+                    primaryColor={primaryColor}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {canSign && !actionComplete && (
           <div className="flex justify-center py-8 border-t border-gray-200">
