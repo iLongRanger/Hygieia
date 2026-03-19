@@ -1268,29 +1268,31 @@ describe('Contract Routes', () => {
   });
 
   it('POST /:id/amendments/:amendmentId/apply should block early apply without override', async () => {
+    const futureEffectiveDate = new Date('2099-03-20T00:00:00.000Z');
     (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
       id: 'amend-1',
       contractId: 'contract-1',
       amendmentNumber: 1,
       status: 'approved',
-      effectiveDate: new Date('2026-03-20T00:00:00.000Z'),
+      effectiveDate: futureEffectiveDate,
     });
 
     const response = await request(app)
       .post('/api/v1/contracts/contract-1/amendments/amend-1/apply')
       .expect(422);
 
-    expect(response.body.error.message).toMatch(/starts on 2026-03-20/i);
+    expect(response.body.error.message).toMatch(/starts on 2099-03-20/i);
     expect(contractAmendmentWorkflowService.applyContractAmendmentWorkflow).not.toHaveBeenCalled();
   });
 
   it('POST /:id/amendments/:amendmentId/apply should allow early apply with override', async () => {
+    const futureEffectiveDate = new Date('2099-03-20T00:00:00.000Z');
     (contractAmendmentService.getContractAmendmentById as jest.Mock).mockResolvedValue({
       id: 'amend-1',
       contractId: 'contract-1',
       amendmentNumber: 1,
       status: 'approved',
-      effectiveDate: new Date('2026-03-20T00:00:00.000Z'),
+      effectiveDate: futureEffectiveDate,
     });
     (contractAmendmentWorkflowService.applyContractAmendmentWorkflow as jest.Mock).mockResolvedValue({
       amendment: {
