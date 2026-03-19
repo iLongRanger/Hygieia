@@ -188,6 +188,7 @@ router.get(
   '/:id/pricing-readiness',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await isFacilityReadyForPricing(req.params.id);
@@ -203,6 +204,7 @@ router.get(
   '/:id/pricing',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -233,6 +235,7 @@ router.get(
   '/:id/pricing-comparison',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -264,6 +267,7 @@ router.get(
   '/:id/proposal-template',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -336,6 +340,7 @@ router.get(
   '/:id/tasks-grouped',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);
@@ -373,6 +378,7 @@ router.get(
   '/:id/task-time-breakdown',
   authenticate,
   requirePermission(PERMISSIONS.FACILITIES_READ),
+  verifyOwnership({ resourceType: 'facility' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getFacilityById(req.params.id);

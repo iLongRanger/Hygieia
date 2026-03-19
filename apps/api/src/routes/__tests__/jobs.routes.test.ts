@@ -56,4 +56,34 @@ describe('Job Routes', () => {
 
     expect(jobService.completeInitialCleanForJob).not.toHaveBeenCalled();
   });
+
+  it('GET /:id should reject subcontractors outside the assigned team', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      assignedTeam: { id: 'team-2', name: 'Other Team' },
+      assignedToUser: null,
+    });
+
+    await request(app)
+      .get('/api/v1/jobs/job-1')
+      .expect(422);
+  });
+
+  it('GET /:id should allow subcontractors for jobs assigned to their team', async () => {
+    mockAuthUser.role = 'subcontractor';
+    mockAuthUser.teamId = 'team-1';
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      assignedTeam: { id: 'team-1', name: 'My Team' },
+      assignedToUser: null,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/jobs/job-1')
+      .expect(200);
+
+    expect(response.body.data.id).toBe('job-1');
+  });
 });

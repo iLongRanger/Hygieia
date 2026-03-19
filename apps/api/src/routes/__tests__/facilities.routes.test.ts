@@ -321,6 +321,19 @@ describe('Facility Routes', () => {
     expect(response.body.data.byFrequency.daily).toHaveLength(1);
   });
 
+  it('GET /:id/task-time-breakdown should return breakdown', async () => {
+    (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (facilityService.getTaskTimeBreakdown as jest.Mock).mockResolvedValue({
+      totalMinutesPerVisit: 120,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/facilities/facility-1/task-time-breakdown')
+      .expect(200);
+
+    expect(response.body.data.totalMinutesPerVisit).toBe(120);
+  });
+
   it('DELETE /:id should delete facility', async () => {
     (facilityService.getFacilityById as jest.Mock).mockResolvedValue({ id: 'facility-1' });
     (facilityService.deleteFacility as jest.Mock).mockResolvedValue({ id: 'facility-1' });

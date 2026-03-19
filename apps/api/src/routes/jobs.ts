@@ -45,6 +45,30 @@ function assertCanEditJob(req: Request): void {
   }
 }
 
+function assertCanViewJob(req: Request, job: Awaited<ReturnType<typeof getJobById>>): void {
+  if (!req.user || !job) {
+    return;
+  }
+
+  if (req.user.role === 'cleaner' && job.assignedToUser?.id !== req.user.id) {
+    throw new ValidationError('Insufficient permissions');
+  }
+
+  if (req.user.role === 'subcontractor') {
+    const userTeamId = req.user.teamId ?? null;
+    const assignedTeamId = job.assignedTeam?.id ?? null;
+    const assignedToUserId = job.assignedToUser?.id ?? null;
+
+    const hasAccess =
+      assignedToUserId === req.user.id ||
+      (Boolean(userTeamId) && assignedTeamId === userTeamId);
+
+    if (!hasAccess) {
+      throw new ValidationError('Insufficient permissions');
+    }
+  }
+}
+
 function assertCanGenerateRecurringJobs(req: Request): void {
   if (!req.user || !['owner', 'admin'].includes(req.user.role)) {
     throw new ValidationError('Only admin and owner can generate recurring jobs');
@@ -128,9 +152,7 @@ router.get(
         res.status(404).json({ error: 'Job not found' });
         return;
       }
-      if (req.user?.role === 'cleaner' && job.assignedToUser?.id !== req.user.id) {
-        throw new ValidationError('Insufficient permissions');
-      }
+      assertCanViewJob(req, job);
       res.json({ data: job });
     } catch (error) {
       next(error);
