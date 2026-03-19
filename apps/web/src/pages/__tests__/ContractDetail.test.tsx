@@ -851,7 +851,7 @@ describe('ContractDetail', () => {
       status: 'approved',
       amendmentType: 'mixed',
       title: 'Office Cleaning Agreement Amendment',
-      effectiveDate: '2026-03-20T00:00:00.000Z',
+      effectiveDate: '2099-03-20T00:00:00.000Z',
       oldMonthlyValue: 2500,
       newMonthlyValue: 3000,
       monthlyDelta: 500,

@@ -160,7 +160,9 @@ describe('ContractsList', () => {
     const contractNumber = await screen.findByText('CONT-202602-0001');
     const contractRow = contractNumber.closest('tr');
     expect(contractRow).toBeTruthy();
-    expect(within(contractRow as HTMLElement).getByText(/office cleaning agreement/i)).toBeInTheDocument();
+    const contractButton = within(contractRow as HTMLElement).getAllByRole('button')[0];
+    expect(contractButton).toHaveTextContent('CONT-202602-0001');
+    expect(contractButton).toHaveTextContent('Office Cleaning Agreement');
   });
 
   it('archives a draft contract from row action', async () => {
