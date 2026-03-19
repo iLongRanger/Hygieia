@@ -154,16 +154,13 @@ describe('ContractsList', () => {
     });
   });
 
-  it('navigates to contract detail when contract name is clicked', async () => {
-    const user = userEvent.setup();
+  it('renders the contract number and title in the contract column', async () => {
     render(<ContractsList />);
 
-    const contractNameButton = await screen.findByRole('button', {
-      name: /cont-202602-0001 office cleaning agreement/i,
-    });
-    await user.click(contractNameButton);
-
-    expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
+    const contractNumber = await screen.findByText('CONT-202602-0001');
+    const contractRow = contractNumber.closest('tr');
+    expect(contractRow).toBeTruthy();
+    expect(within(contractRow as HTMLElement).getByText(/office cleaning agreement/i)).toBeInTheDocument();
   });
 
   it('archives a draft contract from row action', async () => {

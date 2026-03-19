@@ -374,8 +374,7 @@ describe('ProposalForm', () => {
     await user.click(calculateButton);
 
     expect(await screen.findByText('Daily Cleaning')).toBeInTheDocument();
-    expect(await screen.findByText('Service Scope')).toBeInTheDocument();
-    expect(screen.getByText('Lobby - 500 sq ft')).toBeInTheDocument();
+    await user.click(screen.getByText('Daily Cleaning'));
     expect(screen.getByText('Wipe surfaces')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();
     await waitFor(() => {

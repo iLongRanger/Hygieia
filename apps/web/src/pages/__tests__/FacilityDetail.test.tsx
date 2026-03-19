@@ -186,6 +186,7 @@ describe('FacilityDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'facility-1' };
     navigateMock.mockReset();
+    submitFacilityForProposalMock.mockReset();
     getFacilityMock.mockResolvedValue(facility);
     listAreasMock.mockResolvedValue({ data: areas });
     listAreaTypesMock.mockResolvedValue({ data: areaTypes });

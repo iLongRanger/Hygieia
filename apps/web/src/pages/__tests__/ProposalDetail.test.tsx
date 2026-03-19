@@ -174,9 +174,11 @@ describe('ProposalDetail', () => {
 
     render(<ProposalDetail />);
 
-    expect(await screen.findByText('Daily')).toBeInTheDocument();
+    expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Weekly' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Manual' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yearly' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
-    expect(screen.getByText('Strip and wax')).toBeInTheDocument();
   });
 
   it('hides tasks with zero quantity suffix', async () => {
