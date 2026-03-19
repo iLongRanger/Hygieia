@@ -58,6 +58,7 @@ vi.mock('../../../lib/realtimeNotifications', () => ({
 describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     navigateMock.mockReset();
     listNotificationsMock.mockResolvedValue([
       {
