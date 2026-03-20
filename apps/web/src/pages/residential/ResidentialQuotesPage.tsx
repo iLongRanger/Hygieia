@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  Eye,
+  CheckCircle2,
   Home,
   Plus,
   Sparkles,
@@ -549,8 +550,18 @@ const ResidentialQuotesPage = () => {
       </div>
 
       {accounts.length === 0 && (
-        <Card className="border-warning-300 bg-warning-50 p-4 text-sm text-warning-900 dark:border-warning-700 dark:bg-warning-950/20 dark:text-warning-200">
-          Create a residential account first. Residential quotes are now CRM-linked and must belong to an existing residential account.
+        <Card className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-full bg-warning-50 p-2 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div className="space-y-2">
+              <Badge variant="warning" size="sm">Account Required</Badge>
+              <p className="text-sm text-surface-700 dark:text-surface-300">
+                Create a residential account first. Residential quotes are CRM-linked and must belong to an existing residential account.
+              </p>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -987,21 +998,38 @@ const ResidentialQuotesPage = () => {
                   }
                 />
                 {preview?.breakdown.manualReviewReasons?.length ? (
-                  <div className="rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-700 dark:bg-warning-950/20">
-                    <div className="flex items-center gap-2 font-medium text-warning-800 dark:text-warning-300">
-                      <Eye className="h-4 w-4" />
-                      Manual review triggers
+                  <Card className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full bg-warning-50 p-2 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 space-y-2">
+                        <Badge variant="warning" size="sm">Manual Review</Badge>
+                        <div className="text-sm font-medium text-surface-900 dark:text-surface-100">
+                          This quote needs review before it should be sent to the client.
+                        </div>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+                          {preview.breakdown.manualReviewReasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                    <ul className="mt-2 space-y-1 text-sm text-warning-800 dark:text-warning-300">
-                      {preview.breakdown.manualReviewReasons.map((reason) => (
-                        <li key={reason}>• {reason}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  </Card>
                 ) : (
-                  <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">
-                    Hygieia considers this a confident auto-quote.
-                  </div>
+                  <Card className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full bg-success-50 p-2 text-success-700 dark:bg-success-900/30 dark:text-success-300">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-2">
+                        <Badge variant="success" size="sm">Auto-Quote Ready</Badge>
+                        <p className="text-sm text-surface-700 dark:text-surface-300">
+                          Hygieia considers this a confident auto-quote based on the current home profile, service type, and add-ons.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                 )}
               </Card>
             )}
