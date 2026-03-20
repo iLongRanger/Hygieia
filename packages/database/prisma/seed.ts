@@ -352,6 +352,120 @@ async function main() {
   } else {
     console.log('Default super admin already exists (ensured owner role)')
   }
+
+  const standardResidentialSettings = {
+    strategyKey: 'residential_flat_v1',
+    homeTypeBasePrices: {
+      apartment: 140,
+      condo: 160,
+      townhouse: 175,
+      single_family: 190
+    },
+    sqftBrackets: [
+      { upTo: 1000, adjustment: 0 },
+      { upTo: 1500, adjustment: 30 },
+      { upTo: 2000, adjustment: 60 },
+      { upTo: 3000, adjustment: 120 },
+      { upTo: null, adjustment: 220 }
+    ],
+    bedroomAdjustments: { '0': 0, '1': 0, '2': 20, '3': 35, '4': 50, '5': 70, '6': 90 },
+    bathroomAdjustments: { fullBath: 28, halfBath: 16 },
+    levelAdjustments: { '1': 0, '2': 20, '3': 40, '4': 60 },
+    conditionMultipliers: { light: 0.92, standard: 1, heavy: 1.28 },
+    serviceTypeMultipliers: {
+      recurring_standard: 1,
+      one_time_standard: 1.12,
+      deep_clean: 1.38,
+      move_in_out: 1.48,
+      turnover: 1.16,
+      post_construction: 1.75
+    },
+    frequencyDiscounts: {
+      weekly: 0.12,
+      biweekly: 0.08,
+      every_4_weeks: 0.03,
+      one_time: 0
+    },
+    firstCleanSurcharge: {
+      enabled: true,
+      type: 'percent',
+      value: 0.15,
+      appliesTo: ['recurring_standard', 'deep_clean']
+    },
+    addOnPrices: {
+      inside_fridge: { pricingType: 'flat', unitPrice: 25, estimatedMinutes: 20, description: 'Inside fridge' },
+      inside_oven: { pricingType: 'flat', unitPrice: 30, estimatedMinutes: 25, description: 'Inside oven' },
+      inside_cabinets: { pricingType: 'flat', unitPrice: 45, estimatedMinutes: 40, description: 'Inside cabinets' },
+      interior_windows: { pricingType: 'per_unit', unitPrice: 6, estimatedMinutes: 6, unitLabel: 'window', description: 'Interior windows' },
+      blinds: { pricingType: 'per_unit', unitPrice: 8, estimatedMinutes: 8, unitLabel: 'room', description: 'Blinds' },
+      baseboards: { pricingType: 'flat', unitPrice: 35, estimatedMinutes: 25, description: 'Baseboards' },
+      laundry: { pricingType: 'flat', unitPrice: 20, estimatedMinutes: 25, description: 'Laundry' },
+      dishes: { pricingType: 'flat', unitPrice: 18, estimatedMinutes: 15, description: 'Dishes' },
+      linen_change: { pricingType: 'per_unit', unitPrice: 12, estimatedMinutes: 10, unitLabel: 'bed', description: 'Linen change' },
+      pet_hair_heavy: { pricingType: 'flat', unitPrice: 20, estimatedMinutes: 20, description: 'Heavy pet hair' },
+      balcony_patio: { pricingType: 'flat', unitPrice: 25, estimatedMinutes: 20, description: 'Balcony / patio' },
+      garage: { pricingType: 'flat', unitPrice: 35, estimatedMinutes: 30, description: 'Garage' }
+    },
+    minimumPrice: 160,
+    estimatedHours: {
+      baseHoursByHomeType: { apartment: 1.6, condo: 1.9, townhouse: 2.2, single_family: 2.5 },
+      minutesPerBedroom: 12,
+      minutesPerFullBath: 18,
+      minutesPerHalfBath: 10,
+      minutesPer1000SqFt: 42,
+      conditionMultipliers: { light: 0.9, standard: 1, heavy: 1.35 },
+      serviceTypeMultipliers: {
+        recurring_standard: 1,
+        one_time_standard: 1.1,
+        deep_clean: 1.45,
+        move_in_out: 1.55,
+        turnover: 1.12,
+        post_construction: 1.8
+      },
+      addOnMinutes: {
+        inside_fridge: 20,
+        inside_oven: 25,
+        inside_cabinets: 40,
+        interior_windows: 6,
+        blinds: 8,
+        baseboards: 25,
+        laundry: 25,
+        dishes: 15,
+        linen_change: 10,
+        pet_hair_heavy: 20,
+        balcony_patio: 20,
+        garage: 30
+      }
+    },
+    manualReviewRules: {
+      maxAutoSqft: 3500,
+      heavyConditionRequiresReview: true,
+      postConstructionRequiresReview: true,
+      maxAddOnsBeforeReview: 5
+    }
+  }
+
+  await prisma.residentialPricingPlan.upsert({
+    where: { name: 'Standard Residential' },
+    update: {
+      strategyKey: 'residential_flat_v1',
+      settings: standardResidentialSettings,
+      isActive: true,
+      isDefault: true,
+      createdByUserId: seedUser.id
+    },
+    create: {
+      name: 'Standard Residential',
+      strategyKey: 'residential_flat_v1',
+      settings: standardResidentialSettings,
+      isActive: true,
+      isDefault: true,
+      createdByUserId: seedUser.id
+    }
+  })
+
+  console.log('Ensured Standard Residential pricing plan exists')
+
   const taskTemplateSeeds = [
     // Daily
     {

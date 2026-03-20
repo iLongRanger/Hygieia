@@ -92,6 +92,8 @@ model User {
   invoiceActivities                    InvoiceActivity[]            @relation("InvoiceActivities")
   recordedPayments                     InvoicePayment[]             @relation("RecordedPayments")
   createdQuotations                    Quotation[]                  @relation("CreatedQuotations")
+  createdResidentialPricingPlans       ResidentialPricingPlan[]     @relation("CreatedResidentialPricingPlans")
+  createdResidentialQuotes             ResidentialQuote[]           @relation("CreatedResidentialQuotes")
   quotationActivities                  QuotationActivity[]          @relation("QuotationActivities")
   createdOneTimeServiceCatalogItems    OneTimeServiceCatalogItem[]  @relation("CreatedOneTimeServiceCatalogItems")
   requestedPricingApprovals            Quotation[]                  @relation("QuotationPricingApprovalRequestedBy")
@@ -340,6 +342,7 @@ model Account {
   inspections        Inspection[]      @relation("AccountInspections")
   invoices           Invoice[]         @relation("AccountInvoices")
   quotations         Quotation[]       @relation("AccountQuotations")
+  residentialQuotes  ResidentialQuote[]
 
   @@index([type])
   @@index([accountManagerId])
@@ -677,6 +680,113 @@ model PricingSettings {
   @@map("pricing_settings")
 }
 
+model ResidentialPricingPlan {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique @db.VarChar(100)
+  strategyKey     String   @default("residential_flat_v1") @map("strategy_key") @db.VarChar(40)
+  settings        Json     @db.JsonB
+  isActive        Boolean  @default(true) @map("is_active")
+  isDefault       Boolean  @default(false) @map("is_default")
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  createdByUser User               @relation("CreatedResidentialPricingPlans", fields: [createdByUserId], references: [id])
+  quotes        ResidentialQuote[]
+
+  @@index([isActive])
+  @@index([isDefault])
+  @@index([strategyKey])
+  @@map("residential_pricing_plans")
+}
+
+model ResidentialQuote {
+  id                   String    @id @default(uuid()) @db.Uuid
+  quoteNumber          String    @unique @map("quote_number") @db.VarChar(50)
+  title                String    @db.VarChar(255)
+  status               String    @default("draft") @db.VarChar(20)
+  accountId             String?   @map("account_id") @db.Uuid
+  serviceType          String    @map("service_type") @db.VarChar(40)
+  frequency            String    @db.VarChar(30)
+  customerName         String    @map("customer_name") @db.VarChar(255)
+  customerEmail        String?   @map("customer_email") @db.VarChar(255)
+  customerPhone        String?   @map("customer_phone") @db.VarChar(20)
+  homeAddress          Json?     @map("home_address") @db.JsonB
+  homeProfile          Json      @map("home_profile") @db.JsonB
+  pricingPlanId        String?   @map("pricing_plan_id") @db.Uuid
+  settingsSnapshot     Json?     @map("settings_snapshot") @db.JsonB
+  priceBreakdown       Json?     @map("price_breakdown") @db.JsonB
+  subtotal             Decimal   @default(0) @db.Decimal(12, 2)
+  addOnTotal           Decimal   @default(0) @map("add_on_total") @db.Decimal(12, 2)
+  recurringDiscount    Decimal   @default(0) @map("recurring_discount") @db.Decimal(12, 2)
+  firstCleanSurcharge  Decimal   @default(0) @map("first_clean_surcharge") @db.Decimal(12, 2)
+  totalAmount          Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  estimatedHours       Decimal?  @map("estimated_hours") @db.Decimal(10, 2)
+  confidenceLevel      String    @default("medium") @map("confidence_level") @db.VarChar(20)
+  manualReviewRequired Boolean   @default(false) @map("manual_review_required")
+  manualReviewReasons  Json      @default("[]") @map("manual_review_reasons") @db.JsonB
+  preferredStartDate   DateTime? @map("preferred_start_date") @db.Date
+  notes                String?   @db.Text
+  publicToken          String?   @unique @map("public_token") @db.VarChar(64)
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at") @db.Timestamptz(6)
+  sentAt               DateTime? @map("sent_at") @db.Timestamptz(6)
+  viewedAt             DateTime? @map("viewed_at") @db.Timestamptz(6)
+  acceptedAt           DateTime? @map("accepted_at") @db.Timestamptz(6)
+  signatureName        String?   @map("signature_name") @db.VarChar(255)
+  signatureDate        DateTime? @map("signature_date") @db.Timestamptz(6)
+  signatureIp          String?   @map("signature_ip") @db.VarChar(64)
+  declinedAt           DateTime? @map("declined_at") @db.Timestamptz(6)
+  declineReason        String?   @map("decline_reason") @db.Text
+  convertedAt          DateTime? @map("converted_at") @db.Timestamptz(6)
+  convertedContractId  String?   @map("converted_contract_id") @db.Uuid
+  createdByUserId      String    @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  account       Account?                  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  pricingPlan   ResidentialPricingPlan?   @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  createdByUser User                      @relation("CreatedResidentialQuotes", fields: [createdByUserId], references: [id])
+  addOns        ResidentialQuoteAddOn[]
+
+  @@index([status])
+  @@index([serviceType])
+  @@index([frequency])
+  @@index([accountId])
+  @@index([pricingPlanId])
+  @@index([createdByUserId])
+  @@index([customerEmail])
+  @@index([convertedContractId])
+  @@index([createdAt])
+  @@index([publicToken])
+  @@map("residential_quotes")
+}
+
+model ResidentialQuoteAddOn {
+  id               String   @id @default(uuid()) @db.Uuid
+  quoteId          String   @map("quote_id") @db.Uuid
+  code             String   @db.VarChar(50)
+  label            String   @db.VarChar(100)
+  description      String?  @db.Text
+  quantity         Int      @default(1)
+  pricingType      String   @map("pricing_type") @db.VarChar(20)
+  unitLabel        String?  @map("unit_label") @db.VarChar(50)
+  unitPrice        Decimal  @map("unit_price") @db.Decimal(10, 2)
+  estimatedMinutes Int      @default(0) @map("estimated_minutes")
+  lineTotal        Decimal  @map("line_total") @db.Decimal(12, 2)
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  quote ResidentialQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([code])
+  @@index([sortOrder])
+  @@map("residential_quote_add_ons")
+}
+
 model FixtureType {
   id                    String   @id @default(uuid()) @db.Uuid
   name                  String   @unique @db.VarChar(100)
@@ -976,10 +1086,16 @@ model Contract {
   contractNumber                  String    @unique @map("contract_number") @db.VarChar(50)
   title                           String    @db.VarChar(255)
   status                          String    @default("draft") @db.VarChar(30)
+  serviceCategory                 String    @default("commercial") @map("service_category") @db.VarChar(20)
   accountId                       String    @map("account_id") @db.Uuid
   facilityId                      String?   @map("facility_id") @db.Uuid
   proposalId                      String?   @map("proposal_id") @db.Uuid
   opportunityId                   String?   @map("opportunity_id") @db.Uuid
+  residentialServiceType          String?   @map("residential_service_type") @db.VarChar(40)
+  residentialFrequency            String?   @map("residential_frequency") @db.VarChar(30)
+  homeProfileSnapshot             Json?     @map("home_profile_snapshot") @db.JsonB
+  quoteSourceType                 String?   @map("quote_source_type") @db.VarChar(30)
+  quoteSourceId                   String?   @map("quote_source_id") @db.Uuid
   assignedTeamId                  String?   @map("assigned_team_id") @db.Uuid
   assignedToUserId                String?   @map("assigned_to_user_id") @db.Uuid
   pendingAssignedTeamId           String?   @map("pending_assigned_team_id") @db.Uuid
@@ -1071,10 +1187,12 @@ model Contract {
 
   @@index([contractNumber])
   @@index([status])
+  @@index([serviceCategory])
   @@index([accountId])
   @@index([facilityId])
   @@index([proposalId])
   @@index([opportunityId])
+  @@index([quoteSourceId])
   @@index([assignedTeamId])
   @@index([assignedToUserId])
   @@index([pendingAssignedTeamId])

@@ -24,6 +24,8 @@ import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
 import AreaTemplatesPage from './pages/areas/AreaTemplatesPage';
 import PricingSettingsPage from './pages/pricing/PricingSettingsPage';
+import ResidentialPricingPlansPage from './pages/residential/ResidentialPricingPlansPage';
+import ResidentialQuotesPage from './pages/residential/ResidentialQuotesPage';
 import ProposalsList from './pages/proposals/ProposalsList';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import ProposalForm from './pages/proposals/ProposalForm';
@@ -58,6 +60,7 @@ import PublicProposalView from './pages/public/PublicProposalView';
 import PublicContractView from './pages/public/PublicContractView';
 import PublicContractAmendmentView from './pages/public/PublicContractAmendmentView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
+import PublicResidentialQuoteView from './pages/public/PublicResidentialQuoteView';
 import SetPassword from './pages/auth/SetPassword';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
@@ -112,6 +115,7 @@ function App() {
           <Route path="/c/:token" element={<PublicContractView />} />
           <Route path="/ca/:token" element={<PublicContractAmendmentView />} />
           <Route path="/q/:token" element={<PublicQuotationView />} />
+          <Route path="/rq/:token" element={<PublicResidentialQuoteView />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
@@ -135,6 +139,8 @@ function App() {
             />
             <Route path="/pricing" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
             <Route path="/pricing/settings" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
+            <Route path="/residential/pricing" element={withRouteGuard('/residential/pricing', <ResidentialPricingPlansPage />)} />
+            <Route path="/residential/quotes" element={withRouteGuard('/residential/quotes', <ResidentialQuotesPage />)} />
             <Route path="/proposals" element={withRouteGuard('/proposals', <ProposalsList />)} />
             <Route path="/proposals/new" element={withRouteGuard('/proposals', <ProposalForm />)} />
             <Route path="/proposals/:id" element={withRouteGuard('/proposals', <ProposalDetail />)} />

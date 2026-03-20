@@ -79,6 +79,7 @@ const navSections: NavSection[] = [
     items: [
       { to: '/proposals', icon: FileText, label: 'Proposals' },
       { to: '/quotations', icon: FileText, label: 'Quotations' },
+      { to: '/residential/quotes', icon: Home, label: 'Residential Quotes' },
       { to: '/contracts', icon: FileSignature, label: 'Contracts' },
       { to: '/invoices', icon: Receipt, label: 'Invoices' },
     ],
@@ -113,6 +114,7 @@ const navSections: NavSection[] = [
       { to: '/teams', icon: Handshake, label: 'Teams' },
       { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
       { to: '/pricing', icon: Calculator, label: 'Pricing Plans' },
+      { to: '/residential/pricing', icon: Home, label: 'Residential Pricing' },
       { to: '/quotations/catalog', icon: Calculator, label: 'One-Time Standards' },
       { to: '/area-templates', icon: LayoutTemplate, label: 'Area Templates' },
       { to: '/users', icon: UserCog, label: 'Users' },
