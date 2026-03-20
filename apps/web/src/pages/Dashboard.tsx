@@ -38,7 +38,7 @@ import ActivityFeed from '../components/dashboard/ActivityFeed';
 import ExpiringContractsTable from '../components/dashboard/ExpiringContractsTable';
 
 const SkeletonCard = () => (
-  <div className="animate-pulse rounded-xl border border-surface-200 bg-white p-6 shadow-soft dark:border-surface-700 dark:bg-surface-800">
+  <div className="animate-pulse rounded-xl border border-surface-200 bg-surface-50 p-6 shadow-soft dark:border-surface-700 dark:bg-surface-800">
     <div className="flex items-start gap-4">
       <div className="h-12 w-12 rounded-xl bg-surface-200 dark:bg-surface-700" />
       <div className="flex-1 space-y-2">
@@ -51,7 +51,7 @@ const SkeletonCard = () => (
 );
 
 const SkeletonChart = () => (
-  <div className="animate-pulse rounded-xl border border-surface-200 bg-white p-6 shadow-soft dark:border-surface-700 dark:bg-surface-800">
+  <div className="animate-pulse rounded-xl border border-surface-200 bg-surface-50 p-6 shadow-soft dark:border-surface-700 dark:bg-surface-800">
     <div className="h-5 w-32 rounded bg-surface-200 dark:bg-surface-700" />
     <div className="mt-4 h-64 rounded-lg bg-surface-100 dark:bg-surface-700/50" />
   </div>
@@ -384,7 +384,7 @@ const AdminDashboard = () => {
               Export
             </Button>
             {showExportMenu && (
-              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg dark:border-surface-700 dark:bg-surface-800">
+              <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-surface-200 bg-surface-50 py-1 shadow-lg dark:border-surface-700 dark:bg-surface-800">
                 {EXPORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}

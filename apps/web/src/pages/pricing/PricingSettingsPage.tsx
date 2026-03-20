@@ -439,7 +439,7 @@ const PricingSettingsPage = () => {
                       {Object.entries(selectedSettings.sqftPerLaborHour)
                         .slice(0, 5)
                         .map(([key, value]) => (
-                          <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-surface-50/5 px-3 py-2">
                             <span className="text-sm text-slate-200">{BUILDING_TYPE_LABELS[key] ?? key}</span>
                             <span className="text-sm font-semibold text-white">{value.toLocaleString()} sqft/hr</span>
                           </div>
@@ -512,7 +512,7 @@ const PricingSettingsPage = () => {
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-2xl border border-white/10 bg-surface-50/5 px-4 py-3 backdrop-blur-sm">
       <div className="text-xs uppercase tracking-[0.18em] text-cyan-200/70">{label}</div>
       <div className="mt-2 text-sm font-semibold text-white">{value}</div>
     </div>

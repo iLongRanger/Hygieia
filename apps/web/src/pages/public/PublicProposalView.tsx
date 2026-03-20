@@ -106,7 +106,7 @@ const TaskGroupStepper: React.FC<{
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'text-white'
-                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+                : 'border border-gray-300 bg-surface-50 text-gray-600 hover:border-gray-400 hover:text-gray-900'
             }`}
             style={index === activeIndex ? { backgroundColor: accentColor } : undefined}
           >
@@ -367,7 +367,7 @@ const PublicProposalView: React.FC = () => {
             </div>
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-50/10 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
             >
               <Download className="h-4 w-4" />
               Download PDF
@@ -463,7 +463,7 @@ const PublicProposalView: React.FC = () => {
 
         {/* Facility Info */}
         {proposal.facility && (
-          <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+          <div className="mb-8 bg-surface-50 rounded-lg border border-gray-200 p-5">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Facility</h3>
             <div className="flex items-start gap-3">
               <Building2 className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
@@ -527,7 +527,7 @@ const PublicProposalView: React.FC = () => {
                 return (
                   <div
                     key={idx}
-                    className="bg-white rounded-lg border border-gray-200 p-5"
+                    className="bg-surface-50 rounded-lg border border-gray-200 p-5"
                   >
                     {/* Service header */}
                     <div className="flex justify-between items-start mb-2">
@@ -576,7 +576,7 @@ const PublicProposalView: React.FC = () => {
             </div>
 
             {/* Services summary table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+            <div className="bg-surface-50 rounded-lg border border-gray-200 overflow-x-auto">
               <table className="w-full">
                 <thead style={{ backgroundColor: `${primaryColor}08` }}>
                   <tr>
@@ -633,7 +633,7 @@ const PublicProposalView: React.FC = () => {
         {visibleProposalItems.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Line Items</h3>
-            <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+            <div className="bg-surface-50 rounded-lg border border-gray-200 overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -666,7 +666,7 @@ const PublicProposalView: React.FC = () => {
               Financial Summary
             </span>
           </h3>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-surface-50 rounded-lg border border-gray-200 overflow-hidden">
             <div className="p-5">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-500">Monthly Subtotal</span>
@@ -695,7 +695,7 @@ const PublicProposalView: React.FC = () => {
         </div>
 
         {/* Terms & Conditions */}
-        <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+        <div className="mb-8 bg-surface-50 rounded-lg border border-gray-200 p-5">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms</h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start gap-2">
@@ -725,7 +725,7 @@ const PublicProposalView: React.FC = () => {
             </button>
             <button
               onClick={() => setRejectModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-8 py-3 bg-white hover:bg-gray-50 text-red-600 border border-red-200 rounded-lg font-medium transition-colors"
+              className="flex items-center justify-center gap-2 px-8 py-3 bg-surface-50 hover:bg-gray-50 text-red-600 border border-red-200 rounded-lg font-medium transition-colors"
             >
               <XCircle className="h-5 w-5" />
               Decline Proposal
@@ -737,7 +737,7 @@ const PublicProposalView: React.FC = () => {
       {/* Accept Modal */}
       {acceptModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Accept Proposal</h3>
             <p className="text-sm text-gray-600 mb-4">
               By accepting, you agree to the terms outlined in this proposal.
@@ -777,7 +777,7 @@ const PublicProposalView: React.FC = () => {
       {/* Reject Modal */}
       {rejectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Decline Proposal</h3>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">

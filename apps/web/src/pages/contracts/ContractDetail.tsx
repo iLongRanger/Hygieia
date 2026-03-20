@@ -242,7 +242,7 @@ const ServiceTaskStepper = ({
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'bg-emerald-400 text-slate-950'
-                : 'border border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:text-white'
+                : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
             }`}
           >
             {group.label}
@@ -428,7 +428,7 @@ const AmendmentTaskFrequencyEditor = ({
   return (
     <div className="space-y-3">
       {frequencyGroups.length > 1 && (
-        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+        <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
           <div className="flex flex-wrap gap-2">
             {frequencyGroups.map(([frequency], index) => (
               <button
@@ -438,7 +438,7 @@ const AmendmentTaskFrequencyEditor = ({
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
                   index === safeIndex
                     ? 'bg-emerald-400 text-slate-950'
-                    : 'border border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:text-white'
+                    : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
                 }`}
               >
                 {frequency}
@@ -481,7 +481,7 @@ const AmendmentTaskFrequencyEditor = ({
       {activeTasks.map((task, taskIndex) => {
         const taskKey = task.id || task.tempId || `${sectionKey}-${safeIndex}-${taskIndex}`;
         return (
-          <div key={taskKey} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+          <div key={taskKey} className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <Input
                 label="Task Name"
@@ -2338,7 +2338,7 @@ const ContractDetail = () => {
                 <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     onClick={handleDownloadPdf}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                   >
                     <Download className="h-4 w-4" />
                     Download PDF
@@ -2354,7 +2354,7 @@ const ContractDetail = () => {
                           prompt('Copy this link:', url);
                         }
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                     >
                       <LinkIcon className="h-4 w-4" />
                       Copy Public Link
@@ -2363,7 +2363,7 @@ const ContractDetail = () => {
                   {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
                     <button
                       onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                     >
                       <Mail className="h-4 w-4" />
                       Resend Email
@@ -2374,7 +2374,7 @@ const ContractDetail = () => {
                       <div className="my-1 border-t border-white/10" />
                       <button
                         onClick={() => { setMenuOpen(false); handleTerminate(); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
                       >
                         <AlertTriangle className="h-4 w-4" />
                         Terminate
@@ -2386,7 +2386,7 @@ const ContractDetail = () => {
                       <div className="my-1 border-t border-white/10" />
                       <button
                         onClick={() => { setMenuOpen(false); handleArchive(); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-50/5 hover:text-orange-300"
                       >
                         <Archive className="h-4 w-4" />
                         Archive
@@ -2500,7 +2500,7 @@ const ContractDetail = () => {
                     contract.facility.parkingInfo ||
                     contract.facility.specialRequirements ||
                     contract.facility.notes) && (
-                    <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2">
+                    <div className="mt-3 rounded-lg border border-white/10 bg-surface-50/[0.02] p-3 space-y-2">
                       <div className="text-xs uppercase tracking-wide text-emerald-300">
                         Facility Notes & Access
                       </div>
@@ -2653,7 +2653,7 @@ const ContractDetail = () => {
                     const tasksByFrequency = groupTasksByFrequency(areaTasks);
 
                     return (
-                      <div key={area.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                      <div key={area.id} className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
                         <div className="mb-1 flex items-center justify-between gap-2">
                           <div className="font-medium text-white">{area.name || 'Unnamed area'}</div>
                           <Badge variant="default" size="sm">
@@ -2737,7 +2737,7 @@ const ContractDetail = () => {
                 return (
                   <div
                     key={service.id}
-                    className="rounded-lg border border-white/10 bg-white/[0.02] p-4"
+                    className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
@@ -3008,7 +3008,7 @@ const ContractDetail = () => {
               <div>
                 <div className="text-sm text-gray-400 mb-1">Public Link</div>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-white/5 px-2 py-1 text-xs text-gray-300">
+                  <code className="flex-1 truncate rounded bg-surface-50/5 px-2 py-1 text-xs text-gray-300">
                     {`${window.location.origin}/c/${contract.publicToken}`}
                   </code>
                   <Button
@@ -3064,7 +3064,7 @@ const ContractDetail = () => {
             <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-3">
               <div className="text-sm font-medium text-gray-300 mb-2">Custom Terms Document</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-gray-200 hover:bg-white/10">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-surface-50/5 px-3 py-2 text-sm text-gray-200 hover:bg-surface-50/10">
                   <Upload className="h-4 w-4" />
                   {termsDocumentAction === 'replace' || contract.termsDocumentName ? 'Replace Document' : 'Upload Document'}
                   <input
@@ -3234,7 +3234,7 @@ const ContractDetail = () => {
                 return (
                   <div
                     key={amendment.id}
-                    className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+                    className="rounded-lg border border-white/10 bg-surface-50/[0.02] px-4 py-3"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -3531,7 +3531,7 @@ const ContractDetail = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+            <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
               <div className="text-sm font-medium text-white">{selectedAmendment.title}</div>
               {selectedAmendment.reason && (
                 <div className="mt-2 text-sm text-gray-300">{selectedAmendment.reason}</div>
@@ -3663,8 +3663,8 @@ const ContractDetail = () => {
                             isSelected
                               ? 'border-emerald bg-emerald/15 text-white'
                               : disabled
-                                ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-gray-500'
-                                : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20'
+                                ? 'cursor-not-allowed border-white/5 bg-surface-50/[0.02] text-gray-500'
+                                : 'border-white/10 bg-surface-50/[0.03] text-gray-300 hover:border-white/20'
                           }`}
                         >
                           {day.label}
@@ -3950,7 +3950,7 @@ const ContractDetail = () => {
               <PricingBreakdownPanel pricing={amendmentPricing} />
             )}
 
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+            <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-white">What Will Change</div>
@@ -4156,7 +4156,7 @@ const ContractDetail = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">Snapshots</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.snapshots || []).map((snapshot) => {
@@ -4191,7 +4191,7 @@ const ContractDetail = () => {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">History</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => {
@@ -4219,7 +4219,7 @@ const ContractDetail = () => {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">Activity</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => (

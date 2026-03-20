@@ -74,12 +74,12 @@ export default {
           900: '#7f1d1d',
           DEFAULT: '#ef4444',
         },
-        // Surface colors for light mode
+        // Surface colors – light end tuned for eye comfort, dark end unchanged
         surface: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
+          50: '#fafaf9',
+          100: '#f4f4f2',
+          200: '#e0e0dc',
+          300: '#ccccc7',
           400: '#94a3b8',
           500: '#64748b',
           600: '#475569',

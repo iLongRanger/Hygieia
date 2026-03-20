@@ -51,7 +51,7 @@ export function AppointmentDetailCard({
   const badgeStyle = colors.style ? { ...colors.style, color: undefined } : undefined;
 
   return (
-    <div className="w-64 rounded-2xl border border-surface-200 bg-white/95 p-3 text-left shadow-xl backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900/95">
+    <div className="w-64 rounded-2xl border border-surface-200 bg-surface-50/95 p-3 text-left shadow-xl backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900/95">
       <div className="flex items-start gap-3">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/20 text-xs font-semibold uppercase tracking-[0.18em] text-black dark:text-white"
@@ -88,7 +88,7 @@ export function AppointmentDetailCard({
             event.stopPropagation();
             onOpen(appointment);
           }}
-          className="rounded-full bg-surface-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-700 dark:bg-surface-100 dark:text-surface-900 dark:hover:bg-white"
+          className="rounded-full bg-surface-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-700 dark:bg-surface-100 dark:text-surface-900 dark:hover:bg-surface-50"
         >
           Open job
         </button>

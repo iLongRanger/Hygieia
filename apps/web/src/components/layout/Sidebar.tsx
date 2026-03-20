@@ -203,7 +203,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   // ── Desktop: Expanded full sidebar ───────────────────────────
   const desktopExpanded = (
-    <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900 lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-900 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-surface-200 px-6 dark:border-surface-700">
         <h1 className="text-xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
@@ -253,7 +253,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   // ── Desktop: Icon Rail + Flyout ──────────────────────────────
   const desktopRail = (
-    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col border-r border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900 lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col border-r border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-900 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-surface-200 dark:border-surface-700">
         <span className="text-xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
@@ -299,7 +299,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
               {hasFlyout && (
                 <div
                   className={cn(
-                    'absolute left-full top-0 z-50 ml-0 w-52 rounded-r-lg border border-l-0 border-surface-200 bg-white py-2 shadow-lg transition-all duration-150 dark:border-surface-700 dark:bg-surface-900',
+                    'absolute left-full top-0 z-50 ml-0 w-52 rounded-r-lg border border-l-0 border-surface-200 bg-surface-50 py-2 shadow-lg transition-all duration-150 dark:border-surface-700 dark:bg-surface-900',
                     isHovered
                       ? 'pointer-events-auto translate-x-0 opacity-100'
                       : 'pointer-events-none -translate-x-1 opacity-0'
@@ -372,7 +372,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const mobileDrawer = (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-full w-64 border-r border-surface-200 bg-white transition-transform duration-200 dark:border-surface-700 dark:bg-surface-900 lg:hidden',
+        'fixed left-0 top-0 z-40 h-full w-64 border-r border-surface-200 bg-surface-50 transition-transform duration-200 dark:border-surface-700 dark:bg-surface-900 lg:hidden',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}
     >

@@ -596,7 +596,7 @@ const InspectionDetail = () => {
                       {/* Per-area notes */}
                       <div className="mt-2 px-2">
                         <textarea
-                          className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                          className="w-full rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
                           rows={2}
                           value={areaState.notes}
                           onChange={(e) => updateAreaScores(items, 'notes', e.target.value)}
@@ -690,14 +690,14 @@ const InspectionDetail = () => {
                 value={newAction.title}
                 onChange={(e) => setNewAction((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="Action title"
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-2"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-2"
               />
               <select
                 value={newAction.severity}
                 onChange={(e) =>
                   setNewAction((prev) => ({ ...prev, severity: e.target.value as InspectionCorrectiveActionSeverity }))
                 }
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               >
                 <option value="critical">Critical</option>
                 <option value="major">Major</option>
@@ -707,14 +707,14 @@ const InspectionDetail = () => {
                 type="date"
                 value={newAction.dueDate}
                 onChange={(e) => setNewAction((prev) => ({ ...prev, dueDate: e.target.value }))}
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               />
               <textarea
                 value={newAction.description}
                 onChange={(e) => setNewAction((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Description (optional)"
                 rows={2}
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-3"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-3"
               />
               <div className="flex items-end justify-end">
                 <Button size="sm" onClick={handleCreateAction} isLoading={actionSaving}>
@@ -797,7 +797,7 @@ const InspectionDetail = () => {
               <select
                 value={signoffForm.signerType}
                 onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerType: e.target.value as InspectionSignerType }))}
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               >
                 <option value="supervisor">Supervisor</option>
                 <option value="client">Client</option>
@@ -807,14 +807,14 @@ const InspectionDetail = () => {
                 value={signoffForm.signerName}
                 onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerName: e.target.value }))}
                 placeholder="Signer name"
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               />
               <input
                 type="text"
                 value={signoffForm.signerTitle}
                 onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerTitle: e.target.value }))}
                 placeholder="Signer title (optional)"
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               />
               <div className="flex items-end justify-end">
                 <Button size="sm" onClick={handleCreateSignoff} isLoading={signoffSaving}>
@@ -826,7 +826,7 @@ const InspectionDetail = () => {
                 onChange={(e) => setSignoffForm((prev) => ({ ...prev, comments: e.target.value }))}
                 placeholder="Comments (optional)"
                 rows={2}
-                className="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-4"
+                className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 md:col-span-4"
               />
             </div>
           )}
@@ -962,7 +962,7 @@ const InspectionDetail = () => {
                     missingSummary
                       ? 'border-red-300 dark:border-red-700'
                       : 'border-surface-300 dark:border-surface-600'
-                  } bg-white`}
+                  } bg-surface-50`}
                   rows={3}
                   value={completionSummary}
                   onChange={(e) => setCompletionSummary(e.target.value)}

@@ -126,7 +126,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
               <div key={activity.id} className="flex gap-3 relative">
                 {/* Vertical line */}
                 {!isLast && (
-                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-white/10" />
+                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-surface-50/10" />
                 )}
                 {/* Icon */}
                 <div className={`mt-0.5 shrink-0 ${config.color}`}>

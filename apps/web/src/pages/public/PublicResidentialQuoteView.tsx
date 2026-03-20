@@ -156,7 +156,7 @@ export default function PublicResidentialQuoteView() {
       )}
 
       <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-gray-800">{quote.title}</h2>
@@ -193,7 +193,7 @@ export default function PublicResidentialQuoteView() {
               <div className="font-medium text-slate-900">Home summary</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {homeSummary.map((item) => (
-                  <span key={item} className="rounded-full bg-white px-3 py-1 text-xs shadow-sm">
+                  <span key={item} className="rounded-full bg-surface-50 px-3 py-1 text-xs shadow-sm">
                     {item}
                   </span>
                 ))}
@@ -204,7 +204,7 @@ export default function PublicResidentialQuoteView() {
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
           <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
               <h3 className="mb-4 text-lg font-semibold text-gray-800">Quote Details</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
@@ -231,7 +231,7 @@ export default function PublicResidentialQuoteView() {
             </div>
 
             {!!quote.addOns?.length && (
-              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
                 <h3 className="mb-4 text-lg font-semibold text-gray-800">Included Add-Ons</h3>
                 <div className="space-y-3">
                   {quote.addOns.map((addOn) => (
@@ -253,7 +253,7 @@ export default function PublicResidentialQuoteView() {
             )}
 
             {quote.notes && (
-              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
                 <h3 className="mb-2 text-lg font-semibold text-gray-800">Service Notes</h3>
                 <p className="whitespace-pre-wrap text-sm text-gray-600">{quote.notes}</p>
               </div>
@@ -261,7 +261,7 @@ export default function PublicResidentialQuoteView() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
               <h3 className="mb-4 text-lg font-semibold text-gray-800">Visit Overview</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -292,7 +292,7 @@ export default function PublicResidentialQuoteView() {
             )}
 
             {canRespond && !actionComplete && (
-              <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="space-y-3 rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setAcceptOpen(true)}
@@ -336,7 +336,7 @@ export default function PublicResidentialQuoteView() {
 
       {acceptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
+          <div className="w-full max-w-md rounded-xl bg-surface-50 p-6">
             <h3 className="mb-4 text-lg font-bold text-gray-800">Accept Residential Quote</h3>
             <p className="mb-4 text-sm text-gray-500">
               By signing below, you confirm you would like to move forward with this residential quote for{' '}
@@ -370,7 +370,7 @@ export default function PublicResidentialQuoteView() {
 
       {declineOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
+          <div className="w-full max-w-md rounded-xl bg-surface-50 p-6">
             <h3 className="mb-4 text-lg font-bold text-gray-800">Decline Residential Quote</h3>
             <label className="mb-1 block text-sm font-medium text-gray-700">Reason for Declining</label>
             <textarea

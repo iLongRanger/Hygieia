@@ -98,7 +98,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
           <div key={version.id}>
             <button
               onClick={() => toggleVersion(version.versionNumber)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 text-left transition-colors"
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50/5 text-left transition-colors"
             >
               {expandedVersion === version.versionNumber ? (
                 <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
@@ -125,7 +125,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
             </button>
 
             {expandedVersion === version.versionNumber && (
-              <div className="ml-11 mt-1 mb-2 p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="ml-11 mt-1 mb-2 p-3 rounded-lg bg-surface-50/5 border border-white/10">
                 {loadingSnapshot ? (
                   <div className="flex justify-center py-4">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold border-t-transparent" />

@@ -14,7 +14,7 @@ const Unauthorized = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-50 px-4 dark:bg-surface-900">
-      <div className="w-full max-w-md rounded-xl border border-surface-200 bg-white p-8 text-center shadow-sm dark:border-surface-700 dark:bg-surface-800">
+      <div className="w-full max-w-md rounded-xl border border-surface-200 bg-surface-50 p-8 text-center shadow-sm dark:border-surface-700 dark:bg-surface-800">
         <h1 className="text-2xl font-semibold text-surface-900 dark:text-surface-100">
           Access Denied
         </h1>

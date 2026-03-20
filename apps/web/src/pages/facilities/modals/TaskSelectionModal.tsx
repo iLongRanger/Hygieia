@@ -80,7 +80,7 @@ export function TaskSelectionModal({
                   )?.label || 'Daily'}
                 </Badge>
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-white/10">
+              <div className="mt-2 h-1.5 rounded-full bg-surface-50/10">
                 <div
                   className="h-full rounded-full bg-emerald transition-all"
                   style={{

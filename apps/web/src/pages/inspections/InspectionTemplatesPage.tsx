@@ -274,7 +274,7 @@ const InspectionTemplatesPage = () => {
                       placeholder="Checklist item text"
                     />
                     <select
-                      className="rounded-lg border border-surface-300 bg-white px-2 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                      className="rounded-lg border border-surface-300 bg-surface-50 px-2 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
                       value={item.weight}
                       onChange={(e) => updateItem(index, 'weight', parseInt(e.target.value))}
                     >

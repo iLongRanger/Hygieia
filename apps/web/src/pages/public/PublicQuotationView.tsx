@@ -162,7 +162,7 @@ const PublicQuotationView = () => {
       {/* Content */}
       <div className="max-w-3xl mx-auto py-8 px-4">
         {/* Quotation Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold text-gray-800">{quotation.title}</h2>
@@ -208,7 +208,7 @@ const PublicQuotationView = () => {
         </div>
 
         {/* Services */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Services</h3>
           <div className="space-y-3">
             {quotation.services.map((service, i) => (
@@ -303,7 +303,7 @@ const PublicQuotationView = () => {
 
         {/* Terms */}
         {quotation.termsAndConditions && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
               Terms & Conditions
             </h3>
@@ -340,7 +340,7 @@ const PublicQuotationView = () => {
             </button>
             <button
               onClick={() => setRejectModalOpen(true)}
-              className="px-8 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2"
+              className="px-8 py-3 bg-surface-50 text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2"
             >
               <XCircle className="h-5 w-5" />
               Decline
@@ -369,7 +369,7 @@ const PublicQuotationView = () => {
       {/* Accept Modal */}
       {acceptModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Accept Quotation</h3>
             <p className="text-sm text-gray-500 mb-4">
               By signing below, you agree to the terms of quotation{' '}
@@ -409,7 +409,7 @@ const PublicQuotationView = () => {
       {/* Reject Modal */}
       {rejectModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Decline Quotation</h3>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Reason for Declining

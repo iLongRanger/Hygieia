@@ -1303,7 +1303,7 @@ const AreaTemplatesPage = () => {
                     return (
                       <label
                         key={template.id}
-                        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5"
+                        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-surface-50/5"
                       >
                         <input
                           type="checkbox"

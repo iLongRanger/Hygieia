@@ -32,7 +32,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-surface-50 text-surface-900 dark:bg-surface-900 dark:text-surface-100">
+    <div className="relative min-h-screen bg-surface-100 text-surface-900 dark:bg-surface-900 dark:text-surface-100">
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <Sidebar
         isOpen={isSidebarOpen}

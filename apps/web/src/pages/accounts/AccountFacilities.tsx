@@ -57,7 +57,7 @@ export function AccountFacilities({
             return (
               <div
                 key={facility.id}
-                className="cursor-pointer rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10"
+                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
                 onClick={() => onNavigate(`/facilities/${facility.id}`)}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">

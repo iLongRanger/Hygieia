@@ -83,7 +83,7 @@ export function BulkTaskModal({
               return (
                 <div
                   key={template.id}
-                  className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/5 ${
+                  className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-surface-50/5 ${
                     isSelected ? 'bg-emerald/10' : ''
                   }`}
                   onClick={() => toggleTaskTemplateSelection(template.id)}

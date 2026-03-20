@@ -57,7 +57,7 @@ export const Modal = ({
       {/* Modal content */}
       <div
         className={cn(
-          'relative w-full rounded-xl border border-surface-200 bg-white shadow-soft-xl animate-scale-in',
+          'relative w-full rounded-xl border border-surface-200 bg-surface-50 shadow-soft-xl animate-scale-in',
           'dark:border-surface-700 dark:bg-surface-800',
           sizes[size]
         )}

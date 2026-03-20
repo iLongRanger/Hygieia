@@ -97,7 +97,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
             {recentProposals.map((proposal) => (
               <div
                 key={proposal.id}
-                className="cursor-pointer rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10"
+                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
                 onClick={() => onNavigate(`/proposals/${proposal.id}`)}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -146,7 +146,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
             {recentContracts.map((contract) => (
               <div
                 key={contract.id}
-                className="cursor-pointer rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10"
+                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
                 onClick={() => onNavigate(`/contracts/${contract.id}`)}
               >
                 <div className="flex items-start justify-between gap-2">

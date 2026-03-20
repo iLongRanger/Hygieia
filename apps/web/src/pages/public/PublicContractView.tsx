@@ -113,7 +113,7 @@ const ServiceTaskStepper: React.FC<{
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'bg-gray-900 text-white'
-                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+                : 'border border-gray-300 bg-surface-50 text-gray-600 hover:border-gray-400 hover:text-gray-900'
             }`}
           >
             {group.label}
@@ -355,7 +355,7 @@ const PublicContractView: React.FC = () => {
               {contract.termsDocumentName && (
                 <button
                   onClick={handleDownloadTermsDocument}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-surface-50/10 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
                 >
                   <Download className="h-4 w-4" />
                   Terms Document
@@ -363,7 +363,7 @@ const PublicContractView: React.FC = () => {
               )}
               <button
                 onClick={handleDownloadPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-50/10 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
               >
                 <Download className="h-4 w-4" />
                 Download PDF
@@ -429,7 +429,7 @@ const PublicContractView: React.FC = () => {
         {/* Service Terms */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Terms</h3>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Start Date</div>
@@ -479,7 +479,7 @@ const PublicContractView: React.FC = () => {
         {/* Financial Terms */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Financial Terms</h3>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Monthly Value</div>
@@ -506,7 +506,7 @@ const PublicContractView: React.FC = () => {
         {contract.facility?.address && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Location</h3>
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
+            <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
               <div className="font-medium text-gray-900">{contract.facility.name}</div>
               <div className="text-sm text-gray-500 mt-1">{formatAddress(contract.facility.address)}</div>
             </div>
@@ -526,7 +526,7 @@ const PublicContractView: React.FC = () => {
                 return (
                   <div
                     key={service.id}
-                    className="bg-white rounded-lg border border-gray-200 p-5"
+                    className="bg-surface-50 rounded-lg border border-gray-200 p-5"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
@@ -551,7 +551,7 @@ const PublicContractView: React.FC = () => {
         {contract.termsAndConditions && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms & Conditions</h3>
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
+            <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
               <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
                 {contract.termsAndConditions}
               </div>
@@ -576,7 +576,7 @@ const PublicContractView: React.FC = () => {
       {/* Sign Modal */}
       {signModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Sign Contract</h3>
             <p className="text-sm text-gray-600 mb-4">
               By signing, you agree to the terms and conditions outlined in this contract.

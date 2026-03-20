@@ -132,7 +132,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-surface-200 bg-white/80 px-4 backdrop-blur-xl dark:border-surface-700 dark:bg-surface-900/80 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-surface-200 bg-surface-50/80 px-4 backdrop-blur-xl dark:border-surface-700 dark:bg-surface-900/80 sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -172,7 +172,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-lg border border-surface-200 bg-white shadow-lg dark:border-surface-700 dark:bg-surface-900">
+            <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-lg border border-surface-200 bg-surface-50 shadow-lg dark:border-surface-700 dark:bg-surface-900">
               <div className="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-700">
                 <span className="text-sm font-semibold text-surface-700 dark:text-surface-200">
                   Notifications

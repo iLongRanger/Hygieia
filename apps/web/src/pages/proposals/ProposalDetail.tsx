@@ -199,7 +199,7 @@ const TaskGroupStepper = ({
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'bg-gold text-navy'
-                : 'border border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:text-white'
+                : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
             }`}
           >
             {group.label}
@@ -608,7 +608,7 @@ const ProposalDetail = () => {
               <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                 <button
                   onClick={handleDownloadPdf}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                 >
                   <Download className="h-4 w-4" />
                   Download PDF
@@ -616,7 +616,7 @@ const ProposalDetail = () => {
                 {proposal.publicToken && (
                   <button
                     onClick={handleCopyPublicLink}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                   >
                     <Link2 className="h-4 w-4" />
                     Copy Public Link
@@ -626,7 +626,7 @@ const ProposalDetail = () => {
                   <>
                     <button
                       onClick={handleResend}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Resend Email
@@ -634,7 +634,7 @@ const ProposalDetail = () => {
                     <div className="my-1 border-t border-white/10" />
                     <button
                       onClick={handleReject}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
                     >
                       <XCircle className="h-4 w-4" />
                       Reject
@@ -646,7 +646,7 @@ const ProposalDetail = () => {
                     <div className="my-1 border-t border-white/10" />
                     <button
                       onClick={handleArchive}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-white/5 hover:text-orange-300"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-50/5 hover:text-orange-300"
                     >
                       <Archive className="h-4 w-4" />
                       Archive
@@ -656,7 +656,7 @@ const ProposalDetail = () => {
                 {canDeleteProposals && (
                   <button
                     onClick={handleDelete}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -798,7 +798,7 @@ const ProposalDetail = () => {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white/5">
+                  <thead className="bg-surface-50/5">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                         Type
@@ -819,7 +819,7 @@ const ProposalDetail = () => {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {visibleProposalItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-white/5">
+                      <tr key={idx} className="hover:bg-surface-50/5">
                         <td className="px-6 py-4">
                           <Badge variant="default">
                             {item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1)}
@@ -914,7 +914,7 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-white mb-4">Pricing Breakdown</h2>
 
               {/* Strategy header row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-white/5 p-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-surface-50/5 p-3 mb-4">
                 <div>
                   <div className="text-xs text-gray-400">Strategy</div>
                   <div className="text-sm font-medium text-white">
@@ -1045,7 +1045,7 @@ const ProposalDetail = () => {
 
               {/* Monthly summary */}
               {proposal.proposalServices && proposal.proposalServices.length > 0 && (
-                <div className="rounded-lg bg-white/5 p-3 mb-4">
+                <div className="rounded-lg bg-surface-50/5 p-3 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Monthly Subtotal</span>
                     <span className="text-white font-medium">{formatCurrency(Number(proposal.subtotal) || 0)}</span>
@@ -1080,7 +1080,7 @@ const ProposalDetail = () => {
               {/* Collapsible Area Multiplier Review */}
               <button
                 onClick={() => setRateCardOpen(!rateCardOpen)}
-                className="flex w-full items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
+                className="flex w-full items-center justify-between rounded-lg bg-surface-50/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-surface-50/10 transition-colors"
               >
                 <span>Area Multiplier Review</span>
                 {rateCardOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1094,7 +1094,7 @@ const ProposalDetail = () => {
                   ) : (
                     <div className="overflow-x-auto rounded-lg border border-white/10">
                       <table className="w-full min-w-[700px] text-sm">
-                        <thead className="bg-white/5">
+                        <thead className="bg-surface-50/5">
                           <tr className="text-xs uppercase tracking-wider text-gray-400">
                             <th className="px-3 py-2 text-left font-medium">Area</th>
                             <th className="px-3 py-2 text-right font-medium">Sq Ft</th>
@@ -1105,7 +1105,7 @@ const ProposalDetail = () => {
                         </thead>
                         <tbody className="divide-y divide-white/10">
                           {appliedAreaMultipliers.map((area: any, index: number) => (
-                            <tr key={`${area.areaId || area.areaName || 'area'}-${index}`} className="bg-white/[0.02]">
+                            <tr key={`${area.areaId || area.areaName || 'area'}-${index}`} className="bg-surface-50/[0.02]">
                               <td className="px-3 py-2 text-white">
                                 {area.areaName || 'Area'}
                                 {Number(area.quantity || 1) > 1 && (
@@ -1203,7 +1203,7 @@ const ProposalDetail = () => {
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {proposal.proposalServices.map((svc, idx) => (
-                          <tr key={idx} className="hover:bg-white/5">
+                          <tr key={idx} className="hover:bg-surface-50/5">
                             <td className="py-2 text-gray-300">{svc.serviceName}</td>
                             {showHoursColumn && (
                               <td className="py-2 text-right text-gray-300">

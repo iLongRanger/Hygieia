@@ -380,7 +380,7 @@ const JobDetail = () => {
             value={completionNotes}
             onChange={(e) => setCompletionNotes(e.target.value)}
             placeholder="Completion notes (optional)"
-            className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+            className="w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
             rows={3}
           />
           <div className="mt-3 flex gap-2">
@@ -648,7 +648,7 @@ const JobDetail = () => {
                   value={newNoteContent}
                   onChange={(e) => setNewNoteContent(e.target.value)}
                   placeholder="Write a note..."
-                  className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                  className="w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
                   rows={3}
                 />
                 <Button size="sm" onClick={handleAddNote}>

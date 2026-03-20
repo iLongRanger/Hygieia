@@ -44,7 +44,7 @@ const Login = () => {
       {/* Theme toggle in corner */}
       <button
         onClick={toggleTheme}
-        className="absolute right-4 top-4 rounded-lg p-2 text-surface-500 transition-colors hover:bg-white hover:text-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        className="absolute right-4 top-4 rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-50 hover:text-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       >
         {theme === 'dark' ? (

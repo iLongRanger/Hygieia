@@ -674,7 +674,7 @@ const JobsList = () => {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => updateFilter('dateFrom', e.target.value)}
-                className="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               />
             </div>
             <div>
@@ -685,7 +685,7 @@ const JobsList = () => {
                 type="date"
                 value={dateTo}
                 onChange={(e) => updateFilter('dateTo', e.target.value)}
-                className="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               />
             </div>
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -805,7 +805,7 @@ const JobsList = () => {
                   return (
                     <div
                       key={dateKey}
-                      className="rounded-xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-800"
+                      className="rounded-xl border border-surface-200 bg-surface-50 shadow-soft dark:border-surface-700 dark:bg-surface-800"
                     >
                       <div className={`border-b border-surface-200 px-4 py-3 dark:border-surface-700 ${headerToneClass}`}>
                         <div className="flex items-center justify-between gap-3">
@@ -1068,7 +1068,7 @@ const JobsList = () => {
                 onChange={(e) =>
                   setGenerateForm((prev) => ({ ...prev, dateFrom: e.target.value }))
                 }
-                className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
                 disabled={generating}
               />
             </div>
@@ -1082,7 +1082,7 @@ const JobsList = () => {
                 onChange={(e) =>
                   setGenerateForm((prev) => ({ ...prev, dateTo: e.target.value }))
                 }
-                className="w-full rounded-md border border-surface-300 bg-white px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                className="w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
                 disabled={generating}
               />
             </div>

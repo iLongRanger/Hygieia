@@ -698,7 +698,7 @@ const LeadsList = () => {
                   key={stage.value}
                   className={`flex min-w-0 flex-col rounded-lg border border-t-[3px] ${colors.border} ${
                     isActiveStage
-                      ? 'border-primary-400 bg-white/80 shadow-md dark:border-primary-500 dark:bg-surface-800/80'
+                      ? 'border-primary-400 bg-surface-50/80 shadow-md dark:border-primary-500 dark:bg-surface-800/80'
                       : 'border-surface-200 bg-surface-50/80 dark:border-surface-700 dark:bg-surface-800/40'
                   }`}
                   style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '360px' }}
@@ -738,7 +738,7 @@ const LeadsList = () => {
                         <button
                           key={opportunity.id}
                           type="button"
-                          className={`group w-full min-w-0 rounded-lg border bg-white p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-surface-900 ${
+                          className={`group w-full min-w-0 rounded-lg border bg-surface-50 p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-surface-900 ${
                             isActiveStage
                               ? 'border-primary-200 hover:border-primary-400 dark:border-primary-800 dark:hover:border-primary-500'
                               : 'border-surface-200 hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600'
@@ -881,7 +881,7 @@ const LeadsList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Status"
                 placeholder="All Statuses"
@@ -915,7 +915,7 @@ const LeadsList = () => {
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
+                    className="rounded border-surface-300 bg-surface-50 text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
                   />
                   Include Archived
                 </label>

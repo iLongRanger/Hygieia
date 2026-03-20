@@ -124,7 +124,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   });
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-800">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-50 shadow-soft dark:border-surface-700 dark:bg-surface-800">
       <CalendarHeader
         label={dayLabel}
         onPrev={handlePrev}
@@ -135,7 +135,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
 
       <div className="relative">
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 dark:bg-surface-800/50">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-50/50 dark:bg-surface-800/50">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
           </div>
         )}

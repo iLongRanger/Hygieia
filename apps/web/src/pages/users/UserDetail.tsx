@@ -419,7 +419,7 @@ const UserDetail = () => {
             onChange={(value) => setFormData({ ...formData, status: value })}
           />
 
-          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+          <div className="rounded-lg border border-white/10 bg-surface-50/5 p-3">
             <div className="flex items-center justify-between gap-3">
               <Input
                 label="Job Calendar Color"

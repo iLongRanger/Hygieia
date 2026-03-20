@@ -161,7 +161,7 @@ const FrequencyTaskStepper = ({
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === safeIndex
                 ? 'text-white'
-                : 'border border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+                : 'border border-gray-300 bg-surface-50 text-gray-600 hover:border-gray-400 hover:text-gray-900'
             }`}
             style={index === safeIndex ? { backgroundColor: primaryColor } : undefined}
           >
@@ -381,7 +381,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
         </div>
 
         {amendment.contract.facility && (
-          <div className="mb-8 bg-white rounded-lg border border-gray-200 p-5">
+          <div className="mb-8 bg-surface-50 rounded-lg border border-gray-200 p-5">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Location</h3>
             <div className="font-medium text-gray-900">{amendment.contract.facility.name}</div>
             <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
@@ -393,7 +393,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
 
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Financial Terms</h3>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Current Monthly Value</div>
@@ -424,7 +424,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
 
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Changes</h3>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Current Service</div>
@@ -465,7 +465,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
                 const areaTasks = workingScope.tasks.filter((task) => task.areaId && task.areaId === areaId);
                 const groupedTasks = groupTasksByFrequency(areaTasks);
                 return (
-                  <div key={areaId || `area-${areaIndex}`} className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div key={areaId || `area-${areaIndex}`} className="bg-surface-50 rounded-lg border border-gray-200 p-5">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="font-medium text-gray-900">{getAreaDisplayName(area, areaIndex)}</div>
@@ -490,7 +490,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
               })}
 
               {facilityWideTasks.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
                   <div className="font-medium text-gray-900">Facility-Wide Tasks</div>
                   <div className="text-sm text-gray-500">Tasks that apply across the full facility</div>
                   <FrequencyTaskStepper
@@ -520,7 +520,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
 
       {signModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-surface-50 rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Sign Amendment</h3>
             <p className="text-sm text-gray-600 mb-4">
               By signing, you agree to the updated terms outlined in this amendment.

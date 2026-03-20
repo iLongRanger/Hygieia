@@ -74,7 +74,7 @@ export function AccountHistory({
           {activities.map((activity) => (
             <div
               key={activity.id}
-              className="rounded-lg border border-white/10 bg-white/5 p-3"
+              className="rounded-lg border border-white/10 bg-surface-50/5 p-3"
             >
               <div className="flex items-center justify-between gap-3">
                 <Badge

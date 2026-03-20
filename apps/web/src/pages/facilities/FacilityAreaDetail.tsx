@@ -168,7 +168,7 @@ export function FacilityAreaDetail({
             {area.fixtures.map((fixture) => (
               <div
                 key={fixture.id}
-                className="rounded-lg bg-white/5 px-4 py-3 flex justify-between items-center"
+                className="rounded-lg bg-surface-50/5 px-4 py-3 flex justify-between items-center"
               >
                 <span className="text-white">{fixture.fixtureType.name}</span>
                 <span className="text-gray-300">
@@ -230,7 +230,7 @@ export function FacilityAreaDetail({
                     {groupTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="rounded-lg bg-white/5 px-3 py-2 flex items-center justify-between group"
+                        className="rounded-lg bg-surface-50/5 px-3 py-2 flex items-center justify-between group"
                       >
                         <span className="text-white">
                           {getTaskName(task)}

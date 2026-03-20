@@ -41,7 +41,7 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
             onClick={() => onChange(opt.value)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               value === opt.value
-                ? 'bg-white text-surface-900 shadow-sm dark:bg-surface-700 dark:text-surface-100'
+                ? 'bg-surface-50 text-surface-900 shadow-sm dark:bg-surface-700 dark:text-surface-100'
                 : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
             }`}
           >
@@ -55,14 +55,14 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
             type="date"
             value={localFrom}
             onChange={(e) => setLocalFrom(e.target.value)}
-            className="rounded-md border border-surface-300 bg-white px-2 py-1.5 text-sm text-surface-900 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+            className="rounded-md border border-surface-300 bg-surface-50 px-2 py-1.5 text-sm text-surface-900 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
           />
           <span className="text-sm text-surface-400">to</span>
           <input
             type="date"
             value={localTo}
             onChange={(e) => setLocalTo(e.target.value)}
-            className="rounded-md border border-surface-300 bg-white px-2 py-1.5 text-sm text-surface-900 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+            className="rounded-md border border-surface-300 bg-surface-50 px-2 py-1.5 text-sm text-surface-900 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
           />
           <button
             onClick={handleApply}

@@ -784,7 +784,7 @@ const AppointmentsPage = () => {
             </div>
 
             {showFilterPanel && (
-              <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
                 <Select
                   label="Type"
                   placeholder="All Types"
@@ -842,7 +842,7 @@ const AppointmentsPage = () => {
                       type="checkbox"
                       checked={includePast}
                       onChange={(e) => setIncludePast(e.target.checked)}
-                      className="rounded border-surface-300 bg-white text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
+                      className="rounded border-surface-300 bg-surface-50 text-primary-600 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-700"
                     />
                     Include past appointments
                   </label>

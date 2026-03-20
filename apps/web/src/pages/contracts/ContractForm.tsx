@@ -870,7 +870,7 @@ const ContractForm = () => {
                       Upload Terms Document (Optional)
                     </label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-gray-200 hover:bg-white/10">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-surface-50/5 px-3 py-2 text-sm text-gray-200 hover:bg-surface-50/10">
                         <Upload className="h-4 w-4" />
                         {formData.termsDocumentName ? 'Replace Document' : 'Upload Document'}
                         <input

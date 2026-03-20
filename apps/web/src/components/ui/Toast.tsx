@@ -91,7 +91,7 @@ export const Toast = ({ id, type, title, message, duration = 5000, onClose }: To
             onClick={handleClose}
             className={cn(
               'flex-shrink-0 rounded-lg p-1 transition-colors',
-              'hover:bg-black/5 dark:hover:bg-white/10',
+              'hover:bg-black/5 dark:hover:bg-surface-50/10',
               style.icon
             )}
           >

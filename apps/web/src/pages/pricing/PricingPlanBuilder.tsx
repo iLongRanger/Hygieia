@@ -434,7 +434,7 @@ function FieldShell({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="border-surface-200/80 bg-white/90 dark:border-surface-700 dark:bg-surface-900/60">
+    <Card className="border-surface-200/80 bg-surface-50/90 dark:border-surface-700 dark:bg-surface-900/60">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h4 className="text-base font-semibold text-surface-900 dark:text-surface-100">{title}</h4>
@@ -472,7 +472,7 @@ function StepButton({
         'group flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all',
         active
           ? 'border-primary-400 bg-primary-50 shadow-soft dark:border-primary-500 dark:bg-primary-950/30'
-          : 'border-surface-200 bg-white hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600 dark:hover:bg-surface-800/80'
+          : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600 dark:hover:bg-surface-800/80'
       )}
     >
       <div
@@ -507,7 +507,7 @@ function MetricCard({
   tone?: 'default' | 'positive' | 'warning';
 }) {
   const toneClass = {
-    default: 'border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900/80',
+    default: 'border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-900/80',
     positive: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30',
     warning: 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30',
   }[tone];
@@ -613,7 +613,7 @@ export function PricingPlanBuilder({
               <h3 className="mt-3 text-2xl font-semibold">{STEP_CONFIG[step].title}</h3>
               <p className="mt-2 text-sm text-slate-200/85">{STEP_CONFIG[step].description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Badge className="border border-white/15 bg-white/10 text-white">
+                <Badge className="border border-white/15 bg-surface-50/10 text-white">
                   {mode === 'create' ? 'Building a new plan' : 'Refining this plan'}
                 </Badge>
                 <Badge className="border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
@@ -624,7 +624,7 @@ export function PricingPlanBuilder({
                 {recommendation}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 backdrop-blur-sm">
+            <div className="rounded-2xl border border-white/10 bg-surface-50/5 px-4 py-3 text-sm text-slate-100 backdrop-blur-sm">
               <div className="font-semibold">How Hygieia helps</div>
               <div className="mt-2 max-w-xs text-slate-200/80">
                 Each field below explains whether it changes labor, service cost, the client price, or only the payout split.
@@ -653,7 +653,7 @@ export function PricingPlanBuilder({
                       'rounded-2xl border p-4 text-left transition-all',
                       selectedPresetId === preset.id
                         ? 'border-primary-400 bg-primary-50 shadow-soft dark:border-primary-500 dark:bg-primary-950/30'
-                        : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-white dark:border-surface-700 dark:bg-surface-900/60 dark:hover:border-surface-600'
+                        : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-900/60 dark:hover:border-surface-600'
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -996,7 +996,7 @@ export function PricingPlanBuilder({
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between rounded-2xl border border-surface-200 bg-white px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
+        <div className="flex items-center justify-between rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
           <Button variant="secondary" onClick={() => onStepChange(Math.max(0, step - 1))} disabled={!canGoBack}>
             Back
           </Button>
@@ -1106,7 +1106,7 @@ export function PricingPlanBuilder({
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="mt-5 rounded-2xl border border-white/10 bg-surface-50/5 p-4">
             <div className="text-sm font-semibold text-white">How Hygieia explains this sample</div>
             <div className="mt-3 grid gap-2 text-sm text-slate-200/85">
               <div>1. Estimate labor from square footage, productivity, and difficulty multipliers.</div>
@@ -1115,7 +1115,7 @@ export function PricingPlanBuilder({
             </div>
           </div>
 
-          <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-surface-50/5 p-4">
             <div className="text-sm font-semibold text-white">What changed this price</div>
             <div className="grid gap-2 text-sm text-slate-200/85">
               <div className="flex justify-between gap-3">
