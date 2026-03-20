@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { fireEvent, render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import PricingSettingsPage from '../pricing/PricingSettingsPage';
 
@@ -179,8 +179,7 @@ describe('PricingSettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /edit/i }));
 
     const baseRateInput = screen.getByLabelText(/base rate per sq ft/i);
-    await user.clear(baseRateInput);
-    await user.type(baseRateInput, '0.2');
+    fireEvent.change(baseRateInput, { target: { value: '0.2' } });
 
     await user.click(screen.getByRole('button', { name: /save/i }));
 
