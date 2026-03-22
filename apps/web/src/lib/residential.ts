@@ -117,6 +117,18 @@ export async function sendResidentialQuote(
   return response.data;
 }
 
+export async function requestResidentialQuoteReview(
+  id: string
+): Promise<{ data: ResidentialQuote; notified: number }> {
+  const response = await api.post(`/residential/quotes/${id}/request-review`);
+  return response.data;
+}
+
+export async function approveResidentialQuoteReview(id: string): Promise<ResidentialQuote> {
+  const response = await api.post(`/residential/quotes/${id}/approve-review`);
+  return response.data.data;
+}
+
 export async function acceptResidentialQuote(id: string): Promise<ResidentialQuote> {
   const response = await api.post(`/residential/quotes/${id}/accept`);
   return response.data.data;

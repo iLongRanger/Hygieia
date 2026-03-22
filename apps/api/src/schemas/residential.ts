@@ -44,6 +44,8 @@ export const residentialOccupiedStatusSchema = z.enum([
 export const residentialQuoteStatusSchema = z.enum([
   'draft',
   'quoted',
+  'review_required',
+  'review_approved',
   'sent',
   'viewed',
   'accepted',

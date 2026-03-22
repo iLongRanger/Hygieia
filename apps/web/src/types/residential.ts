@@ -13,6 +13,8 @@ export type ResidentialOccupiedStatus = 'occupied' | 'vacant' | 'move_in' | 'mov
 export type ResidentialQuoteStatus =
   | 'draft'
   | 'quoted'
+  | 'review_required'
+  | 'review_approved'
   | 'sent'
   | 'viewed'
   | 'accepted'

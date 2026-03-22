@@ -22,6 +22,7 @@ import { PERMISSIONS } from '../../lib/permissions';
 import { listAccounts } from '../../lib/accounts';
 import {
   acceptResidentialQuote,
+  approveResidentialQuoteReview,
   archiveResidentialQuote,
   convertResidentialQuote,
   createResidentialQuote,
@@ -29,6 +30,7 @@ import {
   listResidentialPricingPlans,
   listResidentialQuotes,
   previewResidentialQuote,
+  requestResidentialQuoteReview,
   restoreResidentialQuote,
   sendResidentialQuote,
   updateResidentialQuote,
@@ -177,6 +179,10 @@ function statusVariant(status: ResidentialQuote['status']) {
     case 'sent':
     case 'viewed':
       return 'info';
+    case 'review_required':
+      return 'warning';
+    case 'review_approved':
+      return 'success';
     case 'declined':
     case 'expired':
       return 'error';
@@ -421,6 +427,32 @@ const ResidentialQuotesPage = () => {
     }
   };
 
+  const handleRequestReview = async (quote: ResidentialQuote) => {
+    try {
+      const result = await requestResidentialQuoteReview(quote.id);
+      toast.success(
+        result.notified > 0
+          ? `Review requested from ${result.notified} internal approver${result.notified === 1 ? '' : 's'}`
+          : 'Review request recorded'
+      );
+      await fetchData();
+    } catch (error) {
+      console.error('Failed to request residential quote review', error);
+      toast.error('Failed to request internal review');
+    }
+  };
+
+  const handleApproveReview = async (quote: ResidentialQuote) => {
+    try {
+      await approveResidentialQuoteReview(quote.id);
+      toast.success('Residential quote approved for client send');
+      await fetchData();
+    } catch (error) {
+      console.error('Failed to approve residential quote review', error);
+      toast.error('Failed to approve residential quote');
+    }
+  };
+
   const handleAccept = async (quote: ResidentialQuote) => {
     try {
       await acceptResidentialQuote(quote.id);
@@ -547,12 +579,22 @@ const ResidentialQuotesPage = () => {
               Edit
             </Button>
           )}
-          {canWrite && ['draft', 'quoted', 'viewed'].includes(quote.status) && (
+          {canWrite && quote.manualReviewRequired && quote.status === 'review_required' && (
+            <Button variant="outline" size="sm" onClick={() => handleRequestReview(quote)}>
+              Request Review
+            </Button>
+          )}
+          {canWrite && quote.manualReviewRequired && quote.status === 'review_required' && (
+            <Button variant="outline" size="sm" onClick={() => handleApproveReview(quote)}>
+              Approve Review
+            </Button>
+          )}
+          {canWrite && ['draft', 'quoted', 'review_approved', 'viewed'].includes(quote.status) && (
             <Button variant="outline" size="sm" onClick={() => handleSend(quote)}>
               Send
             </Button>
           )}
-          {canWrite && ['draft', 'quoted', 'sent', 'viewed'].includes(quote.status) && (
+          {canWrite && ['draft', 'quoted', 'review_required', 'review_approved', 'sent', 'viewed'].includes(quote.status) && (
             <Button variant="outline" size="sm" onClick={() => handleAccept(quote)}>
               Accept
             </Button>
@@ -626,6 +668,8 @@ const ResidentialQuotesPage = () => {
           options={[
             { value: 'draft', label: 'Draft' },
             { value: 'quoted', label: 'Quoted' },
+            { value: 'review_required', label: 'Review Required' },
+            { value: 'review_approved', label: 'Review Approved' },
             { value: 'sent', label: 'Sent' },
             { value: 'viewed', label: 'Viewed' },
             { value: 'accepted', label: 'Accepted' },
@@ -1053,13 +1097,16 @@ const ResidentialQuotesPage = () => {
                       <div className="min-w-0 space-y-2">
                         <Badge variant="warning" size="sm">Manual Review</Badge>
                         <div className="text-sm font-medium text-surface-900 dark:text-surface-100">
-                          This quote needs review before it should be sent to the client.
+                          This quote should move through internal review before it is sent to the client.
                         </div>
                         <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
                           {preview.breakdown.manualReviewReasons.map((reason) => (
                             <li key={reason}>{reason}</li>
                           ))}
                         </ul>
+                        <p className="text-sm text-surface-600 dark:text-surface-300">
+                          Save the quote, request review, then approve it before using <span className="font-medium">Send</span>.
+                        </p>
                       </div>
                     </div>
                   </Card>

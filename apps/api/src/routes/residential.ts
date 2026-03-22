@@ -8,12 +8,14 @@ import { PERMISSIONS } from '../types';
 import { isEmailConfigured } from '../config/email';
 import { requireFrontendBaseUrl } from '../lib/appUrl';
 import logger from '../lib/logger';
+import { prisma } from '../lib/prisma';
 import { sendNotificationEmail } from '../services/emailService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import {
   archiveResidentialPricingPlan,
   archiveResidentialQuote,
   acceptResidentialQuote,
+  approveResidentialQuoteReview,
   convertResidentialQuoteToContract,
   createResidentialPricingPlan,
   createResidentialQuote,
@@ -48,8 +50,45 @@ import {
   buildResidentialQuoteEmailHtmlWithBranding,
   buildResidentialQuoteEmailSubject,
 } from '../templates/residentialQuoteEmail';
+import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
+
+async function getResidentialQuoteNotificationRecipients(accountId: string) {
+  const account = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: {
+      name: true,
+      createdByUserId: true,
+      accountManagerId: true,
+    },
+  });
+
+  const userIds = new Set<string>();
+  if (account?.createdByUserId) {
+    userIds.add(account.createdByUserId);
+  }
+  if (account?.accountManagerId) {
+    userIds.add(account.accountManagerId);
+  }
+
+  const adminUsers = await prisma.userRole.findMany({
+    where: {
+      user: { status: 'active' },
+      role: { key: { in: ['owner', 'admin'] } },
+    },
+    select: { user: { select: { id: true } } },
+  });
+
+  for (const record of adminUsers) {
+    userIds.add(record.user.id);
+  }
+
+  return {
+    userIds: [...userIds],
+    accountName: account?.name ?? 'Residential account',
+  };
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -315,6 +354,66 @@ router.patch(
       }
       const quote = await updateResidentialQuote(req.params.id, parsed.data);
       res.json({ data: quote });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/quotes/:id/approve-review',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
+
+      const quote = await approveResidentialQuoteReview(req.params.id);
+      res.json({ data: quote });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/quotes/:id/request-review',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
+      if (!existing.manualReviewRequired) {
+        throw new ValidationError('This residential quote does not require manual review');
+      }
+
+      const { userIds, accountName } = await getResidentialQuoteNotificationRecipients(existing.accountId);
+      const recipientIds = userIds.filter((userId) => userId !== req.user?.id);
+      if (recipientIds.length > 0) {
+        await createBulkNotifications(recipientIds, {
+          type: 'residential_quote_review_required',
+          title: `Residential quote review required`,
+          body: `${existing.quoteNumber} for ${accountName} needs internal approval before it can be sent.`,
+          metadata: {
+            quoteId: existing.id,
+            accountId: existing.accountId,
+          },
+        });
+      }
+
+      res.json({ data: existing, notified: recipientIds.length });
     } catch (error) {
       next(error);
     }

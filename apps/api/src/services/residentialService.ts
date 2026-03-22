@@ -1026,7 +1026,7 @@ export async function createResidentialQuote(
       quoteNumber,
       ...buildResidentialQuoteUpsertData(input, preview, pricingPlan.id),
       createdByUserId,
-      status: 'draft',
+      status: preview.breakdown.manualReviewRequired ? 'review_required' : 'draft',
       addOns: {
         create: preview.breakdown.addOns.map((addOn, index) => ({
           code: addOn.code,
@@ -1087,7 +1087,28 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
   const preview = calculateResidentialQuotePreview(mergedInput, pricingPlan);
   const nextStatus =
     input.status ??
-    (existing.status === 'declined' ? 'draft' : existing.status);
+    (existing.status === 'declined'
+      ? (preview.breakdown.manualReviewRequired ? 'review_required' : 'draft')
+      : existing.status);
+
+  const resolvedStatus = (() => {
+    if (input.status) {
+      return input.status;
+    }
+
+    if (preview.breakdown.manualReviewRequired) {
+      if (nextStatus === 'review_approved' || nextStatus === 'sent' || nextStatus === 'viewed' || nextStatus === 'accepted' || nextStatus === 'converted') {
+        return nextStatus;
+      }
+      return 'review_required';
+    }
+
+    if (nextStatus === 'review_required' || nextStatus === 'review_approved') {
+      return 'draft';
+    }
+
+    return nextStatus;
+  })();
 
   await syncResidentialAccountProfileFromQuote(mergedInput);
 
@@ -1095,7 +1116,7 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
     where: { id },
     data: {
       ...buildResidentialQuoteUpsertData(mergedInput, preview, pricingPlan.id),
-      status: nextStatus,
+      status: resolvedStatus,
       addOns: {
         deleteMany: {},
         create: preview.breakdown.addOns.map((addOn, index) => ({
@@ -1126,11 +1147,38 @@ export async function sendResidentialQuote(id: string) {
     throw new BadRequestError('Converted residential quotes cannot be sent');
   }
 
+  if (quote.manualReviewRequired && quote.status !== 'review_approved' && quote.status !== 'sent' && quote.status !== 'viewed') {
+    throw new BadRequestError('This residential quote requires internal approval before it can be sent');
+  }
+
   return prisma.residentialQuote.update({
     where: { id },
     data: {
       status: 'sent',
       sentAt: new Date(),
+    },
+    select: residentialQuoteDetailSelect,
+  });
+}
+
+export async function approveResidentialQuoteReview(id: string) {
+  const quote = await getResidentialQuoteById(id);
+  if (!quote) {
+    throw new NotFoundError('Residential quote not found');
+  }
+
+  if (!quote.manualReviewRequired) {
+    throw new BadRequestError('This residential quote does not require manual review');
+  }
+
+  if (quote.status === 'converted') {
+    throw new BadRequestError('Converted residential quotes cannot be approved');
+  }
+
+  return prisma.residentialQuote.update({
+    where: { id },
+    data: {
+      status: 'review_approved',
     },
     select: residentialQuoteDetailSelect,
   });
@@ -1291,7 +1339,7 @@ export async function acceptResidentialQuote(id: string) {
     throw new NotFoundError('Residential quote not found');
   }
 
-  if (!['draft', 'quoted', 'sent', 'viewed'].includes(quote.status)) {
+  if (!['draft', 'quoted', 'review_required', 'review_approved', 'sent', 'viewed'].includes(quote.status)) {
     throw new BadRequestError('Residential quote cannot be accepted from its current status');
   }
 
