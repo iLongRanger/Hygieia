@@ -43,6 +43,83 @@ import { AccountHistory } from './AccountHistory';
 import { EditAccountModal } from './modals/EditAccountModal';
 import { AddFacilityModal } from './modals/AddFacilityModal';
 
+const residentialServiceTypeLabels: Record<string, string> = {
+  recurring_standard: 'Recurring Standard',
+  one_time_standard: 'One-Time Standard',
+  deep_clean: 'Deep Clean',
+  move_in_out: 'Move-In / Move-Out',
+  turnover: 'Turnover',
+  post_construction: 'Post-Construction',
+};
+
+const residentialFrequencyLabels: Record<string, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Biweekly',
+  every_4_weeks: 'Every 4 Weeks',
+  one_time: 'One-Time',
+};
+
+function formatCalendarDate(value: string | null | undefined) {
+  if (!value) return 'Not scheduled';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not scheduled';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatClockTime(value: string | null | undefined) {
+  if (!value) return null;
+  const [hoursString, minutesString = '0'] = value.split(':');
+  const hours = Number(hoursString);
+  const minutes = Number(minutesString);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const normalizedHours = hours % 12 || 12;
+  return `${normalizedHours}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
+function getResidentialServiceSummary(input: {
+  activeContract: Contract | null;
+  recentJobs: Job[];
+}) {
+  const sortedJobs = [...input.recentJobs].sort((left, right) => {
+    return new Date(left.scheduledDate).getTime() - new Date(right.scheduledDate).getTime();
+  });
+  const now = Date.now();
+  const upcomingJob = sortedJobs.find((job) => {
+    return job.status !== 'completed' && job.status !== 'canceled' && new Date(job.scheduledDate).getTime() >= now;
+  }) || sortedJobs.find((job) => job.status !== 'completed' && job.status !== 'canceled') || null;
+  const lastCompletedJob = [...sortedJobs].reverse().find((job) => job.status === 'completed') || null;
+
+  const assignmentLabel = input.activeContract?.assignedToUser?.fullName
+    || input.activeContract?.assignedTeam?.name
+    || upcomingJob?.assignedToUser?.fullName
+    || upcomingJob?.assignedTeam?.name
+    || 'Unassigned';
+
+  const nextVisitWindow = upcomingJob
+    ? [formatClockTime(upcomingJob.scheduledStartTime), formatClockTime(upcomingJob.scheduledEndTime)]
+        .filter(Boolean)
+        .join(' - ') || 'Time not set'
+    : 'No visit scheduled yet';
+
+  return {
+    serviceType: input.activeContract?.residentialServiceType
+      ? residentialServiceTypeLabels[input.activeContract.residentialServiceType] || input.activeContract.residentialServiceType
+      : 'Not set',
+    frequency: input.activeContract?.residentialFrequency
+      ? residentialFrequencyLabels[input.activeContract.residentialFrequency] || input.activeContract.residentialFrequency
+      : input.activeContract?.serviceFrequency || 'Not set',
+    nextVisitDate: upcomingJob ? formatCalendarDate(upcomingJob.scheduledDate) : 'No visit scheduled yet',
+    nextVisitWindow,
+    assignmentLabel,
+    latestCompletedVisit: lastCompletedJob ? formatCalendarDate(lastCompletedJob.scheduledDate) : 'No completed visits yet',
+  };
+}
+
 function getResidentialJourneyState(input: {
   residentialQuotes: ResidentialQuote[];
   activeContract: Contract | null;
@@ -440,6 +517,10 @@ const AccountDetail = () => {
     activeContract,
     recentJobs,
   });
+  const residentialServiceSummary = getResidentialServiceSummary({
+    activeContract,
+    recentJobs,
+  });
 
   return (
     <div className="space-y-6">
@@ -596,6 +677,50 @@ const AccountDetail = () => {
                     </button>
                   ))
                 )}
+              </div>
+            </Card>
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Service</h3>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    Keep the current service shape and next visit details visible in one place.
+                  </p>
+                </div>
+                <Badge variant={activeContract ? 'success' : 'info'}>
+                  {activeContract ? 'Live Service' : 'Pre-Service'}
+                </Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Service Type</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialServiceSummary.serviceType}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Frequency</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialServiceSummary.frequency}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Visit</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialServiceSummary.nextVisitDate}
+                  </div>
+                  <div className="mt-1 text-xs text-surface-500">{residentialServiceSummary.nextVisitWindow}</div>
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Assigned To</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialServiceSummary.assignmentLabel}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-dashed border-surface-200 p-4 text-sm text-surface-600 dark:border-surface-700 dark:text-surface-300">
+                <span className="font-medium text-surface-900 dark:text-surface-100">Latest completed visit:</span>{' '}
+                {residentialServiceSummary.latestCompletedVisit}
               </div>
             </Card>
             <AccountServiceOverview

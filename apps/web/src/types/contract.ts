@@ -27,6 +27,20 @@ export type BillingCycle =
   | 'semi_annual'
   | 'annual';
 
+export type ResidentialContractServiceType =
+  | 'recurring_standard'
+  | 'one_time_standard'
+  | 'deep_clean'
+  | 'move_in_out'
+  | 'turnover'
+  | 'post_construction';
+
+export type ResidentialContractFrequency =
+  | 'weekly'
+  | 'biweekly'
+  | 'every_4_weeks'
+  | 'one_time';
+
 export interface ServiceSchedule {
   days?: (
     | 'monday'
@@ -67,6 +81,8 @@ export interface Contract {
   monthlyValue: number;
   totalValue?: number | null;
   billingCycle: BillingCycle;
+  residentialServiceType?: ResidentialContractServiceType | null;
+  residentialFrequency?: ResidentialContractFrequency | null;
   paymentTerms: string;
   subcontractorTier?: string | null;
   subcontractorPayout?: number | null;

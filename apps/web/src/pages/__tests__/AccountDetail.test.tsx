@@ -203,6 +203,8 @@ const contract: Contract = {
   totalValue: null,
   billingCycle: 'monthly',
   paymentTerms: 'Net 30',
+  residentialServiceType: null,
+  residentialFrequency: null,
   termsAndConditions: null,
   specialInstructions: null,
   signedDocumentUrl: null,
@@ -528,5 +530,144 @@ describe('AccountDetail', () => {
     expect(screen.getByRole('heading', { name: /residential journey/i })).toBeInTheDocument();
     expect(screen.getAllByText('Quote Accepted').length).toBeGreaterThan(0);
     expect(screen.getByText(/convert the accepted quote into a residential contract/i)).toBeInTheDocument();
+  });
+
+  it('shows the residential service summary for active residential accounts', async () => {
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-2',
+      name: 'Oak Household',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '12 Oak Street',
+        city: 'Newport',
+        state: 'CA',
+        postalCode: '92660',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 2400,
+        bedrooms: 4,
+        fullBathrooms: 3,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: true,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Driveway',
+        entryNotes: 'Use side gate',
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listContractsMock
+      .mockResolvedValueOnce({
+        data: [{
+          ...contract,
+          status: 'active',
+          account: {
+            id: 'account-res-2',
+            name: 'Oak Household',
+            type: 'residential',
+          },
+          residentialServiceType: 'recurring_standard',
+          residentialFrequency: 'weekly',
+          assignedToUser: {
+            id: 'user-1',
+            fullName: 'Account Manager',
+            email: 'manager@example.com',
+          },
+        }],
+        pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{
+          ...contract,
+          status: 'active',
+          account: {
+            id: 'account-res-2',
+            name: 'Oak Household',
+            type: 'residential',
+          },
+          residentialServiceType: 'recurring_standard',
+          residentialFrequency: 'weekly',
+          assignedToUser: {
+            id: 'user-1',
+            fullName: 'Account Manager',
+            email: 'manager@example.com',
+          },
+        }],
+        pagination: { page: 1, limit: 1, total: 1, totalPages: 1 },
+      });
+    listResidentialQuotesMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+    });
+    listJobsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'job-upcoming',
+          jobNumber: 'JOB-100',
+          jobType: 'scheduled_service',
+          jobCategory: 'recurring',
+          status: 'scheduled',
+          scheduledDate: '2026-04-15T12:00:00.000Z',
+          scheduledStartTime: '09:00',
+          scheduledEndTime: '11:00',
+          actualStartTime: null,
+          actualEndTime: null,
+          estimatedHours: '2',
+          actualHours: null,
+          notes: null,
+          completionNotes: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          contract: {
+            id: 'contract-1',
+            contractNumber: 'CONT-001',
+            title: 'Cleaning Contract',
+          },
+          facility: {
+            id: 'facility-1',
+            name: 'Oak Residence',
+          },
+          account: {
+            id: 'account-res-2',
+            name: 'Oak Household',
+          },
+          assignedTeam: null,
+          assignedToUser: {
+            id: 'user-1',
+            fullName: 'Account Manager',
+            email: 'manager@example.com',
+          },
+          createdByUser: {
+            id: 'admin-1',
+            fullName: 'Admin User',
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+
+    render(<AccountDetail />);
+
+    expect(await screen.findByRole('heading', { name: /residential service/i })).toBeInTheDocument();
+    expect(screen.getByText('Recurring Standard')).toBeInTheDocument();
+    expect(screen.getByText('Weekly')).toBeInTheDocument();
+    expect(screen.getAllByText('Apr 15, 2026').length).toBeGreaterThan(0);
+    expect(screen.getByText('9:00 AM - 11:00 AM')).toBeInTheDocument();
+    expect(screen.getByText('Account Manager')).toBeInTheDocument();
   });
 });
