@@ -228,6 +228,14 @@ const ResidentialQuotesPage = () => {
   );
 
   const availableAddOns = selectedPlan ? Object.entries(selectedPlan.settings.addOnPrices) : [];
+  const summaryCounts = useMemo(() => {
+    return {
+      total: quotes.length,
+      reviewRequired: quotes.filter((quote) => quote.status === 'review_required').length,
+      readyToSend: quotes.filter((quote) => quote.status === 'review_approved').length,
+      readyToConvert: quotes.filter((quote) => quote.status === 'accepted').length,
+    };
+  }, [quotes]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -678,6 +686,61 @@ const ResidentialQuotesPage = () => {
           ]}
           placeholder="All statuses"
         />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => setStatusFilter('')}
+          className={`rounded-xl border p-4 text-left transition-colors ${
+            statusFilter === ''
+              ? 'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-950/30'
+              : 'border-surface-200 bg-white hover:border-surface-300 dark:border-surface-700 dark:bg-surface-900'
+          }`}
+        >
+          <div className="text-xs uppercase tracking-wide text-surface-500">All Quotes</div>
+          <div className="mt-2 text-2xl font-semibold text-surface-900 dark:text-surface-100">{summaryCounts.total}</div>
+          <div className="mt-1 text-sm text-surface-500">Full residential quote queue</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('review_required')}
+          className={`rounded-xl border p-4 text-left transition-colors ${
+            statusFilter === 'review_required'
+              ? 'border-warning-500 bg-warning-50 dark:border-warning-400 dark:bg-warning-950/30'
+              : 'border-surface-200 bg-white hover:border-surface-300 dark:border-surface-700 dark:bg-surface-900'
+          }`}
+        >
+          <div className="text-xs uppercase tracking-wide text-surface-500">Review Required</div>
+          <div className="mt-2 text-2xl font-semibold text-surface-900 dark:text-surface-100">{summaryCounts.reviewRequired}</div>
+          <div className="mt-1 text-sm text-surface-500">Needs internal approval before send</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('review_approved')}
+          className={`rounded-xl border p-4 text-left transition-colors ${
+            statusFilter === 'review_approved'
+              ? 'border-success-500 bg-success-50 dark:border-success-400 dark:bg-success-950/30'
+              : 'border-surface-200 bg-white hover:border-surface-300 dark:border-surface-700 dark:bg-surface-900'
+          }`}
+        >
+          <div className="text-xs uppercase tracking-wide text-surface-500">Review Approved</div>
+          <div className="mt-2 text-2xl font-semibold text-surface-900 dark:text-surface-100">{summaryCounts.readyToSend}</div>
+          <div className="mt-1 text-sm text-surface-500">Cleared for client delivery</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('accepted')}
+          className={`rounded-xl border p-4 text-left transition-colors ${
+            statusFilter === 'accepted'
+              ? 'border-success-500 bg-success-50 dark:border-success-400 dark:bg-success-950/30'
+              : 'border-surface-200 bg-white hover:border-surface-300 dark:border-surface-700 dark:bg-surface-900'
+          }`}
+        >
+          <div className="text-xs uppercase tracking-wide text-surface-500">Accepted</div>
+          <div className="mt-2 text-2xl font-semibold text-surface-900 dark:text-surface-100">{summaryCounts.readyToConvert}</div>
+          <div className="mt-1 text-sm text-surface-500">Client-approved quotes ready for contract conversion</div>
+        </button>
       </div>
 
       <Table data={quotes} columns={columns} isLoading={loading} />
