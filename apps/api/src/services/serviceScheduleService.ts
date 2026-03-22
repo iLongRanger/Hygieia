@@ -137,6 +137,7 @@ export function expectedWeekdayCountForFrequency(
     case 'weekly':
     case 'biweekly':
     case 'bi_weekly':
+    case 'every_4_weeks':
     case 'monthly':
     case 'quarterly':
       return 1;
@@ -164,6 +165,7 @@ export function defaultWeekdaysForFrequency(
     case 'weekly':
     case 'biweekly':
     case 'bi_weekly':
+    case 'every_4_weeks':
     case 'monthly':
     case 'quarterly':
       return ['monday'];

@@ -100,7 +100,7 @@ describe('Textarea', () => {
         'rounded-lg',
         'border',
         'border-surface-300',
-        'bg-white',
+        'bg-surface-50',
         'px-3',
         'py-2',
         'text-surface-900',

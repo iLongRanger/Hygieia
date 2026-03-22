@@ -182,7 +182,7 @@ export interface ResidentialQuote {
   quoteNumber: string;
   title: string;
   status: ResidentialQuoteStatus;
-  accountId?: string | null;
+  accountId: string;
   serviceType: ResidentialServiceType;
   frequency: ResidentialFrequency;
   customerName: string;
@@ -230,6 +230,8 @@ export interface ResidentialQuote {
     billingEmail?: string | null;
     billingPhone?: string | null;
     billingAddress?: ResidentialAddress | null;
+    serviceAddress?: ResidentialAddress | null;
+    residentialProfile?: ResidentialHomeProfile | null;
   } | null;
   addOns?: Array<{
     id: string;

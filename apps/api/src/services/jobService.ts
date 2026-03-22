@@ -1172,6 +1172,9 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         case 'bi_weekly':
           current.setUTCDate(current.getUTCDate() + 14);
           break;
+        case 'every_4_weeks':
+          current.setUTCDate(current.getUTCDate() + 28);
+          break;
         case 'monthly':
           current.setUTCMonth(current.getUTCMonth() + 1);
           break;
@@ -1203,6 +1206,14 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         );
         const weekIndex = Math.floor(diffDays / 7);
         if (weekIndex % 2 !== 0) continue;
+      }
+
+      if (frequency === 'every_4_weeks') {
+        const diffDays = Math.floor(
+          (date.getTime() - startAnchor.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const weekIndex = Math.floor(diffDays / 7);
+        if (weekIndex % 4 !== 0) continue;
       }
 
       if (frequency === 'monthly') {

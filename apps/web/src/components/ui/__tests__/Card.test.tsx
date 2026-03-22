@@ -39,7 +39,7 @@ describe('Card', () => {
         'rounded-xl',
         'border',
         'border-surface-200',
-        'bg-white',
+        'bg-surface-50',
         'shadow-soft'
       );
     });

@@ -75,6 +75,7 @@ export async function restoreResidentialPricingPlan(id: string): Promise<Residen
 export async function listResidentialQuotes(params?: {
   page?: number;
   limit?: number;
+  accountId?: string;
   status?: ResidentialQuote['status'];
   includeArchived?: boolean;
   search?: string;

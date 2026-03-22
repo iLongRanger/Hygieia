@@ -15,6 +15,7 @@ import type {
   UpdateResidentialPricingPlanInput,
   UpdateResidentialQuoteInput,
 } from '../schemas/residential';
+import type { ServiceWeekday } from './serviceScheduleService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -26,6 +27,11 @@ export interface PaginatedResult<T> {
     total: number;
     totalPages: number;
   };
+}
+
+interface ResidentialQuoteAccessOptions {
+  userRole?: string;
+  userId?: string;
 }
 
 const residentialPricingPlanSelect = {
@@ -79,9 +85,12 @@ const residentialQuoteListSelect = {
       id: true,
       name: true,
       type: true,
+      accountManagerId: true,
       billingEmail: true,
       billingPhone: true,
       billingAddress: true,
+      serviceAddress: true,
+      residentialProfile: true,
     },
   },
 } satisfies Prisma.ResidentialQuoteSelect;
@@ -139,9 +148,12 @@ const residentialQuoteDetailSelect = {
       id: true,
       name: true,
       type: true,
+      accountManagerId: true,
       billingEmail: true,
       billingPhone: true,
       billingAddress: true,
+      serviceAddress: true,
+      residentialProfile: true,
     },
   },
   addOns: {
@@ -187,9 +199,12 @@ const publicResidentialQuoteSelect = {
       id: true,
       name: true,
       type: true,
+      accountManagerId: true,
       billingEmail: true,
       billingPhone: true,
       billingAddress: true,
+      serviceAddress: true,
+      residentialProfile: true,
     },
   },
   homeAddress: true,
@@ -267,6 +282,71 @@ function toNullableString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function toAddressJsonValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return Prisma.JsonNull;
+  }
+  return value as Prisma.InputJsonValue;
+}
+
+function isAddressPopulated(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value as Record<string, unknown>).some((field) => {
+    if (typeof field === 'string') {
+      return field.trim().length > 0;
+    }
+    return field !== null && field !== undefined;
+  });
+}
+
+function getWeekdayFromDate(date: Date): ServiceWeekday {
+  const weekdayMap: Record<number, ServiceWeekday> = {
+    0: 'sunday',
+    1: 'monday',
+    2: 'tuesday',
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday',
+  };
+
+  return weekdayMap[date.getUTCDay()] ?? 'monday';
+}
+
+function mapResidentialFrequencyToContractFrequency(frequency: string): string {
+  switch (frequency) {
+    case 'weekly':
+      return 'weekly';
+    case 'biweekly':
+      return 'bi_weekly';
+    case 'every_4_weeks':
+      return 'every_4_weeks';
+    case 'one_time':
+    default:
+      return 'one_time';
+  }
+}
+
+function buildResidentialServiceSchedule(
+  frequency: string,
+  startDate: Date
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (frequency === 'one_time') {
+    return Prisma.JsonNull;
+  }
+
+  return {
+    days: [getWeekdayFromDate(startDate)],
+    allowedWindowStart: '08:00',
+    allowedWindowEnd: '17:00',
+    windowAnchor: 'start_day',
+    timezoneSource: 'facility',
+  } satisfies Prisma.InputJsonValue;
 }
 
 function getBracketAdjustment(
@@ -560,9 +640,12 @@ async function resolveResidentialAccount(accountId: string) {
       id: true,
       name: true,
       type: true,
+      accountManagerId: true,
       billingEmail: true,
       billingPhone: true,
       billingAddress: true,
+      serviceAddress: true,
+      residentialProfile: true,
       archivedAt: true,
     },
   });
@@ -575,6 +658,87 @@ async function resolveResidentialAccount(accountId: string) {
   }
 
   return account;
+}
+
+async function ensureResidentialFacility(input: {
+  accountId: string;
+  accountName: string;
+  createdByUserId: string;
+  homeAddress: unknown;
+  homeProfile: unknown;
+}) {
+  if (!isAddressPopulated(input.homeAddress)) {
+    throw new BadRequestError('Residential service address is required before contract conversion');
+  }
+
+  const homeProfile =
+    input.homeProfile && typeof input.homeProfile === 'object' && !Array.isArray(input.homeProfile)
+      ? (input.homeProfile as Record<string, unknown>)
+      : {};
+  const facilityName = `${input.accountName} Residence`;
+
+  const existingFacility = await prisma.facility.findFirst({
+    where: {
+      accountId: input.accountId,
+      archivedAt: null,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (existingFacility) {
+    const updated = await prisma.facility.update({
+      where: { id: existingFacility.id },
+      data: {
+        name: facilityName,
+        address: input.homeAddress as Prisma.InputJsonValue,
+        buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
+        accessInstructions: toNullableString(homeProfile.entryNotes),
+        parkingInfo: toNullableString(homeProfile.parkingAccess),
+        specialRequirements: toNullableString(homeProfile.specialInstructions),
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    return updated;
+  }
+
+  return prisma.facility.create({
+    data: {
+      accountId: input.accountId,
+      name: facilityName,
+      address: input.homeAddress as Prisma.InputJsonValue,
+      buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
+      accessInstructions: toNullableString(homeProfile.entryNotes),
+      parkingInfo: toNullableString(homeProfile.parkingAccess),
+      specialRequirements: toNullableString(homeProfile.specialInstructions),
+      createdByUserId: input.createdByUserId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+}
+
+function applyResidentialQuoteAccessWhere(
+  where: Prisma.ResidentialQuoteWhereInput,
+  access: ResidentialQuoteAccessOptions = {}
+) {
+  if (access.userRole === 'manager' && access.userId) {
+    where.account = {
+      is: {
+        accountManagerId: access.userId,
+      },
+    };
+  }
 }
 
 export async function previewResidentialQuote(input: ResidentialQuotePreviewInput) {
@@ -738,11 +902,13 @@ async function generateResidentialQuoteNumber() {
 }
 
 export async function listResidentialQuotes(
-  params: ListResidentialQuotesQuery
+  params: ListResidentialQuotesQuery,
+  access: ResidentialQuoteAccessOptions = {}
 ): Promise<PaginatedResult<ResidentialQuoteListRecord>> {
   const {
     page = 1,
     limit = 20,
+    accountId,
     status,
     includeArchived = false,
     search,
@@ -755,6 +921,9 @@ export async function listResidentialQuotes(
   if (status) {
     where.status = status;
   }
+  if (accountId) {
+    where.accountId = accountId;
+  }
   if (search) {
     where.OR = [
       { quoteNumber: { contains: search, mode: 'insensitive' } },
@@ -763,6 +932,8 @@ export async function listResidentialQuotes(
       { customerEmail: { contains: search, mode: 'insensitive' } },
     ];
   }
+
+  applyResidentialQuoteAccessWhere(where, access);
 
   const [data, total] = await Promise.all([
     prisma.residentialQuote.findMany({
@@ -786,9 +957,11 @@ export async function listResidentialQuotes(
   };
 }
 
-export async function getResidentialQuoteById(id: string) {
-  return prisma.residentialQuote.findUnique({
-    where: { id },
+export async function getResidentialQuoteById(id: string, access: ResidentialQuoteAccessOptions = {}) {
+  const where: Prisma.ResidentialQuoteWhereInput = { id };
+  applyResidentialQuoteAccessWhere(where, access);
+  return prisma.residentialQuote.findFirst({
+    where,
     select: residentialQuoteDetailSelect,
   });
 }
@@ -825,6 +998,18 @@ function buildResidentialQuoteUpsertData(
   } satisfies Omit<Prisma.ResidentialQuoteUncheckedCreateInput, 'quoteNumber' | 'createdByUserId'>;
 }
 
+async function syncResidentialAccountProfileFromQuote(input: CreateResidentialQuoteInput) {
+  await prisma.account.update({
+    where: { id: input.accountId },
+    data: {
+      billingEmail: toNullableString(input.customerEmail),
+      billingPhone: toNullableString(input.customerPhone),
+      serviceAddress: input.homeAddress ?? Prisma.JsonNull,
+      residentialProfile: input.homeProfile as Prisma.InputJsonValue,
+    },
+  });
+}
+
 export async function createResidentialQuote(
   input: CreateResidentialQuoteInput,
   createdByUserId: string
@@ -833,6 +1018,8 @@ export async function createResidentialQuote(
   const pricingPlan = await resolveResidentialPricingPlan(input.pricingPlanId);
   const preview = calculateResidentialQuotePreview(input, pricingPlan);
   const quoteNumber = await generateResidentialQuoteNumber();
+
+  await syncResidentialAccountProfileFromQuote(input);
 
   return prisma.residentialQuote.create({
     data: {
@@ -901,6 +1088,8 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
   const nextStatus =
     input.status ??
     (existing.status === 'declined' ? 'draft' : existing.status);
+
+  await syncResidentialAccountProfileFromQuote(mergedInput);
 
   return prisma.residentialQuote.update({
     where: { id },
@@ -1223,6 +1412,8 @@ export async function convertResidentialQuoteToContract(
             id: true,
             name: true,
             type: true,
+            serviceAddress: true,
+            residentialProfile: true,
           },
         })
       : null;
@@ -1235,7 +1426,9 @@ export async function convertResidentialQuoteToContract(
         type: 'residential',
         billingEmail: quote.customerEmail,
         billingPhone: quote.customerPhone,
-        billingAddress: (quote.homeAddress as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        billingAddress: toAddressJsonValue(quote.homeAddress),
+        serviceAddress: toAddressJsonValue(quote.homeAddress),
+        residentialProfile: (quote.homeProfile as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         paymentTerms: input.paymentTerms,
         createdByUserId: userId,
       },
@@ -1243,6 +1436,8 @@ export async function convertResidentialQuoteToContract(
         id: true,
         name: true,
         type: true,
+        serviceAddress: true,
+        residentialProfile: true,
       },
     });
   }
@@ -1250,6 +1445,18 @@ export async function convertResidentialQuoteToContract(
   if (account.type !== 'residential') {
     throw new BadRequestError('Residential quotes can only convert against residential accounts');
   }
+
+  const resolvedHomeAddress =
+    quote.homeAddress ?? account.serviceAddress ?? null;
+  const resolvedHomeProfile =
+    quote.homeProfile ?? account.residentialProfile ?? null;
+  const facility = await ensureResidentialFacility({
+    accountId: account.id,
+    accountName: account.name,
+    createdByUserId: userId,
+    homeAddress: resolvedHomeAddress,
+    homeProfile: resolvedHomeProfile,
+  });
 
   if (quote.customerEmail || quote.customerPhone) {
     const primaryContact = await prisma.contact.findFirst({
@@ -1282,6 +1489,8 @@ export async function convertResidentialQuoteToContract(
 
   const contractNumber = await generateContractNumber();
   const startDate = input.startDate ?? quote.preferredStartDate ?? new Date();
+  const mappedFrequency = mapResidentialFrequencyToContractFrequency(quote.frequency);
+  const serviceSchedule = buildResidentialServiceSchedule(mappedFrequency, startDate);
   const contract = await prisma.contract.create({
     data: {
       contractNumber,
@@ -1289,8 +1498,10 @@ export async function convertResidentialQuoteToContract(
       status: 'draft',
       serviceCategory: 'residential',
       accountId: account.id,
+      facilityId: facility.id,
       startDate,
-      serviceFrequency: quote.frequency,
+      serviceFrequency: mappedFrequency,
+      serviceSchedule,
       monthlyValue: quote.totalAmount,
       totalValue: quote.totalAmount,
       billingCycle: 'monthly',

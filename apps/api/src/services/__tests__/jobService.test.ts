@@ -350,6 +350,64 @@ describe('jobService', () => {
     });
   });
 
+  it('generateJobsFromContract supports every_4_weeks recurring cadence', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: null,
+      serviceFrequency: 'every_4_weeks',
+      serviceSchedule: {
+        days: ['wednesday'],
+        allowedWindowStart: '08:00',
+        allowedWindowEnd: '17:00',
+      },
+      facility: { address: null },
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock)
+      .mockResolvedValueOnce({ jobNumber: `WO-${year}-0001` })
+      .mockResolvedValueOnce({ jobNumber: `WO-${year}-0002` });
+    (prisma.job.create as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'job-1',
+        jobNumber: `WO-${year}-0002`,
+        scheduledDate: new Date('2026-01-07T00:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({
+        id: 'job-2',
+        jobNumber: `WO-${year}-0003`,
+        scheduledDate: new Date('2026-02-04T00:00:00.000Z'),
+      });
+
+    const result = await generateJobsFromContract({
+      contractId: 'contract-1',
+      dateFrom: new Date('2026-01-07T00:00:00.000Z'),
+      dateTo: new Date('2026-02-04T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(result.created).toBe(2);
+    expect(prisma.job.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scheduledDate: new Date('2026-01-07T00:00:00.000Z'),
+        }),
+      })
+    );
+    expect(prisma.job.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scheduledDate: new Date('2026-02-04T00:00:00.000Z'),
+        }),
+      })
+    );
+  });
+
   it('generateJobsFromContract supports internal employee override assignment', async () => {
     const year = new Date().getFullYear();
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({

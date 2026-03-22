@@ -77,6 +77,8 @@ import { autoCreateInspectionTemplate } from '../services/inspectionTemplateServ
 import { tierToPercentage } from '../lib/subcontractorTiers';
 import {
   autoGenerateRecurringJobsForContract,
+  createJob,
+  generateJobsFromContract,
   regenerateRecurringJobsForContract,
 } from '../services/jobService';
 import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
@@ -695,6 +697,81 @@ router.patch(
           await autoCreateInspectionTemplate(contract.id, req.user!.id);
         } catch (templateError) {
           logger.error('Failed to auto-create inspection template:', templateError);
+        }
+
+        if (contract.serviceCategory === 'residential' && contract.facility?.id && req.user?.id) {
+          try {
+            const existingResidentialJob = await prisma.job.findFirst({
+              where: { contractId: contract.id },
+              select: { id: true },
+            });
+
+            if (!existingResidentialJob) {
+              if (contract.residentialServiceType === 'recurring_standard') {
+                const dateFrom = new Date(contract.startDate);
+                const dateTo = new Date(dateFrom);
+                dateTo.setUTCDate(dateTo.getUTCDate() + 29);
+
+                const generationResult = await generateJobsFromContract({
+                  contractId: contract.id,
+                  dateFrom,
+                  dateTo,
+                  assignedTeamId: contract.assignedTeam?.id ?? null,
+                  assignedToUserId: contract.assignedToUser?.id ?? null,
+                  createdByUserId: req.user.id,
+                });
+
+                await logContractActivity({
+                  contractId: contract.id,
+                  action: 'jobs_auto_generated',
+                  performedByUserId: req.user.id,
+                  metadata: {
+                    created: generationResult.created,
+                    source: 'residential_contract_activation',
+                  },
+                });
+              } else {
+                const firstJob = await createJob({
+                  contractId: contract.id,
+                  facilityId: contract.facility.id,
+                  accountId: contract.account.id,
+                  jobType: 'scheduled_service',
+                  jobCategory: 'one_time',
+                  assignedTeamId: contract.assignedTeam?.id ?? null,
+                  assignedToUserId: contract.assignedToUser?.id ?? null,
+                  scheduledDate: new Date(contract.startDate),
+                  estimatedHours:
+                    typeof contract.homeProfileSnapshot === 'object' &&
+                    contract.homeProfileSnapshot !== null &&
+                    'estimatedHours' in contract.homeProfileSnapshot &&
+                    typeof (contract.homeProfileSnapshot as Record<string, unknown>).estimatedHours === 'number'
+                      ? ((contract.homeProfileSnapshot as Record<string, unknown>).estimatedHours as number)
+                      : null,
+                  notes:
+                    typeof contract.specialInstructions === 'string' && contract.specialInstructions.trim()
+                      ? contract.specialInstructions
+                      : `Residential ${contract.residentialServiceType?.replace(/_/g, ' ') || 'service'} job`,
+                  createdByUserId: req.user.id,
+                });
+
+                await logContractActivity({
+                  contractId: contract.id,
+                  action: 'job_created',
+                  performedByUserId: req.user.id,
+                  metadata: {
+                    jobId: firstJob.id,
+                    jobNumber: firstJob.jobNumber,
+                    source: 'residential_contract_activation',
+                  },
+                });
+              }
+            }
+          } catch (residentialGenerationError) {
+            logger.error(
+              'Failed to create residential delivery setup on contract activation:',
+              residentialGenerationError
+            );
+          }
         }
       }
 

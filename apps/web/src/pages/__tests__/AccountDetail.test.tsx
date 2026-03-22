@@ -34,6 +34,7 @@ const listProposalsMock = vi.fn();
 const listContractsMock = vi.fn();
 const listContactsMock = vi.fn();
 const listJobsMock = vi.fn();
+const listResidentialQuotesMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   getAccount: (...args: unknown[]) => getAccountMock(...args),
@@ -69,6 +70,10 @@ vi.mock('../../lib/jobs', () => ({
   listJobs: (...args: unknown[]) => listJobsMock(...args),
 }));
 
+vi.mock('../../lib/residential', () => ({
+  listResidentialQuotes: (...args: unknown[]) => listResidentialQuotesMock(...args),
+}));
+
 vi.mock('react-hot-toast', () => ({
   default: {
     success: vi.fn(),
@@ -85,10 +90,12 @@ const account: Account = {
   billingEmail: 'billing@acme.com',
   billingPhone: '123-456-7890',
   billingAddress: null,
+  serviceAddress: null,
   qboCustomerId: null,
   taxId: null,
   paymentTerms: 'NET30',
   creditLimit: '10000',
+  residentialProfile: null,
   notes: 'Priority client',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -288,6 +295,7 @@ describe('AccountDetail', () => {
     listContractsMock.mockResolvedValue({ data: [contract], pagination: { page: 1, limit: 5, total: 1, totalPages: 1 } });
     listContactsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
     listJobsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
   });
 
   afterEach(() => {

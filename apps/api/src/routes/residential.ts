@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { ensureOwnershipAccess } from '../middleware/ownership';
 import { PERMISSIONS } from '../types';
 import { isEmailConfigured } from '../config/email';
 import { requireFrontendBaseUrl } from '../lib/appUrl';
@@ -214,7 +215,10 @@ router.get(
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
-      const result = await listResidentialQuotes(parsed.data);
+      const result = await listResidentialQuotes(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -246,7 +250,10 @@ router.get(
   requirePermission(PERMISSIONS.QUOTATIONS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const quote = await getResidentialQuoteById(req.params.id);
+      const quote = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       if (!quote) {
         throw new NotFoundError('Residential quote not found');
       }
@@ -267,6 +274,12 @@ router.post(
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'account',
+        resourceId: parsed.data.accountId,
+        path: req.path,
+        method: req.method,
+      });
       const quote = await createResidentialQuote(parsed.data, req.user!.id);
       res.status(201).json({ data: quote });
     } catch (error) {
@@ -281,13 +294,24 @@ router.patch(
   requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await getResidentialQuoteById(req.params.id);
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       if (!existing) {
         throw new NotFoundError('Residential quote not found');
       }
       const parsed = updateResidentialQuoteSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
+      }
+      if (parsed.data.accountId) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'account',
+          resourceId: parsed.data.accountId,
+          path: req.path,
+          method: req.method,
+        });
       }
       const quote = await updateResidentialQuote(req.params.id, parsed.data);
       res.json({ data: quote });
@@ -308,6 +332,13 @@ router.post(
         throw handleZodError(parsed.error);
       }
       const frontendBaseUrl = requireFrontendBaseUrl();
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
       const quote = await sendResidentialQuote(req.params.id);
       const token = await generateResidentialQuotePublicToken(quote.id);
       const publicUrl = `${frontendBaseUrl}/rq/${token}`;
@@ -353,6 +384,13 @@ router.post(
   requirePermission(PERMISSIONS.QUOTATIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
       const quote = await acceptResidentialQuote(req.params.id);
       res.json({ data: quote });
     } catch (error) {
@@ -370,6 +408,13 @@ router.post(
       const parsed = declineResidentialQuoteSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
         throw handleZodError(parsed.error);
+      }
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
       }
       const quote = await declineResidentialQuote(req.params.id, parsed.data);
       res.json({ data: quote });
@@ -389,6 +434,13 @@ router.post(
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
       const contract = await convertResidentialQuoteToContract(req.params.id, parsed.data, req.user!.id);
       res.json({ data: contract });
     } catch (error) {
@@ -403,6 +455,13 @@ router.post(
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
       const quote = await archiveResidentialQuote(req.params.id);
       res.json({ data: quote });
     } catch (error) {
@@ -417,6 +476,13 @@ router.post(
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential quote not found');
+      }
       const quote = await restoreResidentialQuote(req.params.id);
       res.json({ data: quote });
     } catch (error) {

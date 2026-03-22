@@ -34,6 +34,26 @@ export const addressSchema = z
   .optional()
   .nullable();
 
+export const residentialAccountProfileSchema = z
+  .object({
+    homeType: z.enum(['apartment', 'condo', 'townhouse', 'single_family']).optional().nullable(),
+    squareFeet: z.coerce.number().int().positive().optional().nullable(),
+    bedrooms: z.coerce.number().int().min(0).optional().nullable(),
+    fullBathrooms: z.coerce.number().int().min(0).optional().nullable(),
+    halfBathrooms: z.coerce.number().int().min(0).optional().nullable(),
+    levels: z.coerce.number().int().min(1).optional().nullable(),
+    occupiedStatus: z.enum(['occupied', 'vacant', 'move_in', 'move_out']).optional().nullable(),
+    condition: z.enum(['light', 'standard', 'heavy']).optional().nullable(),
+    hasPets: z.boolean().optional().nullable(),
+    lastProfessionalCleaning: z.string().max(100).optional().nullable(),
+    parkingAccess: z.string().max(255).optional().nullable(),
+    entryNotes: z.string().max(1000).optional().nullable(),
+    specialInstructions: z.string().max(2000).optional().nullable(),
+    isFirstVisit: z.boolean().optional().nullable(),
+  })
+  .optional()
+  .nullable();
+
 export const createAccountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   type: accountTypeSchema,
@@ -42,10 +62,12 @@ export const createAccountSchema = z.object({
   billingEmail: emailSchema,
   billingPhone: phoneSchema,
   billingAddress: addressSchema,
+  serviceAddress: addressSchema,
   taxId: z.string().max(50).optional().nullable(),
   paymentTerms: z.string().max(50).optional().default('NET30'),
   creditLimit: z.coerce.number().min(0).optional().nullable(),
   accountManagerId: z.string().uuid().optional().nullable(),
+  residentialProfile: residentialAccountProfileSchema,
   notes: z.string().max(10000).optional().nullable(),
 });
 
@@ -57,10 +79,12 @@ export const updateAccountSchema = z.object({
   billingEmail: emailSchema,
   billingPhone: phoneSchema,
   billingAddress: addressSchema,
+  serviceAddress: addressSchema,
   taxId: z.string().max(50).optional().nullable(),
   paymentTerms: z.string().max(50).optional(),
   creditLimit: z.coerce.number().min(0).optional().nullable(),
   accountManagerId: z.string().uuid().optional().nullable(),
+  residentialProfile: residentialAccountProfileSchema,
   notes: z.string().max(10000).optional().nullable(),
 });
 

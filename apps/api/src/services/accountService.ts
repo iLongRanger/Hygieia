@@ -35,10 +35,12 @@ export interface AccountCreateInput {
   billingEmail?: string | null;
   billingPhone?: string | null;
   billingAddress?: Record<string, unknown> | null;
+  serviceAddress?: Record<string, unknown> | null;
   taxId?: string | null;
   paymentTerms?: string;
   creditLimit?: number | null;
   accountManagerId?: string | null;
+  residentialProfile?: Record<string, unknown> | null;
   notes?: string | null;
   createdByUserId: string;
 }
@@ -51,10 +53,12 @@ export interface AccountUpdateInput {
   billingEmail?: string | null;
   billingPhone?: string | null;
   billingAddress?: Record<string, unknown> | null;
+  serviceAddress?: Record<string, unknown> | null;
   taxId?: string | null;
   paymentTerms?: string;
   creditLimit?: number | null;
   accountManagerId?: string | null;
+  residentialProfile?: Record<string, unknown> | null;
   notes?: string | null;
 }
 
@@ -77,10 +81,12 @@ const accountSelect = {
   billingEmail: true,
   billingPhone: true,
   billingAddress: true,
+  serviceAddress: true,
   qboCustomerId: true,
   taxId: true,
   paymentTerms: true,
   creditLimit: true,
+  residentialProfile: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
@@ -268,10 +274,12 @@ export async function createAccount(input: AccountCreateInput) {
       billingEmail: normalizedBillingEmail || null,
       billingPhone: input.billingPhone,
       billingAddress: input.billingAddress as Prisma.InputJsonValue,
+      serviceAddress: input.serviceAddress as Prisma.InputJsonValue,
       taxId: input.taxId,
       paymentTerms: input.paymentTerms ?? 'NET30',
       creditLimit: input.creditLimit,
       accountManagerId: input.accountManagerId,
+      residentialProfile: input.residentialProfile as Prisma.InputJsonValue,
       notes: input.notes,
       createdByUserId: input.createdByUserId,
     },
@@ -343,6 +351,9 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
   if (input.billingAddress !== undefined) {
     updateData.billingAddress = input.billingAddress as Prisma.InputJsonValue;
   }
+  if (input.serviceAddress !== undefined) {
+    updateData.serviceAddress = input.serviceAddress as Prisma.InputJsonValue;
+  }
   if (input.taxId !== undefined) updateData.taxId = input.taxId;
   if (input.paymentTerms !== undefined)
     updateData.paymentTerms = input.paymentTerms;
@@ -352,6 +363,9 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
     updateData.accountManager = input.accountManagerId
       ? { connect: { id: input.accountManagerId } }
       : { disconnect: true };
+  }
+  if (input.residentialProfile !== undefined) {
+    updateData.residentialProfile = input.residentialProfile as Prisma.InputJsonValue;
   }
   if (input.notes !== undefined) updateData.notes = input.notes;
 

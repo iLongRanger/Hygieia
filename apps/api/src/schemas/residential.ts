@@ -375,6 +375,7 @@ export const residentialQuotePreviewSchema = createResidentialQuoteSchema.omit({
 export const listResidentialQuotesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  accountId: z.string().uuid().optional(),
   status: residentialQuoteStatusSchema.optional(),
   includeArchived: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   search: z.string().max(100).optional(),

@@ -6,6 +6,23 @@ export interface Address {
   country?: string;
 }
 
+export interface ResidentialAccountProfile {
+  homeType?: 'apartment' | 'condo' | 'townhouse' | 'single_family' | null;
+  squareFeet?: number | null;
+  bedrooms?: number | null;
+  fullBathrooms?: number | null;
+  halfBathrooms?: number | null;
+  levels?: number | null;
+  occupiedStatus?: 'occupied' | 'vacant' | 'move_in' | 'move_out' | null;
+  condition?: 'light' | 'standard' | 'heavy' | null;
+  hasPets?: boolean | null;
+  lastProfessionalCleaning?: string | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  specialInstructions?: string | null;
+  isFirstVisit?: boolean | null;
+}
+
 export interface LeadSource {
   id: string;
   name: string;
@@ -229,10 +246,12 @@ export interface Account {
   billingEmail: string | null;
   billingPhone: string | null;
   billingAddress: Address | null;
+  serviceAddress?: Address | null;
   qboCustomerId: string | null;
   taxId: string | null;
   paymentTerms: string;
   creditLimit: string | null;
+  residentialProfile?: ResidentialAccountProfile | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -280,11 +299,13 @@ export interface CreateAccountInput {
   billingEmail?: string | null;
   billingPhone?: string | null;
   billingAddress?: Address | null;
+  serviceAddress?: Address | null;
   qboCustomerId?: string | null;
   taxId?: string | null;
   paymentTerms?: string;
   creditLimit?: number | null;
   accountManagerId?: string | null;
+  residentialProfile?: ResidentialAccountProfile | null;
   notes?: string | null;
 }
 
@@ -296,11 +317,13 @@ export interface UpdateAccountInput {
   billingEmail?: string | null;
   billingPhone?: string | null;
   billingAddress?: Address | null;
+  serviceAddress?: Address | null;
   qboCustomerId?: string | null;
   taxId?: string | null;
   paymentTerms?: string;
   creditLimit?: number | null;
   accountManagerId?: string | null;
+  residentialProfile?: ResidentialAccountProfile | null;
   notes?: string | null;
 }
 

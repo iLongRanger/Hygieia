@@ -119,6 +119,47 @@ const DEFAULT_FORM: ResidentialQuoteFormInput = {
   notes: '',
 };
 
+function normalizeResidentialHomeProfile(
+  profile:
+    | {
+        homeType?: ResidentialHomeType | null;
+        squareFeet?: number | null;
+        bedrooms?: number | null;
+        fullBathrooms?: number | null;
+        halfBathrooms?: number | null;
+        levels?: number | null;
+        occupiedStatus?: ResidentialQuoteFormInput['homeProfile']['occupiedStatus'] | null;
+        condition?: ResidentialQuoteFormInput['homeProfile']['condition'] | null;
+        hasPets?: boolean | null;
+        lastProfessionalCleaning?: string | null;
+        parkingAccess?: string | null;
+        entryNotes?: string | null;
+        specialInstructions?: string | null;
+        isFirstVisit?: boolean | null;
+      }
+    | null
+    | undefined
+) {
+  return {
+    ...DEFAULT_FORM.homeProfile,
+    ...profile,
+    homeType: profile?.homeType ?? DEFAULT_FORM.homeProfile.homeType,
+    squareFeet: profile?.squareFeet ?? DEFAULT_FORM.homeProfile.squareFeet,
+    bedrooms: profile?.bedrooms ?? DEFAULT_FORM.homeProfile.bedrooms,
+    fullBathrooms: profile?.fullBathrooms ?? DEFAULT_FORM.homeProfile.fullBathrooms,
+    halfBathrooms: profile?.halfBathrooms ?? DEFAULT_FORM.homeProfile.halfBathrooms,
+    levels: profile?.levels ?? DEFAULT_FORM.homeProfile.levels,
+    occupiedStatus: profile?.occupiedStatus ?? DEFAULT_FORM.homeProfile.occupiedStatus,
+    condition: profile?.condition ?? DEFAULT_FORM.homeProfile.condition,
+    hasPets: profile?.hasPets ?? DEFAULT_FORM.homeProfile.hasPets,
+    isFirstVisit: profile?.isFirstVisit ?? DEFAULT_FORM.homeProfile.isFirstVisit,
+    lastProfessionalCleaning: profile?.lastProfessionalCleaning ?? DEFAULT_FORM.homeProfile.lastProfessionalCleaning,
+    parkingAccess: profile?.parkingAccess ?? DEFAULT_FORM.homeProfile.parkingAccess,
+    entryNotes: profile?.entryNotes ?? DEFAULT_FORM.homeProfile.entryNotes,
+    specialInstructions: profile?.specialInstructions ?? DEFAULT_FORM.homeProfile.specialInstructions,
+  };
+}
+
 function formatCurrency(amount: number | string) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -225,7 +266,10 @@ const ResidentialQuotesPage = () => {
       customerName: selectedAccount.name,
       customerEmail: selectedAccount.billingEmail ?? '',
       customerPhone: selectedAccount.billingPhone ?? '',
-      homeAddress: selectedAccount.billingAddress ?? current.homeAddress,
+      homeAddress: selectedAccount.serviceAddress ?? selectedAccount.billingAddress ?? current.homeAddress,
+      homeProfile: selectedAccount.residentialProfile
+        ? normalizeResidentialHomeProfile(selectedAccount.residentialProfile)
+        : current.homeProfile,
     }));
   }, [selectedAccount]);
 
@@ -273,7 +317,10 @@ const ResidentialQuotesPage = () => {
       customerName: defaultAccount?.name ?? '',
       customerEmail: defaultAccount?.billingEmail ?? '',
       customerPhone: defaultAccount?.billingPhone ?? '',
-      homeAddress: defaultAccount?.billingAddress ?? DEFAULT_FORM.homeAddress,
+      homeAddress: defaultAccount?.serviceAddress ?? defaultAccount?.billingAddress ?? DEFAULT_FORM.homeAddress,
+      homeProfile: defaultAccount?.residentialProfile
+        ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
+        : DEFAULT_FORM.homeProfile,
       pricingPlanId: defaultPlan?.id ?? '',
     });
     setPreview(null);

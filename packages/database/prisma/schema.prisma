@@ -313,11 +313,13 @@ model Account {
   billingEmail     String?   @map("billing_email") @db.VarChar(255)
   billingPhone     String?   @map("billing_phone") @db.VarChar(20)
   billingAddress   Json?     @map("billing_address") @db.JsonB
+  serviceAddress   Json?     @map("service_address") @db.JsonB
   qboCustomerId    String?   @map("qbo_customer_id") @db.VarChar(50)
   taxId            String?   @map("tax_id") @db.VarChar(50)
   paymentTerms     String    @default("NET30") @map("payment_terms") @db.VarChar(50)
   creditLimit      Decimal?  @map("credit_limit") @db.Decimal(12, 2)
   accountManagerId String?   @map("account_manager_id") @db.Uuid
+  residentialProfile Json?   @map("residential_profile") @db.JsonB
   notes            String?   @db.Text
   createdByUserId  String    @map("created_by_user_id") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -706,7 +708,7 @@ model ResidentialQuote {
   quoteNumber          String    @unique @map("quote_number") @db.VarChar(50)
   title                String    @db.VarChar(255)
   status               String    @default("draft") @db.VarChar(20)
-  accountId             String?   @map("account_id") @db.Uuid
+  accountId             String    @map("account_id") @db.Uuid
   serviceType          String    @map("service_type") @db.VarChar(40)
   frequency            String    @db.VarChar(30)
   customerName         String    @map("customer_name") @db.VarChar(255)
@@ -745,7 +747,7 @@ model ResidentialQuote {
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  account       Account?                  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  account       Account                   @relation(fields: [accountId], references: [id])
   pricingPlan   ResidentialPricingPlan?   @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
   createdByUser User                      @relation("CreatedResidentialQuotes", fields: [createdByUserId], references: [id])
   addOns        ResidentialQuoteAddOn[]

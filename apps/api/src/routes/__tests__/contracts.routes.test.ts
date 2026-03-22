@@ -87,6 +87,8 @@ jest.mock('../../services/notificationService', () => ({
 
 jest.mock('../../services/jobService', () => ({
   autoGenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0 }),
+  createJob: jest.fn().mockResolvedValue({ id: 'job-1', jobNumber: 'WO-2026-0001' }),
+  generateJobsFromContract: jest.fn().mockResolvedValue({ created: 0, jobs: [] }),
   regenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0, canceled: 0 }),
 }));
 
@@ -151,6 +153,7 @@ jest.mock('../../services/proposalService', () => ({
 jest.mock('../../lib/prisma', () => ({
   prisma: {
     contract: { findUnique: jest.fn().mockResolvedValue(null) },
+    job: { findFirst: jest.fn().mockResolvedValue(null) },
     area: { findMany: jest.fn().mockResolvedValue([]) },
     user: { findUnique: jest.fn().mockResolvedValue(null) },
     account: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -977,6 +980,88 @@ describe('Contract Routes', () => {
           amendmentNumber: 1,
           status: 'submitted',
         }),
+      })
+    );
+  });
+
+  it('PATCH /:id/status should generate recurring residential jobs on activation', async () => {
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Weekly Home Cleaning',
+      account: { id: 'account-1', name: 'Jane Doe Residence' },
+      facility: { id: 'facility-1', name: 'Jane Doe Residence' },
+      monthlyValue: '480',
+      startDate: '2026-02-01',
+      assignedTeam: null,
+      assignedToUser: null,
+      serviceCategory: 'residential',
+      residentialServiceType: 'recurring_standard',
+    });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      createdByUserId: 'user-1',
+      createdByUser: { email: 'owner@example.com' },
+      account: {
+        accountManagerId: null,
+        accountManager: null,
+      },
+    });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(jobService.generateJobsFromContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+        createdByUserId: 'user-1',
+      })
+    );
+    expect(jobService.createJob).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id/status should create one-time residential job on activation', async () => {
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Move Out Clean',
+      account: { id: 'account-1', name: 'Jane Doe Residence' },
+      facility: { id: 'facility-1', name: 'Jane Doe Residence' },
+      monthlyValue: '480',
+      startDate: '2026-02-01',
+      assignedTeam: null,
+      assignedToUser: null,
+      specialInstructions: 'Focus on kitchen and bathrooms',
+      serviceCategory: 'residential',
+      residentialServiceType: 'move_in_out',
+      homeProfileSnapshot: {},
+    });
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      createdByUserId: 'user-1',
+      createdByUser: { email: 'owner@example.com' },
+      account: {
+        accountManagerId: null,
+        accountManager: null,
+      },
+    });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(jobService.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        createdByUserId: 'user-1',
+        jobCategory: 'one_time',
       })
     );
   });
