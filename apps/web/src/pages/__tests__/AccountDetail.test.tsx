@@ -417,4 +417,116 @@ describe('AccountDetail', () => {
     await userEventInstance.click(friday);
     expect(sunday.disabled).toBe(false);
   });
+
+  it('shows the residential journey state for residential accounts', async () => {
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-1',
+      name: 'Jane Doe Residence',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '123 Pine St',
+        city: 'Vancouver',
+        state: 'BC',
+        postalCode: 'V6B 1A1',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 1800,
+        bedrooms: 3,
+        fullBathrooms: 2,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: true,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Driveway',
+        entryNotes: 'Keypad on side door',
+        specialInstructions: null,
+        isFirstVisit: true,
+      },
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listContractsMock
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'rq-1',
+          quoteNumber: 'RQ-20260321-0001',
+          title: 'Biweekly Home Cleaning',
+          status: 'accepted',
+          accountId: 'account-res-1',
+          serviceType: 'recurring_standard',
+          frequency: 'biweekly',
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          customerPhone: '1234567890',
+          homeAddress: residentialAccount.serviceAddress,
+          homeProfile: residentialAccount.residentialProfile!,
+          pricingPlan: null,
+          subtotal: 240,
+          addOnTotal: 0,
+          recurringDiscount: 0,
+          firstCleanSurcharge: 0,
+          totalAmount: 240,
+          estimatedHours: 4,
+          confidenceLevel: 'high',
+          manualReviewRequired: false,
+          manualReviewReasons: [],
+          preferredStartDate: null,
+          notes: null,
+          sentAt: null,
+          viewedAt: null,
+          acceptedAt: new Date().toISOString(),
+          declinedAt: null,
+          declineReason: null,
+          convertedAt: null,
+          convertedContractId: null,
+          signatureName: null,
+          signatureDate: null,
+          publicToken: null,
+          publicTokenExpiresAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+          account: {
+            id: 'account-res-1',
+            name: 'Jane Doe Residence',
+            type: 'residential',
+            billingEmail: 'jane@example.com',
+            billingPhone: '1234567890',
+            billingAddress: null,
+            serviceAddress: residentialAccount.serviceAddress,
+            residentialProfile: residentialAccount.residentialProfile,
+          },
+          addOns: [],
+          createdByUser: {
+            id: 'owner-1',
+            fullName: 'Owner User',
+            email: 'owner@example.com',
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+
+    render(<AccountDetail />);
+
+    expect(await screen.findByRole('heading', { name: 'Jane Doe Residence' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /residential journey/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Quote Accepted').length).toBeGreaterThan(0);
+    expect(screen.getByText(/convert the accepted quote into a residential contract/i)).toBeInTheDocument();
+  });
 });

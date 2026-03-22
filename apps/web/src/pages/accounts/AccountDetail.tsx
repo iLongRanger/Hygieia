@@ -43,6 +43,69 @@ import { AccountHistory } from './AccountHistory';
 import { EditAccountModal } from './modals/EditAccountModal';
 import { AddFacilityModal } from './modals/AddFacilityModal';
 
+function getResidentialJourneyState(input: {
+  residentialQuotes: ResidentialQuote[];
+  activeContract: Contract | null;
+  recentJobs: Job[];
+}) {
+  const latestQuote = [...input.residentialQuotes].sort((left, right) => {
+    const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
+    const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
+    return rightTime - leftTime;
+  })[0];
+
+  const hasScheduledService = input.recentJobs.length > 0;
+
+  if (hasScheduledService) {
+    return {
+      currentStage: 'Scheduled Service',
+      nextStep: 'Review the generated jobs and confirm the first visit is assigned correctly.',
+    };
+  }
+
+  if (input.activeContract) {
+    return {
+      currentStage: 'Active Contract',
+      nextStep: 'Activate delivery by assigning the first visit or confirming auto-generated work.',
+    };
+  }
+
+  switch (latestQuote?.status) {
+    case 'converted':
+      return {
+        currentStage: 'Contract Ready',
+        nextStep: 'Open the linked contract and activate service.',
+      };
+    case 'accepted':
+      return {
+        currentStage: 'Quote Accepted',
+        nextStep: 'Convert the accepted quote into a residential contract.',
+      };
+    case 'sent':
+    case 'viewed':
+      return {
+        currentStage: 'Quote Sent',
+        nextStep: 'Follow up with the client or resend the quote if needed.',
+      };
+    case 'declined':
+      return {
+        currentStage: 'Quote Declined',
+        nextStep: 'Revise the residential quote or close the opportunity.',
+      };
+    case 'draft':
+    case 'quoted':
+      return {
+        currentStage: 'Quote Draft',
+        nextStep: 'Finish pricing details and send the residential quote to the client.',
+      };
+    default:
+      return {
+        currentStage: 'Account Created',
+        nextStep: 'Create the first residential quote for this household.',
+      };
+  }
+}
+
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -372,6 +435,11 @@ const AccountDetail = () => {
   }
 
   const isResidentialAccount = account.type === 'residential';
+  const residentialJourney = getResidentialJourneyState({
+    residentialQuotes,
+    activeContract,
+    recentJobs,
+  });
 
   return (
     <div className="space-y-6">
@@ -451,6 +519,48 @@ const AccountDetail = () => {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Journey</h3>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    Track where this household is in the residential sales-to-service flow.
+                  </p>
+                </div>
+                <Badge variant={activeContract ? 'success' : residentialQuotes.length > 0 ? 'warning' : 'info'}>
+                  {residentialJourney.currentStage}
+                </Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialJourney.currentStage}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
+                  <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
+                    {residentialJourney.nextStep}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate('/residential/quotes')}>
+                  Open Residential Quotes
+                </Button>
+                {activeContract ? (
+                  <Button size="sm" onClick={() => navigate(`/contracts/${activeContract.id}`)}>
+                    Open Active Contract
+                  </Button>
+                ) : null}
+                {!activeContract && recentJobs.length > 0 ? (
+                  <Button size="sm" onClick={() => navigate('/jobs')}>
+                    View Jobs
+                  </Button>
+                ) : null}
+              </div>
+            </Card>
             <Card className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
