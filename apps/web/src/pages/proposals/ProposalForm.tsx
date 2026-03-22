@@ -1119,7 +1119,7 @@ const ProposalForm = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Loading...</div>
+        <div className="text-surface-500 dark:text-surface-400">Loading...</div>
       </div>
     );
   }
@@ -1140,7 +1140,7 @@ const ProposalForm = () => {
             <h1 className="text-xl font-bold text-white sm:text-3xl">
               {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Edit Proposal') : 'New Proposal'}
             </h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-surface-500 dark:text-surface-400 mt-1">
               {isEditMode
                 ? (isRejectedRevision
                   ? 'Revise the rejected proposal and reopen it as a draft'
@@ -1219,7 +1219,7 @@ const ProposalForm = () => {
                   }))}
                 />
                 {selectedPricingPlan && (
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                     Type: {selectedPricingPlan.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
                   </p>
                 )}
@@ -1271,7 +1271,7 @@ const ProposalForm = () => {
               {/* Auto-populate from facility */}
               {formData.facilityId && (
                 <div className="md:col-span-2 mt-2">
-                  <div className="bg-navy-dark/50 rounded-xl border border-white/10 p-4">
+                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-gold" />
@@ -1303,7 +1303,7 @@ const ProposalForm = () => {
                             onChange={(value) => setSelectedSubcontractorTier(value)}
                             options={SUBCONTRACTOR_TIERS}
                           />
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                             {SUBCONTRACTOR_TIERS.find((t) => t.value === selectedSubcontractorTier)?.description}
                           </p>
                         </div>
@@ -1319,7 +1319,7 @@ const ProposalForm = () => {
                         </Button>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
                         Complete the facility's area setup to enable automatic pricing calculation.
                         Areas need square footage and floor type information.
                       </p>
@@ -1347,7 +1347,7 @@ const ProposalForm = () => {
 
               {formData.facilityId && (
                 <div className="md:col-span-2">
-                  <div className="bg-navy-dark/50 rounded-xl border border-white/10 p-4">
+                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
                         <ClipboardCheck className="w-5 h-5 text-gold" />
@@ -1364,16 +1364,16 @@ const ProposalForm = () => {
                     </div>
 
                     {loadingFacilityReview ? (
-                      <p className="text-sm text-gray-400">Checking areas and tasks...</p>
+                      <p className="text-sm text-surface-500 dark:text-surface-400">Checking areas and tasks...</p>
                     ) : (
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center justify-between rounded-lg bg-surface-50/5 px-3 py-2">
-                            <span className="text-gray-300">Areas</span>
+                          <div className="flex items-center justify-between rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
+                            <span className="text-surface-600 dark:text-surface-400">Areas</span>
                             <span className="text-white font-medium">{facilityReview.activeAreas.length}</span>
                           </div>
-                          <div className="flex items-center justify-between rounded-lg bg-surface-50/5 px-3 py-2">
-                            <span className="text-gray-300">Tasks</span>
+                          <div className="flex items-center justify-between rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
+                            <span className="text-surface-600 dark:text-surface-400">Tasks</span>
                             <span className="text-white font-medium">{facilityReview.activeTasks.length}</span>
                           </div>
                         </div>
@@ -1469,14 +1469,14 @@ const ProposalForm = () => {
             </div>
 
             {(formData.proposalItems || []).length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-surface-500 dark:text-surface-400">
                 <p>No line items added yet.</p>
                 <p className="text-sm mt-1">Click "Add Item" to add line items to this proposal.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Table Header */}
-                <div className="hidden md:grid md:grid-cols-12 gap-2 text-xs font-medium text-gray-400 uppercase px-2">
+                <div className="hidden md:grid md:grid-cols-12 gap-2 text-xs font-medium text-surface-500 dark:text-surface-400 uppercase px-2">
                   <div className="col-span-2">Type</div>
                   <div className="col-span-4">Description</div>
                   <div className="col-span-1 text-right">Qty</div>
@@ -1489,7 +1489,7 @@ const ProposalForm = () => {
                 {(formData.proposalItems || []).map((item, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-navy-dark/30 p-3 rounded-xl border border-white/5"
+                    className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-surface-100 dark:bg-surface-800/30 p-3 rounded-xl border border-surface-200 dark:border-surface-700"
                   >
                     <div className="md:col-span-2">
                       <Select
@@ -1527,7 +1527,7 @@ const ProposalForm = () => {
                       />
                     </div>
                     <div className="md:col-span-2 flex items-center justify-end">
-                      <span className="text-xs text-gray-400 mr-2 md:hidden">Total:</span>
+                      <span className="text-xs text-surface-500 dark:text-surface-400 mr-2 md:hidden">Total:</span>
                       <span className="text-white font-medium">
                         {formatCurrency(item.totalPrice)}
                       </span>
@@ -1547,9 +1547,9 @@ const ProposalForm = () => {
                 ))}
 
                 {/* Items Subtotal */}
-                <div className="flex justify-end pt-2 border-t border-white/10">
+                <div className="flex justify-end pt-2 border-t border-surface-200 dark:border-surface-700">
                   <div className="text-right">
-                    <span className="text-gray-400 text-sm mr-4">Items Subtotal:</span>
+                    <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Items Subtotal:</span>
                     <span className="text-white font-semibold">
                       {formatCurrency(totals.itemsTotal)}
                     </span>
@@ -1573,7 +1573,7 @@ const ProposalForm = () => {
             </div>
 
             {(formData.proposalServices || []).length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-surface-500 dark:text-surface-400">
                 <p>No services added yet.</p>
                 <p className="text-sm mt-1">Click "Add Service" to add recurring services to this proposal.</p>
               </div>
@@ -1588,7 +1588,7 @@ const ProposalForm = () => {
                   return (
                     <div
                       key={index}
-                      className="bg-navy-dark/30 rounded-xl border border-white/5 overflow-hidden"
+                      className="bg-surface-100 dark:bg-surface-800/30 rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden"
                     >
                       {/* Summary Row */}
                       <div
@@ -1596,11 +1596,11 @@ const ProposalForm = () => {
                         onClick={() => toggleServiceExpand(index)}
                       >
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                          <ChevronDown className="w-4 h-4 text-surface-500 dark:text-surface-400 shrink-0" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400 shrink-0" />
                         )}
-                        <span className={`font-medium truncate ${service.serviceName ? 'text-white' : 'text-gray-500 italic'}`}>
+                        <span className={`font-medium truncate ${service.serviceName ? 'text-white' : 'text-surface-500 italic'}`}>
                           {service.serviceName || 'Untitled Service'}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1626,7 +1626,7 @@ const ProposalForm = () => {
 
                       {/* Expanded Detail Panel */}
                       {isExpanded && (
-                        <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-3">
+                        <div className="px-4 pb-4 pt-1 border-t border-surface-200 dark:border-surface-700 space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <Input
                               label="Service Name"
@@ -1683,13 +1683,13 @@ const ProposalForm = () => {
                             />
                           </div>
                           {(parsedDescription.areaSummary || parsedDescription.groups.length > 0) && (
-                            <div className="rounded-lg border border-white/10 bg-surface-50/[0.03] p-4">
+                            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.03] p-4">
                               <div className="mb-2 flex items-center justify-between gap-2">
                                 <div className="text-sm font-medium text-white">Service Scope</div>
-                                <div className="text-xs text-gray-400">Generated from facility scope and tasks</div>
+                                <div className="text-xs text-surface-500 dark:text-surface-400">Generated from facility scope and tasks</div>
                               </div>
                               {parsedDescription.areaSummary && (
-                                <div className="mb-3 text-sm text-gray-300">
+                                <div className="mb-3 text-sm text-surface-600 dark:text-surface-400">
                                   {parsedDescription.areaSummary}
                                 </div>
                               )}
@@ -1700,7 +1700,7 @@ const ProposalForm = () => {
                                       <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
                                         {group.label}
                                       </div>
-                                      <ul className="list-disc space-y-1 pl-5 text-sm text-gray-200">
+                                      <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
                                         {group.tasks.map((task) => (
                                           <li key={`${service.id || index}-${group.label}-${task}`}>{task}</li>
                                         ))}
@@ -1709,7 +1709,7 @@ const ProposalForm = () => {
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-sm text-gray-400">
+                                <div className="text-sm text-surface-500 dark:text-surface-400">
                                   Scope summary only.
                                 </div>
                               )}
@@ -1722,9 +1722,9 @@ const ProposalForm = () => {
                 })}
 
                 {/* Services Subtotal */}
-                <div className="flex justify-end pt-2 border-t border-white/10">
+                <div className="flex justify-end pt-2 border-t border-surface-200 dark:border-surface-700">
                   <div className="text-right">
-                    <span className="text-gray-400 text-sm mr-4">Services Subtotal:</span>
+                    <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Services Subtotal:</span>
                     <span className="text-white font-semibold">
                       {formatCurrency(totals.servicesTotal)}
                     </span>
@@ -1733,7 +1733,7 @@ const ProposalForm = () => {
                 {totals.oneTimeServicesTotal > 0 && (
                   <div className="flex justify-end pt-2">
                     <div className="text-right">
-                      <span className="text-gray-400 text-sm mr-4">One-Time Services:</span>
+                      <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">One-Time Services:</span>
                       <span className="text-white font-semibold">
                         {formatCurrency(totals.oneTimeServicesTotal)}
                       </span>
@@ -1770,39 +1770,39 @@ const ProposalForm = () => {
 
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Items Total:</span>
+                <span className="text-surface-500 dark:text-surface-400">Items Total:</span>
                 <span className="text-white">{formatCurrency(totals.itemsTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Services Total:</span>
+                <span className="text-surface-500 dark:text-surface-400">Services Total:</span>
                 <span className="text-white">{formatCurrency(totals.servicesTotal)}</span>
               </div>
               {totals.oneTimeChargesTotal > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">One-Time Charges:</span>
+                  <span className="text-surface-500 dark:text-surface-400">One-Time Charges:</span>
                   <span className="text-white">{formatCurrency(totals.oneTimeChargesTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Recurring Monthly:</span>
+                <span className="text-surface-500 dark:text-surface-400">Recurring Monthly:</span>
                 <span className="text-white">{formatCurrency(totals.monthlyTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Daily (by frequency):</span>
+                <span className="text-surface-500 dark:text-surface-400">Daily (by frequency):</span>
                 <span className="text-white">{formatCurrency(totals.dailyTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Annual (recurring):</span>
+                <span className="text-surface-500 dark:text-surface-400">Annual (recurring):</span>
                 <span className="text-white">{formatCurrency(totals.annualTotal)}</span>
               </div>
-              <div className="flex justify-between text-sm border-t border-white/10 pt-3">
-                <span className="text-gray-400">Subtotal:</span>
+              <div className="flex justify-between text-sm border-t border-surface-200 dark:border-surface-700 pt-3">
+                <span className="text-surface-500 dark:text-surface-400">Subtotal:</span>
                 <span className="text-white font-medium">{formatCurrency(totals.subtotal)}</span>
               </div>
 
               {/* Tax Rate Input */}
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-400 text-sm">Tax Rate:</span>
+                <span className="text-surface-500 dark:text-surface-400 text-sm">Tax Rate:</span>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -1817,12 +1817,12 @@ const ProposalForm = () => {
                     }}
                     className="w-20 text-right"
                   />
-                  <span className="text-gray-400">%</span>
+                  <span className="text-surface-500 dark:text-surface-400">%</span>
                 </div>
               </div>
 
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Tax Amount:</span>
+                <span className="text-surface-500 dark:text-surface-400">Tax Amount:</span>
                 <span className="text-white">{formatCurrency(totals.taxAmount)}</span>
               </div>
               {!hasRequiredTaxRate && (
@@ -1831,20 +1831,20 @@ const ProposalForm = () => {
                 </div>
               )}
 
-              <div className="flex justify-between text-xl font-bold border-t border-white/10 pt-3 mt-3">
+              <div className="flex justify-between text-xl font-bold border-t border-surface-200 dark:border-surface-700 pt-3 mt-3">
                 <span className="text-white">Total:</span>
                 <span className="text-emerald">{formatCurrency(totals.totalAmount)}</span>
               </div>
             </div>
 
             {/* Quick Info */}
-            <div className="mt-6 pt-4 border-t border-white/10 space-y-2 text-sm">
+            <div className="mt-6 pt-4 border-t border-surface-200 dark:border-surface-700 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Line Items:</span>
+                <span className="text-surface-500 dark:text-surface-400">Line Items:</span>
                 <span className="text-white">{(formData.proposalItems || []).length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Services:</span>
+                <span className="text-surface-500 dark:text-surface-400">Services:</span>
                 <span className="text-white">{(formData.proposalServices || []).length}</span>
               </div>
             </div>

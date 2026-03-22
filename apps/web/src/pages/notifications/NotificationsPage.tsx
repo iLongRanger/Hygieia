@@ -259,7 +259,7 @@ const NotificationsPage = () => {
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`flex items-start gap-4 px-4 py-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/50 cursor-pointer ${
+                className={`flex items-start gap-4 px-4 py-3 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800/50 cursor-pointer ${
                   !notification.readAt ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''
                 }`}
                 onClick={() => handleNotificationClick(notification)}

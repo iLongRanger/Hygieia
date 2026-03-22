@@ -138,7 +138,7 @@ export function FacilityServiceScheduleFields({
   };
 
   return (
-    <div className="rounded-lg border border-white/10 bg-navy-darker/20 p-4 space-y-3">
+    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/20 p-4 space-y-3">
       <div className="text-sm font-medium text-white">Client Service Schedule</div>
       <Select
         label="Service Frequency"
@@ -166,9 +166,9 @@ export function FacilityServiceScheduleFields({
         />
       </div>
       <div>
-        <div className="mb-2 flex items-center justify-between gap-3 text-sm text-gray-300">
+        <div className="mb-2 flex items-center justify-between gap-3 text-sm text-surface-600 dark:text-surface-400">
           <span>Service Days</span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-surface-500 dark:text-surface-400">
             Select {requiredDays} day{requiredDays === 1 ? '' : 's'}
           </span>
         </div>
@@ -183,8 +183,8 @@ export function FacilityServiceScheduleFields({
                   checked
                     ? 'border-emerald bg-emerald/10 text-white'
                     : disabled
-                      ? 'border-white/5 text-gray-600 cursor-not-allowed'
-                      : 'border-white/10 text-gray-400 cursor-pointer'
+                      ? 'border-surface-200 dark:border-surface-700 text-surface-600 cursor-not-allowed'
+                      : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 cursor-pointer'
                 }`}
               >
                 <input

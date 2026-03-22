@@ -330,7 +330,7 @@ const InspectionTemplatesPage = () => {
             {templates.map((template) => (
               <div key={template.id}>
                 <div
-                  className="flex items-center justify-between px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-800/50 cursor-pointer"
+                  className="flex items-center justify-between px-4 py-3 hover:bg-surface-100 dark:hover:bg-surface-800/50 cursor-pointer"
                   onClick={() => handleExpand(template.id)}
                 >
                   <div className="flex items-center gap-3">

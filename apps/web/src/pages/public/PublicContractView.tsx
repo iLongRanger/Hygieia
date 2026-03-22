@@ -97,13 +97,13 @@ const ServiceTaskStepper: React.FC<{
   }, [serviceId, groups.length]);
 
   if (groups.length === 0) {
-    return <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>;
+    return <div className="mt-3 text-sm text-surface-500">No service tasks listed.</div>;
   }
 
   const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
 
   return (
-    <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+    <div className="mt-3 rounded-xl border border-surface-200 bg-surface-50 p-3">
       <div className="flex flex-wrap items-center gap-2">
         {groups.map((group, index) => (
           <button
@@ -112,8 +112,8 @@ const ServiceTaskStepper: React.FC<{
             onClick={() => setActiveIndex(index)}
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
-                ? 'bg-gray-900 text-white'
-                : 'border border-gray-300 bg-surface-50 text-gray-600 hover:border-gray-400 hover:text-gray-900'
+                ? 'bg-surface-900 text-white'
+                : 'border border-surface-300 dark:border-surface-600 bg-surface-50 text-surface-600 hover:border-surface-400 hover:text-surface-900'
             }`}
           >
             {group.label}
@@ -121,14 +121,14 @@ const ServiceTaskStepper: React.FC<{
         ))}
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-surface-500">
           {activeGroup.label}
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-surface-500">
           {activeIndex + 1} of {groups.length}
         </div>
       </div>
-      <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-gray-700">
+      <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-surface-700">
         {activeGroup.tasks.map((task) => (
           <li key={`${serviceId}-${activeGroup.label}-${task}`}>{task}</li>
         ))}
@@ -139,7 +139,7 @@ const ServiceTaskStepper: React.FC<{
             type="button"
             onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}
             disabled={activeIndex === 0}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 transition hover:border-surface-400 hover:text-surface-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Back
           </button>
@@ -147,7 +147,7 @@ const ServiceTaskStepper: React.FC<{
             type="button"
             onClick={() => setActiveIndex((current) => Math.min(groups.length - 1, current + 1))}
             disabled={activeIndex >= groups.length - 1}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-400 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-surface-300 dark:border-surface-600 px-3 py-1.5 text-sm text-surface-700 transition hover:border-surface-400 hover:text-surface-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next
           </button>
@@ -298,7 +298,7 @@ const PublicContractView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-500 border-t-transparent" />
       </div>
     );
@@ -306,11 +306,11 @@ const PublicContractView: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <FileText className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Contract Not Available</h1>
-          <p className="text-gray-500">{error}</p>
+          <FileText className="mx-auto h-16 w-16 text-surface-600 dark:text-surface-400 mb-4" />
+          <h1 className="text-2xl font-bold text-surface-800 mb-2">Contract Not Available</h1>
+          <p className="text-surface-500">{error}</p>
         </div>
       </div>
     );
@@ -349,13 +349,13 @@ const PublicContractView: React.FC = () => {
               <h1 className="text-xl font-bold" style={{ color: accentColor }}>
                 {branding?.companyName || contract.account.name}
               </h1>
-              <p className="text-gray-300 text-sm mt-1">Contract {contract.contractNumber}</p>
+              <p className="text-surface-600 dark:text-surface-400 text-sm mt-1">Contract {contract.contractNumber}</p>
             </div>
             <div className="flex items-center gap-2">
               {contract.termsDocumentName && (
                 <button
                   onClick={handleDownloadTermsDocument}
-                  className="flex items-center gap-2 px-4 py-2 bg-surface-50/10 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-surface-100 dark:bg-surface-800/20 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
                 >
                   <Download className="h-4 w-4" />
                   Terms Document
@@ -363,7 +363,7 @@ const PublicContractView: React.FC = () => {
               )}
               <button
                 onClick={handleDownloadPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-surface-50/10 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-100 dark:bg-surface-800/20 hover:bg-surface-50/20 rounded-lg transition-colors text-sm"
               >
                 <Download className="h-4 w-4" />
                 Download PDF
@@ -412,7 +412,7 @@ const PublicContractView: React.FC = () => {
         {/* Title & Meta */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold" style={{ color: textColor }}>{contract.title}</h2>
-          <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+          <div className="flex flex-wrap gap-4 mt-3 text-sm text-surface-500">
             <span className="flex items-center gap-1">
               <Building2 className="h-4 w-4" />
               {contract.account.name}
@@ -428,46 +428,46 @@ const PublicContractView: React.FC = () => {
 
         {/* Service Terms */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Terms</h3>
-          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
+          <h3 className="text-lg font-semibold text-surface-900 mb-3">Service Terms</h3>
+          <div className="bg-surface-50 rounded-lg border border-surface-200 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-500">Start Date</div>
-                <div className="font-medium text-gray-900 flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                <div className="text-sm text-surface-500">Start Date</div>
+                <div className="font-medium text-surface-900 flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                   {formatDate(contract.startDate)}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">End Date</div>
-                <div className="font-medium text-gray-900">{formatDate(contract.endDate)}</div>
+                <div className="text-sm text-surface-500">End Date</div>
+                <div className="font-medium text-surface-900">{formatDate(contract.endDate)}</div>
               </div>
               {contract.serviceFrequency && (
                 <div>
-                  <div className="text-sm text-gray-500">Service Frequency</div>
-                  <div className="font-medium text-gray-900">
+                  <div className="text-sm text-surface-500">Service Frequency</div>
+                  <div className="font-medium text-surface-900">
                     {frequencyLabels[contract.serviceFrequency] || contract.serviceFrequency}
                   </div>
                 </div>
               )}
               {scheduleDays.length > 0 && (
                 <div>
-                  <div className="text-sm text-gray-500">Scheduled Days</div>
-                  <div className="font-medium text-gray-900">
+                  <div className="text-sm text-surface-500">Scheduled Days</div>
+                  <div className="font-medium text-surface-900">
                     {scheduleDays.map((day) => PUBLIC_DAY_LABELS[day] || day).join(', ')}
                   </div>
                 </div>
               )}
               {scheduleWindow && (
                 <div>
-                  <div className="text-sm text-gray-500">Allowed Service Window</div>
-                  <div className="font-medium text-gray-900">{scheduleWindow}</div>
+                  <div className="text-sm text-surface-500">Allowed Service Window</div>
+                  <div className="font-medium text-surface-900">{scheduleWindow}</div>
                 </div>
               )}
               {(facilityTimezone || scheduleWindow) && (
                 <div>
-                  <div className="text-sm text-gray-500">Timezone / Anchor</div>
-                  <div className="font-medium text-gray-900">
+                  <div className="text-sm text-surface-500">Timezone / Anchor</div>
+                  <div className="font-medium text-surface-900">
                     {(facilityTimezone || 'Facility timezone')} (start day anchor)
                   </div>
                 </div>
@@ -478,25 +478,25 @@ const PublicContractView: React.FC = () => {
 
         {/* Financial Terms */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Financial Terms</h3>
-          <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
+          <h3 className="text-lg font-semibold text-surface-900 mb-3">Financial Terms</h3>
+          <div className="bg-surface-50 rounded-lg border border-surface-200 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <div className="text-sm text-gray-500">Monthly Value</div>
+                <div className="text-sm text-surface-500">Monthly Value</div>
                 <div className="text-xl font-bold flex items-center gap-1" style={{ color: primaryColor }}>
                   <DollarSign className="h-5 w-5" />
                   {formatCurrency(contract.monthlyValue)}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Billing Cycle</div>
-                <div className="font-medium text-gray-900">
+                <div className="text-sm text-surface-500">Billing Cycle</div>
+                <div className="font-medium text-surface-900">
                   {billingCycleLabels[contract.billingCycle] || contract.billingCycle}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Payment Terms</div>
-                <div className="font-medium text-gray-900">{contract.paymentTerms}</div>
+                <div className="text-sm text-surface-500">Payment Terms</div>
+                <div className="font-medium text-surface-900">{contract.paymentTerms}</div>
               </div>
             </div>
           </div>
@@ -505,17 +505,17 @@ const PublicContractView: React.FC = () => {
         {/* Facility Details */}
         {contract.facility?.address && (
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Location</h3>
-            <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
-              <div className="font-medium text-gray-900">{contract.facility.name}</div>
-              <div className="text-sm text-gray-500 mt-1">{formatAddress(contract.facility.address)}</div>
+            <h3 className="text-lg font-semibold text-surface-900 mb-3">Service Location</h3>
+            <div className="bg-surface-50 rounded-lg border border-surface-200 p-5">
+              <div className="font-medium text-surface-900">{contract.facility.name}</div>
+              <div className="text-sm text-surface-500 mt-1">{formatAddress(contract.facility.address)}</div>
             </div>
           </div>
         )}
 
         {contract.proposal?.proposalServices && contract.proposal.proposalServices.length > 0 && (
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Services</h3>
+            <h3 className="text-lg font-semibold text-surface-900 mb-3">Services</h3>
             <div className="space-y-4">
               {contract.proposal.proposalServices.map((service) => {
                 const { areaSummary, groups } = buildServiceTaskGroups(
@@ -526,16 +526,16 @@ const PublicContractView: React.FC = () => {
                 return (
                   <div
                     key={service.id}
-                    className="bg-surface-50 rounded-lg border border-gray-200 p-5"
+                    className="bg-surface-50 rounded-lg border border-surface-200 p-5"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="font-medium text-gray-900">{service.serviceName}</div>
+                        <div className="font-medium text-surface-900">{service.serviceName}</div>
                         {areaSummary && (
-                          <div className="mt-1 text-sm text-gray-500">{areaSummary}</div>
+                          <div className="mt-1 text-sm text-surface-500">{areaSummary}</div>
                         )}
                       </div>
-                      <div className="text-sm font-medium text-gray-700">
+                      <div className="text-sm font-medium text-surface-700">
                         {frequencyLabels[service.frequency || ''] || service.frequency || 'As scheduled'}
                       </div>
                     </div>
@@ -550,9 +550,9 @@ const PublicContractView: React.FC = () => {
         {/* Terms & Conditions */}
         {contract.termsAndConditions && (
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms & Conditions</h3>
-            <div className="bg-surface-50 rounded-lg border border-gray-200 p-5">
-              <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+            <h3 className="text-lg font-semibold text-surface-900 mb-3">Terms & Conditions</h3>
+            <div className="bg-surface-50 rounded-lg border border-surface-200 p-5">
+              <div className="text-surface-700 text-sm whitespace-pre-wrap leading-relaxed">
                 {contract.termsAndConditions}
               </div>
             </div>
@@ -561,7 +561,7 @@ const PublicContractView: React.FC = () => {
 
         {/* Sign Button */}
         {canSign && !actionComplete && (
-          <div className="flex justify-center py-8 border-t border-gray-200">
+          <div className="flex justify-center py-8 border-t border-surface-200">
             <button
               onClick={() => setSignModalOpen(true)}
               className="flex items-center justify-center gap-2 px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
@@ -577,29 +577,29 @@ const PublicContractView: React.FC = () => {
       {signModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="bg-surface-50 rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Sign Contract</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <h3 className="text-lg font-bold text-surface-900 mb-4">Sign Contract</h3>
+            <p className="text-sm text-surface-600 mb-4">
               By signing, you agree to the terms and conditions outlined in this contract.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-surface-700 mb-1">
                 Your Full Name (as signature)
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 placeholder="Enter your full name"
                 value={signedByName}
                 onChange={(e) => setSignedByName(e.target.value)}
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-surface-700 mb-1">
                 Email Address
               </label>
               <input
                 type="email"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 placeholder="Enter your email address"
                 value={signedByEmail}
                 onChange={(e) => setSignedByEmail(e.target.value)}
@@ -608,7 +608,7 @@ const PublicContractView: React.FC = () => {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setSignModalOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-surface-600 hover:text-surface-800"
                 disabled={submitting}
               >
                 Cancel
@@ -626,8 +626,8 @@ const PublicContractView: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="bg-gray-100 border-t border-gray-200 mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 text-center text-sm text-gray-400">
+      <footer className="bg-surface-100 border-t border-surface-200 mt-12">
+        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 text-center text-sm text-surface-500 dark:text-surface-400">
           <p>Powered by {branding?.companyName || 'Hygieia'}</p>
         </div>
       </footer>

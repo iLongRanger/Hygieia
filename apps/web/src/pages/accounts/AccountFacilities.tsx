@@ -34,7 +34,7 @@ export function AccountFacilities({
   onNavigate,
 }: AccountFacilitiesProps) {
   return (
-    <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-5">
+    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white">Facilities</h3>
         {canWriteFacilities && (
@@ -47,8 +47,8 @@ export function AccountFacilities({
 
       {facilities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Building className="mb-2 h-8 w-8 text-gray-500" />
-          <p className="text-sm text-gray-400">No facilities yet</p>
+          <Building className="mb-2 h-8 w-8 text-surface-500" />
+          <p className="text-sm text-surface-500 dark:text-surface-400">No facilities yet</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -57,7 +57,7 @@ export function AccountFacilities({
             return (
               <div
                 key={facility.id}
-                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
+                className="cursor-pointer rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 transition-colors hover:bg-surface-100 dark:bg-surface-800/20"
                 onClick={() => onNavigate(`/facilities/${facility.id}`)}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
@@ -71,8 +71,8 @@ export function AccountFacilities({
 
                 {address && (
                   <div className="mb-2 flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-500" />
-                    <span className="truncate text-sm text-gray-400">
+                    <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-surface-500" />
+                    <span className="truncate text-sm text-surface-500 dark:text-surface-400">
                       {address}
                     </span>
                   </div>

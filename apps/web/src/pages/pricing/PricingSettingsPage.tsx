@@ -250,7 +250,7 @@ const PricingSettingsPage = () => {
               Guided Pricing Builder
             </div>
             <h2 className="mt-3 text-3xl font-semibold">Turn pricing assumptions into an explainable quote</h2>
-            <p className="mt-3 text-sm text-slate-200/85">
+            <p className="mt-3 text-sm text-surface-600 dark:text-surface-300/85">
               Hygieia now walks the user through pricing step by step: method, labor, operating cost, margin, and final adjustments. The live sample impact panel explains what each change does to the final number.
             </p>
           </div>
@@ -439,8 +439,8 @@ const PricingSettingsPage = () => {
                       {Object.entries(selectedSettings.sqftPerLaborHour)
                         .slice(0, 5)
                         .map(([key, value]) => (
-                          <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-surface-50/5 px-3 py-2">
-                            <span className="text-sm text-slate-200">{BUILDING_TYPE_LABELS[key] ?? key}</span>
+                          <div key={key} className="flex items-center justify-between rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
+                            <span className="text-sm text-surface-600 dark:text-surface-300">{BUILDING_TYPE_LABELS[key] ?? key}</span>
                             <span className="text-sm font-semibold text-white">{value.toLocaleString()} sqft/hr</span>
                           </div>
                         ))}
@@ -512,7 +512,7 @@ const PricingSettingsPage = () => {
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-surface-50/5 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 px-4 py-3 backdrop-blur-sm">
       <div className="text-xs uppercase tracking-[0.18em] text-cyan-200/70">{label}</div>
       <div className="mt-2 text-sm font-semibold text-white">{value}</div>
     </div>

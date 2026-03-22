@@ -134,7 +134,7 @@ const UsersList = () => {
       cell: (item: User) => (
         <div>
           <div className="font-medium text-white">{item.fullName}</div>
-          <div className="flex items-center gap-1 text-sm text-gray-400">
+          <div className="flex items-center gap-1 text-sm text-surface-500 dark:text-surface-400">
             <Mail className="h-3 w-3" />
             {item.email}
           </div>
@@ -149,11 +149,11 @@ const UsersList = () => {
             item.roles.map((ur) => (
               <div key={ur.id} className="flex items-center gap-1">
                 <Shield className="h-3 w-3 text-gold" />
-                <span className="text-gray-300">{ur.role.label}</span>
+                <span className="text-surface-600 dark:text-surface-400">{ur.role.label}</span>
               </div>
             ))
           ) : (
-            <span className="text-gray-400">No roles</span>
+            <span className="text-surface-500 dark:text-surface-400">No roles</span>
           )}
         </div>
       ),
@@ -161,13 +161,13 @@ const UsersList = () => {
     {
       header: 'Phone',
       cell: (item: User) => (
-        <span className="text-gray-300">{item.phone || '-'}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item.phone || '-'}</span>
       ),
     },
     {
       header: 'Last Login',
       cell: (item: User) => (
-        <span className="text-gray-300">
+        <span className="text-surface-600 dark:text-surface-400">
           {item.lastLoginAt
             ? new Date(item.lastLoginAt).toLocaleDateString()
             : 'Never'}
@@ -213,7 +213,7 @@ const UsersList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -231,8 +231,8 @@ const UsersList = () => {
 
         <Table data={users} columns={columns} isLoading={loading} />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {users.length} of {total} users
             </span>

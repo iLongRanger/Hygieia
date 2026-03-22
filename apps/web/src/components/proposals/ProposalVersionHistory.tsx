@@ -98,26 +98,26 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
           <div key={version.id}>
             <button
               onClick={() => toggleVersion(version.versionNumber)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50/5 text-left transition-colors"
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-100 dark:bg-surface-800/10 text-left transition-colors"
             >
               {expandedVersion === version.versionNumber ? (
-                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400 shrink-0" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                <ChevronRight className="h-4 w-4 text-surface-500 dark:text-surface-400 shrink-0" />
               )}
-              <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+              <FileText className="h-4 w-4 text-surface-500 dark:text-surface-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-white">
                     v{version.versionNumber}
                   </span>
                   {version.changeReason && (
-                    <span className="text-xs text-gray-400 truncate">
+                    <span className="text-xs text-surface-500 dark:text-surface-400 truncate">
                       {version.changeReason}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-surface-500">
                   {version.changedByUser.fullName} &middot;{' '}
                   {formatDateTime(version.createdAt)}
                 </p>
@@ -125,7 +125,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
             </button>
 
             {expandedVersion === version.versionNumber && (
-              <div className="ml-11 mt-1 mb-2 p-3 rounded-lg bg-surface-50/5 border border-white/10">
+              <div className="ml-11 mt-1 mb-2 p-3 rounded-lg bg-surface-100 dark:bg-surface-800/10 border border-surface-200 dark:border-surface-700">
                 {loadingSnapshot ? (
                   <div className="flex justify-center py-4">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold border-t-transparent" />
@@ -133,27 +133,27 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
                 ) : snapshotData ? (
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-400">Status</span>
+                      <span className="text-surface-500 dark:text-surface-400">Status</span>
                       <Badge variant="default">
                         {snapshotData.status}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Total</span>
+                      <span className="text-surface-500 dark:text-surface-400">Total</span>
                       <span className="text-white font-medium">
                         {formatCurrency(snapshotData.totalAmount)}
                       </span>
                     </div>
                     {snapshotData.proposalServices?.length > 0 && (
                       <div>
-                        <span className="text-gray-400">
+                        <span className="text-surface-500 dark:text-surface-400">
                           {snapshotData.proposalServices.length} service(s)
                         </span>
                       </div>
                     )}
                     {snapshotData.proposalItems?.length > 0 && (
                       <div>
-                        <span className="text-gray-400">
+                        <span className="text-surface-500 dark:text-surface-400">
                           {snapshotData.proposalItems.length} line item(s)
                         </span>
                       </div>

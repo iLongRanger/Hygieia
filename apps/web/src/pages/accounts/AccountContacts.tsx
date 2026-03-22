@@ -15,18 +15,18 @@ export function AccountContacts({ contacts, accountId, onNavigate }: AccountCont
   const otherContacts = contacts.filter((c) => !c.isPrimary);
 
   return (
-    <Card className="rounded-lg border border-white/10 bg-navy-dark/30 p-5">
+    <Card className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-white font-semibold">Contacts</h3>
-          <span className="text-gray-400 text-sm">({contacts.length})</span>
+          <span className="text-surface-500 dark:text-surface-400 text-sm">({contacts.length})</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onNavigate(`/contacts?accountId=${accountId}`)}
-          className="text-gray-400 hover:text-white gap-1"
+          className="text-surface-500 dark:text-surface-400 hover:text-white gap-1"
         >
           View All
           <ExternalLink className="h-3.5 w-3.5" />
@@ -35,7 +35,7 @@ export function AccountContacts({ contacts, accountId, onNavigate }: AccountCont
 
       {contacts.length === 0 ? (
         /* Empty state */
-        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-8 text-surface-500 dark:text-surface-400">
           <Users className="h-8 w-8 mb-2 opacity-50" />
           <p className="text-sm">No contacts yet</p>
         </div>
@@ -86,21 +86,21 @@ function ContactCard({
             )}
           </div>
           {contact.title && (
-            <p className="text-gray-400 text-sm mt-0.5 truncate">{contact.title}</p>
+            <p className="text-surface-500 dark:text-surface-400 text-sm mt-0.5 truncate">{contact.title}</p>
           )}
         </div>
       </div>
 
       <div className="mt-2 space-y-1">
         {contact.email && (
-          <div className="flex items-center gap-2 text-gray-300 text-sm">
-            <Mail className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+          <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400 text-sm">
+            <Mail className="h-3.5 w-3.5 flex-shrink-0 text-surface-500 dark:text-surface-400" />
             <span className="truncate">{contact.email}</span>
           </div>
         )}
         {contact.phone && (
-          <div className="flex items-center gap-2 text-gray-300 text-sm">
-            <Phone className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+          <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400 text-sm">
+            <Phone className="h-3.5 w-3.5 flex-shrink-0 text-surface-500 dark:text-surface-400" />
             <span className="truncate">{contact.phone}</span>
           </div>
         )}

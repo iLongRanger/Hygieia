@@ -41,7 +41,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
   const recentContracts = contracts.slice(0, 5);
 
   return (
-    <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-5">
+    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
         <DollarSign className="h-5 w-5 text-emerald-400" />
@@ -51,23 +51,23 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
       {/* Stats Grid */}
       <div className="mb-6 grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Monthly Value</p>
+          <p className="text-xs uppercase tracking-wide text-surface-500">Monthly Value</p>
           <p className="text-lg font-semibold text-white">
             {activeContract ? formatCurrency(activeContract.monthlyValue) : '-'}
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Payment Terms</p>
+          <p className="text-xs uppercase tracking-wide text-surface-500">Payment Terms</p>
           <p className="text-lg font-semibold text-white">
             {getPaymentTermsLabel(account.paymentTerms)}
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Total Proposals</p>
+          <p className="text-xs uppercase tracking-wide text-surface-500">Total Proposals</p>
           <p className="text-lg font-semibold text-white">{proposalTotal}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Total Contracts</p>
+          <p className="text-xs uppercase tracking-wide text-surface-500">Total Contracts</p>
           <p className="text-lg font-semibold text-white">{contractTotal}</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
       <div className="mb-5">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4 text-gray-400" />
+            <FileText className="h-4 w-4 text-surface-500 dark:text-surface-400" />
             <h4 className="text-sm font-medium text-white">Recent Proposals</h4>
           </div>
           {proposalTotal > 0 && (
@@ -91,19 +91,19 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
         </div>
 
         {recentProposals.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-500">No proposals yet</p>
+          <p className="py-4 text-center text-sm text-surface-500">No proposals yet</p>
         ) : (
           <div className="space-y-2">
             {recentProposals.map((proposal) => (
               <div
                 key={proposal.id}
-                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
+                className="cursor-pointer rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 transition-colors hover:bg-surface-100 dark:bg-surface-800/20"
                 onClick={() => onNavigate(`/proposals/${proposal.id}`)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-white">{proposal.proposalNumber}</p>
-                    <p className="truncate text-sm text-gray-400">{proposal.title}</p>
+                    <p className="truncate text-sm text-surface-500 dark:text-surface-400">{proposal.title}</p>
                   </div>
                   <Badge variant={PROPOSAL_STATUS_VARIANTS[proposal.status]} size="sm">
                     {proposal.status}
@@ -111,7 +111,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-emerald-400">{formatCurrency(proposal.totalAmount)}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-surface-500">
                     {formatShortDate(proposal.createdAt)}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
       <div>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <FileSignature className="h-4 w-4 text-gray-400" />
+            <FileSignature className="h-4 w-4 text-surface-500 dark:text-surface-400" />
             <h4 className="text-sm font-medium text-white">Recent Contracts</h4>
           </div>
           {contractTotal > 0 && (
@@ -140,19 +140,19 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
         </div>
 
         {recentContracts.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-500">No contracts yet</p>
+          <p className="py-4 text-center text-sm text-surface-500">No contracts yet</p>
         ) : (
           <div className="space-y-2">
             {recentContracts.map((contract) => (
               <div
                 key={contract.id}
-                className="cursor-pointer rounded-lg bg-surface-50/5 p-3 transition-colors hover:bg-surface-50/10"
+                className="cursor-pointer rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 transition-colors hover:bg-surface-100 dark:bg-surface-800/20"
                 onClick={() => onNavigate(`/contracts/${contract.id}`)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-white">{contract.contractNumber}</p>
-                    <p className="truncate text-sm text-gray-400">{contract.title}</p>
+                    <p className="truncate text-sm text-surface-500 dark:text-surface-400">{contract.title}</p>
                   </div>
                   <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]} size="sm">
                     {contract.status}
@@ -162,7 +162,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
                   <span className="text-emerald-400">
                     {formatCurrency(contract.monthlyValue)}/mo
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-surface-500">
                     {formatShortDate(contract.startDate)}
                   </span>
                 </div>

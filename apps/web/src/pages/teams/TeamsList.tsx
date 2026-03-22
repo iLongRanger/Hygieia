@@ -175,7 +175,7 @@ const TeamsList = () => {
           <Users className="h-6 w-6 text-primary-500" />
           <div>
             <h1 className="text-2xl font-bold text-white">Team Management</h1>
-            <p className="text-gray-400">Manage subcontractor teams and assign them to active contracts.</p>
+            <p className="text-surface-500 dark:text-surface-400">Manage subcontractor teams and assign them to active contracts.</p>
           </div>
         </div>
         <Button onClick={openCreateModal}>
@@ -205,36 +205,36 @@ const TeamsList = () => {
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-white/10 bg-navy-dark/30">
+            <thead className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30">
               <tr>
-                <th className="px-4 py-3 text-gray-300">Team</th>
-                <th className="px-4 py-3 text-gray-300">Contact</th>
-                <th className="px-4 py-3 text-gray-300">Status</th>
-                <th className="px-4 py-3 text-gray-300">Actions</th>
+                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Team</th>
+                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Contact</th>
+                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Status</th>
+                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-400">Loading teams...</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">Loading teams...</td>
                 </tr>
               ) : teams.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-400">No teams found</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">No teams found</td>
                 </tr>
               ) : (
                 teams.map((team) => (
-                  <tr key={team.id} className="border-b border-white/5">
+                  <tr key={team.id} className="border-b border-surface-200 dark:border-surface-700">
                     <td className="px-4 py-3">
                       <div className="font-medium text-white">{team.name}</div>
-                      {team.notes && <div className="text-xs text-gray-400 truncate max-w-[280px]">{team.notes}</div>}
+                      {team.notes && <div className="text-xs text-surface-500 dark:text-surface-400 truncate max-w-[280px]">{team.notes}</div>}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    <td className="px-4 py-3 text-surface-600 dark:text-surface-400">
                       <div>{team.contactName || '-'}</div>
-                      <div className="text-xs text-gray-400">{team.contactEmail || team.contactPhone || '-'}</div>
+                      <div className="text-xs text-surface-500 dark:text-surface-400">{team.contactEmail || team.contactPhone || '-'}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-1 text-xs ${team.archivedAt ? 'bg-orange-500/20 text-orange-300' : team.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'}`}>
+                      <span className={`rounded-full px-2 py-1 text-xs ${team.archivedAt ? 'bg-orange-500/20 text-orange-300' : team.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-surface-500/20 text-surface-600 dark:text-surface-400'}`}>
                         {team.archivedAt ? 'Archived' : team.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -322,7 +322,7 @@ const TeamsList = () => {
             value={formData.notes}
             onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
           />
-          <div className="rounded-lg border border-white/10 bg-surface-50/5 p-3">
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
             <div className="flex items-center justify-between gap-3">
               <Input
                 label="Job Calendar Color"
@@ -338,7 +338,7 @@ const TeamsList = () => {
                 Use Default
               </Button>
             </div>
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
               Jobs assigned to this subcontractor team use this color in the calendar.
             </p>
           </div>

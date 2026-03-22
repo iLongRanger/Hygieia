@@ -559,7 +559,7 @@ const JobDetail = () => {
                 job.tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-50 dark:hover:bg-surface-800/50"
+                    className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
                   >
                     <button
                       onClick={() => !isSubcontractor && handleToggleTask(task)}

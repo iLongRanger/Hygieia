@@ -206,20 +206,20 @@ export function AreaModal({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-gray-200">Items</div>
+            <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Items</div>
             <Button variant="ghost" size="sm" onClick={addItemToArea}>
               <Plus className="mr-1 h-4 w-4" />
               Add Item
             </Button>
           </div>
           {fixtureTypes.length === 0 ? (
-            <div className="text-sm text-gray-500">No item types available.</div>
+            <div className="text-sm text-surface-500">No item types available.</div>
           ) : (areaForm as CreateAreaInput).fixtures?.length ? (
             <div className="space-y-3">
               {(areaForm as CreateAreaInput).fixtures?.map((item, index) => (
                 <div
                   key={`${item.fixtureTypeId}-${index}`}
-                  className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-navy-dark/30 p-3 sm:grid-cols-4"
+                  className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3 sm:grid-cols-4"
                 >
                   <Select
                     label="Item Type"
@@ -262,18 +262,18 @@ export function AreaModal({
               ))}
             </div>
           ) : (
-            <div className="text-sm text-gray-500">No items added.</div>
+            <div className="text-sm text-surface-500">No items added.</div>
           )}
         </div>
 
         {!editingArea && (
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-200">Default Tasks</div>
+            <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Default Tasks</div>
             {areaTemplateLoading ? (
-              <div className="text-sm text-gray-500">Loading template tasks...</div>
+              <div className="text-sm text-surface-500">Loading template tasks...</div>
             ) : (
-              <div className="space-y-3 rounded-lg border border-white/10 bg-navy-dark/20 p-3">
-                <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+              <div className="space-y-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/20 p-3">
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-white">
                       Step {areaTaskPipelineStep + 1} of{' '}
@@ -285,7 +285,7 @@ export function AreaModal({
                       )?.label || 'Daily'}
                     </Badge>
                   </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-surface-50/10">
+                  <div className="mt-2 h-1.5 rounded-full bg-surface-100 dark:bg-surface-800/20">
                     <div
                       className="h-full rounded-full bg-emerald transition-all"
                       style={{
@@ -297,7 +297,7 @@ export function AreaModal({
                       }}
                     />
                   </div>
-                  <div className="mt-2 text-xs text-gray-400">
+                  <div className="mt-2 text-xs text-surface-500 dark:text-surface-400">
                     Reviewed categories: {reviewedAreaTaskFrequencies.size}/
                     {ORDERED_CLEANING_FREQUENCIES.length}
                   </div>
@@ -329,7 +329,7 @@ export function AreaModal({
                 </div>
 
                 {filteredAreaTemplateTasks.length === 0 ? (
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-surface-500">
                     No tasks for this category yet. Add one above.
                   </div>
                 ) : (
@@ -337,7 +337,7 @@ export function AreaModal({
                     {filteredAreaTemplateTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
+                        className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3"
                       >
                         <div>
                           <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ export function AreaModal({
                               </Badge>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-surface-500">
                             {task.taskTemplateId
                               ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
                               : `Custom ${task.cleaningType} task`}
@@ -369,14 +369,14 @@ export function AreaModal({
                               Remove
                             </Button>
                           )}
-                          <label className="flex items-center gap-2 text-sm text-gray-300">
+                          <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                             <input
                               type="checkbox"
                               checked={task.include}
                               onChange={(e) =>
                                 toggleAreaTemplateTaskInclude(task.id, e.target.checked)
                               }
-                              className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                              className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                             />
                             Include
                           </label>
@@ -386,7 +386,7 @@ export function AreaModal({
                   </div>
                 )}
 
-                <div className="flex justify-between border-t border-white/10 pt-3">
+                <div className="flex justify-between border-t border-surface-200 dark:border-surface-700 pt-3">
                   <Button
                     type="button"
                     variant="ghost"
@@ -408,7 +408,7 @@ export function AreaModal({
                 </div>
               </div>
             )}
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-surface-500">
               Review each frequency category in order. `Add Area` is disabled
               until all categories are reviewed.
             </div>

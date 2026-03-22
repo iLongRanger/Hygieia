@@ -543,7 +543,7 @@ const InspectionDetail = () => {
                   const areaState = getAreaAggregate(items);
                   return (
                     <>
-                      <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                      <div className="flex flex-wrap items-center gap-3 py-2 px-2 rounded hover:bg-surface-100 dark:hover:bg-surface-800/50">
                         <span className="flex-1 min-w-0 text-sm text-surface-700 dark:text-surface-300">
                           Hygieia Standard: clean, maintained, stocked, and safe.
                         </span>
@@ -630,7 +630,7 @@ const InspectionDetail = () => {
                     const areaState = getAreaAggregate(items);
                     return (
                       <>
-                        <div className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                        <div className="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-100 dark:hover:bg-surface-800/50">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {areaState.score === 'pass' ? (
                               <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />

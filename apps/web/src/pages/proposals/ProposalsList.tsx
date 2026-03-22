@@ -256,7 +256,7 @@ const ProposalsList = () => {
             >
               {proposal.proposalNumber}
             </button>
-            <div className="text-sm text-gray-400">{proposal.title}</div>
+            <div className="text-sm text-surface-500 dark:text-surface-400">{proposal.title}</div>
           </div>
         </div>
       ),
@@ -264,7 +264,7 @@ const ProposalsList = () => {
     {
       header: 'Account',
       cell: (proposal: Proposal) => (
-        <span className="text-gray-300">{proposal.account.name}</span>
+        <span className="text-surface-600 dark:text-surface-400">{proposal.account.name}</span>
       ),
     },
     {
@@ -290,13 +290,13 @@ const ProposalsList = () => {
     {
       header: 'Valid Until',
       cell: (proposal: Proposal) => (
-        <span className="text-gray-300">{formatDate(proposal.validUntil)}</span>
+        <span className="text-surface-600 dark:text-surface-400">{formatDate(proposal.validUntil)}</span>
       ),
     },
     {
       header: 'Created',
       cell: (proposal: Proposal) => (
-        <span className="text-gray-400">{formatDate(proposal.createdAt)}</span>
+        <span className="text-surface-500 dark:text-surface-400">{formatDate(proposal.createdAt)}</span>
       ),
     },
     {
@@ -314,7 +314,7 @@ const ProposalsList = () => {
               }}
               title="Download PDF"
             >
-              <Download className="w-4 h-4 text-gray-400" />
+              <Download className="w-4 h-4 text-surface-500 dark:text-surface-400" />
             </Button>
           )}
           {proposal.status === 'draft' && canWriteProposals && (
@@ -423,7 +423,7 @@ const ProposalsList = () => {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Total Proposals</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">Total Proposals</p>
               <p className="text-2xl font-bold text-white">{total}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
@@ -434,7 +434,7 @@ const ProposalsList = () => {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Sent</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">Sent</p>
               <p className="text-2xl font-bold text-white">{sentCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
@@ -445,7 +445,7 @@ const ProposalsList = () => {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Accepted</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">Accepted</p>
               <p className="text-2xl font-bold text-white">{acceptedCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
@@ -456,7 +456,7 @@ const ProposalsList = () => {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Total Value</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">Total Value</p>
               <p className="text-2xl font-bold text-emerald">
                 {formatCurrency(totalValue)}
               </p>
@@ -470,7 +470,7 @@ const ProposalsList = () => {
 
       {/* Search, Filters, and Table */}
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -490,8 +490,8 @@ const ProposalsList = () => {
             </Button>
           </div>
           {accountIdFilter && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
-              <span className="rounded-full border border-white/10 bg-navy-darker/60 px-3 py-1">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
+              <span className="rounded-full border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/60 px-3 py-1">
                 Filtered by account
               </span>
               <Button
@@ -506,7 +506,7 @@ const ProposalsList = () => {
 
           {/* Filter Panel */}
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
               <Select
                 label="Status"
                 placeholder="All Statuses"
@@ -515,7 +515,7 @@ const ProposalsList = () => {
                 onChange={setStatusFilter}
               />
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
@@ -523,7 +523,7 @@ const ProposalsList = () => {
                       setIncludeArchived(e.target.checked);
                       setPage(1);
                     }}
-                    className="rounded border-white/20 bg-navy-darker text-emerald focus:ring-emerald"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-emerald focus:ring-emerald"
                   />
                   Include Archived
                 </label>
@@ -546,8 +546,8 @@ const ProposalsList = () => {
         <Table data={proposals} columns={columns} isLoading={loading} />
 
         {/* Pagination */}
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {proposals.length} of {total} proposals
             </span>

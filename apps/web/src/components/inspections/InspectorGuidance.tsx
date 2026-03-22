@@ -37,15 +37,15 @@ export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
       >
         <div className="flex items-center gap-2 text-sm">
           <ClipboardCheck className="w-4 h-4 text-brand-400" />
-          <span className="text-gray-300">What to check</span>
-          <span className="text-xs text-gray-500">
+          <span className="text-surface-600 dark:text-surface-400">What to check</span>
+          <span className="text-xs text-surface-500">
             ({checked.size}/{guidanceItems.length})
           </span>
         </div>
         {expanded ? (
-          <ChevronDown className="w-4 h-4 text-gray-400" />
+          <ChevronDown className="w-4 h-4 text-surface-500 dark:text-surface-400" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+          <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400" />
         )}
       </button>
       {expanded && (
@@ -65,8 +65,8 @@ export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
                 className={cn(
                   'text-sm transition-colors',
                   checked.has(index)
-                    ? 'text-gray-500 line-through'
-                    : 'text-gray-300 group-hover:text-gray-200'
+                    ? 'text-surface-500 line-through'
+                    : 'text-surface-600 dark:text-surface-400 group-hover:text-surface-600 dark:text-surface-300'
                 )}
               >
                 {item}

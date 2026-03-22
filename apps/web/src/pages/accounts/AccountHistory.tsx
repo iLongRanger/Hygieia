@@ -30,7 +30,7 @@ export function AccountHistory({
   addingActivity,
 }: AccountHistoryProps) {
   return (
-    <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-5">
+    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <History className="h-5 w-5 text-emerald" />
@@ -66,15 +66,15 @@ export function AccountHistory({
       )}
 
       {activitiesLoading ? (
-        <div className="text-sm text-gray-400">Loading history...</div>
+        <div className="text-sm text-surface-500 dark:text-surface-400">Loading history...</div>
       ) : activities.length === 0 ? (
-        <div className="text-sm text-gray-400">No account history yet.</div>
+        <div className="text-sm text-surface-500 dark:text-surface-400">No account history yet.</div>
       ) : (
         <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
           {activities.map((activity) => (
             <div
               key={activity.id}
-              className="rounded-lg border border-white/10 bg-surface-50/5 p-3"
+              className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3"
             >
               <div className="flex items-center justify-between gap-3">
                 <Badge
@@ -88,14 +88,14 @@ export function AccountHistory({
                 >
                   {activity.entryType}
                 </Badge>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-surface-500">
                   {formatDateTime(activity.createdAt)}
                 </span>
               </div>
-              <p className="text-sm text-gray-200 mt-2 whitespace-pre-wrap">
+              <p className="text-sm text-surface-600 dark:text-surface-300 mt-2 whitespace-pre-wrap">
                 {activity.note}
               </p>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-surface-500 mt-2">
                 Logged by {activity.performedByUser?.fullName || 'System'}
               </p>
             </div>

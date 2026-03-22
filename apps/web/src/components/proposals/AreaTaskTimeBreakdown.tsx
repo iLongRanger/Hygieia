@@ -36,12 +36,12 @@ const AreaRow: React.FC<{ area: AreaTimeBreakdown }> = ({ area }) => {
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {expanded ? (
-            <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           )}
           <span className="font-medium text-white truncate">{area.name}</span>
-          <span className="text-xs text-gray-400 flex-shrink-0">
+          <span className="text-xs text-surface-500 dark:text-surface-400 flex-shrink-0">
             ({area.squareFeet.toLocaleString()} sqft, {area.floorType})
           </span>
         </div>
@@ -57,8 +57,8 @@ const AreaRow: React.FC<{ area: AreaTimeBreakdown }> = ({ area }) => {
               key={task.taskId}
               className="flex items-center justify-between py-2 px-3 pl-9 text-sm"
             >
-              <span className="text-gray-300">{task.taskName}</span>
-              <span className="text-gray-400 font-mono text-xs">
+              <span className="text-surface-600 dark:text-surface-400">{task.taskName}</span>
+              <span className="text-surface-500 dark:text-surface-400 font-mono text-xs">
                 {formatMinutes(task.calculatedMinutes)}
               </span>
             </div>
@@ -67,7 +67,7 @@ const AreaRow: React.FC<{ area: AreaTimeBreakdown }> = ({ area }) => {
       )}
 
       {expanded && area.tasks.length === 0 && (
-        <div className="bg-surface-900/50 border-t border-surface-700 py-3 px-3 pl-9 text-sm text-gray-500">
+        <div className="bg-surface-900/50 border-t border-surface-700 py-3 px-3 pl-9 text-sm text-surface-500">
           No tasks assigned to this area
         </div>
       )}
@@ -111,7 +111,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
   if (loading) {
     return (
       <div className="bg-surface-800 rounded-xl border border-surface-700 p-4">
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-sm">Loading time breakdown...</span>
         </div>
@@ -133,7 +133,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
   if (!breakdown || breakdown.areas.length === 0) {
     return (
       <div className="bg-surface-800 rounded-xl border border-surface-700 p-4">
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
           <Clock className="w-4 h-4" />
           <span className="text-sm">No tasks configured for this facility</span>
         </div>
@@ -161,7 +161,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
       {/* Footer with totals */}
       <div className="px-4 py-3 border-t border-surface-700 bg-surface-700/30">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-300">Total per visit:</span>
+          <span className="text-surface-600 dark:text-surface-400">Total per visit:</span>
           <span className="font-semibold text-white">
             {formatMinutes(breakdown.totalMinutes)} ({breakdown.totalHours.toFixed(2)} hours)
           </span>
@@ -172,10 +172,10 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
               'flex items-center justify-between text-sm mt-1.5 pt-1.5 border-t border-surface-600'
             )}
           >
-            <span className="text-gray-400">
+            <span className="text-surface-500 dark:text-surface-400">
               Workers: <span className="text-white font-medium">{workerCount}</span>
             </span>
-            <span className="text-gray-300">
+            <span className="text-surface-600 dark:text-surface-400">
               Time per worker:{' '}
               <span className="font-medium text-amber-400">{formatMinutes(timePerWorker)}</span>
             </span>

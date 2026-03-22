@@ -52,7 +52,7 @@ export const ConfirmDialog = ({
         <div className={`mb-4 rounded-full p-3 ${styles.iconBg}`}>
           <AlertTriangle className={`h-6 w-6 ${styles.icon}`} />
         </div>
-        <p className="mb-6 text-gray-300">{message}</p>
+        <p className="mb-6 text-surface-600 dark:text-surface-400">{message}</p>
         <div className="flex w-full gap-3">
           <Button
             variant="secondary"

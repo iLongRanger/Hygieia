@@ -32,7 +32,7 @@ interface ProposalActivity {
 }
 
 const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  created: { icon: FileText, label: 'Proposal created', color: 'text-gray-400' },
+  created: { icon: FileText, label: 'Proposal created', color: 'text-surface-500 dark:text-surface-400' },
   updated: { icon: Edit2, label: 'Proposal updated', color: 'text-blue-400' },
   sent: { icon: Send, label: 'Proposal sent', color: 'text-blue-400' },
   viewed: { icon: Eye, label: 'Proposal viewed', color: 'text-yellow-400' },
@@ -48,13 +48,13 @@ const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; co
   public_viewed: { icon: Eye, label: 'Viewed by client', color: 'text-yellow-400' },
   public_accepted: { icon: CheckCircle, label: 'Accepted by client', color: 'text-green-400' },
   public_rejected: { icon: XCircle, label: 'Rejected by client', color: 'text-red-400' },
-  version_created: { icon: FileText, label: 'Version snapshot created', color: 'text-gray-400' },
+  version_created: { icon: FileText, label: 'Version snapshot created', color: 'text-surface-500 dark:text-surface-400' },
   email_sent: { icon: Send, label: 'Email sent', color: 'text-blue-400' },
   reminder_sent: { icon: Send, label: 'Reminder sent', color: 'text-blue-400' },
 };
 
 function getActionConfig(action: string) {
-  return ACTION_CONFIG[action] || { icon: Clock, label: action, color: 'text-gray-400' };
+  return ACTION_CONFIG[action] || { icon: Clock, label: action, color: 'text-surface-500 dark:text-surface-400' };
 }
 
 function formatDateTime(date: string) {
@@ -113,7 +113,7 @@ const ProposalTimeline: React.FC<Props> = ({ proposalId, refreshTrigger }) => {
         <h2 className="text-lg font-semibold text-white">Activity</h2>
       </div>
       {activities.length === 0 ? (
-        <p className="text-sm text-gray-400">No activity recorded yet.</p>
+        <p className="text-sm text-surface-500 dark:text-surface-400">No activity recorded yet.</p>
       ) : (
         <div className="space-y-0">
           {activities.map((activity, idx) => {
@@ -125,7 +125,7 @@ const ProposalTimeline: React.FC<Props> = ({ proposalId, refreshTrigger }) => {
               <div key={activity.id} className="flex gap-3 relative">
                 {/* Vertical line */}
                 {!isLast && (
-                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-surface-50/10" />
+                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-surface-100 dark:bg-surface-800/20" />
                 )}
                 {/* Icon */}
                 <div className={`mt-0.5 shrink-0 ${config.color}`}>
@@ -134,7 +134,7 @@ const ProposalTimeline: React.FC<Props> = ({ proposalId, refreshTrigger }) => {
                 {/* Content */}
                 <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
                   <p className="text-sm font-medium text-white">{config.label}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-surface-500">
                     {activity.performedByUser
                       ? `by ${activity.performedByUser.fullName}`
                       : 'System'}
@@ -142,12 +142,12 @@ const ProposalTimeline: React.FC<Props> = ({ proposalId, refreshTrigger }) => {
                     {formatDateTime(activity.createdAt)}
                   </p>
                   {activity.action === 'rejected' && activity.metadata?.rejectionReason && (
-                    <p className="text-xs text-gray-400 mt-1 italic">
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 italic">
                       &ldquo;{activity.metadata.rejectionReason}&rdquo;
                     </p>
                   )}
                   {activity.action === 'sent' && activity.metadata?.emailTo && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       Sent to {activity.metadata.emailTo}
                     </p>
                   )}

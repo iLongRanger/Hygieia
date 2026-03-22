@@ -93,7 +93,7 @@ export function Table<T extends { id: string | number }>({
                 onClick={() => onRowClick?.(item)}
                 className={cn(
                   'transition-colors',
-                  striped && rowIndex % 2 === 1 && 'bg-surface-50/50 dark:bg-surface-800/30',
+                  striped && rowIndex % 2 === 1 && 'bg-surface-100 dark:bg-surface-800/100 dark:bg-surface-800/30',
                   'hover:bg-surface-100 dark:hover:bg-surface-800/50',
                   onRowClick && 'cursor-pointer'
                 )}

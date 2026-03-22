@@ -43,7 +43,7 @@ const SetPassword = () => {
       <div className="flex min-h-screen items-center justify-center bg-surface-950">
         <div className="text-center text-white">
           <h1 className="text-2xl font-bold mb-2">Invalid Link</h1>
-          <p className="text-gray-400">This password setup link is invalid.</p>
+          <p className="text-surface-500 dark:text-surface-400">This password setup link is invalid.</p>
         </div>
       </div>
     );
@@ -54,7 +54,7 @@ const SetPassword = () => {
       <div className="flex min-h-screen items-center justify-center bg-surface-950">
         <div className="w-full max-w-md rounded-xl bg-surface-900 p-8 text-center">
           <h1 className="text-2xl font-bold text-white mb-2">Password Set!</h1>
-          <p className="text-gray-400 mb-6">Your account is ready. You can now log in.</p>
+          <p className="text-surface-500 dark:text-surface-400 mb-6">Your account is ready. You can now log in.</p>
           <Button onClick={() => navigate('/login')}>Go to Login</Button>
         </div>
       </div>
@@ -65,7 +65,7 @@ const SetPassword = () => {
     <div className="flex min-h-screen items-center justify-center bg-surface-950">
       <div className="w-full max-w-md rounded-xl bg-surface-900 p-8">
         <h1 className="text-2xl font-bold text-white mb-2">Set Your Password</h1>
-        <p className="text-gray-400 mb-6">Choose a password to activate your Hygieia portal account.</p>
+        <p className="text-surface-500 dark:text-surface-400 mb-6">Choose a password to activate your Hygieia portal account.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

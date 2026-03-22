@@ -1094,7 +1094,7 @@ const FacilityDetail = () => {
   }
 
   if (!facility) {
-    return <div className="text-center text-gray-400">Facility not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Facility not found</div>;
   }
 
   // --- Render ---
@@ -1107,7 +1107,7 @@ const FacilityDetail = () => {
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-white truncate">{facility.name}</h1>
-          <p className="text-gray-400">{facility.account.name}</p>
+          <p className="text-surface-500 dark:text-surface-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
           {!hasExistingProposalOrContract && !hasSubmittedForProposal && (
@@ -1141,12 +1141,12 @@ const FacilityDetail = () => {
       )}
 
       {/* Tab Bar */}
-      <div className="flex gap-1 border-b border-white/10">
+      <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
         <button
           className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
             activeTab === 'overview'
               ? 'text-white'
-              : 'text-gray-400 hover:text-gray-300'
+              : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
           }`}
           onClick={() => setActiveTab('overview')}
         >
@@ -1159,7 +1159,7 @@ const FacilityDetail = () => {
           className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
             activeTab === 'areas'
               ? 'text-white'
-              : 'text-gray-400 hover:text-gray-300'
+              : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
           }`}
           onClick={() => setActiveTab('areas')}
         >
@@ -1173,7 +1173,7 @@ const FacilityDetail = () => {
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
               activeTab === 'area-detail'
                 ? 'text-white'
-                : 'text-gray-400 hover:text-gray-300'
+                : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
             }`}
             onClick={() => setActiveTab('area-detail')}
           >

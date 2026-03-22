@@ -111,19 +111,19 @@ const PublicQuotationView = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-8 w-8 border-4 border-gray-300 border-t-blue-600 rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-surface-50">
+        <div className="animate-spin h-8 w-8 border-4 border-surface-300 dark:border-surface-600 border-t-blue-600 rounded-full" />
       </div>
     );
   }
 
   if (error || !quotation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-surface-50">
         <div className="text-center max-w-md">
-          <DollarSign className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Quotation Not Found</h1>
-          <p className="text-gray-500">{error || 'This link may have expired.'}</p>
+          <DollarSign className="h-16 w-16 text-surface-600 dark:text-surface-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-surface-800 mb-2">Quotation Not Found</h1>
+          <p className="text-surface-500">{error || 'This link may have expired.'}</p>
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ const PublicQuotationView = () => {
   const canRespond = ['sent', 'viewed'].includes(quotation.status);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-50">
       {/* Header */}
       <div style={{ backgroundColor: primaryColor }} className="py-8 px-4">
         <div className="max-w-3xl mx-auto text-center">
@@ -162,11 +162,11 @@ const PublicQuotationView = () => {
       {/* Content */}
       <div className="max-w-3xl mx-auto py-8 px-4">
         {/* Quotation Header */}
-        <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-surface-50 rounded-lg shadow-sm border border-surface-200 p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">{quotation.title}</h2>
-              <p className="text-sm text-gray-500">{quotation.quotationNumber}</p>
+              <h2 className="text-xl font-bold text-surface-800">{quotation.title}</h2>
+              <p className="text-sm text-surface-500">{quotation.quotationNumber}</p>
             </div>
             <span
               className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -183,17 +183,17 @@ const PublicQuotationView = () => {
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-500">Prepared for</p>
-              <p className="font-medium text-gray-800">{quotation.account.name}</p>
+              <p className="text-surface-500">Prepared for</p>
+              <p className="font-medium text-surface-800">{quotation.account.name}</p>
               {quotation.facility && (
-                <p className="text-gray-600">{quotation.facility.name}</p>
+                <p className="text-surface-600">{quotation.facility.name}</p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-gray-500">Date</p>
-              <p className="font-medium text-gray-800">{formatDate(quotation.createdAt)}</p>
+              <p className="text-surface-500">Date</p>
+              <p className="font-medium text-surface-800">{formatDate(quotation.createdAt)}</p>
               {quotation.validUntil && (
-                <p className="text-gray-600 text-xs mt-1">
+                <p className="text-surface-600 text-xs mt-1">
                   Valid until {formatDate(quotation.validUntil)}
                 </p>
               )}
@@ -201,20 +201,20 @@ const PublicQuotationView = () => {
           </div>
 
           {quotation.description && (
-            <p className="mt-4 text-sm text-gray-600 whitespace-pre-wrap">
+            <p className="mt-4 text-sm text-surface-600 whitespace-pre-wrap">
               {quotation.description}
             </p>
           )}
         </div>
 
         {/* Services */}
-        <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Services</h3>
+        <div className="bg-surface-50 rounded-lg shadow-sm border border-surface-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-surface-800 mb-4">Services</h3>
           <div className="space-y-3">
             {quotation.services.map((service, i) => (
-              <div key={i} className="flex justify-between items-start py-3 border-b border-gray-100 last:border-0">
+              <div key={i} className="flex justify-between items-start py-3 border-b border-surface-100 last:border-0">
                 <div className="flex-1">
-                  <p className="font-medium text-gray-800">{service.serviceName}</p>
+                  <p className="font-medium text-surface-800">{service.serviceName}</p>
                   {(() => {
                     const meta = service.pricingMeta;
                     const quantity =
@@ -231,13 +231,13 @@ const PublicQuotationView = () => {
                     return (
                       <>
                         {scope && (
-                          <p className="text-sm text-gray-500 mt-0.5">
+                          <p className="text-sm text-surface-500 mt-0.5">
                             Scope: {scope}
                             {unitPrice !== undefined && ` at ${formatCurrency(unitPrice)}/${formatUnitLabel(meta?.unitType)}`}
                           </p>
                         )}
                         {standardAmount !== undefined && (
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-surface-500 mt-0.5">
                             Standard price: {formatCurrency(standardAmount)}
                             {discountPercent && discountPercent > 0
                               ? ` (${discountPercent.toFixed(2)}% discount applied)`
@@ -247,7 +247,7 @@ const PublicQuotationView = () => {
                         {addOns.length > 0 && (
                           <ul className="mt-1 space-y-0.5">
                             {addOns.map((addOn, idx) => (
-                              <li key={`${addOn.name}-${idx}`} className="text-xs text-gray-500">
+                              <li key={`${addOn.name}-${idx}`} className="text-xs text-surface-500">
                                 Add-on: {addOn.name} x{addOn.quantity} ({formatCurrency(addOn.total)})
                               </li>
                             ))}
@@ -257,36 +257,36 @@ const PublicQuotationView = () => {
                     );
                   })()}
                   {service.description && (
-                    <p className="text-sm text-gray-500 mt-0.5">{service.description}</p>
+                    <p className="text-sm text-surface-500 mt-0.5">{service.description}</p>
                   )}
                   {service.includedTasks?.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {service.includedTasks.map((task, j) => (
-                        <li key={j} className="text-xs text-gray-500 flex items-center gap-1">
-                          <span className="h-1 w-1 rounded-full bg-gray-400" />
+                        <li key={j} className="text-xs text-surface-500 flex items-center gap-1">
+                          <span className="h-1 w-1 rounded-full bg-surface-400" />
                           {task}
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
-                <span className="font-semibold text-gray-800 ml-4">
+                <span className="font-semibold text-surface-800 ml-4">
                   {formatCurrency(service.price)}
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-surface-200">
             <div className="flex justify-end">
               <div className="w-56 space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Subtotal</span>
+                  <span className="text-surface-500">Subtotal</span>
                   <span className="font-medium">{formatCurrency(quotation.subtotal)}</span>
                 </div>
                 {Number(quotation.taxRate) > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">
+                    <span className="text-surface-500">
                       Tax ({(Number(quotation.taxRate) * 100).toFixed(1)}%)
                     </span>
                     <span>{formatCurrency(quotation.taxAmount)}</span>
@@ -303,11 +303,11 @@ const PublicQuotationView = () => {
 
         {/* Terms */}
         {quotation.termsAndConditions && (
-          <div className="bg-surface-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
+          <div className="bg-surface-50 rounded-lg shadow-sm border border-surface-200 p-6 mb-6">
+            <h3 className="text-sm font-semibold text-surface-500 uppercase mb-2">
               Terms & Conditions
             </h3>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">
+            <p className="text-sm text-surface-600 whitespace-pre-wrap">
               {quotation.termsAndConditions}
             </p>
           </div>
@@ -340,7 +340,7 @@ const PublicQuotationView = () => {
             </button>
             <button
               onClick={() => setRejectModalOpen(true)}
-              className="px-8 py-3 bg-surface-50 text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition flex items-center gap-2"
+              className="px-8 py-3 bg-surface-50 text-surface-700 font-semibold rounded-lg border border-surface-300 dark:border-surface-600 hover:bg-surface-50 transition flex items-center gap-2"
             >
               <XCircle className="h-5 w-5" />
               Decline
@@ -349,11 +349,11 @@ const PublicQuotationView = () => {
         )}
 
         {/* Contact */}
-        <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-surface-500">
           <p>Questions? Contact us:</p>
           <div className="flex items-center justify-center gap-4 mt-2">
             {branding?.companyEmail && (
-              <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-1 hover:text-gray-700">
+              <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-1 hover:text-surface-700">
                 <Mail className="h-3.5 w-3.5" /> {branding.companyEmail}
               </a>
             )}
@@ -370,13 +370,13 @@ const PublicQuotationView = () => {
       {acceptModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-surface-50 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Accept Quotation</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <h3 className="text-lg font-bold text-surface-800 mb-4">Accept Quotation</h3>
+            <p className="text-sm text-surface-500 mb-4">
               By signing below, you agree to the terms of quotation{' '}
               <strong>{quotation.quotationNumber}</strong> for{' '}
               <strong>{formatCurrency(quotation.totalAmount)}</strong>.
             </p>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-surface-700 mb-1">
               Your Full Name (Signature)
             </label>
             <input
@@ -384,12 +384,12 @@ const PublicQuotationView = () => {
               value={signatureName}
               onChange={(e) => setSignatureName(e.target.value)}
               placeholder="Enter your full name"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setAcceptModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg text-surface-700 hover:bg-surface-50"
               >
                 Cancel
               </button>
@@ -410,8 +410,8 @@ const PublicQuotationView = () => {
       {rejectModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-surface-50 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Decline Quotation</h3>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <h3 className="text-lg font-bold text-surface-800 mb-4">Decline Quotation</h3>
+            <label className="block text-sm font-medium text-surface-700 mb-1">
               Reason for Declining
             </label>
             <textarea
@@ -419,12 +419,12 @@ const PublicQuotationView = () => {
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Please let us know why..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setRejectModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-surface-300 dark:border-surface-600 rounded-lg text-surface-700 hover:bg-surface-50"
               >
                 Cancel
               </button>

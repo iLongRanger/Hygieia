@@ -189,7 +189,7 @@ const TaskGroupStepper = ({
   const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
 
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-3">
+    <div className="mt-3 rounded-xl border border-surface-200 dark:border-surface-700 bg-black/10 p-3">
       <div className="flex flex-wrap gap-2">
         {groups.map((group, index) => (
           <button
@@ -199,7 +199,7 @@ const TaskGroupStepper = ({
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'bg-gold text-navy'
-                : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
+                : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-white'
             }`}
           >
             {group.label}
@@ -207,16 +207,16 @@ const TaskGroupStepper = ({
         ))}
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400">
           {activeGroup.label}
         </p>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-surface-500">
           {activeIndex + 1} of {groups.length}
         </span>
       </div>
       <ul className="mt-2 space-y-1 ml-1">
         {activeGroup.tasks.map((task, index) => (
-          <li key={`${serviceId}-${activeGroup.key}-${index}`} className="flex items-start gap-2 text-sm text-gray-300">
+          <li key={`${serviceId}-${activeGroup.key}-${index}`} className="flex items-start gap-2 text-sm text-surface-600 dark:text-surface-400">
             <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
             {task}
           </li>
@@ -527,7 +527,7 @@ const ProposalDetail = () => {
   }
 
   if (!proposal) {
-    return <div className="text-center text-gray-400">Proposal not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Proposal not found</div>;
   }
   const appliedFrequencyMultiplier = findAppliedFrequencyMultiplier(
     proposal.pricingSnapshot?.frequencyMultipliers as Record<string, number> | undefined,
@@ -558,7 +558,7 @@ const ProposalDetail = () => {
               {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
             </Badge>
           </div>
-          <p className="text-gray-400">{proposal.proposalNumber}</p>
+          <p className="text-surface-500 dark:text-surface-400">{proposal.proposalNumber}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Primary actions based on status */}
@@ -605,10 +605,10 @@ const ProposalDetail = () => {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                 <button
                   onClick={handleDownloadPdf}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                 >
                   <Download className="h-4 w-4" />
                   Download PDF
@@ -616,7 +616,7 @@ const ProposalDetail = () => {
                 {proposal.publicToken && (
                   <button
                     onClick={handleCopyPublicLink}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                   >
                     <Link2 className="h-4 w-4" />
                     Copy Public Link
@@ -626,15 +626,15 @@ const ProposalDetail = () => {
                   <>
                     <button
                       onClick={handleResend}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Resend Email
                     </button>
-                    <div className="my-1 border-t border-white/10" />
+                    <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
                     <button
                       onClick={handleReject}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-red-300"
                     >
                       <XCircle className="h-4 w-4" />
                       Reject
@@ -643,10 +643,10 @@ const ProposalDetail = () => {
                 )}
                 {!proposal.archivedAt && canAdminProposals && (
                   <>
-                    <div className="my-1 border-t border-white/10" />
+                    <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
                     <button
                       onClick={handleArchive}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-50/5 hover:text-orange-300"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-orange-300"
                     >
                       <Archive className="h-4 w-4" />
                       Archive
@@ -656,7 +656,7 @@ const ProposalDetail = () => {
                 {canDeleteProposals && (
                   <button
                     onClick={handleDelete}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -675,7 +675,7 @@ const ProposalDetail = () => {
             <Archive className="h-5 w-5" />
             <span className="font-medium">This proposal is archived</span>
           </div>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
             Archived on {formatDate(proposal.archivedAt)}
           </p>
         </div>
@@ -715,10 +715,10 @@ const ProposalDetail = () => {
                           step.rejected
                             ? 'border-red-500 bg-red-500/20 text-red-400'
                             : step.expired
-                              ? 'border-gray-600 bg-gray-600/20 text-gray-500'
+                              ? 'border-surface-300 dark:border-surface-600 bg-surface-600/20 text-surface-500'
                               : step.done
                                 ? `border-gold bg-gold/20 text-gold ${isCurrent ? 'ring-2 ring-gold/40 ring-offset-2 ring-offset-surface-800' : ''}`
-                                : 'border-gray-600 bg-transparent text-gray-600'
+                                : 'border-surface-300 dark:border-surface-600 bg-transparent text-surface-600'
                         }`}
                       >
                         {step.rejected ? (
@@ -726,7 +726,7 @@ const ProposalDetail = () => {
                         ) : step.done ? (
                           <CheckCircle className="h-4 w-4" />
                         ) : (
-                          <span className="h-2 w-2 rounded-full bg-gray-600" />
+                          <span className="h-2 w-2 rounded-full bg-surface-600" />
                         )}
                       </div>
                       {/* Label */}
@@ -735,16 +735,16 @@ const ProposalDetail = () => {
                           step.rejected
                             ? 'text-red-400'
                             : step.expired
-                              ? 'text-gray-500'
+                              ? 'text-surface-500'
                               : step.done
                                 ? 'text-white'
-                                : 'text-gray-500'
+                                : 'text-surface-500'
                         }`}
                       >
                         {step.label}
                       </span>
                       {/* Date */}
-                      <span className="text-[10px] text-gray-500 mt-0.5">
+                      <span className="text-[10px] text-surface-500 mt-0.5">
                         {step.done && step.date ? formatShortDate(step.date) : '\u00A0'}
                       </span>
                     </div>
@@ -756,7 +756,7 @@ const ProposalDetail = () => {
                             ? steps[i + 1]?.rejected
                               ? 'bg-red-500/50'
                               : 'bg-gold/60'
-                            : 'bg-gray-700'
+                            : 'bg-surface-700'
                         }`}
                       />
                     )}
@@ -770,7 +770,7 @@ const ProposalDetail = () => {
               </div>
             )}
             {isExpired && (
-              <div className="mt-2 rounded-md bg-gray-500/10 border border-gray-500/20 px-3 py-2 text-sm text-gray-400">
+              <div className="mt-2 rounded-md bg-surface-500/10 border border-surface-500/20 px-3 py-2 text-sm text-surface-500 dark:text-surface-400">
                 This proposal has expired
               </div>
             )}
@@ -786,50 +786,50 @@ const ProposalDetail = () => {
           {proposal.description && (
             <Card>
               <h2 className="text-lg font-semibold text-white mb-4">Description</h2>
-              <p className="text-gray-300 whitespace-pre-wrap">{proposal.description}</p>
+              <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.description}</p>
             </Card>
           )}
 
           {/* Proposal Items */}
           {visibleProposalItems.length > 0 && (
             <Card noPadding>
-              <div className="p-6 border-b border-white/10">
+              <div className="p-6 border-b border-surface-200 dark:border-surface-700">
                 <h2 className="text-lg font-semibold text-white">Line Items</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-surface-50/5">
+                  <thead className="bg-surface-100 dark:bg-surface-800/10">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
                         Description
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
                         Qty
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
                         Unit Price
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
                         Total
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                     {visibleProposalItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-surface-50/5">
+                      <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
                         <td className="px-6 py-4">
                           <Badge variant="default">
                             {item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1)}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 text-gray-300">{item.description}</td>
-                        <td className="px-6 py-4 text-right text-gray-300">
+                        <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{item.description}</td>
+                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">
                           {item.quantity}
                         </td>
-                        <td className="px-6 py-4 text-right text-gray-300">
+                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">
                           {formatCurrency(item.unitPrice)}
                         </td>
                         <td className="px-6 py-4 text-right font-medium text-white">
@@ -859,7 +859,7 @@ const ProposalDetail = () => {
                   return (
                     <div
                       key={idx}
-                      className="border-b border-white/10 pb-5 last:border-0 last:pb-0"
+                      className="border-b border-surface-200 dark:border-surface-700 pb-5 last:border-0 last:pb-0"
                     >
                       {/* Area header */}
                       <div className="flex justify-between items-start mb-2">
@@ -875,7 +875,7 @@ const ProposalDetail = () => {
                                   includedTasks: service.includedTasks,
                                 });
                               }}
-                              className="text-gray-500 hover:text-gray-300 transition-colors"
+                              className="text-surface-500 hover:text-surface-600 dark:text-surface-400 transition-colors"
                               title="Edit tasks"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -887,7 +887,7 @@ const ProposalDetail = () => {
                             {formatCurrency(Number(service.monthlyPrice) || 0)}/month
                           </div>
                           {service.estimatedHours && service.hourlyRate && (
-                            <div className="text-sm text-gray-400">
+                            <div className="text-sm text-surface-500 dark:text-surface-400">
                               {service.estimatedHours} hrs x{' '}
                               {formatCurrency(service.hourlyRate)}/hr
                             </div>
@@ -896,7 +896,7 @@ const ProposalDetail = () => {
                       </div>
 
                       {areaInfo && (
-                        <p className="text-sm text-gray-400 mt-1">{areaInfo}</p>
+                        <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">{areaInfo}</p>
                       )}
 
                       {/* Tasks grouped by category/frequency */}
@@ -914,9 +914,9 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-white mb-4">Pricing Breakdown</h2>
 
               {/* Strategy header row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-surface-50/5 p-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 mb-4">
                 <div>
-                  <div className="text-xs text-gray-400">Strategy</div>
+                  <div className="text-xs text-surface-500 dark:text-surface-400">Strategy</div>
                   <div className="text-sm font-medium text-white">
                     {proposal.pricingSnapshot.pricingBasis === 'sqft_price_with_derived_hours'
                       ? 'Per Sq Ft + Derived Hours'
@@ -927,7 +927,7 @@ const ProposalDetail = () => {
                 </div>
                 {proposal.pricingSnapshot.hourlyRate != null && (
                   <div>
-                    <div className="text-xs text-gray-400">Hourly Rate</div>
+                    <div className="text-xs text-surface-500 dark:text-surface-400">Hourly Rate</div>
                     <div className="text-sm font-medium text-white">
                       {formatCurrency(proposal.pricingSnapshot.hourlyRate)}
                     </div>
@@ -935,7 +935,7 @@ const ProposalDetail = () => {
                 )}
                 {proposal.pricingSnapshot.targetProfitMargin != null && (
                   <div>
-                    <div className="text-xs text-gray-400">Profit Margin</div>
+                    <div className="text-xs text-surface-500 dark:text-surface-400">Profit Margin</div>
                     <div className="text-sm font-medium text-white">
                       {formatPercent(proposal.pricingSnapshot.targetProfitMargin)}
                     </div>
@@ -977,17 +977,17 @@ const ProposalDetail = () => {
               {/* Cost stack */}
               {proposal.pricingSnapshot.pricingType === 'hourly' && (
                 <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-300 mb-2">Cost Stack (per labor hour)</h3>
+                  <h3 className="text-sm font-semibold text-surface-600 dark:text-surface-400 mb-2">Cost Stack (per labor hour)</h3>
                   <div className="space-y-1.5 text-sm">
                     {proposal.pricingSnapshot.laborCostPerHour != null && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Labor Cost</span>
+                        <span className="text-surface-500 dark:text-surface-400">Labor Cost</span>
                         <span className="text-white">{formatCurrency(proposal.pricingSnapshot.laborCostPerHour)}/hr</span>
                       </div>
                     )}
                     {proposal.pricingSnapshot.laborBurdenPercentage != null && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Labor Burden ({formatPercent(proposal.pricingSnapshot.laborBurdenPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Labor Burden ({formatPercent(proposal.pricingSnapshot.laborBurdenPercentage)})</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.laborBurdenPercentage)}/hr
                         </span>
@@ -995,7 +995,7 @@ const ProposalDetail = () => {
                     )}
                     {proposal.pricingSnapshot.insurancePercentage != null && proposal.pricingSnapshot.insurancePercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Insurance ({formatPercent(proposal.pricingSnapshot.insurancePercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Insurance ({formatPercent(proposal.pricingSnapshot.insurancePercentage)})</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.insurancePercentage)}/hr
                         </span>
@@ -1003,7 +1003,7 @@ const ProposalDetail = () => {
                     )}
                     {proposal.pricingSnapshot.adminOverheadPercentage != null && proposal.pricingSnapshot.adminOverheadPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Admin Overhead ({formatPercent(proposal.pricingSnapshot.adminOverheadPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Admin Overhead ({formatPercent(proposal.pricingSnapshot.adminOverheadPercentage)})</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.adminOverheadPercentage)}/hr
                         </span>
@@ -1011,7 +1011,7 @@ const ProposalDetail = () => {
                     )}
                     {proposal.pricingSnapshot.equipmentPercentage != null && proposal.pricingSnapshot.equipmentPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Equipment ({formatPercent(proposal.pricingSnapshot.equipmentPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Equipment ({formatPercent(proposal.pricingSnapshot.equipmentPercentage)})</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.equipmentPercentage)}/hr
                         </span>
@@ -1019,7 +1019,7 @@ const ProposalDetail = () => {
                     )}
                     {proposal.pricingSnapshot.supplyCostPercentage != null && proposal.pricingSnapshot.supplyCostPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Supplies ({formatPercent(proposal.pricingSnapshot.supplyCostPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Supplies ({formatPercent(proposal.pricingSnapshot.supplyCostPercentage)})</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.supplyCostPercentage)}/hr
                         </span>
@@ -1027,13 +1027,13 @@ const ProposalDetail = () => {
                     )}
                     {proposal.pricingSnapshot.travelCostPerVisit != null && proposal.pricingSnapshot.travelCostPerVisit > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Travel (per visit)</span>
+                        <span className="text-surface-500 dark:text-surface-400">Travel (per visit)</span>
                         <span className="text-white">{formatCurrency(proposal.pricingSnapshot.travelCostPerVisit)}</span>
                       </div>
                     )}
-                    <div className="border-t border-white/10 pt-1.5 mt-1.5">
+                    <div className="border-t border-surface-200 dark:border-surface-700 pt-1.5 mt-1.5">
                       <div className="flex justify-between font-medium">
-                        <span className="text-gray-300">Loaded Rate</span>
+                        <span className="text-surface-600 dark:text-surface-400">Loaded Rate</span>
                         <span className="text-white">
                           {formatCurrency(proposal.pricingSnapshot.hourlyRate)}/hr
                         </span>
@@ -1045,14 +1045,14 @@ const ProposalDetail = () => {
 
               {/* Monthly summary */}
               {proposal.proposalServices && proposal.proposalServices.length > 0 && (
-                <div className="rounded-lg bg-surface-50/5 p-3 mb-4">
+                <div className="rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 mb-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Monthly Subtotal</span>
+                    <span className="text-surface-500 dark:text-surface-400">Monthly Subtotal</span>
                     <span className="text-white font-medium">{formatCurrency(Number(proposal.subtotal) || 0)}</span>
                   </div>
                   {(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0) > 0 && (
                     <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-400">Minimum Monthly Charge</span>
+                      <span className="text-surface-500 dark:text-surface-400">Minimum Monthly Charge</span>
                       <span className="text-white">{formatCurrency(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0)}</span>
                     </div>
                   )}
@@ -1080,7 +1080,7 @@ const ProposalDetail = () => {
               {/* Collapsible Area Multiplier Review */}
               <button
                 onClick={() => setRateCardOpen(!rateCardOpen)}
-                className="flex w-full items-center justify-between rounded-lg bg-surface-50/5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-surface-50/10 transition-colors"
+                className="flex w-full items-center justify-between rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2 text-sm font-medium text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/20 transition-colors"
               >
                 <span>Area Multiplier Review</span>
                 {rateCardOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1092,10 +1092,10 @@ const ProposalDetail = () => {
                       This proposal snapshot does not include per-area multiplier usage. Recalculate pricing to generate area-level review data.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto rounded-lg border border-white/10">
+                    <div className="overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700">
                       <table className="w-full min-w-[700px] text-sm">
-                        <thead className="bg-surface-50/5">
-                          <tr className="text-xs uppercase tracking-wider text-gray-400">
+                        <thead className="bg-surface-100 dark:bg-surface-800/10">
+                          <tr className="text-xs uppercase tracking-wider text-surface-500 dark:text-surface-400">
                             <th className="px-3 py-2 text-left font-medium">Area</th>
                             <th className="px-3 py-2 text-right font-medium">Sq Ft</th>
                             <th className="px-3 py-2 text-left font-medium">Floor</th>
@@ -1103,29 +1103,29 @@ const ProposalDetail = () => {
                             <th className="px-3 py-2 text-left font-medium">Traffic</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/10">
+                        <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                           {appliedAreaMultipliers.map((area: any, index: number) => (
                             <tr key={`${area.areaId || area.areaName || 'area'}-${index}`} className="bg-surface-50/[0.02]">
                               <td className="px-3 py-2 text-white">
                                 {area.areaName || 'Area'}
                                 {Number(area.quantity || 1) > 1 && (
-                                  <span className="ml-1 text-xs text-gray-400">(x{Number(area.quantity)})</span>
+                                  <span className="ml-1 text-xs text-surface-500 dark:text-surface-400">(x{Number(area.quantity)})</span>
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-right text-gray-300">{Number(area.squareFeet || 0).toLocaleString()}</td>
-                              <td className="px-3 py-2 text-gray-300">
+                              <td className="px-3 py-2 text-right text-surface-600 dark:text-surface-400">{Number(area.squareFeet || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-surface-600 dark:text-surface-400">
                                 <span className="capitalize">{String(area.floorType || '').replace(/_/g, ' ')}</span>
                                 <span className="ml-2 inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-200">
                                   {Number(area.floorMultiplier || 1).toFixed(2)}x
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-gray-300">
+                              <td className="px-3 py-2 text-surface-600 dark:text-surface-400">
                                 <span className="capitalize">{String(area.conditionLevel || '').replace(/_/g, ' ')}</span>
                                 <span className="ml-2 inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-200">
                                   {Number(area.conditionMultiplier || 1).toFixed(2)}x
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-gray-300">
+                              <td className="px-3 py-2 text-surface-600 dark:text-surface-400">
                                 {area.trafficLevel ? (
                                   <>
                                     <span className="capitalize">{String(area.trafficLevel).replace(/_/g, ' ')}</span>
@@ -1134,7 +1134,7 @@ const ProposalDetail = () => {
                                     </span>
                                   </>
                                 ) : (
-                                  <span className="text-gray-500">n/a</span>
+                                  <span className="text-surface-500">n/a</span>
                                 )}
                               </td>
                             </tr>
@@ -1148,7 +1148,7 @@ const ProposalDetail = () => {
 
               {/* Snapshot timestamp */}
               {proposal.pricingSnapshot.capturedAt && (
-                <div className="mt-3 text-xs text-gray-500">
+                <div className="mt-3 text-xs text-surface-500">
                   Pricing snapshot captured {formatDate(proposal.pricingSnapshot.capturedAt)}
                 </div>
               )}
@@ -1163,11 +1163,11 @@ const ProposalDetail = () => {
               {/* Facility header */}
               <div className="mb-4">
                 <div className="flex items-center gap-2 text-white font-medium">
-                  <Building2 className="h-4 w-4 text-gray-400" />
+                  <Building2 className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                   {proposal.facility.name}
                 </div>
                 {proposal.facility.address && (
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                  <div className="flex items-center gap-2 mt-1 text-sm text-surface-500 dark:text-surface-400">
                     <MapPin className="h-3.5 w-3.5" />
                     {typeof proposal.facility.address === 'string'
                       ? proposal.facility.address
@@ -1192,26 +1192,26 @@ const ProposalDetail = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="pb-2 text-left text-xs font-medium text-gray-400 uppercase">Area</th>
+                        <tr className="border-b border-surface-200 dark:border-surface-700">
+                          <th className="pb-2 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Area</th>
                           {showHoursColumn && (
-                            <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Hours</th>
+                            <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Hours</th>
                           )}
-                          <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Frequency</th>
-                          <th className="pb-2 text-right text-xs font-medium text-gray-400 uppercase">Monthly</th>
+                          <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Frequency</th>
+                          <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Monthly</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
                         {proposal.proposalServices.map((svc, idx) => (
-                          <tr key={idx} className="hover:bg-surface-50/5">
-                            <td className="py-2 text-gray-300">{svc.serviceName}</td>
+                          <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
+                            <td className="py-2 text-surface-600 dark:text-surface-400">{svc.serviceName}</td>
                             {showHoursColumn && (
-                              <td className="py-2 text-right text-gray-300">
+                              <td className="py-2 text-right text-surface-600 dark:text-surface-400">
                                 {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
                               </td>
                             )}
                             <td className="py-2 text-right">
-                              <span className="text-gray-300">
+                              <span className="text-surface-600 dark:text-surface-400">
                                 {formatFrequencyLabel(proposal.serviceFrequency || svc.frequency || svc.serviceType)}
                               </span>
                             </td>
@@ -1222,10 +1222,10 @@ const ProposalDetail = () => {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t border-white/10">
+                        <tr className="border-t border-surface-200 dark:border-surface-700">
                           <td className="pt-2 font-medium text-white">Total</td>
                           {showHoursColumn && (
-                            <td className="pt-2 text-right text-gray-300">
+                            <td className="pt-2 text-right text-surface-600 dark:text-surface-400">
                               {proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0)} hrs
                             </td>
                           )}
@@ -1246,7 +1246,7 @@ const ProposalDetail = () => {
           {proposal.notes && (
             <Card>
               <h2 className="text-lg font-semibold text-white mb-4">Internal Notes</h2>
-              <p className="text-gray-300 whitespace-pre-wrap">{proposal.notes}</p>
+              <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.notes}</p>
             </Card>
           )}
         </div>
@@ -1261,20 +1261,20 @@ const ProposalDetail = () => {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Subtotal:</span>
+                <span className="text-surface-500 dark:text-surface-400">Subtotal:</span>
                 <span className="text-white font-medium">
                   {formatCurrency(Number(proposal.subtotal) || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">
+                <span className="text-surface-500 dark:text-surface-400">
                   Tax ({((Number(proposal.taxRate) || 0) * 100).toFixed(1)}%):
                 </span>
                 <span className="text-white font-medium">
                   {formatCurrency(Number(proposal.taxAmount) || 0)}
                 </span>
               </div>
-              <div className="flex justify-between text-xl font-bold border-t border-white/10 pt-3">
+              <div className="flex justify-between text-xl font-bold border-t border-surface-200 dark:border-surface-700 pt-3">
                 <span className="text-white">Total:</span>
                 <span className="text-emerald">{formatCurrency(Number(proposal.totalAmount) || 0)}</span>
               </div>
@@ -1286,38 +1286,38 @@ const ProposalDetail = () => {
             <h2 className="text-lg font-semibold text-white mb-4">Details</h2>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <Building2 className="mt-1 h-4 w-4 text-gray-400" />
+                <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Account</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
                   <div className="text-white">{proposal.account.name}</div>
                 </div>
               </div>
 
               {proposal.facility && (
                 <div className="flex items-start gap-3">
-                  <Building2 className="mt-1 h-4 w-4 text-gray-400" />
+                  <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Facility</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
                     <div className="text-white">{proposal.facility.name}</div>
                   </div>
                 </div>
               )}
 
               <div className="flex items-start gap-3">
-                <User className="mt-1 h-4 w-4 text-gray-400" />
+                <User className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Created By</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Created By</div>
                   <div className="text-white">{proposal.createdByUser.fullName}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-surface-500">
                     {proposal.createdByUser.email}
                   </div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <Calendar className="mt-1 h-4 w-4 text-gray-400" />
+                <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Valid Until</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Valid Until</div>
                   <div className="text-white">{formatDate(proposal.validUntil)}</div>
                 </div>
               </div>
@@ -1325,9 +1325,9 @@ const ProposalDetail = () => {
               {/* Pricing Plan Info */}
               {proposal.pricingPlanId && (
                 <div className="flex items-start gap-3">
-                  <Settings className="mt-1 h-4 w-4 text-gray-400" />
+                  <Settings className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Pricing Plan</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Pricing Plan</div>
                     <div className="text-white flex items-center gap-2">
                       {proposal.pricingSnapshot?.pricingPlanName || proposal.pricingPlanId}
                       {proposal.pricingLocked && (
@@ -1338,7 +1338,7 @@ const ProposalDetail = () => {
                       )}
                     </div>
                     {proposal.pricingSnapshot?.pricingType && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-surface-500">
                         Type: {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
                       </div>
                     )}
@@ -1351,10 +1351,10 @@ const ProposalDetail = () => {
                 <div className="flex items-start gap-3">
                   <PenTool className="mt-1 h-4 w-4 text-green-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Signed By</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Signed By</div>
                     <div className="text-white">{proposal.signatureName}</div>
                     {proposal.signatureDate && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-surface-500">
                         {formatDate(proposal.signatureDate)}
                       </div>
                     )}
@@ -1365,9 +1365,9 @@ const ProposalDetail = () => {
               {/* Public link status */}
               {proposal.publicToken && (
                 <div className="flex items-start gap-3">
-                  <Link2 className="mt-1 h-4 w-4 text-gray-400" />
+                  <Link2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Public Link</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Public Link</div>
                     <button
                       onClick={handleCopyPublicLink}
                       className="text-sm text-blue-400 hover:text-blue-300"
@@ -1375,7 +1375,7 @@ const ProposalDetail = () => {
                       Click to copy
                     </button>
                     {proposal.publicTokenExpiresAt && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-surface-500">
                         Expires {formatDate(proposal.publicTokenExpiresAt)}
                       </div>
                     )}

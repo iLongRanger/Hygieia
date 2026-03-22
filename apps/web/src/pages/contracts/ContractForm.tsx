@@ -529,7 +529,7 @@ const ContractForm = () => {
           <h1 className="text-2xl font-bold text-white">
             {isEditMode ? 'Edit Contract' : 'New Contract'}
           </h1>
-          <p className="text-gray-400">
+          <p className="text-surface-500 dark:text-surface-400">
             {isEditMode
               ? 'Update contract details'
               : 'Create a contract from an accepted proposal'}
@@ -593,24 +593,24 @@ const ContractForm = () => {
                     <p className="text-green-200 font-medium">Proposal Selected</p>
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-400">Account:</span>
+                        <span className="text-surface-500 dark:text-surface-400">Account:</span>
                         <span className="ml-2 text-white">{selectedProposal.account.name}</span>
                       </div>
                       {selectedProposal.facility && (
                         <div>
-                          <span className="text-gray-400">Facility:</span>
+                          <span className="text-surface-500 dark:text-surface-400">Facility:</span>
                           <span className="ml-2 text-white">{selectedProposal.facility.name}</span>
                         </div>
                       )}
                       <div>
-                        <span className="text-gray-400">Monthly Value:</span>
+                        <span className="text-surface-500 dark:text-surface-400">Monthly Value:</span>
                         <span className="ml-2 text-white font-medium">
                           {formatCurrency(selectedProposal.totalAmount)}
                         </span>
                       </div>
                       {selectedScheduleDays.length > 0 && (
                         <div>
-                          <span className="text-gray-400">Scheduled Days:</span>
+                          <span className="text-surface-500 dark:text-surface-400">Scheduled Days:</span>
                           <span className="ml-2 text-white">
                             {selectedScheduleDays.map((day) => PROPOSAL_DAY_LABELS[day] || day).join(', ')}
                           </span>
@@ -618,7 +618,7 @@ const ContractForm = () => {
                       )}
                       {selectedScheduleWindow && (
                         <div>
-                          <span className="text-gray-400">Allowed Window:</span>
+                          <span className="text-surface-500 dark:text-surface-400">Allowed Window:</span>
                           <span className="ml-2 text-white">{selectedScheduleWindow}</span>
                         </div>
                       )}
@@ -669,18 +669,18 @@ const ContractForm = () => {
                 {selectedProposal && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-surface-600 dark:text-surface-400 mb-1">
                         Account
                       </label>
-                      <div className="px-3 py-2 rounded-lg bg-navy-darker border border-white/10 text-gray-300">
+                      <div className="px-3 py-2 rounded-lg bg-surface-200 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400">
                         {selectedProposal.account.name}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-surface-600 dark:text-surface-400 mb-1">
                         Facility
                       </label>
-                      <div className="px-3 py-2 rounded-lg bg-navy-darker border border-white/10 text-gray-300">
+                      <div className="px-3 py-2 rounded-lg bg-surface-200 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400">
                         {selectedProposal.facility?.name || 'No specific facility'}
                       </div>
                     </div>
@@ -720,7 +720,7 @@ const ContractForm = () => {
                   disabled={!isEditMode}
                 />
                 {!isEditMode && (
-                  <p className="text-xs text-gray-400 md:col-span-2 -mt-2">
+                  <p className="text-xs text-surface-500 dark:text-surface-400 md:col-span-2 -mt-2">
                     Service frequency is locked to the accepted proposal during contract creation.
                   </p>
                 )}
@@ -736,12 +736,12 @@ const ContractForm = () => {
                 />
 
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                     <input
                       type="checkbox"
                       checked={formData.autoRenew}
                       onChange={(e) => handleChange('autoRenew', e.target.checked)}
-                      className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                     />
                     Auto-renew contract
                   </label>
@@ -820,7 +820,7 @@ const ContractForm = () => {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-300">Terms & Conditions</label>
+                    <label className="block text-sm font-medium text-surface-600 dark:text-surface-400">Terms & Conditions</label>
                     {selectedProposal && (
                       <Button
                         type="button"
@@ -865,12 +865,12 @@ const ContractForm = () => {
                     rows={12}
                     placeholder="Enter contract terms and conditions..."
                   />
-                  <div className="mt-3 rounded-lg border border-white/10 bg-navy-darker/40 p-3">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <div className="mt-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-3">
+                    <label className="block text-sm font-medium text-surface-600 dark:text-surface-400 mb-2">
                       Upload Terms Document (Optional)
                     </label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-surface-50/5 px-3 py-2 text-sm text-gray-200 hover:bg-surface-50/10">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800/10 px-3 py-2 text-sm text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:bg-surface-800/20">
                         <Upload className="h-4 w-4" />
                         {formData.termsDocumentName ? 'Replace Document' : 'Upload Document'}
                         <input
@@ -882,7 +882,7 @@ const ContractForm = () => {
                       </label>
                       {formData.termsDocumentName && (
                         <>
-                          <span className="text-sm text-gray-300">{formData.termsDocumentName}</span>
+                          <span className="text-sm text-surface-600 dark:text-surface-400">{formData.termsDocumentName}</span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -895,7 +895,7 @@ const ContractForm = () => {
                         </>
                       )}
                     </div>
-                    <p className="mt-2 text-xs text-gray-400">
+                    <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
                       Supported formats: PDF, DOC, DOCX. Max file size: 5MB.
                     </p>
                   </div>

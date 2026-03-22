@@ -46,12 +46,12 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {expanded ? (
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           )}
           <span className="font-medium text-white text-sm truncate">{area.areaName}</span>
-          <span className="text-xs text-gray-500 flex-shrink-0">
+          <span className="text-xs text-surface-500 flex-shrink-0">
             {area.squareFeet.toLocaleString()} sqft
           </span>
         </div>
@@ -64,18 +64,18 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
         <div className="bg-surface-900/50 border-t border-surface-700 px-3 py-3 pl-8 space-y-2 text-xs">
           {/* Multipliers */}
           <div className="flex flex-wrap gap-1.5 pb-2 border-b border-surface-700">
-            <span className="text-gray-500 text-xs">Multipliers:</span>
+            <span className="text-surface-500 text-xs">Multipliers:</span>
             <MultiplierBadge label="Floor" value={area.floorMultiplier} />
             <MultiplierBadge label="Cond." value={area.conditionMultiplier} />
             {area.floorMultiplier === 1 && area.conditionMultiplier === 1 && (
-              <span className="text-gray-500 text-xs italic">none applied</span>
+              <span className="text-surface-500 text-xs italic">none applied</span>
             )}
           </div>
 
           {/* Labor */}
           <div>
-            <div className="text-gray-400 font-medium mb-1">Labor</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-300">
+            <div className="text-surface-500 dark:text-surface-400 font-medium mb-1">Labor</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-surface-600 dark:text-surface-400">
               <span>Hours:</span>
               <span className="text-right font-mono">{area.laborHours.toFixed(2)} hrs</span>
               <span>Base Cost:</span>
@@ -89,8 +89,8 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
 
           {/* Overhead */}
           <div>
-            <div className="text-gray-400 font-medium mb-1">Overhead</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-300">
+            <div className="text-surface-500 dark:text-surface-400 font-medium mb-1">Overhead</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-surface-600 dark:text-surface-400">
               <span>Insurance:</span>
               <span className="text-right font-mono">{fmt(area.insuranceCost)}</span>
               <span>Admin:</span>
@@ -101,14 +101,14 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
           </div>
 
           {/* Supplies */}
-          <div className="grid grid-cols-2 gap-x-4 text-gray-300">
+          <div className="grid grid-cols-2 gap-x-4 text-surface-600 dark:text-surface-400">
             <span>Supplies:</span>
             <span className="text-right font-mono">{fmt(area.supplyCost)}</span>
           </div>
 
           {/* Per-visit / Monthly */}
           <div className="pt-2 border-t border-surface-700">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-gray-300">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-surface-600 dark:text-surface-400">
               <span>Cost/Visit:</span>
               <span className="text-right font-mono">{fmt(area.totalCostPerVisit)}</span>
               <span>Price/Visit:</span>
@@ -121,7 +121,7 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
           </div>
 
           {/* Meta */}
-          <div className="pt-1 text-gray-500 flex gap-3">
+          <div className="pt-1 text-surface-500 flex gap-3">
             <span>Floor: {area.floorType}</span>
             <span>Condition: {area.conditionLevel}</span>
             {area.quantity > 1 && <span>Qty: {area.quantity}</span>}
@@ -163,24 +163,24 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
           {/* Facility Summary */}
           <div className="px-4 py-3 space-y-1.5 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Facility:</span>
+              <span className="text-surface-500 dark:text-surface-400">Facility:</span>
               <span className="text-white font-medium">{pricing.facilityName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Building Type:</span>
+              <span className="text-surface-500 dark:text-surface-400">Building Type:</span>
               <span className="text-white capitalize">{pricing.buildingType}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Total Area:</span>
+              <span className="text-surface-500 dark:text-surface-400">Total Area:</span>
               <span className="text-white">{pricing.totalSquareFeet.toLocaleString()} sqft</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Frequency:</span>
+              <span className="text-surface-500 dark:text-surface-400">Frequency:</span>
               <span className="text-white">{pricing.serviceFrequency} ({pricing.monthlyVisits} visits/mo)</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Pricing Source:</span>
-              <span className="text-gray-300 text-xs">{pricing.pricingPlanName}</span>
+              <span className="text-surface-500 dark:text-surface-400">Pricing Source:</span>
+              <span className="text-surface-600 dark:text-surface-400 text-xs">{pricing.pricingPlanName}</span>
             </div>
           </div>
 
@@ -193,15 +193,15 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                 className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-surface-700/30 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm font-medium text-gray-300">
+                  <Layers className="w-4 h-4 text-surface-500 dark:text-surface-400" />
+                  <span className="text-sm font-medium text-surface-600 dark:text-surface-400">
                     Area Breakdown ({pricing.areas.length} areas)
                   </span>
                 </div>
                 {areasExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <ChevronDown className="w-4 h-4 text-surface-500 dark:text-surface-400" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400" />
                 )}
               </button>
               {areasExpanded && (
@@ -216,31 +216,31 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
 
           {/* Aggregate Cost Per Visit */}
           <div className="px-4 py-3">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+            <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
               Cost Per Visit (Aggregate)
             </div>
             <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Labor ({pricing.costBreakdown.totalLaborHours.toFixed(2)} hrs):</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalLaborCost)}</span>
               </div>
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Insurance:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalInsuranceCost)}</span>
               </div>
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Admin Overhead:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalAdminOverheadCost)}</span>
               </div>
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Equipment:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalEquipmentCost)}</span>
               </div>
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Travel:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalTravelCost)}</span>
               </div>
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>Supplies:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalSupplyCost)}</span>
               </div>
@@ -253,12 +253,12 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
 
           {/* Monthly Calculation Steps */}
           <div className="px-4 py-3">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+            <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
               Monthly Calculation
             </div>
             <div className="space-y-2 text-sm">
               {/* Step 1: Cost x Visits */}
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>
                   {fmt(pricing.costBreakdown.totalCostPerVisit)} x {pricing.monthlyVisits} visits
                 </span>
@@ -266,7 +266,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
               </div>
 
               {/* Step 2: Profit Margin */}
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-surface-600 dark:text-surface-400">
                 <span>
                   ÷ (1 - {pct(pricing.profitMarginApplied)}) profit margin
                 </span>
@@ -281,13 +281,13 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
 
               {/* Step 3: Task Complexity */}
               {pricing.taskComplexityAddOn > 0 && (
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-surface-600 dark:text-surface-400">
                   <span>Task complexity add-on ({pct(pricing.taskComplexityAddOn)}):</span>
                   <span className="font-mono text-amber-400">+{fmt(pricing.taskComplexityAmount)}</span>
                 </div>
               )}
               {pricing.taskComplexityAddOn === 0 && (
-                <div className="flex justify-between text-gray-500 text-xs">
+                <div className="flex justify-between text-surface-500 text-xs">
                   <span>Task complexity add-on:</span>
                   <span>0% (standard)</span>
                 </div>
@@ -311,15 +311,15 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
           {/* Subcontractor Split */}
           {pricing.subcontractorPercentage > 0 && (
             <div className="px-4 py-3">
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+              <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
                 Subcontractor Split
               </div>
               <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-surface-600 dark:text-surface-400">
                   <span>Sub Percentage:</span>
                   <span className="font-mono">{pct(pricing.subcontractorPercentage)}</span>
                 </div>
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-surface-600 dark:text-surface-400">
                   <span>Subcontractor Payout:</span>
                   <span className="font-mono text-amber-400">{fmt(pricing.subcontractorPayout)}</span>
                 </div>
@@ -341,7 +341,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                       title={`Company: ${pct(1 - pricing.subcontractorPercentage)}`}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-surface-500 mt-1">
                     <span>Sub ({pct(pricing.subcontractorPercentage)})</span>
                     <span>Company ({pct(1 - pricing.subcontractorPercentage)})</span>
                   </div>

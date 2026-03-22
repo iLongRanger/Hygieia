@@ -472,7 +472,7 @@ function StepButton({
         'group flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all',
         active
           ? 'border-primary-400 bg-primary-50 shadow-soft dark:border-primary-500 dark:bg-primary-950/30'
-          : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600 dark:hover:bg-surface-800/80'
+          : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600 dark:hover:bg-surface-800/80'
       )}
     >
       <div
@@ -611,9 +611,9 @@ export function PricingPlanBuilder({
                 Hygieia Pricing Walkthrough
               </div>
               <h3 className="mt-3 text-2xl font-semibold">{STEP_CONFIG[step].title}</h3>
-              <p className="mt-2 text-sm text-slate-200/85">{STEP_CONFIG[step].description}</p>
+              <p className="mt-2 text-sm text-surface-600 dark:text-surface-300/85">{STEP_CONFIG[step].description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Badge className="border border-white/15 bg-surface-50/10 text-white">
+                <Badge className="border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800/20 text-white">
                   {mode === 'create' ? 'Building a new plan' : 'Refining this plan'}
                 </Badge>
                 <Badge className="border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
@@ -624,9 +624,9 @@ export function PricingPlanBuilder({
                 {recommendation}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-surface-50/5 px-4 py-3 text-sm text-slate-100 backdrop-blur-sm">
+            <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 px-4 py-3 text-sm text-surface-600 dark:text-surface-200 backdrop-blur-sm">
               <div className="font-semibold">How Hygieia helps</div>
-              <div className="mt-2 max-w-xs text-slate-200/80">
+              <div className="mt-2 max-w-xs text-surface-600 dark:text-surface-300/80">
                 Each field below explains whether it changes labor, service cost, the client price, or only the payout split.
               </div>
             </div>
@@ -653,7 +653,7 @@ export function PricingPlanBuilder({
                       'rounded-2xl border p-4 text-left transition-all',
                       selectedPresetId === preset.id
                         ? 'border-primary-400 bg-primary-50 shadow-soft dark:border-primary-500 dark:bg-primary-950/30'
-                        : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-900/60 dark:hover:border-surface-600'
+                        : 'border-surface-200 bg-surface-50 hover:border-surface-300 hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-900/60 dark:hover:border-surface-600'
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -1106,18 +1106,18 @@ export function PricingPlanBuilder({
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-surface-50/5 p-4">
+          <div className="mt-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-4">
             <div className="text-sm font-semibold text-white">How Hygieia explains this sample</div>
-            <div className="mt-3 grid gap-2 text-sm text-slate-200/85">
+            <div className="mt-3 grid gap-2 text-sm text-surface-600 dark:text-surface-300/85">
               <div>1. Estimate labor from square footage, productivity, and difficulty multipliers.</div>
               <div>2. Add operating costs like insurance, admin, equipment, travel, and supplies.</div>
               <div>3. Apply margin rules and then split retained revenue from subcontractor payout.</div>
             </div>
           </div>
 
-          <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-surface-50/5 p-4">
+          <div className="mt-5 space-y-3 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-4">
             <div className="text-sm font-semibold text-white">What changed this price</div>
-            <div className="grid gap-2 text-sm text-slate-200/85">
+            <div className="grid gap-2 text-sm text-surface-600 dark:text-surface-300/85">
               <div className="flex justify-between gap-3">
                 <span>Floor multiplier</span>
                 <span>{preview.floorMultiplier.toFixed(2)}x</span>

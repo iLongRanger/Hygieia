@@ -226,13 +226,13 @@ const ServiceTaskStepper = ({
   }, [serviceId, groups.length]);
 
   if (groups.length === 0) {
-    return <div className="mt-3 text-sm text-gray-500">No service tasks listed.</div>;
+    return <div className="mt-3 text-sm text-surface-500">No service tasks listed.</div>;
   }
 
   const activeGroup = groups[Math.min(activeIndex, groups.length - 1)];
 
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-3">
+    <div className="mt-3 rounded-xl border border-surface-200 dark:border-surface-700 bg-black/10 p-3">
       <div className="flex flex-wrap items-center gap-2">
         {groups.map((group, index) => (
           <button
@@ -241,8 +241,8 @@ const ServiceTaskStepper = ({
             onClick={() => setActiveIndex(index)}
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
-                ? 'bg-emerald-400 text-slate-950'
-                : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
+                ? 'bg-emerald-400 text-surface-950'
+                : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-white'
             }`}
           >
             {group.label}
@@ -253,11 +253,11 @@ const ServiceTaskStepper = ({
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
           {activeGroup.label}
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-surface-500">
           {activeIndex + 1} of {groups.length}
         </div>
       </div>
-      <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-gray-200">
+      <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-surface-600 dark:text-surface-300">
         {activeGroup.tasks.map((task) => (
           <li key={`${serviceId}-${activeGroup.label}-${task}`}>{task}</li>
         ))}
@@ -416,7 +416,7 @@ const AmendmentTaskFrequencyEditor = ({
 
   if (tasks.length === 0) {
     return (
-      <div className="rounded border border-dashed border-white/10 p-3 text-sm text-gray-500">
+      <div className="rounded border border-dashed border-surface-200 dark:border-surface-700 p-3 text-sm text-surface-500">
         No tasks in this section yet.
       </div>
     );
@@ -428,7 +428,7 @@ const AmendmentTaskFrequencyEditor = ({
   return (
     <div className="space-y-3">
       {frequencyGroups.length > 1 && (
-        <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
+        <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3">
           <div className="flex flex-wrap gap-2">
             {frequencyGroups.map(([frequency], index) => (
               <button
@@ -437,8 +437,8 @@ const AmendmentTaskFrequencyEditor = ({
                 onClick={() => setActiveIndex(index)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
                   index === safeIndex
-                    ? 'bg-emerald-400 text-slate-950'
-                    : 'border border-white/10 bg-surface-50/5 text-gray-300 hover:border-white/20 hover:text-white'
+                    ? 'bg-emerald-400 text-surface-950'
+                    : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-white'
                 }`}
               >
                 {frequency}
@@ -449,7 +449,7 @@ const AmendmentTaskFrequencyEditor = ({
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
               {activeFrequency}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-surface-500">
               {safeIndex + 1} of {frequencyGroups.length}
             </div>
           </div>
@@ -481,7 +481,7 @@ const AmendmentTaskFrequencyEditor = ({
       {activeTasks.map((task, taskIndex) => {
         const taskKey = task.id || task.tempId || `${sectionKey}-${safeIndex}-${taskIndex}`;
         return (
-          <div key={taskKey} className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
+          <div key={taskKey} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <Input
                 label="Task Name"
@@ -2127,7 +2127,7 @@ const ContractDetail = () => {
   }
 
   if (!contract) {
-    return <div className="text-center text-gray-400">Contract not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Contract not found</div>;
   }
 
   const StatusIcon = getStatusIcon(contract.status);
@@ -2276,7 +2276,7 @@ const ContractDetail = () => {
               ) : null;
             })()}
           </div>
-          <p className="text-gray-400">{contract.title}</p>
+          <p className="text-surface-500 dark:text-surface-400">{contract.title}</p>
         </div>
         {!isLimitedContractViewer && (
           <div className="flex items-center gap-2">
@@ -2335,10 +2335,10 @@ const ContractDetail = () => {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-white/10 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     onClick={handleDownloadPdf}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                   >
                     <Download className="h-4 w-4" />
                     Download PDF
@@ -2354,7 +2354,7 @@ const ContractDetail = () => {
                           prompt('Copy this link:', url);
                         }
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                     >
                       <LinkIcon className="h-4 w-4" />
                       Copy Public Link
@@ -2363,7 +2363,7 @@ const ContractDetail = () => {
                   {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
                     <button
                       onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-surface-50/5 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
                     >
                       <Mail className="h-4 w-4" />
                       Resend Email
@@ -2371,10 +2371,10 @@ const ContractDetail = () => {
                   )}
                   {contract.status === 'active' && canWriteContracts && (
                     <>
-                      <div className="my-1 border-t border-white/10" />
+                      <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
                       <button
                         onClick={() => { setMenuOpen(false); handleTerminate(); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-50/5 hover:text-red-300"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-red-300"
                       >
                         <AlertTriangle className="h-4 w-4" />
                         Terminate
@@ -2383,10 +2383,10 @@ const ContractDetail = () => {
                   )}
                   {!contract.archivedAt && !['active', 'terminated'].includes(contract.status) && canAdminContracts && (
                     <>
-                      <div className="my-1 border-t border-white/10" />
+                      <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
                       <button
                         onClick={() => { setMenuOpen(false); handleArchive(); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-50/5 hover:text-orange-300"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-orange-300"
                       >
                         <Archive className="h-4 w-4" />
                         Archive
@@ -2406,7 +2406,7 @@ const ContractDetail = () => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold text-white">Contract Pipeline</div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-surface-500 dark:text-surface-400">
                 Track required stages from draft to active.
               </div>
             </div>
@@ -2430,22 +2430,22 @@ const ContractDetail = () => {
                           ? 'border-red-500/70 bg-red-500/15 text-red-300'
                           : isDone
                             ? `border-emerald-400 bg-emerald-400/15 text-emerald-200 ${isCurrent ? 'ring-2 ring-emerald-400/30 ring-offset-2 ring-offset-surface-800' : ''}`
-                            : 'border-gray-600 text-gray-500'
+                            : 'border-surface-300 dark:border-surface-600 text-surface-500'
                       }`}
                     >
                       {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
                     </div>
-                    <div className={`mt-1 text-xs ${isDone ? 'text-white' : 'text-gray-500'}`}>
+                    <div className={`mt-1 text-xs ${isDone ? 'text-white' : 'text-surface-500'}`}>
                       {step.label}
                     </div>
-                    <div className="mt-0.5 text-[10px] text-gray-500">
+                    <div className="mt-0.5 text-[10px] text-surface-500">
                       {isDone ? formatShortDate(pipelineDates[index]) : '\u00A0'}
                     </div>
                   </div>
                   {!isLast && (
                     <div
                       className={`mx-1 mt-[-18px] h-0.5 flex-1 ${
-                        index < currentPipelineIndex ? 'bg-emerald-400/60' : 'bg-gray-700'
+                        index < currentPipelineIndex ? 'bg-emerald-400/60' : 'bg-surface-700'
                       }`}
                     />
                   )}
@@ -2476,22 +2476,22 @@ const ContractDetail = () => {
           </div>
           <div className="space-y-4">
             <div>
-              <div className="text-sm text-gray-400">Account</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
               <div className="text-white font-medium">{contract.account.name}</div>
-              <div className="text-sm text-gray-400 capitalize">{contract.account.type}</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400 capitalize">{contract.account.type}</div>
             </div>
             {contract.facility && (
               <div>
-                <div className="text-sm text-gray-400">Facility</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
                 <div className="text-white font-medium">{contract.facility.name}</div>
                 {contract.facility.address && (
-                  <div className="flex items-start gap-1 text-sm text-gray-400">
+                  <div className="flex items-start gap-1 text-sm text-surface-500 dark:text-surface-400">
                     <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>{formatAddress(contract.facility.address)}</span>
                   </div>
                 )}
                 {contract.facility.buildingType && (
-                  <div className="text-sm text-gray-400 mt-1 capitalize">
+                  <div className="text-sm text-surface-500 dark:text-surface-400 mt-1 capitalize">
                     {contract.facility.buildingType.replace(/_/g, ' ')}
                   </div>
                 )}
@@ -2500,38 +2500,38 @@ const ContractDetail = () => {
                     contract.facility.parkingInfo ||
                     contract.facility.specialRequirements ||
                     contract.facility.notes) && (
-                    <div className="mt-3 rounded-lg border border-white/10 bg-surface-50/[0.02] p-3 space-y-2">
+                    <div className="mt-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3 space-y-2">
                       <div className="text-xs uppercase tracking-wide text-emerald-300">
                         Facility Notes & Access
                       </div>
                       {contract.facility.accessInstructions && (
                         <div>
-                          <div className="text-xs text-gray-400">Access Instructions</div>
-                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                          <div className="text-xs text-surface-500 dark:text-surface-400">Access Instructions</div>
+                          <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">
                             {contract.facility.accessInstructions}
                           </div>
                         </div>
                       )}
                       {contract.facility.parkingInfo && (
                         <div>
-                          <div className="text-xs text-gray-400">Parking</div>
-                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                          <div className="text-xs text-surface-500 dark:text-surface-400">Parking</div>
+                          <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">
                             {contract.facility.parkingInfo}
                           </div>
                         </div>
                       )}
                       {contract.facility.specialRequirements && (
                         <div>
-                          <div className="text-xs text-gray-400">Special Requirements</div>
-                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                          <div className="text-xs text-surface-500 dark:text-surface-400">Special Requirements</div>
+                          <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">
                             {contract.facility.specialRequirements}
                           </div>
                         </div>
                       )}
                       {contract.facility.notes && (
                         <div>
-                          <div className="text-xs text-gray-400">Facility Notes</div>
-                          <div className="text-sm text-gray-200 whitespace-pre-wrap">
+                          <div className="text-xs text-surface-500 dark:text-surface-400">Facility Notes</div>
+                          <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">
                             {contract.facility.notes}
                           </div>
                         </div>
@@ -2542,7 +2542,7 @@ const ContractDetail = () => {
             )}
             {contract.proposal && !isLimitedContractViewer && (
               <div>
-                <div className="text-sm text-gray-400">Source Proposal</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Source Proposal</div>
                 <button
                   onClick={() => navigate(`/proposals/${contract.proposal?.id}`)}
                   className="text-gold hover:underline"
@@ -2553,7 +2553,7 @@ const ContractDetail = () => {
             )}
             {contract.renewalNumber > 0 && (
               <div>
-                <div className="text-sm text-gray-400">Renewal</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Renewal</div>
                 <div className="text-white">Renewal #{contract.renewalNumber}</div>
               </div>
             )}
@@ -2569,20 +2569,20 @@ const ContractDetail = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-gray-400">Monthly Payout</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Monthly Payout</div>
                 <div className="text-2xl font-bold text-teal-400">
                   {formatCurrency(Number(contract.subcontractorPayout || 0))}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-gray-400">Billing Cycle</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Billing Cycle</div>
                   <div className="text-white capitalize">
                     {contract.billingCycle.replace('_', ' ')}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Payment Terms</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Payment Terms</div>
                   <div className="text-white">{contract.paymentTerms}</div>
                 </div>
               </div>
@@ -2596,14 +2596,14 @@ const ContractDetail = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <div className="text-sm text-gray-400">Monthly Value</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Monthly Value</div>
                 <div className="text-2xl font-bold text-green-400">
                   {formatCurrency(Number(contract.monthlyValue))}
                 </div>
               </div>
               {contract.totalValue && (
                 <div>
-                  <div className="text-sm text-gray-400">Total Contract Value</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Total Contract Value</div>
                   <div className="text-xl font-semibold text-white">
                     {formatCurrency(Number(contract.totalValue))}
                   </div>
@@ -2611,13 +2611,13 @@ const ContractDetail = () => {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-gray-400">Billing Cycle</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Billing Cycle</div>
                   <div className="text-white capitalize">
                     {contract.billingCycle.replace('_', ' ')}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Payment Terms</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Payment Terms</div>
                   <div className="text-white">{contract.paymentTerms}</div>
                 </div>
               </div>
@@ -2653,14 +2653,14 @@ const ContractDetail = () => {
                     const tasksByFrequency = groupTasksByFrequency(areaTasks);
 
                     return (
-                      <div key={area.id} className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-3">
+                      <div key={area.id} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3">
                         <div className="mb-1 flex items-center justify-between gap-2">
                           <div className="font-medium text-white">{area.name || 'Unnamed area'}</div>
                           <Badge variant="default" size="sm">
                             {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
                           </Badge>
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-surface-500 dark:text-surface-400">
                           {area.areaType || 'General area'}
                           {area.squareFeet ? ` - ${area.squareFeet.toLocaleString()} sq ft` : ''}
                         </div>
@@ -2674,7 +2674,7 @@ const ContractDetail = () => {
                                 {tasks.map((task, idx) => (
                                   <div
                                     key={`${area.id}-${frequency}-${task.name}-${idx}`}
-                                    className="rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm text-gray-200"
+                                    className="rounded-md border border-surface-200 dark:border-surface-700 bg-black/10 px-2.5 py-1.5 text-sm text-surface-600 dark:text-surface-300"
                                   >
                                     {task.name}
                                   </div>
@@ -2683,19 +2683,19 @@ const ContractDetail = () => {
                             ))}
                           </div>
                         ) : (
-                          <div className="mt-2 text-sm text-gray-500">No tasks assigned for this area</div>
+                          <div className="mt-2 text-sm text-surface-500">No tasks assigned for this area</div>
                         )}
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">No facility areas configured on this contract.</div>
+                <div className="text-sm text-surface-500">No facility areas configured on this contract.</div>
               )}
 
               {facilityTasks.some((task) => !task.areaName) && (
-                <div className="rounded-lg border border-white/10 p-3">
-                  <div className="mb-2 text-sm font-medium text-gray-300">General Tasks</div>
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 p-3">
+                  <div className="mb-2 text-sm font-medium text-surface-600 dark:text-surface-400">General Tasks</div>
                   <div className="space-y-2">
                     {groupTasksByFrequency(facilityTasks.filter((task) => !task.areaName)).map(
                       ([frequency, tasks]) => (
@@ -2706,7 +2706,7 @@ const ContractDetail = () => {
                           {tasks.map((task, idx) => (
                             <div
                               key={`general-task-${frequency}-${task.name}-${idx}`}
-                              className="rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5 text-sm text-gray-200"
+                              className="rounded-md border border-surface-200 dark:border-surface-700 bg-black/10 px-2.5 py-1.5 text-sm text-surface-600 dark:text-surface-300"
                             >
                               {task.name}
                             </div>
@@ -2737,16 +2737,16 @@ const ContractDetail = () => {
                 return (
                   <div
                     key={service.id}
-                    className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4"
+                    className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="font-medium text-white">{service.serviceName}</div>
                         {areaSummary && (
-                          <div className="mt-1 text-sm text-gray-400">{areaSummary}</div>
+                          <div className="mt-1 text-sm text-surface-500 dark:text-surface-400">{areaSummary}</div>
                         )}
                       </div>
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-surface-500 dark:text-surface-400">
                         {formatFrequency(service.frequency)}
                         {service.monthlyPrice != null && (
                           <span className="ml-2 font-medium text-emerald-300">
@@ -2826,11 +2826,11 @@ const ContractDetail = () => {
                     options={SUBCONTRACTOR_TIER_OPTIONS}
                   />
                   <div>
-                    <div className="text-sm text-gray-400 mb-1">Subcontract Pay</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Subcontract Pay</div>
                     <div className="text-lg font-semibold text-teal-400">
                       ${(Number(contract.monthlyValue) * tierToPercentage(selectedTier)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="text-xs text-surface-500 mt-0.5">
                       {(tierToPercentage(selectedTier) * 100).toFixed(0)}% of monthly value
                     </div>
                   </div>
@@ -2871,7 +2871,7 @@ const ContractDetail = () => {
               />
             )}
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-surface-500 dark:text-surface-400">
                 Current: {contract.assignedTeam?.name || contract.assignedToUser?.fullName || 'Unassigned'}
               </div>
               <Button
@@ -2894,17 +2894,17 @@ const ContractDetail = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-400">Start Date</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Start Date</div>
                 <div className="text-white">{formatDate(contract.startDate)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-400">End Date</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">End Date</div>
                 <div className="text-white">{formatDate(contract.endDate)}</div>
               </div>
             </div>
             {contract.serviceFrequency && (
               <div>
-                <div className="text-sm text-gray-400">Service Frequency</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Service Frequency</div>
                 <div className="text-white capitalize">
                   {contract.serviceFrequency.replace('_', ' ')}
                 </div>
@@ -2912,7 +2912,7 @@ const ContractDetail = () => {
             )}
             {scheduleDays.length > 0 && (
               <div>
-                <div className="text-sm text-gray-400">Scheduled Days</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Scheduled Days</div>
                 <div className="text-white">
                   {scheduleDays.map((day) => DAY_LABELS[day] || day).join(', ')}
                 </div>
@@ -2920,13 +2920,13 @@ const ContractDetail = () => {
             )}
             {scheduleWindow && (
               <div>
-                <div className="text-sm text-gray-400">Allowed Service Window</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Allowed Service Window</div>
                 <div className="text-white">{scheduleWindow}</div>
               </div>
             )}
             {(facilityTimezone || scheduleWindow) && (
               <div>
-                <div className="text-sm text-gray-400">Timezone / Anchor</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Timezone / Anchor</div>
                 <div className="text-white">
                   {(facilityTimezone || 'Facility timezone')} (start day anchor)
                 </div>
@@ -2934,12 +2934,12 @@ const ContractDetail = () => {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-400">Auto-Renew</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Auto-Renew</div>
                 <div className="text-white">{contract.autoRenew ? 'Yes' : 'No'}</div>
               </div>
               {contract.renewalNoticeDays && (
                 <div>
-                  <div className="text-sm text-gray-400">Renewal Notice</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Renewal Notice</div>
                   <div className="text-white">{contract.renewalNoticeDays} days</div>
                 </div>
               )}
@@ -2956,59 +2956,59 @@ const ContractDetail = () => {
           <div className="space-y-4">
             {contract.sentAt && (
               <div>
-                <div className="text-sm text-gray-400">Sent</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Sent</div>
                 <div className="text-white">{formatDate(contract.sentAt)}</div>
               </div>
             )}
             {contract.viewedAt && (
               <div>
-                <div className="text-sm text-gray-400">Viewed by Client</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Viewed by Client</div>
                 <div className="text-white">{formatDate(contract.viewedAt)}</div>
               </div>
             )}
             {contract.signedByName && (
               <div>
-                <div className="text-sm text-gray-400">Signed By</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Signed By</div>
                 <div className="text-white">{contract.signedByName}</div>
-                <div className="text-sm text-gray-400">{contract.signedByEmail}</div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-surface-500 dark:text-surface-400">{contract.signedByEmail}</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">
                   Signed on: {formatDate(contract.signedDate)}
                 </div>
               </div>
             )}
             {contract.approvedByUser && (
               <div>
-                <div className="text-sm text-gray-400">Approved By</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Approved By</div>
                 <div className="text-white">{contract.approvedByUser.fullName}</div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-surface-500 dark:text-surface-400">
                   Approved on: {formatDate(contract.approvedAt)}
                 </div>
               </div>
             )}
             {contract.terminationReason && (
               <div>
-                <div className="text-sm text-gray-400">Termination Reason</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Termination Reason</div>
                 <div className="text-white">{contract.terminationReason}</div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-surface-500 dark:text-surface-400">
                   Terminated on: {formatDate(contract.terminatedAt)}
                 </div>
               </div>
             )}
             <div>
-              <div className="text-sm text-gray-400">Created By</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Created By</div>
               <div className="flex items-center gap-1 text-white">
                 <User className="h-4 w-4" />
                 {contract.createdByUser.fullName}
               </div>
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-surface-500 dark:text-surface-400">
                 {formatDate(contract.createdAt)}
               </div>
             </div>
             {contract.publicToken && (
               <div>
-                <div className="text-sm text-gray-400 mb-1">Public Link</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Public Link</div>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-surface-50/5 px-2 py-1 text-xs text-gray-300">
+                  <code className="flex-1 truncate rounded bg-surface-100 dark:bg-surface-800/10 px-2 py-1 text-xs text-surface-600 dark:text-surface-400">
                     {`${window.location.origin}/c/${contract.publicToken}`}
                   </code>
                   <Button
@@ -3061,10 +3061,10 @@ const ContractDetail = () => {
               rows={16}
               placeholder="Enter contract terms and conditions..."
             />
-            <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-3">
-              <div className="text-sm font-medium text-gray-300 mb-2">Custom Terms Document</div>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-3">
+              <div className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2">Custom Terms Document</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/15 bg-surface-50/5 px-3 py-2 text-sm text-gray-200 hover:bg-surface-50/10">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800/10 px-3 py-2 text-sm text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:bg-surface-800/20">
                   <Upload className="h-4 w-4" />
                   {termsDocumentAction === 'replace' || contract.termsDocumentName ? 'Replace Document' : 'Upload Document'}
                   <input
@@ -3075,7 +3075,7 @@ const ContractDetail = () => {
                   />
                 </label>
                 {(termsDocumentAction === 'replace' ? termsDocumentUpload?.name : contract.termsDocumentName) && (
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm text-surface-600 dark:text-surface-400">
                     {termsDocumentAction === 'replace' ? termsDocumentUpload?.name : contract.termsDocumentName}
                   </span>
                 )}
@@ -3094,7 +3094,7 @@ const ContractDetail = () => {
                   </Button>
                 )}
               </div>
-              <p className="mt-2 text-xs text-gray-400">Supported formats: PDF, DOC, DOCX. Max file size: 5MB.</p>
+              <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">Supported formats: PDF, DOC, DOCX. Max file size: 5MB.</p>
             </div>
             <div className="flex items-center justify-between">
               <Button
@@ -3172,18 +3172,18 @@ const ContractDetail = () => {
             </div>
           </div>
         ) : contract.termsAndConditions ? (
-          <div className="text-gray-300 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto">
+          <div className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto">
             {contract.termsAndConditions}
           </div>
         ) : !isLimitedContractViewer ? (
-          <p className="text-gray-500 text-sm italic">No terms and conditions set.</p>
+          <p className="text-surface-500 text-sm italic">No terms and conditions set.</p>
         ) : null}
         {contract.termsDocumentName && !editingTerms && (
-          <div className="mt-4 rounded-lg border border-white/10 bg-navy-darker/40 p-3">
+          <div className="mt-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-sm font-medium text-gray-200">Custom Contract Document</div>
-                <div className="text-xs text-gray-400">{contract.termsDocumentName}</div>
+                <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Custom Contract Document</div>
+                <div className="text-xs text-surface-500 dark:text-surface-400">{contract.termsDocumentName}</div>
               </div>
               <Button variant="secondary" size="sm" onClick={handleDownloadTermsDocument}>
                 <Download className="h-4 w-4 mr-1" />
@@ -3198,7 +3198,7 @@ const ContractDetail = () => {
       {contract.specialInstructions && (
         <Card>
           <h2 className="text-lg font-semibold text-white mb-4">Special Instructions</h2>
-          <div className="text-gray-300 whitespace-pre-wrap">
+          <div className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
             {contract.specialInstructions}
           </div>
         </Card>
@@ -3209,7 +3209,7 @@ const ContractDetail = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">Contract Changes</h2>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Draft and track scope changes against the active contract without touching the live facility yet.
               </p>
             </div>
@@ -3223,9 +3223,9 @@ const ContractDetail = () => {
 
           <div className="mt-4 space-y-3">
             {amendmentsLoading ? (
-              <div className="text-sm text-gray-400">Loading amendments...</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Loading amendments...</div>
             ) : amendments.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/10 px-4 py-5 text-sm text-gray-400">
+              <div className="rounded-lg border border-dashed border-surface-200 dark:border-surface-700 px-4 py-5 text-sm text-surface-500 dark:text-surface-400">
                 No amendments yet.
               </div>
             ) : (
@@ -3234,7 +3234,7 @@ const ContractDetail = () => {
                 return (
                   <div
                     key={amendment.id}
-                    className="rounded-lg border border-white/10 bg-surface-50/[0.02] px-4 py-3"
+                    className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] px-4 py-3"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -3246,20 +3246,20 @@ const ContractDetail = () => {
                             {AMENDMENT_STATUS_LABELS[amendment.status] || amendment.status}
                           </Badge>
                         </div>
-                        <div className="mt-1 text-sm text-gray-300">
+                        <div className="mt-1 text-sm text-surface-600 dark:text-surface-400">
                           {amendment.title}
                         </div>
-                        <div className="mt-1 text-xs text-gray-400">
+                        <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                           Effective {formatDate(amendment.effectiveDate)} · Old {formatCurrency(amendment.oldMonthlyValue)}
                           {amendment.newMonthlyValue != null
                             ? ` -> New ${formatCurrency(amendment.newMonthlyValue)}`
                             : ''}
                         </div>
                         {amendment.summary && (
-                          <div className="mt-1 text-xs text-gray-500">{amendment.summary}</div>
+                          <div className="mt-1 text-xs text-surface-500">{amendment.summary}</div>
                         )}
                         {snapshotCount > 0 && (
-                          <div className="mt-1 text-xs text-gray-500">
+                          <div className="mt-1 text-xs text-surface-500">
                             {snapshotCount} snapshot{snapshotCount === 1 ? '' : 's'}
                           </div>
                         )}
@@ -3305,10 +3305,10 @@ const ContractDetail = () => {
         size="lg"
       >
         <div className="space-y-6">
-          <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4">
-            <h4 className="text-sm font-medium text-gray-400">Renewing Contract</h4>
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4">
+            <h4 className="text-sm font-medium text-surface-500 dark:text-surface-400">Renewing Contract</h4>
             <p className="mt-1 text-white">{contract.contractNumber}</p>
-            <p className="text-sm text-gray-400">{contract.title}</p>
+            <p className="text-sm text-surface-500 dark:text-surface-400">{contract.title}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3386,7 +3386,7 @@ const ContractDetail = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-end gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-300">
+              <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                 <input
                   type="checkbox"
                   checked={renewalFormData.autoRenew || false}
@@ -3396,7 +3396,7 @@ const ContractDetail = () => {
                       autoRenew: e.target.checked,
                     })
                   }
-                  className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                  className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                 />
                 Auto-Renew
               </label>
@@ -3457,7 +3457,7 @@ const ContractDetail = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-white/10 bg-navy-darker/50 p-4 text-sm text-gray-300">
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 text-sm text-surface-600 dark:text-surface-400">
             This creates an amendment draft with a snapshot of the current contract and facility scope. The live contract and facility are not changed yet.
           </div>
           <Input
@@ -3519,45 +3519,45 @@ const ContractDetail = () => {
         size="2xl"
       >
         {amendmentDetailLoading || !selectedAmendment ? (
-          <div className="py-8 text-sm text-gray-400">Loading amendment detail...</div>
+          <div className="py-8 text-sm text-surface-500 dark:text-surface-400">Loading amendment detail...</div>
         ) : (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={getAmendmentStatusVariant(selectedAmendment.status)}>
                 {AMENDMENT_STATUS_LABELS[selectedAmendment.status] || selectedAmendment.status}
               </Badge>
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-surface-500 dark:text-surface-400">
                 Effective {formatDate(selectedAmendment.effectiveDate)}
               </div>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
               <div className="text-sm font-medium text-white">{selectedAmendment.title}</div>
               {selectedAmendment.reason && (
-                <div className="mt-2 text-sm text-gray-300">{selectedAmendment.reason}</div>
+                <div className="mt-2 text-sm text-surface-600 dark:text-surface-400">{selectedAmendment.reason}</div>
               )}
               {selectedAmendment.summary && (
-                <div className="mt-2 text-sm text-gray-400">{selectedAmendment.summary}</div>
+                <div className="mt-2 text-sm text-surface-500 dark:text-surface-400">{selectedAmendment.summary}</div>
               )}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-gray-400">Old Monthly</div>
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Old Monthly</div>
                 <div className="mt-1 text-lg font-semibold text-white">
                   {formatCurrency(selectedAmendment.oldMonthlyValue)}
                 </div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-gray-400">New Monthly</div>
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">New Monthly</div>
                 <div className="mt-1 text-lg font-semibold text-white">
                   {selectedAmendment.newMonthlyValue != null
                     ? formatCurrency(selectedAmendment.newMonthlyValue)
                     : 'Pending'}
                 </div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-gray-400">Monthly Change</div>
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Monthly Change</div>
                 <div
                   className={`mt-1 text-lg font-semibold ${
                     selectedAmendment.monthlyDelta == null
@@ -3581,7 +3581,7 @@ const ContractDetail = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm font-medium text-white">Edit Service Areas and Tasks</div>
-                    <div className="mt-1 text-xs text-gray-400">
+                    <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                       Update the service areas, tasks, and schedule here, then update the price before sending it for approval.
                     </div>
                   </div>
@@ -3625,15 +3625,15 @@ const ContractDetail = () => {
                   />
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-medium text-white">Service Days</div>
-                      <div className="mt-1 text-xs text-gray-400">
+                      <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                         Select the new service days for this amendment.
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-surface-500">
                       Required: {expectedScheduleDays(selectedAmendment.newServiceFrequency || selectedAmendment.oldServiceFrequency || null) || 'Custom'}
                     </div>
                   </div>
@@ -3663,8 +3663,8 @@ const ContractDetail = () => {
                             isSelected
                               ? 'border-emerald bg-emerald/15 text-white'
                               : disabled
-                                ? 'cursor-not-allowed border-white/5 bg-surface-50/[0.02] text-gray-500'
-                                : 'border-white/10 bg-surface-50/[0.03] text-gray-300 hover:border-white/20'
+                                ? 'cursor-not-allowed border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] text-surface-500'
+                                : 'border-surface-200 dark:border-surface-700 bg-surface-50/[0.03] text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
                           }`}
                         >
                           {day.label}
@@ -3693,7 +3693,7 @@ const ContractDetail = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium text-white">Areas</div>
-                      <div className="mt-1 text-xs text-gray-500">
+                      <div className="mt-1 text-xs text-surface-500">
                         New areas use the guided facility task setup with frequency progress.
                       </div>
                     </div>
@@ -3706,7 +3706,7 @@ const ContractDetail = () => {
                       const areaKey = area.id || area.tempId || createTempId('area');
                       const isCollapsed = collapsedAmendmentAreas[areaKey] ?? false;
                       return (
-                        <div key={areaKey} className="rounded-lg border border-white/10 bg-navy-darker/40">
+                        <div key={areaKey} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40">
                           <div className="flex items-center justify-between gap-3 px-3 py-3">
                             <button
                               type="button"
@@ -3719,15 +3719,15 @@ const ContractDetail = () => {
                               }
                             >
                               {isCollapsed ? (
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                                <ChevronRight className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               ) : (
-                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                                <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               )}
                               <div>
                                 <div className="text-sm font-medium text-white">
                                   {area.name || area.areaType?.name || 'Unnamed Area'}
                                 </div>
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-surface-500">
                                   {(area.squareFeet ?? 0).toLocaleString()} sqft · Qty {area.quantity ?? 1}
                                 </div>
                               </div>
@@ -3737,7 +3737,7 @@ const ContractDetail = () => {
                             </Button>
                           </div>
                           {!isCollapsed && (
-                            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 px-3 py-3">
                               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                                 <Select
                                   label="Area Type"
@@ -3810,7 +3810,7 @@ const ContractDetail = () => {
                       );
                     })}
                     {amendmentWorkingScope.areas.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-white/10 p-4 text-sm text-gray-500">
+                      <div className="rounded-lg border border-dashed border-surface-200 dark:border-surface-700 p-4 text-sm text-surface-500">
                         No draft areas yet.
                       </div>
                     )}
@@ -3828,7 +3828,7 @@ const ContractDetail = () => {
                     {amendmentAreaTaskGroups.map((group) => {
                       const isCollapsed = collapsedAmendmentTaskGroups[group.key] ?? false;
                       return (
-                        <div key={group.key} className="rounded-lg border border-white/10 bg-navy-darker/40">
+                        <div key={group.key} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40">
                           <div className="flex items-center justify-between gap-3 px-3 py-3">
                             <button
                               type="button"
@@ -3841,13 +3841,13 @@ const ContractDetail = () => {
                               }
                             >
                               {isCollapsed ? (
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                                <ChevronRight className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               ) : (
-                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                                <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               )}
                               <div>
                                 <div className="text-sm font-medium text-white">{group.label}</div>
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-surface-500">
                                   {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                                 </div>
                               </div>
@@ -3872,7 +3872,7 @@ const ContractDetail = () => {
                             </div>
                           </div>
                           {!isCollapsed && (
-                            <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 px-3 py-3">
                               <AmendmentTaskFrequencyEditor
                                 sectionKey={group.key}
                                 tasks={group.tasks}
@@ -3884,7 +3884,7 @@ const ContractDetail = () => {
                         </div>
                       );
                     })}
-                    <div className="rounded-lg border border-white/10 bg-navy-darker/40">
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40">
                       <div className="flex items-center justify-between gap-3 px-3 py-3">
                         <button
                           type="button"
@@ -3897,13 +3897,13 @@ const ContractDetail = () => {
                           }
                         >
                           {collapsedAmendmentTaskGroups.facilityWide ? (
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                            <ChevronRight className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                           ) : (
-                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                            <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                           )}
                           <div>
                             <div className="text-sm font-medium text-white">Facility-Wide</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-surface-500">
                               {facilityWideDraftTasks.length} task{facilityWideDraftTasks.length !== 1 ? 's' : ''}
                             </div>
                           </div>
@@ -3913,7 +3913,7 @@ const ContractDetail = () => {
                         </Button>
                       </div>
                       {!(collapsedAmendmentTaskGroups.facilityWide ?? false) && (
-                        <div className="space-y-3 border-t border-white/10 px-3 py-3">
+                        <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 px-3 py-3">
                           <AmendmentTaskFrequencyEditor
                             sectionKey="facility-wide"
                             tasks={facilityWideDraftTasks}
@@ -3924,7 +3924,7 @@ const ContractDetail = () => {
                       )}
                     </div>
                     {amendmentWorkingScope.tasks.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-white/10 p-4 text-sm text-gray-500">
+                      <div className="rounded-lg border border-dashed border-surface-200 dark:border-surface-700 p-4 text-sm text-surface-500">
                         No draft tasks yet.
                       </div>
                     )}
@@ -3950,11 +3950,11 @@ const ContractDetail = () => {
               <PricingBreakdownPanel pricing={amendmentPricing} />
             )}
 
-            <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-medium text-white">What Will Change</div>
-                  <div className="mt-1 text-xs text-gray-400">
+                  <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                     Review the service updates before approval or apply.
                   </div>
                 </div>
@@ -3964,17 +3964,17 @@ const ContractDetail = () => {
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-xs uppercase tracking-wide text-gray-400">Current Schedule</div>
-                  <div className="mt-1 text-sm text-gray-100">{beforeScheduleSummary}</div>
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Current Schedule</div>
+                  <div className="mt-1 text-sm text-surface-700 dark:text-surface-200">{beforeScheduleSummary}</div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-xs uppercase tracking-wide text-gray-400">Updated Schedule</div>
-                  <div className="mt-1 text-sm text-gray-100">{targetScheduleSummary}</div>
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Updated Schedule</div>
+                  <div className="mt-1 text-sm text-surface-700 dark:text-surface-200">{targetScheduleSummary}</div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-xs uppercase tracking-wide text-gray-400">Monthly Change</div>
-                  <div className="mt-1 text-sm font-medium text-gray-100">
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-black/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Monthly Change</div>
+                  <div className="mt-1 text-sm font-medium text-surface-700 dark:text-surface-200">
                     {formatCurrencyChange(selectedAmendment.monthlyDelta || 0)}
                   </div>
                 </div>
@@ -4149,14 +4149,14 @@ const ContractDetail = () => {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 rounded-lg border border-dashed border-white/10 px-4 py-3 text-sm text-gray-400">
+                <div className="mt-4 rounded-lg border border-dashed border-surface-200 dark:border-surface-700 px-4 py-3 text-sm text-surface-500 dark:text-surface-400">
                   No service scope changes yet.
                 </div>
               )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">Snapshots</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.snapshots || []).map((snapshot) => {
@@ -4169,63 +4169,63 @@ const ContractDetail = () => {
                     return (
                       <div
                         key={snapshot.id}
-                        className="rounded border border-white/10 px-3 py-2 text-sm"
+                        className="rounded border border-surface-200 dark:border-surface-700 px-3 py-2 text-sm"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <span className="font-medium text-gray-200">
+                          <span className="font-medium text-surface-600 dark:text-surface-300">
                             {snapshot.snapshotType}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-surface-500">
                             {formatShortDate(snapshot.createdAt)}
                           </span>
                         </div>
-                        <div className="mt-1 text-xs text-gray-400">
+                        <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                           {areas} areas · {tasks} tasks
                         </div>
                       </div>
                     );
                   })}
                   {(selectedAmendment.snapshots || []).length === 0 && (
-                    <div className="text-sm text-gray-500">No snapshots recorded.</div>
+                    <div className="text-sm text-surface-500">No snapshots recorded.</div>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">History</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => {
                     const details = getAmendmentActivityDetails(activity);
                     return (
-                      <div key={`history-${activity.id}`} className="rounded border border-white/10 px-3 py-2">
-                        <div className="text-sm text-gray-200">
+                      <div key={`history-${activity.id}`} className="rounded border border-surface-200 dark:border-surface-700 px-3 py-2">
+                        <div className="text-sm text-surface-600 dark:text-surface-300">
                           {getAmendmentActivityLabel(activity.action)}
                         </div>
-                        <div className="mt-1 text-xs text-gray-500">
+                        <div className="mt-1 text-xs text-surface-500">
                           {formatDate(activity.createdAt)}
                           {activity.performedByUser?.fullName
                             ? ` Â· ${activity.performedByUser.fullName}`
                             : ''}
                         </div>
                         {details && (
-                          <div className="mt-2 text-xs text-gray-400">{details}</div>
+                          <div className="mt-2 text-xs text-surface-500 dark:text-surface-400">{details}</div>
                         )}
                       </div>
                     );
                   })}
                   {(selectedAmendment.activities || []).length === 0 && (
-                    <div className="text-sm text-gray-500">No history yet.</div>
+                    <div className="text-sm text-surface-500">No history yet.</div>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-surface-50/[0.02] p-4">
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
                 <div className="text-sm font-medium text-white">Activity</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => (
-                    <div key={activity.id} className="rounded border border-white/10 px-3 py-2">
-                      <div className="text-sm text-gray-200">{activity.action.replace(/_/g, ' ')}</div>
-                      <div className="mt-1 text-xs text-gray-500">
+                    <div key={activity.id} className="rounded border border-surface-200 dark:border-surface-700 px-3 py-2">
+                      <div className="text-sm text-surface-600 dark:text-surface-300">{activity.action.replace(/_/g, ' ')}</div>
+                      <div className="mt-1 text-xs text-surface-500">
                         {formatDate(activity.createdAt)}
                         {activity.performedByUser?.fullName
                           ? ` · ${activity.performedByUser.fullName}`
@@ -4234,7 +4234,7 @@ const ContractDetail = () => {
                     </div>
                   ))}
                   {(selectedAmendment.activities || []).length === 0 && (
-                    <div className="text-sm text-gray-500">No amendment activity yet.</div>
+                    <div className="text-sm text-surface-500">No amendment activity yet.</div>
                   )}
                 </div>
               </div>

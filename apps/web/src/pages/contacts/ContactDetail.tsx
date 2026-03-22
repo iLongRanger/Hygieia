@@ -160,7 +160,7 @@ const ContactDetail = () => {
   }
 
   if (!contact) {
-    return <div className="text-center text-gray-400">Contact not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Contact not found</div>;
   }
 
   return (
@@ -171,7 +171,7 @@ const ContactDetail = () => {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{contact.name}</h1>
-          <p className="text-gray-400">{contact.title || 'No title'}</p>
+          <p className="text-surface-500 dark:text-surface-400">{contact.title || 'No title'}</p>
         </div>
         <div className="flex gap-2">
           {canWriteContacts && (
@@ -226,11 +226,11 @@ const ContactDetail = () => {
               </div>
             </div>
 
-            <div className="space-y-3 border-t border-white/10 pt-4">
+            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
               <div className="flex items-start gap-3">
-                <Mail className="mt-1 h-4 w-4 text-gray-400" />
+                <Mail className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Email</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Email</div>
                   <div className="text-white">
                     {contact.email ? (
                       <a
@@ -247,9 +247,9 @@ const ContactDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <Phone className="mt-1 h-4 w-4 text-gray-400" />
+                <Phone className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Phone</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Phone</div>
                   <div className="text-white">
                     {contact.phone ? (
                       <a
@@ -266,9 +266,9 @@ const ContactDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <Smartphone className="mt-1 h-4 w-4 text-gray-400" />
+                <Smartphone className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Mobile</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Mobile</div>
                   <div className="text-white">
                     {contact.mobile ? (
                       <a
@@ -285,9 +285,9 @@ const ContactDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <Building className="mt-1 h-4 w-4 text-gray-400" />
+                <Building className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Account</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
                   <div className="text-white">
                     {contact.account ? (
                       <button
@@ -306,17 +306,17 @@ const ContactDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <Briefcase className="mt-1 h-4 w-4 text-gray-400" />
+                <Briefcase className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Title</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Title</div>
                   <div className="text-white">{contact.title || 'Not provided'}</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <Calendar className="mt-1 h-4 w-4 text-gray-400" />
+                <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Created</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
                   <div className="text-white">{formatDate(contact.createdAt)}</div>
                 </div>
               </div>
@@ -328,7 +328,7 @@ const ContactDetail = () => {
                   <Archive className="h-4 w-4" />
                   <span className="text-sm font-medium">Archived</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                   {formatDate(contact.archivedAt)}
                 </p>
               </div>
@@ -344,13 +344,13 @@ const ContactDetail = () => {
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <div className="text-sm text-gray-400">Department</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Department</div>
                   <div className="text-white">
                     {contact.department || 'Not specified'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-400">Contact Type</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Contact Type</div>
                   <div className="flex gap-2">
                     {!contact.isPrimary && !contact.isBilling && (
                       <span className="text-white">Standard Contact</span>
@@ -369,7 +369,7 @@ const ContactDetail = () => {
             {contact.notes && (
               <div>
                 <h3 className="mb-2 text-lg font-semibold text-white">Notes</h3>
-                <p className="text-gray-300">{contact.notes}</p>
+                <p className="text-surface-600 dark:text-surface-400">{contact.notes}</p>
               </div>
             )}
           </div>
@@ -458,9 +458,9 @@ const ContactDetail = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isPrimary: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-dark text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Primary Contact</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Primary Contact</span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -469,9 +469,9 @@ const ContactDetail = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isBilling: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-dark text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Billing Contact</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Billing Contact</span>
             </label>
           </div>
 

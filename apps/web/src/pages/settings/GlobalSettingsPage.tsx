@@ -336,7 +336,7 @@ const GlobalSettingsPage: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Global Branding Settings</h1>
-        <p className="text-gray-400">
+        <p className="text-surface-500 dark:text-surface-400">
           Configure company identity used across proposals and outbound emails.
         </p>
       </div>
@@ -447,7 +447,7 @@ const GlobalSettingsPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No logo uploaded yet.</p>
+            <p className="text-sm text-surface-500 dark:text-surface-400">No logo uploaded yet.</p>
           )}
         </div>
       </Card>
@@ -479,7 +479,7 @@ const GlobalSettingsPage: React.FC = () => {
 
       <Card className="p-6">
         <h2 className="mb-4 text-lg font-semibold text-white">Background Services</h2>
-        <p className="mb-4 text-sm text-gray-400">
+        <p className="mb-4 text-sm text-surface-500 dark:text-surface-400">
           Configure each automatic job to run once per day at a specific company-local time. This keeps
           scheduling predictable and easier to review.
         </p>
@@ -489,11 +489,11 @@ const GlobalSettingsPage: React.FC = () => {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-white">{getServiceLabel(service.serviceKey)}</h3>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-surface-500 dark:text-surface-400">
                     {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].description}
                   </p>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={service.enabled}
@@ -528,7 +528,7 @@ const GlobalSettingsPage: React.FC = () => {
                 <Input label="Last Success" value={formatDateTime(service.lastSuccessAt)} readOnly />
                 <Input label="Last Error" value={service.lastError || 'None'} readOnly />
               </div>
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
                 Current run time: {msToTime(service.serviceKey, service.intervalMs)} (
                 {settings.companyTimezone || 'UTC'}).
               </p>
@@ -551,11 +551,11 @@ const GlobalSettingsPage: React.FC = () => {
                 </Button>
               </div>
               <div className="mt-4 rounded-lg border border-surface-800 bg-surface-900/40 p-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
                   Recent Runs
                 </p>
                 {getServiceLogs(service.serviceKey).items.length === 0 ? (
-                  <p className="text-xs text-gray-500">No logs yet.</p>
+                  <p className="text-xs text-surface-500">No logs yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {getServiceLogs(service.serviceKey).items.map((log) => (
@@ -570,9 +570,9 @@ const GlobalSettingsPage: React.FC = () => {
                           >
                             {log.status === 'success' ? 'Success' : 'Failed'}
                           </span>
-                          <span className="text-xs text-gray-500">{formatLogDateTime(log.createdAt)}</span>
+                          <span className="text-xs text-surface-500">{formatLogDateTime(log.createdAt)}</span>
                         </div>
-                        <p className="mt-1 text-xs text-gray-300">{log.summary}</p>
+                        <p className="mt-1 text-xs text-surface-600 dark:text-surface-400">{log.summary}</p>
                       </div>
                     ))}
                     {getServiceLogs(service.serviceKey).totalPages > 1 && (
@@ -587,7 +587,7 @@ const GlobalSettingsPage: React.FC = () => {
                         >
                           Previous
                         </Button>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-surface-500 dark:text-surface-400">
                           Page {getServiceLogs(service.serviceKey).page} of{' '}
                           {getServiceLogs(service.serviceKey).totalPages}
                         </span>

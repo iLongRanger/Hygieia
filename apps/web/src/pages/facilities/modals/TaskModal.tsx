@@ -55,7 +55,7 @@ export function TaskModal({
     >
       <div className="space-y-4">
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-200">
+          <label className="block text-sm font-medium text-surface-600 dark:text-surface-300">
             Task Source
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -64,14 +64,14 @@ export function TaskModal({
               className={`rounded-lg border p-3 text-left transition-colors ${
                 !taskForm.taskTemplateId
                   ? 'border-emerald bg-emerald/10 text-white'
-                  : 'border-white/10 text-gray-400 hover:border-white/20'
+                  : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
               }`}
               onClick={() =>
                 setTaskForm({ ...taskForm, taskTemplateId: null })
               }
             >
               <div className="font-medium">Custom Task</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-surface-500">
                 Enter task name manually
               </div>
             </button>
@@ -80,7 +80,7 @@ export function TaskModal({
               className={`rounded-lg border p-3 text-left transition-colors ${
                 taskForm.taskTemplateId
                   ? 'border-emerald bg-emerald/10 text-white'
-                  : 'border-white/10 text-gray-400 hover:border-white/20'
+                  : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
               }`}
               onClick={() =>
                 setTaskForm({
@@ -91,7 +91,7 @@ export function TaskModal({
               }
             >
               <div className="font-medium">From Template</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-surface-500">
                 Select predefined task
               </div>
             </button>
@@ -180,9 +180,9 @@ export function TaskModal({
         </div>
 
         <div className="space-y-2">
-          <div className="text-sm font-medium text-gray-200">Fixture Minutes Overrides</div>
+          <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Fixture Minutes Overrides</div>
           {taskFixtureTypes.length === 0 ? (
-            <div className="text-sm text-gray-500">No fixture types available.</div>
+            <div className="text-sm text-surface-500">No fixture types available.</div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {taskFixtureTypes.map((fixtureType) => (

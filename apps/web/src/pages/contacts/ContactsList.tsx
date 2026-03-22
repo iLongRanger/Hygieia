@@ -220,7 +220,7 @@ const ContactsList = () => {
               <CreditCard className="h-3 w-3 text-emerald" />
             )}
           </div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-surface-500 dark:text-surface-400">
             {item.title || 'No title'}
           </div>
         </div>
@@ -229,7 +229,7 @@ const ContactsList = () => {
     {
       header: 'Account',
       cell: (item: Contact) => (
-        <span className="text-gray-300">
+        <span className="text-surface-600 dark:text-surface-400">
           {item.account?.name || 'No account'}
         </span>
       ),
@@ -237,8 +237,8 @@ const ContactsList = () => {
     {
       header: 'Email',
       cell: (item: Contact) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <Mail className="h-3 w-3 text-gray-400" />
+        <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+          <Mail className="h-3 w-3 text-surface-500 dark:text-surface-400" />
           {item.email || '-'}
         </div>
       ),
@@ -246,8 +246,8 @@ const ContactsList = () => {
     {
       header: 'Phone',
       cell: (item: Contact) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <Phone className="h-3 w-3 text-gray-400" />
+        <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+          <Phone className="h-3 w-3 text-surface-500 dark:text-surface-400" />
           {item.phone || item.mobile || '-'}
         </div>
       ),
@@ -255,7 +255,7 @@ const ContactsList = () => {
     {
       header: 'Department',
       cell: (item: Contact) => (
-        <span className="text-gray-300">{item.department || '-'}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item.department || '-'}</span>
       ),
     },
     {
@@ -318,7 +318,7 @@ const ContactsList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -342,7 +342,7 @@ const ContactsList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Account"
                 placeholder="All Accounts"
@@ -374,12 +374,12 @@ const ContactsList = () => {
                 onChange={setIsBillingFilter}
               />
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>
@@ -401,8 +401,8 @@ const ContactsList = () => {
 
         <Table data={contacts} columns={columns} isLoading={loading} />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {contacts.length} of {total} contacts
             </span>
@@ -521,9 +521,9 @@ const ContactsList = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isPrimary: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-light text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Primary Contact</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Primary Contact</span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -532,9 +532,9 @@ const ContactsList = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isBilling: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-light text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-700 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Billing Contact</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Billing Contact</span>
             </label>
           </div>
 

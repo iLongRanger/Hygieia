@@ -135,7 +135,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
 
       <div className="relative">
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-50/50 dark:bg-surface-800/50">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-100 dark:bg-surface-800/100 dark:bg-surface-800/50">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
           </div>
         )}
@@ -182,7 +182,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                     slotDate.setHours(slot.getHours(), slot.getMinutes(), 0, 0);
                     onCreateClick(slotDate);
                   }}
-                  className="border-b border-r border-surface-200 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                  className="border-b border-r border-surface-200 transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
                 />
               </React.Fragment>
             ))}

@@ -216,7 +216,7 @@ const TaskTemplateDetail = () => {
   }
 
   if (!template) {
-    return <div className="text-center text-gray-400">Task template not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Task template not found</div>;
   }
 
   return (
@@ -227,7 +227,7 @@ const TaskTemplateDetail = () => {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{template.name}</h1>
-          <p className="text-gray-400">
+          <p className="text-surface-500 dark:text-surface-400">
             {template.cleaningType.replace('_', ' ').toUpperCase()}
           </p>
         </div>
@@ -273,19 +273,19 @@ const TaskTemplateDetail = () => {
               </div>
             </div>
 
-            <div className="space-y-3 border-t border-white/10 pt-4">
+            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
               <div className="flex items-start gap-3">
-                <Clock className="mt-1 h-4 w-4 text-gray-400" />
+                <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Estimated Time</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Estimated Time</div>
                   <div className="text-white">{template.estimatedMinutes} minutes</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <Clock className="mt-1 h-4 w-4 text-gray-400" />
+                <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Per-Hour Inputs</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Per-Hour Inputs</div>
                   <div className="text-white text-sm">
                     Base: {Number(template.baseMinutes || 0)} min
                   </div>
@@ -302,17 +302,17 @@ const TaskTemplateDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <CheckCircle className="mt-1 h-4 w-4 text-gray-400" />
+                <CheckCircle className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Difficulty Level</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Difficulty Level</div>
                   <div className="text-white">Level {template.difficultyLevel}</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <Calendar className="mt-1 h-4 w-4 text-gray-400" />
+                <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Created</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
                   <div className="text-white">{formatDate(template.createdAt)}</div>
                 </div>
               </div>
@@ -330,7 +330,7 @@ const TaskTemplateDetail = () => {
                   <Archive className="h-4 w-4" />
                   <span className="text-sm font-medium">Archived</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                   {formatDate(template.archivedAt)}
                 </p>
               </div>
@@ -343,14 +343,14 @@ const TaskTemplateDetail = () => {
             {template.description && (
               <div>
                 <h3 className="mb-2 text-lg font-semibold text-white">Description</h3>
-                <p className="text-gray-300">{template.description}</p>
+                <p className="text-surface-600 dark:text-surface-400">{template.description}</p>
               </div>
             )}
 
             {template.instructions && (
               <div>
                 <h3 className="mb-2 text-lg font-semibold text-white">Instructions</h3>
-                <p className="text-gray-300 whitespace-pre-wrap">{template.instructions}</p>
+                <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{template.instructions}</p>
               </div>
             )}
 
@@ -381,8 +381,8 @@ const TaskTemplateDetail = () => {
                 <h3 className="mb-2 text-lg font-semibold text-white">Fixture Minutes</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {template.fixtureMinutes.map((fixture) => (
-                    <div key={fixture.id} className="rounded-lg bg-navy-darker/50 p-3">
-                      <div className="text-sm text-gray-400">{fixture.fixtureType.name}</div>
+                    <div key={fixture.id} className="rounded-lg bg-surface-200 dark:bg-surface-900/50 p-3">
+                      <div className="text-sm text-surface-500 dark:text-surface-400">{fixture.fixtureType.name}</div>
                       <div className="text-white">{Number(fixture.minutesPerFixture)} min</div>
                     </div>
                   ))}
@@ -516,9 +516,9 @@ const TaskTemplateDetail = () => {
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-200">Fixture Minutes</div>
+            <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Fixture Minutes</div>
             {taskFixtureTypes.length === 0 ? (
-              <div className="text-sm text-gray-500">No fixture types available.</div>
+              <div className="text-sm text-surface-500">No fixture types available.</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {taskFixtureTypes.map((fixtureType) => (
@@ -558,9 +558,9 @@ const TaskTemplateDetail = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isGlobal: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-dark text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Global Template</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Global Template</span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -569,9 +569,9 @@ const TaskTemplateDetail = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, isActive: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-600 bg-navy-dark text-emerald focus:ring-emerald"
+                className="h-4 w-4 rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-emerald focus:ring-emerald"
               />
-              <span className="text-sm text-gray-300">Active</span>
+              <span className="text-sm text-surface-600 dark:text-surface-400">Active</span>
             </label>
           </div>
 

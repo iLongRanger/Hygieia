@@ -67,9 +67,9 @@ export function TaskSelectionModal({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className="text-sm font-medium text-gray-200">Default Tasks</div>
-          <div className="space-y-3 rounded-lg border border-white/10 bg-navy-dark/20 p-3">
-            <div className="rounded-lg border border-white/10 bg-navy-dark/30 p-3">
+          <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Default Tasks</div>
+          <div className="space-y-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/20 p-3">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium text-white">
                   Step {taskSelectionStep + 1} of {ORDERED_CLEANING_FREQUENCIES.length}
@@ -80,7 +80,7 @@ export function TaskSelectionModal({
                   )?.label || 'Daily'}
                 </Badge>
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-surface-50/10">
+              <div className="mt-2 h-1.5 rounded-full bg-surface-100 dark:bg-surface-800/20">
                 <div
                   className="h-full rounded-full bg-emerald transition-all"
                   style={{
@@ -88,7 +88,7 @@ export function TaskSelectionModal({
                   }}
                 />
               </div>
-              <div className="mt-2 text-xs text-gray-400">
+              <div className="mt-2 text-xs text-surface-500 dark:text-surface-400">
                 Reviewed categories: {reviewedTaskSelectionFrequencies.size}/{ORDERED_CLEANING_FREQUENCIES.length}
               </div>
             </div>
@@ -120,7 +120,7 @@ export function TaskSelectionModal({
             </div>
 
             {filteredTaskSelectionTasks.length === 0 ? (
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-surface-500">
                 No tasks for this category yet. Add one above.
               </div>
             ) : (
@@ -128,7 +128,7 @@ export function TaskSelectionModal({
                 {filteredTaskSelectionTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-navy-dark/30 p-3"
+                    className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3"
                   >
                     <div>
                       <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export function TaskSelectionModal({
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-surface-500">
                         {task.taskTemplateId
                           ? `${task.cleaningType} - Est ${task.estimatedMinutes ?? 0} min`
                           : `Custom ${task.cleaningType} task`}
@@ -160,14 +160,14 @@ export function TaskSelectionModal({
                           Remove
                         </Button>
                       )}
-                      <label className="flex items-center gap-2 text-sm text-gray-300">
+                      <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                         <input
                           type="checkbox"
                           checked={task.include}
                           onChange={(e) =>
                             toggleTaskSelectionInclude(task.id, e.target.checked)
                           }
-                          className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                          className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                         />
                         Include
                       </label>
@@ -177,7 +177,7 @@ export function TaskSelectionModal({
               </div>
             )}
 
-            <div className="flex justify-between border-t border-white/10 pt-3">
+            <div className="flex justify-between border-t border-surface-200 dark:border-surface-700 pt-3">
               <Button
                 type="button"
                 variant="ghost"
@@ -197,7 +197,7 @@ export function TaskSelectionModal({
               </Button>
             </div>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-surface-500">
             Review categories and include the tasks you want to add for this area.
           </div>
         </div>

@@ -277,7 +277,7 @@ const TaskTemplatesList = () => {
       cell: (item: TaskTemplate) => (
         <div>
           <div className="font-medium text-white">{item.name}</div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-surface-500 dark:text-surface-400">
             {item.areaType?.name || 'All Areas'}
           </div>
         </div>
@@ -292,8 +292,8 @@ const TaskTemplatesList = () => {
     {
       header: 'Time',
       cell: (item: TaskTemplate) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <Clock className="h-4 w-4 text-gray-500" />
+        <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+          <Clock className="h-4 w-4 text-surface-500" />
           {item.estimatedMinutes} min
         </div>
       ),
@@ -301,7 +301,7 @@ const TaskTemplatesList = () => {
     {
       header: 'Difficulty',
       cell: (item: TaskTemplate) => (
-        <span className="text-gray-300">
+        <span className="text-surface-600 dark:text-surface-400">
           {'★'.repeat(item.difficultyLevel)}
           {'☆'.repeat(5 - item.difficultyLevel)}
         </span>
@@ -322,7 +322,7 @@ const TaskTemplatesList = () => {
           {item.isActive ? (
             <CheckCircle className="h-4 w-4 text-emerald" />
           ) : (
-            <XCircle className="h-4 w-4 text-gray-500" />
+            <XCircle className="h-4 w-4 text-surface-500" />
           )}
           <Badge
             variant={
@@ -341,7 +341,7 @@ const TaskTemplatesList = () => {
     {
       header: 'Uses',
       cell: (item: TaskTemplate) => (
-        <span className="text-gray-300">{item._count?.facilityTasks ?? 0}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item._count?.facilityTasks ?? 0}</span>
       ),
     },
     {
@@ -394,7 +394,7 @@ const TaskTemplatesList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -418,7 +418,7 @@ const TaskTemplatesList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Cleaning Type"
                 placeholder="All Types"
@@ -457,12 +457,12 @@ const TaskTemplatesList = () => {
                 onChange={setIsActiveFilter}
               />
               <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>
@@ -484,8 +484,8 @@ const TaskTemplatesList = () => {
 
         <Table data={templates} columns={columns} isLoading={loading} />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {templates.length} of {total} templates
             </span>
@@ -639,9 +639,9 @@ const TaskTemplatesList = () => {
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-200">Fixture Minutes</div>
+            <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Fixture Minutes</div>
             {taskFixtureTypes.length === 0 ? (
-              <div className="text-sm text-gray-500">No fixture types available.</div>
+              <div className="text-sm text-surface-500">No fixture types available.</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {taskFixtureTypes.map((fixtureType) => (

@@ -115,26 +115,26 @@ export default function PublicResidentialQuoteView() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-300 dark:border-surface-600 border-t-blue-600" />
       </div>
     );
   }
 
   if (error || !quote) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-surface-50">
         <div className="max-w-md text-center">
-          <Home className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-          <h1 className="mb-2 text-2xl font-bold text-gray-800">Residential Quote Not Found</h1>
-          <p className="text-gray-500">{error || 'This link may have expired.'}</p>
+          <Home className="mx-auto mb-4 h-16 w-16 text-surface-600 dark:text-surface-400" />
+          <h1 className="mb-2 text-2xl font-bold text-surface-800">Residential Quote Not Found</h1>
+          <p className="text-surface-500">{error || 'This link may have expired.'}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-50">
       <div style={{ backgroundColor: primaryColor }} className="px-4 py-8">
         <div className="mx-auto max-w-4xl text-center">
           {branding?.logoDataUrl && (
@@ -156,11 +156,11 @@ export default function PublicResidentialQuoteView() {
       )}
 
       <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-        <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
+        <div className="rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">{quote.title}</h2>
-              <p className="text-sm text-gray-500">{quote.quoteNumber}</p>
+              <h2 className="text-xl font-bold text-surface-800">{quote.title}</h2>
+              <p className="text-sm text-surface-500">{quote.quoteNumber}</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-sm font-medium ${
               quote.status === 'accepted'
@@ -175,22 +175,22 @@ export default function PublicResidentialQuoteView() {
 
           <div className="grid gap-4 text-sm md:grid-cols-2">
             <div>
-              <p className="text-gray-500">Prepared for</p>
-              <p className="font-medium text-gray-800">{quote.customerName}</p>
-              <p className="mt-1 text-gray-600">
+              <p className="text-surface-500">Prepared for</p>
+              <p className="font-medium text-surface-800">{quote.customerName}</p>
+              <p className="mt-1 text-surface-600">
                 {serviceLabelMap[quote.serviceType] || quote.serviceType} · {frequencyLabelMap[quote.frequency] || quote.frequency}
               </p>
             </div>
             <div className="text-left md:text-right">
-              <p className="text-gray-500">Preferred Start</p>
-              <p className="font-medium text-gray-800">{formatDate(quote.preferredStartDate)}</p>
-              <p className="mt-1 text-xs text-gray-600">Sent {formatDate(quote.sentAt)}</p>
+              <p className="text-surface-500">Preferred Start</p>
+              <p className="font-medium text-surface-800">{formatDate(quote.preferredStartDate)}</p>
+              <p className="mt-1 text-xs text-surface-600">Sent {formatDate(quote.sentAt)}</p>
             </div>
           </div>
 
           {!!homeSummary.length && (
-            <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-              <div className="font-medium text-slate-900">Home summary</div>
+            <div className="mt-4 rounded-lg bg-surface-50 p-4 text-sm text-surface-700">
+              <div className="font-medium text-surface-900">Home summary</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {homeSummary.map((item) => (
                   <span key={item} className="rounded-full bg-surface-50 px-3 py-1 text-xs shadow-sm">
@@ -204,24 +204,24 @@ export default function PublicResidentialQuoteView() {
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
           <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-gray-800">Quote Details</h3>
+            <div className="rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-surface-800">Quote Details</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Base service</span>
-                  <span className="font-medium text-gray-800">{formatCurrency(quote.subtotal)}</span>
+                  <span className="text-surface-500">Base service</span>
+                  <span className="font-medium text-surface-800">{formatCurrency(quote.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Recurring discount</span>
-                  <span className="font-medium text-gray-800">-{formatCurrency(quote.recurringDiscount)}</span>
+                  <span className="text-surface-500">Recurring discount</span>
+                  <span className="font-medium text-surface-800">-{formatCurrency(quote.recurringDiscount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">First clean surcharge</span>
-                  <span className="font-medium text-gray-800">{formatCurrency(quote.firstCleanSurcharge)}</span>
+                  <span className="text-surface-500">First clean surcharge</span>
+                  <span className="font-medium text-surface-800">{formatCurrency(quote.firstCleanSurcharge)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Add-ons</span>
-                  <span className="font-medium text-gray-800">{formatCurrency(quote.addOnTotal)}</span>
+                  <span className="text-surface-500">Add-ons</span>
+                  <span className="font-medium text-surface-800">{formatCurrency(quote.addOnTotal)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-3 text-lg font-bold">
                   <span>Total quote</span>
@@ -231,21 +231,21 @@ export default function PublicResidentialQuoteView() {
             </div>
 
             {!!quote.addOns?.length && (
-              <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
-                <h3 className="mb-4 text-lg font-semibold text-gray-800">Included Add-Ons</h3>
+              <div className="rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
+                <h3 className="mb-4 text-lg font-semibold text-surface-800">Included Add-Ons</h3>
                 <div className="space-y-3">
                   {quote.addOns.map((addOn) => (
-                    <div key={addOn.id} className="flex items-start justify-between gap-4 border-b border-gray-100 pb-3 last:border-b-0 last:pb-0">
+                    <div key={addOn.id} className="flex items-start justify-between gap-4 border-b border-surface-100 pb-3 last:border-b-0 last:pb-0">
                       <div>
-                        <div className="font-medium text-gray-800">{addOn.label}</div>
-                        {addOn.description && <div className="text-sm text-gray-500">{addOn.description}</div>}
-                        <div className="mt-1 text-xs text-gray-500">
+                        <div className="font-medium text-surface-800">{addOn.label}</div>
+                        {addOn.description && <div className="text-sm text-surface-500">{addOn.description}</div>}
+                        <div className="mt-1 text-xs text-surface-500">
                           {addOn.pricingType === 'per_unit'
                             ? `${addOn.quantity} ${addOn.unitLabel || 'unit'}${addOn.quantity === 1 ? '' : 's'}`
                             : 'Flat add-on'}
                         </div>
                       </div>
-                      <div className="font-medium text-gray-800">{formatCurrency(addOn.lineTotal)}</div>
+                      <div className="font-medium text-surface-800">{formatCurrency(addOn.lineTotal)}</div>
                     </div>
                   ))}
                 </div>
@@ -253,28 +253,28 @@ export default function PublicResidentialQuoteView() {
             )}
 
             {quote.notes && (
-              <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
-                <h3 className="mb-2 text-lg font-semibold text-gray-800">Service Notes</h3>
-                <p className="whitespace-pre-wrap text-sm text-gray-600">{quote.notes}</p>
+              <div className="rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold text-surface-800">Service Notes</h3>
+                <p className="whitespace-pre-wrap text-sm text-surface-600">{quote.notes}</p>
               </div>
             )}
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-gray-800">Visit Overview</h3>
+            <div className="rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-surface-800">Visit Overview</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Estimated hours</span>
-                  <span className="font-medium text-gray-800">{quote.estimatedHours || 'TBD'} hrs</span>
+                  <span className="text-surface-500">Estimated hours</span>
+                  <span className="font-medium text-surface-800">{quote.estimatedHours || 'TBD'} hrs</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Condition</span>
-                  <span className="font-medium text-gray-800">{quote.homeProfile?.condition || 'standard'}</span>
+                  <span className="text-surface-500">Condition</span>
+                  <span className="font-medium text-surface-800">{quote.homeProfile?.condition || 'standard'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Occupancy</span>
-                  <span className="font-medium text-gray-800">{quote.homeProfile?.occupiedStatus?.replace(/_/g, ' ') || 'occupied'}</span>
+                  <span className="text-surface-500">Occupancy</span>
+                  <span className="font-medium text-surface-800">{quote.homeProfile?.occupiedStatus?.replace(/_/g, ' ') || 'occupied'}</span>
                 </div>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function PublicResidentialQuoteView() {
             )}
 
             {canRespond && !actionComplete && (
-              <div className="space-y-3 rounded-lg border border-gray-200 bg-surface-50 p-6 shadow-sm">
+              <div className="space-y-3 rounded-lg border border-surface-200 bg-surface-50 p-6 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setAcceptOpen(true)}
@@ -305,7 +305,7 @@ export default function PublicResidentialQuoteView() {
                 <button
                   type="button"
                   onClick={() => setDeclineOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-3 font-semibold text-surface-700 hover:bg-surface-50"
                 >
                   <XCircle className="h-5 w-5" />
                   Decline Quote
@@ -313,11 +313,11 @@ export default function PublicResidentialQuoteView() {
               </div>
             )}
 
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-surface-500">
               <p>Questions? Contact us:</p>
               <div className="mt-2 space-y-2">
                 {branding?.companyEmail && (
-                  <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-2 hover:text-gray-700">
+                  <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-2 hover:text-surface-700">
                     <Mail className="h-4 w-4" />
                     {branding.companyEmail}
                   </a>
@@ -337,21 +337,21 @@ export default function PublicResidentialQuoteView() {
       {acceptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-surface-50 p-6">
-            <h3 className="mb-4 text-lg font-bold text-gray-800">Accept Residential Quote</h3>
-            <p className="mb-4 text-sm text-gray-500">
+            <h3 className="mb-4 text-lg font-bold text-surface-800">Accept Residential Quote</h3>
+            <p className="mb-4 text-sm text-surface-500">
               By signing below, you confirm you would like to move forward with this residential quote for{' '}
               <strong>{formatCurrency(quote.totalAmount)}</strong>.
             </p>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Your Full Name</label>
+            <label className="mb-1 block text-sm font-medium text-surface-700">Your Full Name</label>
             <input
               type="text"
               value={signatureName}
               onChange={(event) => setSignatureName(event.target.value)}
               placeholder="Enter your full name"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
             <div className="mt-6 flex gap-3">
-              <button type="button" onClick={() => setAcceptOpen(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">
+              <button type="button" onClick={() => setAcceptOpen(false)} className="flex-1 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 hover:bg-surface-50">
                 Cancel
               </button>
               <button
@@ -371,17 +371,17 @@ export default function PublicResidentialQuoteView() {
       {declineOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-surface-50 p-6">
-            <h3 className="mb-4 text-lg font-bold text-gray-800">Decline Residential Quote</h3>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Reason for Declining</label>
+            <h3 className="mb-4 text-lg font-bold text-surface-800">Decline Residential Quote</h3>
+            <label className="mb-1 block text-sm font-medium text-surface-700">Reason for Declining</label>
             <textarea
               value={declineReason}
               onChange={(event) => setDeclineReason(event.target.value)}
               rows={4}
               placeholder="Let us know what needs to change..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
             <div className="mt-6 flex gap-3">
-              <button type="button" onClick={() => setDeclineOpen(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">
+              <button type="button" onClick={() => setDeclineOpen(false)} className="flex-1 rounded-lg border border-surface-300 dark:border-surface-600 px-4 py-2 text-surface-700 hover:bg-surface-50">
                 Cancel
               </button>
               <button

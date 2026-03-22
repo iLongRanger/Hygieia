@@ -45,8 +45,8 @@ export const CalendarDayCell: React.FC<CalendarDayCellProps> = ({
     <div
       onClick={handleCellClick}
       className={cn(
-        'min-h-[100px] cursor-pointer border-b border-r border-surface-200 p-1 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50',
-        !isCurrentMonth && 'bg-surface-50/50 dark:bg-surface-800/30',
+        'min-h-[100px] cursor-pointer border-b border-r border-surface-200 p-1 transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50',
+        !isCurrentMonth && 'bg-surface-100 dark:bg-surface-800/100 dark:bg-surface-800/30',
         compact && 'min-h-[60px]'
       )}
     >

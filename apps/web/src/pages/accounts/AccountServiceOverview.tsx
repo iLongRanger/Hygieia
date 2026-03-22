@@ -58,7 +58,7 @@ export function AccountServiceOverview({
   return (
     <Card
       noPadding
-      className="rounded-lg border border-white/10 bg-navy-dark/30 p-5"
+      className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5"
     >
       <h3 className="text-lg font-semibold text-white">Service Overview</h3>
 
@@ -67,7 +67,7 @@ export function AccountServiceOverview({
         <div className="flex items-start gap-2">
           <Users className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
+            <p className="text-xs uppercase tracking-wide text-surface-500">
               Assigned Team
             </p>
             <p className="text-white font-medium">{assignedTeamName}</p>
@@ -78,7 +78,7 @@ export function AccountServiceOverview({
         <div className="flex items-start gap-2">
           <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
+            <p className="text-xs uppercase tracking-wide text-surface-500">
               Last Service
             </p>
             <p className="text-white font-medium">{lastServiceDate}</p>
@@ -89,7 +89,7 @@ export function AccountServiceOverview({
         <div className="flex items-start gap-2">
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
+            <p className="text-xs uppercase tracking-wide text-surface-500">
               Upcoming Jobs
             </p>
             <p className="text-white font-medium">{upcomingJobsCount}</p>
@@ -100,7 +100,7 @@ export function AccountServiceOverview({
         <div className="flex items-start gap-2">
           <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
+            <p className="text-xs uppercase tracking-wide text-surface-500">
               Service Frequency
             </p>
             <p className="text-white font-medium">{serviceFrequency}</p>
@@ -109,8 +109,8 @@ export function AccountServiceOverview({
       </div>
 
       {/* Quality Metrics Placeholder */}
-      <div className="mt-4 rounded-md border border-white/5 p-3">
-        <p className="text-sm italic text-gray-500">
+      <div className="mt-4 rounded-md border border-surface-200 dark:border-surface-700 p-3">
+        <p className="text-sm italic text-surface-500">
           Quality metrics coming soon
         </p>
       </div>

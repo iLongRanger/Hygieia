@@ -102,7 +102,7 @@ export function AppointmentDetailCard({
               event.stopPropagation();
               onCustomerClick(appointment);
             }}
-            className="rounded-full border border-surface-200 px-3 py-1.5 text-xs font-semibold text-surface-700 transition hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800"
+            className="rounded-full border border-surface-200 px-3 py-1.5 text-xs font-semibold text-surface-700 transition hover:border-surface-300 hover:bg-surface-100 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800"
           >
             Account
           </button>

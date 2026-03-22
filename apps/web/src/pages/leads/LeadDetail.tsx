@@ -629,7 +629,7 @@ const LeadDetail = () => {
   }
 
   if (!lead) {
-    return <div className="text-center text-gray-400">Lead not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Lead not found</div>;
   }
 
   return (
@@ -640,7 +640,7 @@ const LeadDetail = () => {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{lead.contactName}</h1>
-          <p className="text-gray-400">{lead.companyName || 'No company name'}</p>
+          <p className="text-surface-500 dark:text-surface-400">{lead.companyName || 'No company name'}</p>
         </div>
         {(canWriteLeads || canWriteAppointments) && (
           <div className="flex items-center gap-2">
@@ -686,11 +686,11 @@ const LeadDetail = () => {
               </div>
             </div>
 
-            <div className="space-y-3 border-t border-white/10 pt-4">
+            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
               <div className="flex items-start gap-3">
-                <Mail className="mt-1 h-4 w-4 text-gray-400" />
+                <Mail className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Primary Email</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Primary Email</div>
                   <div className="text-white">
                     {lead.primaryEmail || 'Not provided'}
                   </div>
@@ -698,9 +698,9 @@ const LeadDetail = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <Clock className="mt-1 h-4 w-4 text-gray-400" />
+                <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
-                  <div className="text-sm text-gray-400">Created</div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
                   <div className="text-white">
                     {new Date(lead.createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
@@ -713,9 +713,9 @@ const LeadDetail = () => {
 
               {lead.convertedToAccount && (
                 <div className="flex items-start gap-3">
-                  <ClipboardList className="mt-1 h-4 w-4 text-gray-400" />
+                  <ClipboardList className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
-                    <div className="text-sm text-gray-400">Converted Account</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Converted Account</div>
                     <div className="text-white">{lead.convertedToAccount.name}</div>
                   </div>
                 </div>
@@ -732,7 +732,7 @@ const LeadDetail = () => {
               </h3>
 
               {appointments.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-surface-500 dark:text-surface-400">
                   <Calendar className="mx-auto h-12 w-12 mb-2 opacity-50" />
                   <p>No appointments scheduled</p>
                   <p className="text-sm">Schedule a walkthrough to start the process</p>
@@ -744,16 +744,16 @@ const LeadDetail = () => {
                     return (
                       <div
                         key={appointment.id}
-                        className="flex flex-col gap-3 rounded-lg border border-white/10 bg-navy-darker/30 p-4"
+                        className="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/30 p-4"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="text-sm text-gray-400">Scheduled</div>
+                            <div className="text-sm text-surface-500 dark:text-surface-400">Scheduled</div>
                             <div className="text-white">
                               {formatDateTime(appointment.scheduledStart, appointment.timezone)} -{' '}
                               {formatDateTime(appointment.scheduledEnd, appointment.timezone)}
                             </div>
-                            <div className="mt-1 text-xs text-gray-400">
+                            <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                               Assigned to {appointment.assignedToUser.fullName}
                             </div>
                           </div>
@@ -810,7 +810,7 @@ const LeadDetail = () => {
             {latestAppointment && latestAppointment.status !== 'completed' && (
               <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
                 <div className="text-sm font-medium text-gold">Walkthrough not completed</div>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                   Areas and tasks must be added during the walkthrough before moving to proposal.
                 </p>
               </div>
@@ -829,7 +829,7 @@ const LeadDetail = () => {
           {!lead.convertedToAccountId && (
             <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
               <div className="text-sm font-medium text-gold">Convert lead during booking</div>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Booking this walkthrough will also create the account and initial facility record.
               </p>
 
@@ -1064,8 +1064,8 @@ const LeadDetail = () => {
       >
         <div className="space-y-4">
           {lead.convertedToAccount && (
-            <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-3">
-              <div className="text-xs uppercase tracking-wide text-gray-400">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-3">
+              <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">
                 Step {completeStep === 'details' ? '1' : '2'} of 2
               </div>
               <div className="mt-1 text-sm text-white">
@@ -1116,26 +1116,26 @@ const LeadDetail = () => {
                   />
                 </>
               ) : (
-                <div className="space-y-3 rounded-lg border border-white/10 bg-navy-darker/30 p-4">
+                <div className="space-y-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/30 p-4">
                   {(() => {
                     return (
                       <>
                         <div>
-                          <div className="text-sm text-gray-400">Facility</div>
+                          <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
                           <div className="text-white">{selectedFacility?.name || 'Unknown facility'}</div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <div className="text-sm text-gray-400">Areas</div>
+                            <div className="text-sm text-surface-500 dark:text-surface-400">Areas</div>
                             <div className="text-white">{selectedFacility?._count.areas ?? 0}</div>
                           </div>
                           <div>
-                            <div className="text-sm text-gray-400">Tasks</div>
+                            <div className="text-sm text-surface-500 dark:text-surface-400">Tasks</div>
                             <div className="text-white">{selectedFacility?._count.facilityTasks ?? 0}</div>
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-400">Walkthrough Notes</div>
+                          <div className="text-sm text-surface-500 dark:text-surface-400">Walkthrough Notes</div>
                           <div className="text-white whitespace-pre-wrap">
                             {completeForm.notes?.trim() || 'No notes provided'}
                           </div>
@@ -1286,8 +1286,8 @@ const LeadDetail = () => {
                 setEditFormData({ ...editFormData, leadSourceId: value || null })
               }
             />
-            <div className="rounded-lg border border-white/10 bg-navy-darker/30 px-3 py-2">
-              <div className="text-sm text-gray-400">Status</div>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/30 px-3 py-2">
+              <div className="text-sm text-surface-500 dark:text-surface-400">Status</div>
               <div className="text-white">{lead.status.replace(/_/g, ' ')}</div>
             </div>
           </div>
@@ -1380,7 +1380,7 @@ const LeadDetail = () => {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-surface-500 dark:text-surface-400">
             This marks the lead as lost without changing the operational workflow stages manually.
           </p>
           <Textarea

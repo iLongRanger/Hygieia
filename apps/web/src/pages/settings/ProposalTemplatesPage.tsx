@@ -143,14 +143,14 @@ const ProposalTemplatesPage: React.FC = () => {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">Proposal Templates</h1>
-          <p className="text-gray-400">Manage terms & conditions templates for proposals</p>
+          <p className="text-surface-500 dark:text-surface-400">Manage terms & conditions templates for proposals</p>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 cursor-pointer">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-gray-600"
+            className="rounded border-surface-300 dark:border-surface-600"
           />
           Show archived
         </label>
@@ -168,9 +168,9 @@ const ProposalTemplatesPage: React.FC = () => {
       ) : templates.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+            <FileText className="mx-auto h-12 w-12 text-surface-500 mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No templates yet</h3>
-            <p className="text-gray-400 mb-4">
+            <p className="text-surface-500 dark:text-surface-400 mb-4">
               Create your first terms & conditions template to speed up proposal creation.
             </p>
             <Button onClick={openCreateModal}>
@@ -199,10 +199,10 @@ const ProposalTemplatesPage: React.FC = () => {
                       <Badge variant="warning">Archived</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-gray-400 line-clamp-2 whitespace-pre-wrap">
+                  <p className="text-sm text-surface-500 dark:text-surface-400 line-clamp-2 whitespace-pre-wrap">
                     {template.termsAndConditions}
                   </p>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-surface-500 mt-2">
                     Created by {template.createdByUser.fullName} &middot;{' '}
                     {new Date(template.updatedAt).toLocaleDateString()}
                   </p>
@@ -277,12 +277,12 @@ const ProposalTemplatesPage: React.FC = () => {
             rows={12}
             required
           />
-          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400 cursor-pointer">
             <input
               type="checkbox"
               checked={formData.isDefault || false}
               onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-              className="rounded border-gray-600"
+              className="rounded border-surface-300 dark:border-surface-600"
             />
             Set as default template (auto-selected for new proposals)
           </label>

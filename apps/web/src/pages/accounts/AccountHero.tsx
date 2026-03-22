@@ -106,7 +106,7 @@ export function AccountHero({
               </Badge>
             </div>
             {account.industry && (
-              <p className="mt-0.5 text-sm text-gray-400">{account.industry}</p>
+              <p className="mt-0.5 text-sm text-surface-500 dark:text-surface-400">{account.industry}</p>
             )}
           </div>
         </div>
@@ -147,19 +147,19 @@ export function AccountHero({
               </p>
               <p className="text-2xl font-bold text-white">
                 {formatCurrency(activeContract.monthlyValue)}
-                <span className="text-sm font-normal text-gray-400">/mo</span>
+                <span className="text-sm font-normal text-surface-500 dark:text-surface-400">/mo</span>
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400">
+            <div className="flex flex-wrap items-center gap-6 text-sm text-surface-500 dark:text-surface-400">
               {activeContract.assignedTeam && (
                 <div>
-                  <span className="text-gray-500">Team</span>{' '}
+                  <span className="text-surface-500">Team</span>{' '}
                   <span className="text-white">{activeContract.assignedTeam.name}</span>
                 </div>
               )}
               {activeContract.endDate && (
                 <div>
-                  <span className="text-gray-500">Ends</span>{' '}
+                  <span className="text-surface-500">Ends</span>{' '}
                   <span className="text-white">{formatShortDate(activeContract.endDate)}</span>
                 </div>
               )}
@@ -174,10 +174,10 @@ export function AccountHero({
           </div>
         </Card>
       ) : (
-        <Card className="!border-white/10 !bg-navy-dark/30" noPadding>
+        <Card className="!border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
           <div className="p-5">
-            <p className="text-sm font-medium text-gray-400">No active contract</p>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="text-sm font-medium text-surface-500 dark:text-surface-400">No active contract</p>
+            <p className="mt-0.5 text-xs text-surface-500">
               Create a proposal or contract to get started.
             </p>
           </div>
@@ -187,9 +187,9 @@ export function AccountHero({
       {/* KPI Strip */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {/* Monthly Value */}
-        <Card className="!rounded-lg !border-white/10 !bg-navy-dark/30" noPadding>
+        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
           <div className="p-4">
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <DollarSign className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium">Monthly Value</span>
             </div>
@@ -201,13 +201,13 @@ export function AccountHero({
 
         {/* Facilities */}
         <Card
-          className="!rounded-lg !border-white/10 !bg-navy-dark/30 cursor-pointer"
+          className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30 cursor-pointer"
           noPadding
           hover
           onClick={() => onNavigate(`/accounts/${account.id}/facilities`)}
         >
           <div className="p-4">
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <Building className="h-4 w-4 text-gold-400" />
               <span className="text-xs font-medium">Facilities</span>
             </div>
@@ -218,9 +218,9 @@ export function AccountHero({
         </Card>
 
         {/* Next Service */}
-        <Card className="!rounded-lg !border-white/10 !bg-navy-dark/30" noPadding>
+        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
           <div className="p-4">
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <Calendar className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium">Next Service</span>
             </div>
@@ -229,9 +229,9 @@ export function AccountHero({
         </Card>
 
         {/* Account Health */}
-        <Card className="!rounded-lg !border-white/10 !bg-navy-dark/30" noPadding>
+        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
           <div className="p-4">
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <Activity className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium">Account Health</span>
             </div>

@@ -99,7 +99,7 @@ export function FacilityAreaDetail({
       {/* Back link */}
       <button
         onClick={onBack}
-        className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1 mb-4"
+        className="text-surface-500 dark:text-surface-400 hover:text-white transition-colors text-sm flex items-center gap-1 mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Areas
@@ -111,7 +111,7 @@ export function FacilityAreaDetail({
           <h2 className="text-xl font-bold text-white">
             {area.name || area.areaType.name}
           </h2>
-          <p className="text-gray-400">{area.areaType.name}</p>
+          <p className="text-surface-500 dark:text-surface-400">{area.areaType.name}</p>
         </div>
         <Button variant="secondary" onClick={() => onEditArea(area)}>
           <Edit2 className="mr-2 h-4 w-4" />
@@ -128,7 +128,7 @@ export function FacilityAreaDetail({
             value={findLabel(FLOOR_TYPES, area.floorType)}
           />
           <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+            <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
               Condition
             </div>
             <Badge variant={CONDITION_BADGE_VARIANT[area.conditionLevel]}>
@@ -136,7 +136,7 @@ export function FacilityAreaDetail({
             </Badge>
           </div>
           <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+            <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
               Traffic
             </div>
             <Badge variant={TRAFFIC_BADGE_VARIANT[area.trafficLevel]}>
@@ -168,10 +168,10 @@ export function FacilityAreaDetail({
             {area.fixtures.map((fixture) => (
               <div
                 key={fixture.id}
-                className="rounded-lg bg-surface-50/5 px-4 py-3 flex justify-between items-center"
+                className="rounded-lg bg-surface-100 dark:bg-surface-800/10 px-4 py-3 flex justify-between items-center"
               >
                 <span className="text-white">{fixture.fixtureType.name}</span>
-                <span className="text-gray-300">
+                <span className="text-surface-600 dark:text-surface-400">
                   {fixture.count}
                   {Number(fixture.minutesPerItem) > 0 &&
                     ` \u00d7 ${fixture.minutesPerItem} min/item`}
@@ -209,7 +209,7 @@ export function FacilityAreaDetail({
         </div>
 
         {tasks.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">
+          <p className="text-center text-surface-500 py-8">
             No tasks assigned to this area yet. Use Add Custom Task for a new
             task, or Add From Templates for existing standards.
           </p>
@@ -222,7 +222,7 @@ export function FacilityAreaDetail({
                     <Badge variant="default">
                       {findLabel(CLEANING_FREQUENCIES, frequency)}
                     </Badge>
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-surface-500 dark:text-surface-400 text-sm">
                       ({groupTasks.length})
                     </span>
                   </div>
@@ -230,12 +230,12 @@ export function FacilityAreaDetail({
                     {groupTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="rounded-lg bg-surface-50/5 px-3 py-2 flex items-center justify-between group"
+                        className="rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2 flex items-center justify-between group"
                       >
                         <span className="text-white">
                           {getTaskName(task)}
                           {task.estimatedMinutes != null && (
-                            <span className="text-gray-400 ml-1">
+                            <span className="text-surface-500 dark:text-surface-400 ml-1">
                               ({task.estimatedMinutes} min)
                             </span>
                           )}
@@ -243,7 +243,7 @@ export function FacilityAreaDetail({
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onEditTask(task)}
-                            className="p-1 text-gray-400 hover:text-white transition-colors"
+                            className="p-1 text-surface-500 dark:text-surface-400 hover:text-white transition-colors"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
@@ -267,7 +267,7 @@ export function FacilityAreaDetail({
       {/* Notes section */}
       {area.notes && (
         <Card className="mt-6">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+          <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
             Notes
           </div>
           <p className="text-white">{area.notes}</p>
@@ -286,7 +286,7 @@ function InfoField({
 }): React.JSX.Element {
   return (
     <div>
-      <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+      <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
         {label}
       </div>
       <div className="text-white font-medium">{value}</div>

@@ -30,7 +30,7 @@ interface ContractActivity {
 }
 
 const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  created: { icon: FileText, label: 'Contract created', color: 'text-gray-400' },
+  created: { icon: FileText, label: 'Contract created', color: 'text-surface-500 dark:text-surface-400' },
   updated: { icon: Edit2, label: 'Contract updated', color: 'text-blue-400' },
   status_changed: { icon: PlayCircle, label: 'Status changed', color: 'text-yellow-400' },
   signed: { icon: FileSignature, label: 'Contract signed', color: 'text-purple-400' },
@@ -51,11 +51,11 @@ const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; co
     color: 'text-teal-400',
   },
   initial_clean_completed: { icon: Sparkles, label: 'Initial clean completed', color: 'text-emerald-400' },
-  pdf_generated: { icon: FileDown, label: 'PDF generated', color: 'text-gray-400' },
+  pdf_generated: { icon: FileDown, label: 'PDF generated', color: 'text-surface-500 dark:text-surface-400' },
 };
 
 function getActionConfig(action: string) {
-  return ACTION_CONFIG[action] || { icon: Clock, label: action, color: 'text-gray-400' };
+  return ACTION_CONFIG[action] || { icon: Clock, label: action, color: 'text-surface-500 dark:text-surface-400' };
 }
 
 function formatDateTime(date: string) {
@@ -114,7 +114,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
         <h2 className="text-lg font-semibold text-white">Activity</h2>
       </div>
       {activities.length === 0 ? (
-        <p className="text-sm text-gray-400">No activity recorded yet.</p>
+        <p className="text-sm text-surface-500 dark:text-surface-400">No activity recorded yet.</p>
       ) : (
         <div className="space-y-0">
           {activities.map((activity, idx) => {
@@ -126,7 +126,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
               <div key={activity.id} className="flex gap-3 relative">
                 {/* Vertical line */}
                 {!isLast && (
-                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-surface-50/10" />
+                  <div className="absolute left-[11px] top-[24px] bottom-0 w-px bg-surface-100 dark:bg-surface-800/20" />
                 )}
                 {/* Icon */}
                 <div className={`mt-0.5 shrink-0 ${config.color}`}>
@@ -135,7 +135,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
                 {/* Content */}
                 <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
                   <p className="text-sm font-medium text-white">{config.label}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-surface-500">
                     {activity.performedByUser
                       ? `by ${activity.performedByUser.fullName}`
                       : 'System'}
@@ -143,17 +143,17 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
                     {formatDateTime(activity.createdAt)}
                   </p>
                   {activity.action === 'status_changed' && activity.metadata?.newStatus && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       New status: {activity.metadata.newStatus.replace('_', ' ')}
                     </p>
                   )}
                   {activity.action === 'terminated' && activity.metadata?.reason && (
-                    <p className="text-xs text-gray-400 mt-1 italic">
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 italic">
                       &ldquo;{activity.metadata.reason}&rdquo;
                     </p>
                   )}
                   {activity.action === 'signed' && activity.metadata?.signedByName && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       Signed by {activity.metadata.signedByName}
                     </p>
                   )}

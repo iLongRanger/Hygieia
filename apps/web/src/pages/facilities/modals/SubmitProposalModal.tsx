@@ -58,36 +58,36 @@ export function SubmitProposalModal({
       title="Submit Facility for Proposal"
     >
       <div className="space-y-4">
-        <div className="rounded-lg border border-white/10 bg-navy-darker/40 p-4">
-          <div className="text-sm text-gray-400">Final Review</div>
+        <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
+          <div className="text-sm text-surface-500 dark:text-surface-400">Final Review</div>
           <div className="mt-2">
             <div className="text-white font-medium">{facilityName}</div>
-            <div className="text-xs text-gray-400">{accountName}</div>
+            <div className="text-xs text-surface-500 dark:text-surface-400">{accountName}</div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs text-gray-500">Areas</div>
+              <div className="text-xs text-surface-500">Areas</div>
               <div className="text-white font-medium">{activeAreasCount}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Tasks</div>
+              <div className="text-xs text-surface-500">Tasks</div>
               <div className="text-white font-medium">{activeTasksCount}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Total Sq Ft</div>
+              <div className="text-xs text-surface-500">Total Sq Ft</div>
               <div className="text-white font-medium">
                 {totalSquareFeet.toLocaleString()}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Unassigned Tasks</div>
+              <div className="text-xs text-surface-500">Unassigned Tasks</div>
               <div className="text-white font-medium">{unassignedTaskCount}</div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-white/10 bg-navy-darker/30 p-4">
-          <div className="text-sm text-gray-300 mb-3">Area Overview</div>
+        <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/30 p-4">
+          <div className="text-sm text-surface-600 dark:text-surface-400 mb-3">Area Overview</div>
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
             {activeAreas.map((area) => {
               const areaName = area.name || area.areaType.name;
@@ -96,12 +96,12 @@ export function SubmitProposalModal({
               return (
                 <div
                   key={area.id}
-                  className="rounded-md border border-white/10 bg-black/20 px-3 py-2"
+                  className="rounded-md border border-surface-200 dark:border-surface-700 bg-black/20 px-3 py-2"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm text-white">{areaName}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-surface-500 dark:text-surface-400">
                         {areaSqFt.toLocaleString()} sqft
                       </div>
                     </div>
@@ -113,10 +113,10 @@ export function SubmitProposalModal({
               );
             })}
             {activeAreas.length === 0 && (
-              <div className="text-sm text-gray-400">No active areas found.</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">No active areas found.</div>
             )}
           </div>
-          <div className="mt-3 text-sm text-gray-300">
+          <div className="mt-3 text-sm text-surface-600 dark:text-surface-400">
             Choose whether to keep working on this facility later or finish the walkthrough now.
             Completing the walkthrough will mark it complete and move the pipeline forward to proposal-ready.
           </div>

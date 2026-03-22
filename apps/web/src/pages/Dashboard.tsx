@@ -195,7 +195,7 @@ const SubcontractorDashboard = () => {
               <button
                 key={job.id}
                 onClick={() => navigate(`/jobs/${job.id}`)}
-                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
               >
                 <div>
                   <div className="font-medium text-surface-900 dark:text-surface-100">
@@ -234,7 +234,7 @@ const SubcontractorDashboard = () => {
               <button
                 key={contract.id}
                 onClick={() => navigate(`/contracts/${contract.id}`)}
-                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
               >
                 <div>
                   <div className="font-medium text-surface-900 dark:text-surface-100">
@@ -535,7 +535,7 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Upcoming Appointments */}
           <Card
-            className="min-h-[300px] cursor-pointer transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/40"
+            className="min-h-[300px] cursor-pointer transition-colors hover:bg-surface-100 dark:hover:bg-surface-800/40"
             onClick={() => navigate('/appointments')}
           >
             <div className="flex items-center justify-between">

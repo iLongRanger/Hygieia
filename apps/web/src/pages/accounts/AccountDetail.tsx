@@ -508,7 +508,7 @@ const AccountDetail = () => {
   }
 
   if (!account) {
-    return <div className="text-center text-gray-400">Account not found</div>;
+    return <div className="text-center text-surface-500 dark:text-surface-400">Account not found</div>;
   }
 
   const isResidentialAccount = account.type === 'residential';

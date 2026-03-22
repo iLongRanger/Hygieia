@@ -51,7 +51,7 @@ export function BulkTaskModal({
         />
 
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-surface-500 dark:text-surface-400">
             {selectedTaskTemplateIds.size} of {filteredBulkTaskTemplates.length} selected
           </div>
           <div className="flex gap-2">
@@ -72,9 +72,9 @@ export function BulkTaskModal({
           </div>
         </div>
 
-        <div className="max-h-80 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
+        <div className="max-h-80 overflow-y-auto rounded-lg border border-surface-200 dark:border-surface-700 divide-y divide-surface-200 dark:divide-surface-700">
           {filteredBulkTaskTemplates.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-surface-500">
               No task templates for the selected frequency.
             </div>
           ) : (
@@ -83,7 +83,7 @@ export function BulkTaskModal({
               return (
                 <div
                   key={template.id}
-                  className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-surface-50/5 ${
+                  className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-surface-100 dark:bg-surface-800/10 ${
                     isSelected ? 'bg-emerald/10' : ''
                   }`}
                   onClick={() => toggleTaskTemplateSelection(template.id)}
@@ -92,14 +92,14 @@ export function BulkTaskModal({
                     {isSelected ? (
                       <CheckSquare className="h-5 w-5 text-emerald" />
                     ) : (
-                      <Square className="h-5 w-5 text-gray-500" />
+                      <Square className="h-5 w-5 text-surface-500" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-white truncate">
                       {template.name}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-surface-500">
                       <Badge variant="default" className="text-xs">
                         {template.cleaningType}
                       </Badge>

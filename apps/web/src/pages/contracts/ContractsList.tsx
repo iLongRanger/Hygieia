@@ -310,7 +310,7 @@ const ContractsList = () => {
               <div className="font-medium text-white transition hover:text-indigo-300">
                 {contract.contractNumber}
               </div>
-              <div className="text-sm text-gray-400 transition hover:text-gray-200">
+              <div className="text-sm text-surface-500 dark:text-surface-400 transition hover:text-surface-600 dark:text-surface-300">
                 {contract.title}
               </div>
             </button>
@@ -321,7 +321,7 @@ const ContractsList = () => {
     {
       header: 'Account',
       cell: (contract: Contract) => (
-        <span className="text-gray-300">{contract.account.name}</span>
+        <span className="text-surface-600 dark:text-surface-400">{contract.account.name}</span>
       ),
     },
     {
@@ -350,13 +350,13 @@ const ContractsList = () => {
     {
       header: 'Start Date',
       cell: (contract: Contract) => (
-        <span className="text-gray-300">{formatDate(contract.startDate)}</span>
+        <span className="text-surface-600 dark:text-surface-400">{formatDate(contract.startDate)}</span>
       ),
     },
     {
       header: 'End Date',
       cell: (contract: Contract) => (
-        <span className="text-gray-300">{formatDate(contract.endDate)}</span>
+        <span className="text-surface-600 dark:text-surface-400">{formatDate(contract.endDate)}</span>
       ),
     },
     {
@@ -366,7 +366,7 @@ const ContractsList = () => {
         const numericValue = Number(rawValue);
         const valueLabel = Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-';
         return (
-          <div className="flex items-center text-gray-300">
+          <div className="flex items-center text-surface-600 dark:text-surface-400">
             <DollarSign className="mr-1 h-4 w-4 text-green-400" />
             {valueLabel}
           </div>
@@ -461,11 +461,11 @@ const ContractsList = () => {
         <button
           type="button"
           onClick={() => handleSummaryCardClick('draft')}
-          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
-            summaryCardFilter === 'draft' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          className={`rounded-lg border bg-surface-100 dark:bg-surface-800/30 p-3 text-left transition ${
+            summaryCardFilter === 'draft' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:border-surface-600'
           }`}
         >
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Draft</div>
+          <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Draft</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.draft ?? 0)}
           </div>
@@ -473,11 +473,11 @@ const ContractsList = () => {
         <button
           type="button"
           onClick={() => handleSummaryCardClick('sent')}
-          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
-            summaryCardFilter === 'sent' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          className={`rounded-lg border bg-surface-100 dark:bg-surface-800/30 p-3 text-left transition ${
+            summaryCardFilter === 'sent' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:border-surface-600'
           }`}
         >
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Sent</div>
+          <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Sent</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.sent ?? 0)}
           </div>
@@ -485,11 +485,11 @@ const ContractsList = () => {
         <button
           type="button"
           onClick={() => handleSummaryCardClick('viewed')}
-          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
-            summaryCardFilter === 'viewed' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          className={`rounded-lg border bg-surface-100 dark:bg-surface-800/30 p-3 text-left transition ${
+            summaryCardFilter === 'viewed' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:border-surface-600'
           }`}
         >
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Viewed</div>
+          <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Viewed</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.viewed ?? 0)}
           </div>
@@ -497,11 +497,11 @@ const ContractsList = () => {
         <button
           type="button"
           onClick={() => handleSummaryCardClick('pending_signature')}
-          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
-            summaryCardFilter === 'pending_signature' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          className={`rounded-lg border bg-surface-100 dark:bg-surface-800/30 p-3 text-left transition ${
+            summaryCardFilter === 'pending_signature' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:border-surface-600'
           }`}
         >
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Signed</div>
+          <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Signed</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.pendingSignature ?? 0)}
           </div>
@@ -509,11 +509,11 @@ const ContractsList = () => {
         <button
           type="button"
           onClick={() => handleSummaryCardClick('active')}
-          className={`rounded-lg border bg-navy-dark/30 p-3 text-left transition ${
-            summaryCardFilter === 'active' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-white/10 hover:border-white/20'
+          className={`rounded-lg border bg-surface-100 dark:bg-surface-800/30 p-3 text-left transition ${
+            summaryCardFilter === 'active' ? 'border-primary-400 ring-1 ring-primary-400/60' : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:border-surface-600'
           }`}
         >
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Active</div>
+          <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Active</div>
           <div className="mt-1 text-xl font-semibold text-white">
             {summaryLoading ? '-' : (summary?.byStatus.active ?? 0)}
           </div>
@@ -565,7 +565,7 @@ const ContractsList = () => {
       )}
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -598,8 +598,8 @@ const ContractsList = () => {
             )}
           </div>
           {accountIdFilter && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-300">
-              <span className="rounded-full border border-white/10 bg-navy-darker/60 px-3 py-1">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
+              <span className="rounded-full border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/60 px-3 py-1">
                 Filtered by account
               </span>
               <Button
@@ -627,7 +627,7 @@ const ContractsList = () => {
           )}
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
               <Select
                 label="Status"
                 placeholder="All Statuses"
@@ -637,7 +637,7 @@ const ContractsList = () => {
               />
               {canUseNeedsAttention && (
                 <div className="flex items-end">
-                  <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                     <input
                       type="checkbox"
                       checked={needsAttention}
@@ -645,19 +645,19 @@ const ContractsList = () => {
                         setNeedsAttention(e.target.checked);
                         setPage(1);
                       }}
-                      className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                     />
                     Needs Attention Only
                   </label>
                 </div>
               )}
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>
@@ -684,8 +684,8 @@ const ContractsList = () => {
           onRowClick={(contract) => navigate(`/contracts/${contract.id}`)}
         />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {contracts.length} of {total} contracts
             </span>

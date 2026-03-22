@@ -223,7 +223,7 @@ const FacilitiesList = () => {
           </div>
           <div>
             <div className="font-medium text-white">{item.name}</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-surface-500 dark:text-surface-400">
               {item.account?.name || '-'}
             </div>
           </div>
@@ -233,8 +233,8 @@ const FacilitiesList = () => {
     {
       header: 'Location',
       cell: (item: Facility) => (
-        <div className="flex items-center gap-2 text-gray-300">
-          <MapPin className="h-4 w-4 text-gray-500" />
+        <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+          <MapPin className="h-4 w-4 text-surface-500" />
           {formatAddress(item.address)}
         </div>
       ),
@@ -242,7 +242,7 @@ const FacilitiesList = () => {
     {
       header: 'Type',
       cell: (item: Facility) => (
-        <span className="capitalize text-gray-300">
+        <span className="capitalize text-surface-600 dark:text-surface-400">
           {item.buildingType || '-'}
         </span>
       ),
@@ -255,7 +255,7 @@ const FacilitiesList = () => {
           return sum + sqft * area.quantity;
         }, 0);
         return (
-          <span className="text-gray-300">
+          <span className="text-surface-600 dark:text-surface-400">
             {totalSqft > 0 ? `${totalSqft.toLocaleString()} sq ft` : '-'}
           </span>
         );
@@ -264,7 +264,7 @@ const FacilitiesList = () => {
     {
       header: 'Areas',
       cell: (item: Facility) => (
-        <span className="text-gray-300">{item._count?.areas ?? 0}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item._count?.areas ?? 0}</span>
       ),
     },
     {
@@ -338,7 +338,7 @@ const FacilitiesList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -362,7 +362,7 @@ const FacilitiesList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <Select
                 label="Account"
                 placeholder="All Accounts"
@@ -388,12 +388,12 @@ const FacilitiesList = () => {
                 onChange={setBuildingTypeFilter}
               />
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>
@@ -420,8 +420,8 @@ const FacilitiesList = () => {
           onRowClick={(item) => navigate(`/facilities/${item.id}`)}
         />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {facilities.length} of {total} facilities
             </span>
@@ -546,7 +546,7 @@ const FacilitiesList = () => {
               setFormData({ ...formData, buildingType: value || null })
             }
           />
-          <p className="text-xs text-gray-400 -mt-2">
+          <p className="text-xs text-surface-500 dark:text-surface-400 -mt-2">
             Total square feet will be auto-calculated from areas you add to this facility.
           </p>
 

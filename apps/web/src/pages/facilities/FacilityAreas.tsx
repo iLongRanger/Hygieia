@@ -49,7 +49,7 @@ export function FacilityAreas({
             Add Area
           </Button>
         </div>
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-surface-500 dark:text-surface-400">
           No areas yet. Add your first area to get started.
         </div>
       </div>
@@ -64,7 +64,7 @@ export function FacilityAreas({
           <h2 className="text-lg font-semibold text-white">
             Areas ({activeAreas.length})
           </h2>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-surface-500 dark:text-surface-400">
             {totalSquareFeet.toLocaleString()} total sqft
           </p>
         </div>
@@ -95,7 +95,7 @@ export function FacilityAreas({
       {archivedAreas.length > 0 && (
         <div className="mt-6">
           <button
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400 transition-colors"
             onClick={() => setShowArchived((prev) => !prev)}
           >
             {showArchived ? (

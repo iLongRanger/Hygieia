@@ -42,12 +42,12 @@ export const ClientServiceScheduleCard: React.FC<ClientServiceScheduleCardProps>
   onToggleDay,
 }) => {
   return (
-    <div className="rounded-xl border border-white/10 bg-navy-dark/40 p-4 space-y-4">
+    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/40 p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Calendar className="w-5 h-5 text-gold" />
         <div>
           <h3 className="text-sm font-semibold text-white">Client Service Schedule</h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-surface-500 dark:text-surface-400">
             Select exact service days (Mon-Sun) and allowed arrival window.
           </p>
         </div>
@@ -75,7 +75,7 @@ export const ClientServiceScheduleCard: React.FC<ClientServiceScheduleCardProps>
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs text-gray-400">Required days: {requiredDays}</div>
+        <div className="text-xs text-surface-500 dark:text-surface-400">Required days: {requiredDays}</div>
         <div className="flex flex-wrap gap-2">
           {dayOptions.map((option) => {
             const selected = selectedDays.includes(option.value);
@@ -92,7 +92,7 @@ export const ClientServiceScheduleCard: React.FC<ClientServiceScheduleCardProps>
             );
           })}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-surface-500">
           Window anchor: start day. Example: 6:00 PM to 6:00 AM on Monday runs overnight into Tuesday morning.
         </p>
       </div>

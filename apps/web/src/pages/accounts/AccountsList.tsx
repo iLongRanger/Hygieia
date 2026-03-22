@@ -288,7 +288,7 @@ const AccountsList = () => {
           </div>
           <div>
             <div className="font-medium text-white">{item.name}</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-surface-500 dark:text-surface-400">
               {item.industry || 'No industry'}
             </div>
           </div>
@@ -306,7 +306,7 @@ const AccountsList = () => {
     {
       header: 'Account Manager',
       cell: (item: Account) => (
-        <span className="text-gray-300">
+        <span className="text-surface-600 dark:text-surface-400">
           {item.accountManager?.fullName || 'Unassigned'}
         </span>
       ),
@@ -314,13 +314,13 @@ const AccountsList = () => {
     {
       header: 'Facilities',
       cell: (item: Account) => (
-        <span className="text-gray-300">{item._count?.facilities ?? 0}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item._count?.facilities ?? 0}</span>
       ),
     },
     {
       header: 'Contacts',
       cell: (item: Account) => (
-        <span className="text-gray-300">{item._count?.contacts ?? 0}</span>
+        <span className="text-surface-600 dark:text-surface-400">{item._count?.contacts ?? 0}</span>
       ),
     },
     {
@@ -383,7 +383,7 @@ const AccountsList = () => {
       </div>
 
       <Card noPadding className="overflow-hidden">
-        <div className="border-b border-white/10 bg-navy-dark/30 p-4">
+        <div className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
@@ -407,7 +407,7 @@ const AccountsList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-white/10 bg-navy-darker/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
               <Select
                 label="Type"
                 placeholder="All Types"
@@ -426,12 +426,12 @@ const AccountsList = () => {
                 onChange={setAccountManagerFilter}
               />
               <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-300">
+                <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-white/20 bg-navy-darker text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>
@@ -453,8 +453,8 @@ const AccountsList = () => {
 
         <Table data={accounts} columns={columns} isLoading={loading} />
 
-        <div className="border-t border-white/10 bg-navy-dark/30 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-400">
+        <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               Showing {accounts.length} of {total} accounts
             </span>
