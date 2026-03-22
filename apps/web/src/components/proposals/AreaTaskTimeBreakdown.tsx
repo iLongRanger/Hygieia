@@ -40,7 +40,7 @@ const AreaRow: React.FC<{ area: AreaTimeBreakdown }> = ({ area }) => {
           ) : (
             <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           )}
-          <span className="font-medium text-white truncate">{area.name}</span>
+          <span className="font-medium text-surface-900 dark:text-white truncate">{area.name}</span>
           <span className="text-xs text-surface-500 dark:text-surface-400 flex-shrink-0">
             ({area.squareFeet.toLocaleString()} sqft, {area.floorType})
           </span>
@@ -148,7 +148,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-surface-700 bg-surface-700/30">
         <Clock className="w-4 h-4 text-amber-400" />
-        <span className="font-medium text-white text-sm">Estimated Time Breakdown</span>
+        <span className="font-medium text-surface-900 dark:text-white text-sm">Estimated Time Breakdown</span>
       </div>
 
       {/* Area list */}
@@ -162,7 +162,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
       <div className="px-4 py-3 border-t border-surface-700 bg-surface-700/30">
         <div className="flex items-center justify-between text-sm">
           <span className="text-surface-600 dark:text-surface-400">Total per visit:</span>
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-surface-900 dark:text-white">
             {formatMinutes(breakdown.totalMinutes)} ({breakdown.totalHours.toFixed(2)} hours)
           </span>
         </div>
@@ -173,7 +173,7 @@ export const AreaTaskTimeBreakdown: React.FC<AreaTaskTimeBreakdownProps> = ({
             )}
           >
             <span className="text-surface-500 dark:text-surface-400">
-              Workers: <span className="text-white font-medium">{workerCount}</span>
+              Workers: <span className="text-surface-900 dark:text-white font-medium">{workerCount}</span>
             </span>
             <span className="text-surface-600 dark:text-surface-400">
               Time per worker:{' '}

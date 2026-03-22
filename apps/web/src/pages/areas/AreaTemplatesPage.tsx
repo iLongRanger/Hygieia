@@ -569,7 +569,7 @@ const AreaTemplatesPage = () => {
       header: 'Item Type',
       cell: (item: FixtureType) => (
         <div>
-          <div className="font-medium text-white">{item.name}</div>
+          <div className="font-medium text-surface-900 dark:text-white">{item.name}</div>
           <div className="text-xs text-surface-500">{item.description || 'No description'}</div>
         </div>
       ),
@@ -647,7 +647,7 @@ const AreaTemplatesPage = () => {
       header: 'Area Type',
       cell: (item: AreaType) => (
         <div>
-          <div className="font-medium text-white">{item.name}</div>
+          <div className="font-medium text-surface-900 dark:text-white">{item.name}</div>
           <div className="text-xs text-surface-500">{item.description || 'No description'}</div>
         </div>
       ),
@@ -703,7 +703,7 @@ const AreaTemplatesPage = () => {
       cell: (template: AreaTemplate) => (
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="font-medium text-white">
+            <div className="font-medium text-surface-900 dark:text-white">
               {template.name || template.areaType.name}
             </div>
             <div className="text-xs text-surface-500">{template.areaType.name}</div>
@@ -771,7 +771,7 @@ const AreaTemplatesPage = () => {
         <div className="flex items-center gap-3">
           <LayoutTemplate className="h-6 w-6 text-emerald" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Area Templates</h1>
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Area Templates</h1>
             <p className="text-surface-500 dark:text-surface-400">Configure default tasks and items for each area type.</p>
           </div>
         </div>
@@ -787,7 +787,7 @@ const AreaTemplatesPage = () => {
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-lg font-semibold text-white">
+          <div className="flex items-center gap-2 text-lg font-semibold text-surface-900 dark:text-white">
             <LayoutTemplate className="h-5 w-5 text-emerald" />
             Templates
           </div>
@@ -818,15 +818,15 @@ const AreaTemplatesPage = () => {
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs uppercase tracking-wide text-surface-500">Template Name</p>
-                <p className="mt-1 text-sm text-white">{viewTemplate.name || '-'}</p>
+                <p className="mt-1 text-sm text-surface-900 dark:text-white">{viewTemplate.name || '-'}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-surface-500">Area Type</p>
-                <p className="mt-1 text-sm text-white">{viewTemplate.areaType.name}</p>
+                <p className="mt-1 text-sm text-surface-900 dark:text-white">{viewTemplate.areaType.name}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-surface-500">Default Sq Ft</p>
-                <p className="mt-1 text-sm text-white">
+                <p className="mt-1 text-sm text-surface-900 dark:text-white">
                   {viewTemplate.defaultSquareFeet
                     ? Number(viewTemplate.defaultSquareFeet).toLocaleString()
                     : '-'}
@@ -834,7 +834,7 @@ const AreaTemplatesPage = () => {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-surface-500">Created By</p>
-                <p className="mt-1 text-sm text-white">{viewTemplate.createdByUser.fullName}</p>
+                <p className="mt-1 text-sm text-surface-900 dark:text-white">{viewTemplate.createdByUser.fullName}</p>
               </div>
             </div>
 
@@ -937,7 +937,7 @@ const AreaTemplatesPage = () => {
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
                 {selectedTemplate ? 'Edit Template' : 'Create Template'}
               </h2>
               <p className="text-sm text-surface-500 dark:text-surface-400">
@@ -1090,7 +1090,7 @@ const AreaTemplatesPage = () => {
                   >
                     <div className="sm:col-span-2">
                       <div className="text-xs text-surface-500">Task Template</div>
-                      <div className="text-sm font-medium text-white">
+                      <div className="text-sm font-medium text-surface-900 dark:text-white">
                         {template ? template.name : 'Missing template'}
                       </div>
                       <div className="text-xs text-surface-500">
@@ -1171,7 +1171,7 @@ const AreaTemplatesPage = () => {
               type="checkbox"
               checked={taskTemplateForm.isGlobal}
               onChange={(e) => setTaskTemplateForm({ ...taskTemplateForm, isGlobal: e.target.checked })}
-              className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+              className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
             />
             Global Template
           </label>
@@ -1232,7 +1232,7 @@ const AreaTemplatesPage = () => {
               type="checkbox"
               checked={itemForm.isActive}
               onChange={(e) => setItemForm({ ...itemForm, isActive: e.target.checked })}
-              className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+              className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
             />
             Active
           </label>
@@ -1315,10 +1315,10 @@ const AreaTemplatesPage = () => {
                               return prev.filter((id) => id !== template.id);
                             });
                           }}
-                          className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                          className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                         />
                         <div className="min-w-0">
-                          <div className="text-sm text-white truncate">
+                          <div className="text-sm text-surface-900 dark:text-white truncate">
                             {template.name}
                           </div>
                           <div className="text-xs text-surface-500">

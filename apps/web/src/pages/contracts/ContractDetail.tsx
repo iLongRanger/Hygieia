@@ -242,7 +242,7 @@ const ServiceTaskStepper = ({
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
                 ? 'bg-emerald-400 text-surface-950'
-                : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-white'
+                : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-surface-900 dark:hover:text-white'
             }`}
           >
             {group.label}
@@ -438,7 +438,7 @@ const AmendmentTaskFrequencyEditor = ({
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
                   index === safeIndex
                     ? 'bg-emerald-400 text-surface-950'
-                    : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-white'
+                    : 'border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600 hover:text-surface-900 dark:hover:text-white'
                 }`}
               >
                 {frequency}
@@ -2259,7 +2259,7 @@ const ContractDetail = () => {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-white truncate">{contract.contractNumber}</h1>
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-white truncate">{contract.contractNumber}</h1>
             <Badge variant={getStatusVariant(contract.status)}>
               <StatusIcon className="mr-1 h-3 w-3" />
               {STATUS_LABELS[contract.status] || contract.status.replace('_', ' ').toUpperCase()}
@@ -2338,7 +2338,7 @@ const ContractDetail = () => {
                 <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-800 shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     onClick={handleDownloadPdf}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-surface-900 dark:hover:text-white"
                   >
                     <Download className="h-4 w-4" />
                     Download PDF
@@ -2354,7 +2354,7 @@ const ContractDetail = () => {
                           prompt('Copy this link:', url);
                         }
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-surface-900 dark:hover:text-white"
                     >
                       <LinkIcon className="h-4 w-4" />
                       Copy Public Link
@@ -2363,7 +2363,7 @@ const ContractDetail = () => {
                   {['sent', 'viewed', 'active'].includes(contract.status) && canWriteContracts && (
                     <button
                       onClick={() => { setMenuOpen(false); setShowSendModal(true); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-surface-900 dark:hover:text-white"
                     >
                       <Mail className="h-4 w-4" />
                       Resend Email
@@ -2405,7 +2405,7 @@ const ContractDetail = () => {
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-sm font-semibold text-white">Contract Pipeline</div>
+              <div className="text-sm font-semibold text-surface-900 dark:text-white">Contract Pipeline</div>
               <div className="text-xs text-surface-500 dark:text-surface-400">
                 Track required stages from draft to active.
               </div>
@@ -2435,7 +2435,7 @@ const ContractDetail = () => {
                     >
                       {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
                     </div>
-                    <div className={`mt-1 text-xs ${isDone ? 'text-white' : 'text-surface-500'}`}>
+                    <div className={`mt-1 text-xs ${isDone ? 'text-surface-900 dark:text-white' : 'text-surface-500'}`}>
                       {step.label}
                     </div>
                     <div className="mt-0.5 text-[10px] text-surface-500">
@@ -2472,18 +2472,18 @@ const ContractDetail = () => {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Building2 className="h-5 w-5 text-indigo-400" />
-            <h2 className="text-lg font-semibold text-white">Account & Facility</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Account & Facility</h2>
           </div>
           <div className="space-y-4">
             <div>
               <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
-              <div className="text-white font-medium">{contract.account.name}</div>
+              <div className="text-surface-900 dark:text-white font-medium">{contract.account.name}</div>
               <div className="text-sm text-surface-500 dark:text-surface-400 capitalize">{contract.account.type}</div>
             </div>
             {contract.facility && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
-                <div className="text-white font-medium">{contract.facility.name}</div>
+                <div className="text-surface-900 dark:text-white font-medium">{contract.facility.name}</div>
                 {contract.facility.address && (
                   <div className="flex items-start gap-1 text-sm text-surface-500 dark:text-surface-400">
                     <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
@@ -2554,7 +2554,7 @@ const ContractDetail = () => {
             {contract.renewalNumber > 0 && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Renewal</div>
-                <div className="text-white">Renewal #{contract.renewalNumber}</div>
+                <div className="text-surface-900 dark:text-white">Renewal #{contract.renewalNumber}</div>
               </div>
             )}
           </div>
@@ -2565,7 +2565,7 @@ const ContractDetail = () => {
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-teal-400" />
-              <h2 className="text-lg font-semibold text-white">Your Payout</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Your Payout</h2>
             </div>
             <div className="space-y-4">
               <div>
@@ -2577,13 +2577,13 @@ const ContractDetail = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Billing Cycle</div>
-                  <div className="text-white capitalize">
+                  <div className="text-surface-900 dark:text-white capitalize">
                     {contract.billingCycle.replace('_', ' ')}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Payment Terms</div>
-                  <div className="text-white">{contract.paymentTerms}</div>
+                  <div className="text-surface-900 dark:text-white">{contract.paymentTerms}</div>
                 </div>
               </div>
             </div>
@@ -2592,7 +2592,7 @@ const ContractDetail = () => {
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-green-400" />
-              <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Terms</h2>
             </div>
             <div className="space-y-4">
               <div>
@@ -2604,7 +2604,7 @@ const ContractDetail = () => {
               {contract.totalValue && (
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Total Contract Value</div>
-                  <div className="text-xl font-semibold text-white">
+                  <div className="text-xl font-semibold text-surface-900 dark:text-white">
                     {formatCurrency(Number(contract.totalValue))}
                   </div>
                 </div>
@@ -2612,13 +2612,13 @@ const ContractDetail = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Billing Cycle</div>
-                  <div className="text-white capitalize">
+                  <div className="text-surface-900 dark:text-white capitalize">
                     {contract.billingCycle.replace('_', ' ')}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Payment Terms</div>
-                  <div className="text-white">{contract.paymentTerms}</div>
+                  <div className="text-surface-900 dark:text-white">{contract.paymentTerms}</div>
                 </div>
               </div>
             </div>
@@ -2630,7 +2630,7 @@ const ContractDetail = () => {
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="h-5 w-5 text-emerald-400" />
-              <h2 className="text-lg font-semibold text-white">Facility Areas & Tasks</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Facility Areas & Tasks</h2>
             </div>
             <div className="space-y-5">
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
@@ -2655,7 +2655,7 @@ const ContractDetail = () => {
                     return (
                       <div key={area.id} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3">
                         <div className="mb-1 flex items-center justify-between gap-2">
-                          <div className="font-medium text-white">{area.name || 'Unnamed area'}</div>
+                          <div className="font-medium text-surface-900 dark:text-white">{area.name || 'Unnamed area'}</div>
                           <Badge variant="default" size="sm">
                             {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
                           </Badge>
@@ -2725,7 +2725,7 @@ const ContractDetail = () => {
           <Card className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-gold" />
-              <h2 className="text-lg font-semibold text-white">Services</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Services</h2>
             </div>
             <div className="space-y-5">
               {contract.proposal.proposalServices.map((service) => {
@@ -2741,7 +2741,7 @@ const ContractDetail = () => {
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="font-medium text-white">{service.serviceName}</div>
+                        <div className="font-medium text-surface-900 dark:text-white">{service.serviceName}</div>
                         {areaSummary && (
                           <div className="mt-1 text-sm text-surface-500 dark:text-surface-400">{areaSummary}</div>
                         )}
@@ -2766,7 +2766,7 @@ const ContractDetail = () => {
         {!isLimitedContractViewer && <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
-            <h2 className="text-lg font-semibold text-white">Assignment</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Assignment</h2>
           </div>
           <div className="space-y-4">
             {contract.assignmentOverrideEffectiveDate &&
@@ -2889,23 +2889,23 @@ const ContractDetail = () => {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-5 w-5 text-blue-400" />
-            <h2 className="text-lg font-semibold text-white">Service Terms</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Terms</h2>
           </div>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Start Date</div>
-                <div className="text-white">{formatDate(contract.startDate)}</div>
+                <div className="text-surface-900 dark:text-white">{formatDate(contract.startDate)}</div>
               </div>
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">End Date</div>
-                <div className="text-white">{formatDate(contract.endDate)}</div>
+                <div className="text-surface-900 dark:text-white">{formatDate(contract.endDate)}</div>
               </div>
             </div>
             {contract.serviceFrequency && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Service Frequency</div>
-                <div className="text-white capitalize">
+                <div className="text-surface-900 dark:text-white capitalize">
                   {contract.serviceFrequency.replace('_', ' ')}
                 </div>
               </div>
@@ -2913,7 +2913,7 @@ const ContractDetail = () => {
             {scheduleDays.length > 0 && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Scheduled Days</div>
-                <div className="text-white">
+                <div className="text-surface-900 dark:text-white">
                   {scheduleDays.map((day) => DAY_LABELS[day] || day).join(', ')}
                 </div>
               </div>
@@ -2921,13 +2921,13 @@ const ContractDetail = () => {
             {scheduleWindow && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Allowed Service Window</div>
-                <div className="text-white">{scheduleWindow}</div>
+                <div className="text-surface-900 dark:text-white">{scheduleWindow}</div>
               </div>
             )}
             {(facilityTimezone || scheduleWindow) && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Timezone / Anchor</div>
-                <div className="text-white">
+                <div className="text-surface-900 dark:text-white">
                   {(facilityTimezone || 'Facility timezone')} (start day anchor)
                 </div>
               </div>
@@ -2935,12 +2935,12 @@ const ContractDetail = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Auto-Renew</div>
-                <div className="text-white">{contract.autoRenew ? 'Yes' : 'No'}</div>
+                <div className="text-surface-900 dark:text-white">{contract.autoRenew ? 'Yes' : 'No'}</div>
               </div>
               {contract.renewalNoticeDays && (
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Renewal Notice</div>
-                  <div className="text-white">{contract.renewalNoticeDays} days</div>
+                  <div className="text-surface-900 dark:text-white">{contract.renewalNoticeDays} days</div>
                 </div>
               )}
             </div>
@@ -2951,25 +2951,25 @@ const ContractDetail = () => {
         {!isLimitedContractViewer && <Card>
           <div className="flex items-center gap-2 mb-4">
             <FileSignature className="h-5 w-5 text-purple-400" />
-            <h2 className="text-lg font-semibold text-white">Workflow & Signatures</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Workflow & Signatures</h2>
           </div>
           <div className="space-y-4">
             {contract.sentAt && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Sent</div>
-                <div className="text-white">{formatDate(contract.sentAt)}</div>
+                <div className="text-surface-900 dark:text-white">{formatDate(contract.sentAt)}</div>
               </div>
             )}
             {contract.viewedAt && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Viewed by Client</div>
-                <div className="text-white">{formatDate(contract.viewedAt)}</div>
+                <div className="text-surface-900 dark:text-white">{formatDate(contract.viewedAt)}</div>
               </div>
             )}
             {contract.signedByName && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Signed By</div>
-                <div className="text-white">{contract.signedByName}</div>
+                <div className="text-surface-900 dark:text-white">{contract.signedByName}</div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">{contract.signedByEmail}</div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">
                   Signed on: {formatDate(contract.signedDate)}
@@ -2979,7 +2979,7 @@ const ContractDetail = () => {
             {contract.approvedByUser && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Approved By</div>
-                <div className="text-white">{contract.approvedByUser.fullName}</div>
+                <div className="text-surface-900 dark:text-white">{contract.approvedByUser.fullName}</div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">
                   Approved on: {formatDate(contract.approvedAt)}
                 </div>
@@ -2988,7 +2988,7 @@ const ContractDetail = () => {
             {contract.terminationReason && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Termination Reason</div>
-                <div className="text-white">{contract.terminationReason}</div>
+                <div className="text-surface-900 dark:text-white">{contract.terminationReason}</div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">
                   Terminated on: {formatDate(contract.terminatedAt)}
                 </div>
@@ -2996,7 +2996,7 @@ const ContractDetail = () => {
             )}
             <div>
               <div className="text-sm text-surface-500 dark:text-surface-400">Created By</div>
-              <div className="flex items-center gap-1 text-white">
+              <div className="flex items-center gap-1 text-surface-900 dark:text-white">
                 <User className="h-4 w-4" />
                 {contract.createdByUser.fullName}
               </div>
@@ -3036,7 +3036,7 @@ const ContractDetail = () => {
       {/* Terms & Conditions — hidden for subcontractors */}
       {!isLimitedContractViewer && <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Terms & Conditions</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Terms & Conditions</h2>
           {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && canWriteContracts && (
             <Button
               variant="secondary"
@@ -3197,7 +3197,7 @@ const ContractDetail = () => {
       {/* Special Instructions */}
       {contract.specialInstructions && (
         <Card>
-          <h2 className="text-lg font-semibold text-white mb-4">Special Instructions</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Special Instructions</h2>
           <div className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
             {contract.specialInstructions}
           </div>
@@ -3208,7 +3208,7 @@ const ContractDetail = () => {
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">Contract Changes</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Contract Changes</h2>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Draft and track scope changes against the active contract without touching the live facility yet.
               </p>
@@ -3239,7 +3239,7 @@ const ContractDetail = () => {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-medium text-white">
+                          <div className="font-medium text-surface-900 dark:text-white">
                             Amendment #{amendment.amendmentNumber}
                           </div>
                           <Badge variant={getAmendmentStatusVariant(amendment.status)}>
@@ -3307,7 +3307,7 @@ const ContractDetail = () => {
         <div className="space-y-6">
           <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4">
             <h4 className="text-sm font-medium text-surface-500 dark:text-surface-400">Renewing Contract</h4>
-            <p className="mt-1 text-white">{contract.contractNumber}</p>
+            <p className="mt-1 text-surface-900 dark:text-white">{contract.contractNumber}</p>
             <p className="text-sm text-surface-500 dark:text-surface-400">{contract.title}</p>
           </div>
 
@@ -3396,7 +3396,7 @@ const ContractDetail = () => {
                       autoRenew: e.target.checked,
                     })
                   }
-                  className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                  className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                 />
                 Auto-Renew
               </label>
@@ -3532,7 +3532,7 @@ const ContractDetail = () => {
             </div>
 
             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
-              <div className="text-sm font-medium text-white">{selectedAmendment.title}</div>
+              <div className="text-sm font-medium text-surface-900 dark:text-white">{selectedAmendment.title}</div>
               {selectedAmendment.reason && (
                 <div className="mt-2 text-sm text-surface-600 dark:text-surface-400">{selectedAmendment.reason}</div>
               )}
@@ -3544,13 +3544,13 @@ const ContractDetail = () => {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">Old Monthly</div>
-                <div className="mt-1 text-lg font-semibold text-white">
+                <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
                   {formatCurrency(selectedAmendment.oldMonthlyValue)}
                 </div>
               </div>
               <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">New Monthly</div>
-                <div className="mt-1 text-lg font-semibold text-white">
+                <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
                   {selectedAmendment.newMonthlyValue != null
                     ? formatCurrency(selectedAmendment.newMonthlyValue)
                     : 'Pending'}
@@ -3561,12 +3561,12 @@ const ContractDetail = () => {
                 <div
                   className={`mt-1 text-lg font-semibold ${
                     selectedAmendment.monthlyDelta == null
-                      ? 'text-white'
+                      ? 'text-surface-900 dark:text-white'
                       : selectedAmendment.monthlyDelta > 0
                         ? 'text-emerald-400'
                         : selectedAmendment.monthlyDelta < 0
                           ? 'text-rose-400'
-                          : 'text-white'
+                          : 'text-surface-900 dark:text-white'
                   }`}
                 >
                   {selectedAmendment.monthlyDelta != null
@@ -3580,7 +3580,7 @@ const ContractDetail = () => {
               <div className="space-y-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-medium text-white">Edit Service Areas and Tasks</div>
+                    <div className="text-sm font-medium text-surface-900 dark:text-white">Edit Service Areas and Tasks</div>
                     <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                       Update the service areas, tasks, and schedule here, then update the price before sending it for approval.
                     </div>
@@ -3628,7 +3628,7 @@ const ContractDetail = () => {
                 <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium text-white">Service Days</div>
+                      <div className="text-sm font-medium text-surface-900 dark:text-white">Service Days</div>
                       <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                         Select the new service days for this amendment.
                       </div>
@@ -3661,7 +3661,7 @@ const ContractDetail = () => {
                           disabled={disabled}
                           className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                             isSelected
-                              ? 'border-emerald bg-emerald/15 text-white'
+                              ? 'border-emerald bg-emerald/15 text-surface-900 dark:text-white'
                               : disabled
                                 ? 'cursor-not-allowed border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] text-surface-500'
                                 : 'border-surface-200 dark:border-surface-700 bg-surface-50/[0.03] text-surface-600 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
@@ -3692,7 +3692,7 @@ const ContractDetail = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-medium text-white">Areas</div>
+                      <div className="text-sm font-medium text-surface-900 dark:text-white">Areas</div>
                       <div className="mt-1 text-xs text-surface-500">
                         New areas use the guided facility task setup with frequency progress.
                       </div>
@@ -3724,7 +3724,7 @@ const ContractDetail = () => {
                                 <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               )}
                               <div>
-                                <div className="text-sm font-medium text-white">
+                                <div className="text-sm font-medium text-surface-900 dark:text-white">
                                   {area.name || area.areaType?.name || 'Unnamed Area'}
                                 </div>
                                 <div className="text-xs text-surface-500">
@@ -3819,7 +3819,7 @@ const ContractDetail = () => {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-white">Tasks</div>
+                    <div className="text-sm font-medium text-surface-900 dark:text-white">Tasks</div>
                     <Button size="sm" variant="secondary" onClick={() => addDraftTask(null)}>
                       Add Custom Facility-Wide Task
                     </Button>
@@ -3846,7 +3846,7 @@ const ContractDetail = () => {
                                 <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                               )}
                               <div>
-                                <div className="text-sm font-medium text-white">{group.label}</div>
+                                <div className="text-sm font-medium text-surface-900 dark:text-white">{group.label}</div>
                                 <div className="text-xs text-surface-500">
                                   {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                                 </div>
@@ -3902,7 +3902,7 @@ const ContractDetail = () => {
                             <ChevronDown className="h-4 w-4 text-surface-500 dark:text-surface-400" />
                           )}
                           <div>
-                            <div className="text-sm font-medium text-white">Facility-Wide</div>
+                            <div className="text-sm font-medium text-surface-900 dark:text-white">Facility-Wide</div>
                             <div className="text-xs text-surface-500">
                               {facilityWideDraftTasks.length} task{facilityWideDraftTasks.length !== 1 ? 's' : ''}
                             </div>
@@ -3953,7 +3953,7 @@ const ContractDetail = () => {
             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-medium text-white">What Will Change</div>
+                  <div className="text-sm font-medium text-surface-900 dark:text-white">What Will Change</div>
                   <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                     Review the service updates before approval or apply.
                   </div>
@@ -4157,7 +4157,7 @@ const ContractDetail = () => {
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
-                <div className="text-sm font-medium text-white">Snapshots</div>
+                <div className="text-sm font-medium text-surface-900 dark:text-white">Snapshots</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.snapshots || []).map((snapshot) => {
                     const areas = Array.isArray(snapshot.scopeJson?.areas)
@@ -4192,7 +4192,7 @@ const ContractDetail = () => {
               </div>
 
               <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
-                <div className="text-sm font-medium text-white">History</div>
+                <div className="text-sm font-medium text-surface-900 dark:text-white">History</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => {
                     const details = getAmendmentActivityDetails(activity);
@@ -4220,7 +4220,7 @@ const ContractDetail = () => {
               </div>
 
               <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-4">
-                <div className="text-sm font-medium text-white">Activity</div>
+                <div className="text-sm font-medium text-surface-900 dark:text-white">Activity</div>
                 <div className="mt-3 space-y-2">
                   {(selectedAmendment.activities || []).map((activity) => (
                     <div key={activity.id} className="rounded border border-surface-200 dark:border-surface-700 px-3 py-2">

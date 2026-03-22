@@ -350,7 +350,7 @@ const GlobalSettingsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Global Branding Settings</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Global Branding Settings</h1>
         <p className="text-surface-500 dark:text-surface-400">
           Configure company identity used across proposals and outbound emails.
         </p>
@@ -359,7 +359,7 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary-400" />
-          <h2 className="text-lg font-semibold text-white">Company Information</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Company Information</h2>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input
@@ -404,7 +404,7 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <Palette className="h-5 w-5 text-gold" />
-          <h2 className="text-lg font-semibold text-white">Theme Colors</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Theme Colors</h2>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Input
@@ -436,7 +436,7 @@ const GlobalSettingsPage: React.FC = () => {
 
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white">Company Logo</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Company Logo</h2>
           <label className="inline-flex cursor-pointer">
             <input
               type="file"
@@ -468,7 +468,7 @@ const GlobalSettingsPage: React.FC = () => {
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Preview</h2>
+        <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Preview</h2>
         <div
           className="rounded-lg border p-5"
           style={{
@@ -493,7 +493,7 @@ const GlobalSettingsPage: React.FC = () => {
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Background Services</h2>
+        <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Background Services</h2>
         <p className="mb-4 text-sm text-surface-500 dark:text-surface-400">
           Configure each automatic job to run once per day at a specific company-local time. This keeps
           scheduling predictable and easier to review.
@@ -503,7 +503,7 @@ const GlobalSettingsPage: React.FC = () => {
             <div key={service.serviceKey} className="rounded-lg border border-surface-700 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold text-white">{getServiceLabel(service.serviceKey)}</h3>
+                  <h3 className="font-semibold text-surface-900 dark:text-white">{getServiceLabel(service.serviceKey)}</h3>
                   <p className="text-xs text-surface-500 dark:text-surface-400">
                     {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].description}
                   </p>

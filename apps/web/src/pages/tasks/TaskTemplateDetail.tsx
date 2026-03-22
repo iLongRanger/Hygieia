@@ -226,7 +226,7 @@ const TaskTemplateDetail = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{template.name}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{template.name}</h1>
           <p className="text-surface-500 dark:text-surface-400">
             {template.cleaningType.replace('_', ' ').toUpperCase()}
           </p>
@@ -262,7 +262,7 @@ const TaskTemplateDetail = () => {
                 <Clock className="h-8 w-8 text-emerald" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {template.name}
                 </div>
                 <Badge
@@ -278,7 +278,7 @@ const TaskTemplateDetail = () => {
                 <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Estimated Time</div>
-                  <div className="text-white">{template.estimatedMinutes} minutes</div>
+                  <div className="text-surface-900 dark:text-white">{template.estimatedMinutes} minutes</div>
                 </div>
               </div>
 
@@ -286,16 +286,16 @@ const TaskTemplateDetail = () => {
                 <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Per-Hour Inputs</div>
-                  <div className="text-white text-sm">
+                  <div className="text-surface-900 dark:text-white text-sm">
                     Base: {Number(template.baseMinutes || 0)} min
                   </div>
-                  <div className="text-white text-sm">
+                  <div className="text-surface-900 dark:text-white text-sm">
                     Per Sq Ft: {Number(template.perSqftMinutes || 0)} min
                   </div>
-                  <div className="text-white text-sm">
+                  <div className="text-surface-900 dark:text-white text-sm">
                     Per Unit: {Number(template.perUnitMinutes || 0)} min
                   </div>
-                  <div className="text-white text-sm">
+                  <div className="text-surface-900 dark:text-white text-sm">
                     Per Room: {Number(template.perRoomMinutes || 0)} min
                   </div>
                 </div>
@@ -305,7 +305,7 @@ const TaskTemplateDetail = () => {
                 <CheckCircle className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Difficulty Level</div>
-                  <div className="text-white">Level {template.difficultyLevel}</div>
+                  <div className="text-surface-900 dark:text-white">Level {template.difficultyLevel}</div>
                 </div>
               </div>
 
@@ -313,7 +313,7 @@ const TaskTemplateDetail = () => {
                 <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
-                  <div className="text-white">{formatDate(template.createdAt)}</div>
+                  <div className="text-surface-900 dark:text-white">{formatDate(template.createdAt)}</div>
                 </div>
               </div>
 
@@ -342,21 +342,21 @@ const TaskTemplateDetail = () => {
           <div className="space-y-6">
             {template.description && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Description</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Description</h3>
                 <p className="text-surface-600 dark:text-surface-400">{template.description}</p>
               </div>
             )}
 
             {template.instructions && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Instructions</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Instructions</h3>
                 <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{template.instructions}</p>
               </div>
             )}
 
             {template.requiredEquipment && template.requiredEquipment.length > 0 && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Required Equipment</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Required Equipment</h3>
                 <div className="flex flex-wrap gap-2">
                   {template.requiredEquipment.map((item, index) => (
                     <Badge key={index} variant="default">{item}</Badge>
@@ -367,7 +367,7 @@ const TaskTemplateDetail = () => {
 
             {template.requiredSupplies && template.requiredSupplies.length > 0 && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Required Supplies</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Required Supplies</h3>
                 <div className="flex flex-wrap gap-2">
                   {template.requiredSupplies.map((item, index) => (
                     <Badge key={index} variant="default">{item}</Badge>
@@ -378,12 +378,12 @@ const TaskTemplateDetail = () => {
 
             {template.fixtureMinutes && template.fixtureMinutes.length > 0 && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Fixture Minutes</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Fixture Minutes</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {template.fixtureMinutes.map((fixture) => (
                     <div key={fixture.id} className="rounded-lg bg-surface-200 dark:bg-surface-900/50 p-3">
                       <div className="text-sm text-surface-500 dark:text-surface-400">{fixture.fixtureType.name}</div>
-                      <div className="text-white">{Number(fixture.minutesPerFixture)} min</div>
+                      <div className="text-surface-900 dark:text-white">{Number(fixture.minutesPerFixture)} min</div>
                     </div>
                   ))}
                 </div>

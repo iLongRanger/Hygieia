@@ -34,7 +34,7 @@ export function AccountHistory({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <History className="h-5 w-5 text-emerald" />
-          <h3 className="text-lg font-semibold text-white">Account History</h3>
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-white">Account History</h3>
         </div>
       </div>
 

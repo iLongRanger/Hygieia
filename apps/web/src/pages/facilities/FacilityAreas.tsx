@@ -43,7 +43,7 @@ export function FacilityAreas({
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-white">Areas (0)</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Areas (0)</h2>
           <Button size="sm" onClick={onAddArea}>
             <Plus className="mr-2 h-4 w-4" />
             Add Area
@@ -61,7 +61,7 @@ export function FacilityAreas({
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
             Areas ({activeAreas.length})
           </h2>
           <p className="text-sm text-surface-500 dark:text-surface-400">

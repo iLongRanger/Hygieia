@@ -236,7 +236,7 @@ const UserDetail = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{user.fullName}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{user.fullName}</h1>
           <p className="text-surface-500 dark:text-surface-400">{user.email}</p>
         </div>
         <div className="flex gap-2">
@@ -281,7 +281,7 @@ const UserDetail = () => {
                 )}
               </div>
               <div>
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {user.fullName}
                 </div>
                 <Badge variant={getStatusVariant(user.status)}>
@@ -295,7 +295,7 @@ const UserDetail = () => {
                 <Mail className="h-5 w-5 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Email</div>
-                  <div className="text-white">{user.email}</div>
+                  <div className="text-surface-900 dark:text-white">{user.email}</div>
                 </div>
               </div>
 
@@ -303,7 +303,7 @@ const UserDetail = () => {
                 <Phone className="h-5 w-5 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Phone</div>
-                  <div className="text-white">{user.phone || 'Not set'}</div>
+                  <div className="text-surface-900 dark:text-white">{user.phone || 'Not set'}</div>
                 </div>
               </div>
             </div>
@@ -313,7 +313,7 @@ const UserDetail = () => {
                 <Calendar className="h-5 w-5 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
-                  <div className="text-white">{formatDate(user.createdAt)}</div>
+                  <div className="text-surface-900 dark:text-white">{formatDate(user.createdAt)}</div>
                 </div>
               </div>
 
@@ -321,7 +321,7 @@ const UserDetail = () => {
                 <Clock className="h-5 w-5 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Last Login</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {formatDate(user.lastLoginAt)}
                   </div>
                 </div>
@@ -332,7 +332,7 @@ const UserDetail = () => {
 
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 pb-4">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
               <Shield className="mr-2 inline h-5 w-5 text-gold" />
               Assigned Roles
             </h2>
@@ -358,7 +358,7 @@ const UserDetail = () => {
                       <Shield className="h-5 w-5 text-gold" />
                     </div>
                     <div>
-                      <div className="font-medium text-white">
+                      <div className="font-medium text-surface-900 dark:text-white">
                         {userRole.role.label}
                       </div>
                       <div className="text-sm text-surface-500 dark:text-surface-400">
@@ -467,7 +467,7 @@ const UserDetail = () => {
             undone.
           </p>
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
-            <div className="font-medium text-white">{user.fullName}</div>
+            <div className="font-medium text-surface-900 dark:text-white">{user.fullName}</div>
             <div className="text-sm text-surface-500 dark:text-surface-400">{user.email}</div>
           </div>
 
@@ -547,7 +547,7 @@ const UserDetail = () => {
         >
         <div className="space-y-4">
           <p className="text-surface-600 dark:text-surface-400">
-            Set a new password for <strong className="text-white">{user.fullName}</strong>.
+            Set a new password for <strong className="text-surface-900 dark:text-white">{user.fullName}</strong>.
           </p>
 
           <Input

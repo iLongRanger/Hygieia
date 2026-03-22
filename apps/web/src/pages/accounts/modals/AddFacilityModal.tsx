@@ -59,7 +59,7 @@ export function AddFacilityModal({
           Total square feet will be auto-calculated from the areas added to this facility.
         </p>
         <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
-          <h4 className="text-sm font-medium text-white mb-3">Address</h4>
+          <h4 className="text-sm font-medium text-surface-900 dark:text-white mb-3">Address</h4>
           <div className="space-y-4">
             <Input
               label="Street Address"

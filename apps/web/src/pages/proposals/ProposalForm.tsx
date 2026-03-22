@@ -1137,7 +1137,7 @@ const ProposalForm = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-white sm:text-3xl">
+            <h1 className="text-xl font-bold text-surface-900 dark:text-white sm:text-3xl">
               {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Edit Proposal') : 'New Proposal'}
             </h1>
             <p className="text-surface-500 dark:text-surface-400 mt-1">
@@ -1174,7 +1174,7 @@ const ProposalForm = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Information */}
           <Card>
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-gold" />
               Basic Information
             </h2>
@@ -1275,7 +1275,7 @@ const ProposalForm = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-white">Auto-Populate from Facility</span>
+                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Facility</span>
                       </div>
                       {pricingReadiness && (
                         <div className="flex items-center gap-2">
@@ -1351,7 +1351,7 @@ const ProposalForm = () => {
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
                         <ClipboardCheck className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-white">Facility Review Before Proposal</span>
+                        <span className="font-medium text-surface-900 dark:text-white">Facility Review Before Proposal</span>
                       </div>
                       <Button
                         type="button"
@@ -1370,11 +1370,11 @@ const ProposalForm = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                           <div className="flex items-center justify-between rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
                             <span className="text-surface-600 dark:text-surface-400">Areas</span>
-                            <span className="text-white font-medium">{facilityReview.activeAreas.length}</span>
+                            <span className="text-surface-900 dark:text-white font-medium">{facilityReview.activeAreas.length}</span>
                           </div>
                           <div className="flex items-center justify-between rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
                             <span className="text-surface-600 dark:text-surface-400">Tasks</span>
-                            <span className="text-white font-medium">{facilityReview.activeTasks.length}</span>
+                            <span className="text-surface-900 dark:text-white font-medium">{facilityReview.activeTasks.length}</span>
                           </div>
                         </div>
 
@@ -1458,7 +1458,7 @@ const ProposalForm = () => {
           {/* Line Items */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-gold" />
                 Line Items
               </h2>
@@ -1528,7 +1528,7 @@ const ProposalForm = () => {
                     </div>
                     <div className="md:col-span-2 flex items-center justify-end">
                       <span className="text-xs text-surface-500 dark:text-surface-400 mr-2 md:hidden">Total:</span>
-                      <span className="text-white font-medium">
+                      <span className="text-surface-900 dark:text-white font-medium">
                         {formatCurrency(item.totalPrice)}
                       </span>
                     </div>
@@ -1550,7 +1550,7 @@ const ProposalForm = () => {
                 <div className="flex justify-end pt-2 border-t border-surface-200 dark:border-surface-700">
                   <div className="text-right">
                     <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Items Subtotal:</span>
-                    <span className="text-white font-semibold">
+                    <span className="text-surface-900 dark:text-white font-semibold">
                       {formatCurrency(totals.itemsTotal)}
                     </span>
                   </div>
@@ -1562,7 +1562,7 @@ const ProposalForm = () => {
           {/* Services */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-gold" />
                 Services
               </h2>
@@ -1600,14 +1600,14 @@ const ProposalForm = () => {
                         ) : (
                           <ChevronRight className="w-4 h-4 text-surface-500 dark:text-surface-400 shrink-0" />
                         )}
-                        <span className={`font-medium truncate ${service.serviceName ? 'text-white' : 'text-surface-500 italic'}`}>
+                        <span className={`font-medium truncate ${service.serviceName ? 'text-surface-900 dark:text-white' : 'text-surface-500 italic'}`}>
                           {service.serviceName || 'Untitled Service'}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {freqLabel && <Badge size="sm" variant="default">{freqLabel}</Badge>}
                           {typeLabel && <Badge size="sm" variant="info">{typeLabel}</Badge>}
                         </div>
-                        <span className="ml-auto text-white font-semibold tabular-nums shrink-0">
+                        <span className="ml-auto text-surface-900 dark:text-white font-semibold tabular-nums shrink-0">
                           {formatCurrency(service.monthlyPrice)}/mo
                         </span>
                         <Button
@@ -1685,7 +1685,7 @@ const ProposalForm = () => {
                           {(parsedDescription.areaSummary || parsedDescription.groups.length > 0) && (
                             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.03] p-4">
                               <div className="mb-2 flex items-center justify-between gap-2">
-                                <div className="text-sm font-medium text-white">Service Scope</div>
+                                <div className="text-sm font-medium text-surface-900 dark:text-white">Service Scope</div>
                                 <div className="text-xs text-surface-500 dark:text-surface-400">Generated from facility scope and tasks</div>
                               </div>
                               {parsedDescription.areaSummary && (
@@ -1725,7 +1725,7 @@ const ProposalForm = () => {
                 <div className="flex justify-end pt-2 border-t border-surface-200 dark:border-surface-700">
                   <div className="text-right">
                     <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Services Subtotal:</span>
-                    <span className="text-white font-semibold">
+                    <span className="text-surface-900 dark:text-white font-semibold">
                       {formatCurrency(totals.servicesTotal)}
                     </span>
                   </div>
@@ -1734,7 +1734,7 @@ const ProposalForm = () => {
                   <div className="flex justify-end pt-2">
                     <div className="text-right">
                       <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">One-Time Services:</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-surface-900 dark:text-white font-semibold">
                         {formatCurrency(totals.oneTimeServicesTotal)}
                       </span>
                     </div>
@@ -1746,7 +1746,7 @@ const ProposalForm = () => {
 
           {/* Notes */}
           <Card>
-            <h2 className="text-lg font-semibold text-white mb-4">Notes</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Notes</h2>
             <div className="space-y-4">
               <Textarea
                 label="Internal Notes"
@@ -1763,7 +1763,7 @@ const ProposalForm = () => {
         <div className="space-y-6">
           {/* Financial Summary */}
           <Card className="sticky top-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
               <Calculator className="w-5 h-5 text-gold" />
               Financial Summary
             </h2>
@@ -1771,33 +1771,33 @@ const ProposalForm = () => {
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Items Total:</span>
-                <span className="text-white">{formatCurrency(totals.itemsTotal)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.itemsTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Services Total:</span>
-                <span className="text-white">{formatCurrency(totals.servicesTotal)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.servicesTotal)}</span>
               </div>
               {totals.oneTimeChargesTotal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-surface-500 dark:text-surface-400">One-Time Charges:</span>
-                  <span className="text-white">{formatCurrency(totals.oneTimeChargesTotal)}</span>
+                  <span className="text-surface-900 dark:text-white">{formatCurrency(totals.oneTimeChargesTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Recurring Monthly:</span>
-                <span className="text-white">{formatCurrency(totals.monthlyTotal)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.monthlyTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Daily (by frequency):</span>
-                <span className="text-white">{formatCurrency(totals.dailyTotal)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.dailyTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Annual (recurring):</span>
-                <span className="text-white">{formatCurrency(totals.annualTotal)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.annualTotal)}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-surface-200 dark:border-surface-700 pt-3">
                 <span className="text-surface-500 dark:text-surface-400">Subtotal:</span>
-                <span className="text-white font-medium">{formatCurrency(totals.subtotal)}</span>
+                <span className="text-surface-900 dark:text-white font-medium">{formatCurrency(totals.subtotal)}</span>
               </div>
 
               {/* Tax Rate Input */}
@@ -1823,7 +1823,7 @@ const ProposalForm = () => {
 
               <div className="flex justify-between text-sm">
                 <span className="text-surface-500 dark:text-surface-400">Tax Amount:</span>
-                <span className="text-white">{formatCurrency(totals.taxAmount)}</span>
+                <span className="text-surface-900 dark:text-white">{formatCurrency(totals.taxAmount)}</span>
               </div>
               {!hasRequiredTaxRate && (
                 <div className="text-xs text-amber-300">
@@ -1832,7 +1832,7 @@ const ProposalForm = () => {
               )}
 
               <div className="flex justify-between text-xl font-bold border-t border-surface-200 dark:border-surface-700 pt-3 mt-3">
-                <span className="text-white">Total:</span>
+                <span className="text-surface-900 dark:text-white">Total:</span>
                 <span className="text-emerald">{formatCurrency(totals.totalAmount)}</span>
               </div>
             </div>
@@ -1841,18 +1841,18 @@ const ProposalForm = () => {
             <div className="mt-6 pt-4 border-t border-surface-200 dark:border-surface-700 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-surface-500 dark:text-surface-400">Line Items:</span>
-                <span className="text-white">{(formData.proposalItems || []).length}</span>
+                <span className="text-surface-900 dark:text-white">{(formData.proposalItems || []).length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-surface-500 dark:text-surface-400">Services:</span>
-                <span className="text-white">{(formData.proposalServices || []).length}</span>
+                <span className="text-surface-900 dark:text-white">{(formData.proposalServices || []).length}</span>
               </div>
             </div>
           </Card>
 
           {/* Actions */}
           <Card>
-            <h2 className="text-lg font-semibold text-white mb-4">Actions</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Actions</h2>
             <div className="space-y-3">
               <Button
                 type="submit"

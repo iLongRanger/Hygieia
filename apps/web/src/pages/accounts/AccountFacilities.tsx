@@ -36,7 +36,7 @@ export function AccountFacilities({
   return (
     <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">Facilities</h3>
+        <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Facilities</h3>
         {canWriteFacilities && (
           <Button variant="ghost" size="sm" onClick={onAddFacility}>
             <Plus className="h-4 w-4" />
@@ -61,7 +61,7 @@ export function AccountFacilities({
                 onClick={() => onNavigate(`/facilities/${facility.id}`)}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-surface-900 dark:text-white">
                     {facility.name}
                   </span>
                   <Badge variant={statusVariant(facility.status)} size="sm">

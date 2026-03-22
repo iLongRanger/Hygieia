@@ -71,7 +71,7 @@ export function TaskSelectionModal({
           <div className="space-y-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/20 p-3">
             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-white">
+                <div className="text-sm font-medium text-surface-900 dark:text-white">
                   Step {taskSelectionStep + 1} of {ORDERED_CLEANING_FREQUENCIES.length}
                 </div>
                 <Badge variant="info" className="text-xs">
@@ -132,7 +132,7 @@ export function TaskSelectionModal({
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <div className="font-medium text-white">{task.name}</div>
+                        <div className="font-medium text-surface-900 dark:text-white">{task.name}</div>
                         {task.taskTemplateId ? (
                           <Badge variant="info" className="text-xs">
                             Template
@@ -167,7 +167,7 @@ export function TaskSelectionModal({
                           onChange={(e) =>
                             toggleTaskSelectionInclude(task.id, e.target.checked)
                           }
-                          className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                          className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                         />
                         Include
                       </label>

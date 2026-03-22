@@ -96,7 +96,7 @@ export function BulkTaskModal({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white truncate">
+                    <div className="font-medium text-surface-900 dark:text-white truncate">
                       {template.name}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-surface-500">

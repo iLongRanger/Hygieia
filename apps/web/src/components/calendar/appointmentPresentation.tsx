@@ -54,7 +54,7 @@ export function AppointmentDetailCard({
     <div className="w-64 rounded-2xl border border-surface-200 bg-surface-50/95 p-3 text-left shadow-xl backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900/95">
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/20 text-xs font-semibold uppercase tracking-[0.18em] text-black dark:text-white"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/20 text-xs font-semibold uppercase tracking-[0.18em] text-surface-900 dark:text-white"
           style={badgeStyle}
         >
           {getAppointmentInitials(appointment)}

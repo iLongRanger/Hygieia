@@ -1106,7 +1106,7 @@ const FacilityDetail = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-white truncate">{facility.name}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white truncate">{facility.name}</h1>
           <p className="text-surface-500 dark:text-surface-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -1145,7 +1145,7 @@ const FacilityDetail = () => {
         <button
           className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
             activeTab === 'overview'
-              ? 'text-white'
+              ? 'text-surface-900 dark:text-white'
               : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
           }`}
           onClick={() => setActiveTab('overview')}
@@ -1158,7 +1158,7 @@ const FacilityDetail = () => {
         <button
           className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
             activeTab === 'areas'
-              ? 'text-white'
+              ? 'text-surface-900 dark:text-white'
               : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
           }`}
           onClick={() => setActiveTab('areas')}
@@ -1172,7 +1172,7 @@ const FacilityDetail = () => {
           <button
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
               activeTab === 'area-detail'
-                ? 'text-white'
+                ? 'text-surface-900 dark:text-white'
                 : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
             }`}
             onClick={() => setActiveTab('area-detail')}

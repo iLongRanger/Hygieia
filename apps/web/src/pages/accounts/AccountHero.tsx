@@ -100,7 +100,7 @@ export function AccountHero({
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <h1 className="truncate text-2xl font-bold text-white">{account.name}</h1>
+              <h1 className="truncate text-2xl font-bold text-surface-900 dark:text-white">{account.name}</h1>
               <Badge variant={getTypeVariant(account.type)} size="sm">
                 {account.type}
               </Badge>
@@ -145,7 +145,7 @@ export function AccountHero({
               <p className="text-sm font-medium text-emerald-400">
                 Active Contract &middot; {activeContract.contractNumber}
               </p>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-surface-900 dark:text-white">
                 {formatCurrency(activeContract.monthlyValue)}
                 <span className="text-sm font-normal text-surface-500 dark:text-surface-400">/mo</span>
               </p>
@@ -154,13 +154,13 @@ export function AccountHero({
               {activeContract.assignedTeam && (
                 <div>
                   <span className="text-surface-500">Team</span>{' '}
-                  <span className="text-white">{activeContract.assignedTeam.name}</span>
+                  <span className="text-surface-900 dark:text-white">{activeContract.assignedTeam.name}</span>
                 </div>
               )}
               {activeContract.endDate && (
                 <div>
                   <span className="text-surface-500">Ends</span>{' '}
-                  <span className="text-white">{formatShortDate(activeContract.endDate)}</span>
+                  <span className="text-surface-900 dark:text-white">{formatShortDate(activeContract.endDate)}</span>
                 </div>
               )}
               <button
@@ -193,7 +193,7 @@ export function AccountHero({
               <DollarSign className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium">Monthly Value</span>
             </div>
-            <p className="mt-2 text-lg font-semibold text-white">
+            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
               {activeContract ? formatCurrency(activeContract.monthlyValue) : '$0.00'}
             </p>
           </div>
@@ -211,7 +211,7 @@ export function AccountHero({
               <Building className="h-4 w-4 text-gold-400" />
               <span className="text-xs font-medium">Facilities</span>
             </div>
-            <p className="mt-2 text-lg font-semibold text-white">
+            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
               {account._count.facilities}
             </p>
           </div>
@@ -224,7 +224,7 @@ export function AccountHero({
               <Calendar className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium">Next Service</span>
             </div>
-            <p className="mt-2 text-lg font-semibold text-white">{nextService}</p>
+            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">{nextService}</p>
           </div>
         </Card>
 

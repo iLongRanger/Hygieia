@@ -29,14 +29,14 @@ export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
   };
 
   return (
-    <div className="border border-surface-600 rounded-lg overflow-hidden">
+    <div className="border border-surface-200 dark:border-surface-600 rounded-lg overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between py-2 px-3 bg-surface-800/50 hover:bg-surface-700/50 transition-colors text-left"
+        className="w-full flex items-center justify-between py-2 px-3 bg-surface-100 dark:bg-surface-800/50 hover:bg-surface-200 dark:hover:bg-surface-700/50 transition-colors text-left"
       >
         <div className="flex items-center gap-2 text-sm">
-          <ClipboardCheck className="w-4 h-4 text-brand-400" />
+          <ClipboardCheck className="w-4 h-4 text-primary-500 dark:text-primary-400" />
           <span className="text-surface-600 dark:text-surface-400">What to check</span>
           <span className="text-xs text-surface-500">
             ({checked.size}/{guidanceItems.length})
@@ -49,7 +49,7 @@ export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
         )}
       </button>
       {expanded && (
-        <div className="px-3 py-2 space-y-1 bg-surface-800/30">
+        <div className="px-3 py-2 space-y-1 bg-surface-50 dark:bg-surface-800/30">
           {guidanceItems.map((item, index) => (
             <label
               key={index}
@@ -59,7 +59,7 @@ export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
                 type="checkbox"
                 checked={checked.has(index)}
                 onChange={() => toggleItem(index)}
-                className="rounded border-surface-500 text-brand-500 focus:ring-brand-500 focus:ring-offset-0 bg-surface-700"
+                className="rounded border-surface-300 dark:border-surface-500 text-primary-600 dark:text-primary-500 focus:ring-primary-500 focus:ring-offset-0 bg-surface-50 dark:bg-surface-700"
               />
               <span
                 className={cn(

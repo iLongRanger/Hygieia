@@ -63,7 +63,7 @@ export function TaskModal({
               type="button"
               className={`rounded-lg border p-3 text-left transition-colors ${
                 !taskForm.taskTemplateId
-                  ? 'border-emerald bg-emerald/10 text-white'
+                  ? 'border-emerald bg-emerald/10 text-surface-900 dark:text-white'
                   : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
               }`}
               onClick={() =>
@@ -79,7 +79,7 @@ export function TaskModal({
               type="button"
               className={`rounded-lg border p-3 text-left transition-colors ${
                 taskForm.taskTemplateId
-                  ? 'border-emerald bg-emerald/10 text-white'
+                  ? 'border-emerald bg-emerald/10 text-surface-900 dark:text-white'
                   : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 hover:border-surface-300 dark:border-surface-600'
               }`}
               onClick={() =>

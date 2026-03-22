@@ -526,7 +526,7 @@ const ContractForm = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
             {isEditMode ? 'Edit Contract' : 'New Contract'}
           </h1>
           <p className="text-surface-500 dark:text-surface-400">
@@ -543,7 +543,7 @@ const ContractForm = () => {
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-indigo-400" />
-              <h2 className="text-lg font-semibold text-white">Select Proposal</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Select Proposal</h2>
             </div>
 
             {availableProposals.length === 0 ? (
@@ -594,24 +594,24 @@ const ContractForm = () => {
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-surface-500 dark:text-surface-400">Account:</span>
-                        <span className="ml-2 text-white">{selectedProposal.account.name}</span>
+                        <span className="ml-2 text-surface-900 dark:text-white">{selectedProposal.account.name}</span>
                       </div>
                       {selectedProposal.facility && (
                         <div>
                           <span className="text-surface-500 dark:text-surface-400">Facility:</span>
-                          <span className="ml-2 text-white">{selectedProposal.facility.name}</span>
+                          <span className="ml-2 text-surface-900 dark:text-white">{selectedProposal.facility.name}</span>
                         </div>
                       )}
                       <div>
                         <span className="text-surface-500 dark:text-surface-400">Monthly Value:</span>
-                        <span className="ml-2 text-white font-medium">
+                        <span className="ml-2 text-surface-900 dark:text-white font-medium">
                           {formatCurrency(selectedProposal.totalAmount)}
                         </span>
                       </div>
                       {selectedScheduleDays.length > 0 && (
                         <div>
                           <span className="text-surface-500 dark:text-surface-400">Scheduled Days:</span>
-                          <span className="ml-2 text-white">
+                          <span className="ml-2 text-surface-900 dark:text-white">
                             {selectedScheduleDays.map((day) => PROPOSAL_DAY_LABELS[day] || day).join(', ')}
                           </span>
                         </div>
@@ -619,7 +619,7 @@ const ContractForm = () => {
                       {selectedScheduleWindow && (
                         <div>
                           <span className="text-surface-500 dark:text-surface-400">Allowed Window:</span>
-                          <span className="ml-2 text-white">{selectedScheduleWindow}</span>
+                          <span className="ml-2 text-surface-900 dark:text-white">{selectedScheduleWindow}</span>
                         </div>
                       )}
                     </div>
@@ -651,7 +651,7 @@ const ContractForm = () => {
             <Card>
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-indigo-400" />
-                <h2 className="text-lg font-semibold text-white">Contract Details</h2>
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Contract Details</h2>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -693,7 +693,7 @@ const ContractForm = () => {
             <Card>
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="h-5 w-5 text-blue-400" />
-                <h2 className="text-lg font-semibold text-white">Service Terms</h2>
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Terms</h2>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Input
@@ -741,7 +741,7 @@ const ContractForm = () => {
                       type="checkbox"
                       checked={formData.autoRenew}
                       onChange={(e) => handleChange('autoRenew', e.target.checked)}
-                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                     />
                     Auto-renew contract
                   </label>
@@ -753,7 +753,7 @@ const ContractForm = () => {
             <Card>
               <div className="flex items-center gap-2 mb-4">
                 <DollarSign className="h-5 w-5 text-green-400" />
-                <h2 className="text-lg font-semibold text-white">Financial Terms</h2>
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Terms</h2>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Input
@@ -816,7 +816,7 @@ const ContractForm = () => {
 
             {/* Additional Details */}
             <Card>
-              <h2 className="text-lg font-semibold text-white mb-4">Additional Details</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Additional Details</h2>
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">

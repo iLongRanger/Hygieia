@@ -98,7 +98,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <Clock className="h-5 w-5 text-gold" />
-          <h2 className="text-lg font-semibold text-white">Activity</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Activity</h2>
         </div>
         <div className="flex justify-center py-4">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
@@ -111,7 +111,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
     <Card>
       <div className="flex items-center gap-2 mb-4">
         <Clock className="h-5 w-5 text-gold" />
-        <h2 className="text-lg font-semibold text-white">Activity</h2>
+        <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Activity</h2>
       </div>
       {activities.length === 0 ? (
         <p className="text-sm text-surface-500 dark:text-surface-400">No activity recorded yet.</p>
@@ -134,7 +134,7 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
                 </div>
                 {/* Content */}
                 <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
-                  <p className="text-sm font-medium text-white">{config.label}</p>
+                  <p className="text-sm font-medium text-surface-900 dark:text-white">{config.label}</p>
                   <p className="text-xs text-surface-500">
                     {activity.performedByUser
                       ? `by ${activity.performedByUser.fullName}`

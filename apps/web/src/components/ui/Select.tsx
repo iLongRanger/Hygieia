@@ -55,7 +55,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             onChange={(e) => onChange?.(e.target.value)}
             className={cn(
               'flex h-10 w-full appearance-none rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 pr-10 text-surface-900 transition-all duration-200',
-              'focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20',
+              'focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30',
               'disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-surface-500',
               'dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100',
               'dark:focus:border-primary-400 dark:focus:ring-primary-400/20',

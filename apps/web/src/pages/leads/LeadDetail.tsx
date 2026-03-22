@@ -639,7 +639,7 @@ const LeadDetail = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{lead.contactName}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{lead.contactName}</h1>
           <p className="text-surface-500 dark:text-surface-400">{lead.companyName || 'No company name'}</p>
         </div>
         {(canWriteLeads || canWriteAppointments) && (
@@ -679,7 +679,7 @@ const LeadDetail = () => {
                 <UserIcon className="h-7 w-7 text-gold" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {lead.contactName}
                 </div>
                 <Badge variant="info">{lead.status.replace(/_/g, ' ')}</Badge>
@@ -691,7 +691,7 @@ const LeadDetail = () => {
                 <Mail className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Primary Email</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {lead.primaryEmail || 'Not provided'}
                   </div>
                 </div>
@@ -701,7 +701,7 @@ const LeadDetail = () => {
                 <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {new Date(lead.createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -716,7 +716,7 @@ const LeadDetail = () => {
                   <ClipboardList className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
                     <div className="text-sm text-surface-500 dark:text-surface-400">Converted Account</div>
-                    <div className="text-white">{lead.convertedToAccount.name}</div>
+                    <div className="text-surface-900 dark:text-white">{lead.convertedToAccount.name}</div>
                   </div>
                 </div>
               )}
@@ -727,7 +727,7 @@ const LeadDetail = () => {
         <Card className="lg:col-span-2">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
+              <h3 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">
                 Walkthrough Appointments
               </h3>
 
@@ -749,7 +749,7 @@ const LeadDetail = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <div className="text-sm text-surface-500 dark:text-surface-400">Scheduled</div>
-                            <div className="text-white">
+                            <div className="text-surface-900 dark:text-white">
                               {formatDateTime(appointment.scheduledStart, appointment.timezone)} -{' '}
                               {formatDateTime(appointment.scheduledEnd, appointment.timezone)}
                             </div>
@@ -1068,7 +1068,7 @@ const LeadDetail = () => {
               <div className="text-xs uppercase tracking-wide text-surface-500 dark:text-surface-400">
                 Step {completeStep === 'details' ? '1' : '2'} of 2
               </div>
-              <div className="mt-1 text-sm text-white">
+              <div className="mt-1 text-sm text-surface-900 dark:text-white">
                 {completeStep === 'details' ? 'Facility Details' : 'Review and Submit'}
               </div>
             </div>
@@ -1122,21 +1122,21 @@ const LeadDetail = () => {
                       <>
                         <div>
                           <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
-                          <div className="text-white">{selectedFacility?.name || 'Unknown facility'}</div>
+                          <div className="text-surface-900 dark:text-white">{selectedFacility?.name || 'Unknown facility'}</div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <div className="text-sm text-surface-500 dark:text-surface-400">Areas</div>
-                            <div className="text-white">{selectedFacility?._count.areas ?? 0}</div>
+                            <div className="text-surface-900 dark:text-white">{selectedFacility?._count.areas ?? 0}</div>
                           </div>
                           <div>
                             <div className="text-sm text-surface-500 dark:text-surface-400">Tasks</div>
-                            <div className="text-white">{selectedFacility?._count.facilityTasks ?? 0}</div>
+                            <div className="text-surface-900 dark:text-white">{selectedFacility?._count.facilityTasks ?? 0}</div>
                           </div>
                         </div>
                         <div>
                           <div className="text-sm text-surface-500 dark:text-surface-400">Walkthrough Notes</div>
-                          <div className="text-white whitespace-pre-wrap">
+                          <div className="text-surface-900 dark:text-white whitespace-pre-wrap">
                             {completeForm.notes?.trim() || 'No notes provided'}
                           </div>
                         </div>
@@ -1288,7 +1288,7 @@ const LeadDetail = () => {
             />
             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/30 px-3 py-2">
               <div className="text-sm text-surface-500 dark:text-surface-400">Status</div>
-              <div className="text-white">{lead.status.replace(/_/g, ' ')}</div>
+              <div className="text-surface-900 dark:text-white">{lead.status.replace(/_/g, ' ')}</div>
             </div>
           </div>
 

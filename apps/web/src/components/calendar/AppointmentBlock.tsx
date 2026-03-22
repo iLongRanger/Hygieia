@@ -83,7 +83,7 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
           style={bubbleStyle}
           aria-label={`Show job details for ${customerName}`}
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] text-black shadow-sm transition duration-150 hover:scale-[1.04] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-white',
+            'flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] text-surface-900 shadow-sm transition duration-150 hover:scale-[1.04] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-white',
             colors.bg,
             colors.border,
             colors.text

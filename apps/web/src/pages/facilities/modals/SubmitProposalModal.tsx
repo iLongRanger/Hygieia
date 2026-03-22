@@ -61,27 +61,27 @@ export function SubmitProposalModal({
         <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
           <div className="text-sm text-surface-500 dark:text-surface-400">Final Review</div>
           <div className="mt-2">
-            <div className="text-white font-medium">{facilityName}</div>
+            <div className="text-surface-900 dark:text-white font-medium">{facilityName}</div>
             <div className="text-xs text-surface-500 dark:text-surface-400">{accountName}</div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs text-surface-500">Areas</div>
-              <div className="text-white font-medium">{activeAreasCount}</div>
+              <div className="text-surface-900 dark:text-white font-medium">{activeAreasCount}</div>
             </div>
             <div>
               <div className="text-xs text-surface-500">Tasks</div>
-              <div className="text-white font-medium">{activeTasksCount}</div>
+              <div className="text-surface-900 dark:text-white font-medium">{activeTasksCount}</div>
             </div>
             <div>
               <div className="text-xs text-surface-500">Total Sq Ft</div>
-              <div className="text-white font-medium">
+              <div className="text-surface-900 dark:text-white font-medium">
                 {totalSquareFeet.toLocaleString()}
               </div>
             </div>
             <div>
               <div className="text-xs text-surface-500">Unassigned Tasks</div>
-              <div className="text-white font-medium">{unassignedTaskCount}</div>
+              <div className="text-surface-900 dark:text-white font-medium">{unassignedTaskCount}</div>
             </div>
           </div>
         </div>
@@ -100,13 +100,13 @@ export function SubmitProposalModal({
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm text-white">{areaName}</div>
+                      <div className="text-sm text-surface-900 dark:text-white">{areaName}</div>
                       <div className="text-xs text-surface-500 dark:text-surface-400">
                         {areaSqFt.toLocaleString()} sqft
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-white">{areaTaskCount} task{areaTaskCount === 1 ? '' : 's'}</div>
+                      <div className="text-sm text-surface-900 dark:text-white">{areaTaskCount} task{areaTaskCount === 1 ? '' : 's'}</div>
                     </div>
                   </div>
                 </div>

@@ -170,7 +170,7 @@ const ContactDetail = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{contact.name}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{contact.name}</h1>
           <p className="text-surface-500 dark:text-surface-400">{contact.title || 'No title'}</p>
         </div>
         <div className="flex gap-2">
@@ -206,7 +206,7 @@ const ContactDetail = () => {
                 <UserIcon className="h-8 w-8 text-emerald" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {contact.name}
                 </div>
                 <div className="flex gap-2">
@@ -231,7 +231,7 @@ const ContactDetail = () => {
                 <Mail className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Email</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {contact.email ? (
                       <a
                         href={`mailto:${contact.email}`}
@@ -250,7 +250,7 @@ const ContactDetail = () => {
                 <Phone className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Phone</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {contact.phone ? (
                       <a
                         href={`tel:${contact.phone}`}
@@ -269,7 +269,7 @@ const ContactDetail = () => {
                 <Smartphone className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Mobile</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {contact.mobile ? (
                       <a
                         href={`tel:${contact.mobile}`}
@@ -288,7 +288,7 @@ const ContactDetail = () => {
                 <Building className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {contact.account ? (
                       <button
                         onClick={() =>
@@ -309,7 +309,7 @@ const ContactDetail = () => {
                 <Briefcase className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Title</div>
-                  <div className="text-white">{contact.title || 'Not provided'}</div>
+                  <div className="text-surface-900 dark:text-white">{contact.title || 'Not provided'}</div>
                 </div>
               </div>
 
@@ -317,7 +317,7 @@ const ContactDetail = () => {
                 <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
-                  <div className="text-white">{formatDate(contact.createdAt)}</div>
+                  <div className="text-surface-900 dark:text-white">{formatDate(contact.createdAt)}</div>
                 </div>
               </div>
             </div>
@@ -339,13 +339,13 @@ const ContactDetail = () => {
         <Card className="lg:col-span-2">
           <div className="space-y-6">
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
+              <h3 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">
                 Contact Information
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Department</div>
-                  <div className="text-white">
+                  <div className="text-surface-900 dark:text-white">
                     {contact.department || 'Not specified'}
                   </div>
                 </div>
@@ -353,7 +353,7 @@ const ContactDetail = () => {
                   <div className="text-sm text-surface-500 dark:text-surface-400">Contact Type</div>
                   <div className="flex gap-2">
                     {!contact.isPrimary && !contact.isBilling && (
-                      <span className="text-white">Standard Contact</span>
+                      <span className="text-surface-900 dark:text-white">Standard Contact</span>
                     )}
                     {contact.isPrimary && (
                       <Badge variant="info">Primary Contact</Badge>
@@ -368,7 +368,7 @@ const ContactDetail = () => {
 
             {contact.notes && (
               <div>
-                <h3 className="mb-2 text-lg font-semibold text-white">Notes</h3>
+                <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-white">Notes</h3>
                 <p className="text-surface-600 dark:text-surface-400">{contact.notes}</p>
               </div>
             )}

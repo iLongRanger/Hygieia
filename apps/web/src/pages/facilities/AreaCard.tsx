@@ -70,7 +70,7 @@ export function AreaCard({
     >
       {/* Top section */}
       <div>
-        <div className="font-medium text-white">
+        <div className="font-medium text-surface-900 dark:text-white">
           {area.name || area.areaType.name}
         </div>
         {(area.name && area.name !== area.areaType.name) && (

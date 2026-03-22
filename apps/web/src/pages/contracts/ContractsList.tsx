@@ -307,7 +307,7 @@ const ContractsList = () => {
                 navigate(`/contracts/${contract.id}`);
               }}
             >
-              <div className="font-medium text-white transition hover:text-indigo-300">
+              <div className="font-medium text-surface-900 dark:text-white transition hover:text-indigo-300">
                 {contract.contractNumber}
               </div>
               <div className="text-sm text-surface-500 dark:text-surface-400 transition hover:text-surface-600 dark:text-surface-300">
@@ -447,7 +447,7 @@ const ContractsList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-white">Contracts</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Contracts</h1>
         {canWriteContracts && (
           <Button onClick={() => navigate('/contracts/new')}>
             <Plus className="mr-2 h-4 w-4" />
@@ -466,7 +466,7 @@ const ContractsList = () => {
           }`}
         >
           <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Draft</div>
-          <div className="mt-1 text-xl font-semibold text-white">
+          <div className="mt-1 text-xl font-semibold text-surface-900 dark:text-white">
             {summaryLoading ? '-' : (summary?.byStatus.draft ?? 0)}
           </div>
         </button>
@@ -478,7 +478,7 @@ const ContractsList = () => {
           }`}
         >
           <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Sent</div>
-          <div className="mt-1 text-xl font-semibold text-white">
+          <div className="mt-1 text-xl font-semibold text-surface-900 dark:text-white">
             {summaryLoading ? '-' : (summary?.byStatus.sent ?? 0)}
           </div>
         </button>
@@ -490,7 +490,7 @@ const ContractsList = () => {
           }`}
         >
           <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Viewed</div>
-          <div className="mt-1 text-xl font-semibold text-white">
+          <div className="mt-1 text-xl font-semibold text-surface-900 dark:text-white">
             {summaryLoading ? '-' : (summary?.byStatus.viewed ?? 0)}
           </div>
         </button>
@@ -502,7 +502,7 @@ const ContractsList = () => {
           }`}
         >
           <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Signed</div>
-          <div className="mt-1 text-xl font-semibold text-white">
+          <div className="mt-1 text-xl font-semibold text-surface-900 dark:text-white">
             {summaryLoading ? '-' : (summary?.byStatus.pendingSignature ?? 0)}
           </div>
         </button>
@@ -514,7 +514,7 @@ const ContractsList = () => {
           }`}
         >
           <div className="text-xs text-surface-500 dark:text-surface-400 uppercase tracking-wide">Active</div>
-          <div className="mt-1 text-xl font-semibold text-white">
+          <div className="mt-1 text-xl font-semibold text-surface-900 dark:text-white">
             {summaryLoading ? '-' : (summary?.byStatus.active ?? 0)}
           </div>
         </button>
@@ -645,7 +645,7 @@ const ContractsList = () => {
                         setNeedsAttention(e.target.checked);
                         setPage(1);
                       }}
-                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                      className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                     />
                     Needs Attention Only
                   </label>
@@ -657,7 +657,7 @@ const ContractsList = () => {
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>

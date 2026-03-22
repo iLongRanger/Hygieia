@@ -45,30 +45,30 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
         <DollarSign className="h-5 w-5 text-emerald-400" />
-        <h3 className="text-lg font-semibold text-white">Financial Summary</h3>
+        <h3 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Summary</h3>
       </div>
 
       {/* Stats Grid */}
       <div className="mb-6 grid grid-cols-2 gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-surface-500">Monthly Value</p>
-          <p className="text-lg font-semibold text-white">
+          <p className="text-lg font-semibold text-surface-900 dark:text-white">
             {activeContract ? formatCurrency(activeContract.monthlyValue) : '-'}
           </p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-surface-500">Payment Terms</p>
-          <p className="text-lg font-semibold text-white">
+          <p className="text-lg font-semibold text-surface-900 dark:text-white">
             {getPaymentTermsLabel(account.paymentTerms)}
           </p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-surface-500">Total Proposals</p>
-          <p className="text-lg font-semibold text-white">{proposalTotal}</p>
+          <p className="text-lg font-semibold text-surface-900 dark:text-white">{proposalTotal}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-wide text-surface-500">Total Contracts</p>
-          <p className="text-lg font-semibold text-white">{contractTotal}</p>
+          <p className="text-lg font-semibold text-surface-900 dark:text-white">{contractTotal}</p>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <FileText className="h-4 w-4 text-surface-500 dark:text-surface-400" />
-            <h4 className="text-sm font-medium text-white">Recent Proposals</h4>
+            <h4 className="text-sm font-medium text-surface-900 dark:text-white">Recent Proposals</h4>
           </div>
           {proposalTotal > 0 && (
             <Button
@@ -102,7 +102,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-white">{proposal.proposalNumber}</p>
+                    <p className="font-medium text-surface-900 dark:text-white">{proposal.proposalNumber}</p>
                     <p className="truncate text-sm text-surface-500 dark:text-surface-400">{proposal.title}</p>
                   </div>
                   <Badge variant={PROPOSAL_STATUS_VARIANTS[proposal.status]} size="sm">
@@ -126,7 +126,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <FileSignature className="h-4 w-4 text-surface-500 dark:text-surface-400" />
-            <h4 className="text-sm font-medium text-white">Recent Contracts</h4>
+            <h4 className="text-sm font-medium text-surface-900 dark:text-white">Recent Contracts</h4>
           </div>
           {contractTotal > 0 && (
             <Button
@@ -151,7 +151,7 @@ export const AccountFinancials: React.FC<AccountFinancialsProps> = ({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-white">{contract.contractNumber}</p>
+                    <p className="font-medium text-surface-900 dark:text-white">{contract.contractNumber}</p>
                     <p className="truncate text-sm text-surface-500 dark:text-surface-400">{contract.title}</p>
                   </div>
                   <Badge variant={CONTRACT_STATUS_VARIANTS[contract.status]} size="sm">

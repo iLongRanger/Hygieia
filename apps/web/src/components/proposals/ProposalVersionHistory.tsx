@@ -74,7 +74,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <History className="h-5 w-5 text-gold" />
-          <h2 className="text-lg font-semibold text-white">Version History</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Version History</h2>
         </div>
         <div className="flex justify-center py-4">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
@@ -91,7 +91,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
     <Card>
       <div className="flex items-center gap-2 mb-4">
         <History className="h-5 w-5 text-gold" />
-        <h2 className="text-lg font-semibold text-white">Version History</h2>
+        <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Version History</h2>
       </div>
       <div className="space-y-2">
         {versions.map((version) => (
@@ -108,7 +108,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
               <FileText className="h-4 w-4 text-surface-500 dark:text-surface-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-surface-900 dark:text-white">
                     v{version.versionNumber}
                   </span>
                   {version.changeReason && (
@@ -140,7 +140,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
                     </div>
                     <div className="flex justify-between">
                       <span className="text-surface-500 dark:text-surface-400">Total</span>
-                      <span className="text-white font-medium">
+                      <span className="text-surface-900 dark:text-white font-medium">
                         {formatCurrency(snapshotData.totalAmount)}
                       </span>
                     </div>

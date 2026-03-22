@@ -287,7 +287,7 @@ const AccountsList = () => {
             <Building className="h-5 w-5 text-gold" />
           </div>
           <div>
-            <div className="font-medium text-white">{item.name}</div>
+            <div className="font-medium text-surface-900 dark:text-white">{item.name}</div>
             <div className="text-sm text-surface-500 dark:text-surface-400">
               {item.industry || 'No industry'}
             </div>
@@ -373,7 +373,7 @@ const AccountsList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-white">Accounts</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Accounts</h1>
         {canAdminAccounts && (
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -431,7 +431,7 @@ const AccountsList = () => {
                     type="checkbox"
                     checked={includeArchived}
                     onChange={(e) => setIncludeArchived(e.target.checked)}
-                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-200 dark:bg-surface-900 text-primary-500 focus:ring-primary-500"
+                    className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                   />
                   Include Archived
                 </label>

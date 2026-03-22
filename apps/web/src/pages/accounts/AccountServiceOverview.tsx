@@ -60,7 +60,7 @@ export function AccountServiceOverview({
       noPadding
       className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5"
     >
-      <h3 className="text-lg font-semibold text-white">Service Overview</h3>
+      <h3 className="text-lg font-semibold text-surface-900 dark:text-white">Service Overview</h3>
 
       <div className="mt-4 grid grid-cols-2 gap-4">
         {/* Assigned Team */}
@@ -70,7 +70,7 @@ export function AccountServiceOverview({
             <p className="text-xs uppercase tracking-wide text-surface-500">
               Assigned Team
             </p>
-            <p className="text-white font-medium">{assignedTeamName}</p>
+            <p className="text-surface-900 dark:text-white font-medium">{assignedTeamName}</p>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export function AccountServiceOverview({
             <p className="text-xs uppercase tracking-wide text-surface-500">
               Last Service
             </p>
-            <p className="text-white font-medium">{lastServiceDate}</p>
+            <p className="text-surface-900 dark:text-white font-medium">{lastServiceDate}</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export function AccountServiceOverview({
             <p className="text-xs uppercase tracking-wide text-surface-500">
               Upcoming Jobs
             </p>
-            <p className="text-white font-medium">{upcomingJobsCount}</p>
+            <p className="text-surface-900 dark:text-white font-medium">{upcomingJobsCount}</p>
           </div>
         </div>
 
@@ -103,7 +103,7 @@ export function AccountServiceOverview({
             <p className="text-xs uppercase tracking-wide text-surface-500">
               Service Frequency
             </p>
-            <p className="text-white font-medium">{serviceFrequency}</p>
+            <p className="text-surface-900 dark:text-white font-medium">{serviceFrequency}</p>
           </div>
         </div>
       </div>

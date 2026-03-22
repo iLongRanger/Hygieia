@@ -139,7 +139,7 @@ export function FacilityServiceScheduleFields({
 
   return (
     <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/20 p-4 space-y-3">
-      <div className="text-sm font-medium text-white">Client Service Schedule</div>
+      <div className="text-sm font-medium text-surface-900 dark:text-white">Client Service Schedule</div>
       <Select
         label="Service Frequency"
         options={SCHEDULE_FREQUENCIES}
@@ -181,7 +181,7 @@ export function FacilityServiceScheduleFields({
                 key={day.value}
                 className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-xs ${
                   checked
-                    ? 'border-emerald bg-emerald/10 text-white'
+                    ? 'border-emerald bg-emerald/10 text-surface-900 dark:text-white'
                     : disabled
                       ? 'border-surface-200 dark:border-surface-700 text-surface-600 cursor-not-allowed'
                       : 'border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 cursor-pointer'

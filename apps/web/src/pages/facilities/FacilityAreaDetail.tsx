@@ -99,7 +99,7 @@ export function FacilityAreaDetail({
       {/* Back link */}
       <button
         onClick={onBack}
-        className="text-surface-500 dark:text-surface-400 hover:text-white transition-colors text-sm flex items-center gap-1 mb-4"
+        className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white transition-colors text-sm flex items-center gap-1 mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Areas
@@ -108,7 +108,7 @@ export function FacilityAreaDetail({
       {/* Area header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-surface-900 dark:text-white">
             {area.name || area.areaType.name}
           </h2>
           <p className="text-surface-500 dark:text-surface-400">{area.areaType.name}</p>
@@ -161,7 +161,7 @@ export function FacilityAreaDetail({
       {/* Items/Fixtures section */}
       {hasFixtures && (
         <div className="mt-6">
-          <h3 className="text-lg font-semibold text-white mb-3">
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-3">
             Items & Fixtures
           </h3>
           <div className="space-y-2">
@@ -170,7 +170,7 @@ export function FacilityAreaDetail({
                 key={fixture.id}
                 className="rounded-lg bg-surface-100 dark:bg-surface-800/10 px-4 py-3 flex justify-between items-center"
               >
-                <span className="text-white">{fixture.fixtureType.name}</span>
+                <span className="text-surface-900 dark:text-white">{fixture.fixtureType.name}</span>
                 <span className="text-surface-600 dark:text-surface-400">
                   {fixture.count}
                   {Number(fixture.minutesPerItem) > 0 &&
@@ -185,7 +185,7 @@ export function FacilityAreaDetail({
       {/* Tasks section */}
       <div className="mt-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
             Tasks ({tasks.length})
           </h3>
           <div className="flex gap-2">
@@ -232,7 +232,7 @@ export function FacilityAreaDetail({
                         key={task.id}
                         className="rounded-lg bg-surface-100 dark:bg-surface-800/10 px-3 py-2 flex items-center justify-between group"
                       >
-                        <span className="text-white">
+                        <span className="text-surface-900 dark:text-white">
                           {getTaskName(task)}
                           {task.estimatedMinutes != null && (
                             <span className="text-surface-500 dark:text-surface-400 ml-1">
@@ -243,7 +243,7 @@ export function FacilityAreaDetail({
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onEditTask(task)}
-                            className="p-1 text-surface-500 dark:text-surface-400 hover:text-white transition-colors"
+                            className="p-1 text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white transition-colors"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
@@ -270,7 +270,7 @@ export function FacilityAreaDetail({
           <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
             Notes
           </div>
-          <p className="text-white">{area.notes}</p>
+          <p className="text-surface-900 dark:text-white">{area.notes}</p>
         </Card>
       )}
     </div>
@@ -289,7 +289,7 @@ function InfoField({
       <div className="text-xs text-surface-500 uppercase tracking-wide mb-1">
         {label}
       </div>
-      <div className="text-white font-medium">{value}</div>
+      <div className="text-surface-900 dark:text-white font-medium">{value}</div>
     </div>
   );
 }

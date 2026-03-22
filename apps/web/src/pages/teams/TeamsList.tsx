@@ -174,7 +174,7 @@ const TeamsList = () => {
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary-500" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Team Management</h1>
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Team Management</h1>
             <p className="text-surface-500 dark:text-surface-400">Manage subcontractor teams and assign them to active contracts.</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ const TeamsList = () => {
                 teams.map((team) => (
                   <tr key={team.id} className="border-b border-surface-200 dark:border-surface-700">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-white">{team.name}</div>
+                      <div className="font-medium text-surface-900 dark:text-white">{team.name}</div>
                       {team.notes && <div className="text-xs text-surface-500 dark:text-surface-400 truncate max-w-[280px]">{team.notes}</div>}
                     </td>
                     <td className="px-4 py-3 text-surface-600 dark:text-surface-400">

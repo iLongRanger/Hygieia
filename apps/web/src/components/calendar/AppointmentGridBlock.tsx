@@ -74,7 +74,7 @@ export const AppointmentGridBlock: React.FC<AppointmentGridBlockProps> = ({
           style={bubbleStyle}
           aria-label={`Show job details for ${customerName}`}
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] text-black shadow-md transition duration-150 hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-white',
+            'flex h-10 w-10 items-center justify-center rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em] text-surface-900 shadow-md transition duration-150 hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-white',
             colors.bg,
             colors.border,
             colors.text

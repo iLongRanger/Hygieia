@@ -19,14 +19,14 @@ export function AccountContacts({ contacts, accountId, onNavigate }: AccountCont
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-white font-semibold">Contacts</h3>
+          <h3 className="text-surface-900 dark:text-white font-semibold">Contacts</h3>
           <span className="text-surface-500 dark:text-surface-400 text-sm">({contacts.length})</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onNavigate(`/contacts?accountId=${accountId}`)}
-          className="text-surface-500 dark:text-surface-400 hover:text-white gap-1"
+          className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white gap-1"
         >
           View All
           <ExternalLink className="h-3.5 w-3.5" />
@@ -74,7 +74,7 @@ function ContactCard({
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium truncate">{contact.name}</span>
+            <span className="text-surface-900 dark:text-white font-medium truncate">{contact.name}</span>
             {contact.isPrimary && (
               <Star className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" fill="currentColor" />
             )}

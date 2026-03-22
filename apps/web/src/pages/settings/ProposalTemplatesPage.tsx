@@ -142,7 +142,7 @@ const ProposalTemplatesPage: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">Proposal Templates</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Proposal Templates</h1>
           <p className="text-surface-500 dark:text-surface-400">Manage terms & conditions templates for proposals</p>
         </div>
         <label className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 cursor-pointer">
@@ -169,7 +169,7 @@ const ProposalTemplatesPage: React.FC = () => {
         <Card>
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-surface-500 mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No templates yet</h3>
+            <h3 className="text-lg font-medium text-surface-900 dark:text-white mb-2">No templates yet</h3>
             <p className="text-surface-500 dark:text-surface-400 mb-4">
               Create your first terms & conditions template to speed up proposal creation.
             </p>
@@ -186,7 +186,7 @@ const ProposalTemplatesPage: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-medium text-white truncate">
+                    <h3 className="text-lg font-medium text-surface-900 dark:text-white truncate">
                       {template.name}
                     </h3>
                     {template.isDefault && (

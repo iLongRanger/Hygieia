@@ -613,7 +613,7 @@ export function PricingPlanBuilder({
               <h3 className="mt-3 text-2xl font-semibold">{STEP_CONFIG[step].title}</h3>
               <p className="mt-2 text-sm text-surface-600 dark:text-surface-300/85">{STEP_CONFIG[step].description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Badge className="border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800/20 text-white">
+                <Badge className="border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800/20 text-surface-700 dark:text-white">
                   {mode === 'create' ? 'Building a new plan' : 'Refining this plan'}
                 </Badge>
                 <Badge className="border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
@@ -1107,7 +1107,7 @@ export function PricingPlanBuilder({
           </div>
 
           <div className="mt-5 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-4">
-            <div className="text-sm font-semibold text-white">How Hygieia explains this sample</div>
+            <div className="text-sm font-semibold text-surface-900 dark:text-white">How Hygieia explains this sample</div>
             <div className="mt-3 grid gap-2 text-sm text-surface-600 dark:text-surface-300/85">
               <div>1. Estimate labor from square footage, productivity, and difficulty multipliers.</div>
               <div>2. Add operating costs like insurance, admin, equipment, travel, and supplies.</div>
@@ -1116,7 +1116,7 @@ export function PricingPlanBuilder({
           </div>
 
           <div className="mt-5 space-y-3 rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-4">
-            <div className="text-sm font-semibold text-white">What changed this price</div>
+            <div className="text-sm font-semibold text-surface-900 dark:text-white">What changed this price</div>
             <div className="grid gap-2 text-sm text-surface-600 dark:text-surface-300/85">
               <div className="flex justify-between gap-3">
                 <span>Floor multiplier</span>

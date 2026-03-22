@@ -441,7 +441,7 @@ const PricingSettingsPage = () => {
                         .map(([key, value]) => (
                           <div key={key} className="flex items-center justify-between rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 px-3 py-2">
                             <span className="text-sm text-surface-600 dark:text-surface-300">{BUILDING_TYPE_LABELS[key] ?? key}</span>
-                            <span className="text-sm font-semibold text-white">{value.toLocaleString()} sqft/hr</span>
+                            <span className="text-sm font-semibold text-surface-900 dark:text-white">{value.toLocaleString()} sqft/hr</span>
                           </div>
                         ))}
                     </div>
@@ -513,8 +513,8 @@ const PricingSettingsPage = () => {
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 px-4 py-3 backdrop-blur-sm">
-      <div className="text-xs uppercase tracking-[0.18em] text-cyan-200/70">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
+      <div className="text-xs uppercase tracking-[0.18em] text-primary-600/70 dark:text-cyan-200/70">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-surface-900 dark:text-white">{value}</div>
     </div>
   );
 }

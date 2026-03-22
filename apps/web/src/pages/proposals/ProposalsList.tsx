@@ -252,7 +252,7 @@ const ProposalsList = () => {
           <div>
             <button
               onClick={() => navigate(`/proposals/${proposal.id}`)}
-              className="font-medium text-white hover:text-gold transition-colors"
+              className="font-medium text-surface-900 dark:text-white hover:text-gold transition-colors"
             >
               {proposal.proposalNumber}
             </button>
@@ -409,7 +409,7 @@ const ProposalsList = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-white">Proposals</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Proposals</h1>
         {canWriteProposals && (
           <Button onClick={() => navigate('/proposals/new')}>
             <Plus className="mr-2 h-4 w-4" />
@@ -424,7 +424,7 @@ const ProposalsList = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-surface-500 dark:text-surface-400">Total Proposals</p>
-              <p className="text-2xl font-bold text-white">{total}</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-white">{total}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
               <FileText className="w-5 h-5 text-blue-400" />
@@ -435,7 +435,7 @@ const ProposalsList = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-surface-500 dark:text-surface-400">Sent</p>
-              <p className="text-2xl font-bold text-white">{sentCount}</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-white">{sentCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
               <Send className="w-5 h-5 text-purple-400" />
@@ -446,7 +446,7 @@ const ProposalsList = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-surface-500 dark:text-surface-400">Accepted</p>
-              <p className="text-2xl font-bold text-white">{acceptedCount}</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-white">{acceptedCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
               <CheckCircle className="w-5 h-5 text-green-400" />

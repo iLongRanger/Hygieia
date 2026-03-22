@@ -46,7 +46,7 @@ export const ClientServiceScheduleCard: React.FC<ClientServiceScheduleCardProps>
       <div className="flex items-center gap-2">
         <Calendar className="w-5 h-5 text-gold" />
         <div>
-          <h3 className="text-sm font-semibold text-white">Client Service Schedule</h3>
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Client Service Schedule</h3>
           <p className="text-xs text-surface-500 dark:text-surface-400">
             Select exact service days (Mon-Sun) and allowed arrival window.
           </p>

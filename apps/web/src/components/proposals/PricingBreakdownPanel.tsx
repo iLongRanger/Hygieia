@@ -50,12 +50,12 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
           ) : (
             <ChevronRight className="w-3.5 h-3.5 text-surface-500 dark:text-surface-400 flex-shrink-0" />
           )}
-          <span className="font-medium text-white text-sm truncate">{area.areaName}</span>
+          <span className="font-medium text-surface-900 dark:text-white text-sm truncate">{area.areaName}</span>
           <span className="text-xs text-surface-500 flex-shrink-0">
             {area.squareFeet.toLocaleString()} sqft
           </span>
         </div>
-        <span className="text-sm font-medium text-white flex-shrink-0 ml-2">
+        <span className="text-sm font-medium text-surface-900 dark:text-white flex-shrink-0 ml-2">
           {fmt(area.monthlyPrice)}
         </span>
       </button>
@@ -82,8 +82,8 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
               <span className="text-right font-mono">{fmt(area.laborCostBase)}</span>
               <span>Burden:</span>
               <span className="text-right font-mono">{fmt(area.laborBurden)}</span>
-              <span className="font-medium text-white">Total Labor:</span>
-              <span className="text-right font-mono font-medium text-white">{fmt(area.totalLaborCost)}</span>
+              <span className="font-medium text-surface-900 dark:text-white">Total Labor:</span>
+              <span className="text-right font-mono font-medium text-surface-900 dark:text-white">{fmt(area.totalLaborCost)}</span>
             </div>
           </div>
 
@@ -115,8 +115,8 @@ const AreaBreakdownRow: React.FC<{ area: AreaCostBreakdown }> = ({ area }) => {
               <span className="text-right font-mono">{fmt(area.pricePerVisit)}</span>
               <span>Visits/Month:</span>
               <span className="text-right font-mono">{area.monthlyVisits}</span>
-              <span className="font-medium text-white">Monthly:</span>
-              <span className="text-right font-mono font-medium text-white">{fmt(area.monthlyPrice)}</span>
+              <span className="font-medium text-surface-900 dark:text-white">Monthly:</span>
+              <span className="text-right font-mono font-medium text-surface-900 dark:text-white">{fmt(area.monthlyPrice)}</span>
             </div>
           </div>
 
@@ -164,19 +164,19 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
           <div className="px-4 py-3 space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-surface-500 dark:text-surface-400">Facility:</span>
-              <span className="text-white font-medium">{pricing.facilityName}</span>
+              <span className="text-surface-900 dark:text-white font-medium">{pricing.facilityName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-500 dark:text-surface-400">Building Type:</span>
-              <span className="text-white capitalize">{pricing.buildingType}</span>
+              <span className="text-surface-900 dark:text-white capitalize">{pricing.buildingType}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-500 dark:text-surface-400">Total Area:</span>
-              <span className="text-white">{pricing.totalSquareFeet.toLocaleString()} sqft</span>
+              <span className="text-surface-900 dark:text-white">{pricing.totalSquareFeet.toLocaleString()} sqft</span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-500 dark:text-surface-400">Frequency:</span>
-              <span className="text-white">{pricing.serviceFrequency} ({pricing.monthlyVisits} visits/mo)</span>
+              <span className="text-surface-900 dark:text-white">{pricing.serviceFrequency} ({pricing.monthlyVisits} visits/mo)</span>
             </div>
             <div className="flex justify-between">
               <span className="text-surface-500 dark:text-surface-400">Pricing Source:</span>
@@ -244,7 +244,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                 <span>Supplies:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalSupplyCost)}</span>
               </div>
-              <div className="flex justify-between text-white font-medium pt-1 border-t border-surface-700">
+              <div className="flex justify-between text-surface-900 dark:text-white font-medium pt-1 border-t border-surface-700">
                 <span>Total Cost/Visit:</span>
                 <span className="font-mono">{fmt(pricing.costBreakdown.totalCostPerVisit)}</span>
               </div>
@@ -272,7 +272,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                 </span>
                 <span className="font-mono text-emerald-400">+{fmt(pricing.profitAmount)}</span>
               </div>
-              <div className="flex justify-between text-white font-medium pl-2 border-l-2 border-surface-600">
+              <div className="flex justify-between text-surface-900 dark:text-white font-medium pl-2 border-l-2 border-surface-600">
                 <span>Subtotal before adjustments:</span>
                 <span className="font-mono">
                   {fmt(pricing.monthlyCostBeforeProfit + pricing.profitAmount)}
@@ -302,7 +302,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
 
               {/* Final */}
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-surface-600">
-                <span className="text-white">Monthly Total:</span>
+                <span className="text-surface-900 dark:text-white">Monthly Total:</span>
                 <span className="text-emerald-400 font-mono">{fmt(pricing.monthlyTotal)}</span>
               </div>
             </div>
@@ -323,7 +323,7 @@ export const PricingBreakdownPanel: React.FC<PricingBreakdownPanelProps> = ({ pr
                   <span>Subcontractor Payout:</span>
                   <span className="font-mono text-amber-400">{fmt(pricing.subcontractorPayout)}</span>
                 </div>
-                <div className="flex justify-between text-white font-medium">
+                <div className="flex justify-between text-surface-900 dark:text-white font-medium">
                   <span>Company Revenue:</span>
                   <span className="font-mono text-emerald-400">{fmt(pricing.companyRevenue)}</span>
                 </div>
