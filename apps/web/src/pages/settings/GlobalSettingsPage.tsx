@@ -68,6 +68,12 @@ const BACKGROUND_SERVICE_GUIDANCE: Record<
       'Applies scheduled contract assignee overrides on their effectivity date once daily.',
     recommendedTime: '00:00',
   },
+  contract_amendment_auto_apply: {
+    label: 'Contract Amendment Auto-Apply',
+    description:
+      'Applies approved contract amendments automatically on their effective date once daily.',
+    recommendedTime: '02:00',
+  },
 };
 
 const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
@@ -75,6 +81,7 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'recurring_jobs_autogen',
   'job_alerts',
   'contract_assignment_overrides',
+  'contract_amendment_auto_apply',
 ];
 
 const LOGS_PAGE_LIMIT = 9;
@@ -120,6 +127,14 @@ const GlobalSettingsPage: React.FC = () => {
     },
     contract_assignment_overrides: {
       serviceKey: 'contract_assignment_overrides',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
+    contract_amendment_auto_apply: {
+      serviceKey: 'contract_amendment_auto_apply',
       page: 1,
       limit: LOGS_PAGE_LIMIT,
       totalCount: 0,
@@ -625,4 +640,3 @@ const GlobalSettingsPage: React.FC = () => {
 };
 
 export default GlobalSettingsPage;
-

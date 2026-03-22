@@ -2,7 +2,8 @@ export type BackgroundServiceKey =
   | 'reminders'
   | 'recurring_jobs_autogen'
   | 'job_alerts'
-  | 'contract_assignment_overrides';
+  | 'contract_assignment_overrides'
+  | 'contract_amendment_auto_apply';
 
 export interface BackgroundServiceSetting {
   serviceKey: BackgroundServiceKey;

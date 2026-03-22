@@ -259,7 +259,7 @@ describe('ConfirmDialog', () => {
     it('should render message with proper styling', () => {
       render(<ConfirmDialog {...defaultProps} />);
       const message = screen.getByText('Are you sure you want to proceed?');
-      expect(message).toHaveClass('mb-6', 'text-gray-300');
+      expect(message).toHaveClass('mb-6', 'text-surface-600', 'dark:text-surface-400');
     });
 
     it('should render buttons in a flex container with gap', () => {
@@ -335,9 +335,10 @@ describe('ConfirmDialog', () => {
 
     it('should handle very long message', () => {
       const longMessage = 'This is a very long message. '.repeat(10);
-      const { container } = render(<ConfirmDialog {...defaultProps} message={longMessage} />);
-      const messageElement = container.querySelector('.mb-6.text-gray-300');
-      expect(messageElement?.textContent).toBe(longMessage);
+      render(<ConfirmDialog {...defaultProps} message={longMessage} />);
+      const messageElement = screen.getByText((content) => content.trim() === longMessage.trim());
+      expect(messageElement).toHaveClass('mb-6', 'text-surface-600', 'dark:text-surface-400');
+      expect(messageElement.textContent).toBe(longMessage);
     });
 
     it('should handle rapid open/close toggling', () => {
