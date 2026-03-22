@@ -74,15 +74,15 @@ export default {
           900: '#7f1d1d',
           DEFAULT: '#ef4444',
         },
-        // Surface colors – light end tuned for eye comfort, dark end unchanged
+        // Surface colors – navy-tinted light end matching dark theme hue, dark end unchanged
         surface: {
-          50: '#fafaf9',
-          100: '#f4f4f2',
-          200: '#e0e0dc',
-          300: '#ccccc7',
-          400: '#a1a09b',
-          500: '#71706b',
-          600: '#52514c',
+          50: '#f0f3f8',
+          100: '#e5e9f1',
+          200: '#ccd2de',
+          300: '#b3bbc9',
+          400: '#8b95a9',
+          500: '#616d83',
+          600: '#454f64',
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
