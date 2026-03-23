@@ -68,6 +68,7 @@ vi.mock('react-hot-toast', () => ({
 
 const lead: Lead = {
   id: 'lead-1',
+  type: 'commercial',
   status: 'lead',
   companyName: 'Acme Corporation',
   contactName: 'Jane Smith',

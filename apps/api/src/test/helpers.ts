@@ -38,6 +38,7 @@ export const createTestRole = (overrides?: Partial<any>) => ({
 
 export const createTestLead = (overrides?: Partial<any>) => ({
   id: 'test-lead-id',
+  type: 'commercial',
   status: 'new',
   companyName: 'Test Company',
   contactName: 'John Doe',

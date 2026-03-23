@@ -38,6 +38,7 @@ export interface LeadSource {
 
 export interface Lead {
   id: string;
+  type: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   assignedToUserId?: string | null;
   status: string;
@@ -204,8 +205,8 @@ export interface Notification {
 }
 
 export interface CreateLeadInput {
+  type: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
-  status?: string;
   companyName?: string | null;
   contactName: string;
   primaryEmail?: string | null;
@@ -220,6 +221,7 @@ export interface CreateLeadInput {
 }
 
 export interface UpdateLeadInput {
+  type?: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   status?: string;
   companyName?: string | null;

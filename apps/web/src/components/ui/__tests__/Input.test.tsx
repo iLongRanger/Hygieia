@@ -147,7 +147,7 @@ describe('Input', () => {
     it('should have focus styles', () => {
       render(<Input />);
       const input = screen.getByRole('textbox');
-      expect(input).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/20');
+      expect(input).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/30');
     });
   });
 

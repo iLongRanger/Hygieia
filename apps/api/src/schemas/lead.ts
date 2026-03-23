@@ -23,6 +23,8 @@ export const leadStatusSchema = z.enum([
   'reopened',
 ]);
 
+export const leadTypeSchema = z.enum(['commercial', 'residential', 'unknown']);
+
 export const addressSchema = z
   .object({
     street: z.string().optional(),
@@ -35,6 +37,7 @@ export const addressSchema = z
   .nullable();
 
 export const createLeadSchema = z.object({
+  type: leadTypeSchema,
   leadSourceId: z.string().uuid().optional().nullable(),
   companyName: z.string().max(255).optional().nullable(),
   contactName: z.string().min(1, 'Contact name is required').max(255),
@@ -50,6 +53,7 @@ export const createLeadSchema = z.object({
 });
 
 export const updateLeadSchema = z.object({
+  type: leadTypeSchema.optional(),
   leadSourceId: z.string().uuid().optional().nullable(),
   status: leadStatusSchema.optional(),
   companyName: z.string().max(255).optional().nullable(),
@@ -105,7 +109,7 @@ export const convertLeadSchema = z.object({
   accountData: z
     .object({
       name: z.string().min(1, 'Account name is required').max(255),
-      type: z.enum(['commercial', 'residential', 'industrial', 'government', 'non_profit']),
+      type: z.enum(['commercial', 'residential', 'industrial', 'government', 'non_profit']).optional(),
       industry: z.string().max(100).optional().nullable(),
       website: z.string().max(500).optional().nullable().transform((val) => val === '' ? null : val),
       billingEmail: z.string().email().max(255).optional().nullable().or(z.literal('')).transform((val) => val === '' ? null : val),

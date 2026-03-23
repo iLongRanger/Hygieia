@@ -266,6 +266,7 @@ describe('leadService', () => {
   describe('createLead', () => {
     it('should create a new lead with all fields', async () => {
       const input: leadService.LeadCreateInput = {
+        type: 'commercial',
         leadSourceId: 'source-123',
         companyName: 'Test Company',
         contactName: 'John Doe',
@@ -289,6 +290,7 @@ describe('leadService', () => {
 
       expect(prisma.lead.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
+          type: input.type,
           companyName: input.companyName,
           contactName: input.contactName,
           primaryEmail: input.primaryEmail,
@@ -310,6 +312,7 @@ describe('leadService', () => {
 
     it('should create lead with minimal required fields', async () => {
       const input: leadService.LeadCreateInput = {
+        type: 'residential',
         contactName: 'Jane Doe',
         createdByUserId: 'creator-123',
       };
@@ -327,6 +330,7 @@ describe('leadService', () => {
 
     it('should default probability to 0 if not provided', async () => {
       const input: leadService.LeadCreateInput = {
+        type: 'commercial',
         contactName: 'Jane Doe',
         createdByUserId: 'creator-123',
       };
@@ -347,6 +351,7 @@ describe('leadService', () => {
       expect(prisma.lead.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
+            type: input.type,
             probability: 0,
           }),
         })

@@ -36,6 +36,7 @@ export type LeadStatus =
 
 export interface Lead {
   id: string;
+  type: 'commercial' | 'residential' | 'unknown';
   leadSourceId: string | null;
   status: LeadStatus;
   companyName: string | null;
@@ -61,6 +62,7 @@ export interface Lead {
 }
 
 export interface CreateLeadInput {
+  type: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   companyName?: string | null;
   contactName: string;
@@ -76,6 +78,7 @@ export interface CreateLeadInput {
 }
 
 export interface UpdateLeadInput {
+  type?: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   status?: LeadStatus;
   companyName?: string | null;

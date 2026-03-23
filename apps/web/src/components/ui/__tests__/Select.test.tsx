@@ -158,7 +158,7 @@ describe('Select', () => {
     it('should have focus styles', () => {
       render(<Select options={mockOptions} />);
       const select = screen.getByRole('combobox');
-      expect(select).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/20');
+      expect(select).toHaveClass('focus:border-primary-500', 'focus:ring-primary-500/30');
     });
 
     it('should apply placeholder text color when no value selected', () => {

@@ -115,7 +115,7 @@ describe('Textarea', () => {
         'focus:border-primary-500',
         'focus:outline-none',
         'focus:ring-2',
-        'focus:ring-primary-500/20'
+        'focus:ring-primary-500/30'
       );
     });
 

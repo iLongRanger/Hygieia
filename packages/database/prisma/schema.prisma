@@ -196,6 +196,7 @@ model LeadSource {
 model Lead {
   id                String    @id @default(uuid()) @db.Uuid
   leadSourceId      String?   @map("lead_source_id") @db.Uuid
+  type              String    @default("unknown") @db.VarChar(20)
   status            String    @default("lead") @db.VarChar(30)
   companyName       String?   @map("company_name") @db.VarChar(255)
   contactName       String    @map("contact_name") @db.VarChar(255)
@@ -228,6 +229,7 @@ model Lead {
   appointments       Appointment[] @relation("LeadAppointments")
   opportunities      Opportunity[]
 
+  @@index([type])
   @@index([status])
   @@index([leadSourceId])
   @@index([assignedToUserId])

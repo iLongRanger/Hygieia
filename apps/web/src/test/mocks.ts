@@ -41,6 +41,7 @@ export const mockAdmin = (overrides?: Partial<User>): User =>
 // Lead Mocks
 export const mockLead = (overrides?: Partial<Lead>): Lead => ({
   id: 'lead-1',
+  type: 'commercial',
   contactName: 'John Doe',
   companyName: 'Acme Corp',
   primaryEmail: 'john@acme.com',

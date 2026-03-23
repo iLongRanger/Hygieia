@@ -43,6 +43,12 @@ const ACCOUNT_TYPES = [
   { value: 'non_profit', label: 'Non-Profit' },
 ];
 
+const LEAD_TYPE_OPTIONS = [
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'Residential' },
+  { value: 'unknown', label: 'Unknown / Triage' },
+];
+
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const hour = String(Math.floor(index / 2)).padStart(2, '0');
@@ -398,7 +404,7 @@ const LeadDetail = () => {
       setScheduleEndTime('');
       setScheduleConversionForm({
         accountName: '',
-        accountType: 'commercial',
+        accountType: lead?.type === 'residential' ? 'residential' : 'commercial',
         billingEmail: '',
         billingPhone: '',
         facilityName: '',
@@ -436,7 +442,7 @@ const LeadDetail = () => {
     }));
     setScheduleConversionForm({
       accountName: lead?.companyName || lead?.contactName || '',
-      accountType: 'commercial',
+      accountType: lead?.type === 'residential' ? 'residential' : 'commercial',
       billingEmail: lead?.primaryEmail || '',
       billingPhone: lead?.primaryPhone || '',
       facilityName: lead?.companyName || lead?.contactName || '',
@@ -525,6 +531,7 @@ const LeadDetail = () => {
   const openEditModal = () => {
     if (!lead) return;
     setEditFormData({
+      type: lead.type,
       contactName: lead.contactName,
       companyName: lead.companyName,
       primaryEmail: lead.primaryEmail,
@@ -682,7 +689,10 @@ const LeadDetail = () => {
                 <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {lead.contactName}
                 </div>
-                <Badge variant="info">{lead.status.replace(/_/g, ' ')}</Badge>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge variant="info">{lead.status.replace(/_/g, ' ')}</Badge>
+                  <Badge variant="default">{lead.type.replace(/_/g, ' ')}</Badge>
+                </div>
               </div>
             </div>
 
@@ -846,6 +856,7 @@ const LeadDetail = () => {
                   label="Account Type"
                   options={ACCOUNT_TYPES}
                   value={scheduleConversionForm.accountType}
+                  disabled={lead.type === 'commercial' || lead.type === 'residential'}
                   onChange={(value) =>
                     setScheduleConversionForm({
                       ...scheduleConversionForm,
@@ -853,6 +864,11 @@ const LeadDetail = () => {
                     })
                   }
                 />
+                {(lead.type === 'commercial' || lead.type === 'residential') && (
+                  <p className="sm:col-span-2 -mt-2 text-xs text-surface-500 dark:text-surface-400">
+                    Account type is inherited from the lead classification: {lead.type}.
+                  </p>
+                )}
                 <Input
                   label="Billing Email"
                   type="email"
@@ -1193,6 +1209,18 @@ const LeadDetail = () => {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="Lead Type"
+              placeholder="Select lead type"
+              options={LEAD_TYPE_OPTIONS}
+              value={editFormData.type || 'unknown'}
+              onChange={(value) =>
+                setEditFormData({
+                  ...editFormData,
+                  type: (value || 'unknown') as UpdateLeadInput['type'],
+                })
+              }
+            />
             <Input
               label="Contact Name"
               placeholder="John Smith"

@@ -59,6 +59,7 @@ interface LeadAccessOptions {
 }
 
 export interface LeadCreateInput {
+  type: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   companyName?: string | null;
   contactName: string;
@@ -75,6 +76,7 @@ export interface LeadCreateInput {
 }
 
 export interface LeadUpdateInput {
+  type?: 'commercial' | 'residential' | 'unknown';
   leadSourceId?: string | null;
   status?: string;
   companyName?: string | null;
@@ -104,6 +106,7 @@ export interface PaginatedResult<T> {
 
 const leadSelect = {
   id: true,
+  type: true,
   status: true,
   companyName: true,
   contactName: true,
@@ -388,6 +391,7 @@ export async function createLead(input: LeadCreateInput) {
   return prisma.$transaction(async (tx) => {
     const lead = await tx.lead.create({
       data: {
+        type: input.type,
         leadSourceId: input.leadSourceId,
         companyName: input.companyName,
         contactName: input.contactName,
@@ -466,6 +470,7 @@ export async function updateLead(id: string, input: LeadUpdateInput) {
       ? { connect: { id: input.leadSourceId } }
       : { disconnect: true };
   }
+  if (input.type !== undefined) updateData.type = input.type;
   if (input.status !== undefined) updateData.status = input.status;
   if (input.companyName !== undefined)
     updateData.companyName = input.companyName;
@@ -587,7 +592,7 @@ export interface ConvertLeadInput {
   existingAccountId?: string | null;
   accountData?: {
     name: string;
-    type: string;
+    type?: string;
     industry?: string | null;
     website?: string | null;
     billingEmail?: string | null;
@@ -641,6 +646,7 @@ export async function convertLead(
     select: {
       id: true,
       status: true,
+      type: true,
       companyName: true,
       contactName: true,
       primaryEmail: true,
@@ -681,9 +687,28 @@ export async function convertLead(
     let accountId: string;
     let accountName: string;
 
+    const resolvedAccountType =
+      lead.type === 'commercial' || lead.type === 'residential'
+        ? lead.type
+        : input.accountData?.type;
+
     if (input.createNewAccount) {
       if (!input.accountData) {
         throw new Error('Account data is required when creating a new account');
+      }
+      if (!resolvedAccountType) {
+        throw new BadRequestError(
+          'Lead type must be set before conversion, or provide an account type for unknown leads'
+        );
+      }
+      if (
+        (lead.type === 'commercial' || lead.type === 'residential')
+        && input.accountData.type
+        && input.accountData.type !== lead.type
+      ) {
+        throw new BadRequestError(
+          `Lead is classified as ${lead.type}. Update the lead type before converting to a different account type.`
+        );
       }
 
       const proposedAccountName = input.accountData.name.trim();
@@ -723,7 +748,7 @@ export async function convertLead(
       const account = await tx.account.create({
         data: {
           name: proposedAccountName,
-          type: input.accountData.type,
+          type: resolvedAccountType,
           industry: input.accountData.industry,
           website: input.accountData.website,
           billingEmail: proposedBillingEmail || null,

@@ -64,13 +64,14 @@ describe('Lead Routes', () => {
 
     const response = await request(app)
       .post('/api/v1/leads')
-      .send({ contactName: 'Jane Doe' })
+      .send({ contactName: 'Jane Doe', type: 'commercial' })
       .expect(201);
 
     expect(response.body.data.id).toBe('lead-1');
     expect(leadService.createLead).toHaveBeenCalledWith(
       expect.objectContaining({
         contactName: 'Jane Doe',
+        type: 'commercial',
         createdByUserId: 'user-1',
       })
     );

@@ -52,6 +52,7 @@ const leadSource: LeadSource = {
 
 const lead: Lead = {
   id: 'lead-1',
+  type: 'commercial',
   status: 'lead',
   companyName: 'Acme Corporation',
   contactName: 'Jane Smith',
@@ -211,14 +212,15 @@ describe('LeadsList', () => {
     render(<LeadsList />);
 
     await userEventInstance.click(screen.getByRole('button', { name: /add new lead/i }));
+    await userEventInstance.selectOptions(await screen.findByLabelText(/lead type/i), 'commercial');
     await userEventInstance.type(await screen.findByLabelText(/contact name/i), 'John Prospect');
     expect(screen.queryByLabelText(/assigned to/i)).not.toBeInTheDocument();
     await userEventInstance.click(screen.getByRole('button', { name: /create lead/i }));
 
     expect(createLeadMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        type: 'commercial',
         contactName: 'John Prospect',
-        status: 'lead',
       })
     );
   });
@@ -228,6 +230,7 @@ describe('LeadsList', () => {
     render(<LeadsList />);
 
     await userEventInstance.click(screen.getByRole('button', { name: /add new lead/i }));
+    await userEventInstance.selectOptions(await screen.findByLabelText(/lead type/i), 'residential');
     await userEventInstance.type(await screen.findByLabelText(/contact name/i), 'Jane Prospect');
 
     await userEventInstance.selectOptions(
@@ -242,6 +245,7 @@ describe('LeadsList', () => {
 
     expect(createLeadMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        type: 'residential',
         contactName: 'Jane Prospect',
         leadSourceId: null,
         notes: expect.stringContaining('Neighborhood event'),

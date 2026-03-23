@@ -49,6 +49,11 @@ const LEAD_STATUSES = [
   { value: 'reopened', label: 'Reopened' },
 ];
 
+const LEAD_TYPE_OPTIONS = [
+  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'Residential' },
+];
+
 const CREATE_LEAD_SOURCE_OPTIONS = [
   { value: 'Website', label: 'Website' },
   { value: 'Referral', label: 'Referral' },
@@ -215,12 +220,12 @@ const LeadsList = () => {
   const isCreateModalOpen = canWriteLeads && isCreateRoute;
 
   const [formData, setFormData] = useState<CreateLeadInput>({
+    type: 'unknown',
     contactName: '',
     companyName: null,
     primaryEmail: null,
     primaryPhone: null,
     leadSourceId: null,
-    status: 'lead',
     estimatedValue: null,
     probability: null,
     expectedCloseDate: null,
@@ -391,6 +396,10 @@ const LeadsList = () => {
       toast.error('Contact name is required');
       return;
     }
+    if (formData.type === 'unknown') {
+      toast.error('Lead type is required');
+      return;
+    }
 
     if (createLeadSourceOption === OTHER_LEAD_SOURCE_VALUE && !otherLeadSource.trim()) {
       toast.error('Please enter where the lead came from');
@@ -447,12 +456,12 @@ const LeadsList = () => {
 
   const resetForm = () => {
     setFormData({
+      type: 'unknown',
       contactName: '',
       companyName: null,
       primaryEmail: null,
       primaryPhone: null,
       leadSourceId: null,
-      status: 'lead',
       estimatedValue: null,
       probability: null,
       expectedCloseDate: null,
@@ -977,6 +986,18 @@ const LeadsList = () => {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="Lead Type"
+              placeholder="Select lead type"
+              options={LEAD_TYPE_OPTIONS}
+              value={formData.type === 'unknown' ? '' : formData.type}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  type: (value || 'unknown') as CreateLeadInput['type'],
+                })
+              }
+            />
             <Input
               label="Contact Name"
               placeholder="John Smith"
@@ -1111,7 +1132,7 @@ const LeadsList = () => {
             <Button
               onClick={handleCreate}
               isLoading={creating}
-              disabled={!formData.contactName}
+              disabled={!formData.contactName || formData.type === 'unknown'}
             >
               Create Lead
             </Button>

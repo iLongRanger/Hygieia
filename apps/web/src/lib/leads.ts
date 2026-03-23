@@ -98,7 +98,7 @@ export interface ConvertLeadInput {
   existingAccountId?: string | null;
   accountData?: {
     name: string;
-    type: 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit';
+    type?: 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit';
     industry?: string | null;
     website?: string | null;
     billingEmail?: string | null;
