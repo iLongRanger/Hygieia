@@ -51,7 +51,7 @@
 
   /* Focus outline styles */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-surface-100;
   }
 
   .dark *:focus-visible {
