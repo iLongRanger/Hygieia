@@ -16,6 +16,10 @@ import type {
   UpdateResidentialQuoteInput,
 } from '../schemas/residential';
 import type { ServiceWeekday } from './serviceScheduleService';
+import {
+  autoAdvanceLeadStatusForAccount,
+  autoSetLeadStatusForAccount,
+} from './leadService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -1151,7 +1155,7 @@ export async function sendResidentialQuote(id: string) {
     throw new BadRequestError('This residential quote requires internal approval before it can be sent');
   }
 
-  return prisma.residentialQuote.update({
+  const updatedQuote = await prisma.residentialQuote.update({
     where: { id },
     data: {
       status: 'sent',
@@ -1159,6 +1163,12 @@ export async function sendResidentialQuote(id: string) {
     },
     select: residentialQuoteDetailSelect,
   });
+
+  if (updatedQuote.accountId) {
+    await autoAdvanceLeadStatusForAccount(updatedQuote.accountId, 'proposal_sent');
+  }
+
+  return updatedQuote;
 }
 
 export async function approveResidentialQuoteReview(id: string) {
@@ -1281,6 +1291,14 @@ export async function acceptResidentialQuotePublic(
         declineReason: null,
       },
     });
+
+    const fullQuote = await prisma.residentialQuote.findUnique({
+      where: { id: quote.id },
+      select: { accountId: true },
+    });
+    if (fullQuote?.accountId) {
+      await autoAdvanceLeadStatusForAccount(fullQuote.accountId, 'negotiation');
+    }
   }
 
   const resolvedQuote = await prisma.residentialQuote.findUniqueOrThrow({
@@ -1343,7 +1361,7 @@ export async function acceptResidentialQuote(id: string) {
     throw new BadRequestError('Residential quote cannot be accepted from its current status');
   }
 
-  return prisma.residentialQuote.update({
+  const updatedQuote = await prisma.residentialQuote.update({
     where: { id },
     data: {
       status: 'accepted',
@@ -1353,6 +1371,12 @@ export async function acceptResidentialQuote(id: string) {
     },
     select: residentialQuoteDetailSelect,
   });
+
+  if (updatedQuote.accountId) {
+    await autoAdvanceLeadStatusForAccount(updatedQuote.accountId, 'negotiation');
+  }
+
+  return updatedQuote;
 }
 
 export async function declineResidentialQuote(
@@ -1368,7 +1392,7 @@ export async function declineResidentialQuote(
     throw new BadRequestError('Converted residential quotes cannot be declined');
   }
 
-  return prisma.residentialQuote.update({
+  const updatedQuote = await prisma.residentialQuote.update({
     where: { id },
     data: {
       status: 'declined',
@@ -1377,6 +1401,12 @@ export async function declineResidentialQuote(
     },
     select: residentialQuoteDetailSelect,
   });
+
+  if (updatedQuote.accountId) {
+    await autoSetLeadStatusForAccount(updatedQuote.accountId, 'lost');
+  }
+
+  return updatedQuote;
 }
 
 export async function archiveResidentialQuote(id: string) {
