@@ -20,6 +20,12 @@ import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
 import { listResidentialQuotes } from '../../lib/residential';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
+import {
+  COMMERCIAL_ACCOUNT_PIPELINE_STAGES,
+  RESIDENTIAL_ACCOUNT_PIPELINE_STAGES,
+  type CommercialAccountPipelineStageId,
+  type ResidentialAccountPipelineStageId,
+} from '../../lib/accountPipeline';
 import type {
   Account,
   AccountActivity,
@@ -128,6 +134,11 @@ function getResidentialJourneyState(input: {
   activeContract: Contract | null;
   recentJobs: Job[];
 }) {
+  const getStage = (stageId: ResidentialAccountPipelineStageId, nextStep: string) => ({
+    currentStage: RESIDENTIAL_ACCOUNT_PIPELINE_STAGES.find((stage) => stage.id === stageId)?.label || stageId,
+    nextStep,
+  });
+
   const latestQuote = [...input.residentialQuotes].sort((left, right) => {
     const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
     const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
@@ -137,50 +148,26 @@ function getResidentialJourneyState(input: {
   const hasScheduledService = input.recentJobs.length > 0;
 
   if (hasScheduledService) {
-    return {
-      currentStage: 'Scheduled Service',
-      nextStep: 'Review the generated jobs and confirm the first visit is assigned correctly.',
-    };
+    return getStage('scheduled_service', 'Review the generated jobs and confirm the first visit is assigned correctly.');
   }
 
   if (input.activeContract) {
-    return {
-      currentStage: 'Active Contract',
-      nextStep: 'Activate delivery by assigning the first visit or confirming auto-generated work.',
-    };
+    return getStage('active_contract', 'Activate delivery by assigning the first visit or confirming auto-generated work.');
   }
 
   switch (latestQuote?.status) {
     case 'converted':
-      return {
-        currentStage: 'Contract Ready',
-        nextStep: 'Open the linked contract and activate service.',
-      };
+      return getStage('contract_ready', 'Open the linked contract and activate service.');
     case 'review_required':
-      return {
-        currentStage: 'Review Required',
-        nextStep: 'Get internal approval before sending the residential quote to the client.',
-      };
+      return getStage('review_required', 'Get internal approval before sending the residential quote to the client.');
     case 'review_approved':
-      return {
-        currentStage: 'Review Approved',
-        nextStep: 'Send the approved residential quote to the client.',
-      };
+      return getStage('review_approved', 'Send the approved residential quote to the client.');
     case 'accepted':
-      return {
-        currentStage: 'Quote Accepted',
-        nextStep: 'Convert the accepted quote into a residential contract.',
-      };
+      return getStage('quote_accepted', 'Convert the accepted quote into a residential contract.');
     case 'viewed':
-      return {
-        currentStage: 'Quote Viewed',
-        nextStep: 'Follow up with the client while the residential quote is actively under review.',
-      };
+      return getStage('quote_viewed', 'Follow up with the client while the residential quote is actively under review.');
     case 'sent':
-      return {
-        currentStage: 'Quote Sent',
-        nextStep: 'Follow up with the client or resend the quote if needed.',
-      };
+      return getStage('quote_sent', 'Follow up with the client or resend the quote if needed.');
     case 'declined':
       return {
         currentStage: 'Quote Declined',
@@ -188,15 +175,9 @@ function getResidentialJourneyState(input: {
       };
     case 'draft':
     case 'quoted':
-      return {
-        currentStage: 'Quote Draft',
-        nextStep: 'Finish pricing details and send the residential quote to the client.',
-      };
+      return getStage('quote_draft', 'Finish pricing details and send the residential quote to the client.');
     default:
-      return {
-        currentStage: 'Account Created',
-        nextStep: 'Create the first residential quote for this household.',
-      };
+      return getStage('account_created', 'Create the first residential quote for this household.');
   }
 }
 
@@ -207,6 +188,11 @@ function getCommercialJourneyState(input: {
   activeContract: Contract | null;
   recentJobs: Job[];
 }) {
+  const getStage = (stageId: CommercialAccountPipelineStageId, nextStep: string) => ({
+    currentStage: COMMERCIAL_ACCOUNT_PIPELINE_STAGES.find((stage) => stage.id === stageId)?.label || stageId,
+    nextStep,
+  });
+
   const latestProposal = [...input.proposals].sort((left, right) => {
     const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
     const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
@@ -219,35 +205,20 @@ function getCommercialJourneyState(input: {
   const hasScheduledService = input.recentJobs.length > 0;
 
   if (hasScheduledService) {
-    return {
-      currentStage: 'Scheduled Service',
-      nextStep: 'Review the job schedule and confirm the field team is assigned correctly.',
-    };
+    return getStage('scheduled_service', 'Review the job schedule and confirm the field team is assigned correctly.');
   }
 
   if (input.activeContract) {
-    return {
-      currentStage: 'Active Contract',
-      nextStep: 'Activate delivery by confirming the service calendar and first visit assignment.',
-    };
+    return getStage('active_contract', 'Activate delivery by confirming the service calendar and first visit assignment.');
   }
 
   switch (latestProposal?.status) {
     case 'accepted':
-      return {
-        currentStage: 'Contract Ready',
-        nextStep: 'Create or finalize the contract from the accepted proposal.',
-      };
+      return getStage('contract_ready', 'Create or finalize the contract from the accepted proposal.');
     case 'viewed':
-      return {
-        currentStage: 'Proposal Viewed',
-        nextStep: 'Follow up with the client while the proposal is under review.',
-      };
+      return getStage('proposal_viewed', 'Follow up with the client while the proposal is under review.');
     case 'sent':
-      return {
-        currentStage: 'Proposal Sent',
-        nextStep: 'Follow up with the client or resend the proposal if needed.',
-      };
+      return getStage('proposal_sent', 'Follow up with the client or resend the proposal if needed.');
     case 'rejected':
       return {
         currentStage: 'Proposal Rejected',
@@ -255,39 +226,24 @@ function getCommercialJourneyState(input: {
       };
     case 'draft':
     case 'expired':
-      return {
-        currentStage: 'Proposal Draft',
-        nextStep: 'Finish pricing and send the proposal to the client.',
-      };
+      return getStage('proposal_draft', 'Finish pricing and send the proposal to the client.');
     default:
       break;
   }
 
   if (hasCompletedWalkthrough) {
-    return {
-      currentStage: 'Walkthrough Completed',
-      nextStep: 'Build the proposal using the completed walkthrough scope.',
-    };
+    return getStage('walkthrough_completed', 'Build the proposal using the completed walkthrough scope.');
   }
 
   if (hasBookedWalkthrough) {
-    return {
-      currentStage: 'Walkthrough Booked',
-      nextStep: 'Prepare the facility details before the walkthrough happens.',
-    };
+    return getStage('walkthrough_booked', 'Prepare the facility details before the walkthrough happens.');
   }
 
   if (input.facilities.length > 0) {
-    return {
-      currentStage: 'Facility Added',
-      nextStep: 'Book the first walkthrough for the service location.',
-    };
+    return getStage('facility_added', 'Book the first walkthrough for the service location.');
   }
 
-  return {
-    currentStage: 'Account Created',
-    nextStep: 'Add the first facility so walkthrough planning can begin.',
-  };
+  return getStage('account_created', 'Add the first facility so walkthrough planning can begin.');
 }
 
 const AccountDetail = () => {

@@ -50,6 +50,78 @@ export type LeadStatus =
   | 'lost'
   | 'reopened';
 
+export const PIPELINE_AUTO_ADVANCE_STATUSES = [
+  'lead',
+  'walk_through_booked',
+  'walk_through_completed',
+  'proposal_sent',
+  'negotiation',
+  'won',
+] as const;
+
+export type PipelineAutoAdvanceStatus = typeof PIPELINE_AUTO_ADVANCE_STATUSES[number];
+
+export type AccountType = 'commercial' | 'residential';
+
+export type CommercialAccountPipelineStageId =
+  | 'account_created'
+  | 'facility_added'
+  | 'walkthrough_booked'
+  | 'walkthrough_completed'
+  | 'proposal_draft'
+  | 'proposal_sent'
+  | 'proposal_viewed'
+  | 'contract_ready'
+  | 'active_contract'
+  | 'scheduled_service';
+
+export type ResidentialAccountPipelineStageId =
+  | 'account_created'
+  | 'quote_draft'
+  | 'review_required'
+  | 'review_approved'
+  | 'quote_sent'
+  | 'quote_viewed'
+  | 'quote_accepted'
+  | 'contract_ready'
+  | 'active_contract'
+  | 'scheduled_service';
+
+export type AccountPipelineStageId = CommercialAccountPipelineStageId | ResidentialAccountPipelineStageId;
+
+export interface AccountPipelineStageDefinition {
+  id: AccountPipelineStageId;
+  accountType: AccountType;
+  label: string;
+  canonicalStatus: PipelineAutoAdvanceStatus;
+}
+
+export const COMMERCIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDefinition[] = [
+  { id: 'account_created', accountType: 'commercial', label: 'Account Created', canonicalStatus: 'lead' },
+  { id: 'facility_added', accountType: 'commercial', label: 'Facility Added', canonicalStatus: 'lead' },
+  { id: 'walkthrough_booked', accountType: 'commercial', label: 'Walkthrough Booked', canonicalStatus: 'walk_through_booked' },
+  { id: 'walkthrough_completed', accountType: 'commercial', label: 'Walkthrough Completed', canonicalStatus: 'walk_through_completed' },
+  { id: 'proposal_draft', accountType: 'commercial', label: 'Proposal Draft', canonicalStatus: 'walk_through_completed' },
+  { id: 'proposal_sent', accountType: 'commercial', label: 'Proposal Sent', canonicalStatus: 'proposal_sent' },
+  { id: 'proposal_viewed', accountType: 'commercial', label: 'Proposal Viewed', canonicalStatus: 'negotiation' },
+  { id: 'contract_ready', accountType: 'commercial', label: 'Contract Ready', canonicalStatus: 'negotiation' },
+  { id: 'active_contract', accountType: 'commercial', label: 'Active Contract', canonicalStatus: 'won' },
+  { id: 'scheduled_service', accountType: 'commercial', label: 'Scheduled Service', canonicalStatus: 'won' },
+] as const;
+
+export const RESIDENTIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDefinition[] = [
+  { id: 'account_created', accountType: 'residential', label: 'Account Created', canonicalStatus: 'lead' },
+  { id: 'quote_draft', accountType: 'residential', label: 'Quote Draft', canonicalStatus: 'lead' },
+  { id: 'review_required', accountType: 'residential', label: 'Review Required', canonicalStatus: 'lead' },
+  { id: 'review_approved', accountType: 'residential', label: 'Review Approved', canonicalStatus: 'lead' },
+  { id: 'quote_sent', accountType: 'residential', label: 'Quote Sent', canonicalStatus: 'proposal_sent' },
+  { id: 'quote_viewed', accountType: 'residential', label: 'Quote Viewed', canonicalStatus: 'negotiation' },
+  { id: 'quote_accepted', accountType: 'residential', label: 'Quote Accepted', canonicalStatus: 'negotiation' },
+  { id: 'contract_ready', accountType: 'residential', label: 'Contract Ready', canonicalStatus: 'negotiation' },
+  { id: 'active_contract', accountType: 'residential', label: 'Active Contract', canonicalStatus: 'won' },
+  { id: 'scheduled_service', accountType: 'residential', label: 'Scheduled Service', canonicalStatus: 'won' },
+] as const;
+
 export type AppointmentType = 'walk_through' | 'inspection' | 'visit';
 export type AppointmentStatus =
   | 'scheduled'
