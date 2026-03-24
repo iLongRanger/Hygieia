@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import AccountDetail from '../accounts/AccountDetail';
-import type { Account } from '../../types/crm';
+import type { Account, Appointment } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import type { Proposal } from '../../types/proposal';
 import type { Contract } from '../../types/contract';
@@ -10,6 +10,7 @@ import type { User } from '../../types/user';
 import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'account-1' };
+let mockPathname = '/accounts/account-1';
 const navigateMock = vi.fn();
 
 vi.mock('react-router-dom', async () => {
@@ -17,6 +18,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useParams: () => mockParams,
+    useLocation: () => ({ pathname: mockPathname }),
     useNavigate: () => navigateMock,
   };
 });
@@ -35,6 +37,7 @@ const listContractsMock = vi.fn();
 const listContactsMock = vi.fn();
 const listJobsMock = vi.fn();
 const listResidentialQuotesMock = vi.fn();
+const listAppointmentsMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   getAccount: (...args: unknown[]) => getAccountMock(...args),
@@ -68,6 +71,10 @@ vi.mock('../../lib/contacts', () => ({
 
 vi.mock('../../lib/jobs', () => ({
   listJobs: (...args: unknown[]) => listJobsMock(...args),
+}));
+
+vi.mock('../../lib/appointments', () => ({
+  listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
 }));
 
 vi.mock('../../lib/residential', () => ({
@@ -248,9 +255,49 @@ const user: User = {
   roles: [],
 };
 
+const upcomingAppointment: Appointment = {
+  id: 'appt-upcoming',
+  type: 'walk_through',
+  status: 'scheduled',
+  scheduledStart: '2026-04-18T16:00:00.000Z',
+  scheduledEnd: '2026-04-18T17:00:00.000Z',
+  timezone: 'America/Los_Angeles',
+  location: null,
+  notes: null,
+  completionNotes: null,
+  actualDuration: null,
+  completedAt: null,
+  reminderSentAt: null,
+  rescheduledFromId: null,
+  lead: null,
+  account: {
+    id: 'account-1',
+    name: 'Acme Corporation',
+    type: 'commercial',
+  },
+  facility: { id: 'facility-1', name: 'Main Office' },
+  assignedToUser: { id: 'user-1', fullName: 'Account Manager', email: 'manager@example.com' },
+  assignedTeam: null,
+  createdByUser: { id: 'admin-1', fullName: 'Admin User' },
+  inspectionId: null,
+  inspection: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const completedAppointment: Appointment = {
+  ...upcomingAppointment,
+  id: 'appt-complete',
+  status: 'completed',
+  scheduledStart: '2026-04-10T16:00:00.000Z',
+  scheduledEnd: '2026-04-10T17:00:00.000Z',
+  completedAt: '2026-04-10T17:00:00.000Z',
+};
+
 describe('AccountDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'account-1' };
+    mockPathname = '/accounts/account-1';
     navigateMock.mockReset();
     useAuthStore.setState({
       user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
@@ -298,6 +345,7 @@ describe('AccountDetail', () => {
     listContactsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
     listJobsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
     listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+    listAppointmentsMock.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -305,6 +353,7 @@ describe('AccountDetail', () => {
   });
 
   it('renders account details and related records', async () => {
+    listAppointmentsMock.mockResolvedValue([upcomingAppointment, completedAppointment]);
     render(<AccountDetail />);
 
     expect(await screen.findByRole('heading', { name: 'Acme Corporation' })).toBeInTheDocument();
@@ -312,6 +361,9 @@ describe('AccountDetail', () => {
     expect(screen.getByText('Main Office')).toBeInTheDocument();
     expect(screen.getByText('PROP-001')).toBeInTheDocument();
     expect(screen.getByText('CONT-001')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /bookings/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Walkthrough').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Apr 18, 2026').length).toBeGreaterThan(0);
   });
 
   it('updates account from edit modal', async () => {
@@ -421,6 +473,7 @@ describe('AccountDetail', () => {
   });
 
   it('shows the residential journey state for residential accounts', async () => {
+    mockPathname = '/residential/accounts/account-res-1';
     const residentialAccount: Account = {
       ...account,
       id: 'account-res-1',
@@ -533,6 +586,7 @@ describe('AccountDetail', () => {
   });
 
   it('shows the residential service summary for active residential accounts', async () => {
+    mockPathname = '/residential/accounts/account-res-2';
     const residentialAccount: Account = {
       ...account,
       id: 'account-res-2',
@@ -669,5 +723,54 @@ describe('AccountDetail', () => {
     expect(screen.getAllByText('Apr 15, 2026').length).toBeGreaterThan(0);
     expect(screen.getByText('9:00 AM - 11:00 AM')).toBeInTheDocument();
     expect(screen.getByText('Account Manager')).toBeInTheDocument();
+  });
+
+  it('redirects residential accounts to the residential account route', async () => {
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-3',
+      name: 'Cedar Residence',
+      type: 'residential',
+      serviceAddress: {
+        street: '10 Cedar Street',
+        city: 'Portland',
+        state: 'OR',
+        postalCode: '97201',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 1500,
+        bedrooms: 3,
+        fullBathrooms: 2,
+        halfBathrooms: 0,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: false,
+        lastProfessionalCleaning: null,
+        parkingAccess: null,
+        entryNotes: null,
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    mockParams = { id: 'account-res-3' };
+    mockPathname = '/accounts/account-res-3';
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Cedar Residence' });
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/residential/accounts/account-res-3', { replace: true });
+    });
   });
 });

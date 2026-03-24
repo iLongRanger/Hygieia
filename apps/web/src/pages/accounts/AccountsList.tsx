@@ -20,6 +20,7 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import {
   listAccounts,
   createAccount,
@@ -338,7 +339,7 @@ const AccountsList = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/accounts/${item.id}`)}
+            onClick={() => navigate(getAccountDetailPath(item))}
           >
             Manage
           </Button>
@@ -788,5 +789,4 @@ const AccountsList = () => {
 };
 
 export default AccountsList;
-
 

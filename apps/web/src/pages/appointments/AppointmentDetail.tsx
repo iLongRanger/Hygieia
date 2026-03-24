@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { getAppointment } from '../../lib/appointments';
 import type { Appointment, AppointmentStatus } from '../../types/crm';
 
@@ -218,7 +219,7 @@ const AppointmentDetail = () => {
                   <Building2 className="h-4 w-4 text-surface-400" />
                   <button
                     className="text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
-                    onClick={() => navigate(`/accounts/${appointment.account!.id}`)}
+                    onClick={() => navigate(getAccountDetailPath(appointment.account!))}
                   >
                     {appointment.account.name}
                   </button>

@@ -24,6 +24,7 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import {
   listLeads,
   createLead,
@@ -382,7 +383,7 @@ const LeadsList = () => {
 
   const navigateToOpportunity = useCallback((opportunity: Opportunity) => {
     if (opportunity.account?.id) {
-      navigate(`/accounts/${opportunity.account.id}`);
+      navigate(getAccountDetailPath(opportunity.account));
       return;
     }
 

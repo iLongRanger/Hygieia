@@ -27,6 +27,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { PERMISSIONS } from '../../lib/permissions';
 import {
   getQuotation,
@@ -559,7 +560,7 @@ const QuotationDetail = () => {
                   <div>
                     <p className="text-xs text-surface-500">Account</p>
                     <button
-                      onClick={() => navigate(`/accounts/${quotation.account.id}`)}
+                      onClick={() => navigate(getAccountDetailPath(quotation.account))}
                       className="text-sm font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400"
                     >
                       {quotation.account.name}

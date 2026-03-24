@@ -25,6 +25,7 @@ import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { MonthCalendar, WeekCalendar, DayCalendar } from '../../components/calendar';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { listJobs, startJob, completeJob, cancelJob, generateJobs } from '../../lib/jobs';
 import { listContracts } from '../../lib/contracts';
 import { listTeams } from '../../lib/teams';
@@ -145,7 +146,11 @@ const jobToAppointment = (job: Job): Appointment => {
     reminderSentAt: null,
     rescheduledFromId: null,
     lead: null,
-    account: { id: job.account.id, name: job.account.name, type: '' },
+    account: {
+      id: job.account.id,
+      name: job.account.name,
+      type: (job.account as { type?: string | null }).type || '',
+    },
     facility: { id: job.facility.id, name: job.facility.name },
     assignedToUser: job.assignedToUser
       ? { id: job.assignedToUser.id, fullName: displayName, email: job.assignedToUser.email }
@@ -306,7 +311,7 @@ const JobsList = () => {
 
   const handleCalendarCustomerClick = (appointment: Appointment) => {
     if (appointment.account?.id) {
-      navigate(`/accounts/${appointment.account.id}`);
+      navigate(getAccountDetailPath(appointment.account));
     }
   };
 

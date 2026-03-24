@@ -3,6 +3,7 @@ import type { Account } from '../../types/crm';
 import type { Contract } from '../../types/contract';
 import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { formatCurrency, formatShortDate, getTypeVariant } from './account-constants';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -82,6 +83,7 @@ export function AccountHero({
   onNavigate,
 }: AccountHeroProps) {
   const isArchived = !!account.archivedAt;
+  const isResidentialAccount = account.type === 'residential';
   const nextService = getNextService(recentJobs);
   const health = getAccountHealth(activeContract, contractTotal);
 
@@ -201,18 +203,18 @@ export function AccountHero({
 
         {/* Facilities */}
         <Card
-          className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30 cursor-pointer"
+          className={`!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30${isResidentialAccount ? '' : ' cursor-pointer'}`}
           noPadding
-          hover
-          onClick={() => onNavigate(`/accounts/${account.id}/facilities`)}
+          hover={!isResidentialAccount}
+          onClick={isResidentialAccount ? undefined : () => onNavigate(`/accounts/${account.id}/facilities`)}
         >
           <div className="p-4">
             <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <Building className="h-4 w-4 text-gold-400" />
-              <span className="text-xs font-medium">Facilities</span>
+              <span className="text-xs font-medium">{isResidentialAccount ? 'Service Location' : 'Facilities'}</span>
             </div>
             <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
-              {account._count.facilities}
+              {isResidentialAccount ? (account.serviceAddress ? '1' : '0') : account._count.facilities}
             </p>
           </div>
         </Card>

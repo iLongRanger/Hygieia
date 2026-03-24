@@ -80,6 +80,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.ACCOUNTS_READ],
   },
   {
+    path: '/residential/accounts/:id',
+    requiredPermissions: [PERMISSIONS.ACCOUNTS_READ],
+  },
+  {
     path: '/contacts',
     requiredPermissions: [PERMISSIONS.CONTACTS_READ],
   },

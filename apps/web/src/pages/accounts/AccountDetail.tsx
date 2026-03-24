@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -11,6 +11,7 @@ import {
   archiveAccount,
   restoreAccount,
 } from '../../lib/accounts';
+import { listAppointments } from '../../lib/appointments';
 import { listFacilities, createFacility } from '../../lib/facilities';
 import { listContacts } from '../../lib/contacts';
 import { listJobs } from '../../lib/jobs';
@@ -18,12 +19,14 @@ import { listUsers } from '../../lib/users';
 import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
 import { listResidentialQuotes } from '../../lib/residential';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import type {
   Account,
   AccountActivity,
   AccountActivityEntryType,
   UpdateAccountInput,
 } from '../../types/crm';
+import type { Appointment } from '../../types/crm';
 import type { Facility, CreateFacilityInput } from '../../types/facility';
 import type { User } from '../../types/user';
 import type { Proposal } from '../../types/proposal';
@@ -186,6 +189,7 @@ function getResidentialJourneyState(input: {
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<Account | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -203,6 +207,7 @@ const AccountDetail = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [residentialQuotes, setResidentialQuotes] = useState<ResidentialQuote[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFacilityModal, setShowFacilityModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -394,6 +399,17 @@ const AccountDetail = () => {
     }
   }, [id]);
 
+  const fetchAppointments = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await listAppointments({ accountId: id, includePast: true });
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Failed to fetch account appointments:', error);
+      setAppointments([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchAccount();
     fetchUsers();
@@ -405,7 +421,16 @@ const AccountDetail = () => {
     fetchActivities();
     fetchContacts();
     fetchRecentJobs();
-  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchResidentialQuotes, fetchActiveContract, fetchActivities, fetchContacts, fetchRecentJobs]);
+    fetchAppointments();
+  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchResidentialQuotes, fetchActiveContract, fetchActivities, fetchContacts, fetchRecentJobs, fetchAppointments]);
+
+  useEffect(() => {
+    if (!account) return;
+    const expectedPath = getAccountDetailPath(account);
+    if (location.pathname !== expectedPath) {
+      navigate(expectedPath, { replace: true });
+    }
+  }, [account, location.pathname, navigate]);
 
   const handleUpdate = async () => {
     if (!id) return;
@@ -521,6 +546,88 @@ const AccountDetail = () => {
     activeContract,
     recentJobs,
   });
+  const upcomingAppointments = appointments
+    .filter((appointment) => appointment.status !== 'completed' && appointment.status !== 'canceled')
+    .sort((left, right) => new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime());
+  const recentAppointments = appointments
+    .filter((appointment) => appointment.status === 'completed' || appointment.status === 'rescheduled')
+    .sort((left, right) => new Date(right.scheduledStart).getTime() - new Date(left.scheduledStart).getTime());
+
+  const bookingsSection = (
+    <Card className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Bookings</h3>
+          <p className="text-sm text-surface-500 dark:text-surface-400">
+            Upcoming and recent walkthroughs or service appointments linked to this account.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => navigate('/appointments')}>
+          Open Appointments
+        </Button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+          <div className="text-xs uppercase tracking-wide text-surface-500">Upcoming</div>
+          {upcomingAppointments.length === 0 ? (
+            <div className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+              No upcoming bookings.
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {upcomingAppointments.slice(0, 3).map((appointment) => (
+                <div key={appointment.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-surface-900 dark:text-surface-100">
+                      {appointment.type === 'walk_through' ? 'Walkthrough' : 'Service Booking'}
+                    </div>
+                    <Badge variant={appointment.status === 'rescheduled' ? 'warning' : 'info'}>
+                      {appointment.status.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
+                    {formatCalendarDate(appointment.scheduledStart)}
+                  </div>
+                  <div className="text-xs text-surface-500">
+                    {appointment.facility?.name || 'No facility'} · {appointment.assignedToUser?.fullName || appointment.assignedTeam?.name || 'Unassigned'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+          <div className="text-xs uppercase tracking-wide text-surface-500">Recent</div>
+          {recentAppointments.length === 0 ? (
+            <div className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+              No recent bookings.
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {recentAppointments.slice(0, 3).map((appointment) => (
+                <div key={appointment.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-surface-900 dark:text-surface-100">
+                      {appointment.type === 'walk_through' ? 'Walkthrough' : 'Service Booking'}
+                    </div>
+                    <Badge variant={appointment.status === 'completed' ? 'success' : 'warning'}>
+                      {appointment.status.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
+                    {formatCalendarDate(appointment.scheduledStart)}
+                  </div>
+                  <div className="text-xs text-surface-500">
+                    {appointment.facility?.name || 'No facility'} · {appointment.assignedToUser?.fullName || appointment.assignedTeam?.name || 'Unassigned'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -541,6 +648,7 @@ const AccountDetail = () => {
       {isResidentialAccount ? (
         <>
           <div className="grid gap-6 lg:grid-cols-2">
+            {bookingsSection}
             <AccountContacts
               contacts={contacts}
               accountId={account.id}
@@ -733,6 +841,7 @@ const AccountDetail = () => {
       ) : (
         <>
           <div className="grid gap-6 lg:grid-cols-2">
+            {bookingsSection}
             <AccountContacts
               contacts={contacts}
               accountId={account.id}

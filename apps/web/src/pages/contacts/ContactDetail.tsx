@@ -24,6 +24,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { PERMISSIONS } from '../../lib/permissions';
 import {
   getContact,
@@ -292,7 +293,7 @@ const ContactDetail = () => {
                     {contact.account ? (
                       <button
                         onClick={() =>
-                          navigate(`/accounts/${contact.account?.id}`)
+                          navigate(getAccountDetailPath(contact.account!))
                         }
                         className="text-emerald hover:underline"
                       >
@@ -503,5 +504,4 @@ const ContactDetail = () => {
 };
 
 export default ContactDetail;
-
 
