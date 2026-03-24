@@ -22,13 +22,14 @@ import { Textarea } from '../../components/ui/Textarea';
 import { convertLead, getLead, listLeadSources, updateLead } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listFacilities } from '../../lib/facilities';
+import { listAccounts } from '../../lib/accounts';
 import {
   createAppointment,
   listAppointments,
   rescheduleAppointment,
   completeAppointment,
 } from '../../lib/appointments';
-import type { Appointment, Lead, LeadSource, UpdateLeadInput } from '../../types/crm';
+import type { Account, Appointment, Lead, LeadSource, UpdateLeadInput } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Facility } from '../../types/facility';
 import { useAuthStore } from '../../stores/authStore';
@@ -134,6 +135,8 @@ const LeadDetail = () => {
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [conversionAccounts, setConversionAccounts] = useState<Account[]>([]);
+  const [conversionFacilities, setConversionFacilities] = useState<Facility[]>([]);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState<UpdateLeadInput>({});
@@ -169,6 +172,12 @@ const LeadDetail = () => {
     postalCode: '',
     country: '',
     notes: '',
+  });
+  const [scheduleConversionOptions, setScheduleConversionOptions] = useState({
+    createNewAccount: true,
+    existingAccountId: '',
+    facilityOption: 'new' as 'new' | 'existing',
+    existingFacilityId: '',
   });
 
   const [completeForm, setCompleteForm] = useState({
@@ -249,6 +258,34 @@ const LeadDetail = () => {
     }
   }, [lead?.convertedToAccount?.id]);
 
+  const fetchConversionAccounts = useCallback(async () => {
+    try {
+      const response = await listAccounts({
+        limit: 100,
+        type: lead?.type && lead.type !== 'unknown' ? lead.type : undefined,
+      });
+      setConversionAccounts(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch conversion accounts:', error);
+      setConversionAccounts([]);
+    }
+  }, [lead?.type]);
+
+  const fetchConversionFacilities = useCallback(async (accountId: string) => {
+    if (!accountId) {
+      setConversionFacilities([]);
+      return;
+    }
+
+    try {
+      const response = await listFacilities({ accountId, limit: 100 });
+      setConversionFacilities(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch conversion facilities:', error);
+      setConversionFacilities([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLead();
     fetchUsers();
@@ -262,6 +299,33 @@ const LeadDetail = () => {
   useEffect(() => {
     fetchFacilities();
   }, [fetchFacilities]);
+
+  useEffect(() => {
+    if (!showScheduleModal || !!lead?.convertedToAccountId) {
+      return;
+    }
+
+    fetchConversionAccounts();
+  }, [fetchConversionAccounts, lead?.convertedToAccountId, showScheduleModal]);
+
+  useEffect(() => {
+    if (!showScheduleModal || !!lead?.convertedToAccountId) {
+      return;
+    }
+
+    if (!scheduleConversionOptions.createNewAccount && scheduleConversionOptions.existingAccountId) {
+      fetchConversionFacilities(scheduleConversionOptions.existingAccountId);
+      return;
+    }
+
+    setConversionFacilities([]);
+  }, [
+    fetchConversionFacilities,
+    lead?.convertedToAccountId,
+    scheduleConversionOptions.createNewAccount,
+    scheduleConversionOptions.existingAccountId,
+    showScheduleModal,
+  ]);
 
   const formatDateTime = (value: string, timezone: string) => {
     const date = new Date(value);
@@ -315,19 +379,31 @@ const LeadDetail = () => {
     }
 
     if (!lead?.convertedToAccountId) {
-      if (!scheduleConversionForm.accountName.trim()) {
-        toast.error('Account name is required before booking a walkthrough');
+      if (scheduleConversionOptions.createNewAccount) {
+        if (!scheduleConversionForm.accountName.trim()) {
+          toast.error('Account name is required before booking a walkthrough');
+          return;
+        }
+      } else if (!scheduleConversionOptions.existingAccountId) {
+        toast.error('Select an existing account before booking a walkthrough');
         return;
       }
 
-      if (!scheduleConversionForm.facilityName.trim()) {
-        toast.error('Facility name is required before booking a walkthrough');
-        return;
-      }
+      if (scheduleConversionOptions.facilityOption === 'existing') {
+        if (!scheduleConversionOptions.existingFacilityId) {
+          toast.error('Select an existing facility before booking a walkthrough');
+          return;
+        }
+      } else {
+        if (!scheduleConversionForm.facilityName.trim()) {
+          toast.error('Facility name is required before booking a walkthrough');
+          return;
+        }
 
-      if (!scheduleConversionForm.street.trim()) {
-        toast.error('Facility address is required before booking a walkthrough');
-        return;
+        if (!scheduleConversionForm.street.trim()) {
+          toast.error('Facility address is required before booking a walkthrough');
+          return;
+        }
       }
     }
 
@@ -343,27 +419,43 @@ const LeadDetail = () => {
 
       if (wasConvertedDuringBooking) {
         const conversionResult = await convertLead(id, {
-          createNewAccount: true,
-          accountData: {
-            name: scheduleConversionForm.accountName.trim(),
-            type: scheduleConversionForm.accountType,
-            billingEmail: scheduleConversionForm.billingEmail.trim() || null,
-            billingPhone: scheduleConversionForm.billingPhone.trim() || null,
-            paymentTerms: 'Net 30',
-            notes: scheduleConversionForm.notes.trim() || null,
-          },
-          facilityOption: 'new',
-          facilityData: {
-            name: scheduleConversionForm.facilityName.trim(),
-            address: {
-              street: scheduleConversionForm.street.trim(),
-              city: scheduleConversionForm.city.trim() || null,
-              state: scheduleConversionForm.state.trim() || null,
-              postalCode: scheduleConversionForm.postalCode.trim() || null,
-              country: scheduleConversionForm.country.trim() || null,
-            },
-            notes: scheduleConversionForm.notes.trim() || null,
-          },
+          createNewAccount: scheduleConversionOptions.createNewAccount,
+          existingAccountId: scheduleConversionOptions.createNewAccount
+            ? null
+            : scheduleConversionOptions.existingAccountId,
+          accountData: scheduleConversionOptions.createNewAccount
+            ? {
+                name: scheduleConversionForm.accountName.trim(),
+                type: lead?.type === 'unknown' ? scheduleConversionForm.accountType : undefined,
+                billingEmail: scheduleConversionForm.billingEmail.trim() || null,
+                billingPhone: scheduleConversionForm.billingPhone.trim() || null,
+                paymentTerms: 'Net 30',
+                notes: scheduleConversionForm.notes.trim() || null,
+              }
+            : undefined,
+          facilityOption: scheduleConversionOptions.createNewAccount
+            ? 'new'
+            : scheduleConversionOptions.facilityOption,
+          existingFacilityId:
+            !scheduleConversionOptions.createNewAccount
+            && scheduleConversionOptions.facilityOption === 'existing'
+              ? scheduleConversionOptions.existingFacilityId
+              : null,
+          facilityData:
+            scheduleConversionOptions.createNewAccount
+            || scheduleConversionOptions.facilityOption === 'new'
+              ? {
+                  name: scheduleConversionForm.facilityName.trim(),
+                  address: {
+                    street: scheduleConversionForm.street.trim(),
+                    city: scheduleConversionForm.city.trim() || null,
+                    state: scheduleConversionForm.state.trim() || null,
+                    postalCode: scheduleConversionForm.postalCode.trim() || null,
+                    country: scheduleConversionForm.country.trim() || null,
+                  },
+                  notes: scheduleConversionForm.notes.trim() || null,
+                }
+              : undefined,
         });
         facilityIdForAppointment = conversionResult.facility?.id || '';
       }
@@ -415,11 +507,33 @@ const LeadDetail = () => {
         country: '',
         notes: '',
       });
+      setScheduleConversionOptions({
+        createNewAccount: true,
+        existingAccountId: '',
+        facilityOption: 'new',
+        existingFacilityId: '',
+      });
+      setConversionFacilities([]);
       fetchAppointments();
       fetchLead();
     } catch (error) {
       console.error('Failed to schedule appointment:', error);
-      toast.error('Failed to schedule walkthrough');
+      const apiError = error as {
+        response?: {
+          data?: {
+            error?: string | { message?: string; code?: string };
+            message?: string | { message?: string; code?: string };
+          };
+        };
+      };
+      const rawError = apiError.response?.data?.error ?? apiError.response?.data?.message;
+      const errorMessage =
+        typeof rawError === 'string'
+          ? rawError
+          : rawError?.message;
+      toast.error(
+        errorMessage || 'Failed to schedule walkthrough'
+      );
     } finally {
       setSaving(false);
     }
@@ -453,6 +567,13 @@ const LeadDetail = () => {
       country: lead?.address?.country || '',
       notes: '',
     });
+    setScheduleConversionOptions({
+      createNewAccount: true,
+      existingAccountId: '',
+      facilityOption: 'new',
+      existingFacilityId: '',
+    });
+    setConversionFacilities([]);
     setShowScheduleModal(true);
   };
 
@@ -836,108 +957,189 @@ const LeadDetail = () => {
         size="lg"
       >
         <div className="space-y-4">
-          {!lead.convertedToAccountId && (
-            <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
-              <div className="text-sm font-medium text-gold">Convert lead during booking</div>
-              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                Booking this walkthrough will also create the account and initial facility record.
-              </p>
+            {!lead.convertedToAccountId && (
+              <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
+                <div className="text-sm font-medium text-gold">Convert lead during booking</div>
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                  Booking this walkthrough will also create the account and initial facility record.
+                </p>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Input
-                  label="Account Name"
-                  value={scheduleConversionForm.accountName}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, accountName: e.target.value })
-                  }
-                  maxLength={maxLengths.companyName}
-                />
-                <Select
-                  label="Account Type"
-                  options={ACCOUNT_TYPES}
-                  value={scheduleConversionForm.accountType}
-                  disabled={lead.type === 'commercial' || lead.type === 'residential'}
-                  onChange={(value) =>
-                    setScheduleConversionForm({
-                      ...scheduleConversionForm,
-                      accountType: value as typeof scheduleConversionForm.accountType,
-                    })
-                  }
-                />
-                {(lead.type === 'commercial' || lead.type === 'residential') && (
-                  <p className="sm:col-span-2 -mt-2 text-xs text-surface-500 dark:text-surface-400">
-                    Account type is inherited from the lead classification: {lead.type}.
-                  </p>
-                )}
-                <Input
-                  label="Billing Email"
-                  type="email"
-                  value={scheduleConversionForm.billingEmail}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, billingEmail: e.target.value })
-                  }
-                  maxLength={maxLengths.email}
-                />
-                <Input
-                  label="Billing Phone"
-                  value={scheduleConversionForm.billingPhone}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, billingPhone: e.target.value })
-                  }
-                  maxLength={maxLengths.phone}
-                />
-                <Input
-                  label="Facility Name"
-                  value={scheduleConversionForm.facilityName}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, facilityName: e.target.value })
-                  }
-                  maxLength={maxLengths.companyName}
-                />
-                <Input
-                  label="Street Address"
-                  value={scheduleConversionForm.street}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, street: e.target.value })
-                  }
-                  maxLength={maxLengths.street}
-                />
-                <Input
-                  label="City"
-                  value={scheduleConversionForm.city}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, city: e.target.value })
-                  }
-                  maxLength={maxLengths.city}
-                />
-                <Input
-                  label="State"
-                  value={scheduleConversionForm.state}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, state: e.target.value })
-                  }
-                  maxLength={maxLengths.state}
-                />
-                <Input
-                  label="Postal Code"
-                  value={scheduleConversionForm.postalCode}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, postalCode: e.target.value })
-                  }
-                  maxLength={maxLengths.postalCode}
-                />
-                <Input
-                  label="Country"
-                  value={scheduleConversionForm.country}
-                  onChange={(e) =>
-                    setScheduleConversionForm({ ...scheduleConversionForm, country: e.target.value })
-                  }
-                  maxLength={maxLengths.country}
-                />
-              </div>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Select
+                    label="Account"
+                    options={[
+                      { value: 'new', label: 'Create New Account' },
+                      { value: 'existing', label: 'Use Existing Account' },
+                    ]}
+                    value={scheduleConversionOptions.createNewAccount ? 'new' : 'existing'}
+                    onChange={(value) =>
+                      setScheduleConversionOptions((current) => ({
+                        ...current,
+                        createNewAccount: value !== 'existing',
+                        existingAccountId: value === 'existing' ? current.existingAccountId : '',
+                        facilityOption: 'new',
+                        existingFacilityId: '',
+                      }))
+                    }
+                  />
+                  <Select
+                    label="Account Type"
+                    options={ACCOUNT_TYPES}
+                    value={scheduleConversionForm.accountType}
+                    disabled={lead.type === 'commercial' || lead.type === 'residential'}
+                    onChange={(value) =>
+                      setScheduleConversionForm({
+                        ...scheduleConversionForm,
+                        accountType: value as typeof scheduleConversionForm.accountType,
+                      })
+                    }
+                  />
+                  {(lead.type === 'commercial' || lead.type === 'residential') && (
+                    <p className="sm:col-span-2 -mt-2 text-xs text-surface-500 dark:text-surface-400">
+                      Account type is inherited from the lead classification: {lead.type}.
+                    </p>
+                  )}
+                  {!scheduleConversionOptions.createNewAccount && (
+                    <Select
+                      label="Existing Account"
+                      placeholder="Select account"
+                      options={conversionAccounts.map((account) => ({
+                        value: account.id,
+                        label: account.name,
+                      }))}
+                      value={scheduleConversionOptions.existingAccountId}
+                      onChange={(value) =>
+                        setScheduleConversionOptions((current) => ({
+                          ...current,
+                          existingAccountId: value,
+                          facilityOption: 'new',
+                          existingFacilityId: '',
+                        }))
+                      }
+                    />
+                  )}
+                  {scheduleConversionOptions.createNewAccount && (
+                    <>
+                      <Input
+                        label="Account Name"
+                        value={scheduleConversionForm.accountName}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, accountName: e.target.value })
+                        }
+                        maxLength={maxLengths.companyName}
+                      />
+                      <Input
+                        label="Billing Email"
+                        type="email"
+                        value={scheduleConversionForm.billingEmail}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, billingEmail: e.target.value })
+                        }
+                        maxLength={maxLengths.email}
+                      />
+                      <Input
+                        label="Billing Phone"
+                        value={scheduleConversionForm.billingPhone}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, billingPhone: e.target.value })
+                        }
+                        maxLength={maxLengths.phone}
+                      />
+                    </>
+                  )}
+                  {!scheduleConversionOptions.createNewAccount && scheduleConversionOptions.existingAccountId && (
+                    <Select
+                      label="Facility"
+                      options={[
+                        { value: 'new', label: 'Create New Facility' },
+                        { value: 'existing', label: 'Use Existing Facility' },
+                      ]}
+                      value={scheduleConversionOptions.facilityOption}
+                      onChange={(value) =>
+                        setScheduleConversionOptions((current) => ({
+                          ...current,
+                          facilityOption: (value as 'new' | 'existing') || 'new',
+                          existingFacilityId: '',
+                        }))
+                      }
+                    />
+                  )}
+                  {!scheduleConversionOptions.createNewAccount
+                    && scheduleConversionOptions.facilityOption === 'existing'
+                    && scheduleConversionOptions.existingAccountId && (
+                      <Select
+                        label="Existing Facility"
+                        placeholder="Select facility"
+                        options={conversionFacilities.map((facility) => ({
+                          value: facility.id,
+                          label: facility.name,
+                        }))}
+                        value={scheduleConversionOptions.existingFacilityId}
+                        onChange={(value) =>
+                          setScheduleConversionOptions((current) => ({
+                            ...current,
+                            existingFacilityId: value,
+                          }))
+                        }
+                      />
+                    )}
+                  {(scheduleConversionOptions.createNewAccount
+                    || scheduleConversionOptions.facilityOption === 'new') && (
+                    <>
+                      <Input
+                        label="Facility Name"
+                        value={scheduleConversionForm.facilityName}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, facilityName: e.target.value })
+                        }
+                        maxLength={maxLengths.companyName}
+                      />
+                      <Input
+                        label="Street Address"
+                        value={scheduleConversionForm.street}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, street: e.target.value })
+                        }
+                        maxLength={maxLengths.street}
+                      />
+                      <Input
+                        label="City"
+                        value={scheduleConversionForm.city}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, city: e.target.value })
+                        }
+                        maxLength={maxLengths.city}
+                      />
+                      <Input
+                        label="State"
+                        value={scheduleConversionForm.state}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, state: e.target.value })
+                        }
+                        maxLength={maxLengths.state}
+                      />
+                      <Input
+                        label="Postal Code"
+                        value={scheduleConversionForm.postalCode}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, postalCode: e.target.value })
+                        }
+                        maxLength={maxLengths.postalCode}
+                      />
+                      <Input
+                        label="Country"
+                        value={scheduleConversionForm.country}
+                        onChange={(e) =>
+                          setScheduleConversionForm({ ...scheduleConversionForm, country: e.target.value })
+                        }
+                        maxLength={maxLengths.country}
+                      />
+                    </>
+                  )}
+                </div>
 
-              <Textarea
-                label="Account / Facility Notes"
+                <Textarea
+                  label="Account / Facility Notes"
                 placeholder="Add any setup context for the new customer record..."
                 value={scheduleConversionForm.notes}
                 onChange={(e) =>
