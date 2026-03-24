@@ -585,6 +585,131 @@ describe('AccountDetail', () => {
     expect(screen.getByText(/convert the accepted quote into a residential contract/i)).toBeInTheDocument();
   });
 
+  it('shows review-required residential journey stages when approval is needed', async () => {
+    mockPathname = '/residential/accounts/account-res-review';
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-review',
+      name: 'Review Household',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '55 Cedar Ave',
+        city: 'Vancouver',
+        state: 'BC',
+        postalCode: 'V6C 1A1',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 3200,
+        bedrooms: 4,
+        fullBathrooms: 3,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'heavy',
+        hasPets: true,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Garage',
+        entryNotes: 'Ring bell first',
+        specialInstructions: null,
+        isFirstVisit: true,
+      },
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listContractsMock
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'rq-review',
+          quoteNumber: 'RQ-20260324-0001',
+          title: 'Deep Clean Review',
+          status: 'review_required',
+          accountId: 'account-res-review',
+          serviceType: 'deep_clean',
+          frequency: 'one_time',
+          customerName: 'Review Household',
+          customerEmail: 'review@example.com',
+          customerPhone: '1234567890',
+          homeAddress: residentialAccount.serviceAddress,
+          homeProfile: residentialAccount.residentialProfile!,
+          pricingPlan: null,
+          subtotal: 420,
+          addOnTotal: 0,
+          recurringDiscount: 0,
+          firstCleanSurcharge: 0,
+          totalAmount: 420,
+          estimatedHours: 7,
+          confidenceLevel: 'medium',
+          manualReviewRequired: true,
+          manualReviewReasons: ['Heavy condition requires review'],
+          preferredStartDate: null,
+          notes: null,
+          sentAt: null,
+          viewedAt: null,
+          acceptedAt: null,
+          declinedAt: null,
+          declineReason: null,
+          convertedAt: null,
+          convertedContractId: null,
+          signatureName: null,
+          signatureDate: null,
+          publicToken: null,
+          publicTokenExpiresAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+          account: {
+            id: 'account-res-review',
+            name: 'Review Household',
+            type: 'residential',
+            billingEmail: 'review@example.com',
+            billingPhone: '1234567890',
+            billingAddress: null,
+            serviceAddress: residentialAccount.serviceAddress,
+            residentialProfile: residentialAccount.residentialProfile,
+          },
+          addOns: [],
+          createdByUser: {
+            id: 'owner-1',
+            fullName: 'Owner User',
+            email: 'owner@example.com',
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+
+    render(<AccountDetail />);
+
+    expect(await screen.findByRole('heading', { name: 'Review Household' })).toBeInTheDocument();
+    expect(screen.getAllByText('Review Required').length).toBeGreaterThan(0);
+    expect(screen.getByText(/get internal approval before sending the residential quote to the client/i)).toBeInTheDocument();
+  });
+
+  it('shows the commercial journey state for commercial accounts', async () => {
+    listContractsMock
+      .mockResolvedValueOnce({ data: [contract], pagination: { page: 1, limit: 5, total: 1, totalPages: 1 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+
+    render(<AccountDetail />);
+
+    expect(await screen.findByRole('heading', { name: 'Acme Corporation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /commercial journey/i })).toBeInTheDocument();
+    expect(await screen.findAllByText('Proposal Draft')).not.toHaveLength(0);
+    expect(screen.getByText(/finish pricing and send the proposal to the client/i)).toBeInTheDocument();
+  });
+
   it('shows the residential service summary for active residential accounts', async () => {
     mockPathname = '/residential/accounts/account-res-2';
     const residentialAccount: Account = {

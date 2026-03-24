@@ -156,13 +156,27 @@ function getResidentialJourneyState(input: {
         currentStage: 'Contract Ready',
         nextStep: 'Open the linked contract and activate service.',
       };
+    case 'review_required':
+      return {
+        currentStage: 'Review Required',
+        nextStep: 'Get internal approval before sending the residential quote to the client.',
+      };
+    case 'review_approved':
+      return {
+        currentStage: 'Review Approved',
+        nextStep: 'Send the approved residential quote to the client.',
+      };
     case 'accepted':
       return {
         currentStage: 'Quote Accepted',
         nextStep: 'Convert the accepted quote into a residential contract.',
       };
-    case 'sent':
     case 'viewed':
+      return {
+        currentStage: 'Quote Viewed',
+        nextStep: 'Follow up with the client while the residential quote is actively under review.',
+      };
+    case 'sent':
       return {
         currentStage: 'Quote Sent',
         nextStep: 'Follow up with the client or resend the quote if needed.',
@@ -184,6 +198,96 @@ function getResidentialJourneyState(input: {
         nextStep: 'Create the first residential quote for this household.',
       };
   }
+}
+
+function getCommercialJourneyState(input: {
+  facilities: Facility[];
+  appointments: Appointment[];
+  proposals: Proposal[];
+  activeContract: Contract | null;
+  recentJobs: Job[];
+}) {
+  const latestProposal = [...input.proposals].sort((left, right) => {
+    const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
+    const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
+    return rightTime - leftTime;
+  })[0];
+
+  const walkthroughs = input.appointments.filter((appointment) => appointment.type === 'walk_through');
+  const hasCompletedWalkthrough = walkthroughs.some((appointment) => appointment.status === 'completed');
+  const hasBookedWalkthrough = walkthroughs.some((appointment) => appointment.status !== 'completed' && appointment.status !== 'canceled');
+  const hasScheduledService = input.recentJobs.length > 0;
+
+  if (hasScheduledService) {
+    return {
+      currentStage: 'Scheduled Service',
+      nextStep: 'Review the job schedule and confirm the field team is assigned correctly.',
+    };
+  }
+
+  if (input.activeContract) {
+    return {
+      currentStage: 'Active Contract',
+      nextStep: 'Activate delivery by confirming the service calendar and first visit assignment.',
+    };
+  }
+
+  switch (latestProposal?.status) {
+    case 'accepted':
+      return {
+        currentStage: 'Contract Ready',
+        nextStep: 'Create or finalize the contract from the accepted proposal.',
+      };
+    case 'viewed':
+      return {
+        currentStage: 'Proposal Viewed',
+        nextStep: 'Follow up with the client while the proposal is under review.',
+      };
+    case 'sent':
+      return {
+        currentStage: 'Proposal Sent',
+        nextStep: 'Follow up with the client or resend the proposal if needed.',
+      };
+    case 'rejected':
+      return {
+        currentStage: 'Proposal Rejected',
+        nextStep: 'Revise the proposal or close out the opportunity.',
+      };
+    case 'draft':
+    case 'expired':
+      return {
+        currentStage: 'Proposal Draft',
+        nextStep: 'Finish pricing and send the proposal to the client.',
+      };
+    default:
+      break;
+  }
+
+  if (hasCompletedWalkthrough) {
+    return {
+      currentStage: 'Walkthrough Completed',
+      nextStep: 'Build the proposal using the completed walkthrough scope.',
+    };
+  }
+
+  if (hasBookedWalkthrough) {
+    return {
+      currentStage: 'Walkthrough Booked',
+      nextStep: 'Prepare the facility details before the walkthrough happens.',
+    };
+  }
+
+  if (input.facilities.length > 0) {
+    return {
+      currentStage: 'Facility Added',
+      nextStep: 'Book the first walkthrough for the service location.',
+    };
+  }
+
+  return {
+    currentStage: 'Account Created',
+    nextStep: 'Add the first facility so walkthrough planning can begin.',
+  };
 }
 
 const AccountDetail = () => {
@@ -542,6 +646,13 @@ const AccountDetail = () => {
     activeContract,
     recentJobs,
   });
+  const commercialJourney = getCommercialJourneyState({
+    facilities,
+    appointments,
+    proposals,
+    activeContract,
+    recentJobs,
+  });
   const residentialServiceSummary = getResidentialServiceSummary({
     activeContract,
     recentJobs,
@@ -855,7 +966,50 @@ const AccountDetail = () => {
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 xl:grid-cols-3">
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Commercial Journey</h3>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    Track where this commercial account is in the sales-to-service pipeline.
+                  </p>
+                </div>
+                <Badge variant={activeContract ? 'success' : proposals.length > 0 || appointments.length > 0 ? 'warning' : 'info'}>
+                  {commercialJourney.currentStage}
+                </Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {commercialJourney.currentStage}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
+                  <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
+                    {commercialJourney.nextStep}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate(`/accounts/${account.id}/facilities`)}>
+                  Open Facilities
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/appointments')}>
+                  Open Appointments
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/proposals')}>
+                  Open Proposals
+                </Button>
+                {activeContract ? (
+                  <Button size="sm" onClick={() => navigate(`/contracts/${activeContract.id}`)}>
+                    Open Active Contract
+                  </Button>
+                ) : null}
+              </div>
+            </Card>
             <AccountFinancials
               account={account}
               activeContract={activeContract}
