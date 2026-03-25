@@ -236,6 +236,20 @@ describe('LeadDetail', () => {
     expect(screen.getByText('Walkthrough Appointments')).toBeInTheDocument();
   });
 
+  it('renders converted account as a link to the account detail page', async () => {
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      convertedToAccountId: 'account-1',
+      convertedAt: new Date().toISOString(),
+      convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+    });
+
+    render(<LeadDetail />);
+
+    const convertedAccountLink = await screen.findByRole('link', { name: 'Acme Corporation' });
+    expect(convertedAccountLink).toHaveAttribute('href', '/accounts/account-1');
+  });
+
   it('converts unconverted lead when scheduling walkthrough appointment', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadDetail />);

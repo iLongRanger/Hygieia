@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Calendar,
   Mail,
@@ -34,6 +34,7 @@ import type { Facility } from '../../types/facility';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { maxLengths } from '../../lib/validation';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 
 const ACCOUNT_TYPES = [
   { value: 'commercial', label: 'Commercial' },
@@ -876,7 +877,12 @@ const LeadDetail = () => {
                   <ClipboardList className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
                     <div className="text-sm text-surface-500 dark:text-surface-400">Converted Account</div>
-                    <div className="text-surface-900 dark:text-white">{lead.convertedToAccount.name}</div>
+                    <Link
+                      to={getAccountDetailPath(lead.convertedToAccount)}
+                      className="text-surface-900 underline decoration-surface-300 underline-offset-4 transition hover:text-primary-600 hover:decoration-primary-400 dark:text-white dark:decoration-surface-600 dark:hover:text-primary-400"
+                    >
+                      {lead.convertedToAccount.name}
+                    </Link>
                   </div>
                 </div>
               )}
