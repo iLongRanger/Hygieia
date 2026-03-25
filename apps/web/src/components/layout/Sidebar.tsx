@@ -203,7 +203,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   // ── Desktop: Expanded full sidebar ───────────────────────────
   const desktopExpanded = (
-    <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-surface-700 bg-surface-900 lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col overflow-hidden border-r border-surface-700 bg-surface-900 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-surface-700 px-6">
         <h1 className="text-xl font-bold tracking-tight text-surface-100">
@@ -220,7 +220,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
+      <nav className="flex min-h-0 flex-1 flex-col justify-between overflow-y-scroll px-3 py-4">
         <div className="space-y-4">
           {visibleSections.map((section) => (
             <div key={section.key}>
@@ -253,7 +253,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   // ── Desktop: Icon Rail + Flyout ──────────────────────────────
   const desktopRail = (
-    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col border-r border-surface-700 bg-surface-900 lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col overflow-y-scroll border-r border-surface-700 bg-surface-900 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-surface-700">
         <span className="text-xl font-bold tracking-tight text-surface-100">
@@ -262,7 +262,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
       </div>
 
       {/* Section icons */}
-      <nav className="flex flex-1 flex-col items-center gap-1 py-3">
+      <nav className="flex min-h-0 flex-1 flex-col items-center gap-1 py-3">
         {visibleSections.map((section) => {
           const SectionIcon = section.icon;
           const active = isSectionActive(section);
@@ -372,7 +372,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const mobileDrawer = (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-full w-64 border-r border-surface-700 bg-surface-900 transition-transform duration-200 lg:hidden',
+        'fixed left-0 top-0 z-40 flex h-full w-64 flex-col overflow-hidden border-r border-surface-700 bg-surface-900 transition-transform duration-200 lg:hidden',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}
     >
@@ -392,7 +392,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
       </div>
 
       {/* Navigation — all sections expanded */}
-      <nav className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
+      <nav className="flex min-h-0 flex-1 flex-col justify-between overflow-y-scroll px-3 py-4">
         <div className="space-y-4">
           {visibleSections.map((section) => (
             <div key={section.key}>
