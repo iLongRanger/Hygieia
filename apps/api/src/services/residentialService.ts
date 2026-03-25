@@ -4,14 +4,17 @@ import { prisma } from '../lib/prisma';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import type {
   ConvertResidentialQuoteInput,
+  CreateResidentialPropertyInput,
   CreateResidentialPricingPlanInput,
   CreateResidentialQuoteInput,
   DeclineResidentialQuoteInput,
+  ListResidentialPropertiesQuery,
   ListResidentialPricingPlansQuery,
   ListResidentialQuotesQuery,
   ResidentialPricingPlanSettings,
   ResidentialQuoteAddOnInput,
   ResidentialQuotePreviewInput,
+  UpdateResidentialPropertyInput,
   UpdateResidentialPricingPlanInput,
   UpdateResidentialQuoteInput,
 } from '../schemas/residential';
@@ -38,6 +41,30 @@ interface ResidentialQuoteAccessOptions {
   userId?: string;
 }
 
+const residentialPropertySelect = {
+  id: true,
+  accountId: true,
+  name: true,
+  serviceAddress: true,
+  homeProfile: true,
+  accessNotes: true,
+  parkingAccess: true,
+  entryNotes: true,
+  pets: true,
+  isPrimary: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+  account: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+    },
+  },
+} satisfies Prisma.ResidentialPropertySelect;
+
 const residentialPricingPlanSelect = {
   id: true,
   name: true,
@@ -63,6 +90,7 @@ const residentialQuoteListSelect = {
   title: true,
   status: true,
   accountId: true,
+  propertyId: true,
   serviceType: true,
   frequency: true,
   customerName: true,
@@ -97,6 +125,20 @@ const residentialQuoteListSelect = {
       residentialProfile: true,
     },
   },
+  property: {
+    select: {
+      id: true,
+      name: true,
+      serviceAddress: true,
+      homeProfile: true,
+      accessNotes: true,
+      parkingAccess: true,
+      entryNotes: true,
+      pets: true,
+      isPrimary: true,
+      status: true,
+    },
+  },
 } satisfies Prisma.ResidentialQuoteSelect;
 
 const residentialQuoteDetailSelect = {
@@ -105,6 +147,7 @@ const residentialQuoteDetailSelect = {
   title: true,
   status: true,
   accountId: true,
+  propertyId: true,
   serviceType: true,
   frequency: true,
   customerName: true,
@@ -160,6 +203,20 @@ const residentialQuoteDetailSelect = {
       residentialProfile: true,
     },
   },
+  property: {
+    select: {
+      id: true,
+      name: true,
+      serviceAddress: true,
+      homeProfile: true,
+      accessNotes: true,
+      parkingAccess: true,
+      entryNotes: true,
+      pets: true,
+      isPrimary: true,
+      status: true,
+    },
+  },
   addOns: {
     select: {
       id: true,
@@ -193,6 +250,7 @@ const publicResidentialQuoteSelect = {
   title: true,
   status: true,
   accountId: true,
+  propertyId: true,
   serviceType: true,
   frequency: true,
   customerName: true,
@@ -209,6 +267,20 @@ const publicResidentialQuoteSelect = {
       billingAddress: true,
       serviceAddress: true,
       residentialProfile: true,
+    },
+  },
+  property: {
+    select: {
+      id: true,
+      name: true,
+      serviceAddress: true,
+      homeProfile: true,
+      accessNotes: true,
+      parkingAccess: true,
+      entryNotes: true,
+      pets: true,
+      isPrimary: true,
+      status: true,
     },
   },
   homeAddress: true,
@@ -263,6 +335,10 @@ type ResidentialQuoteDetailRecord = Prisma.ResidentialQuoteGetPayload<{
 
 type ResidentialQuoteListRecord = Prisma.ResidentialQuoteGetPayload<{
   select: typeof residentialQuoteListSelect;
+}>;
+
+type ResidentialPropertyRecord = Prisma.ResidentialPropertyGetPayload<{
+  select: typeof residentialPropertySelect;
 }>;
 
 const frequencyEfficiencyFactors: Record<string, number> = {
@@ -618,6 +694,149 @@ export async function setDefaultResidentialPricingPlan(id: string) {
   });
 }
 
+export async function listResidentialProperties(
+  params: ListResidentialPropertiesQuery
+): Promise<PaginatedResult<ResidentialPropertyRecord>> {
+  const {
+    page = 1,
+    limit = 50,
+    accountId,
+    includeArchived = false,
+    search,
+    status,
+  } = params;
+
+  const where: Prisma.ResidentialPropertyWhereInput = {};
+  if (!includeArchived) {
+    where.archivedAt = null;
+  }
+  if (accountId) {
+    where.accountId = accountId;
+  }
+  if (status) {
+    where.status = status;
+  }
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { account: { is: { name: { contains: search, mode: 'insensitive' } } } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    prisma.residentialProperty.findMany({
+      where,
+      select: residentialPropertySelect,
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.residentialProperty.count({ where }),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+export async function createResidentialProperty(
+  input: CreateResidentialPropertyInput,
+  createdByUserId: string
+) {
+  const account = await resolveResidentialAccount(input.accountId);
+
+  return prisma.$transaction(async (tx) => {
+    if (input.isPrimary) {
+      await tx.residentialProperty.updateMany({
+        where: { accountId: input.accountId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+
+    const property = await tx.residentialProperty.create({
+      data: {
+        accountId: input.accountId,
+        name: input.name.trim(),
+        serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        homeProfile: input.homeProfile as Prisma.InputJsonValue,
+        accessNotes: toNullableString(input.accessNotes),
+        parkingAccess: toNullableString(input.parkingAccess),
+        entryNotes: toNullableString(input.entryNotes),
+        pets: input.pets ?? null,
+        isPrimary: Boolean(input.isPrimary),
+        status: input.status ?? 'active',
+        createdByUserId,
+      },
+      select: residentialPropertySelect,
+    });
+
+    if (property.isPrimary) {
+      await tx.account.update({
+        where: { id: account.id },
+        data: {
+          serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          residentialProfile: input.homeProfile as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    return property;
+  });
+}
+
+export async function updateResidentialProperty(id: string, input: UpdateResidentialPropertyInput) {
+  const existing = await resolveResidentialProperty(id);
+
+  return prisma.$transaction(async (tx) => {
+    if (input.isPrimary) {
+      await tx.residentialProperty.updateMany({
+        where: { accountId: existing.accountId, isPrimary: true, id: { not: id } },
+        data: { isPrimary: false },
+      });
+    }
+
+    const property = await tx.residentialProperty.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.serviceAddress !== undefined
+          ? { serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue }
+          : {}),
+        ...(input.homeProfile !== undefined
+          ? { homeProfile: input.homeProfile as Prisma.InputJsonValue }
+          : {}),
+        ...(input.accessNotes !== undefined ? { accessNotes: toNullableString(input.accessNotes) } : {}),
+        ...(input.parkingAccess !== undefined ? { parkingAccess: toNullableString(input.parkingAccess) } : {}),
+        ...(input.entryNotes !== undefined ? { entryNotes: toNullableString(input.entryNotes) } : {}),
+        ...(input.pets !== undefined ? { pets: input.pets } : {}),
+        ...(input.isPrimary !== undefined ? { isPrimary: input.isPrimary } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.status === 'archived' ? { archivedAt: new Date() } : {}),
+        ...(input.status === 'active' ? { archivedAt: null } : {}),
+      },
+      select: residentialPropertySelect,
+    });
+
+    if (property.isPrimary) {
+      await tx.account.update({
+        where: { id: property.accountId },
+        data: {
+          serviceAddress: (property.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          residentialProfile: property.homeProfile as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    return property;
+  });
+}
+
 async function resolveResidentialPricingPlan(pricingPlanId?: string | null) {
   if (pricingPlanId) {
     const plan = await prisma.residentialPricingPlan.findUnique({
@@ -664,8 +883,31 @@ async function resolveResidentialAccount(accountId: string) {
   return account;
 }
 
+async function resolveResidentialProperty(propertyId: string, accountId?: string) {
+  const property = await prisma.residentialProperty.findUnique({
+    where: { id: propertyId },
+    select: residentialPropertySelect,
+  });
+
+  if (!property || property.archivedAt || property.status !== 'active') {
+    throw new BadRequestError('Residential property is not available');
+  }
+
+  if (property.account.type !== 'residential') {
+    throw new BadRequestError('Residential properties must belong to a residential account');
+  }
+
+  if (accountId && property.accountId !== accountId) {
+    throw new BadRequestError('Residential property does not belong to the selected account');
+  }
+
+  return property;
+}
+
 async function ensureResidentialFacility(input: {
   accountId: string;
+  propertyId: string;
+  propertyName: string;
   accountName: string;
   createdByUserId: string;
   homeAddress: unknown;
@@ -679,15 +921,12 @@ async function ensureResidentialFacility(input: {
     input.homeProfile && typeof input.homeProfile === 'object' && !Array.isArray(input.homeProfile)
       ? (input.homeProfile as Record<string, unknown>)
       : {};
-  const facilityName = `${input.accountName} Residence`;
+  const facilityName = input.propertyName.trim() || `${input.accountName} Residence`;
 
   const existingFacility = await prisma.facility.findFirst({
     where: {
-      accountId: input.accountId,
+      residentialPropertyId: input.propertyId,
       archivedAt: null,
-    },
-    orderBy: {
-      createdAt: 'asc',
     },
     select: {
       id: true,
@@ -699,6 +938,7 @@ async function ensureResidentialFacility(input: {
       where: { id: existingFacility.id },
       data: {
         name: facilityName,
+        residentialPropertyId: input.propertyId,
         address: input.homeAddress as Prisma.InputJsonValue,
         buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
         accessInstructions: toNullableString(homeProfile.entryNotes),
@@ -717,6 +957,7 @@ async function ensureResidentialFacility(input: {
   return prisma.facility.create({
     data: {
       accountId: input.accountId,
+      residentialPropertyId: input.propertyId,
       name: facilityName,
       address: input.homeAddress as Prisma.InputJsonValue,
       buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
@@ -913,6 +1154,7 @@ export async function listResidentialQuotes(
     page = 1,
     limit = 20,
     accountId,
+    propertyId,
     status,
     includeArchived = false,
     search,
@@ -927,6 +1169,9 @@ export async function listResidentialQuotes(
   }
   if (accountId) {
     where.accountId = accountId;
+  }
+  if (propertyId) {
+    where.propertyId = propertyId;
   }
   if (search) {
     where.OR = [
@@ -977,6 +1222,7 @@ function buildResidentialQuoteUpsertData(
 ) {
   return {
     accountId: input.accountId,
+    propertyId: input.propertyId,
     title: input.title,
     serviceType: input.serviceType,
     frequency: input.frequency,
@@ -1002,15 +1248,35 @@ function buildResidentialQuoteUpsertData(
   } satisfies Omit<Prisma.ResidentialQuoteUncheckedCreateInput, 'quoteNumber' | 'createdByUserId'>;
 }
 
-async function syncResidentialAccountProfileFromQuote(input: CreateResidentialQuoteInput) {
-  await prisma.account.update({
-    where: { id: input.accountId },
-    data: {
-      billingEmail: toNullableString(input.customerEmail),
-      billingPhone: toNullableString(input.customerPhone),
-      serviceAddress: input.homeAddress ?? Prisma.JsonNull,
-      residentialProfile: input.homeProfile as Prisma.InputJsonValue,
-    },
+async function syncResidentialPropertyProfileFromQuote(
+  input: CreateResidentialQuoteInput,
+  property: ResidentialPropertyRecord
+) {
+  await prisma.$transaction(async (tx) => {
+    await tx.account.update({
+      where: { id: input.accountId },
+      data: {
+        billingEmail: toNullableString(input.customerEmail),
+        billingPhone: toNullableString(input.customerPhone),
+        ...(property.isPrimary
+          ? {
+              serviceAddress: (input.homeAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+              residentialProfile: input.homeProfile as Prisma.InputJsonValue,
+            }
+          : {}),
+      },
+    });
+
+    await tx.residentialProperty.update({
+      where: { id: property.id },
+      data: {
+        serviceAddress: (input.homeAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        homeProfile: input.homeProfile as Prisma.InputJsonValue,
+        parkingAccess: toNullableString(input.homeProfile.parkingAccess),
+        entryNotes: toNullableString(input.homeProfile.entryNotes),
+        pets: input.homeProfile.hasPets ?? null,
+      },
+    });
   });
 }
 
@@ -1019,11 +1285,12 @@ export async function createResidentialQuote(
   createdByUserId: string
 ) {
   await resolveResidentialAccount(input.accountId);
+  const property = await resolveResidentialProperty(input.propertyId, input.accountId);
   const pricingPlan = await resolveResidentialPricingPlan(input.pricingPlanId);
   const preview = calculateResidentialQuotePreview(input, pricingPlan);
   const quoteNumber = await generateResidentialQuoteNumber();
 
-  await syncResidentialAccountProfileFromQuote(input);
+  await syncResidentialPropertyProfileFromQuote(input, property);
 
   return prisma.residentialQuote.create({
     data: {
@@ -1066,6 +1333,7 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
 
   const mergedInput: CreateResidentialQuoteInput = {
     accountId: input.accountId ?? existing.accountId ?? '',
+    propertyId: input.propertyId ?? existing.propertyId,
     title: input.title ?? existing.title,
     serviceType: (input.serviceType ?? existing.serviceType) as CreateResidentialQuoteInput['serviceType'],
     frequency: (input.frequency ?? existing.frequency) as CreateResidentialQuoteInput['frequency'],
@@ -1087,6 +1355,10 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
   };
 
   await resolveResidentialAccount(mergedInput.accountId);
+  const property = await resolveResidentialProperty(
+    input.propertyId ?? existing.propertyId,
+    mergedInput.accountId
+  );
   const pricingPlan = await resolveResidentialPricingPlan(mergedInput.pricingPlanId);
   const preview = calculateResidentialQuotePreview(mergedInput, pricingPlan);
   const nextStatus =
@@ -1114,7 +1386,13 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
     return nextStatus;
   })();
 
-  await syncResidentialAccountProfileFromQuote(mergedInput);
+  await syncResidentialPropertyProfileFromQuote(
+    {
+      ...mergedInput,
+      propertyId: property.id,
+    },
+    property
+  );
 
   return prisma.residentialQuote.update({
     where: { id },
@@ -1524,12 +1802,22 @@ export async function convertResidentialQuoteToContract(
     throw new BadRequestError('Residential quotes can only convert against residential accounts');
   }
 
+  const property = quote.propertyId
+    ? await resolveResidentialProperty(quote.propertyId, account.id)
+    : null;
+
+  if (!property) {
+    throw new BadRequestError('Residential quote must be linked to an active residential property');
+  }
+
   const resolvedHomeAddress =
-    quote.homeAddress ?? account.serviceAddress ?? null;
+    quote.homeAddress ?? property.serviceAddress ?? account.serviceAddress ?? null;
   const resolvedHomeProfile =
-    quote.homeProfile ?? account.residentialProfile ?? null;
+    quote.homeProfile ?? property.homeProfile ?? account.residentialProfile ?? null;
   const facility = await ensureResidentialFacility({
     accountId: account.id,
+    propertyId: property.id,
+    propertyName: property.name,
     accountName: account.name,
     createdByUserId: userId,
     homeAddress: resolvedHomeAddress,
@@ -1576,6 +1864,7 @@ export async function convertResidentialQuoteToContract(
       status: 'draft',
       serviceCategory: 'residential',
       accountId: account.id,
+      residentialPropertyId: property.id,
       facilityId: facility.id,
       startDate,
       serviceFrequency: mappedFrequency,

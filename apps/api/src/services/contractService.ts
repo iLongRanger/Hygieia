@@ -133,6 +133,7 @@ const contractSelect = {
   title: true,
   status: true,
   serviceCategory: true,
+  residentialPropertyId: true,
   residentialServiceType: true,
   residentialFrequency: true,
   homeProfileSnapshot: true,

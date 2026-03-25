@@ -86,6 +86,7 @@ const OCCUPANCY_OPTIONS = [
 
 const DEFAULT_FORM: ResidentialQuoteFormInput = {
   accountId: '',
+  propertyId: '',
   title: '',
   serviceType: 'recurring_standard',
   frequency: 'weekly',
@@ -226,6 +227,11 @@ const ResidentialQuotesPage = () => {
     () => accounts.find((account) => account.id === formData.accountId) ?? null,
     [accounts, formData.accountId]
   );
+  const selectedProperty = useMemo(
+    () =>
+      selectedAccount?.residentialProperties?.find((property) => property.id === formData.propertyId) ?? null,
+    [selectedAccount, formData.propertyId]
+  );
 
   const availableAddOns = selectedPlan ? Object.entries(selectedPlan.settings.addOnPrices) : [];
   const summaryCounts = useMemo(() => {
@@ -275,21 +281,47 @@ const ResidentialQuotesPage = () => {
   useEffect(() => {
     if (!selectedAccount) return;
 
+    const nextProperty =
+      selectedAccount.residentialProperties?.find((property) => property.id === formData.propertyId)
+      ?? selectedAccount.residentialProperties?.find((property) => property.isPrimary)
+      ?? selectedAccount.residentialProperties?.[0]
+      ?? null;
+
     setFormData((current) => ({
       ...current,
+      propertyId: nextProperty?.id ?? '',
       customerName: selectedAccount.name,
       customerEmail: selectedAccount.billingEmail ?? '',
       customerPhone: selectedAccount.billingPhone ?? '',
-      homeAddress: selectedAccount.serviceAddress ?? selectedAccount.billingAddress ?? current.homeAddress,
-      homeProfile: selectedAccount.residentialProfile
-        ? normalizeResidentialHomeProfile(selectedAccount.residentialProfile)
+      homeAddress:
+        nextProperty?.serviceAddress
+        ?? selectedAccount.serviceAddress
+        ?? selectedAccount.billingAddress
+        ?? current.homeAddress,
+      homeProfile: nextProperty?.homeProfile
+        ? normalizeResidentialHomeProfile(nextProperty.homeProfile)
+        : selectedAccount.residentialProfile
+          ? normalizeResidentialHomeProfile(selectedAccount.residentialProfile)
+          : current.homeProfile,
+    }));
+  }, [selectedAccount, formData.propertyId]);
+
+  useEffect(() => {
+    if (!selectedProperty) return;
+
+    setFormData((current) => ({
+      ...current,
+      homeAddress: selectedProperty.serviceAddress ?? current.homeAddress,
+      homeProfile: selectedProperty.homeProfile
+        ? normalizeResidentialHomeProfile(selectedProperty.homeProfile)
         : current.homeProfile,
     }));
-  }, [selectedAccount]);
+  }, [selectedProperty]);
 
   useEffect(() => {
     const hasCoreFields =
       formData.pricingPlanId &&
+      formData.propertyId &&
       formData.serviceType &&
       formData.frequency &&
       formData.homeProfile.squareFeet > 0;
@@ -303,6 +335,7 @@ const ResidentialQuotesPage = () => {
       try {
         setPreviewLoading(true);
         const nextPreview = await previewResidentialQuote({
+          propertyId: formData.propertyId,
           serviceType: formData.serviceType,
           frequency: formData.frequency,
           homeAddress: formData.homeAddress,
@@ -321,19 +354,57 @@ const ResidentialQuotesPage = () => {
     return () => window.clearTimeout(timeout);
   }, [formData]);
 
+  const handleAccountChange = (accountId: string) => {
+    const account = accounts.find((item) => item.id === accountId) ?? null;
+    const property =
+      account?.residentialProperties?.find((item) => item.isPrimary)
+      ?? account?.residentialProperties?.[0]
+      ?? null;
+
+    setFormData((current) => ({
+      ...current,
+      accountId,
+      propertyId: property?.id ?? '',
+      customerName: account?.name ?? '',
+      customerEmail: account?.billingEmail ?? '',
+      customerPhone: account?.billingPhone ?? '',
+      homeAddress:
+        property?.serviceAddress
+        ?? account?.serviceAddress
+        ?? account?.billingAddress
+        ?? current.homeAddress,
+      homeProfile: property?.homeProfile
+        ? normalizeResidentialHomeProfile(property.homeProfile)
+        : account?.residentialProfile
+          ? normalizeResidentialHomeProfile(account.residentialProfile)
+          : current.homeProfile,
+    }));
+  };
+
   const openCreateModal = () => {
     setEditingQuote(null);
     const defaultPlan = plans.find((plan) => plan.isDefault) ?? plans[0];
     const defaultAccount = accounts[0];
+    const defaultProperty =
+      defaultAccount?.residentialProperties?.find((property) => property.isPrimary)
+      ?? defaultAccount?.residentialProperties?.[0]
+      ?? null;
     setFormData({
       ...DEFAULT_FORM,
       accountId: defaultAccount?.id ?? '',
+      propertyId: defaultProperty?.id ?? '',
       customerName: defaultAccount?.name ?? '',
       customerEmail: defaultAccount?.billingEmail ?? '',
       customerPhone: defaultAccount?.billingPhone ?? '',
-      homeAddress: defaultAccount?.serviceAddress ?? defaultAccount?.billingAddress ?? DEFAULT_FORM.homeAddress,
-      homeProfile: defaultAccount?.residentialProfile
-        ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
+      homeAddress:
+        defaultProperty?.serviceAddress
+        ?? defaultAccount?.serviceAddress
+        ?? defaultAccount?.billingAddress
+        ?? DEFAULT_FORM.homeAddress,
+      homeProfile: defaultProperty?.homeProfile
+        ? normalizeResidentialHomeProfile(defaultProperty.homeProfile)
+        : defaultAccount?.residentialProfile
+          ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
         : DEFAULT_FORM.homeProfile,
       pricingPlanId: defaultPlan?.id ?? '',
     });
@@ -347,13 +418,14 @@ const ResidentialQuotesPage = () => {
     setFormData({
       title: quote.title,
       accountId: quote.accountId ?? quote.account?.id ?? '',
+      propertyId: quote.propertyId ?? quote.property?.id ?? '',
       serviceType: quote.serviceType,
       frequency: quote.frequency,
       customerName: quote.customerName,
       customerEmail: quote.customerEmail ?? '',
       customerPhone: quote.customerPhone ?? '',
-      homeAddress: quote.homeAddress ?? DEFAULT_FORM.homeAddress,
-      homeProfile: quote.homeProfile ?? DEFAULT_FORM.homeProfile,
+      homeAddress: quote.homeAddress ?? quote.property?.serviceAddress ?? DEFAULT_FORM.homeAddress,
+      homeProfile: quote.homeProfile ?? quote.property?.homeProfile ?? DEFAULT_FORM.homeProfile,
       pricingPlanId: quote.pricingPlan?.id ?? plans.find((plan) => plan.isDefault)?.id ?? '',
       addOns:
         quote.addOns?.map((addOn) => ({
@@ -534,6 +606,17 @@ const ResidentialQuotesPage = () => {
         <div>
           <div className="font-medium text-surface-900 dark:text-surface-100">{quote.customerName}</div>
           <div className="text-xs text-surface-500">{quote.customerEmail || quote.customerPhone || '-'}</div>
+        </div>
+      ),
+    },
+    {
+      header: 'Property',
+      cell: (quote: ResidentialQuote) => (
+        <div className="text-sm text-surface-700 dark:text-surface-300">
+          <div>{quote.property?.name || 'No property selected'}</div>
+          <div className="text-xs text-surface-500">
+            {quote.property?.serviceAddress?.street || quote.homeAddress?.street || '-'}
+          </div>
         </div>
       ),
     },
@@ -783,10 +866,22 @@ const ResidentialQuotesPage = () => {
                     label="Residential Account"
                     value={formData.accountId}
                     options={accounts.map((account) => ({ value: account.id, label: account.name }))}
-                    onChange={(value) =>
-                      setFormData((current) => ({ ...current, accountId: value }))
-                    }
+                    onChange={handleAccountChange}
                     placeholder="Select a residential account"
+                  />
+                  <Select
+                    label="Residential Property"
+                    value={formData.propertyId}
+                    options={
+                      selectedAccount?.residentialProperties?.map((property) => ({
+                        value: property.id,
+                        label: property.isPrimary ? `${property.name} (Primary)` : property.name,
+                      })) ?? []
+                    }
+                    onChange={(value) =>
+                      setFormData((current) => ({ ...current, propertyId: value }))
+                    }
+                    placeholder="Select a service location"
                   />
                   <Input
                     label="Quote Title"
@@ -802,12 +897,7 @@ const ResidentialQuotesPage = () => {
                     readOnly
                     hint="Comes from the selected residential account"
                   />
-                  <Input
-                    label="Billing Phone"
-                    value={formData.customerPhone ?? ''}
-                    readOnly
-                    hint="Comes from the selected residential account"
-                  />
+                  <Input label="Billing Phone" value={formData.customerPhone ?? ''} readOnly hint="Comes from the selected residential account" />
                   <Select
                     label="Home Type"
                     value={formData.homeProfile.homeType}
@@ -853,6 +943,13 @@ const ResidentialQuotesPage = () => {
                     }
                   />
                 </div>
+                {selectedAccount && (!selectedAccount.residentialProperties || selectedAccount.residentialProperties.length === 0) ? (
+                  <Card className="p-4">
+                    <div className="text-sm text-warning-700 dark:text-warning-300">
+                      This account does not have any residential properties yet. Add a property on the residential account before creating a quote.
+                    </div>
+                  </Card>
+                ) : null}
               </Card>
             )}
 
@@ -1206,7 +1303,10 @@ const ResidentialQuotesPage = () => {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={saveQuote} disabled={!formData.accountId || !formData.customerName.trim() || !preview}>
+                <Button
+                  onClick={saveQuote}
+                  disabled={!formData.accountId || !formData.propertyId || !formData.customerName.trim() || !preview}
+                >
                   Save Residential Quote
                 </Button>
               )}

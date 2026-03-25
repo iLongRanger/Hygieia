@@ -71,6 +71,7 @@ export interface Contract {
   contractNumber: string;
   title: string;
   status: ContractStatus;
+  residentialPropertyId?: string | null;
   renewalNumber: number;
   startDate: string;
   endDate?: string | null;

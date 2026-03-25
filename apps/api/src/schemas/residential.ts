@@ -342,6 +342,7 @@ export const residentialHomeProfileSchema = z.object({
 
 export const createResidentialQuoteSchema = z.object({
   accountId: z.string().uuid(),
+  propertyId: z.string().uuid(),
   title: z.string().min(1).max(255),
   serviceType: residentialServiceTypeSchema,
   frequency: residentialFrequencySchema,
@@ -378,7 +379,38 @@ export const listResidentialQuotesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   accountId: z.string().uuid().optional(),
+  propertyId: z.string().uuid().optional(),
   status: residentialQuoteStatusSchema.optional(),
+  includeArchived: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  search: z.string().max(100).optional(),
+});
+
+export const residentialPropertyStatusSchema = z.enum(['active', 'archived']);
+
+export const residentialPropertySchema = z.object({
+  accountId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  serviceAddress: addressSchema,
+  homeProfile: residentialHomeProfileSchema,
+  accessNotes: z.string().max(2000).optional().nullable(),
+  parkingAccess: z.string().max(255).optional().nullable(),
+  entryNotes: z.string().max(1000).optional().nullable(),
+  pets: z.boolean().optional().nullable(),
+  isPrimary: z.boolean().optional().default(false),
+  status: residentialPropertyStatusSchema.optional().default('active'),
+});
+
+export const createResidentialPropertySchema = residentialPropertySchema;
+
+export const updateResidentialPropertySchema = residentialPropertySchema.partial().extend({
+  status: residentialPropertyStatusSchema.optional(),
+});
+
+export const listResidentialPropertiesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  accountId: z.string().uuid().optional(),
+  status: residentialPropertyStatusSchema.optional(),
   includeArchived: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   search: z.string().max(100).optional(),
 });
@@ -415,6 +447,9 @@ export type CreateResidentialQuoteInput = z.infer<typeof createResidentialQuoteS
 export type UpdateResidentialQuoteInput = z.infer<typeof updateResidentialQuoteSchema>;
 export type ResidentialQuotePreviewInput = z.infer<typeof residentialQuotePreviewSchema>;
 export type ListResidentialQuotesQuery = z.infer<typeof listResidentialQuotesQuerySchema>;
+export type CreateResidentialPropertyInput = z.infer<typeof createResidentialPropertySchema>;
+export type UpdateResidentialPropertyInput = z.infer<typeof updateResidentialPropertySchema>;
+export type ListResidentialPropertiesQuery = z.infer<typeof listResidentialPropertiesQuerySchema>;
 export type ConvertResidentialQuoteInput = z.infer<typeof convertResidentialQuoteSchema>;
 export type DeclineResidentialQuoteInput = z.infer<typeof declineResidentialQuoteSchema>;
 export type SendResidentialQuoteInput = z.infer<typeof sendResidentialQuoteSchema>;

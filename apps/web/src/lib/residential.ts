@@ -4,6 +4,7 @@ import type {
   PublicResidentialQuote,
   ResidentialPricingPlan,
   ResidentialPricingPlanSettings,
+  ResidentialProperty,
   ResidentialQuote,
   ResidentialQuoteFormInput,
   ResidentialQuotePreview,
@@ -76,6 +77,7 @@ export async function listResidentialQuotes(params?: {
   page?: number;
   limit?: number;
   accountId?: string;
+  propertyId?: string;
   status?: ResidentialQuote['status'];
   includeArchived?: boolean;
   search?: string;
@@ -86,6 +88,46 @@ export async function listResidentialQuotes(params?: {
 
 export async function getResidentialQuote(id: string): Promise<ResidentialQuote> {
   const response = await api.get(`/residential/quotes/${id}`);
+  return response.data.data;
+}
+
+export interface CreateResidentialPropertyInput {
+  accountId: string;
+  name: string;
+  serviceAddress?: ResidentialProperty['serviceAddress'] | null;
+  homeProfile: ResidentialProperty['homeProfile'];
+  accessNotes?: string | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  pets?: boolean | null;
+  isPrimary?: boolean;
+  status?: ResidentialProperty['status'];
+}
+
+export interface UpdateResidentialPropertyInput {
+  name?: string;
+  serviceAddress?: ResidentialProperty['serviceAddress'] | null;
+  homeProfile?: ResidentialProperty['homeProfile'];
+  accessNotes?: string | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  pets?: boolean | null;
+  isPrimary?: boolean;
+  status?: ResidentialProperty['status'];
+}
+
+export async function createResidentialProperty(
+  data: CreateResidentialPropertyInput
+): Promise<ResidentialProperty> {
+  const response = await api.post('/residential/properties', data);
+  return response.data.data;
+}
+
+export async function updateResidentialProperty(
+  id: string,
+  data: UpdateResidentialPropertyInput
+): Promise<ResidentialProperty> {
+  const response = await api.patch(`/residential/properties/${id}`, data);
   return response.data.data;
 }
 

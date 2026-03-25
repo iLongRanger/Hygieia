@@ -18,6 +18,7 @@ import {
   approveResidentialQuoteReview,
   convertResidentialQuoteToContract,
   createResidentialPricingPlan,
+  createResidentialProperty,
   createResidentialQuote,
   declineResidentialQuote,
   getDefaultResidentialPricingPlan,
@@ -25,22 +26,27 @@ import {
   getResidentialQuoteById,
   generateResidentialQuotePublicToken,
   listResidentialPricingPlans,
+  listResidentialProperties,
   listResidentialQuotes,
   previewResidentialQuote,
   restoreResidentialPricingPlan,
   restoreResidentialQuote,
   sendResidentialQuote,
   setDefaultResidentialPricingPlan,
+  updateResidentialProperty,
   updateResidentialPricingPlan,
   updateResidentialQuote,
 } from '../services/residentialService';
 import {
   convertResidentialQuoteSchema,
+  createResidentialPropertySchema,
   createResidentialPricingPlanSchema,
   createResidentialQuoteSchema,
   declineResidentialQuoteSchema,
+  listResidentialPropertiesQuerySchema,
   listResidentialPricingPlansQuerySchema,
   listResidentialQuotesQuerySchema,
+  updateResidentialPropertySchema,
   sendResidentialQuoteSchema,
   residentialQuotePreviewSchema,
   updateResidentialPricingPlanSchema,
@@ -238,6 +244,87 @@ router.post(
     try {
       const plan = await restoreResidentialPricingPlan(req.params.id);
       res.json({ data: plan });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/properties',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = listResidentialPropertiesQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+      if (parsed.data.accountId) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'account',
+          resourceId: parsed.data.accountId,
+          path: req.path,
+          method: req.method,
+        });
+      }
+      const result = await listResidentialProperties(parsed.data);
+      res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/properties',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = createResidentialPropertySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'account',
+        resourceId: parsed.data.accountId,
+        path: req.path,
+        method: req.method,
+      });
+      const property = await createResidentialProperty(parsed.data, req.user!.id);
+      res.status(201).json({ data: property });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  '/properties/:id',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await prisma.residentialProperty.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, accountId: true },
+      });
+      if (!existing) {
+        throw new NotFoundError('Residential property not found');
+      }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'account',
+        resourceId: existing.accountId,
+        path: req.path,
+        method: req.method,
+      });
+      const parsed = updateResidentialPropertySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+      const property = await updateResidentialProperty(req.params.id, parsed.data);
+      res.json({ data: property });
     } catch (error) {
       next(error);
     }

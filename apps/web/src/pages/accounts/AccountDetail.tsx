@@ -18,18 +18,20 @@ import { listJobs } from '../../lib/jobs';
 import { listUsers } from '../../lib/users';
 import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
-import { listResidentialQuotes } from '../../lib/residential';
+import { createResidentialProperty, listResidentialQuotes, updateResidentialProperty } from '../../lib/residential';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
 import {
   COMMERCIAL_ACCOUNT_PIPELINE_STAGES,
   RESIDENTIAL_ACCOUNT_PIPELINE_STAGES,
+  getResidentialJourneyState,
+  getResidentialPropertyJourneyState,
   type CommercialAccountPipelineStageId,
-  type ResidentialAccountPipelineStageId,
 } from '../../lib/accountPipeline';
 import type {
   Account,
   AccountActivity,
   AccountActivityEntryType,
+  ResidentialPropertySummary,
   UpdateAccountInput,
 } from '../../types/crm';
 import type { Appointment } from '../../types/crm';
@@ -40,9 +42,14 @@ import type { Contract } from '../../types/contract';
 import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
 import type { ResidentialQuote } from '../../types/residential';
+import type { ResidentialHomeProfile } from '../../types/residential';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
 import { AccountHero } from './AccountHero';
 import { AccountContacts } from './AccountContacts';
 import { AccountFacilities } from './AccountFacilities';
@@ -66,6 +73,47 @@ const residentialFrequencyLabels: Record<string, string> = {
   biweekly: 'Biweekly',
   every_4_weeks: 'Every 4 Weeks',
   one_time: 'One-Time',
+};
+
+const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
+  name: string;
+  serviceAddress: NonNullable<UpdateAccountInput['serviceAddress']>;
+  homeProfile: ResidentialHomeProfile;
+  accessNotes: string;
+  parkingAccess: string;
+  entryNotes: string;
+  pets: boolean;
+  isPrimary: boolean;
+} = {
+  name: '',
+  serviceAddress: {
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'USA',
+  },
+  homeProfile: {
+    homeType: 'single_family',
+    squareFeet: 1800,
+    bedrooms: 3,
+    fullBathrooms: 2,
+    halfBathrooms: 0,
+    levels: 1,
+    occupiedStatus: 'occupied',
+    condition: 'standard',
+    hasPets: false,
+    lastProfessionalCleaning: '',
+    parkingAccess: '',
+    entryNotes: '',
+    specialInstructions: '',
+    isFirstVisit: false,
+  },
+  accessNotes: '',
+  parkingAccess: '',
+  entryNotes: '',
+  pets: false,
+  isPrimary: false,
 };
 
 function formatCalendarDate(value: string | null | undefined) {
@@ -127,58 +175,6 @@ function getResidentialServiceSummary(input: {
     assignmentLabel,
     latestCompletedVisit: lastCompletedJob ? formatCalendarDate(lastCompletedJob.scheduledDate) : 'No completed visits yet',
   };
-}
-
-function getResidentialJourneyState(input: {
-  residentialQuotes: ResidentialQuote[];
-  activeContract: Contract | null;
-  recentJobs: Job[];
-}) {
-  const getStage = (stageId: ResidentialAccountPipelineStageId, nextStep: string) => ({
-    currentStage: RESIDENTIAL_ACCOUNT_PIPELINE_STAGES.find((stage) => stage.id === stageId)?.label || stageId,
-    nextStep,
-  });
-
-  const latestQuote = [...input.residentialQuotes].sort((left, right) => {
-    const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
-    const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
-    return rightTime - leftTime;
-  })[0];
-
-  const hasScheduledService = input.recentJobs.length > 0;
-
-  if (hasScheduledService) {
-    return getStage('scheduled_service', 'Review the generated jobs and confirm the first visit is assigned correctly.');
-  }
-
-  if (input.activeContract) {
-    return getStage('active_contract', 'Activate delivery by assigning the first visit or confirming auto-generated work.');
-  }
-
-  switch (latestQuote?.status) {
-    case 'converted':
-      return getStage('contract_ready', 'Open the linked contract and activate service.');
-    case 'review_required':
-      return getStage('review_required', 'Get internal approval before sending the residential quote to the client.');
-    case 'review_approved':
-      return getStage('review_approved', 'Send the approved residential quote to the client.');
-    case 'accepted':
-      return getStage('quote_accepted', 'Convert the accepted quote into a residential contract.');
-    case 'viewed':
-      return getStage('quote_viewed', 'Follow up with the client while the residential quote is actively under review.');
-    case 'sent':
-      return getStage('quote_sent', 'Follow up with the client or resend the quote if needed.');
-    case 'declined':
-      return {
-        currentStage: 'Quote Declined',
-        nextStep: 'Revise the residential quote or close the opportunity.',
-      };
-    case 'draft':
-    case 'quoted':
-      return getStage('quote_draft', 'Finish pricing details and send the residential quote to the client.');
-    default:
-      return getStage('account_created', 'Create the first residential quote for this household.');
-  }
 }
 
 function getCommercialJourneyState(input: {
@@ -270,8 +266,11 @@ const AccountDetail = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFacilityModal, setShowFacilityModal] = useState(false);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<ResidentialPropertySummary | null>(null);
   const [saving, setSaving] = useState(false);
   const [creatingFacility, setCreatingFacility] = useState(false);
+  const [savingProperty, setSavingProperty] = useState(false);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canAdminAccounts = hasPermission(PERMISSIONS.ACCOUNTS_ADMIN);
   const canWriteAccounts = hasPermission(PERMISSIONS.ACCOUNTS_WRITE);
@@ -303,6 +302,8 @@ const AccountDetail = () => {
     status: 'active',
     notes: null,
   });
+
+  const [propertyFormData, setPropertyFormData] = useState(DEFAULT_RESIDENTIAL_PROPERTY_FORM);
 
   const fetchAccount = useCallback(async () => {
     if (!id) return;
@@ -377,7 +378,7 @@ const AccountDetail = () => {
     try {
       const response = await listContracts({
         accountId: id,
-        limit: 5,
+        limit: 100,
         sortBy: 'startDate',
         sortOrder: 'desc',
         includeArchived: false,
@@ -452,7 +453,7 @@ const AccountDetail = () => {
   const fetchRecentJobs = useCallback(async () => {
     if (!id) return;
     try {
-      const response = await listJobs({ accountId: id, limit: 10 });
+      const response = await listJobs({ accountId: id, limit: 100 });
       setRecentJobs(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch recent jobs:', error);
@@ -559,6 +560,94 @@ const AccountDetail = () => {
     }
   };
 
+  const openCreatePropertyModal = () => {
+    setEditingProperty(null);
+    setPropertyFormData({
+      ...DEFAULT_RESIDENTIAL_PROPERTY_FORM,
+      isPrimary: !(account?.residentialProperties?.length ?? 0),
+    });
+    setShowPropertyModal(true);
+  };
+
+  const openEditPropertyModal = (property: ResidentialPropertySummary) => {
+    setEditingProperty(property);
+    setPropertyFormData({
+      name: property.name,
+      serviceAddress: property.serviceAddress ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.serviceAddress,
+      homeProfile: {
+        ...DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile,
+        homeType: property.homeProfile?.homeType ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.homeType,
+        squareFeet: property.homeProfile?.squareFeet ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.squareFeet,
+        bedrooms: property.homeProfile?.bedrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.bedrooms,
+        fullBathrooms: property.homeProfile?.fullBathrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.fullBathrooms,
+        halfBathrooms: property.homeProfile?.halfBathrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.halfBathrooms,
+        levels: property.homeProfile?.levels ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.levels,
+        occupiedStatus: property.homeProfile?.occupiedStatus ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.occupiedStatus,
+        condition: property.homeProfile?.condition ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.condition,
+        hasPets: property.homeProfile?.hasPets ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.hasPets,
+        lastProfessionalCleaning:
+          property.homeProfile?.lastProfessionalCleaning ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.lastProfessionalCleaning,
+        parkingAccess: property.homeProfile?.parkingAccess ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.parkingAccess,
+        entryNotes: property.homeProfile?.entryNotes ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.entryNotes,
+        specialInstructions:
+          property.homeProfile?.specialInstructions ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.specialInstructions,
+        isFirstVisit: property.homeProfile?.isFirstVisit ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.isFirstVisit,
+      },
+      accessNotes: property.accessNotes ?? '',
+      parkingAccess: property.parkingAccess ?? '',
+      entryNotes: property.entryNotes ?? '',
+      pets: Boolean(property.pets),
+      isPrimary: property.isPrimary,
+    });
+    setShowPropertyModal(true);
+  };
+
+  const handleSaveProperty = async () => {
+    if (!id || !propertyFormData.name.trim()) {
+      toast.error('Property name is required');
+      return;
+    }
+
+    try {
+      setSavingProperty(true);
+      if (editingProperty) {
+        await updateResidentialProperty(editingProperty.id, {
+          name: propertyFormData.name,
+          serviceAddress: propertyFormData.serviceAddress,
+          homeProfile: propertyFormData.homeProfile,
+          accessNotes: propertyFormData.accessNotes,
+          parkingAccess: propertyFormData.parkingAccess,
+          entryNotes: propertyFormData.entryNotes,
+          pets: propertyFormData.pets,
+          isPrimary: propertyFormData.isPrimary,
+          status: 'active',
+        });
+        toast.success('Residential property updated');
+      } else {
+        await createResidentialProperty({
+          accountId: id,
+          name: propertyFormData.name,
+          serviceAddress: propertyFormData.serviceAddress,
+          homeProfile: propertyFormData.homeProfile,
+          accessNotes: propertyFormData.accessNotes,
+          parkingAccess: propertyFormData.parkingAccess,
+          entryNotes: propertyFormData.entryNotes,
+          pets: propertyFormData.pets,
+          isPrimary: propertyFormData.isPrimary,
+          status: 'active',
+        });
+        toast.success('Residential property created');
+      }
+      setShowPropertyModal(false);
+      await fetchAccount();
+    } catch (error) {
+      console.error('Failed to save residential property:', error);
+      toast.error('Failed to save residential property');
+    } finally {
+      setSavingProperty(false);
+    }
+  };
+
   const handleAddActivity = async () => {
     if (!id) return;
     const trimmed = activityNote.trim();
@@ -597,6 +686,7 @@ const AccountDetail = () => {
   }
 
   const isResidentialAccount = account.type === 'residential';
+  const residentialProperties = account.residentialProperties ?? [];
   const residentialJourney = getResidentialJourneyState({
     residentialQuotes,
     activeContract,
@@ -730,53 +820,90 @@ const AccountDetail = () => {
             <Card className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Profile</h3>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Properties</h3>
                   <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Canonical home and service details used for residential quoting.
+                    Service locations under this residential customer or property manager.
                   </p>
                 </div>
-                <Badge variant="info">Residential</Badge>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Service Address</div>
-                  <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                    {[
-                      account.serviceAddress?.street,
-                      account.serviceAddress?.city,
-                      account.serviceAddress?.state,
-                      account.serviceAddress?.postalCode,
-                    ].filter(Boolean).join(', ') || 'No service address set'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
-                  <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                    {account.residentialProfile?.homeType
-                      ? `${account.residentialProfile.homeType.replace('_', ' ')}`
-                      : 'No home type set'}
-                    {account.residentialProfile?.squareFeet ? `, ${account.residentialProfile.squareFeet} sq ft` : ''}
-                    {account.residentialProfile?.bedrooms !== undefined && account.residentialProfile?.bedrooms !== null
-                      ? `, ${account.residentialProfile.bedrooms} bed`
-                      : ''}
-                    {account.residentialProfile?.fullBathrooms !== undefined && account.residentialProfile?.fullBathrooms !== null
-                      ? `, ${account.residentialProfile.fullBathrooms} bath`
-                      : ''}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
-                  <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                    {account.residentialProfile?.entryNotes || account.residentialProfile?.parkingAccess || 'No access notes set'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Pipeline</div>
-                  <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                    {activeContract ? 'Active service' : residentialQuotes.length > 0 ? 'Quoted / in progress' : 'Account created'}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="info">Residential</Badge>
+                  <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
+                    Add Property
+                  </Button>
                 </div>
               </div>
+              {residentialProperties.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+                  No residential properties yet. Add the first service location before creating a quote.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {residentialProperties.map((property) => (
+                    <div key={property.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                      {(() => {
+                        const propertyJourney = getResidentialPropertyJourneyState({
+                          property,
+                          residentialQuotes,
+                          contracts,
+                          recentJobs,
+                        });
+
+                        return (
+                          <>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-surface-900 dark:text-surface-100">{property.name}</div>
+                            {property.isPrimary ? <Badge variant="success">Primary</Badge> : null}
+                            <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
+                              {propertyJourney.currentStage}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
+                            {[
+                              property.serviceAddress?.street,
+                              property.serviceAddress?.city,
+                              property.serviceAddress?.state,
+                              property.serviceAddress?.postalCode,
+                            ].filter(Boolean).join(', ') || 'No service address set'}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
+                          Edit
+                        </Button>
+                      </div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        <div>
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
+                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                            {property.homeProfile?.homeType ? property.homeProfile.homeType.replace('_', ' ') : 'No home type set'}
+                            {property.homeProfile?.squareFeet ? `, ${property.homeProfile.squareFeet} sq ft` : ''}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Bedrooms / Baths</div>
+                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                            {property.homeProfile?.bedrooms ?? 0} bed / {property.homeProfile?.fullBathrooms ?? 0} bath
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
+                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                            {property.entryNotes || property.parkingAccess || property.accessNotes || 'No access notes set'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
+                        <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
+                        {propertyJourney.nextStep}
+                      </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
@@ -1022,6 +1149,186 @@ const AccountDetail = () => {
         onSave={handleCreateFacility}
         saving={creatingFacility}
       />
+      <Modal
+        isOpen={showPropertyModal && isResidentialAccount}
+        onClose={() => setShowPropertyModal(false)}
+        title={editingProperty ? 'Edit Residential Property' : 'Add Residential Property'}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input
+              label="Property Name"
+              value={propertyFormData.name}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+            <Select
+              label="Home Type"
+              value={propertyFormData.homeProfile.homeType ?? ''}
+              options={[
+                { value: 'apartment', label: 'Apartment' },
+                { value: 'condo', label: 'Condo' },
+                { value: 'townhouse', label: 'Townhouse' },
+                { value: 'single_family', label: 'Single Family' },
+              ]}
+              onChange={(value) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, homeType: value as NonNullable<typeof current.homeProfile.homeType> },
+                }))
+              }
+            />
+            <Input
+              label="Street"
+              value={propertyFormData.serviceAddress.street ?? ''}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  serviceAddress: { ...current.serviceAddress, street: event.target.value },
+                }))
+              }
+            />
+            <Input
+              label="City"
+              value={propertyFormData.serviceAddress.city ?? ''}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  serviceAddress: { ...current.serviceAddress, city: event.target.value },
+                }))
+              }
+            />
+            <Input
+              label="State"
+              value={propertyFormData.serviceAddress.state ?? ''}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  serviceAddress: { ...current.serviceAddress, state: event.target.value },
+                }))
+              }
+            />
+            <Input
+              label="Postal Code"
+              value={propertyFormData.serviceAddress.postalCode ?? ''}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  serviceAddress: { ...current.serviceAddress, postalCode: event.target.value },
+                }))
+              }
+            />
+            <Input
+              type="number"
+              label="Square Feet"
+              value={propertyFormData.homeProfile.squareFeet ?? ''}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, squareFeet: Number(event.target.value) || 0 },
+                }))
+              }
+            />
+            <Input
+              type="number"
+              label="Bedrooms"
+              value={propertyFormData.homeProfile.bedrooms ?? 0}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, bedrooms: Number(event.target.value) || 0 },
+                }))
+              }
+            />
+            <Input
+              type="number"
+              label="Full Bathrooms"
+              value={propertyFormData.homeProfile.fullBathrooms ?? 0}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, fullBathrooms: Number(event.target.value) || 0 },
+                }))
+              }
+            />
+            <Input
+              type="number"
+              label="Half Bathrooms"
+              value={propertyFormData.homeProfile.halfBathrooms ?? 0}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, halfBathrooms: Number(event.target.value) || 0 },
+                }))
+              }
+            />
+            <Input
+              type="number"
+              label="Levels"
+              value={propertyFormData.homeProfile.levels ?? 1}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({
+                  ...current,
+                  homeProfile: { ...current.homeProfile, levels: Number(event.target.value) || 1 },
+                }))
+              }
+            />
+            <label className="flex items-center gap-3 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
+              <input
+                type="checkbox"
+                checked={propertyFormData.isPrimary}
+                onChange={(event) =>
+                  setPropertyFormData((current) => ({ ...current, isPrimary: event.target.checked }))
+                }
+              />
+              Primary residential property
+            </label>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input
+              label="Parking Access"
+              value={propertyFormData.parkingAccess}
+              onChange={(event) =>
+                setPropertyFormData((current) => ({ ...current, parkingAccess: event.target.value }))
+              }
+            />
+            <label className="flex items-center gap-3 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
+              <input
+                type="checkbox"
+                checked={propertyFormData.pets}
+                onChange={(event) =>
+                  setPropertyFormData((current) => ({ ...current, pets: event.target.checked }))
+                }
+              />
+              Pets at property
+            </label>
+          </div>
+          <Textarea
+            label="Entry Notes"
+            value={propertyFormData.entryNotes}
+            onChange={(event) =>
+              setPropertyFormData((current) => ({ ...current, entryNotes: event.target.value }))
+            }
+          />
+          <Textarea
+            label="Access Notes"
+            value={propertyFormData.accessNotes}
+            onChange={(event) =>
+              setPropertyFormData((current) => ({ ...current, accessNotes: event.target.value }))
+            }
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowPropertyModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProperty} disabled={savingProperty}>
+              {savingProperty ? 'Saving...' : editingProperty ? 'Save Property' : 'Create Property'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

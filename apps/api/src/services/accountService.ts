@@ -91,6 +91,28 @@ const accountSelect = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
+  residentialProperties: {
+    where: {
+      archivedAt: null,
+    },
+    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      accountId: true,
+      name: true,
+      serviceAddress: true,
+      homeProfile: true,
+      accessNotes: true,
+      parkingAccess: true,
+      entryNotes: true,
+      pets: true,
+      isPrimary: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      archivedAt: true,
+    },
+  },
   accountManager: {
     select: {
       id: true,

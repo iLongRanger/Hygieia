@@ -10,13 +10,6 @@ import type { User } from '../../../types/user';
 import type { Contract } from '../../../types/contract';
 
 const ACCOUNT_MANAGER_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
-const RESIDENTIAL_HOME_TYPES = [
-  { value: 'apartment', label: 'Apartment' },
-  { value: 'condo', label: 'Condo' },
-  { value: 'townhouse', label: 'Townhouse' },
-  { value: 'single_family', label: 'Single Family' },
-];
-
 const DEFAULT_RESIDENTIAL_PROFILE = {
   homeType: 'single_family' as const,
   squareFeet: null,
@@ -96,23 +89,7 @@ export function EditAccountModal({
                     : null,
               })}
           />
-          {formData.type === 'residential' ? (
-            <Select
-              label="Home Type"
-              placeholder="Select home type"
-              options={RESIDENTIAL_HOME_TYPES}
-              value={formData.residentialProfile?.homeType || ''}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  residentialProfile: {
-                    ...DEFAULT_RESIDENTIAL_PROFILE,
-                    ...(formData.residentialProfile ?? {}),
-                    homeType: value as typeof DEFAULT_RESIDENTIAL_PROFILE.homeType,
-                  },
-                })}
-            />
-          ) : (
+          {formData.type === 'commercial' ? (
             <Select
               label="Industry"
               placeholder="Select industry"
@@ -120,29 +97,29 @@ export function EditAccountModal({
               value={formData.industry || ''}
               onChange={(value) => setFormData({ ...formData, industry: value || null })}
             />
+          ) : (
+            <Input
+              label="Residential Properties"
+              value="Manage service locations from the residential account page"
+              readOnly
+              disabled
+            />
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {formData.type === 'residential' ? (
-            <Input
-              label="Service Street"
-              placeholder="123 Main St"
-              value={formData.serviceAddress?.street || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  serviceAddress: {
-                    ...(formData.serviceAddress ?? {}),
-                    street: e.target.value || undefined,
-                  },
-                })}
-            />
-          ) : (
+          {formData.type === 'commercial' ? (
             <Input
               label="Website"
               placeholder="https://example.com"
               value={formData.website || ''}
               onChange={(e) => setFormData({ ...formData, website: e.target.value || null })}
+            />
+          ) : (
+            <Input
+              label="Billing Contact"
+              value="Residential service locations are managed separately from the customer record"
+              readOnly
+              disabled
             />
           )}
           <Select
@@ -175,110 +152,6 @@ export function EditAccountModal({
             onChange={(e) => setFormData({ ...formData, billingPhone: e.target.value || null })}
           />
         </div>
-        {formData.type === 'residential' && (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Service City"
-                placeholder="City"
-                value={formData.serviceAddress?.city || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    serviceAddress: {
-                      ...(formData.serviceAddress ?? {}),
-                      city: e.target.value || undefined,
-                    },
-                  })}
-              />
-              <Input
-                label="Service State"
-                placeholder="State"
-                value={formData.serviceAddress?.state || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    serviceAddress: {
-                      ...(formData.serviceAddress ?? {}),
-                      state: e.target.value || undefined,
-                    },
-                  })}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <Input
-                label="Sq Ft"
-                type="number"
-                value={formData.residentialProfile?.squareFeet || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
-                      ...(formData.residentialProfile ?? {}),
-                      squareFeet: e.target.value ? Number(e.target.value) : null,
-                    },
-                  })}
-              />
-              <Input
-                label="Bedrooms"
-                type="number"
-                value={formData.residentialProfile?.bedrooms ?? 0}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
-                      ...(formData.residentialProfile ?? {}),
-                      bedrooms: e.target.value ? Number(e.target.value) : 0,
-                    },
-                  })}
-              />
-              <Input
-                label="Full Baths"
-                type="number"
-                value={formData.residentialProfile?.fullBathrooms ?? 1}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
-                      ...(formData.residentialProfile ?? {}),
-                      fullBathrooms: e.target.value ? Number(e.target.value) : 0,
-                    },
-                  })}
-              />
-              <Input
-                label="Levels"
-                type="number"
-                value={formData.residentialProfile?.levels ?? 1}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
-                      ...(formData.residentialProfile ?? {}),
-                      levels: e.target.value ? Number(e.target.value) : 1,
-                    },
-                  })}
-              />
-            </div>
-            <Textarea
-              label="Access Notes"
-              placeholder="Gate code, parking, entry instructions, pet notes..."
-              value={formData.residentialProfile?.entryNotes || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  residentialProfile: {
-                    ...DEFAULT_RESIDENTIAL_PROFILE,
-                    ...(formData.residentialProfile ?? {}),
-                    entryNotes: e.target.value || null,
-                  },
-                })}
-            />
-          </>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label="Payment Terms"
@@ -298,17 +171,10 @@ export function EditAccountModal({
             />
           ) : (
             <Input
-              label="Service Postal Code"
-              placeholder="Postal / ZIP"
-              value={formData.serviceAddress?.postalCode || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  serviceAddress: {
-                    ...(formData.serviceAddress ?? {}),
-                    postalCode: e.target.value || undefined,
-                  },
-                })}
+              label="Residential Workflow"
+              value="Use Residential Properties on the account page for addresses and home profiles"
+              readOnly
+              disabled
             />
           )}
         </div>

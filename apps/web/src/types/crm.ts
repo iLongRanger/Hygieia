@@ -23,6 +23,23 @@ export interface ResidentialAccountProfile {
   isFirstVisit?: boolean | null;
 }
 
+export interface ResidentialPropertySummary {
+  id: string;
+  accountId: string;
+  name: string;
+  serviceAddress: Address | null;
+  homeProfile: ResidentialAccountProfile | null;
+  accessNotes?: string | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  pets?: boolean | null;
+  isPrimary: boolean;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
 export interface LeadSource {
   id: string;
   name: string;
@@ -254,6 +271,7 @@ export interface Account {
   paymentTerms: string;
   creditLimit: string | null;
   residentialProfile?: ResidentialAccountProfile | null;
+  residentialProperties?: ResidentialPropertySummary[];
   notes: string | null;
   createdAt: string;
   updatedAt: string;

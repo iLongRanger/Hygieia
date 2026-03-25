@@ -22,6 +22,8 @@ export type ResidentialQuoteStatus =
   | 'expired'
   | 'converted';
 
+export type ResidentialPropertyStatus = 'active' | 'archived';
+
 export interface ResidentialAddress {
   street?: string | null;
   city?: string | null;
@@ -123,6 +125,7 @@ export interface ResidentialHomeProfile {
 
 export interface ResidentialQuoteFormInput {
   accountId: string;
+  propertyId: string;
   title: string;
   serviceType: ResidentialServiceType;
   frequency: ResidentialFrequency;
@@ -185,6 +188,7 @@ export interface ResidentialQuote {
   title: string;
   status: ResidentialQuoteStatus;
   accountId: string;
+  propertyId: string;
   serviceType: ResidentialServiceType;
   frequency: ResidentialFrequency;
   customerName: string;
@@ -235,6 +239,18 @@ export interface ResidentialQuote {
     serviceAddress?: ResidentialAddress | null;
     residentialProfile?: ResidentialHomeProfile | null;
   } | null;
+  property?: {
+    id: string;
+    name: string;
+    serviceAddress: ResidentialAddress | null;
+    homeProfile: ResidentialHomeProfile;
+    accessNotes?: string | null;
+    parkingAccess?: string | null;
+    entryNotes?: string | null;
+    pets?: boolean | null;
+    isPrimary: boolean;
+    status: ResidentialPropertyStatus;
+  } | null;
   addOns?: Array<{
     id: string;
     code: string;
@@ -255,4 +271,26 @@ export interface PublicResidentialQuote extends ResidentialQuote {
     fullName: string;
     email: string;
   };
+}
+
+export interface ResidentialProperty {
+  id: string;
+  accountId: string;
+  name: string;
+  serviceAddress: ResidentialAddress;
+  homeProfile: ResidentialHomeProfile;
+  accessNotes?: string | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  pets?: boolean | null;
+  isPrimary: boolean;
+  status: ResidentialPropertyStatus;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  account?: {
+    id: string;
+    name: string;
+    type?: 'commercial' | 'residential';
+  } | null;
 }

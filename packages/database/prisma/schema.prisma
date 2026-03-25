@@ -94,6 +94,7 @@ model User {
   createdQuotations                    Quotation[]                  @relation("CreatedQuotations")
   createdResidentialPricingPlans       ResidentialPricingPlan[]     @relation("CreatedResidentialPricingPlans")
   createdResidentialQuotes             ResidentialQuote[]           @relation("CreatedResidentialQuotes")
+  createdResidentialProperties         ResidentialProperty[]        @relation("CreatedResidentialProperties")
   quotationActivities                  QuotationActivity[]          @relation("QuotationActivities")
   createdOneTimeServiceCatalogItems    OneTimeServiceCatalogItem[]  @relation("CreatedOneTimeServiceCatalogItems")
   requestedPricingApprovals            Quotation[]                  @relation("QuotationPricingApprovalRequestedBy")
@@ -333,6 +334,7 @@ model Account {
 
   contacts           Contact[]
   facilities         Facility[]
+  residentialProperties ResidentialProperty[]
   opportunities      Opportunity[]
   proposals          Proposal[]
   contracts          Contract[]
@@ -353,6 +355,36 @@ model Account {
   @@index([qboCustomerId])
   @@index([defaultPricingPlanId])
   @@map("accounts")
+}
+
+model ResidentialProperty {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @map("account_id") @db.Uuid
+  name              String    @db.VarChar(255)
+  serviceAddress    Json      @map("service_address") @db.JsonB
+  homeProfile       Json      @map("home_profile") @db.JsonB
+  accessNotes       String?   @map("access_notes") @db.Text
+  parkingAccess     String?   @map("parking_access") @db.Text
+  entryNotes        String?   @map("entry_notes") @db.Text
+  pets              Boolean?  @map("pets")
+  isPrimary         Boolean   @default(false) @map("is_primary")
+  status            String    @default("active") @db.VarChar(20)
+  createdByUserId   String    @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt        DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  account       Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdByUser User                @relation("CreatedResidentialProperties", fields: [createdByUserId], references: [id])
+  facilities    Facility[]
+  quotes        ResidentialQuote[]
+  contracts     Contract[]
+
+  @@unique([accountId, name])
+  @@index([accountId])
+  @@index([isPrimary])
+  @@index([status])
+  @@map("residential_properties")
 }
 
 model Contact {
@@ -468,6 +500,7 @@ model AreaType {
 model Facility {
   id                  String    @id @default(uuid()) @db.Uuid
   accountId           String    @map("account_id") @db.Uuid
+  residentialPropertyId String? @map("residential_property_id") @db.Uuid
   name                String    @db.VarChar(255)
   address             Json      @db.JsonB
   squareFeet          Decimal?  @map("square_feet") @db.Decimal(10, 2)
@@ -487,6 +520,7 @@ model Facility {
   defaultPricingPlanId String? @map("default_pricing_plan_id") @db.Uuid
 
   account            Account          @relation(fields: [accountId], references: [id])
+  residentialProperty ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: SetNull)
   opportunities      Opportunity[]
   appointments       Appointment[]
   areas              Area[]
@@ -506,6 +540,7 @@ model Facility {
 
   @@unique([accountId, name])
   @@index([accountId])
+  @@index([residentialPropertyId])
   @@index([status])
   @@index([facilityManagerId])
   @@index([defaultPricingPlanId])
@@ -710,7 +745,8 @@ model ResidentialQuote {
   quoteNumber          String    @unique @map("quote_number") @db.VarChar(50)
   title                String    @db.VarChar(255)
   status               String    @default("draft") @db.VarChar(20)
-  accountId             String    @map("account_id") @db.Uuid
+  accountId            String    @map("account_id") @db.Uuid
+  propertyId           String    @map("property_id") @db.Uuid
   serviceType          String    @map("service_type") @db.VarChar(40)
   frequency            String    @db.VarChar(30)
   customerName         String    @map("customer_name") @db.VarChar(255)
@@ -750,6 +786,7 @@ model ResidentialQuote {
   archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
 
   account       Account                   @relation(fields: [accountId], references: [id])
+  property      ResidentialProperty       @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   pricingPlan   ResidentialPricingPlan?   @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
   createdByUser User                      @relation("CreatedResidentialQuotes", fields: [createdByUserId], references: [id])
   addOns        ResidentialQuoteAddOn[]
@@ -758,6 +795,7 @@ model ResidentialQuote {
   @@index([serviceType])
   @@index([frequency])
   @@index([accountId])
+  @@index([propertyId])
   @@index([pricingPlanId])
   @@index([createdByUserId])
   @@index([customerEmail])
@@ -1093,6 +1131,7 @@ model Contract {
   serviceCategory                 String    @default("commercial") @map("service_category") @db.VarChar(20)
   accountId                       String    @map("account_id") @db.Uuid
   facilityId                      String?   @map("facility_id") @db.Uuid
+  residentialPropertyId           String?   @map("residential_property_id") @db.Uuid
   proposalId                      String?   @map("proposal_id") @db.Uuid
   opportunityId                   String?   @map("opportunity_id") @db.Uuid
   residentialServiceType          String?   @map("residential_service_type") @db.VarChar(40)
@@ -1168,6 +1207,7 @@ model Contract {
   // Relations
   account                     Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
   facility                    Facility?    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  residentialProperty         ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: SetNull)
   proposal                    Proposal?    @relation(fields: [proposalId], references: [id])
   opportunity                 Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   assignedTeam                Team?        @relation("AssignedTeamContracts", fields: [assignedTeamId], references: [id], onDelete: SetNull)
@@ -1194,6 +1234,7 @@ model Contract {
   @@index([serviceCategory])
   @@index([accountId])
   @@index([facilityId])
+  @@index([residentialPropertyId])
   @@index([proposalId])
   @@index([opportunityId])
   @@index([quoteSourceId])
