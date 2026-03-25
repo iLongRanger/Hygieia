@@ -8,6 +8,7 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -200,6 +201,44 @@ function defaultTitle(serviceType: ResidentialServiceType, customerName: string,
   }
   const homeLabel = HOME_TYPE_OPTIONS.find((option) => option.value === homeType)?.label ?? 'Home';
   return `${serviceLabel} ${homeLabel} Quote`;
+}
+
+function normalizeOptionalString(value: string | null | undefined) {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
+function buildQuotePayload(formData: ResidentialQuoteFormInput): ResidentialQuoteFormInput {
+  return {
+    ...formData,
+    title:
+      formData.title.trim()
+      || defaultTitle(formData.serviceType, formData.customerName, formData.homeProfile.homeType),
+    customerName: formData.customerName.trim(),
+    customerEmail: normalizeOptionalString(formData.customerEmail),
+    customerPhone: normalizeOptionalString(formData.customerPhone),
+    pricingPlanId: normalizeOptionalString(formData.pricingPlanId),
+    preferredStartDate: normalizeOptionalString(formData.preferredStartDate),
+    notes: normalizeOptionalString(formData.notes),
+    addOns: (formData.addOns ?? []).map((addOn) => ({
+      ...addOn,
+      label: normalizeOptionalString(addOn.label) ?? undefined,
+    })),
+  };
 }
 
 const ResidentialQuotesPage = () => {
@@ -469,12 +508,7 @@ const ResidentialQuotesPage = () => {
 
   const saveQuote = async () => {
     try {
-      const payload: ResidentialQuoteFormInput = {
-        ...formData,
-        title:
-          formData.title.trim() ||
-          defaultTitle(formData.serviceType, formData.customerName, formData.homeProfile.homeType),
-      };
+      const payload = buildQuotePayload(formData);
 
       if (editingQuote) {
         await updateResidentialQuote(editingQuote.id, payload);
@@ -488,7 +522,7 @@ const ResidentialQuotesPage = () => {
       await fetchData();
     } catch (error) {
       console.error('Failed to save residential quote', error);
-      toast.error('Failed to save residential quote');
+      toast.error(getApiErrorMessage(error, 'Failed to save residential quote'));
     }
   };
 
