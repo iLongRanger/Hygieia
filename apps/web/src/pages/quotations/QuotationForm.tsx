@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, DollarSign, Settings2 } from 'lucide-react';
+import { Save, Plus, Trash2, DollarSign, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -413,9 +413,6 @@ const QuotationForm = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(isEditing ? `/quotations/${id}` : '/quotations')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <DollarSign className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>

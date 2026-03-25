@@ -383,12 +383,12 @@ const LeadsList = () => {
 
   const navigateToOpportunity = useCallback((opportunity: Opportunity) => {
     if (opportunity.account?.id) {
-      navigate(getAccountDetailPath(opportunity.account));
+      navigate(getAccountDetailPath(opportunity.account), { state: { backLabel: 'Leads', backPath: '/leads' } });
       return;
     }
 
     if (opportunity.lead?.id) {
-      navigate(`/leads/${opportunity.lead.id}`);
+      navigate(`/leads/${opportunity.lead.id}`, { state: { backLabel: 'Leads', backPath: '/leads' } });
     }
   }, [navigate]);
 
@@ -668,7 +668,7 @@ const LeadsList = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Leads</h1>
         {canWriteLeads && (
-          <Button onClick={() => navigate('/leads/new')}>
+          <Button onClick={() => navigate('/leads/new', { state: { backLabel: 'Leads', backPath: '/leads' } })}>
             <Plus className="mr-2 h-4 w-4" />
             Add New Lead
           </Button>
@@ -949,7 +949,7 @@ const LeadsList = () => {
           data={leads}
           columns={columns}
           isLoading={loading}
-          onRowClick={(lead) => navigate(`/leads/${lead.id}`)}
+          onRowClick={(lead) => navigate(`/leads/${lead.id}`, { state: { backLabel: 'Leads', backPath: '/leads' } })}
         />
 
         <div className="border-t border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/50">

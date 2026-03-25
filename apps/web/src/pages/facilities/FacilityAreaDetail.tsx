@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit2, ListPlus, Plus, Ruler, Trash2 } from 'lucide-react';
+import { Edit2, ListPlus, Plus, Ruler, Trash2 } from 'lucide-react';
 
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -96,15 +96,6 @@ export function FacilityAreaDetail({
 
   return (
     <div>
-      {/* Back link */}
-      <button
-        onClick={onBack}
-        className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white transition-colors text-sm flex items-center gap-1 mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Areas
-      </button>
-
       {/* Area header */}
       <div className="flex justify-between items-center">
         <div>

@@ -294,7 +294,7 @@ const FacilitiesList = () => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/facilities/${item.id}`);
+              navigate(`/facilities/${item.id}`, { state: { backLabel: 'Facilities', backPath: '/facilities' } });
             }}
           >
             View
@@ -417,7 +417,7 @@ const FacilitiesList = () => {
           data={facilities}
           columns={columns}
           isLoading={loading}
-          onRowClick={(item) => navigate(`/facilities/${item.id}`)}
+          onRowClick={(item) => navigate(`/facilities/${item.id}`, { state: { backLabel: 'Facilities', backPath: '/facilities' } })}
         />
 
         <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">

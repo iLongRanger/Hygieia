@@ -251,7 +251,7 @@ const ProposalsList = () => {
           </div>
           <div>
             <button
-              onClick={() => navigate(`/proposals/${proposal.id}`)}
+              onClick={() => navigate(`/proposals/${proposal.id}`, { state: { backLabel: 'Proposals', backPath: '/proposals' } })}
               className="font-medium text-surface-900 dark:text-white hover:text-gold transition-colors"
             >
               {proposal.proposalNumber}
@@ -411,7 +411,7 @@ const ProposalsList = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Proposals</h1>
         {canWriteProposals && (
-          <Button onClick={() => navigate('/proposals/new')}>
+          <Button onClick={() => navigate('/proposals/new', { state: { backLabel: 'Proposals', backPath: '/proposals' } })}>
             <Plus className="mr-2 h-4 w-4" />
             New Proposal
           </Button>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
+
   Save,
   ClipboardCheck,
   Building2,
@@ -276,14 +276,6 @@ const InspectionForm = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/inspections')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div className="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
             <ClipboardCheck className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>

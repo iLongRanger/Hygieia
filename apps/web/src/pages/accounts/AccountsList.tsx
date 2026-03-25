@@ -339,7 +339,7 @@ const AccountsList = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(getAccountDetailPath(item))}
+            onClick={() => navigate(getAccountDetailPath(item), { state: { backLabel: 'Accounts', backPath: '/accounts' } })}
           >
             Manage
           </Button>

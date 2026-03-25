@@ -306,7 +306,7 @@ const JobsList = () => {
   };
 
   const handleCalendarEdit = (appointment: Appointment) => {
-    navigate(`/jobs/${appointment.id}`);
+    navigate(`/jobs/${appointment.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } });
   };
 
   const handleCalendarCustomerClick = (appointment: Appointment) => {
@@ -464,7 +464,7 @@ const JobsList = () => {
       header: 'Job #',
       cell: (job: Job) => (
         <button
-          onClick={() => navigate(`/jobs/${job.id}`)}
+          onClick={() => navigate(`/jobs/${job.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } })}
           className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
         >
           {job.jobNumber}
@@ -643,7 +643,7 @@ const JobsList = () => {
             </Button>
           )}
           {canCreateJob && (
-            <Button size="sm" onClick={() => navigate('/jobs/new')}>
+            <Button size="sm" onClick={() => navigate('/jobs/new', { state: { backLabel: 'Jobs', backPath: '/jobs' } })}>
               <Plus className="mr-1.5 h-4 w-4" />
               New Job
             </Button>
@@ -726,7 +726,7 @@ const JobsList = () => {
             <Table
               columns={columns}
               data={jobs}
-              onRowClick={(job) => navigate(`/jobs/${job.id}`)}
+              onRowClick={(job) => navigate(`/jobs/${job.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } })}
             />
           )}
 
@@ -843,7 +843,7 @@ const JobsList = () => {
                               <div className="mb-2 flex items-start justify-between gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => navigate(`/jobs/${job.id}`)}
+                                  onClick={() => navigate(`/jobs/${job.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } })}
                                   className="text-left text-sm font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400"
                                 >
                                   {job.jobNumber}

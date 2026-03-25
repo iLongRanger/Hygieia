@@ -351,7 +351,7 @@ const TaskTemplatesList = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/tasks/${item.id}`)}
+            onClick={() => navigate(`/tasks/${item.id}`, { state: { backLabel: 'Tasks', backPath: '/tasks' } })}
           >
             View
           </Button>

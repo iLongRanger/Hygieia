@@ -273,7 +273,7 @@ const ContactsList = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/contacts/${item.id}`)}
+            onClick={() => navigate(`/contacts/${item.id}`, { state: { backLabel: 'Contacts', backPath: '/contacts' } })}
           >
             Edit
           </Button>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Edit2,
   FileSignature,
   CheckCircle,
@@ -2254,9 +2253,6 @@ const ContractDetail = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" onClick={() => navigate('/contracts')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-surface-900 dark:text-white truncate">{contract.contractNumber}</h1>
@@ -2544,7 +2540,7 @@ const ContractDetail = () => {
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400">Source Proposal</div>
                 <button
-                  onClick={() => navigate(`/proposals/${contract.proposal?.id}`)}
+                  onClick={() => navigate(`/proposals/${contract.proposal?.id}`, { state: { backLabel: contract.contractNumber, backPath: `/contracts/${contract.id}` } })}
                   className="text-gold hover:underline"
                 >
                   {contract.proposal.proposalNumber} - {contract.proposal.title}

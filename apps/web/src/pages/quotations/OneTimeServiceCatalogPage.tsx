@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -174,9 +174,6 @@ const OneTimeServiceCatalogPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate('/quotations/new')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">One-Time Service Standards</h1>
         </div>
       </div>

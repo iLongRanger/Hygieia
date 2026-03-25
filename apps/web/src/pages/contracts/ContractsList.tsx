@@ -304,7 +304,7 @@ const ContractsList = () => {
               className="text-left"
               onClick={(event) => {
                 event.stopPropagation();
-                navigate(`/contracts/${contract.id}`);
+                navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } });
               }}
             >
               <div className="font-medium text-surface-900 dark:text-white transition hover:text-indigo-300">
@@ -382,7 +382,7 @@ const ContractsList = () => {
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/contracts/${contract.id}`);
+              navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } });
             }}
           >
             View
@@ -395,7 +395,7 @@ const ContractsList = () => {
                   variant="secondary"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/contracts/${contract.id}/edit`);
+                    navigate(`/contracts/${contract.id}/edit`, { state: { backLabel: 'Contracts', backPath: '/contracts' } });
                   }}
                 >
                   Edit
@@ -449,7 +449,7 @@ const ContractsList = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Contracts</h1>
         {canWriteContracts && (
-          <Button onClick={() => navigate('/contracts/new')}>
+          <Button onClick={() => navigate('/contracts/new', { state: { backLabel: 'Contracts', backPath: '/contracts' } })}>
             <Plus className="mr-2 h-4 w-4" />
             New Contract
           </Button>
@@ -520,7 +520,7 @@ const ContractsList = () => {
         </button>
         <button
           type="button"
-          onClick={() => navigate('/contracts/new')}
+          onClick={() => navigate('/contracts/new', { state: { backLabel: 'Contracts', backPath: '/contracts' } })}
           className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 p-3 text-left transition hover:border-emerald-300/50"
         >
           <div className="text-xs text-emerald-200 uppercase tracking-wide">Ready From Proposals</div>
@@ -681,7 +681,7 @@ const ContractsList = () => {
           data={contracts}
           columns={columns}
           isLoading={loading}
-          onRowClick={(contract) => navigate(`/contracts/${contract.id}`)}
+          onRowClick={(contract) => navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } })}
         />
 
         <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">

@@ -620,6 +620,12 @@ const AccountDetail = () => {
     .filter((appointment) => appointment.status === 'completed' || appointment.status === 'rescheduled')
     .sort((left, right) => new Date(right.scheduledStart).getTime() - new Date(left.scheduledStart).getTime());
 
+  const accountBackState = {
+    state: { backLabel: account.name, backPath: getAccountDetailPath(account) },
+  };
+
+  const navigateFromAccount = (path: string) => navigate(path, accountBackState);
+
   const bookingsSection = (
     <Card className="space-y-4">
       <div className="flex items-center justify-between">
@@ -629,7 +635,7 @@ const AccountDetail = () => {
             Upcoming and recent walkthroughs or service appointments linked to this account.
           </p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => navigate('/appointments')}>
+        <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
           Open Appointments
         </Button>
       </div>
@@ -709,7 +715,7 @@ const AccountDetail = () => {
         onEdit={() => setShowEditModal(true)}
         onArchive={handleArchive}
         onRestore={handleRestore}
-        onNavigate={(path) => navigate(path)}
+        onNavigate={navigateFromAccount}
       />
 
       {isResidentialAccount ? (
@@ -719,7 +725,7 @@ const AccountDetail = () => {
             <AccountContacts
               contacts={contacts}
               accountId={account.id}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
             <Card className="space-y-4">
               <div className="flex items-center justify-between">
@@ -802,16 +808,16 @@ const AccountDetail = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigate('/residential/quotes')}>
+                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
                   Open Residential Quotes
                 </Button>
                 {activeContract ? (
-                  <Button size="sm" onClick={() => navigate(`/contracts/${activeContract.id}`)}>
+                  <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
                     Open Active Contract
                   </Button>
                 ) : null}
                 {!activeContract && recentJobs.length > 0 ? (
-                  <Button size="sm" onClick={() => navigate('/jobs')}>
+                  <Button size="sm" onClick={() => navigateFromAccount('/jobs')}>
                     View Jobs
                   </Button>
                 ) : null}
@@ -825,7 +831,7 @@ const AccountDetail = () => {
                     Quotes linked to this residential account.
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => navigate('/residential/quotes')}>
+                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
                   Open Quotes
                 </Button>
               </div>
@@ -837,7 +843,7 @@ const AccountDetail = () => {
                     <button
                       key={quote.id}
                       type="button"
-                      onClick={() => navigate('/residential/quotes')}
+                      onClick={() => navigateFromAccount('/residential/quotes')}
                       className="w-full rounded-xl border border-surface-200 p-3 text-left transition-colors hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600"
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -901,7 +907,7 @@ const AccountDetail = () => {
             <AccountServiceOverview
               activeContract={activeContract}
               recentJobs={recentJobs}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
           </div>
         </>
@@ -912,13 +918,13 @@ const AccountDetail = () => {
             <AccountContacts
               contacts={contacts}
               accountId={account.id}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
             <AccountFacilities
               facilities={facilities}
               canWriteFacilities={canWriteFacilities}
               onAddFacility={() => setShowFacilityModal(true)}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
           </div>
 
@@ -950,17 +956,17 @@ const AccountDetail = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigate(`/accounts/${account.id}/facilities`)}>
+                <Button size="sm" variant="outline" onClick={() => navigateFromAccount(`/accounts/${account.id}/facilities`)}>
                   Open Facilities
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => navigate('/appointments')}>
+                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
                   Open Appointments
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => navigate('/proposals')}>
+                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/proposals')}>
                   Open Proposals
                 </Button>
                 {activeContract ? (
-                  <Button size="sm" onClick={() => navigate(`/contracts/${activeContract.id}`)}>
+                  <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
                     Open Active Contract
                   </Button>
                 ) : null}
@@ -973,12 +979,12 @@ const AccountDetail = () => {
               contracts={contracts}
               proposalTotal={proposalTotal}
               contractTotal={contractTotal}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
             <AccountServiceOverview
               activeContract={activeContract}
               recentJobs={recentJobs}
-              onNavigate={(path) => navigate(path)}
+              onNavigate={navigateFromAccount}
             />
           </div>
         </>

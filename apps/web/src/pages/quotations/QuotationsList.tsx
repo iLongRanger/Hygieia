@@ -170,7 +170,7 @@ const QuotationsList = () => {
       header: 'Number',
       cell: (q: Quotation) => (
         <button
-          onClick={() => navigate(`/quotations/${q.id}`)}
+          onClick={() => navigate(`/quotations/${q.id}`, { state: { backLabel: 'Quotations', backPath: '/quotations' } })}
           className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
         >
           {q.quotationNumber}
@@ -275,7 +275,7 @@ const QuotationsList = () => {
           </div>
         </div>
         {canWriteQuotations && (
-          <Button onClick={() => navigate('/quotations/new')}>
+          <Button onClick={() => navigate('/quotations/new', { state: { backLabel: 'Quotations', backPath: '/quotations' } })}>
             <Plus className="mr-1.5 h-4 w-4" />
             New Quotation
           </Button>
@@ -362,7 +362,7 @@ const QuotationsList = () => {
           columns={columns}
           data={quotations}
           isLoading={loading}
-          onRowClick={(q) => navigate(`/quotations/${q.id}`)}
+          onRowClick={(q) => navigate(`/quotations/${q.id}`, { state: { backLabel: 'Quotations', backPath: '/quotations' } })}
         />
       </Card>
     </div>

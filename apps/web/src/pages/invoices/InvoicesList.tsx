@@ -201,7 +201,7 @@ const InvoicesList = () => {
             <Zap className="mr-1.5 h-4 w-4" />
             Batch Generate
           </Button>
-          <Button size="sm" onClick={() => navigate('/invoices/new')}>
+          <Button size="sm" onClick={() => navigate('/invoices/new', { state: { backLabel: 'Invoices', backPath: '/invoices' } })}>
             <Plus className="mr-1.5 h-4 w-4" />
             New Invoice
           </Button>
@@ -261,7 +261,7 @@ const InvoicesList = () => {
           columns={columns}
           data={invoices}
           isLoading={loading}
-          onRowClick={(row) => navigate(`/invoices/${row.id}`)}
+          onRowClick={(row) => navigate(`/invoices/${row.id}`, { state: { backLabel: 'Invoices', backPath: '/invoices' } })}
         />
       </Card>
 

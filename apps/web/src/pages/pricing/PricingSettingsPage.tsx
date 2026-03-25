@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
+
   Check,
   Edit2,
   Plus,
@@ -227,9 +227,6 @@ const PricingSettingsPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/pricing')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Pricing Plans</h1>
           <p className="text-surface-600 dark:text-surface-400">

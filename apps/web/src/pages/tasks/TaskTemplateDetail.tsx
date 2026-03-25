@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
+
   Clock,
   Edit2,
   Archive,
@@ -222,9 +222,6 @@ const TaskTemplateDetail = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/tasks')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{template.name}</h1>
           <p className="text-surface-500 dark:text-surface-400">

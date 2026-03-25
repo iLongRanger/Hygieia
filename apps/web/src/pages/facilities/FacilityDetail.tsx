@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Send, CircleAlert } from 'lucide-react';
+import { Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import {
@@ -1102,9 +1102,6 @@ const FacilityDetail = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" onClick={() => navigate('/facilities')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white truncate">{facility.name}</h1>
           <p className="text-surface-500 dark:text-surface-400">{facility.account.name}</p>

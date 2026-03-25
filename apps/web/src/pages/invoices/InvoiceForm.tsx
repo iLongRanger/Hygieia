@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -201,10 +201,6 @@ const InvoiceForm = () => {
             Create a manual invoice
           </p>
         </div>
-        <Button variant="ghost" onClick={() => navigate('/invoices')}>
-          <ArrowLeft className="mr-1.5 h-4 w-4" />
-          Back
-        </Button>
       </div>
 
       <Card className="p-4 space-y-4">

@@ -190,7 +190,7 @@ const UsersList = () => {
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/users/${item.id}`);
+            navigate(`/users/${item.id}`, { state: { backLabel: 'Users', backPath: '/users' } });
           }}
         >
           <Eye className="mr-1 h-4 w-4" />

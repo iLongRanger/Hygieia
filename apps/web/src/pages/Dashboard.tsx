@@ -78,6 +78,8 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
   return map[status] || 'default';
 };
 
+const dashboardBackState = { state: { backLabel: 'Dashboard', backPath: '/' } };
+
 const SubcontractorDashboard = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -149,7 +151,7 @@ const SubcontractorDashboard = () => {
           icon={FileText}
           color="text-primary-600 dark:text-primary-400"
           bg="bg-primary-100 dark:bg-primary-900/30"
-          onClick={() => navigate('/contracts')}
+          onClick={() => navigate('/contracts', dashboardBackState)}
         />
         <StatCard
           label="Upcoming Jobs"
@@ -158,7 +160,7 @@ const SubcontractorDashboard = () => {
           icon={Briefcase}
           color="text-indigo-600 dark:text-indigo-400"
           bg="bg-indigo-100 dark:bg-indigo-900/30"
-          onClick={() => navigate('/jobs')}
+          onClick={() => navigate('/jobs', dashboardBackState)}
         />
         <StatCard
           label="Monthly Payout"
@@ -176,7 +178,7 @@ const SubcontractorDashboard = () => {
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             Upcoming Jobs
           </h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/jobs')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/jobs', dashboardBackState)}>
             View all
           </Button>
         </div>
@@ -194,7 +196,7 @@ const SubcontractorDashboard = () => {
             {upcomingJobs.slice(0, 10).map((job) => (
               <button
                 key={job.id}
-                onClick={() => navigate(`/jobs/${job.id}`)}
+                onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
                 className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
               >
                 <div>
@@ -220,7 +222,7 @@ const SubcontractorDashboard = () => {
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             Active Contracts
           </h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/contracts')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/contracts', dashboardBackState)}>
             View all
           </Button>
         </div>
@@ -233,7 +235,7 @@ const SubcontractorDashboard = () => {
             {activeContracts.map((contract) => (
               <button
                 key={contract.id}
-                onClick={() => navigate(`/contracts/${contract.id}`)}
+                onClick={() => navigate(`/contracts/${contract.id}`, dashboardBackState)}
                 className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
               >
                 <div>
@@ -417,7 +419,7 @@ const AdminDashboard = () => {
             color="text-success-600 dark:text-success-400"
             bg="bg-success-100 dark:bg-success-900/30"
             change={stats.comparison.mrrChange}
-            onClick={() => navigate('/contracts?status=active')}
+            onClick={() => navigate('/contracts?status=active', dashboardBackState)}
           />
           <StatCard
             label="Pipeline Value"
@@ -427,7 +429,7 @@ const AdminDashboard = () => {
             color="text-blue-600 dark:text-blue-400"
             bg="bg-blue-100 dark:bg-blue-900/30"
             change={stats.comparison.newLeadsChange}
-            onClick={() => navigate('/leads')}
+            onClick={() => navigate('/leads', dashboardBackState)}
           />
           <StatCard
             label="Proposals Sent"
@@ -437,7 +439,7 @@ const AdminDashboard = () => {
             color="text-purple-600 dark:text-purple-400"
             bg="bg-purple-100 dark:bg-purple-900/30"
             change={stats.comparison.proposalsSentChange}
-            onClick={() => navigate('/proposals')}
+            onClick={() => navigate('/proposals', dashboardBackState)}
           />
           <StatCard
             label="Active Accounts"
@@ -447,7 +449,7 @@ const AdminDashboard = () => {
             color="text-primary-600 dark:text-primary-400"
             bg="bg-primary-100 dark:bg-primary-900/30"
             change={stats.comparison.newAccountsChange}
-            onClick={() => navigate('/accounts')}
+            onClick={() => navigate('/accounts', dashboardBackState)}
           />
         </div>
       ) : null}
@@ -493,7 +495,7 @@ const AdminDashboard = () => {
             icon={Briefcase}
             color="text-indigo-600 dark:text-indigo-400"
             bg="bg-indigo-100 dark:bg-indigo-900/30"
-            onClick={() => navigate('/jobs')}
+            onClick={() => navigate('/jobs', dashboardBackState)}
           />
           <StatCard
             label="Inspection Score"
@@ -502,7 +504,7 @@ const AdminDashboard = () => {
             icon={ClipboardCheck}
             color="text-teal-600 dark:text-teal-400"
             bg="bg-teal-100 dark:bg-teal-900/30"
-            onClick={() => navigate('/inspections')}
+            onClick={() => navigate('/inspections', dashboardBackState)}
           />
           <StatCard
             label="Active Clock-ins"
@@ -511,7 +513,7 @@ const AdminDashboard = () => {
             icon={Timer}
             color="text-amber-600 dark:text-amber-400"
             bg="bg-amber-100 dark:bg-amber-900/30"
-            onClick={() => navigate('/time-tracking')}
+            onClick={() => navigate('/time-tracking', dashboardBackState)}
           />
           <StatCard
             label="Outstanding AR"
@@ -520,7 +522,7 @@ const AdminDashboard = () => {
             icon={Receipt}
             color="text-rose-600 dark:text-rose-400"
             bg="bg-rose-100 dark:bg-rose-900/30"
-            onClick={() => navigate('/invoices')}
+            onClick={() => navigate('/invoices', dashboardBackState)}
           />
         </div>
       )}
@@ -536,7 +538,7 @@ const AdminDashboard = () => {
           {/* Upcoming Appointments */}
           <Card
             className="min-h-[300px] cursor-pointer transition-colors hover:bg-surface-100 dark:hover:bg-surface-800/40"
-            onClick={() => navigate('/appointments')}
+            onClick={() => navigate('/appointments', dashboardBackState)}
           >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">

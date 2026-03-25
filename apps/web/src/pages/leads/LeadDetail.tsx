@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
   Calendar,
   Mail,
   User as UserIcon,
@@ -540,6 +539,26 @@ const LeadDetail = () => {
   };
 
   const openScheduleModal = () => {
+    const bookedWalkthrough = appointments.find(
+      (appointment) => appointment.type === 'walk_through' && appointment.status === 'scheduled'
+    );
+
+    if (bookedWalkthrough) {
+      setSelectedAppointment(bookedWalkthrough);
+      setScheduleForm({
+        assignedToUserId: bookedWalkthrough.assignedToUser.id,
+        facilityId: '',
+        scheduledStart: toLocalInputValue(bookedWalkthrough.scheduledStart),
+        scheduledEnd: toLocalInputValue(bookedWalkthrough.scheduledEnd),
+        timezone: bookedWalkthrough.timezone,
+        location: bookedWalkthrough.location || '',
+        notes: bookedWalkthrough.notes || '',
+      });
+      setShowRescheduleModal(true);
+      toast.error('A walkthrough is already booked for this lead. Reschedule the existing appointment instead.');
+      return;
+    }
+
     const defaults = getDefaultScheduleValues();
     setScheduleDate(defaults.date);
     setScheduleStartTime(defaults.startTime);
@@ -741,6 +760,19 @@ const LeadDetail = () => {
     () => facilities.find((facility) => facility.id === completeForm.facilityId) || null,
     [completeForm.facilityId, facilities]
   );
+  const openExistingRescheduleModal = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setScheduleForm({
+      assignedToUserId: appointment.assignedToUser.id,
+      facilityId: '',
+      scheduledStart: toLocalInputValue(appointment.scheduledStart),
+      scheduledEnd: toLocalInputValue(appointment.scheduledEnd),
+      timezone: appointment.timezone,
+      location: appointment.location || '',
+      notes: appointment.notes || '',
+    });
+    setShowRescheduleModal(true);
+  };
   const selectedFacilityAreaCount = selectedFacility?._count.areas ?? 0;
   const selectedFacilityTaskCount = selectedFacility?._count.facilityTasks ?? 0;
   const canCompleteSelectedFacility =
@@ -763,9 +795,6 @@ const LeadDetail = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/leads')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{lead.contactName}</h1>
           <p className="text-surface-500 dark:text-surface-400">{lead.companyName || 'No company name'}</p>
@@ -898,19 +927,7 @@ const LeadDetail = () => {
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => {
-                                setSelectedAppointment(appointment);
-                                setScheduleForm({
-                                  assignedToUserId: appointment.assignedToUser.id,
-                                  facilityId: '',
-                                  scheduledStart: toLocalInputValue(appointment.scheduledStart),
-                                  scheduledEnd: toLocalInputValue(appointment.scheduledEnd),
-                                  timezone: appointment.timezone,
-                                  location: appointment.location || '',
-                                  notes: appointment.notes || '',
-                                });
-                                setShowRescheduleModal(true);
-                              }}
+                              onClick={() => openExistingRescheduleModal(appointment)}
                             >
                               <RotateCcw className="mr-2 h-4 w-4" />
                               Reschedule
@@ -1318,7 +1335,7 @@ const LeadDetail = () => {
                           variant="secondary"
                           onClick={() => {
                             setShowCompleteModal(false);
-                            navigate(`/facilities/${selectedFacility.id}`);
+                            navigate(`/facilities/${selectedFacility.id}`, { state: { backLabel: lead.contactName, backPath: `/leads/${lead.id}` } });
                           }}
                         >
                           Open Facility

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Receipt,
-  ArrowLeft,
+
   Send,
   DollarSign,
   Ban,
@@ -154,9 +154,6 @@ const InvoiceDetail = () => {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/invoices')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <Receipt className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>

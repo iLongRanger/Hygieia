@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
+
   FileText,
   Plus,
   Edit2,
@@ -138,9 +138,6 @@ const ProposalTemplatesPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Proposal Templates</h1>
           <p className="text-surface-500 dark:text-surface-400">Manage terms & conditions templates for proposals</p>

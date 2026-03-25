@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Save,
   Plus,
   Trash2,
@@ -1129,13 +1128,6 @@ const ProposalForm = () => {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate('/proposals')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
           <div>
             <h1 className="text-xl font-bold text-surface-900 dark:text-white sm:text-3xl">
               {isEditMode ? (isRejectedRevision ? 'Revise Proposal' : 'Edit Proposal') : 'New Proposal'}
@@ -1357,7 +1349,7 @@ const ProposalForm = () => {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        onClick={() => navigate(`/facilities/${formData.facilityId}`)}
+                        onClick={() => navigate(`/facilities/${formData.facilityId}`, { state: { backLabel: isEditMode ? 'Edit Proposal' : 'New Proposal', backPath: isEditMode ? `/proposals/${id}/edit` : '/proposals/new' } })}
                       >
                         Review Facility Details
                       </Button>

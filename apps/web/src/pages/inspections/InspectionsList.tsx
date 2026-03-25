@@ -225,7 +225,7 @@ const InspectionsList = () => {
             Filters
           </Button>
           {canCreateInspection && (
-            <Button size="sm" onClick={() => navigate('/inspections/new')}>
+            <Button size="sm" onClick={() => navigate('/inspections/new', { state: { backLabel: 'Inspections', backPath: '/inspections' } })}>
               <Plus className="mr-1.5 h-4 w-4" />
               New Inspection
             </Button>
@@ -275,7 +275,7 @@ const InspectionsList = () => {
           columns={columns}
           data={inspections}
           isLoading={loading}
-          onRowClick={(row) => navigate(`/inspections/${row.id}`)}
+          onRowClick={(row) => navigate(`/inspections/${row.id}`, { state: { backLabel: 'Inspections', backPath: '/inspections' } })}
         />
       </Card>
 
