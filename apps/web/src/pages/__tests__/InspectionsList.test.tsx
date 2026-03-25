@@ -84,6 +84,11 @@ describe('InspectionsList', () => {
 
     await user.click(screen.getByRole('button', { name: /new inspection/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/inspections/new');
+    expect(navigateMock).toHaveBeenCalledWith('/inspections/new', {
+      state: {
+        backLabel: 'Inspections',
+        backPath: '/inspections',
+      },
+    });
   });
 });

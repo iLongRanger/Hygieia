@@ -118,7 +118,12 @@ describe('UsersList', () => {
     await userEventInstance.click(await screen.findByRole('button', { name: /view/i }));
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/users/user-1');
+      expect(navigateMock).toHaveBeenCalledWith('/users/user-1', {
+        state: {
+          backLabel: 'Users',
+          backPath: '/users',
+        },
+      });
     });
   });
 });

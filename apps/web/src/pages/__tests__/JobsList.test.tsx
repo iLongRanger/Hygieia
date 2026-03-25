@@ -122,7 +122,12 @@ describe('JobsList', () => {
 
     await user.click(screen.getByRole('button', { name: /new job/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/jobs/new');
+    expect(navigateMock).toHaveBeenCalledWith('/jobs/new', {
+      state: {
+        backLabel: 'Jobs',
+        backPath: '/jobs',
+      },
+    });
   });
 
   it('start action calls startJob', async () => {

@@ -105,7 +105,12 @@ describe('QuotationsList', () => {
     await screen.findByText('Quotations');
     await user.click(screen.getByRole('button', { name: /new quotation/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/quotations/new');
+    expect(navigateMock).toHaveBeenCalledWith('/quotations/new', {
+      state: {
+        backLabel: 'Quotations',
+        backPath: '/quotations',
+      },
+    });
   });
 
   it('archives a quotation from row action', async () => {
