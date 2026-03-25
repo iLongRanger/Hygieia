@@ -687,11 +687,42 @@ const AccountDetail = () => {
 
   const isResidentialAccount = account.type === 'residential';
   const residentialProperties = account.residentialProperties ?? [];
-  const residentialJourney = getResidentialJourneyState({
+  const residentialPropertyJourneys = residentialProperties.map((property) => ({
+    property,
+    journey: getResidentialPropertyJourneyState({
+      property,
+      residentialQuotes,
+      contracts,
+      recentJobs,
+    }),
+  }));
+  const residentialStageOrder = new Map(
+    RESIDENTIAL_ACCOUNT_PIPELINE_STAGES.map((stage, index) => [stage.id, index])
+  );
+  const focusedResidentialPropertyJourney = [...residentialPropertyJourneys].sort((left, right) => {
+    const leftStageIndex = 'stageId' in left.journey
+      ? (residentialStageOrder.get(left.journey.stageId) ?? -1)
+      : -1;
+    const rightStageIndex = 'stageId' in right.journey
+      ? (residentialStageOrder.get(right.journey.stageId) ?? -1)
+      : -1;
+
+    if (leftStageIndex !== rightStageIndex) {
+      return rightStageIndex - leftStageIndex;
+    }
+
+    if (left.property.isPrimary !== right.property.isPrimary) {
+      return left.property.isPrimary ? -1 : 1;
+    }
+
+    return new Date(right.property.updatedAt).getTime() - new Date(left.property.updatedAt).getTime();
+  })[0] ?? null;
+  const residentialJourney = focusedResidentialPropertyJourney?.journey ?? getResidentialJourneyState({
     residentialQuotes,
     activeContract,
     recentJobs,
   });
+  const residentialJourneyPropertyLabel = focusedResidentialPropertyJourney?.property.name ?? null;
   const commercialJourney = getCommercialJourneyState({
     facilities,
     appointments,
@@ -838,18 +869,8 @@ const AccountDetail = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {residentialProperties.map((property) => (
+                  {residentialPropertyJourneys.map(({ property, journey: propertyJourney }) => (
                     <div key={property.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-                      {(() => {
-                        const propertyJourney = getResidentialPropertyJourneyState({
-                          property,
-                          residentialQuotes,
-                          contracts,
-                          recentJobs,
-                        });
-
-                        return (
-                          <>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
@@ -897,9 +918,6 @@ const AccountDetail = () => {
                         <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
                         {propertyJourney.nextStep}
                       </div>
-                          </>
-                        );
-                      })()}
                     </div>
                   ))}
                 </div>
@@ -913,14 +931,20 @@ const AccountDetail = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Journey</h3>
                   <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Track where this household is in the residential sales-to-service flow.
+                    Track where this residential customer is in the sales-to-service flow.
                   </p>
                 </div>
                 <Badge variant={activeContract ? 'success' : residentialQuotes.length > 0 ? 'warning' : 'info'}>
                   {residentialJourney.currentStage}
                 </Badge>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                  <div className="text-xs uppercase tracking-wide text-surface-500">Property In Journey</div>
+                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                    {residentialJourneyPropertyLabel ?? 'All Properties'}
+                  </div>
+                </div>
                 <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
                   <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
                   <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
