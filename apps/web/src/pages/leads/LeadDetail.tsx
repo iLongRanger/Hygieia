@@ -1552,21 +1552,6 @@ const LeadDetail = () => {
                 })
               }
             />
-            <Select
-              label="Assigned To"
-              placeholder="Select user"
-              options={leadAssignableUsers.map((u) => ({
-                value: u.id,
-                label: u.fullName,
-              }))}
-              value={editFormData.assignedToUserId || ''}
-              onChange={(value) =>
-                setEditFormData({ ...editFormData, assignedToUserId: value || null })
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Probability (%)"
               type="number"
