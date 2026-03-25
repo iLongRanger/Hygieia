@@ -291,6 +291,23 @@ export async function createAppointment(input: AppointmentCreateInput) {
     if (!facility) {
       throw new BadRequestError('Facility not found for the selected lead account');
     }
+
+    const existingWalkthrough = await prisma.appointment.findFirst({
+      where: {
+        leadId: input.leadId,
+        type: 'walk_through',
+        status: 'scheduled',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingWalkthrough) {
+      throw new BadRequestError(
+        'A walkthrough is already booked for this lead. Reschedule the existing appointment instead.'
+      );
+    }
   } else {
     if (!input.accountId) {
       throw new BadRequestError('Account is required for visit or inspection appointments');

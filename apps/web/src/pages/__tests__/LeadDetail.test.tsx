@@ -5,6 +5,7 @@ import LeadDetail from '../leads/LeadDetail';
 import type { Lead, Appointment, LeadSource } from '../../types/crm';
 import type { User } from '../../types/user';
 import type { Facility } from '../../types/facility';
+import toast from 'react-hot-toast';
 
 let mockParams: { id?: string } = { id: 'lead-1' };
 const navigateMock = vi.fn();
@@ -200,7 +201,7 @@ describe('LeadDetail', () => {
     mockParams = { id: 'lead-1' };
     navigateMock.mockReset();
     getLeadMock.mockResolvedValue(lead);
-    listAppointmentsMock.mockResolvedValue([appointment]);
+    listAppointmentsMock.mockResolvedValue([]);
     listLeadSourcesMock.mockResolvedValue({ data: [leadSource] });
     listUsersMock.mockResolvedValue({
       data: [user, subcontractorUser],
@@ -312,6 +313,20 @@ describe('LeadDetail', () => {
     });
   });
 
+  it('opens reschedule instead of scheduling when a walkthrough is already booked', async () => {
+    const userEventInstance = userEvent.setup();
+    listAppointmentsMock.mockResolvedValue([appointment]);
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
+
+    expect(await screen.findByRole('dialog', { name: /reschedule walkthrough/i })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /^schedule walkthrough$/i })).not.toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith(
+      'A walkthrough is already booked for this lead. Reschedule the existing appointment instead.'
+    );
+  });
+
   it('shows status as read-only in edit modal', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadDetail />);
@@ -376,6 +391,7 @@ describe('LeadDetail', () => {
       convertedAt: new Date().toISOString(),
       convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
     });
+    listAppointmentsMock.mockResolvedValue([appointment]);
 
     render(<LeadDetail />);
 
@@ -411,6 +427,7 @@ describe('LeadDetail', () => {
       convertedAt: new Date().toISOString(),
       convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
     });
+    listAppointmentsMock.mockResolvedValue([appointment]);
     listFacilitiesMock.mockResolvedValue({
       data: [incompleteFacility],
       pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },

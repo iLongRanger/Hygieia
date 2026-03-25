@@ -170,6 +170,40 @@ describe('appointmentService', () => {
     expect(prisma.$transaction).toHaveBeenCalled();
   });
 
+  it('createAppointment should reject a second scheduled walkthrough for the same lead', async () => {
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      archivedAt: null,
+      convertedToAccountId: 'account-1',
+      companyName: 'Acme Corp',
+      contactName: 'Jane Doe',
+      estimatedValue: null,
+      probability: 0,
+      expectedCloseDate: null,
+      lostReason: null,
+      assignedToUserId: null,
+      createdByUserId: 'admin-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({ id: 'appt-1' });
+
+    await expect(
+      appointmentService.createAppointment({
+        leadId: 'lead-1',
+        facilityId: 'facility-1',
+        assignedToUserId: 'user-1',
+        type: 'walk_through',
+        status: 'scheduled',
+        scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+        scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+        timezone: 'America/New_York',
+        createdByUserId: 'admin-1',
+      })
+    ).rejects.toThrow(
+      'A walkthrough is already booked for this lead. Reschedule the existing appointment instead.'
+    );
+  });
+
   it('createAppointment should reject cleaner assignees', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({
       id: 'user-1',
