@@ -80,6 +80,7 @@ import {
   createJob,
   generateJobsFromContract,
   regenerateRecurringJobsForContract,
+  reassignScheduledJobsForContract,
 } from '../services/jobService';
 import { ensureSubcontractorRoleForTeamUsers } from '../services/teamService';
 import {
@@ -901,6 +902,33 @@ router.patch(
           });
         }
 
+        if (req.user?.id) {
+          try {
+            const reassignmentResult = await reassignScheduledJobsForContract({
+              contractId: contract.id,
+              assignedTeamId: nextTeamId,
+              assignedToUserId: nextAssignedToUserId,
+              performedByUserId: req.user.id,
+              onOrAfterDate: parsed.data.effectivityDate!,
+            });
+
+            if (reassignmentResult.updated > 0) {
+              await logContractActivity({
+                contractId: contract.id,
+                action: 'jobs_reassigned',
+                performedByUserId: req.user.id,
+                metadata: {
+                  reassigned: reassignmentResult.updated,
+                  source: 'assignment_override',
+                  effectivityDate: parsed.data.effectivityDate!.toISOString(),
+                },
+              });
+            }
+          } catch (reassignError) {
+            logger.error('Failed to reassign jobs for assignment override:', reassignError);
+          }
+        }
+
         return res.json({ data: contract });
       }
 
@@ -908,6 +936,13 @@ router.patch(
       if (parsed.data.teamId || parsed.data.assignedToUserId) {
         if (req.user?.id) {
           try {
+            const reassignmentResult = await reassignScheduledJobsForContract({
+              contractId: contract.id,
+              assignedTeamId: parsed.data.teamId ?? null,
+              assignedToUserId: parsed.data.assignedToUserId ?? null,
+              performedByUserId: req.user.id,
+            });
+
             const generationResult = await autoGenerateRecurringJobsForContract({
               contractId: contract.id,
               createdByUserId: req.user.id,
@@ -920,6 +955,7 @@ router.patch(
               action: 'jobs_auto_generated',
               performedByUserId: req.user.id,
               metadata: {
+                reassigned: reassignmentResult.updated,
                 created: generationResult.created,
                 source: 'team_assignment',
               },

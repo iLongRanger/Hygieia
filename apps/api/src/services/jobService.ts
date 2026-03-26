@@ -1101,6 +1101,61 @@ export async function assignJob(
   return withWorkforceMetadata(job);
 }
 
+export async function reassignScheduledJobsForContract(input: {
+  contractId: string;
+  assignedTeamId: string | null;
+  assignedToUserId: string | null;
+  performedByUserId: string;
+  onOrAfterDate?: Date;
+}) {
+  assertSingleWorkforceAssignment({
+    assignedTeamId: input.assignedTeamId,
+    assignedToUserId: input.assignedToUserId,
+  });
+
+  const jobs = await prisma.job.findMany({
+    where: {
+      contractId: input.contractId,
+      status: 'scheduled',
+      ...(input.onOrAfterDate ? { scheduledDate: { gte: input.onOrAfterDate } } : {}),
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (jobs.length === 0) {
+    return { updated: 0 };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.job.updateMany({
+      where: {
+        id: { in: jobs.map((job) => job.id) },
+      },
+      data: {
+        assignedTeamId: input.assignedTeamId,
+        assignedToUserId: input.assignedToUserId,
+      },
+    });
+
+    await tx.jobActivity.createMany({
+      data: jobs.map((job) => ({
+        jobId: job.id,
+        action: 'assigned',
+        performedByUserId: input.performedByUserId,
+        metadata: {
+          assignedTeamId: input.assignedTeamId,
+          assignedToUserId: input.assignedToUserId,
+          source: 'contract_assignment',
+        } as Prisma.InputJsonValue,
+      })),
+    });
+  });
+
+  return { updated: jobs.length };
+}
+
 // ==================== Generate Jobs From Contract ====================
 
 export async function generateJobsFromContract(input: GenerateJobsInput) {
