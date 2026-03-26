@@ -925,8 +925,13 @@ async function ensureResidentialFacility(input: {
 
   const existingFacility = await prisma.facility.findFirst({
     where: {
-      residentialPropertyId: input.propertyId,
-      archivedAt: null,
+      OR: [
+        { residentialPropertyId: input.propertyId },
+        {
+          accountId: input.accountId,
+          name: facilityName,
+        },
+      ],
     },
     select: {
       id: true,
@@ -944,6 +949,7 @@ async function ensureResidentialFacility(input: {
         accessInstructions: toNullableString(homeProfile.entryNotes),
         parkingInfo: toNullableString(homeProfile.parkingAccess),
         specialRequirements: toNullableString(homeProfile.specialInstructions),
+        archivedAt: null,
       },
       select: {
         id: true,
@@ -1840,7 +1846,39 @@ export async function convertResidentialQuoteToContract(
       select: { id: true },
     });
 
-    if (!primaryContact) {
+    if (primaryContact) {
+      await prisma.contact.update({
+        where: { id: primaryContact.id },
+        data: {
+          name: quote.customerName,
+          email: quote.customerEmail,
+          phone: quote.customerPhone,
+          mobile: quote.customerPhone,
+          isBilling: true,
+        },
+      });
+    } else {
+      const existingPrimaryContact = await prisma.contact.findFirst({
+        where: {
+          accountId: account.id,
+          isPrimary: true,
+        },
+        select: { id: true },
+      });
+
+      if (existingPrimaryContact) {
+        await prisma.contact.update({
+          where: { id: existingPrimaryContact.id },
+          data: {
+            name: quote.customerName,
+            email: quote.customerEmail,
+            phone: quote.customerPhone,
+            mobile: quote.customerPhone,
+            isBilling: true,
+            notes: `Updated from residential quote ${quote.quoteNumber}`,
+          },
+        });
+      } else {
       await prisma.contact.create({
         data: {
           accountId: account.id,
@@ -1854,6 +1892,7 @@ export async function convertResidentialQuoteToContract(
           notes: `Created from residential quote ${quote.quoteNumber}`,
         },
       });
+      }
     }
   }
 
