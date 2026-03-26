@@ -13,6 +13,7 @@ import {
   Clock,
   CalendarClock,
   User as UserIcon,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -35,7 +36,7 @@ import {
 } from '../../lib/leads';
 import { listContracts } from '../../lib/contracts';
 import { listJobs } from '../../lib/jobs';
-import { listOpportunities } from '../../lib/opportunities';
+import { listOpportunities, updateOpportunity } from '../../lib/opportunities';
 import { getResidentialPropertyJourneyState } from '../../lib/accountPipeline';
 import { listResidentialQuotes } from '../../lib/residential';
 import { listUsers } from '../../lib/users';
@@ -386,6 +387,52 @@ const LeadsList = () => {
     expectedCloseDate: null,
     notes: null,
   });
+
+  // ── Opportunity edit modal ──
+  const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
+  const [oppFormData, setOppFormData] = useState({
+    status: '',
+    estimatedValue: '',
+    probability: '',
+    expectedCloseDate: '',
+    ownerUserId: '',
+    lostReason: '',
+  });
+  const [savingOpportunity, setSavingOpportunity] = useState(false);
+
+  const openOppEdit = (opp: Opportunity) => {
+    setOppFormData({
+      status: opp.status,
+      estimatedValue: opp.estimatedValue ? String(Number(opp.estimatedValue)) : '',
+      probability: opp.probability !== null ? String(opp.probability) : '',
+      expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
+      ownerUserId: opp.ownerUser?.id || '',
+      lostReason: opp.lostReason || '',
+    });
+    setEditingOpportunity(opp);
+  };
+
+  const handleOppSave = async () => {
+    if (!editingOpportunity) return;
+    setSavingOpportunity(true);
+    try {
+      await updateOpportunity(editingOpportunity.id, {
+        status: oppFormData.status || undefined,
+        estimatedValue: oppFormData.estimatedValue ? Number(oppFormData.estimatedValue) : null,
+        probability: oppFormData.probability !== '' ? Number(oppFormData.probability) : null,
+        expectedCloseDate: oppFormData.expectedCloseDate || null,
+        ownerUserId: oppFormData.ownerUserId || null,
+        lostReason: oppFormData.status === 'lost' ? (oppFormData.lostReason || null) : undefined,
+      });
+      toast.success('Opportunity updated');
+      setEditingOpportunity(null);
+      fetchPipelineOpportunities();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update opportunity');
+    } finally {
+      setSavingOpportunity(false);
+    }
+  };
 
   const fetchLeads = useCallback(
     async (currentPage: number, currentSearch: string, filters?: {
@@ -948,10 +995,24 @@ const LeadsList = () => {
                                 </p>
                               )}
                             </div>
-                            <span
-                              className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${colors.dot}`}
-                              title={getOpportunitySourceDisplay(opportunity)}
-                            />
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {canWriteLeads && (
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  className="hidden group-hover:flex h-5 w-5 items-center justify-center rounded text-surface-400 hover:bg-surface-200 hover:text-surface-700 dark:hover:bg-surface-700 dark:hover:text-surface-200"
+                                  title="Edit opportunity"
+                                  onClick={(e) => { e.stopPropagation(); openOppEdit(opportunity); }}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); openOppEdit(opportunity); } }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </span>
+                              )}
+                              <span
+                                className={`mt-0.5 h-2 w-2 rounded-full ${colors.dot}`}
+                                title={getOpportunitySourceDisplay(opportunity)}
+                              />
+                            </div>
                           </div>
 
                           <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
@@ -1318,6 +1379,92 @@ const LeadsList = () => {
               disabled={!formData.contactName || formData.type === 'unknown'}
             >
               Create Lead
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Opportunity Edit Modal */}
+      <Modal
+        isOpen={!!editingOpportunity}
+        onClose={() => setEditingOpportunity(null)}
+        title={`Edit Opportunity — ${editingOpportunity?.title || ''}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Status</label>
+            <Select
+              value={oppFormData.status}
+              onChange={(e) => setOppFormData((prev) => ({ ...prev, status: e.target.value }))}
+              options={LEAD_STATUSES}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Estimated Value ($)</label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={oppFormData.estimatedValue}
+                onChange={(e) => setOppFormData((prev) => ({ ...prev, estimatedValue: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Probability (%)</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={oppFormData.probability}
+                onChange={(e) => setOppFormData((prev) => ({ ...prev, probability: e.target.value }))}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Expected Close Date</label>
+            <Input
+              type="date"
+              value={oppFormData.expectedCloseDate}
+              onChange={(e) => setOppFormData((prev) => ({ ...prev, expectedCloseDate: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Owner</label>
+            <Select
+              value={oppFormData.ownerUserId}
+              onChange={(e) => setOppFormData((prev) => ({ ...prev, ownerUserId: e.target.value }))}
+              options={[
+                { value: '', label: 'Unassigned' },
+                ...users.map((u) => ({ value: u.id, label: u.fullName })),
+              ]}
+            />
+          </div>
+
+          {oppFormData.status === 'lost' && (
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Lost Reason</label>
+              <Textarea
+                value={oppFormData.lostReason}
+                onChange={(e) => setOppFormData((prev) => ({ ...prev, lostReason: e.target.value }))}
+                placeholder="Why was this opportunity lost?"
+                rows={2}
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setEditingOpportunity(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleOppSave} disabled={savingOpportunity}>
+              {savingOpportunity ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>
