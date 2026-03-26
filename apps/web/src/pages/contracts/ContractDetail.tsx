@@ -1216,6 +1216,8 @@ const ContractDetail = () => {
     }
   };
 
+  const isResidentialContract =
+    contract?.account.type === 'residential' || Boolean(contract?.residentialPropertyId);
   const canActivateContract =
     Boolean(contract?.signedDate) &&
     (contract?.status === 'sent' || contract?.status === 'viewed' || contract?.status === 'pending_signature');
@@ -2165,7 +2167,9 @@ const ContractDetail = () => {
     viewed: 'Follow up with client for acceptance.',
     pending_signature: 'Activate to start service and billing.',
     active: 'Contract is active.',
-    expired: 'Renew this contract or create a new term.',
+    expired: isResidentialContract
+      ? 'Renew this residential service agreement or create a new term for this property.'
+      : 'Renew this contract or create a new term.',
     terminated: 'Contract closed.',
   };
   const internalEmployeeUsers = users.filter(isInternalEmployeeOption);
@@ -2306,7 +2310,7 @@ const ContractDetail = () => {
               <>
                 <Button onClick={openRenewModal}>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Renew
+                  {isResidentialContract ? 'Renew Service' : 'Renew'}
                 </Button>
               </>
             )}
@@ -2454,7 +2458,9 @@ const ContractDetail = () => {
           )}
           {contract.status === 'expired' && (
             <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              This contract has expired. Renew to continue service.
+              {isResidentialContract
+                ? 'This residential service agreement has expired. Renew service for this property to continue visits.'
+                : 'This contract has expired. Renew to continue service.'}
             </div>
           )}
           {!contract.signedDate && ['sent', 'viewed', 'pending_signature'].includes(contract.status) && (
@@ -3300,14 +3306,31 @@ const ContractDetail = () => {
       <Modal
         isOpen={showRenewModal}
         onClose={() => setShowRenewModal(false)}
-        title="Renew Contract"
+        title={isResidentialContract ? 'Renew Residential Service' : 'Renew Contract'}
         size="lg"
       >
         <div className="space-y-6">
           <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4">
-            <h4 className="text-sm font-medium text-surface-500 dark:text-surface-400">Renewing Contract</h4>
+            <h4 className="text-sm font-medium text-surface-500 dark:text-surface-400">
+              {isResidentialContract ? 'Renewing Residential Service' : 'Renewing Contract'}
+            </h4>
             <p className="mt-1 text-surface-900 dark:text-white">{contract.contractNumber}</p>
             <p className="text-sm text-surface-500 dark:text-surface-400">{contract.title}</p>
+            {isResidentialContract && (
+              <>
+                <p className="mt-2 text-sm text-surface-900 dark:text-white">
+                  {contract.facility?.name || 'Residential Property'}
+                </p>
+                {contract.facility?.address && (
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    {formatAddress(contract.facility.address)}
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
+                  This renews service for this property only, not the entire residential account.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3443,7 +3466,7 @@ const ContractDetail = () => {
             </Button>
             <Button onClick={handleRenew} isLoading={renewing}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Renew Contract
+              {isResidentialContract ? 'Renew Residential Service' : 'Renew Contract'}
             </Button>
           </div>
         </div>
@@ -4372,5 +4395,3 @@ const ContractDetail = () => {
 };
 
 export default ContractDetail;
-
-
