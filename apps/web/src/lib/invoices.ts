@@ -102,7 +102,7 @@ export async function listInvoiceActivities(invoiceId: string): Promise<InvoiceA
 }
 
 // Public
-export async function getPublicInvoice(token: string): Promise<InvoiceDetail> {
+export async function getPublicInvoice(token: string): Promise<{ data: InvoiceDetail; branding: any }> {
   const response = await api.get(`/public/invoices/${token}`);
-  return response.data.data;
+  return response.data;
 }

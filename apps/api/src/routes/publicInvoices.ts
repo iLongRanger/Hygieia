@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { getInvoiceByPublicToken } from '../services/invoiceService';
+import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 
 const router: Router = Router();
 
@@ -17,7 +18,8 @@ router.use(publicRateLimiter);
 router.get('/:token', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const invoice = await getInvoiceByPublicToken(req.params.token);
-    res.json({ data: invoice });
+    const branding = await getGlobalSettings().catch(() => getDefaultBranding());
+    res.json({ data: invoice, branding });
   } catch (error) {
     next(error);
   }

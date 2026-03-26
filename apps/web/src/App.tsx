@@ -61,6 +61,7 @@ import PublicContractView from './pages/public/PublicContractView';
 import PublicContractAmendmentView from './pages/public/PublicContractAmendmentView';
 import PublicQuotationView from './pages/public/PublicQuotationView';
 import PublicResidentialQuoteView from './pages/public/PublicResidentialQuoteView';
+import PublicInvoiceView from './pages/public/PublicInvoiceView';
 import SetPassword from './pages/auth/SetPassword';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
@@ -116,6 +117,7 @@ function App() {
           <Route path="/ca/:token" element={<PublicContractAmendmentView />} />
           <Route path="/q/:token" element={<PublicQuotationView />} />
           <Route path="/rq/:token" element={<PublicResidentialQuoteView />} />
+          <Route path="/i/:token" element={<PublicInvoiceView />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
