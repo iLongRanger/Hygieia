@@ -1331,6 +1331,10 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
     throw new BadRequestError('Converted residential quotes cannot be edited');
   }
 
+  if (existing.status === 'accepted') {
+    throw new BadRequestError('Accepted residential quotes cannot be edited');
+  }
+
   const mergedInput: CreateResidentialQuoteInput = {
     accountId: input.accountId ?? existing.accountId ?? '',
     propertyId: input.propertyId ?? existing.propertyId,
@@ -1425,8 +1429,8 @@ export async function sendResidentialQuote(id: string) {
     throw new NotFoundError('Residential quote not found');
   }
 
-  if (quote.status === 'converted') {
-    throw new BadRequestError('Converted residential quotes cannot be sent');
+  if (quote.status === 'accepted' || quote.status === 'converted') {
+    throw new BadRequestError('Accepted or converted residential quotes cannot be sent');
   }
 
   if (quote.manualReviewRequired && quote.status !== 'review_approved' && quote.status !== 'sent' && quote.status !== 'viewed') {

@@ -797,7 +797,7 @@ const ResidentialQuotesPage = () => {
       cell: (quote: ResidentialQuote) => {
         const items: ActionMenuItem[] = [];
 
-        if (canWrite) {
+        if (canWrite && quote.status !== 'accepted' && quote.status !== 'converted') {
           items.push({
             label: 'Edit Quote',
             onClick: () => { setOpenMenuQuoteId(null); openEditModal(quote); },
@@ -832,7 +832,7 @@ const ResidentialQuotesPage = () => {
           });
         }
 
-        if (canWrite && !['declined', 'converted'].includes(quote.status)) {
+        if (canWrite && !['accepted', 'declined', 'converted'].includes(quote.status)) {
           items.push({
             label: 'Mark Declined',
             onClick: () => runMenuAction(() => handleDecline(quote)),

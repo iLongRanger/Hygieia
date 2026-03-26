@@ -428,6 +428,11 @@ router.patch(
       if (!existing) {
         throw new NotFoundError('Residential quote not found');
       }
+      if (existing.status === 'accepted') {
+        throw new ValidationError(
+          `Cannot edit residential quote with status: ${existing.status}. Start a new quote instead.`
+        );
+      }
       const parsed = updateResidentialQuoteSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
