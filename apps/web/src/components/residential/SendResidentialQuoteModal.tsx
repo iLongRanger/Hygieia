@@ -18,9 +18,11 @@ const SendResidentialQuoteModal: React.FC<Props> = ({ isOpen, onClose, quote, on
   const defaultMessage = useMemo(
     () => `Hello ${quote.customerName},
 
-Your residential quote is ready for review. The PDF preview shown here matches what will be sent to the client. You can also review and respond online using the link in the email.
+Great news. Your residential quote is ready.
 
-Please let us know if you have any questions or if you'd like any adjustments before scheduling.
+We pulled together the service details, pricing, and next steps for you. You can review everything online using the link in the email.
+
+We’re excited about the opportunity to help care for your home. Let us know if you’d like any adjustments or if you’re ready for us to get started.
 
 Thank you,`,
     [quote.customerName]

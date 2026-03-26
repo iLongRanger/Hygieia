@@ -57,7 +57,13 @@ export function buildResidentialQuoteEmailHtmlWithBranding(
               </table>
               ${data.preferredStartDate ? `<p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">Preferred start date: <strong>${data.preferredStartDate}</strong></p>` : ''}
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Your residential cleaning quote is ready. You can review the details and respond online using the button below.
+                Great news. Your residential cleaning quote is ready.
+              </p>
+              <p style="color: #333; font-size: 14px; line-height: 1.6;">
+                We put everything together for you, including the service details, pricing, and next steps. You can review it online using the button below.
+              </p>
+              <p style="color: #333; font-size: 14px; line-height: 1.6; margin-bottom: 0;">
+                We’re excited about the opportunity to help care for your home.
               </p>
             </td>
           </tr>
@@ -86,5 +92,5 @@ export function buildResidentialQuoteEmailHtmlWithBranding(
 }
 
 export function buildResidentialQuoteEmailSubject(quoteNumber: string, title: string) {
-  return `Residential Quote ${quoteNumber}: ${title}`;
+  return `Your residential quote is ready: ${quoteNumber}`;
 }

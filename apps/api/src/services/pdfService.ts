@@ -685,6 +685,10 @@ function formatResidentialServiceType(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatYesNo(value: unknown): string {
+  return value ? 'Yes' : 'No';
+}
+
 export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf): Promise<Buffer> {
   let branding: GlobalBranding;
   try {
@@ -787,6 +791,35 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
     margin: [0, 0, 0, 16] as [number, number, number, number],
   });
 
+  content.push({ text: 'Quote Summary', style: 'sectionHeader' });
+  content.push({
+    columns: [
+      {
+        stack: [
+          { text: 'Service Location', fontSize: 8, color: COLORS.lightText },
+          { text: quote.property?.name || 'Residential Property', fontSize: 10, bold: true },
+          ...(addressLine ? [{ text: addressLine, fontSize: 9, color: COLORS.text }] : []),
+        ],
+        width: '*',
+      },
+      {
+        stack: [
+          { text: 'Preferred Start', fontSize: 8, color: COLORS.lightText },
+          { text: quote.preferredStartDate ? formatDate(quote.preferredStartDate) : 'To Be Scheduled', fontSize: 10, bold: true },
+        ],
+        width: '*',
+      },
+      {
+        stack: [
+          { text: 'Quote Total', fontSize: 8, color: COLORS.lightText },
+          { text: formatCurrency(quote.totalAmount), fontSize: 12, bold: true, color: COLORS.primary },
+        ],
+        width: '*',
+      },
+    ],
+    margin: [0, 4, 0, 12] as [number, number, number, number],
+  });
+
   content.push({ text: 'Service Overview', style: 'sectionHeader' });
   content.push({
     columns: [
@@ -847,6 +880,58 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
       ],
       margin: [0, 4, 0, 12] as [number, number, number, number],
     });
+
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: 'Condition', fontSize: 8, color: COLORS.lightText },
+            { text: formatResidentialServiceType(String(homeProfile.condition || 'standard')), fontSize: 10, bold: true },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Occupancy', fontSize: 8, color: COLORS.lightText },
+            { text: formatResidentialServiceType(String(homeProfile.occupiedStatus || 'occupied')), fontSize: 10, bold: true },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Pets in Home', fontSize: 8, color: COLORS.lightText },
+            { text: formatYesNo(homeProfile.hasPets), fontSize: 10, bold: true },
+          ],
+          width: '*',
+        },
+      ],
+      margin: [0, 0, 0, 12] as [number, number, number, number],
+    });
+  }
+
+  const detailItems = [
+    homeProfile?.parkingAccess
+      ? `Parking / access: ${homeProfile.parkingAccess}`
+      : null,
+    homeProfile?.entryNotes
+      ? `Entry notes: ${homeProfile.entryNotes}`
+      : null,
+    homeProfile?.specialInstructions
+      ? `Special instructions: ${homeProfile.specialInstructions}`
+      : null,
+    homeProfile?.lastProfessionalCleaning
+      ? `Last professional cleaning: ${homeProfile.lastProfessionalCleaning}`
+      : null,
+  ].filter(Boolean) as string[];
+
+  if (detailItems.length > 0) {
+    content.push({ text: 'Additional Details', style: 'sectionHeader' });
+    content.push({
+      ul: detailItems,
+      margin: [0, 4, 0, 12] as [number, number, number, number],
+      fontSize: 9,
+      color: COLORS.text,
+    });
   }
 
   if (quote.addOns && quote.addOns.length > 0) {
@@ -893,6 +978,21 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
       margin: [0, 5, 0, 15] as [number, number, number, number],
     });
   }
+
+  content.push({ text: 'What Is Included', style: 'sectionHeader' });
+  content.push({
+    ul: [
+      `Service type: ${formatResidentialServiceType(quote.serviceType)}`,
+      `Visit cadence: ${formatResidentialServiceType(quote.frequency)}`,
+      `Estimated on-site time: ${formatWholeHours(quote.estimatedHours)}`,
+      ...(quote.addOns && quote.addOns.length > 0
+        ? [`Selected add-ons: ${quote.addOns.map((addOn) => addOn.label).join(', ')}`]
+        : ['Selected add-ons: none']),
+    ],
+    margin: [0, 4, 0, 12] as [number, number, number, number],
+    fontSize: 9,
+    color: COLORS.text,
+  });
 
   content.push({
     columns: [
