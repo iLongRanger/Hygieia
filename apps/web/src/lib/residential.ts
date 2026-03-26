@@ -159,6 +159,13 @@ export async function sendResidentialQuote(
   return response.data;
 }
 
+export async function getResidentialQuotePdfBlobUrl(id: string): Promise<string> {
+  const response = await api.get(`/residential/quotes/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+}
+
 export async function requestResidentialQuoteReview(
   id: string
 ): Promise<{ data: ResidentialQuote; notified: number }> {

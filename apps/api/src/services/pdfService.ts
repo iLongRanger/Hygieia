@@ -638,6 +638,439 @@ interface ContractForPdf {
   createdByUser: { fullName: string; email: string };
 }
 
+interface ResidentialQuoteForPdf {
+  quoteNumber: string;
+  title: string;
+  status: string;
+  createdAt: string | Date;
+  preferredStartDate?: string | Date | null;
+  totalAmount: number | string;
+  estimatedHours?: number | string | null;
+  notes?: string | null;
+  customerName: string;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  serviceType: string;
+  frequency: string;
+  account?: { name: string } | null;
+  property?: {
+    name: string;
+    serviceAddress?: any;
+    homeProfile?: any;
+  } | null;
+  homeAddress?: any;
+  homeProfile?: any;
+  addOns?: Array<{
+    label: string;
+    quantity: number;
+    pricingType: 'flat' | 'per_unit';
+    unitLabel?: string | null;
+    unitPrice: number | string;
+    lineTotal: number | string;
+  }>;
+  priceBreakdown?: {
+    baseSubtotal?: number | string;
+    recurringDiscount?: number | string;
+    firstCleanSurcharge?: number | string;
+    addOnTotal?: number | string;
+    finalTotal?: number | string;
+    guidance?: string[];
+    manualReviewReasons?: string[];
+  } | null;
+}
+
+function formatResidentialServiceType(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf): Promise<Buffer> {
+  let branding: GlobalBranding;
+  try {
+    branding = await getGlobalSettings();
+  } catch {
+    branding = getDefaultBranding();
+  }
+
+  const COLORS = {
+    ...BASE_COLORS,
+    primary: branding.themePrimaryColor,
+    accent: branding.themeAccentColor,
+  };
+
+  const propertyAddress = quote.property?.serviceAddress ?? quote.homeAddress ?? null;
+  const homeProfile = quote.property?.homeProfile ?? quote.homeProfile ?? null;
+  const addressLine = propertyAddress
+    ? [propertyAddress.street, propertyAddress.city, propertyAddress.state, propertyAddress.postalCode]
+        .filter(Boolean)
+        .join(', ')
+    : null;
+
+  const content: Content[] = [];
+
+  const headerStack: Content[] = [];
+  if (branding.logoDataUrl) {
+    headerStack.push({
+      image: branding.logoDataUrl,
+      fit: [120, 60],
+      margin: [0, 0, 0, 8] as [number, number, number, number],
+    });
+  }
+
+  headerStack.push(
+    { text: branding.companyName, style: 'companyName' },
+    ...(branding.companyAddress ? [{ text: branding.companyAddress, style: 'companyDetail' }] : []),
+    ...(branding.companyPhone ? [{ text: branding.companyPhone, style: 'companyDetail' }] : []),
+    ...(branding.companyEmail ? [{ text: branding.companyEmail, style: 'companyDetail' }] : []),
+    ...(branding.companyWebsite ? [{ text: branding.companyWebsite, style: 'companyDetail' }] : []),
+  );
+
+  content.push({
+    columns: [
+      { stack: headerStack, width: '*' },
+      {
+        stack: [
+          { text: 'RESIDENTIAL QUOTE', style: 'proposalLabel' },
+          { text: quote.quoteNumber, style: 'proposalNumber' },
+          { text: `Date: ${formatDate(quote.createdAt)}`, style: 'proposalMeta' },
+          ...(quote.preferredStartDate
+            ? [{ text: `Preferred Start: ${formatDate(quote.preferredStartDate)}`, style: 'proposalMeta' }]
+            : []),
+        ],
+        width: 220,
+        alignment: 'right' as const,
+      },
+    ],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  content.push({
+    canvas: [
+      {
+        type: 'line',
+        x1: 0,
+        y1: 0,
+        x2: 515,
+        y2: 0,
+        lineWidth: 2,
+        lineColor: COLORS.accent,
+      },
+    ],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  content.push({
+    text: quote.title,
+    style: 'proposalTitle',
+    margin: [0, 0, 0, 15] as [number, number, number, number],
+  });
+
+  const clientInfo: Content[] = [
+    { text: 'Prepared For:', style: 'sectionLabel' },
+    { text: quote.customerName || quote.account?.name || 'Residential Client', style: 'clientName' },
+  ];
+  if (quote.property?.name) {
+    clientInfo.push({ text: quote.property.name, style: 'clientDetail' });
+  }
+  if (addressLine) {
+    clientInfo.push({ text: addressLine, style: 'clientDetail' });
+  }
+  if (quote.customerEmail) {
+    clientInfo.push({ text: quote.customerEmail, style: 'clientDetail' });
+  }
+  if (quote.customerPhone) {
+    clientInfo.push({ text: quote.customerPhone, style: 'clientDetail' });
+  }
+  content.push({
+    stack: clientInfo,
+    margin: [0, 0, 0, 16] as [number, number, number, number],
+  });
+
+  content.push({ text: 'Service Overview', style: 'sectionHeader' });
+  content.push({
+    columns: [
+      {
+        stack: [
+          { text: 'Cleaning Type', fontSize: 8, color: COLORS.lightText },
+          { text: formatResidentialServiceType(quote.serviceType), fontSize: 10, bold: true },
+        ],
+        width: '*',
+      },
+      {
+        stack: [
+          { text: 'Frequency', fontSize: 8, color: COLORS.lightText },
+          { text: formatResidentialServiceType(quote.frequency), fontSize: 10, bold: true },
+        ],
+        width: '*',
+      },
+      {
+        stack: [
+          { text: 'Estimated Hours', fontSize: 8, color: COLORS.lightText },
+          { text: formatWholeHours(quote.estimatedHours), fontSize: 10, bold: true },
+        ],
+        width: '*',
+      },
+    ],
+    margin: [0, 4, 0, 12] as [number, number, number, number],
+  });
+
+  if (homeProfile) {
+    content.push({ text: 'Home Profile', style: 'sectionHeader' });
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: 'Home Type', fontSize: 8, color: COLORS.lightText },
+            { text: formatResidentialServiceType(String(homeProfile.homeType || '')), fontSize: 10, bold: true },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Square Feet', fontSize: 8, color: COLORS.lightText },
+            { text: Number(homeProfile.squareFeet || 0).toLocaleString(), fontSize: 10, bold: true },
+          ],
+          width: '*',
+        },
+        {
+          stack: [
+            { text: 'Bedrooms / Baths', fontSize: 8, color: COLORS.lightText },
+            {
+              text: `${homeProfile.bedrooms || 0} bd / ${(homeProfile.fullBathrooms || 0) + (homeProfile.halfBathrooms || 0) * 0.5} ba`,
+              fontSize: 10,
+              bold: true,
+            },
+          ],
+          width: '*',
+        },
+      ],
+      margin: [0, 4, 0, 12] as [number, number, number, number],
+    });
+  }
+
+  if (quote.addOns && quote.addOns.length > 0) {
+    content.push({ text: 'Add-Ons', style: 'sectionHeader' });
+    const addOnBody: TableCell[][] = [[
+      { text: 'Add-On', style: 'tableHeader' },
+      { text: 'Qty', style: 'tableHeader', alignment: 'right' as const },
+      { text: 'Price', style: 'tableHeader', alignment: 'right' as const },
+      { text: 'Total', style: 'tableHeader', alignment: 'right' as const },
+    ]];
+
+    for (const addOn of quote.addOns) {
+      addOnBody.push([
+        { text: addOn.label, fontSize: 9 },
+        { text: String(addOn.quantity || 1), alignment: 'right' as const, fontSize: 9 },
+        {
+          text:
+            addOn.pricingType === 'per_unit' && addOn.unitLabel
+              ? `${formatCurrency(addOn.unitPrice)}/${addOn.unitLabel}`
+              : formatCurrency(addOn.unitPrice),
+          alignment: 'right' as const,
+          fontSize: 9,
+        },
+        { text: formatCurrency(addOn.lineTotal), alignment: 'right' as const, fontSize: 9 },
+      ]);
+    }
+
+    content.push({
+      table: {
+        headerRows: 1,
+        widths: ['*', 50, 90, 90],
+        body: addOnBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+        fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
+    });
+  }
+
+  content.push({
+    columns: [
+      { width: '*', text: '' },
+      {
+        width: 250,
+        table: {
+          widths: ['*', 100],
+          body: [
+            [
+              { text: 'Service Subtotal', alignment: 'right' as const, color: COLORS.lightText },
+              { text: formatCurrency(quote.priceBreakdown?.baseSubtotal ?? quote.totalAmount), alignment: 'right' as const },
+            ],
+            [
+              { text: 'Recurring Discount', alignment: 'right' as const, color: COLORS.lightText },
+              { text: formatCurrency(quote.priceBreakdown?.recurringDiscount ?? 0), alignment: 'right' as const },
+            ],
+            [
+              { text: 'First Clean Surcharge', alignment: 'right' as const, color: COLORS.lightText },
+              { text: formatCurrency(quote.priceBreakdown?.firstCleanSurcharge ?? 0), alignment: 'right' as const },
+            ],
+            [
+              { text: 'Add-Ons', alignment: 'right' as const, color: COLORS.lightText },
+              { text: formatCurrency(quote.priceBreakdown?.addOnTotal ?? 0), alignment: 'right' as const },
+            ],
+            [
+              {
+                text: 'Quote Total',
+                alignment: 'right' as const,
+                bold: true,
+                fontSize: 14,
+              },
+              {
+                text: formatCurrency(quote.totalAmount),
+                alignment: 'right' as const,
+                bold: true,
+                fontSize: 14,
+                color: COLORS.primary,
+              },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: (i: number, node: any) => (i === node.table.body.length - 1 ? 1 : 0),
+          vLineWidth: () => 0,
+          hLineColor: () => COLORS.accent,
+          paddingTop: () => 4,
+          paddingBottom: () => 4,
+        },
+      },
+    ],
+    margin: [0, 10, 0, 20] as [number, number, number, number],
+  });
+
+  if (quote.notes) {
+    content.push({ text: 'Notes', style: 'sectionHeader' });
+    content.push({
+      text: quote.notes,
+      style: 'bodyText',
+      margin: [0, 0, 0, 12] as [number, number, number, number],
+    });
+  }
+
+  if (quote.priceBreakdown?.guidance?.length) {
+    content.push({ text: 'Guidance', style: 'sectionHeader' });
+    content.push({
+      ul: quote.priceBreakdown.guidance,
+      margin: [0, 4, 0, 12] as [number, number, number, number],
+      fontSize: 9,
+      color: COLORS.text,
+    });
+  }
+
+  content.push({ text: 'Terms', style: 'sectionHeader' });
+  content.push({
+    ul: [
+      'This residential quote reflects the selected service scope, home profile, and add-ons.',
+      'Scheduling is subject to final start-date confirmation and service availability.',
+      'Acceptance of this quote constitutes agreement to the services and pricing described herein.',
+    ],
+    margin: [0, 4, 0, 0] as [number, number, number, number],
+    fontSize: 9,
+    color: COLORS.text,
+  });
+
+  const docDefinition: TDocumentDefinitions = {
+    content,
+    defaultStyle: {
+      font: 'Helvetica',
+      fontSize: 10,
+      color: COLORS.text,
+    },
+    styles: {
+      companyName: {
+        fontSize: 18,
+        bold: true,
+        color: COLORS.primary,
+      },
+      companyDetail: {
+        fontSize: 9,
+        color: COLORS.lightText,
+        margin: [0, 1, 0, 0] as [number, number, number, number],
+      },
+      proposalLabel: {
+        fontSize: 24,
+        bold: true,
+        color: COLORS.accent,
+      },
+      proposalNumber: {
+        fontSize: 11,
+        color: COLORS.lightText,
+        margin: [0, 2, 0, 0] as [number, number, number, number],
+      },
+      proposalMeta: {
+        fontSize: 9,
+        color: COLORS.lightText,
+        margin: [0, 2, 0, 0] as [number, number, number, number],
+      },
+      proposalTitle: {
+        fontSize: 16,
+        bold: true,
+        color: COLORS.primary,
+      },
+      sectionLabel: {
+        fontSize: 9,
+        color: COLORS.lightText,
+        margin: [0, 0, 0, 2] as [number, number, number, number],
+      },
+      clientName: {
+        fontSize: 14,
+        bold: true,
+        color: COLORS.primary,
+      },
+      clientDetail: {
+        fontSize: 10,
+        color: COLORS.lightText,
+        margin: [0, 1, 0, 0] as [number, number, number, number],
+      },
+      sectionHeader: {
+        fontSize: 13,
+        bold: true,
+        color: COLORS.primary,
+        margin: [0, 10, 0, 5] as [number, number, number, number],
+      },
+      bodyText: {
+        fontSize: 10,
+        color: COLORS.text,
+        lineHeight: 1.4,
+      },
+      tableHeader: {
+        fontSize: 9,
+        bold: true,
+        color: COLORS.primary,
+      },
+    },
+    pageMargins: [40, 40, 40, 60] as [number, number, number, number],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        {
+          text: `${branding.companyName} - ${quote.quoteNumber}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          margin: [40, 0, 0, 0] as [number, number, number, number],
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          alignment: 'right' as const,
+          margin: [0, 0, 40, 0] as [number, number, number, number],
+        },
+      ],
+    }),
+  };
+
+  return buildPdfBuffer(docDefinition);
+}
+
 export async function generateContractPdf(contract: ContractForPdf): Promise<Buffer> {
   let branding: GlobalBranding;
   try {

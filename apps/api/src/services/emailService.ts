@@ -178,3 +178,23 @@ export async function sendNotificationEmail(
 ): Promise<boolean> {
   return sendEmail({ to, subject, html });
 }
+
+export async function sendResidentialQuoteEmail(
+  to: string,
+  subject: string,
+  html: string,
+  pdfBuffer?: Buffer,
+  quoteNumber?: string
+): Promise<boolean> {
+  const attachments = pdfBuffer
+    ? [
+        {
+          filename: `${quoteNumber || 'residential-quote'}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ]
+    : undefined;
+
+  return sendEmail({ to, subject, html, attachments });
+}

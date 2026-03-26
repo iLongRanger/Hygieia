@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Home,
+  MoreHorizontal,
   Plus,
   Sparkles,
 } from 'lucide-react';
@@ -18,6 +20,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
 import { Textarea } from '../../components/ui/Textarea';
+import SendResidentialQuoteModal from '../../components/residential/SendResidentialQuoteModal';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { listAccounts } from '../../lib/accounts';
@@ -241,10 +244,94 @@ function buildQuotePayload(formData: ResidentialQuoteFormInput): ResidentialQuot
   };
 }
 
+interface ActionMenuItem {
+  label: string;
+  onClick: () => void;
+  dividerBefore?: boolean;
+}
+
+const ActionMenu = ({
+  items,
+  isOpen,
+  onToggle,
+}: {
+  items: ActionMenuItem[];
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!isOpen || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPosition({
+      top: rect.top + window.scrollY,
+      left: rect.right + window.scrollX - 192, // 192 = w-48
+    });
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
+        onToggle();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen, onToggle]);
+
+  return (
+    <div className="flex justify-end">
+      <Button
+        ref={triggerRef}
+        variant="ghost"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+      {isOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-50 w-48 rounded-lg border border-surface-200 bg-white py-1 shadow-xl dark:border-surface-700 dark:bg-surface-900"
+            style={{ top: position.top, left: position.left, transform: 'translateY(-100%)' }}
+          >
+            {items.map((item, i) => (
+              <div key={i}>
+                {item.dividerBefore && (
+                  <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+                )}
+                <button
+                  type="button"
+                  onClick={item.onClick}
+                  className="flex w-full items-center px-3 py-2 text-left text-sm text-surface-700 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800"
+                >
+                  {item.label}
+                </button>
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+};
+
 const ResidentialQuotesPage = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWrite = hasPermission(PERMISSIONS.QUOTATIONS_WRITE);
   const canAdmin = hasPermission(PERMISSIONS.QUOTATIONS_ADMIN);
+  const canConvert = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const [quotes, setQuotes] = useState<ResidentialQuote[]>([]);
   const [plans, setPlans] = useState<ResidentialPricingPlan[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -252,6 +339,8 @@ const ResidentialQuotesPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sendModalQuote, setSendModalQuote] = useState<ResidentialQuote | null>(null);
+  const [openMenuQuoteId, setOpenMenuQuoteId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<ResidentialQuote | null>(null);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<ResidentialQuoteFormInput>(DEFAULT_FORM);
@@ -526,18 +615,21 @@ const ResidentialQuotesPage = () => {
     }
   };
 
-  const handleSend = async (quote: ResidentialQuote) => {
+  const handleSendFromModal = async (data: { emailTo?: string | null }) => {
+    if (!sendModalQuote) return;
     try {
-      const result = await sendResidentialQuote(quote.id, quote.customerEmail ?? undefined);
+      const result = await sendResidentialQuote(sendModalQuote.id, data.emailTo);
       if (result.publicUrl) {
         toast.success(result.emailTo ? 'Residential quote sent to client' : 'Residential quote link created');
       } else {
         toast.success('Residential quote marked as sent');
       }
+      setSendModalQuote(null);
       await fetchData();
     } catch (error) {
       console.error('Failed to send residential quote', error);
-      toast.error('Failed to mark quote as sent');
+      toast.error(getApiErrorMessage(error, 'Failed to send residential quote'));
+      throw error;
     }
   };
 
@@ -599,7 +691,7 @@ const ResidentialQuotesPage = () => {
       await fetchData();
     } catch (error) {
       console.error('Failed to convert residential quote', error);
-      toast.error('Failed to convert quote to contract');
+      toast.error(getApiErrorMessage(error, 'Failed to convert quote to contract'));
     }
   };
 
@@ -617,6 +709,11 @@ const ResidentialQuotesPage = () => {
       console.error('Failed to update residential quote archive state', error);
       toast.error('Failed to update quote archive state');
     }
+  };
+
+  const runMenuAction = async (action: () => Promise<void> | void) => {
+    setOpenMenuQuoteId(null);
+    await action();
   };
 
   const selectedAddOnCodes = new Set(formData.addOns?.map((addOn) => addOn.code));
@@ -697,50 +794,76 @@ const ResidentialQuotesPage = () => {
     },
     {
       header: 'Actions',
-      cell: (quote: ResidentialQuote) => (
-        <div className="flex flex-wrap gap-2">
-          {canWrite && (
-            <Button variant="outline" size="sm" onClick={() => openEditModal(quote)}>
-              Edit
-            </Button>
-          )}
-          {canWrite && quote.manualReviewRequired && quote.status === 'review_required' && (
-            <Button variant="outline" size="sm" onClick={() => handleRequestReview(quote)}>
-              Request Review
-            </Button>
-          )}
-          {canWrite && quote.manualReviewRequired && quote.status === 'review_required' && (
-            <Button variant="outline" size="sm" onClick={() => handleApproveReview(quote)}>
-              Approve Review
-            </Button>
-          )}
-          {canWrite && ['draft', 'quoted', 'review_approved', 'viewed'].includes(quote.status) && (
-            <Button variant="outline" size="sm" onClick={() => handleSend(quote)}>
-              Send
-            </Button>
-          )}
-          {canWrite && ['draft', 'quoted', 'review_required', 'review_approved', 'sent', 'viewed'].includes(quote.status) && (
-            <Button variant="outline" size="sm" onClick={() => handleAccept(quote)}>
-              Accept
-            </Button>
-          )}
-          {canWrite && !['declined', 'converted'].includes(quote.status) && (
-            <Button variant="outline" size="sm" onClick={() => handleDecline(quote)}>
-              Decline
-            </Button>
-          )}
-          {canWrite && quote.status === 'accepted' && (
-            <Button size="sm" onClick={() => handleConvert(quote)}>
-              Convert
-            </Button>
-          )}
-          {canAdmin && (
-            <Button variant="outline" size="sm" onClick={() => handleArchiveToggle(quote)}>
-              {quote.archivedAt ? 'Restore' : 'Archive'}
-            </Button>
-          )}
-        </div>
-      ),
+      cell: (quote: ResidentialQuote) => {
+        const items: ActionMenuItem[] = [];
+
+        if (canWrite) {
+          items.push({
+            label: 'Edit Quote',
+            onClick: () => { setOpenMenuQuoteId(null); openEditModal(quote); },
+          });
+        }
+
+        if (canWrite && quote.manualReviewRequired && quote.status === 'review_required') {
+          items.push({
+            label: 'Request Review',
+            onClick: () => runMenuAction(() => handleRequestReview(quote)),
+          });
+          items.push({
+            label: 'Approve Review',
+            onClick: () => runMenuAction(() => handleApproveReview(quote)),
+          });
+        }
+
+        if (canWrite && ['draft', 'quoted', 'review_approved', 'viewed'].includes(quote.status)) {
+          items.push({
+            label: 'Send to Client',
+            onClick: () =>
+              runMenuAction(() => {
+                setSendModalQuote(quote);
+              }),
+          });
+        }
+
+        if (canWrite && ['draft', 'quoted', 'review_required', 'review_approved', 'sent', 'viewed'].includes(quote.status)) {
+          items.push({
+            label: 'Mark Accepted',
+            onClick: () => runMenuAction(() => handleAccept(quote)),
+          });
+        }
+
+        if (canWrite && !['declined', 'converted'].includes(quote.status)) {
+          items.push({
+            label: 'Mark Declined',
+            onClick: () => runMenuAction(() => handleDecline(quote)),
+          });
+        }
+
+        if (canConvert && quote.status === 'accepted') {
+          items.push({
+            label: 'Convert to Contract',
+            onClick: () => runMenuAction(() => handleConvert(quote)),
+          });
+        }
+
+        if (canAdmin) {
+          items.push({
+            label: quote.archivedAt ? 'Restore Quote' : 'Archive Quote',
+            onClick: () => runMenuAction(() => handleArchiveToggle(quote)),
+            dividerBefore: true,
+          });
+        }
+
+        if (items.length === 0) return null;
+
+        return (
+          <ActionMenu
+            items={items}
+            isOpen={openMenuQuoteId === quote.id}
+            onToggle={() => setOpenMenuQuoteId((cur) => (cur === quote.id ? null : quote.id))}
+          />
+        );
+      },
     },
   ];
 
@@ -1455,6 +1578,16 @@ const ResidentialQuotesPage = () => {
           </div>
         </div>
       </Modal>
+
+      {sendModalQuote && (
+        <SendResidentialQuoteModal
+          isOpen={Boolean(sendModalQuote)}
+          onClose={() => setSendModalQuote(null)}
+          quote={sendModalQuote}
+          onSend={handleSendFromModal}
+        />
+      )}
+
     </div>
   );
 };

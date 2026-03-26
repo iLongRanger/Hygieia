@@ -9,8 +9,9 @@ import { isEmailConfigured } from '../config/email';
 import { requireFrontendBaseUrl } from '../lib/appUrl';
 import logger from '../lib/logger';
 import { prisma } from '../lib/prisma';
-import { sendNotificationEmail } from '../services/emailService';
+import { sendResidentialQuoteEmail } from '../services/emailService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
+import { generateResidentialQuotePdf } from '../services/pdfService';
 import {
   archiveResidentialPricingPlan,
   archiveResidentialQuote,
@@ -549,8 +550,9 @@ router.post(
             },
             branding
           );
+          const pdfBuffer = await generateResidentialQuotePdf(quote as any);
           const subject = buildResidentialQuoteEmailSubject(quote.quoteNumber, quote.title);
-          await sendNotificationEmail(emailTo, subject, html);
+          await sendResidentialQuoteEmail(emailTo, subject, html, pdfBuffer, quote.quoteNumber);
         } catch (emailError) {
           logger.error('Failed to send residential quote email:', emailError);
         }
@@ -558,6 +560,32 @@ router.post(
 
       const updated = await getResidentialQuoteById(quote.id);
       res.json({ data: updated, publicUrl, emailTo });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/quotes/:id/pdf',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const quote = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!quote) {
+        throw new NotFoundError('Residential quote not found');
+      }
+
+      const pdfBuffer = await generateResidentialQuotePdf(quote as any);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${quote.quoteNumber}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      res.send(pdfBuffer);
     } catch (error) {
       next(error);
     }
