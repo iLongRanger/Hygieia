@@ -76,6 +76,13 @@ const getStatusIcon = (status: JobStatus) => {
   return icons[status];
 };
 
+const getAccountTypeBadge = (accountType?: string | null) => {
+  if (accountType === 'residential') {
+    return { label: 'Residential', variant: 'warning' as const };
+  }
+  return { label: 'Commercial', variant: 'info' as const };
+};
+
 const getWorkforceIndicator = (job: Job): {
   label: string;
   badgeVariant: 'default' | 'info' | 'warning';
@@ -514,14 +521,20 @@ const JobsList = () => {
     },
     {
       header: 'Facility',
-      cell: (job: Job) => (
+      cell: (job: Job) => {
+        const accountType = getAccountTypeBadge(job.account.type);
+        return (
         <div>
           <div className="font-medium text-surface-900 dark:text-surface-100">
             {job.facility.name}
           </div>
-          <div className="text-xs text-surface-500">{job.account.name}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <div className="text-xs text-surface-500">{job.account.name}</div>
+            <Badge variant={accountType.variant}>{accountType.label}</Badge>
+          </div>
         </div>
-      ),
+        );
+      },
     },
     {
       header: 'Assigned To',
@@ -834,6 +847,7 @@ const JobsList = () => {
                       <div className="space-y-3 p-3">
                         {dateJobs.map((job) => {
                           const workforce = getWorkforceIndicator(job);
+                          const accountType = getAccountTypeBadge(job.account.type);
                           const StatusIcon = getStatusIcon(job.status);
                           return (
                             <div
@@ -857,7 +871,10 @@ const JobsList = () => {
                               <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
                                 {job.facility.name}
                               </p>
-                              <p className="text-xs text-surface-500">{job.account.name}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <p className="text-xs text-surface-500">{job.account.name}</p>
+                                <Badge variant={accountType.variant}>{accountType.label}</Badge>
+                              </div>
 
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>

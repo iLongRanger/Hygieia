@@ -166,6 +166,7 @@ const jobSelect = {
     select: {
       id: true,
       name: true,
+      type: true,
     },
   },
   assignedTeam: {

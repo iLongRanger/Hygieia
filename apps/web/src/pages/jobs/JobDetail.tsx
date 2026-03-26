@@ -65,6 +65,13 @@ const getWorkforceIndicator = (job: JobDetailType): {
   return { label: 'Unassigned', badgeVariant: 'default' };
 };
 
+const getAccountTypeBadge = (accountType?: string | null) => {
+  if (accountType === 'residential') {
+    return { label: 'Residential', variant: 'warning' as const };
+  }
+  return { label: 'Commercial', variant: 'info' as const };
+};
+
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -291,6 +298,7 @@ const JobDetail = () => {
   const tasksDone = job.tasks.filter((t) => t.status === 'completed').length;
   const tasksTotal = job.tasks.length;
   const workforce = getWorkforceIndicator(job);
+  const accountType = getAccountTypeBadge(job.account.type);
 
   return (
     <div className="space-y-6">
@@ -311,6 +319,7 @@ const JobDetail = () => {
               <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>
                 {job.jobCategory === 'recurring' ? 'Recurring' : 'One-Time'}
               </Badge>
+              <Badge variant={accountType.variant}>{accountType.label}</Badge>
               <Badge variant={getStatusVariant(job.status)}>
                 {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </Badge>

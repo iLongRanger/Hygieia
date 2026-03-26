@@ -39,6 +39,7 @@ export interface Job {
   account: {
     id: string;
     name: string;
+    type?: 'commercial' | 'residential' | string;
   };
   assignedTeam: {
     id: string;
