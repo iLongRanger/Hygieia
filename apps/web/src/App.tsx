@@ -130,8 +130,8 @@ function App() {
             <Route path="/residential/accounts/:id" element={withRouteGuard('/residential/accounts/:id', <AccountDetail />)} />
             <Route path="/contacts" element={withRouteGuard('/contacts', <ContactsList />)} />
             <Route path="/contacts/:id" element={withRouteGuard('/contacts', <ContactDetail />)} />
-            <Route path="/facilities" element={<FacilitiesList />} />
-            <Route path="/facilities/:id" element={<FacilityDetail />} />
+            <Route path="/facilities" element={withRouteGuard('/facilities', <FacilitiesList />)} />
+            <Route path="/facilities/:id" element={withRouteGuard('/facilities', <FacilityDetail />)} />
             <Route path="/tasks" element={withRouteGuard('/tasks', <TaskTemplatesList />)} />
             <Route path="/tasks/:id" element={withRouteGuard('/tasks', <TaskTemplateDetail />)} />
             <Route

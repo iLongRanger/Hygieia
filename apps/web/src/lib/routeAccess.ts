@@ -120,6 +120,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.TEAMS_READ],
   },
   {
+    path: '/facilities',
+    requiredPermissions: [PERMISSIONS.FACILITIES_READ],
+  },
+  {
     path: '/tasks',
     requiredPermissions: [PERMISSIONS.TASK_TEMPLATES_READ],
   },
