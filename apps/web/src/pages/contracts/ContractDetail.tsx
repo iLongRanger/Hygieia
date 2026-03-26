@@ -1216,6 +1216,10 @@ const ContractDetail = () => {
     }
   };
 
+  const canActivateContract =
+    Boolean(contract?.signedDate) &&
+    (contract?.status === 'sent' || contract?.status === 'viewed' || contract?.status === 'pending_signature');
+
   const handleSign = async () => {
     if (!contract) return;
 
@@ -2292,13 +2296,7 @@ const ContractDetail = () => {
                 </Button>
               </>
             )}
-            {(contract.status === 'sent' || contract.status === 'viewed') && canWriteContracts && (
-              <Button onClick={handleActivate}>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Activate
-              </Button>
-            )}
-            {contract.status === 'pending_signature' && canWriteContracts && (
+            {canActivateContract && canWriteContracts && (
               <Button onClick={handleActivate}>
                 <PlayCircle className="mr-2 h-4 w-4" />
                 Activate
@@ -2457,6 +2455,11 @@ const ContractDetail = () => {
           {contract.status === 'expired' && (
             <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
               This contract has expired. Renew to continue service.
+            </div>
+          )}
+          {!contract.signedDate && ['sent', 'viewed', 'pending_signature'].includes(contract.status) && (
+            <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
+              This contract cannot be activated until the client signs it online.
             </div>
           )}
         </div>
@@ -4369,6 +4372,5 @@ const ContractDetail = () => {
 };
 
 export default ContractDetail;
-
 
 

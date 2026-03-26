@@ -867,6 +867,7 @@ export async function updateContractStatus(
     select: {
       id: true,
       facilityId: true,
+      signedDate: true,
     },
   });
 
@@ -878,6 +879,18 @@ export async function updateContractStatus(
 
   // If activating contract, set approval details
   if (status === 'active' && userId) {
+    const publicSignature = await prisma.contractActivity.findFirst({
+      where: {
+        contractId: id,
+        action: 'public_signed',
+      },
+      select: { id: true },
+    });
+
+    if (!currentContract.signedDate || !publicSignature) {
+      throw new BadRequestError('Contract must be accepted and signed online before activation');
+    }
+
     if (currentContract.facilityId) {
       await ensureNoOtherActiveContractForFacility(currentContract.facilityId, id);
     }
