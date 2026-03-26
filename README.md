@@ -1,6 +1,6 @@
-# Hygieia - Commercial Cleaning Management System
+# Hygieia - Cleaning Business Management System
 
-Single-tenant web application for managing commercial cleaning operations across CRM, sales, operations, inspections, time tracking, and billing.
+Single-tenant web application for managing cleaning operations across CRM, sales, operations, inspections, time tracking, billing, and finance. Supports both commercial and residential accounts.
 
 ## Quick Start
 
@@ -38,16 +38,19 @@ By default this starts:
 
 ## Current Modules
 
-- CRM: Leads, Accounts, Contacts, Appointments
-- Sales: Proposals, Quotations, Contracts
-- Operations: Jobs (recurring + one-time), Teams, Facilities, Tasks
-- Quality: Inspections + templates
-- Workforce: Time tracking + timesheets
-- Billing: Invoices (manual + bulk generation)
-- Finance: Expenses, payroll, finance reporting
-- Settings: Global settings, pricing plans, area/proposal templates, users, background service settings
-- Public links: Proposal, quotation, and contract public views
-- Notifications: In-app realtime + optional email
+| Module | Description |
+|--------|-------------|
+| **CRM** | Leads, Accounts (commercial + residential), Contacts, Appointments, Opportunities |
+| **Sales** | Proposals, Quotations (one-time), Residential Quotes, One-Time Service Catalog |
+| **Contracts** | Contracts, Amendments, Team/Employee Assignment with Override Scheduling, Renewal |
+| **Operations** | Jobs (recurring + one-time), Teams, Facilities, Residential Properties, Task Templates |
+| **Quality** | Inspections, Inspection Templates, Corrective Actions, Signoffs |
+| **Workforce** | Time Tracking (clock-in/out, breaks), Timesheets (generate, approve), Manual Entries |
+| **Billing** | Invoices (manual + contract-based + batch generation), Payment Recording |
+| **Finance** | Expenses (with categories + approval), Payroll (generate, approve, pay), Finance Reports |
+| **Settings** | Global Settings, Pricing Plans (commercial + residential), Area/Proposal Templates, Users, Background Services |
+| **Public Links** | Proposal, Contract, Contract Amendment, Quotation, Residential Quote, Invoice public views |
+| **Notifications** | In-app realtime (Socket.IO) + database-stored notifications |
 
 ## Architecture
 
@@ -56,32 +59,52 @@ By default this starts:
 ```text
 hygieia/
   apps/
-    api/        Express + TypeScript API
+    api/        Express + TypeScript API (40 route modules + 6 public)
     web/        React + Vite + TypeScript app
   packages/
     database/   Prisma schema + migrations
     types/      Shared TypeScript types
     utils/      Shared utilities
     ui/         Shared UI components
+    shared/     Shared code
 ```
 
 ### Backend Runtime
 - Entry: `apps/api/src/index.ts`
-- Auth: JWT middleware + permission checks
+- Auth: JWT middleware + 5-role RBAC (owner, admin, manager, cleaner, subcontractor)
 - ORM: Prisma + PostgreSQL
+- Validation: Zod-based request schemas
 - Realtime: Socket.IO user-room notifications
-- Schedulers:
-  - reminder scheduler
-  - recurring job auto-regeneration scheduler
-  - job nearing-end alert scheduler
-  - contract assignment override scheduler
-  - contract amendment auto-apply scheduler
+- Rate Limiting: Redis-backed (global + sensitive + public endpoint limiters)
+- Background Schedulers:
+  - Appointment/contract/proposal reminders
+  - Recurring job auto-generation
+  - Job nearing-end alerts
+  - Contract assignment override application
+  - Contract amendment auto-apply
 
 ### Frontend Runtime
 - Entry: `apps/web/src/main.tsx`
 - Router: `apps/web/src/App.tsx`
+- State: Zustand stores + React Query
 - API client: Axios with access-token refresh
-- Route access control: permission-based route guards
+- Route access control: Permission-based route guards via `routeAccess.ts`
+- UI: Tailwind CSS + Lucide React icons
+
+### Security
+- JWT authentication with token refresh
+- Role-based access control (RBAC) with 75 permission constants
+- IDOR protection via ownership middleware (8 resource types)
+- Rate limiting on auth, sensitive operations, and public endpoints
+- Helmet security headers, CORS validation
+
+## API Surface
+
+All routes at `/api/v1/`. See [SYSTEM_UNDERSTANDING.md](./SYSTEM_UNDERSTANDING.md) for the complete endpoint listing.
+
+**Authenticated modules (40):** Auth, Users, Lead Sources, Leads, Appointments, Notifications, Accounts, Contacts, Opportunities, Facilities, Area Types, Areas, Task Templates, Facility Tasks, Pricing Settings, Residential (pricing plans, properties, quotes), Fixture Types, Area Templates, Proposals, Proposal Templates, Contracts (with amendments), Teams, Global Settings, Dashboard, Jobs, Inspections, Inspection Templates, Time Tracking (with timesheets), Invoices, Quotations, One-Time Service Catalog, Expenses, Payroll, Finance.
+
+**Public modules (6):** Proposals, Contracts, Contract Amendments, Invoices, Quotations, Residential Quotes.
 
 ## Scripts
 
@@ -116,23 +139,26 @@ hygieia/
 ## Documentation
 
 Core docs live in `Documentation/` and project root:
+- [System Understanding](./SYSTEM_UNDERSTANDING.md)
 - [Development Guide](./DEVELOPMENT.md)
 - [Testing Guide](./TESTING.md)
 - [Production Checklist](./PRODUCTION_CHECKLIST.md)
-- [System Understanding](./SYSTEM_UNDERSTANDING.md)
+- [RBAC Diagram](./Documentation/RBAC_DIAGRAM.html)
+- [Frontend RBAC Model](./Documentation/FRONTEND_RBAC_MODEL.md)
 
 ## Project Status
 
-This project is in active development and feature-hardening. As of 2026-03-09:
-- full automated tests pass
+Active development. As of 2026-03-26:
 - API typecheck passes
-- web typecheck still fails and should be treated as an active release risk
+- Web typecheck has known TypeScript drift (active release risk)
+- 40 authenticated + 6 public API route modules
+- 5 public web routes (proposal, contract, amendment, quotation, residential quote)
 
 Before production deployment:
-- keep migrations clean and applied in all environments
-- require passing tests and typechecks
-- run manual UAT on critical business flows
-- verify scheduler/notification behavior in staging
+- Keep migrations clean and applied in all environments
+- Require passing tests and typechecks
+- Run manual UAT on critical business flows
+- Verify scheduler/notification behavior in staging
 
 ## License
 

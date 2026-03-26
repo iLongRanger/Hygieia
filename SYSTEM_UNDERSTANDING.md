@@ -1,50 +1,24 @@
 # System Understanding and Current Status
 
-Date: 2026-03-10
+Date: 2026-03-26
 
 ## Current Status
 
 1. Repository status
 - Branch: `main`
-- Local branch is ahead of `origin/main` by 5 commits
-- Latest CRM commits:
-  - `be35a74` `feat: strengthen crm dedupe and scope opportunities`
-  - `380a7d7` `feat: wire opportunities through crm pipeline`
-  - `09b9772` `fix: align crm readiness with opportunities`
-  - `9ac8e18` `fix: clear reopened opportunity close state`
-  - `74539d5` `refactor: centralize active opportunity selection`
+- Latest commits focus on: residential quote delivery, contract assignment fix, account detail UI restructure
 
 2. Test and typecheck status
-- Verified on 2026-03-10
-- API-focused CRM test suites are passing
 - `apps/api` typecheck is passing
-- Root `npm run typecheck` is still failing because `apps/web` has active TypeScript drift
+- Root `npm run typecheck` still failing due to `apps/web` TypeScript drift
+- Pre-existing TS errors: facilities.ts:278 accountId, appointmentService.ts:417, pricing/types.ts:10 AreaPricingBreakdown, proposalService.ts snapshot types, test files
 
-3. Current web typecheck drift
-- Calendar appointment fixtures are missing expanded appointment fields:
-  - `completionNotes`
-  - `actualDuration`
-  - `reminderSentAt`
-  - `assignedTeam`
-  - related appointment fields added since earlier fixture snapshots
-- Facility fixtures are missing required `areas`
-- Area fixtures are missing required `length` and `width`
-- Contact type drift still exists between:
-  - `apps/web/src/types/crm.ts`
-  - `apps/web/src/types/contact.ts`
-- Case-sensitive import drift still exists in:
-  - `apps/web/src/pages/accounts/AccountHero.tsx`
-  - lowercase `button` / `card` imports vs `Button.tsx` / `Card.tsx`
-- Remaining known web TS issues still include:
-  - `apps/web/src/pages/contracts/ContractDetail.tsx` (`nextDays` possibly undefined)
-  - `apps/web/src/pages/public/PublicContractView.tsx` (`companyTimezone` missing from branding state)
-  - `apps/web/src/pages/public/PublicProposalView.tsx` (`companyTimezone` missing from branding state)
-
-4. Important documentation drift corrected by this snapshot
-- The system is no longer accurately described as lead-centric CRM
-- Opportunity-backed CRM flow is now partially implemented in runtime code
-- `account.sourceLead` still exists for backward compatibility but should no longer be treated as the workflow authority
-- Public invoice API access exists, but there is still no public invoice web route
+3. Known web typecheck drift
+- Calendar appointment fixtures missing expanded fields (completionNotes, actualDuration, reminderSentAt, assignedTeam)
+- Facility fixtures missing required `areas`
+- Area fixtures missing required `length` and `width`
+- Contact type drift between `apps/web/src/types/crm.ts` and `apps/web/src/types/contact.ts`
+- Contract-related TS issues (nextDays, companyTimezone on public views)
 
 ## Verified Architecture
 
@@ -61,322 +35,275 @@ Date: 2026-03-10
 
 3. Persistence and infra
 - Database: PostgreSQL via Prisma
-- Realtime/cache support: Redis and Socket.IO support are present
+- Realtime/cache: Redis + Socket.IO
 - Local infrastructure: `docker-compose.yml` provisions Postgres, Redis, API, and web
 
 4. Security and auth model
-- API auth: JWT middleware in `apps/api/src/middleware/auth.ts`
-- API permission enforcement: `apps/api/src/middleware/rbac.ts`
-- API ownership/IDOR protection: `apps/api/src/middleware/ownership.ts`
-- API validation: Zod-based request validation in `apps/api/src/middleware/validate.ts`
-- API rate limiting: Redis-backed limiters in `apps/api/src/middleware/rateLimiter.ts`
-- Frontend route gating: `apps/web/src/components/auth/ProtectedRoute.tsx` and `apps/web/src/lib/routeAccess.ts`
+- JWT middleware: `apps/api/src/middleware/auth.ts`
+- Permission enforcement: `apps/api/src/middleware/rbac.ts`
+- Ownership/IDOR protection: `apps/api/src/middleware/ownership.ts`
+- Request validation: Zod schemas in `apps/api/src/schemas/`
+- Rate limiting: Redis-backed limiters in `apps/api/src/middleware/rateLimiter.ts`
+- Frontend route gating: `apps/web/src/components/auth/ProtectedRoute.tsx` + `apps/web/src/lib/routeAccess.ts`
 - Frontend API token handling: `apps/web/src/lib/api.ts`
 
-5. Security documentation caveat
-- Older auth/security docs are still partially stale
-- Live runtime behavior is:
-  - verify Hygieia-issued JWT locally
-  - load user from Prisma by `decoded.sub`
-  - reject inactive users
-  - resolve effective role from DB-backed assigned roles
-  - enforce permissions and ownership in middleware
+5. Roles (5 total, hierarchical)
+- **owner** (level 100): full access
+- **admin** (level 75): all except delete-level permissions
+- **manager** (level 50): read/write, no admin/delete
+- **cleaner** (level 25): dashboard, jobs, time tracking, facilities (read)
+- **subcontractor** (level 10): dashboard, assigned contracts, jobs, time tracking, expenses (read)
 
 ## Domain Model
 
-The system is a commercial cleaning business platform that runs:
-- CRM
-- sales
-- service scoping
-- operations
-- inspections
-- workforce/time tracking
-- billing
-- finance reporting
+The system is a cleaning business management platform spanning CRM, sales, operations, inspections, workforce, billing, and finance.
 
-The important business entities are:
+### Core Entities
 
-1. `Lead`
-- intake and attribution record
-- first-touch inquiry context
-- may exist before any customer account exists
-
-2. `Account`
-- customer/company master record
-- outlives any single bid or sales cycle
-
-3. `Opportunity`
-- active sales-cycle record
-- owns pipeline state and outcome
-- links CRM workflow to walkthrough appointments, proposals, and contracts
-
-4. `Facility`
-- physical service location for an account
-- contains scope structure used for pricing, inspections, and jobs
-
-5. `Proposal`
-- recurring-service sales document
-- tied to account, optional facility, and optional opportunity
-
-6. `Contract`
-- post-sale service agreement
-- handoff point from sales into operations
-
-7. `Job`
-- operational work item generated from contracts or one-time sales
-
-8. `Inspection`
-- quality-control record tied to facilities, jobs, accounts, or contracts
-
-9. `Invoice`
-- billing record tied to account/facility/contract
+1. **Lead** — intake/attribution record; first-touch inquiry context
+2. **Opportunity** — active sales-cycle record; owns pipeline state and outcome
+3. **Account** — customer master record (commercial or residential)
+4. **Contact** — people linked to accounts (primary, billing, etc.)
+5. **Facility** — physical service location (commercial); contains areas, fixtures, tasks
+6. **Residential Property** — service location (residential); contains home profile, access info
+7. **Proposal** — recurring-service sales document with pricing plans
+8. **Quotation** — one-time service sales document
+9. **Residential Quote** — residential-specific quote with home profile pricing
+10. **Contract** — post-sale service agreement; handoff from sales to operations
+11. **Contract Amendment** — mid-contract scope/pricing changes with approval workflow
+12. **Job** — operational work item (recurring from contracts, or one-time)
+13. **Inspection** — quality-control record with templates, corrective actions, signoffs
+14. **Invoice** — billing record with payment tracking
+15. **Expense** — expense tracking with category management and approval workflow
+16. **Payroll** — payroll runs with entries per employee
+17. **Time Entry / Timesheet** — clock-in/out flows, timesheet generation, approval
 
 ## How The System Works
 
-### 1. CRM workflow
-
+### 1. CRM Workflow
 - Leads are captured, deduped, assigned, and moved through the pipeline
-- Leads can be converted into:
-  - account
-  - primary contact
-  - facility
-- The CRM pipeline is in transition from `lead.status` ownership to `opportunity.status` ownership
-- Current runtime behavior now dual-writes lead and opportunity pipeline state
+- Leads convert into: account + primary contact + facility/property
+- Pipeline statuses: lead → walk_through_booked → walk_through_completed → proposal_sent → negotiation → won → lost
+- CRM pipeline is opportunity-backed; lead and opportunity state are dual-written
 
-Current supported pipeline statuses:
-- `lead`
-- `walk_through_booked`
-- `walk_through_completed`
-- `proposal_sent`
-- `negotiation`
-- `won`
-- `lost`
+### 2. Opportunity Workflow
+- Opportunity owns pipeline state and outcome
+- Lead conversion creates/updates an opportunity
+- Walkthrough appointments, proposals, and contracts link to `opportunityId`
+- Active opportunity selection centralized in `apps/api/src/services/opportunityResolver.ts`
 
-### 2. Opportunity workflow
+### 3. Account Types
+- **Commercial**: has facilities with areas/fixtures/tasks for scope-based pricing
+- **Residential**: has residential properties with home profiles; uses residential pricing plans and quotes
+- Account detail page uses shared tabbed layout (Overview, Service, History) with sidebar (Contacts, Service Overview)
 
-- An `Opportunity` now exists in the Prisma schema and local dev database
-- Lead conversion creates or updates an opportunity
-- Walkthrough appointments, proposals, and contracts can all link to `opportunityId`
-- Proposal, contract, and walkthrough events now update opportunity status
-- Reopened opportunities now clear stale `wonAt` / `lostAt` / `closedAt` values
-- Active opportunity selection is centralized in:
-  - `apps/api/src/services/opportunityResolver.ts`
-
-Current practical rule:
-- when an account or lead has multiple active opportunities, the system prefers the most advanced open opportunity instead of blindly using the newest row
-
-Important transition note:
-- `Lead.convertedToAccountId`
-- `Account.sourceLead`
-- `Appointment.leadId`
-
-still exist and are still used in some compatibility paths, but they are no longer the intended long-term workflow authority.
-
-### 3. Appointment workflow
-
+### 4. Appointment Workflow
 - Supports lead-linked and account-linked scheduling
-- Walkthrough appointments are the CRM bridge into proposal readiness
-- Appointments include:
-  - timezone
-  - completion notes
-  - actual duration
-  - reminder tracking
-  - reassignment support
-  - optional inspection linkage
+- Types: walkthrough, service booking
+- Includes: timezone, completion notes, duration, reminders, reassignment, inspection linkage
 - Walkthrough completion updates both lead and opportunity pipeline state
-- Reminder processing is handled by the reminder service/scheduler pair
 
-### 4. Facility and scope workflow
+### 5. Facility and Scope Workflow (Commercial)
+- Facilities belong to accounts; contain areas, fixtures, facility tasks
+- Scope required before proposal creation
+- Pricing readiness checks, pricing comparison, task time breakdowns
+- Submit-for-proposal workflow with opportunity/walkthrough validation
 
-- Facilities belong to accounts
-- Facilities contain areas, fixtures, and facility tasks
-- Facility scope is required before proposal creation
-- Facilities can be submitted for proposal only after:
-  - a valid opportunity exists
-  - walkthrough requirements are satisfied
-  - area/task scope is present
-- Time breakdown calculations exist for scoped work
+### 6. Residential Property Workflow
+- Properties belong to residential accounts
+- Home profile: home type, sqft, bedrooms, bathrooms, levels
+- Property-level journey tracking (per-property pipeline stage)
+- Access/entry notes, parking, pet information
 
-### 5. Proposal workflow
+### 7. Proposal Workflow (Commercial)
+- Draft → send → view → accept/reject lifecycle
+- Pricing plan resolution, snapshots, locking/unlocking, recalculation
+- Version history, activity tracking
+- Public token viewing and acceptance/rejection
+- PDF generation
 
-- Proposals support:
-  - draft creation
-  - service items and recurring service lines
-  - service schedule data
-  - pricing plan resolution
-  - pricing snapshots
-  - pricing locking/unlocking
-  - pricing recalculation
-  - proposal activities
-  - proposal version history
-  - public token viewing and acceptance/rejection
-- Proposal readiness now resolves through opportunities rather than `account.sourceLead`
-- Proposal updates now validate `opportunityId` ownership even when only the opportunity link changes
-- Proposal send/accept/reject flows now sync opportunity state
+### 8. Quotation Workflow (Commercial One-Time)
+- Similar lifecycle to proposals
+- One-time service catalog for standardized services
+- Pricing approval workflow
+- Public token viewing, PDF generation
 
-### 6. Contract workflow
+### 9. Residential Quote Workflow
+- Quote generation with home profile-based pricing
+- Manual review workflow (request review → approve review)
+- Send → accept/decline lifecycle
+- Convert accepted quotes to contracts
+- Public token viewing
+- PDF generation
 
-- Contracts can be created:
-  - directly
-  - from accepted proposals
-- Contracts support:
-  - send/view/sign lifecycle
-  - public signing
-  - assignment to teams/users
-  - assignment overrides
-  - amendments
-  - renewal
-  - termination
-  - initial clean tracking
-- Contract flows now sync linked opportunity state when `opportunityId` is present
+### 10. Contract Workflow
+- Created directly, from proposals, or as standalone
+- Lifecycle: draft → send → view → sign → active → terminated
+- Team/employee assignment with override scheduling (future-dated changes)
+- Amendments with approval, recalculation, and auto-apply
+- Renewal, initial clean tracking
+- Contract assignment overrides now immediately reassign scheduled jobs on/after effectivity date
+- Public signing, PDF generation
 
-### 7. Job workflow
+### 11. Job Workflow
+- Recurring jobs auto-generated from active contracts
+- One-time jobs created manually
+- Lifecycle: scheduled → in_progress → completed/canceled
+- Tasks, notes, assignment, activity history
+- Initial clean completion flow
 
-- Supports recurring and one-time jobs
-- Recurring jobs are generated from active contracts
-- Job workflow includes:
-  - creation
-  - update
-  - start
-  - completion
-  - cancellation
-  - assignment
-  - notes
-  - tasks
-  - activity history
-- Background services maintain recurring-job horizon and alert on jobs nearing end without expected activity
+### 12. Inspection Workflow
+- Templates (per-contract or global)
+- Lifecycle: created → in_progress → completed/canceled
+- Inspection items, corrective actions, verification
+- Signoff workflow, reinspection
+- Activity history
 
-### 8. Inspection workflow
+### 13. Time Tracking and Payroll
+- Clock-in/out with break tracking
+- Manual entry support
+- Timesheet generation (individual + bulk), submission, approval/rejection
+- Payroll run generation from approved timesheets
+- Payroll entry editing, approval, mark-as-paid
 
-- The system includes:
-  - inspections
-  - templates
-  - activities
-  - corrective actions
-  - signoffs
-  - reinspections
-- Appointments can link to inspections
-- Contract-related logic can auto-create inspection templates from scoped work
+### 14. Financial Management
+- **Invoices**: manual creation, contract-based generation, batch generation, payment recording, voiding
+- **Expenses**: category management, expense tracking, approval/rejection workflow
+- **Payroll**: run generation, approval, payment marking
+- **Finance Reports**: overview, AR aging, profitability, revenue, expense summary, labor cost, payroll summary
 
-### 9. Time tracking and payroll workflow
-
-- Time tracking includes clock-in/out flows and timesheets
-- Timesheets support:
-  - generation
-  - submission
-  - approval
-  - rejection
-  - deletion constraints
-- Payroll includes payroll runs and payroll entries
-
-### 10. Financial management workflow
-
-- Billing includes invoices, payments, voiding, and contract-based invoice generation
-- Finance module includes:
-  - expenses
-  - payroll
-  - finance overview/reporting
-- This system is materially broader than a CRM-only app
-
-### 11. Notifications and realtime
-
-- Notifications are stored in the database
-- Socket.IO user-room realtime delivery is present
-- Notification flows exist for:
-  - assignments
-  - proposals
-  - quotations
-  - contracts
-  - reminders
-  - system events
+### 15. Notifications and Realtime
+- Database-stored notifications
+- Socket.IO user-room realtime delivery
+- Notification flows: assignments, proposals, quotations, contracts, reminders, system events
+- Unread count, mark-as-read, mark-all-read
 
 ## Background Services
 
-These schedulers are started from `apps/api/src/index.ts`:
+Started from `apps/api/src/index.ts`:
 
-1. `reminders`
-- Sends appointment, contract expiry, proposal follow-up, and contract follow-up reminders
+1. **reminders** — appointment, contract expiry, proposal follow-up, contract follow-up reminders
+2. **recurring_jobs_autogen** — forward-generates recurring jobs for active contracts
+3. **job_alerts** — detects jobs nearing end time without expected check-in/out activity
+4. **contract_assignment_overrides** — applies scheduled contract assignment changes and reassigns jobs
+5. **contract_amendment_auto_apply** — applies due approved amendments and reconciles downstream impact
 
-2. `recurring_jobs_autogen`
-- Maintains forward-generated recurring jobs for active contracts
+## API Endpoint Surface
 
-3. `job_alerts`
-- Detects jobs nearing end time without expected check-in/out activity
+All routes mounted at `/api/v1/`:
 
-4. `contract_assignment_overrides`
-- Applies scheduled contract assignment changes and can reassign scheduled jobs
+### Authenticated Routes (40 modules)
 
-5. `contract_amendment_auto_apply`
-- Applies due approved amendments and reconciles downstream operational impact
+| Module | Prefix | Key Endpoints |
+|--------|--------|--------------|
+| Auth | `/auth` | login, logout, refresh, me, set-password |
+| Users | `/users` | CRUD, roles, password reset |
+| Lead Sources | `/lead-sources` | CRUD |
+| Leads | `/leads` | CRUD, archive/restore, convert, can-convert |
+| Appointments | `/appointments` | CRUD, reschedule, complete |
+| Notifications | `/notifications` | list, unread-count, mark-read, mark-all-read |
+| Accounts | `/accounts` | CRUD, archive/restore, activities |
+| Contacts | `/contacts` | CRUD, archive/restore |
+| Opportunities | `/opportunities` | list |
+| Facilities | `/facilities` | CRUD, archive/restore, pricing, pricing-readiness, pricing-comparison, proposal-template, tasks-grouped, task-time-breakdown, submit-for-proposal |
+| Area Types | `/area-types` | CRUD, guidance |
+| Areas | `/areas` | CRUD, archive/restore |
+| Task Templates | `/task-templates` | CRUD, archive/restore |
+| Facility Tasks | `/facility-tasks` | CRUD, bulk create, archive/restore |
+| Pricing Settings | `/pricing-settings` | CRUD, active, default, set-active, set-default, archive/restore |
+| Residential | `/residential` | pricing-plans (CRUD, set-default, archive/restore), properties (list, create, update), quotes (CRUD, preview, approve-review, request-review, send, pdf, accept, decline, convert, archive/restore) |
+| Fixture Types | `/fixture-types` | CRUD |
+| Area Templates | `/area-templates` | CRUD, by-area-type |
+| Proposals | `/proposals` | CRUD, archive/restore, send, viewed, accept, reject, remind, pdf, activities, versions, pricing lock/unlock/plan/recalculate/preview, service tasks |
+| Proposal Templates | `/proposal-templates` | CRUD, default, archive/restore |
+| Contracts | `/contracts` | CRUD, from-proposal, standalone, status, team assign, sign, send, terminate, archive/restore, renew, initial-clean, expiring, tasks, amendments (CRUD, recalculate, apply, reject, approve), activities, pdf, summary |
+| Teams | `/teams` | CRUD, restore, resend-subcontractor-invite |
+| Global Settings | `/settings/global` | get/put, logo upload/delete, background-services (list, logs, update, run-now) |
+| Dashboard | `/dashboard` | stats, export |
+| Jobs | `/jobs` | CRUD, generate, start, complete, complete-initial-clean, cancel, assign, tasks (CRUD), notes (create, delete), activities |
+| Inspections | `/inspections` | CRUD, start, complete, cancel, items (CRUD), corrective-actions (CRUD, verify), signoffs, signoff, reinspect, activities |
+| Inspection Templates | `/inspection-templates` | CRUD, by-contract, archive/restore |
+| Time Tracking | `/time-tracking` | entries (CRUD), active, clock-in, clock-out, break start/end, manual-entry, timesheets (CRUD, generate, generate-bulk, submit, approve, reject) |
+| Invoices | `/invoices` | CRUD, send, record-payment, void, generate from-contract, generate batch, activities |
+| Quotations | `/quotations` | CRUD, by-number, send, viewed, accept, reject, approve-pricing, archive/restore, pdf |
+| One-Time Service Catalog | `/one-time-service-catalog` | list, create, update, delete |
+| Expenses | `/expenses` | categories (CRUD), expenses (CRUD), approve, reject |
+| Payroll | `/payroll` | list, get, generate, approve, mark-paid, entry update, delete |
+| Finance | `/finance` | overview, reports (ar-aging, profitability, revenue, expense-summary, labor-cost, payroll-summary) |
 
-## Public/External Access
+### Public Routes (no auth, rate-limited)
 
-1. Implemented public web routes
-- `/p/:token` proposal view
-- `/c/:token` contract view
-- `/q/:token` quotation view
+| Module | Prefix | Endpoints |
+|--------|--------|-----------|
+| Public Proposals | `/public/proposals` | get, viewed, accept, reject, pdf |
+| Public Contracts | `/public/contracts` | get, viewed, sign, pdf |
+| Public Contract Amendments | `/public/contract-amendments` | get, viewed, sign |
+| Public Invoices | `/public/invoices` | get |
+| Public Quotations | `/public/quotations` | get, viewed, accept, reject, pdf |
+| Public Residential Quotes | `/public/residential-quotes` | get, accept, decline |
 
-2. Implemented public API routes
-- public proposals
-- public contracts
-- public quotations
-- public invoices
+### Public Web Routes
 
-3. Important nuance
-- Public invoice API access exists
-- The current web router still does not include a public invoice page
+| Path | View |
+|------|------|
+| `/p/:token` | Public proposal |
+| `/c/:token` | Public contract |
+| `/ca/:token` | Public contract amendment |
+| `/q/:token` | Public quotation |
+| `/rq/:token` | Public residential quote |
 
-## Endpoint Surface Summary
+## Frontend Route Access
 
-Major API route groups currently include:
-- leads
-- accounts
-- contacts
-- appointments
-- facilities
-- proposals
-- contracts
-- jobs
-- inspections
-- invoices
-- time tracking
-- payroll
-- finance
-- notifications
-- quotations
-- pricing/settings/templates
+Permission-based route guards (from `routeAccess.ts`):
 
-This is a CRM-to-operations system, not a standalone CRM.
+| Route | Required Permission |
+|-------|-------------------|
+| `/` | all authenticated |
+| `/leads` | LEADS_READ |
+| `/accounts` | ACCOUNTS_READ |
+| `/residential/accounts/:id` | ACCOUNTS_READ |
+| `/contacts` | CONTACTS_READ |
+| `/facilities` | (no guard — open to all authenticated) |
+| `/proposals` | PROPOSALS_READ |
+| `/quotations` | QUOTATIONS_READ |
+| `/quotations/catalog` | QUOTATIONS_ADMIN |
+| `/contracts` | CONTRACTS_READ |
+| `/jobs` | JOBS_READ |
+| `/appointments` | APPOINTMENTS_READ |
+| `/inspections` | INSPECTIONS_READ |
+| `/inspections/new` | INSPECTIONS_WRITE |
+| `/inspection-templates` | INSPECTIONS_ADMIN |
+| `/time-tracking` | TIME_TRACKING_READ |
+| `/timesheets` | TIME_TRACKING_APPROVE |
+| `/invoices` | INVOICES_READ |
+| `/pricing` | PRICING_READ |
+| `/residential/pricing` | PRICING_READ |
+| `/residential/quotes` | QUOTATIONS_READ |
+| `/teams` | TEAMS_READ |
+| `/tasks` | TASK_TEMPLATES_READ |
+| `/area-templates` | AREA_TEMPLATES_READ_BY_TYPE |
+| `/users` | USERS_READ |
+| `/settings/global` | SETTINGS_WRITE |
+| `/settings/proposal-templates` | PROPOSAL_TEMPLATES_READ |
+| `/finance` | FINANCE_REPORTS_READ |
+| `/finance/expenses` | EXPENSES_READ |
+| `/finance/payroll` | PAYROLL_READ |
+| `/finance/reports` | FINANCE_REPORTS_READ |
 
 ## Current Project Risks
 
-1. Web typecheck remains red
-- This is the main current release risk
-
-2. Opportunity transition is not finished
-- runtime wiring exists in API flows
-- schema is live locally
-- compatibility fields still exist
-- some UI/reporting paths still need to move fully from leads to opportunities
-
-3. Documentation can still drift quickly
-- update this file after schema, route, scheduler, or status changes
+1. **Web typecheck remains red** — main release risk
+2. **Opportunity transition not finished** — runtime wiring exists, some UI paths still lead-centric
+3. **No public invoice web page** — API endpoint exists but no frontend route
 
 ## Practical Summary
 
-As of 2026-03-10:
-- CRM dedupe hardening is in place
-- opportunity schema is in place
-- appointments, proposals, and contracts are opportunity-aware
-- CRM readiness logic now prefers opportunities over `sourceLead`
-- active opportunity selection is centralized
-- API typecheck is green
-- focused CRM suites are green
-- root typecheck is still blocked by web TypeScript drift
+As of 2026-03-26:
+- 40 authenticated API route modules + 6 public route modules
+- 5-role RBAC system with hierarchical permissions and IDOR protection
+- Residential and commercial account types with shared UI structure
+- Full CRM-to-operations pipeline: leads → opportunities → proposals/quotes → contracts → jobs → invoices
+- Background services: reminders, job auto-gen, job alerts, contract assignment overrides, amendment auto-apply
+- API typecheck green; web typecheck red (known drift)
 
-Update this file after:
-- major schema changes
-- scheduler changes
-- route additions/removals
-- opportunity model changes
-- any change that moves test or typecheck status
+Update this file after major schema, route, scheduler, or permission changes.

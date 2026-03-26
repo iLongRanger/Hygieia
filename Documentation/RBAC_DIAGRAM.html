@@ -21,6 +21,12 @@
       border-bottom: 1px solid #1e293b;
     }
     h1 span { color: #d4af37; }
+    .updated {
+      text-align: center;
+      font-size: 11px;
+      color: #475569;
+      padding: 4px 0 0;
+    }
 
     .controls {
       display: flex;
@@ -50,6 +56,7 @@
       padding: 8px 16px 16px;
       font-size: 12px;
       color: #64748b;
+      flex-wrap: wrap;
     }
     .legend-item { display: flex; align-items: center; gap: 6px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -72,7 +79,7 @@
     .role-bubble {
       width: 80px; height: 80px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 13px; margin: 0 auto 8px;
+      font-weight: 700; font-size: 12px; margin: 0 auto 8px;
       border: 3px solid; transition: all 0.3s; cursor: pointer;
     }
     .role-bubble:hover { transform: scale(1.1); }
@@ -81,6 +88,7 @@
     .role-bubble.admin { border-color: #8b5cf6; background: rgba(139,92,246,0.15); color: #a78bfa; }
     .role-bubble.manager { border-color: #3b82f6; background: rgba(59,130,246,0.15); color: #60a5fa; }
     .role-bubble.cleaner { border-color: #10b981; background: rgba(16,185,129,0.15); color: #34d399; }
+    .role-bubble.subcontractor { border-color: #f97316; background: rgba(249,115,22,0.15); color: #fb923c; }
 
     .hierarchy-arrow {
       display: flex; align-items: center;
@@ -97,7 +105,7 @@
 
     .perm-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 12px; width: 100%; max-width: 1200px;
     }
     .perm-group {
@@ -128,6 +136,7 @@
     .perm-dot.has-admin { background: #8b5cf6; }
     .perm-dot.has-manager { background: #3b82f6; }
     .perm-dot.has-cleaner { background: #10b981; }
+    .perm-dot.has-subcontractor { background: #f97316; }
     .perm-dot.no-access { background: #1e293b; border: 1px solid #334155; }
     .perm-dot.dimmed { opacity: 0.15; }
 
@@ -136,7 +145,7 @@
     .routes-section { width: 100%; max-width: 1200px; margin-top: 32px; }
     .routes-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 8px;
     }
     .route-row {
@@ -146,18 +155,25 @@
     }
     .route-row.dimmed { opacity: 0.25; }
     .route-path { font-family: 'SF Mono', 'Fira Code', monospace; color: #d4af37; }
-    .route-roles { display: flex; gap: 4px; }
+    .route-roles { display: flex; gap: 4px; flex-wrap: wrap; }
     .route-role-tag {
       padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;
     }
     .route-role-tag.owner { background: rgba(245,158,11,0.15); color: #fbbf24; }
     .route-role-tag.admin { background: rgba(139,92,246,0.15); color: #a78bfa; }
     .route-role-tag.manager { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .route-role-tag.cleaner { background: rgba(16,185,129,0.15); color: #34d399; }
+    .route-role-tag.subcontractor { background: rgba(249,115,22,0.15); color: #fb923c; }
     .route-role-tag.all { background: rgba(100,116,139,0.15); color: #94a3b8; }
+
+    .route-perm {
+      font-size: 10px; color: #64748b; font-family: 'SF Mono', 'Fira Code', monospace;
+    }
   </style>
 </head>
 <body>
   <h1><span>Hygieia</span> RBAC Access Control Diagram</h1>
+  <div class="updated">Updated 2026-03-26</div>
 
   <div class="controls" id="controls"></div>
 
@@ -166,6 +182,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Admin (75)</div>
     <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Manager (50)</div>
     <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Cleaner (25)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> Subcontractor (10)</div>
   </div>
 
   <div class="diagram">
@@ -195,16 +212,17 @@
   </div>
 
   <script>
-    const ROLES = ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'];
-    const ROLE_COLORS = {
+    var ROLES = ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'];
+    var ROLE_COLORS = {
       owner: '#f59e0b',
       admin: '#8b5cf6',
       manager: '#3b82f6',
       cleaner: '#10b981',
       subcontractor: '#f97316',
     };
+    var ROLE_LEVELS = { owner: 100, admin: 75, manager: 50, cleaner: 25, subcontractor: 10 };
 
-    const permissionGroups = [
+    var permissionGroups = [
       {
         name: 'CRM / Leads', icon: '\u{1F4CB}', color: '#f59e0b',
         permissions: [
@@ -281,9 +299,18 @@
         ],
       },
       {
+        name: 'Quotations', icon: '\u{1F4DD}', color: '#e879f9',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Admin', roles: ['owner', 'admin'] },
+          { label: 'Delete', roles: ['owner'] },
+        ],
+      },
+      {
         name: 'Contracts', icon: '\u{1F4DC}', color: '#f97316',
         permissions: [
-          { label: 'Read (list/pdf)', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+          { label: 'Read (list/pdf)', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
           { label: 'Write (send/sign)', roles: ['owner', 'admin', 'manager'] },
           { label: 'Admin (archive/terminate)', roles: ['owner', 'admin'] },
         ],
@@ -291,9 +318,17 @@
       {
         name: 'Jobs', icon: '\u{1F4BC}', color: '#14b8a6',
         permissions: [
-          { label: 'Read', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
-          { label: 'Write', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
-          { label: 'Admin', roles: ['owner', 'admin'] },
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+          { label: 'Admin (generate)', roles: ['owner', 'admin'] },
+        ],
+      },
+      {
+        name: 'Inspections', icon: '\u{1F50D}', color: '#fb7185',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Admin (templates)', roles: ['owner', 'admin'] },
         ],
       },
       {
@@ -329,50 +364,89 @@
         ],
       },
       {
-        name: 'Dashboard', icon: '\u{1F4CA}', color: '#a855f7',
+        name: 'Invoices', icon: '\u{1F4B0}', color: '#fbbf24',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Admin', roles: ['owner', 'admin'] },
+        ],
+      },
+      {
+        name: 'Expenses', icon: '\u{1F4B8}', color: '#f472b6',
         permissions: [
           { label: 'Read', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager'] },
+          { label: 'Approve', roles: ['owner', 'admin', 'manager'] },
+        ],
+      },
+      {
+        name: 'Payroll', icon: '\u{1F4B5}', color: '#a3e635',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+          { label: 'Write', roles: ['owner', 'admin'] },
+          { label: 'Approve', roles: ['owner', 'admin'] },
+        ],
+      },
+      {
+        name: 'Finance Reports', icon: '\u{1F4CA}', color: '#a855f7',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager'] },
+        ],
+      },
+      {
+        name: 'Dashboard', icon: '\u{1F3E0}', color: '#38bdf8',
+        permissions: [
+          { label: 'Read', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
         ],
       },
       {
         name: 'Fixture Types', icon: '\u{1F6BF}', color: '#78716c',
         permissions: [
           { label: 'Read', roles: ['owner', 'admin', 'manager'] },
-          { label: 'Write', roles: ['owner', 'admin'] },
-        ],
-      },
-      {
-        name: 'Cleaner-Only', icon: '\u{1F9F9}', color: '#10b981',
-        permissions: [
-          { label: 'Work Orders', roles: ['cleaner'] },
-          { label: 'Own Tasks', roles: ['cleaner'] },
+          { label: 'Write', roles: ['owner', 'admin', 'manager'] },
         ],
       },
     ];
 
-    const frontendRoutes = [
-      { path: '/area-templates', roles: ['owner', 'admin', 'manager'] },
-      { path: '/settings/global', roles: ['owner', 'admin'] },
-      { path: '/settings/proposal-templates', roles: ['owner', 'admin', 'manager'] },
-      { path: '/users', roles: ['owner', 'admin'] },
-      { path: '/users/:id', roles: ['owner', 'admin'] },
-      { path: '/', roles: null },
-      { path: '/leads', roles: ['owner', 'admin', 'manager'] },
-      { path: '/accounts', roles: ['owner', 'admin', 'manager'] },
-      { path: '/contacts', roles: ['owner', 'admin', 'manager'] },
-      { path: '/facilities', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
-      { path: '/proposals', roles: ['owner', 'admin', 'manager'] },
-      { path: '/contracts', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
-      { path: '/jobs', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
-      { path: '/time-tracking', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
-      { path: '/teams', roles: ['owner', 'admin', 'manager'] },
+    var frontendRoutes = [
+      { path: '/', perm: null, roles: null },
+      { path: '/leads', perm: 'LEADS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/accounts', perm: 'ACCOUNTS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/residential/accounts/:id', perm: 'ACCOUNTS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/contacts', perm: 'CONTACTS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/facilities', perm: null, roles: null },
+      { path: '/proposals', perm: 'PROPOSALS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/quotations', perm: 'QUOTATIONS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/quotations/catalog', perm: 'QUOTATIONS_ADMIN', roles: ['owner', 'admin'] },
+      { path: '/contracts', perm: 'CONTRACTS_READ', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/jobs', perm: 'JOBS_READ', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/appointments', perm: 'APPOINTMENTS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/inspections', perm: 'INSPECTIONS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/inspections/new', perm: 'INSPECTIONS_WRITE', roles: ['owner', 'admin', 'manager'] },
+      { path: '/inspection-templates', perm: 'INSPECTIONS_ADMIN', roles: ['owner', 'admin'] },
+      { path: '/time-tracking', perm: 'TIME_TRACKING_READ', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/timesheets', perm: 'TIME_TRACKING_APPROVE', roles: ['owner', 'admin', 'manager'] },
+      { path: '/invoices', perm: 'INVOICES_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/pricing', perm: 'PRICING_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/residential/pricing', perm: 'PRICING_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/residential/quotes', perm: 'QUOTATIONS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/teams', perm: 'TEAMS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/tasks', perm: 'TASK_TEMPLATES_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/area-templates', perm: 'AREA_TEMPLATES_READ_BY_TYPE', roles: ['owner', 'admin', 'manager'] },
+      { path: '/users', perm: 'USERS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/settings/global', perm: 'SETTINGS_WRITE', roles: ['owner', 'admin'] },
+      { path: '/settings/proposal-templates', perm: 'PROPOSAL_TEMPLATES_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/finance', perm: 'FINANCE_REPORTS_READ', roles: ['owner', 'admin', 'manager'] },
+      { path: '/finance/expenses', perm: 'EXPENSES_READ', roles: ['owner', 'admin', 'manager', 'subcontractor'] },
+      { path: '/finance/payroll', perm: 'PAYROLL_READ', roles: ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'] },
+      { path: '/finance/reports', perm: 'FINANCE_REPORTS_READ', roles: ['owner', 'admin', 'manager'] },
     ];
 
-    let activeRole = null;
+    var activeRole = null;
 
     function buildControls() {
-      const container = document.getElementById('controls');
-      const allBtn = document.createElement('button');
+      var container = document.getElementById('controls');
+      var allBtn = document.createElement('button');
       allBtn.textContent = 'All Roles';
       allBtn.className = 'active';
       allBtn.style.setProperty('--role-color', '#d4af37');
@@ -380,7 +454,7 @@
       container.appendChild(allBtn);
 
       ROLES.forEach(function(role) {
-        const btn = document.createElement('button');
+        var btn = document.createElement('button');
         btn.textContent = role.charAt(0).toUpperCase() + role.slice(1);
         btn.style.setProperty('--role-color', ROLE_COLORS[role]);
         btn.dataset.role = role;
@@ -391,7 +465,6 @@
 
     function buildRoleHierarchy() {
       var container = document.getElementById('roleHierarchy');
-      var levels = { owner: 100, admin: 75, manager: 50, cleaner: 25, subcontractor: 25 };
 
       ROLES.forEach(function(role, i) {
         if (i > 0) {
@@ -410,7 +483,7 @@
 
         var level = document.createElement('div');
         level.className = 'role-level';
-        level.textContent = 'Level ' + levels[role];
+        level.textContent = 'Level ' + ROLE_LEVELS[role];
 
         node.appendChild(bubble);
         node.appendChild(level);
@@ -483,9 +556,18 @@
         row.className = 'route-row';
         row.dataset.roles = route.roles ? route.roles.join(',') : 'all';
 
-        var path = document.createElement('span');
+        var left = document.createElement('div');
+        var path = document.createElement('div');
         path.className = 'route-path';
         path.textContent = route.path;
+        left.appendChild(path);
+
+        if (route.perm) {
+          var perm = document.createElement('div');
+          perm.className = 'route-perm';
+          perm.textContent = route.perm;
+          left.appendChild(perm);
+        }
 
         var roles = document.createElement('div');
         roles.className = 'route-roles';
@@ -504,7 +586,7 @@
           roles.appendChild(tag);
         }
 
-        row.appendChild(path);
+        row.appendChild(left);
         row.appendChild(roles);
         grid.appendChild(row);
       });
