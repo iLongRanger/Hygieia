@@ -258,6 +258,7 @@ const AccountDetail = () => {
   const [addingActivity, setAddingActivity] = useState(false);
   const [activityNote, setActivityNote] = useState('');
   const [activityType, setActivityType] = useState<AccountActivityEntryType>('note');
+  const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'history'>('overview');
   const [proposalTotal, setProposalTotal] = useState(0);
   const [contractTotal, setContractTotal] = useState(0);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -823,6 +824,20 @@ const AccountDetail = () => {
     </Card>
   );
 
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'service' as const, label: 'Service' },
+    { id: 'history' as const, label: 'History' },
+  ];
+
+  const journeyStage = isResidentialAccount ? residentialJourney.currentStage : commercialJourney.currentStage;
+  const journeyNextStep = isResidentialAccount ? residentialJourney.nextStep : commercialJourney.nextStep;
+  const journeyVariant = activeContract
+    ? 'success' as const
+    : isResidentialAccount
+      ? (residentialQuotes.length > 0 ? 'warning' as const : 'info' as const)
+      : (proposals.length > 0 || appointments.length > 0 ? 'warning' as const : 'info' as const);
+
   return (
     <div className="space-y-6">
       <AccountHero
@@ -839,320 +854,327 @@ const AccountDetail = () => {
         onNavigate={navigateFromAccount}
       />
 
-      {isResidentialAccount ? (
-        <>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {bookingsSection}
-            <AccountContacts
-              contacts={contacts}
-              accountId={account.id}
-              onNavigate={navigateFromAccount}
-            />
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Properties</h3>
-                  <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Service locations under this residential customer or property manager.
-                  </p>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* ── Main content ── */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Tab bar */}
+          <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Overview tab ── */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Journey card — shared structure */}
+              <Card className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+                      {isResidentialAccount ? 'Residential Journey' : 'Commercial Journey'}
+                    </h3>
+                    <p className="text-sm text-surface-500 dark:text-surface-400">
+                      {isResidentialAccount
+                        ? 'Track where this residential customer is in the sales-to-service flow.'
+                        : 'Track where this commercial account is in the sales-to-service pipeline.'}
+                    </p>
+                  </div>
+                  <Badge variant={journeyVariant}>{journeyStage}</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="info">Residential</Badge>
-                  <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
-                    Add Property
-                  </Button>
-                </div>
-              </div>
-              {residentialProperties.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
-                  No residential properties yet. Add the first service location before creating a quote.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {residentialPropertyJourneys.map(({ property, journey: propertyJourney }) => (
-                    <div key={property.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-surface-900 dark:text-surface-100">{property.name}</div>
-                            {property.isPrimary ? <Badge variant="success">Primary</Badge> : null}
-                            <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
-                              {propertyJourney.currentStage}
-                            </Badge>
-                          </div>
-                          <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
-                            {[
-                              property.serviceAddress?.street,
-                              property.serviceAddress?.city,
-                              property.serviceAddress?.state,
-                              property.serviceAddress?.postalCode,
-                            ].filter(Boolean).join(', ') || 'No service address set'}
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
-                          Edit
-                        </Button>
-                      </div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <div>
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
-                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                            {property.homeProfile?.homeType ? property.homeProfile.homeType.replace('_', ' ') : 'No home type set'}
-                            {property.homeProfile?.squareFeet ? `, ${property.homeProfile.squareFeet} sq ft` : ''}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Bedrooms / Baths</div>
-                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                            {property.homeProfile?.bedrooms ?? 0} bed / {property.homeProfile?.fullBathrooms ?? 0} bath
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
-                          <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                            {property.entryNotes || property.parkingAccess || property.accessNotes || 'No access notes set'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
-                        <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
-                        {propertyJourney.nextStep}
+                <div className={`grid gap-3 ${isResidentialAccount ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                  {isResidentialAccount && (
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                      <div className="text-xs uppercase tracking-wide text-surface-500">Property In Journey</div>
+                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                        {residentialJourneyPropertyLabel ?? 'All Properties'}
                       </div>
                     </div>
-                  ))}
+                  )}
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                    <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
+                    <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                      {journeyStage}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                    <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
+                    <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
+                      {journeyNextStep}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </Card>
-          </div>
+                <div className="flex flex-wrap gap-2">
+                  {isResidentialAccount ? (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
+                        Open Residential Quotes
+                      </Button>
+                      {activeContract ? (
+                        <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
+                          Open Active Contract
+                        </Button>
+                      ) : null}
+                      {!activeContract && recentJobs.length > 0 ? (
+                        <Button size="sm" onClick={() => navigateFromAccount('/jobs')}>
+                          View Jobs
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount(`/accounts/${account.id}/facilities`)}>
+                        Open Facilities
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
+                        Open Appointments
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/proposals')}>
+                        Open Proposals
+                      </Button>
+                      {activeContract ? (
+                        <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
+                          Open Active Contract
+                        </Button>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Journey</h3>
-                  <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Track where this residential customer is in the sales-to-service flow.
-                  </p>
-                </div>
-                <Badge variant={activeContract ? 'success' : residentialQuotes.length > 0 ? 'warning' : 'info'}>
-                  {residentialJourney.currentStage}
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Property In Journey</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialJourneyPropertyLabel ?? 'All Properties'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialJourney.currentStage}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
-                  <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
-                    {residentialJourney.nextStep}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
-                  Open Residential Quotes
-                </Button>
-                {activeContract ? (
-                  <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
-                    Open Active Contract
-                  </Button>
-                ) : null}
-                {!activeContract && recentJobs.length > 0 ? (
-                  <Button size="sm" onClick={() => navigateFromAccount('/jobs')}>
-                    View Jobs
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Quotes</h3>
-                  <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Quotes linked to this residential account.
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
-                  Open Quotes
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {residentialQuotes.length === 0 ? (
-                  <div className="text-sm text-surface-500 dark:text-surface-400">No residential quotes yet.</div>
-                ) : (
-                  residentialQuotes.map((quote) => (
-                    <button
-                      key={quote.id}
-                      type="button"
-                      onClick={() => navigateFromAccount('/residential/quotes')}
-                      className="w-full rounded-xl border border-surface-200 p-3 text-left transition-colors hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium text-surface-900 dark:text-surface-100">{quote.title}</div>
-                          <div className="text-xs text-surface-500">{quote.quoteNumber}</div>
-                        </div>
-                        <Badge variant={quote.status === 'accepted' || quote.status === 'converted' ? 'success' : quote.status === 'declined' ? 'error' : 'warning'}>
-                          {quote.status}
-                        </Badge>
+              {/* Type-specific content */}
+              {isResidentialAccount ? (
+                <>
+                  {/* Properties */}
+                  <Card className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Properties</h3>
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Service locations under this residential customer.
+                        </p>
                       </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </Card>
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Residential Service</h3>
-                  <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Keep the current service shape and next visit details visible in one place.
-                  </p>
-                </div>
-                <Badge variant={activeContract ? 'success' : 'info'}>
-                  {activeContract ? 'Live Service' : 'Pre-Service'}
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Service Type</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialServiceSummary.serviceType}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Frequency</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialServiceSummary.frequency}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Visit</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialServiceSummary.nextVisitDate}
-                  </div>
-                  <div className="mt-1 text-xs text-surface-500">{residentialServiceSummary.nextVisitWindow}</div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Assigned To</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {residentialServiceSummary.assignmentLabel}
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-xl border border-dashed border-surface-200 p-4 text-sm text-surface-600 dark:border-surface-700 dark:text-surface-300">
-                <span className="font-medium text-surface-900 dark:text-surface-100">Latest completed visit:</span>{' '}
-                {residentialServiceSummary.latestCompletedVisit}
-              </div>
-            </Card>
-            <AccountServiceOverview
-              activeContract={activeContract}
-              recentJobs={recentJobs}
-              onNavigate={navigateFromAccount}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {bookingsSection}
-            <AccountContacts
-              contacts={contacts}
-              accountId={account.id}
-              onNavigate={navigateFromAccount}
-            />
-            <AccountFacilities
-              facilities={facilities}
-              canWriteFacilities={canWriteFacilities}
-              onAddFacility={() => setShowFacilityModal(true)}
-              onNavigate={navigateFromAccount}
-            />
-          </div>
+                      <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
+                        Add Property
+                      </Button>
+                    </div>
+                    {residentialProperties.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+                        No residential properties yet. Add the first service location before creating a quote.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {residentialPropertyJourneys.map(({ property, journey: propertyJourney }) => (
+                          <div key={property.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <div className="font-medium text-surface-900 dark:text-surface-100">{property.name}</div>
+                                  {property.isPrimary ? <Badge variant="success">Primary</Badge> : null}
+                                  <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
+                                    {propertyJourney.currentStage}
+                                  </Badge>
+                                </div>
+                                <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
+                                  {[
+                                    property.serviceAddress?.street,
+                                    property.serviceAddress?.city,
+                                    property.serviceAddress?.state,
+                                    property.serviceAddress?.postalCode,
+                                  ].filter(Boolean).join(', ') || 'No service address set'}
+                                </div>
+                              </div>
+                              <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
+                                Edit
+                              </Button>
+                            </div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                              <div>
+                                <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
+                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                                  {property.homeProfile?.homeType ? property.homeProfile.homeType.replace('_', ' ') : 'No home type set'}
+                                  {property.homeProfile?.squareFeet ? `, ${property.homeProfile.squareFeet} sq ft` : ''}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-wide text-surface-500">Bedrooms / Baths</div>
+                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                                  {property.homeProfile?.bedrooms ?? 0} bed / {property.homeProfile?.fullBathrooms ?? 0} bath
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
+                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
+                                  {property.entryNotes || property.parkingAccess || property.accessNotes || 'No access notes set'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
+                              <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
+                              {propertyJourney.nextStep}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
 
-          <div className="grid gap-6 xl:grid-cols-3">
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Commercial Journey</h3>
-                  <p className="text-sm text-surface-500 dark:text-surface-400">
-                    Track where this commercial account is in the sales-to-service pipeline.
-                  </p>
-                </div>
-                <Badge variant={activeContract ? 'success' : proposals.length > 0 || appointments.length > 0 ? 'warning' : 'info'}>
-                  {commercialJourney.currentStage}
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
-                  <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                    {commercialJourney.currentStage}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                  <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
-                  <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
-                    {commercialJourney.nextStep}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigateFromAccount(`/accounts/${account.id}/facilities`)}>
-                  Open Facilities
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
-                  Open Appointments
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/proposals')}>
-                  Open Proposals
-                </Button>
-                {activeContract ? (
-                  <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
-                    Open Active Contract
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
-            <AccountFinancials
-              account={account}
-              activeContract={activeContract}
-              proposals={proposals}
-              contracts={contracts}
-              proposalTotal={proposalTotal}
-              contractTotal={contractTotal}
-              onNavigate={navigateFromAccount}
-            />
-            <AccountServiceOverview
-              activeContract={activeContract}
-              recentJobs={recentJobs}
-              onNavigate={navigateFromAccount}
-            />
-          </div>
-        </>
-      )}
+                  {/* Quotes */}
+                  <Card className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Quotes</h3>
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Quotes linked to this residential account.
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
+                        Open Quotes
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {residentialQuotes.length === 0 ? (
+                        <div className="text-sm text-surface-500 dark:text-surface-400">No residential quotes yet.</div>
+                      ) : (
+                        residentialQuotes.map((quote) => (
+                          <button
+                            key={quote.id}
+                            type="button"
+                            onClick={() => navigateFromAccount('/residential/quotes')}
+                            className="w-full rounded-xl border border-surface-200 p-3 text-left transition-colors hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="font-medium text-surface-900 dark:text-surface-100">{quote.title}</div>
+                                <div className="text-xs text-surface-500">{quote.quoteNumber}</div>
+                              </div>
+                              <Badge variant={quote.status === 'accepted' || quote.status === 'converted' ? 'success' : quote.status === 'declined' ? 'error' : 'warning'}>
+                                {quote.status}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  <AccountFacilities
+                    facilities={facilities}
+                    canWriteFacilities={canWriteFacilities}
+                    onAddFacility={() => setShowFacilityModal(true)}
+                    onNavigate={navigateFromAccount}
+                  />
+                  <AccountFinancials
+                    account={account}
+                    activeContract={activeContract}
+                    proposals={proposals}
+                    contracts={contracts}
+                    proposalTotal={proposalTotal}
+                    contractTotal={contractTotal}
+                    onNavigate={navigateFromAccount}
+                  />
+                </>
+              )}
+            </div>
+          )}
 
-      {/* Full-width */}
-      <AccountHistory
-        activities={activities}
-        activitiesLoading={activitiesLoading}
-        canWriteAccounts={canWriteAccounts}
-        activityNote={activityNote}
-        setActivityNote={setActivityNote}
-        activityType={activityType}
-        setActivityType={setActivityType}
-        onAddActivity={handleAddActivity}
-        addingActivity={addingActivity}
-      />
+          {/* ── Service tab ── */}
+          {activeTab === 'service' && (
+            <div className="space-y-6">
+              {bookingsSection}
+
+              {isResidentialAccount && (
+                <Card className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Service Details</h3>
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Current service shape and next visit details.
+                      </p>
+                    </div>
+                    <Badge variant={activeContract ? 'success' : 'info'}>
+                      {activeContract ? 'Live Service' : 'Pre-Service'}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                      <div className="text-xs uppercase tracking-wide text-surface-500">Service Type</div>
+                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                        {residentialServiceSummary.serviceType}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                      <div className="text-xs uppercase tracking-wide text-surface-500">Frequency</div>
+                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                        {residentialServiceSummary.frequency}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                      <div className="text-xs uppercase tracking-wide text-surface-500">Next Visit</div>
+                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                        {residentialServiceSummary.nextVisitDate}
+                      </div>
+                      <div className="mt-1 text-xs text-surface-500">{residentialServiceSummary.nextVisitWindow}</div>
+                    </div>
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                      <div className="text-xs uppercase tracking-wide text-surface-500">Assigned To</div>
+                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
+                        {residentialServiceSummary.assignmentLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-surface-200 p-4 text-sm text-surface-600 dark:border-surface-700 dark:text-surface-300">
+                    <span className="font-medium text-surface-900 dark:text-surface-100">Latest completed visit:</span>{' '}
+                    {residentialServiceSummary.latestCompletedVisit}
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ── History tab ── */}
+          {activeTab === 'history' && (
+            <AccountHistory
+              activities={activities}
+              activitiesLoading={activitiesLoading}
+              canWriteAccounts={canWriteAccounts}
+              activityNote={activityNote}
+              setActivityNote={setActivityNote}
+              activityType={activityType}
+              setActivityType={setActivityType}
+              onAddActivity={handleAddActivity}
+              addingActivity={addingActivity}
+            />
+          )}
+        </div>
+
+        {/* ── Sidebar ── */}
+        <div className="space-y-6">
+          <AccountContacts
+            contacts={contacts}
+            accountId={account.id}
+            onNavigate={navigateFromAccount}
+          />
+          <AccountServiceOverview
+            activeContract={activeContract}
+            recentJobs={recentJobs}
+            onNavigate={navigateFromAccount}
+          />
+        </div>
+      </div>
 
       {/* Modals */}
       <EditAccountModal
