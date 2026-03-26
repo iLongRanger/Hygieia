@@ -126,6 +126,13 @@ function applyContractAccessScope(
   }
 }
 
+function getUnassignedContractWhere(): Prisma.ContractWhereInput {
+  return {
+    assignedTeamId: null,
+    assignedToUserId: null,
+  };
+}
+
 const contractSelect = {
   id: true,
   opportunityId: true,
@@ -507,14 +514,14 @@ export async function listContracts(
   if (needsAttention) {
     andConditions.push({
       OR: [
-        { assignedTeamId: null },
+        getUnassignedContractWhere(),
         { status: { in: ['sent', 'viewed'] } },
       ],
     });
   }
 
   if (unassignedOnly) {
-    andConditions.push({ assignedTeamId: null });
+    andConditions.push(getUnassignedContractWhere());
   }
 
   if (nearingRenewalOnly) {
@@ -966,7 +973,7 @@ export async function getContractsSummary(
     prisma.contract.count({ where: { ...where, status: 'viewed' } }),
     prisma.contract.count({ where: { ...where, status: 'pending_signature' } }),
     prisma.contract.count({ where: { ...where, status: 'active' } }),
-    prisma.contract.count({ where: { ...where, assignedTeamId: null } }),
+    prisma.contract.count({ where: { ...where, ...getUnassignedContractWhere() } }),
     prisma.contract.count({
       where: {
         ...where,

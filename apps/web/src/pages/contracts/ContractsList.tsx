@@ -320,9 +320,19 @@ const ContractsList = () => {
     },
     {
       header: 'Account',
-      cell: (contract: Contract) => (
-        <span className="text-surface-600 dark:text-surface-400">{contract.account.name}</span>
-      ),
+      cell: (contract: Contract) => {
+        const locationLabel = contract.account.type === 'residential' ? 'Property' : 'Facility';
+        const locationName = contract.facility?.name || '-';
+
+        return (
+          <div>
+            <div className="text-surface-600 dark:text-surface-400">{contract.account.name}</div>
+            <div className="text-xs text-surface-500 dark:text-surface-500">
+              {locationLabel}: {locationName}
+            </div>
+          </div>
+        );
+      },
     },
     {
       header: 'Status',
@@ -715,4 +725,3 @@ const ContractsList = () => {
 };
 
 export default ContractsList;
-
