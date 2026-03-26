@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { NotFoundError } from '../middleware/errorHandler';
 
 export interface OpportunityListParams {
   page?: number;
@@ -144,4 +145,98 @@ export async function listOpportunities(
       totalPages: Math.ceil(total / limit),
     },
   };
+}
+
+export async function getOpportunityById(id: string) {
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id },
+    select: opportunitySelect,
+  });
+  if (!opportunity) throw new NotFoundError('Opportunity not found');
+  return opportunity;
+}
+
+export interface OpportunityUpdateInput {
+  title?: string;
+  status?: string;
+  source?: string | null;
+  estimatedValue?: number | null;
+  probability?: number | null;
+  expectedCloseDate?: string | null;
+  lostReason?: string | null;
+  ownerUserId?: string | null;
+  accountId?: string | null;
+  facilityId?: string | null;
+  primaryContactId?: string | null;
+}
+
+export async function updateOpportunity(id: string, input: OpportunityUpdateInput) {
+  const existing = await prisma.opportunity.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError('Opportunity not found');
+
+  const data: Prisma.OpportunityUpdateInput = {};
+  if (input.title !== undefined) data.title = input.title;
+  if (input.status !== undefined) {
+    data.status = input.status;
+    if (input.status === 'won' && !existing.wonAt) data.wonAt = new Date();
+    if (input.status === 'lost' && !existing.lostAt) data.lostAt = new Date();
+    if (['won', 'lost'].includes(input.status) && !existing.closedAt) data.closedAt = new Date();
+  }
+  if (input.source !== undefined) data.source = input.source;
+  if (input.estimatedValue !== undefined) {
+    data.estimatedValue = input.estimatedValue !== null
+      ? new Prisma.Decimal(input.estimatedValue)
+      : null;
+  }
+  if (input.probability !== undefined) data.probability = input.probability;
+  if (input.expectedCloseDate !== undefined) {
+    data.expectedCloseDate = input.expectedCloseDate ? new Date(input.expectedCloseDate) : null;
+  }
+  if (input.lostReason !== undefined) data.lostReason = input.lostReason;
+  if (input.ownerUserId !== undefined) {
+    data.ownerUser = input.ownerUserId
+      ? { connect: { id: input.ownerUserId } }
+      : { disconnect: true };
+  }
+  if (input.accountId !== undefined) {
+    data.account = input.accountId
+      ? { connect: { id: input.accountId } }
+      : { disconnect: true };
+  }
+  if (input.facilityId !== undefined) {
+    data.facility = input.facilityId
+      ? { connect: { id: input.facilityId } }
+      : { disconnect: true };
+  }
+  if (input.primaryContactId !== undefined) {
+    data.primaryContact = input.primaryContactId
+      ? { connect: { id: input.primaryContactId } }
+      : { disconnect: true };
+  }
+
+  return prisma.opportunity.update({
+    where: { id },
+    data,
+    select: opportunitySelect,
+  });
+}
+
+export async function archiveOpportunity(id: string) {
+  const existing = await prisma.opportunity.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError('Opportunity not found');
+  return prisma.opportunity.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+    select: opportunitySelect,
+  });
+}
+
+export async function restoreOpportunity(id: string) {
+  const existing = await prisma.opportunity.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError('Opportunity not found');
+  return prisma.opportunity.update({
+    where: { id },
+    data: { archivedAt: null },
+    select: opportunitySelect,
+  });
 }

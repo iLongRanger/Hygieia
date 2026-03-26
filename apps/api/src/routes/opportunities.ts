@@ -4,8 +4,14 @@ import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { ValidationError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
-import { listOpportunities } from '../services/opportunityService';
-import { listOpportunitiesQuerySchema } from '../schemas/opportunity';
+import {
+  listOpportunities,
+  getOpportunityById,
+  updateOpportunity,
+  archiveOpportunity,
+  restoreOpportunity,
+} from '../services/opportunityService';
+import { listOpportunitiesQuerySchema, updateOpportunitySchema } from '../schemas/opportunity';
 
 const router: Router = Router();
 
@@ -33,6 +39,67 @@ router.get(
 
       const result = await listOpportunities(parsed.data);
       res.json({ data: result.data, pagination: result.pagination });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/:id',
+  authenticate,
+  requirePermission(PERMISSIONS.LEADS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const opportunity = await getOpportunityById(req.params.id);
+      res.json({ data: opportunity });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  '/:id',
+  authenticate,
+  requirePermission(PERMISSIONS.LEADS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = updateOpportunitySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const opportunity = await updateOpportunity(req.params.id, parsed.data);
+      res.json({ data: opportunity });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/archive',
+  authenticate,
+  requirePermission(PERMISSIONS.LEADS_ADMIN),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const opportunity = await archiveOpportunity(req.params.id);
+      res.json({ data: opportunity });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/restore',
+  authenticate,
+  requirePermission(PERMISSIONS.LEADS_ADMIN),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const opportunity = await restoreOpportunity(req.params.id);
+      res.json({ data: opportunity });
     } catch (error) {
       next(error);
     }
