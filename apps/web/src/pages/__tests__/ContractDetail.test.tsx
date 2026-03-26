@@ -398,7 +398,7 @@ describe('ContractDetail', () => {
   });
 
   it('activates draft contract', async () => {
-    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'sent' });
+    getContractMock.mockResolvedValueOnce({ ...draftContract, status: 'sent', signedDate: '2026-03-01' });
     const user = userEvent.setup();
     render(<ContractDetail />);
 
