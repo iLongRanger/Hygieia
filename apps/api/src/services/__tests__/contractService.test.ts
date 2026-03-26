@@ -27,6 +27,9 @@ jest.mock('../../lib/prisma', () => ({
     facility: {
       findUnique: jest.fn(),
     },
+    contractActivity: {
+      findFirst: jest.fn(),
+    },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => cb(prisma)),
   },
 }));
@@ -524,8 +527,10 @@ describe('contractService', () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'contract-active',
       facilityId: 'facility-1',
+      signedDate: new Date('2026-03-01'),
     });
     (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.contractActivity.findFirst as jest.Mock).mockResolvedValue({ id: 'sig-1' });
     (prisma.contract.update as jest.Mock)
       .mockRejectedValueOnce(new Error('column contracts.assigned_to_user_id does not exist'))
       .mockResolvedValueOnce({
@@ -573,7 +578,9 @@ describe('contractService', () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'contract-2',
       facilityId: 'facility-1',
+      signedDate: new Date('2026-03-01'),
     });
+    (prisma.contractActivity.findFirst as jest.Mock).mockResolvedValue({ id: 'sig-1' });
     (prisma.contract.findFirst as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       contractNumber: 'CONT-202603-0001',

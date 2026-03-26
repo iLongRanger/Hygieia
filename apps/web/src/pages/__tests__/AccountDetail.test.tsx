@@ -353,17 +353,25 @@ describe('AccountDetail', () => {
   });
 
   it('renders account details and related records', async () => {
+    const userEventInstance = userEvent.setup();
     listAppointmentsMock.mockResolvedValue([upcomingAppointment, completedAppointment]);
     render(<AccountDetail />);
 
     expect(await screen.findByRole('heading', { name: 'Acme Corporation' })).toBeInTheDocument();
-    expect(screen.getByText('Client requested morning shift.')).toBeInTheDocument();
+    // Overview tab (default) shows facilities and financials
     expect(screen.getByText('Main Office')).toBeInTheDocument();
     expect(screen.getByText('PROP-001')).toBeInTheDocument();
     expect(screen.getByText('CONT-001')).toBeInTheDocument();
+
+    // Service tab shows bookings
+    await userEventInstance.click(screen.getByRole('button', { name: /^service$/i }));
     expect(screen.getByRole('heading', { name: /bookings/i })).toBeInTheDocument();
     expect(screen.getAllByText('Walkthrough').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Apr 18, 2026').length).toBeGreaterThan(0);
+
+    // History tab shows activities
+    await userEventInstance.click(screen.getByRole('button', { name: /^history$/i }));
+    expect(screen.getByText('Client requested morning shift.')).toBeInTheDocument();
   });
 
   it('updates account from edit modal', async () => {
@@ -392,6 +400,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
+    await userEventInstance.click(screen.getByRole('button', { name: /^history$/i }));
     await userEventInstance.selectOptions(screen.getByLabelText(/entry type/i), 'complaint');
     await userEventInstance.type(
       screen.getByPlaceholderText(/log customer call, request, complaint/i),
@@ -842,7 +851,10 @@ describe('AccountDetail', () => {
 
     render(<AccountDetail />);
 
-    expect(await screen.findByRole('heading', { name: /residential service/i })).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Oak Household' });
+    const userEventInstance = userEvent.setup();
+    await userEventInstance.click(screen.getByRole('button', { name: /^service$/i }));
+    expect(await screen.findByRole('heading', { name: /service details/i })).toBeInTheDocument();
     expect(screen.getByText('Recurring Standard')).toBeInTheDocument();
     expect(screen.getByText('Weekly')).toBeInTheDocument();
     expect(screen.getAllByText('Apr 15, 2026').length).toBeGreaterThan(0);

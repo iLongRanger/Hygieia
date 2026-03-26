@@ -87,6 +87,7 @@ jest.mock('../../services/notificationService', () => ({
 
 jest.mock('../../services/jobService', () => ({
   autoGenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0 }),
+  reassignScheduledJobsForContract: jest.fn().mockResolvedValue({ updated: 0 }),
   createJob: jest.fn().mockResolvedValue({ id: 'job-1', jobNumber: 'WO-2026-0001' }),
   generateJobsFromContract: jest.fn().mockResolvedValue({ created: 0, jobs: [] }),
   regenerateRecurringJobsForContract: jest.fn().mockResolvedValue({ created: 0, canceled: 0 }),
