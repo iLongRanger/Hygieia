@@ -1218,6 +1218,11 @@ const ContractDetail = () => {
 
   const isResidentialContract =
     contract?.account.type === 'residential' || Boolean(contract?.residentialPropertyId);
+  const isRecurringResidentialContract =
+    isResidentialContract && contract?.residentialServiceType === 'recurring_standard';
+  const canRenewCurrentContract =
+    (contract?.status === 'active' || contract?.status === 'expired')
+    && (!isResidentialContract || isRecurringResidentialContract);
   const canActivateContract =
     Boolean(contract?.signedDate) &&
     (contract?.status === 'sent' || contract?.status === 'viewed' || contract?.status === 'pending_signature');
@@ -1290,6 +1295,11 @@ const ContractDetail = () => {
 
     if (contract.status !== 'active' && contract.status !== 'expired') {
       toast.error('Only active or expired contracts can be renewed');
+      return;
+    }
+
+    if (isResidentialContract && contract.residentialServiceType !== 'recurring_standard') {
+      toast.error('One-time residential services cannot be renewed. Create a new residential quote instead.');
       return;
     }
 
@@ -2306,7 +2316,7 @@ const ContractDetail = () => {
                 Activate
               </Button>
             )}
-            {(contract.status === 'active' || contract.status === 'expired') && canWriteContracts && (
+            {canRenewCurrentContract && canWriteContracts && (
               <>
                 <Button onClick={openRenewModal}>
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -2463,6 +2473,15 @@ const ContractDetail = () => {
                 : 'This contract has expired. Renew to continue service.'}
             </div>
           )}
+          {isResidentialContract
+            && contract.residentialServiceType
+            && contract.residentialServiceType !== 'recurring_standard'
+            && ['active', 'expired'].includes(contract.status) && (
+              <div className="rounded-md border border-surface-300/20 bg-surface-100/5 px-3 py-2 text-sm text-surface-300">
+                One-time residential services are not renewed. If the client wants another clean,
+                create a new residential quote for this property.
+              </div>
+            )}
           {!contract.signedDate && ['sent', 'viewed', 'pending_signature'].includes(contract.status) && (
             <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
               This contract cannot be activated until the client signs it online.

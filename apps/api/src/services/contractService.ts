@@ -1311,6 +1311,8 @@ export async function renewContract(
       id: true,
       status: true,
       renewalNumber: true,
+      serviceCategory: true,
+      residentialServiceType: true,
     },
   });
 
@@ -1320,6 +1322,15 @@ export async function renewContract(
 
   if (contract.status !== 'active' && contract.status !== 'expired') {
     throw new Error('Only active or expired contracts can be renewed');
+  }
+
+  if (
+    contract.serviceCategory === 'residential'
+    && contract.residentialServiceType !== 'recurring_standard'
+  ) {
+    throw new Error(
+      'One-time residential services cannot be renewed. Create a new residential quote instead.'
+    );
   }
 
   // Build update data from provided fields only
@@ -1365,6 +1376,8 @@ export async function canRenewContract(contractId: string): Promise<{
     select: {
       id: true,
       status: true,
+      serviceCategory: true,
+      residentialServiceType: true,
     },
   });
 
@@ -1374,6 +1387,16 @@ export async function canRenewContract(contractId: string): Promise<{
 
   if (contract.status !== 'active' && contract.status !== 'expired') {
     return { canRenew: false, reason: 'Only active or expired contracts can be renewed' };
+  }
+
+  if (
+    contract.serviceCategory === 'residential'
+    && contract.residentialServiceType !== 'recurring_standard'
+  ) {
+    return {
+      canRenew: false,
+      reason: 'One-time residential services cannot be renewed. Create a new residential quote instead.',
+    };
   }
 
   return { canRenew: true };
