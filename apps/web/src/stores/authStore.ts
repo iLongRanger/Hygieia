@@ -21,7 +21,7 @@ interface AuthState {
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken?: string | null) => void;
   hasPermission: (permission: string) => boolean;
   canAny: (permissions: string[]) => boolean;
   clearAuth: () => void;
@@ -53,13 +53,11 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: normalizeUser(user),
           token: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+          refreshToken: null,
           isAuthenticated: true,
         });
       },
       logout: async () => {
-        const refreshToken = get().refreshToken;
-
         // Clear state immediately
         set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
 
@@ -68,13 +66,11 @@ export const useAuthStore = create<AuthState>()(
         sessionStorage.clear();
 
         // Revoke token on server (fire and forget)
-        if (refreshToken) {
-          api.post('/auth/logout', { refreshToken }).catch(() => {});
-        }
+        api.post('/auth/logout').catch(() => {});
       },
       setUser: (user) => set({ user: normalizeUser(user) }),
       setToken: (token) => set({ token, isAuthenticated: !!token }),
-      setTokens: (accessToken, refreshToken) =>
+      setTokens: (accessToken, refreshToken = null) =>
         set({ token: accessToken, refreshToken, isAuthenticated: true }),
       hasPermission: (permission) => hasUserPermission(permission, get().user),
       canAny: (permissions) => canUserAnyPermission(permissions, get().user),
@@ -89,7 +85,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

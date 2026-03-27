@@ -17,29 +17,25 @@ const api = axios.create({
   withCredentials: true, // Enable for CSRF cookies
 });
 
-// Get tokens from storage
-function getTokens(): { token: string | null; refreshToken: string | null } {
+// Get access token from storage
+function getStoredAccessToken(): string | null {
   try {
     const stored = localStorage.getItem('auth-storage');
-    if (!stored) return { token: null, refreshToken: null };
+    if (!stored) return null;
     const parsed = JSON.parse(stored);
-    return {
-      token: parsed?.state?.token || null,
-      refreshToken: parsed?.state?.refreshToken || null,
-    };
+    return parsed?.state?.token || null;
   } catch {
-    return { token: null, refreshToken: null };
+    return null;
   }
 }
 
-// Update tokens in storage
-function setTokens(accessToken: string, refreshToken: string): void {
+// Update access token in storage
+function setStoredAccessToken(accessToken: string): void {
   try {
     const stored = localStorage.getItem('auth-storage');
     if (stored) {
       const parsed = JSON.parse(stored);
       parsed.state.token = accessToken;
-      parsed.state.refreshToken = refreshToken;
       localStorage.setItem('auth-storage', JSON.stringify(parsed));
     }
   } catch {
@@ -68,18 +64,15 @@ function onTokenRefreshed(token: string): void {
 
 // Refresh access token
 async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken } = getTokens();
-  if (!refreshToken) return null;
-
   try {
     const response = await axios.post(
       `${apiBaseUrl}/auth/refresh`,
-      { refreshToken },
-      { timeout: 10000 }
+      {},
+      { timeout: 10000, withCredentials: true }
     );
 
-    const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
-    setTokens(accessToken, newRefreshToken);
+    const { accessToken } = response.data.data.tokens;
+    setStoredAccessToken(accessToken);
     return accessToken;
   } catch {
     return null;
@@ -89,7 +82,7 @@ async function refreshAccessToken(): Promise<string | null> {
 // Request interceptor - add auth token and CSRF
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const { token } = getTokens();
+    const token = getStoredAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

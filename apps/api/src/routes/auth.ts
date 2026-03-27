@@ -20,6 +20,42 @@ import { authRateLimiter } from '../middleware/rateLimiter';
 import { validatePassword } from '../utils/passwordPolicy';
 
 const router: Router = Router();
+const REFRESH_TOKEN_COOKIE = 'hygieia_refresh_token';
+
+function getRefreshTokenCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/api/v1/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+}
+
+function setRefreshTokenCookie(res: Response, refreshToken: string) {
+  res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, getRefreshTokenCookieOptions());
+}
+
+function clearRefreshTokenCookie(res: Response) {
+  res.clearCookie(REFRESH_TOKEN_COOKIE, getRefreshTokenCookieOptions());
+}
+
+function getCookieValue(req: Request, name: string): string | null {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) {
+    return null;
+  }
+
+  for (const pair of cookieHeader.split(';')) {
+    const [rawName, ...rawValue] = pair.trim().split('=');
+    if (rawName === name) {
+      return decodeURIComponent(rawValue.join('='));
+    }
+  }
+
+  return null;
+}
 
 router.post(
   '/login',
@@ -56,12 +92,12 @@ router.post(
         throw new UnauthorizedError('Invalid email or password');
       }
 
+      setRefreshTokenCookie(res, result.tokens.refreshToken);
       res.json({
         data: {
           user: result.user,
           tokens: {
             accessToken: result.tokens.accessToken,
-            refreshToken: result.tokens.refreshToken,
             expiresIn: result.tokens.expiresIn,
             tokenType: 'Bearer',
           },
@@ -119,11 +155,15 @@ router.post(
   authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken =
+        (typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : null) ??
+        getCookieValue(req, REFRESH_TOKEN_COOKIE);
 
       if (refreshToken) {
         await logout(refreshToken);
       }
+
+      clearRefreshTokenCookie(res);
 
       res.json({
         data: {
@@ -146,6 +186,7 @@ router.post(
       }
 
       const revokedCount = await logoutAll(req.user.id);
+      clearRefreshTokenCookie(res);
 
       res.json({
         data: {
@@ -164,7 +205,9 @@ router.post(
   authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken =
+        (typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : null) ??
+        getCookieValue(req, REFRESH_TOKEN_COOKIE);
 
       if (!refreshToken || typeof refreshToken !== 'string') {
         throw new ValidationError('Refresh token is required', {
@@ -181,11 +224,11 @@ router.post(
         throw new UnauthorizedError('Invalid or expired refresh token');
       }
 
+      setRefreshTokenCookie(res, tokens.refreshToken);
       res.json({
         data: {
           tokens: {
             accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
             expiresIn: tokens.expiresIn,
             tokenType: 'Bearer',
           },
@@ -267,12 +310,12 @@ router.post(
 
       const result = await createDevUser(email, fullName, password, userRole);
 
+      setRefreshTokenCookie(res, result.tokens.refreshToken);
       res.status(201).json({
         data: {
           user: result.user,
           tokens: {
             accessToken: result.tokens.accessToken,
-            refreshToken: result.tokens.refreshToken,
             expiresIn: result.tokens.expiresIn,
             tokenType: 'Bearer',
           },
