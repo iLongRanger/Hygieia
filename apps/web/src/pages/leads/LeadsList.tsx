@@ -996,7 +996,7 @@ const LeadsList = () => {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {canWriteLeads && (
+                              {canWriteLeads && !opportunity.id.startsWith('residential-property-') && (
                                 <span
                                   role="button"
                                   tabIndex={0}
