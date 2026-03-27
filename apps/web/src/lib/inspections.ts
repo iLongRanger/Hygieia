@@ -3,11 +3,14 @@ import type { PaginatedResponse } from '../types/crm';
 import type {
   Inspection,
   InspectionDetail,
+  InspectionItem,
   InspectionTemplate,
   InspectionTemplateDetail,
   CreateInspectionInput,
   UpdateInspectionInput,
   CompleteInspectionInput,
+  AddInspectionItemInput,
+  UpdateInspectionItemInput,
   CreateInspectionCorrectiveActionInput,
   UpdateInspectionCorrectiveActionInput,
   CreateInspectionSignoffInput,
@@ -200,6 +203,34 @@ export async function createInspectionSignoff(
   const response = await api.post(`/inspections/${inspectionId}/signoffs`, input);
   return response.data.data;
 }
+
+// ==================== Inspection Items ====================
+
+export async function addInspectionItem(
+  inspectionId: string,
+  input: AddInspectionItemInput
+): Promise<InspectionItem> {
+  const response = await api.post(`/inspections/${inspectionId}/items`, input);
+  return response.data.data;
+}
+
+export async function updateInspectionItem(
+  inspectionId: string,
+  itemId: string,
+  input: UpdateInspectionItemInput
+): Promise<InspectionItem> {
+  const response = await api.patch(`/inspections/${inspectionId}/items/${itemId}`, input);
+  return response.data.data;
+}
+
+export async function deleteInspectionItem(
+  inspectionId: string,
+  itemId: string
+): Promise<void> {
+  await api.delete(`/inspections/${inspectionId}/items/${itemId}`);
+}
+
+// ==================== Reinspection ====================
 
 export async function createReinspection(
   inspectionId: string,

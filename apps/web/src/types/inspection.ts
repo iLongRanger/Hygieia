@@ -243,3 +243,21 @@ export interface CreateReinspectionInput {
   notes?: string | null;
   actionIds?: string[];
 }
+
+export interface AddInspectionItemInput {
+  templateItemId?: string | null;
+  category: string;
+  itemText: string;
+  score?: InspectionScore | null;
+  rating?: number | null;
+  notes?: string | null;
+  photoUrl?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateInspectionItemInput {
+  score?: InspectionScore | null;
+  rating?: number | null;
+  notes?: string | null;
+  photoUrl?: string | null;
+}
