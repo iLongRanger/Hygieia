@@ -57,6 +57,28 @@ function getCookieValue(req: Request, name: string): string | null {
   return null;
 }
 
+function assertDevCreateUserAccess(req: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new BadRequestError(
+      'This endpoint is only available in development mode'
+    );
+  }
+
+  if (process.env.DEV_CREATE_USER_ENABLED !== 'true') {
+    throw new BadRequestError('This endpoint is disabled');
+  }
+
+  const configuredSecret = process.env.DEV_CREATE_USER_SECRET;
+  if (!configuredSecret) {
+    throw new BadRequestError('This endpoint is disabled');
+  }
+
+  const providedSecret = req.headers['x-dev-admin-secret'];
+  if (providedSecret !== configuredSecret) {
+    throw new UnauthorizedError('Invalid development access secret');
+  }
+}
+
 router.post(
   '/login',
   authRateLimiter,
@@ -270,11 +292,7 @@ router.post(
   '/dev/create-user',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (process.env.NODE_ENV === 'production') {
-        throw new BadRequestError(
-          'This endpoint is only available in development mode'
-        );
-      }
+      assertDevCreateUserAccess(req);
 
       const { email, fullName, password, role } = req.body;
 

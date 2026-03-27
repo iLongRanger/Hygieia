@@ -24,13 +24,25 @@ jest.mock('../../services/authService');
 
 describe('Auth Routes', () => {
   let app: Application;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDevCreateUserEnabled = process.env.DEV_CREATE_USER_ENABLED;
+  const originalDevCreateUserSecret = process.env.DEV_CREATE_USER_SECRET;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     mockAuthUser = { id: 'user-1', role: 'owner' };
+    process.env.NODE_ENV = 'test';
+    process.env.DEV_CREATE_USER_ENABLED = 'true';
+    process.env.DEV_CREATE_USER_SECRET = 'dev-secret';
     app = createTestApp();
     const authRoutes = (await import('../auth')).default;
     setupTestRoutes(app, authRoutes, '/api/v1/auth');
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEV_CREATE_USER_ENABLED = originalDevCreateUserEnabled;
+    process.env.DEV_CREATE_USER_SECRET = originalDevCreateUserSecret;
   });
 
   describe('POST /login', () => {
@@ -165,6 +177,7 @@ describe('Auth Routes', () => {
 
       const response = await request(app)
         .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
         .send({ email: 'new@example.com', password: 'Password123', fullName: 'New User', role: 'owner' })
         .expect(201);
 
@@ -174,6 +187,7 @@ describe('Auth Routes', () => {
     it('should return 422 for missing email', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
         .send({ password: 'Password123', fullName: 'Test' })
         .expect(422);
     });
@@ -181,6 +195,7 @@ describe('Auth Routes', () => {
     it('should return 422 for missing fullName', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
         .send({ email: 'test@example.com', password: 'Password123' })
         .expect(422);
     });
@@ -188,6 +203,7 @@ describe('Auth Routes', () => {
     it('should return 422 for missing password', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
         .send({ email: 'test@example.com', fullName: 'Test' })
         .expect(422);
     });
@@ -195,8 +211,26 @@ describe('Auth Routes', () => {
     it('should return 422 for short password', async () => {
       await request(app)
         .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
         .send({ email: 'test@example.com', password: '12345', fullName: 'Test' })
         .expect(422);
+    });
+
+    it('should return 401 when the secret header is missing', async () => {
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .send({ email: 'test@example.com', password: 'Password123', fullName: 'Test' })
+        .expect(401);
+    });
+
+    it('should return 400 when the endpoint is disabled', async () => {
+      process.env.DEV_CREATE_USER_ENABLED = 'false';
+
+      await request(app)
+        .post('/api/v1/auth/dev/create-user')
+        .set('x-dev-admin-secret', 'dev-secret')
+        .send({ email: 'test@example.com', password: 'Password123', fullName: 'Test' })
+        .expect(400);
     });
   });
 
