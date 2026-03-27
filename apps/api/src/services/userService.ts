@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { UserRole, isValidRole } from '../types/roles';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { validatePassword } from '../utils/passwordPolicy';
 
 const SALT_ROUNDS = 10;
 
@@ -351,8 +352,9 @@ export async function removeRole(userId: string, roleKey: UserRole) {
 }
 
 export async function changePassword(userId: string, password: string) {
-  if (!password || password.length < 8) {
-    throw new Error('Password must be at least 8 characters long');
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    throw new Error(passwordValidation.error || 'Invalid password');
   }
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);

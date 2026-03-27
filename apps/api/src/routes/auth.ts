@@ -141,8 +141,11 @@ router.post(
         return res.status(400).json({ error: 'Token and password are required' });
       }
 
-      if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({
+          error: passwordValidation.error || 'Invalid password',
+        });
       }
 
       const passwordToken = await prisma.passwordSetToken.findUnique({
