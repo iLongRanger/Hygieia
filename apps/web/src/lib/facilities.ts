@@ -1,4 +1,9 @@
 import api from './api';
+import { listAccounts as listAccountsFromAccounts } from './accounts';
+import {
+  listTaskTemplates as listTaskTemplatesFromTasks,
+  listFacilityTasks as listFacilityTasksFromTasks,
+} from './tasks';
 import type {
   Facility,
   CreateFacilityInput,
@@ -10,18 +15,16 @@ import type {
   CreateAreaInput,
   UpdateAreaInput,
   PaginatedResponse,
-  Account,
   FacilityTask,
   CreateFacilityTaskInput,
   UpdateFacilityTaskInput,
-  TaskTemplate,
   TasksGroupedByArea,
   TasksGroupedByFrequency,
-  CleaningFrequency,
   FixtureType,
   AreaTemplate,
   CreateAreaTemplateInput,
   UpdateAreaTemplateInput,
+  TaskTemplate,
 } from '../types/facility';
 
 export async function listFacilities(params?: {
@@ -236,31 +239,6 @@ export async function deleteArea(id: string): Promise<void> {
   await api.delete(`/areas/${id}`);
 }
 
-export async function listAccounts(params?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-}): Promise<PaginatedResponse<Account>> {
-  const response = await api.get('/accounts', { params });
-  return response.data;
-}
-
-// Facility Tasks
-export async function listFacilityTasks(params?: {
-  page?: number;
-  limit?: number;
-  facilityId?: string;
-  areaId?: string;
-  taskTemplateId?: string;
-  cleaningFrequency?: CleaningFrequency;
-  isRequired?: boolean;
-  priority?: number;
-  search?: string;
-  includeArchived?: boolean;
-}): Promise<PaginatedResponse<FacilityTask>> {
-  const response = await api.get('/facility-tasks', { params });
-  return response.data;
-}
 
 export async function getFacilityTask(id: string): Promise<FacilityTask> {
   const response = await api.get(`/facility-tasks/${id}`);
@@ -352,7 +330,19 @@ export async function getFacilityTaskTimeBreakdown(
   return response.data.data;
 }
 
-// Task Templates
+// Compatibility re-exports for older facility-module imports used across the app.
+export async function listAccounts(params?: {
+  page?: number;
+  limit?: number;
+  type?: string;
+  accountManagerId?: string;
+  search?: string;
+  includeArchived?: boolean;
+  readyForProposal?: boolean;
+}) {
+  return listAccountsFromAccounts(params);
+}
+
 export async function listTaskTemplates(params?: {
   page?: number;
   limit?: number;
@@ -363,12 +353,22 @@ export async function listTaskTemplates(params?: {
   isActive?: boolean;
   search?: string;
   includeArchived?: boolean;
-}): Promise<PaginatedResponse<TaskTemplate>> {
-  const response = await api.get('/task-templates', { params });
-  return response.data;
+}) {
+  return (await listTaskTemplatesFromTasks(params)) as unknown as PaginatedResponse<TaskTemplate>;
 }
 
-export async function getTaskTemplate(id: string): Promise<TaskTemplate> {
-  const response = await api.get(`/task-templates/${id}`);
-  return response.data.data;
+export async function listFacilityTasks(params?: {
+  page?: number;
+  limit?: number;
+  facilityId?: string;
+  areaId?: string;
+  taskTemplateId?: string;
+  cleaningFrequency?: string;
+  isRequired?: boolean;
+  priority?: number;
+  search?: string;
+  includeArchived?: boolean;
+}) {
+  return (await listFacilityTasksFromTasks(params)) as unknown as PaginatedResponse<FacilityTask>;
 }
+
