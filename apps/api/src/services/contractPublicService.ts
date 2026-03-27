@@ -58,12 +58,6 @@ const publicContractSelect = {
       },
     },
   },
-  createdByUser: {
-    select: {
-      fullName: true,
-      email: true,
-    },
-  },
 } as const;
 
 export async function generatePublicToken(contractId: string): Promise<string> {

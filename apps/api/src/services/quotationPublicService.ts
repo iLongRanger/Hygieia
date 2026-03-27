@@ -24,9 +24,6 @@ const publicQuotationSelect = {
   facility: {
     select: { name: true, address: true },
   },
-  createdByUser: {
-    select: { fullName: true, email: true },
-  },
   services: {
     select: {
       serviceName: true,

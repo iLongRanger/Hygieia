@@ -317,12 +317,6 @@ const publicResidentialQuoteSelect = {
     },
     orderBy: { sortOrder: 'asc' as const },
   },
-  createdByUser: {
-    select: {
-      fullName: true,
-      email: true,
-    },
-  },
 } satisfies Prisma.ResidentialQuoteSelect;
 
 type ResidentialPricingPlanRecord = Prisma.ResidentialPricingPlanGetPayload<{

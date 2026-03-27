@@ -34,12 +34,6 @@ const publicProposalSelect = {
       address: true,
     },
   },
-  createdByUser: {
-    select: {
-      fullName: true,
-      email: true,
-    },
-  },
   proposalItems: {
     select: {
       itemType: true,

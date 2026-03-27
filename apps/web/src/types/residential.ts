@@ -266,12 +266,7 @@ export interface ResidentialQuote {
   }>;
 }
 
-export interface PublicResidentialQuote extends ResidentialQuote {
-  createdByUser?: {
-    fullName: string;
-    email: string;
-  };
-}
+export interface PublicResidentialQuote extends ResidentialQuote {}
 
 export interface ResidentialProperty {
   id: string;
