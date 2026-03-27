@@ -174,7 +174,7 @@ export async function updateOpportunity(id: string, input: OpportunityUpdateInpu
   const existing = await prisma.opportunity.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Opportunity not found');
 
-  const data: Prisma.OpportunityUpdateInput = {};
+  const data: Prisma.OpportunityUncheckedUpdateInput = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.status !== undefined) {
     data.status = input.status;
@@ -193,26 +193,10 @@ export async function updateOpportunity(id: string, input: OpportunityUpdateInpu
     data.expectedCloseDate = input.expectedCloseDate ? new Date(input.expectedCloseDate) : null;
   }
   if (input.lostReason !== undefined) data.lostReason = input.lostReason;
-  if (input.ownerUserId !== undefined) {
-    data.ownerUser = input.ownerUserId
-      ? { connect: { id: input.ownerUserId } }
-      : { disconnect: true };
-  }
-  if (input.accountId !== undefined) {
-    data.account = input.accountId
-      ? { connect: { id: input.accountId } }
-      : { disconnect: true };
-  }
-  if (input.facilityId !== undefined) {
-    data.facility = input.facilityId
-      ? { connect: { id: input.facilityId } }
-      : { disconnect: true };
-  }
-  if (input.primaryContactId !== undefined) {
-    data.primaryContact = input.primaryContactId
-      ? { connect: { id: input.primaryContactId } }
-      : { disconnect: true };
-  }
+  if (input.ownerUserId !== undefined) data.ownerUserId = input.ownerUserId;
+  if (input.accountId !== undefined) data.accountId = input.accountId;
+  if (input.facilityId !== undefined) data.facilityId = input.facilityId;
+  if (input.primaryContactId !== undefined) data.primaryContactId = input.primaryContactId;
 
   return prisma.opportunity.update({
     where: { id },
