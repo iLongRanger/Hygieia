@@ -38,7 +38,7 @@ import { listContracts } from '../../lib/contracts';
 import { listJobs } from '../../lib/jobs';
 import { listOpportunities, updateOpportunity } from '../../lib/opportunities';
 import { getResidentialPropertyJourneyState } from '../../lib/accountPipeline';
-import { listResidentialQuotes } from '../../lib/residential';
+import { listResidentialQuotes, updateResidentialQuote } from '../../lib/residential';
 import { listUsers } from '../../lib/users';
 import type { Account, Lead, Opportunity, CreateLeadInput, LeadSource, ResidentialPropertySummary } from '../../types/crm';
 import type { Contract } from '../../types/contract';
@@ -129,7 +129,10 @@ const getOpportunitySecondaryLabel = (opportunity: Opportunity): string => {
   return opportunity.title;
 };
 
-type PipelineOpportunity = Opportunity;
+type PipelineOpportunity = Opportunity & {
+  _residentialQuoteId?: string | null;
+  _residentialPropertyId?: string | null;
+};
 
 async function fetchAllPages<T>(
   fetchPage: (page: number, limit: number) => Promise<{ data: T[]; pagination?: { totalPages?: number } }>
@@ -232,6 +235,8 @@ function buildResidentialPipelineOpportunities(input: {
 
       opportunities.push({
         id: `residential-property-${property.id}`,
+        _residentialQuoteId: latestQuote?.id ?? null,
+        _residentialPropertyId: property.id,
         title: property.name,
         status: propertyJourney.canonicalStatus,
         source: `Residential Property · ${propertyJourney.currentStage}`,
@@ -388,7 +393,7 @@ const LeadsList = () => {
     notes: null,
   });
 
-  // ── Opportunity edit modal ──
+  // ── Opportunity edit modal (commercial) ──
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
   const [oppFormData, setOppFormData] = useState({
     status: '',
@@ -400,16 +405,34 @@ const LeadsList = () => {
   });
   const [savingOpportunity, setSavingOpportunity] = useState(false);
 
-  const openOppEdit = (opp: Opportunity) => {
-    setOppFormData({
-      status: opp.status,
-      estimatedValue: opp.estimatedValue ? String(Number(opp.estimatedValue)) : '',
-      probability: opp.probability !== null ? String(opp.probability) : '',
-      expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
-      ownerUserId: opp.ownerUser?.id || '',
-      lostReason: opp.lostReason || '',
-    });
-    setEditingOpportunity(opp);
+  // ── Residential opportunity edit modal ──
+  const [editingResOpp, setEditingResOpp] = useState<PipelineOpportunity | null>(null);
+  const [resOppFormData, setResOppFormData] = useState({
+    status: '' as string,
+    preferredStartDate: '',
+    notes: '',
+  });
+  const [savingResOpp, setSavingResOpp] = useState(false);
+
+  const openOppEdit = (opp: PipelineOpportunity) => {
+    if (opp.id.startsWith('residential-property-')) {
+      setResOppFormData({
+        status: opp.status || '',
+        preferredStartDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
+        notes: '',
+      });
+      setEditingResOpp(opp);
+    } else {
+      setOppFormData({
+        status: opp.status,
+        estimatedValue: opp.estimatedValue ? String(Number(opp.estimatedValue)) : '',
+        probability: opp.probability !== null ? String(opp.probability) : '',
+        expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
+        ownerUserId: opp.ownerUser?.id || '',
+        lostReason: opp.lostReason || '',
+      });
+      setEditingOpportunity(opp);
+    }
   };
 
   const handleOppSave = async () => {
@@ -431,6 +454,25 @@ const LeadsList = () => {
       toast.error(err.response?.data?.message || 'Failed to update opportunity');
     } finally {
       setSavingOpportunity(false);
+    }
+  };
+
+  const handleResOppSave = async () => {
+    if (!editingResOpp?._residentialQuoteId) return;
+    setSavingResOpp(true);
+    try {
+      await updateResidentialQuote(editingResOpp._residentialQuoteId, {
+        ...(resOppFormData.status ? { status: resOppFormData.status as ResidentialQuote['status'] } : {}),
+        preferredStartDate: resOppFormData.preferredStartDate || null,
+        notes: resOppFormData.notes || null,
+      });
+      toast.success('Residential quote updated');
+      setEditingResOpp(null);
+      fetchPipelineOpportunities();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update quote');
+    } finally {
+      setSavingResOpp(false);
     }
   };
 
@@ -996,7 +1038,7 @@ const LeadsList = () => {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {canWriteLeads && !opportunity.id.startsWith('residential-property-') && (
+                              {canWriteLeads && (
                                 <span
                                   role="button"
                                   tabIndex={0}
@@ -1396,7 +1438,7 @@ const LeadsList = () => {
             <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Status</label>
             <Select
               value={oppFormData.status}
-              onChange={(e) => setOppFormData((prev) => ({ ...prev, status: e.target.value }))}
+              onChange={(v) => setOppFormData((prev) => ({ ...prev, status: v }))}
               options={LEAD_STATUSES}
             />
           </div>
@@ -1439,7 +1481,7 @@ const LeadsList = () => {
             <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Owner</label>
             <Select
               value={oppFormData.ownerUserId}
-              onChange={(e) => setOppFormData((prev) => ({ ...prev, ownerUserId: e.target.value }))}
+              onChange={(v) => setOppFormData((prev) => ({ ...prev, ownerUserId: v }))}
               options={[
                 { value: '', label: 'Unassigned' },
                 ...users.map((u) => ({ value: u.id, label: u.fullName })),
@@ -1466,6 +1508,97 @@ const LeadsList = () => {
             <Button onClick={handleOppSave} disabled={savingOpportunity}>
               {savingOpportunity ? 'Saving...' : 'Save Changes'}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Residential Opportunity Edit Modal */}
+      <Modal
+        isOpen={!!editingResOpp}
+        onClose={() => setEditingResOpp(null)}
+        title={`Edit Residential — ${editingResOpp?.title || ''}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          {!editingResOpp?._residentialQuoteId ? (
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              No quote exists for this property yet. Create a quote from the property page to enable editing.
+            </p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Status</label>
+                <Select
+                  value={resOppFormData.status}
+                  onChange={(v) => setResOppFormData((prev) => ({ ...prev, status: v }))}
+                  options={[
+                    { value: 'draft', label: 'Draft' },
+                    { value: 'quoted', label: 'Quoted' },
+                    { value: 'review_required', label: 'Review Required' },
+                    { value: 'review_approved', label: 'Review Approved' },
+                    { value: 'sent', label: 'Sent' },
+                    { value: 'viewed', label: 'Viewed' },
+                    { value: 'accepted', label: 'Accepted' },
+                    { value: 'declined', label: 'Declined' },
+                    { value: 'expired', label: 'Expired' },
+                    { value: 'converted', label: 'Converted' },
+                  ]}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Estimated Value ($)</label>
+                  <Input
+                    type="text"
+                    value={editingResOpp.estimatedValue ? Number(editingResOpp.estimatedValue).toLocaleString() : '0'}
+                    disabled
+                    className="bg-surface-50 dark:bg-surface-800 cursor-not-allowed"
+                  />
+                  <p className="mt-0.5 text-[11px] text-surface-400">Computed from quote pricing</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Probability (%)</label>
+                  <Input
+                    type="text"
+                    value={editingResOpp.probability !== null ? String(editingResOpp.probability) : '0'}
+                    disabled
+                    className="bg-surface-50 dark:bg-surface-800 cursor-not-allowed"
+                  />
+                  <p className="mt-0.5 text-[11px] text-surface-400">Derived from status</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Preferred Start Date</label>
+                <Input
+                  type="date"
+                  value={resOppFormData.preferredStartDate}
+                  onChange={(e) => setResOppFormData((prev) => ({ ...prev, preferredStartDate: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Notes</label>
+                <Textarea
+                  value={resOppFormData.notes}
+                  onChange={(e) => setResOppFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Additional notes for this quote..."
+                  rows={3}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setEditingResOpp(null)}>
+              Cancel
+            </Button>
+            {editingResOpp?._residentialQuoteId && (
+              <Button onClick={handleResOppSave} disabled={savingResOpp}>
+                {savingResOpp ? 'Saving...' : 'Save Changes'}
+              </Button>
+            )}
           </div>
         </div>
       </Modal>
