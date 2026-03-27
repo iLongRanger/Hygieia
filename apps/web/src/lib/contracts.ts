@@ -190,6 +190,11 @@ export async function getContractPdfBlobUrl(id: string): Promise<string> {
   return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
 }
 
+export async function issueContractPublicLink(id: string): Promise<string> {
+  const response = await api.post(`/contracts/${id}/public-link`);
+  return response.data.data.publicUrl;
+}
+
 export async function downloadContractTermsDocument(
   id: string,
   filename?: string

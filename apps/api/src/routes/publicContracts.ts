@@ -15,6 +15,7 @@ import { publicSignContractSchema } from '../schemas/publicContract';
 import { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
+import { hashPublicToken } from '../services/publicTokenService';
 
 const router: Router = Router();
 
@@ -188,7 +189,7 @@ router.get(
       }
 
       const contractDoc = await prisma.contract.findUnique({
-        where: { publicToken: req.params.token },
+        where: { publicToken: hashPublicToken(req.params.token) },
         select: {
           termsDocumentMimeType: true,
           termsDocumentDataUrl: true,
@@ -221,7 +222,7 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contract = await prisma.contract.findUnique({
-        where: { publicToken: req.params.token },
+        where: { publicToken: hashPublicToken(req.params.token) },
         select: {
           contractNumber: true,
           publicTokenExpiresAt: true,

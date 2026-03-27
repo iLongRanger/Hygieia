@@ -571,6 +571,34 @@ router.post(
   }
 );
 
+router.post(
+  '/quotes/:id/public-link',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const quote = await getResidentialQuoteById(req.params.id, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
+      if (!quote) {
+        throw new NotFoundError('Residential quote not found');
+      }
+
+      const frontendBaseUrl = requireFrontendBaseUrl();
+      const token = await generateResidentialQuotePublicToken(req.params.id);
+
+      res.json({
+        data: {
+          publicUrl: `${frontendBaseUrl}/rq/${token}`,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.get(
   '/quotes/:id/pdf',
   authenticate,

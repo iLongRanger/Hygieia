@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
@@ -23,6 +22,7 @@ import {
   autoAdvanceLeadStatusForAccount,
   autoSetLeadStatusForAccount,
 } from './leadService';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -1477,24 +1477,24 @@ export async function approveResidentialQuoteReview(id: string) {
 }
 
 export async function generateResidentialQuotePublicToken(id: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, hashedToken } = createPublicTokenPair();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
 
   await prisma.residentialQuote.update({
     where: { id },
     data: {
-      publicToken: token,
+      publicToken: hashedToken,
       publicTokenExpiresAt: expiresAt,
     },
   });
 
-  return token;
+  return rawToken;
 }
 
 export async function getResidentialQuoteByPublicToken(token: string) {
   const quote = await prisma.residentialQuote.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: publicResidentialQuoteSelect,
   });
 
@@ -1508,7 +1508,7 @@ export async function getResidentialQuoteByPublicToken(token: string) {
 
 export async function markResidentialQuotePublicViewed(token: string, _ipAddress?: string) {
   const quote = await prisma.residentialQuote.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,
@@ -1543,7 +1543,7 @@ export async function acceptResidentialQuotePublic(
   ipAddress?: string
 ) {
   const quote = await prisma.residentialQuote.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,
@@ -1597,7 +1597,7 @@ export async function declineResidentialQuotePublic(
   _ipAddress?: string
 ) {
   const quote = await prisma.residentialQuote.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,

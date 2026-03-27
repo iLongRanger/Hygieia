@@ -680,9 +680,8 @@ router.post(
 
         try {
           const frontendUrl = requireFrontendBaseUrl();
-          const publicViewUrl = proposal.publicToken
-            ? `${frontendUrl}/p/${proposal.publicToken}`
-            : undefined;
+          const publicToken = await generatePublicToken(req.params.id);
+          const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
           logger.info(`Generating PDF for reminder ${proposal.proposalNumber}`);
           const pdfBuffer = await generateProposalPdf(proposal as any);
@@ -728,6 +727,32 @@ router.post(
       }
 
       res.json({ message: 'Reminder sent successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/public-link',
+  authenticate,
+  requirePermission(PERMISSIONS.PROPOSALS_READ),
+  verifyOwnership({ resourceType: 'proposal' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const proposal = await getProposalById(req.params.id);
+      if (!proposal) {
+        throw new NotFoundError('Proposal not found');
+      }
+
+      const frontendUrl = requireFrontendBaseUrl();
+      const publicToken = await generatePublicToken(req.params.id);
+
+      res.json({
+        data: {
+          publicUrl: `${frontendUrl}/p/${publicToken}`,
+        },
+      });
     } catch (error) {
       next(error);
     }

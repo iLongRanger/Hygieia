@@ -1,5 +1,5 @@
-import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 import {
   autoAdvanceLeadStatusForAccount,
   autoSetLeadStatusForAccount,
@@ -62,24 +62,24 @@ const publicProposalSelect = {
 } as const;
 
 export async function generatePublicToken(proposalId: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, hashedToken } = createPublicTokenPair();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
 
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
-      publicToken: token,
+      publicToken: hashedToken,
       publicTokenExpiresAt: expiresAt,
     },
   });
 
-  return token;
+  return rawToken;
 }
 
 export async function getProposalByPublicToken(token: string) {
   const proposal = await prisma.proposal.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       ...publicProposalSelect,
       publicTokenExpiresAt: true,
@@ -102,7 +102,7 @@ export async function getProposalByPublicToken(token: string) {
 
 export async function markPublicViewed(token: string, ipAddress?: string) {
   const proposal = await prisma.proposal.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
   });
 
@@ -131,7 +131,7 @@ export async function acceptProposalPublic(
   ipAddress?: string
 ) {
   const proposal = await prisma.proposal.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true, opportunityId: true },
   });
 
@@ -186,7 +186,7 @@ export async function rejectProposalPublic(
   ipAddress?: string
 ) {
   const proposal = await prisma.proposal.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true, opportunityId: true },
   });
 

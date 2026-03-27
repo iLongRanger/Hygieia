@@ -51,6 +51,7 @@ import {
   downloadContractPdf,
   downloadContractTermsDocument,
   generateContractTerms,
+  issueContractPublicLink,
   listContractAmendments as listContractAmendmentsApi,
   createContractAmendment as createContractAmendmentApi,
   getContractAmendment as getContractAmendmentApi,
@@ -61,7 +62,8 @@ import {
   sendContractAmendment as sendContractAmendmentApi,
   updateContractAmendment as updateContractAmendmentApi,
 } from '../../lib/contracts';
-import { getAreaTemplateByAreaType, listTaskTemplates } from '../../lib/facilities';
+import { getAreaTemplateByAreaType } from '../../lib/facilities';
+import { listTaskTemplates } from '../../lib/tasks';
 import ContractTimeline from '../../components/contracts/ContractTimeline';
 import {
   AmendmentAreaSetupModal,
@@ -2351,15 +2353,15 @@ const ContractDetail = () => {
                     <Download className="h-4 w-4" />
                     Download PDF
                   </button>
-                  {contract.publicToken && (
+                  {['sent', 'viewed', 'pending_signature', 'active'].includes(contract.status) && (
                     <button
                       onClick={async () => {
-                        const url = `${window.location.origin}/c/${contract.publicToken}`;
                         try {
+                          const url = await issueContractPublicLink(contract.id);
                           await navigator.clipboard.writeText(url);
                           toast.success('Link copied');
                         } catch {
-                          prompt('Copy this link:', url);
+                          toast.error('Failed to generate public link');
                         }
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-surface-900 dark:hover:text-white"
@@ -3028,23 +3030,23 @@ const ContractDetail = () => {
                 {formatDate(contract.createdAt)}
               </div>
             </div>
-            {contract.publicToken && (
+            {['sent', 'viewed', 'pending_signature', 'active'].includes(contract.status) && (
               <div>
                 <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Public Link</div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded bg-surface-100 dark:bg-surface-800/10 px-2 py-1 text-xs text-surface-600 dark:text-surface-400">
-                    {`${window.location.origin}/c/${contract.publicToken}`}
+                    Generate a fresh share link
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={async () => {
-                      const url = `${window.location.origin}/c/${contract.publicToken}`;
                       try {
+                        const url = await issueContractPublicLink(contract.id);
                         await navigator.clipboard.writeText(url);
                         toast.success('Link copied');
                       } catch {
-                        prompt('Copy this link:', url);
+                        toast.error('Failed to generate public link');
                       }
                     }}
                   >

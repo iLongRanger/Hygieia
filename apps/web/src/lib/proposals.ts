@@ -134,6 +134,11 @@ export async function getProposalPdfBlobUrl(id: string): Promise<string> {
   return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
 }
 
+export async function issueProposalPublicLink(id: string): Promise<string> {
+  const response = await api.post(`/proposals/${id}/public-link`);
+  return response.data.data.publicUrl;
+}
+
 // Version history
 export async function getProposalVersions(proposalId: string): Promise<ProposalVersionSummary[]> {
   const response = await api.get(`/proposals/${proposalId}/versions`);

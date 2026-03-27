@@ -1326,6 +1326,32 @@ router.post(
   }
 );
 
+router.post(
+  '/:id/public-link',
+  authenticate,
+  requirePermission(PERMISSIONS.CONTRACTS_READ),
+  verifyOwnership({ resourceType: 'contract' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contract = await getContractById(req.params.id);
+      if (!contract) {
+        throw new NotFoundError('Contract not found');
+      }
+
+      const frontendUrl = requireFrontendBaseUrl();
+      const publicToken = await generatePublicToken(req.params.id);
+
+      res.json({
+        data: {
+          publicUrl: `${frontendUrl}/c/${publicToken}`,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Sign contract
 router.post(
   '/:id/sign',
@@ -1927,8 +1953,7 @@ router.post(
         throw new ValidationError('No client contact email found for this contract');
       }
 
-      const publicToken =
-        existing.publicToken || (await generateAmendmentPublicToken(req.params.amendmentId));
+      const publicToken = await generateAmendmentPublicToken(req.params.amendmentId);
       const webAppUrl = requireFrontendBaseUrl();
       const publicViewUrl = `${webAppUrl}/ca/${publicToken}`;
 

@@ -1,6 +1,6 @@
-import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { ensureOneTimeJobForAcceptedQuotation } from './quotationService';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -38,24 +38,24 @@ const publicQuotationSelect = {
 } as const;
 
 export async function generatePublicToken(quotationId: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, hashedToken } = createPublicTokenPair();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
 
   await prisma.quotation.update({
     where: { id: quotationId },
     data: {
-      publicToken: token,
+      publicToken: hashedToken,
       publicTokenExpiresAt: expiresAt,
     },
   });
 
-  return token;
+  return rawToken;
 }
 
 export async function getQuotationByPublicToken(token: string) {
   const quotation = await prisma.quotation.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       ...publicQuotationSelect,
       publicTokenExpiresAt: true,
@@ -75,7 +75,7 @@ export async function getQuotationByPublicToken(token: string) {
 
 export async function markPublicViewed(token: string, ipAddress?: string) {
   const quotation = await prisma.quotation.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
   });
 
@@ -103,7 +103,7 @@ export async function acceptQuotationPublic(
   ipAddress?: string
 ) {
   const quotation = await prisma.quotation.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,
@@ -176,7 +176,7 @@ export async function rejectQuotationPublic(
   ipAddress?: string
 ) {
   const quotation = await prisma.quotation.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, publicTokenExpiresAt: true },
   });
 

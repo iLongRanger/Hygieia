@@ -88,3 +88,8 @@ export async function restoreQuotation(id: string): Promise<Quotation> {
 export async function deleteQuotation(id: string): Promise<void> {
   await api.delete(`/quotations/${id}`);
 }
+
+export async function issueQuotationPublicLink(id: string): Promise<string> {
+  const response = await api.post(`/quotations/${id}/public-link`);
+  return response.data.data.publicUrl;
+}

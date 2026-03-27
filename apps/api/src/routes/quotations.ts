@@ -241,6 +241,32 @@ router.post(
   }
 );
 
+router.post(
+  '/:id/public-link',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_READ),
+  verifyOwnership({ resourceType: 'quotation' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const quotation = await getQuotationById(req.params.id);
+      if (!quotation) {
+        throw new NotFoundError('Quotation not found');
+      }
+
+      const frontendBaseUrl = requireFrontendBaseUrl();
+      const token = await generatePublicToken(req.params.id);
+
+      res.json({
+        data: {
+          publicUrl: `${frontendBaseUrl}/q/${token}`,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Accept quotation (internal)
 router.post(
   '/:id/accept',

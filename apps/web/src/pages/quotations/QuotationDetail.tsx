@@ -37,6 +37,7 @@ import {
   archiveQuotation,
   restoreQuotation,
   deleteQuotation,
+  issueQuotationPublicLink,
   setQuotationPricingApproval,
 } from '../../lib/quotations';
 import type { Quotation, QuotationStatus } from '../../types/quotation';
@@ -226,11 +227,19 @@ const QuotationDetail = () => {
     }
   };
 
-  const copyPublicLink = () => {
-    if (!quotation?.publicToken) return;
-    const url = `${window.location.origin}/q/${quotation.publicToken}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Public link copied');
+  const copyPublicLink = async () => {
+    if (!quotation || !['sent', 'viewed', 'accepted'].includes(quotation.status)) {
+      toast.error('Send the quotation first to create a shareable link.');
+      return;
+    }
+
+    try {
+      const url = await issueQuotationPublicLink(quotation.id);
+      await navigator.clipboard.writeText(url);
+      toast.success('Public link copied');
+    } catch {
+      toast.error('Failed to generate public link');
+    }
   };
 
   if (loading) {
@@ -286,7 +295,7 @@ const QuotationDetail = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {quotation.publicToken && (
+          {['sent', 'viewed', 'accepted'].includes(quotation.status) && (
             <Button variant="secondary" size="sm" onClick={copyPublicLink}>
               <Copy className="mr-1.5 h-3.5 w-3.5" />
               Copy Link

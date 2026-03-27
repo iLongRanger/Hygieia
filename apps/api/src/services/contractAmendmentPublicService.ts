@@ -1,5 +1,5 @@
-import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -55,24 +55,24 @@ const publicContractAmendmentSelect = {
 } as const;
 
 export async function generatePublicToken(amendmentId: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, hashedToken } = createPublicTokenPair();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
 
   await prisma.contractAmendment.update({
     where: { id: amendmentId },
     data: {
-      publicToken: token,
+      publicToken: hashedToken,
       publicTokenExpiresAt: expiresAt,
     },
   });
 
-  return token;
+  return rawToken;
 }
 
 export async function getContractAmendmentByPublicToken(token: string) {
   const amendment = await prisma.contractAmendment.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       ...publicContractAmendmentSelect,
       publicTokenExpiresAt: true,
@@ -92,7 +92,7 @@ export async function getContractAmendmentByPublicToken(token: string) {
 
 export async function markPublicViewed(token: string, ipAddress?: string) {
   const amendment = await prisma.contractAmendment.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
   });
 
@@ -122,7 +122,7 @@ export async function signContractAmendmentPublic(
   ipAddress?: string
 ) {
   const amendment = await prisma.contractAmendment.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,

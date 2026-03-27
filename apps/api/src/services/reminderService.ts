@@ -24,6 +24,8 @@ import { logContractActivity } from './contractActivityService';
 import logger from '../lib/logger';
 import type { GlobalBranding } from '../types/branding';
 import { getFrontendBaseUrl } from '../lib/appUrl';
+import { generatePublicToken as generateProposalPublicToken } from './proposalPublicService';
+import { generatePublicToken as generateContractPublicToken } from './contractPublicService';
 
 async function getBrandingSafe(): Promise<GlobalBranding> {
   try {
@@ -399,9 +401,8 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
     const { to, cc } = resolveContactRecipients(proposal.account.contacts);
     if (!to) continue;
 
-    const publicViewUrl = proposal.publicToken
-      ? `${frontendUrl}/p/${proposal.publicToken}`
-      : undefined;
+    const publicToken = await generateProposalPublicToken(proposal.id);
+    const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
     const emailSubject = `Reminder: ${buildProposalEmailSubject(
       proposal.proposalNumber,
@@ -561,9 +562,8 @@ export async function sendContractFollowUpReminders(): Promise<number> {
       contract.account.contacts.find((contact) => contact.isPrimary)?.name ||
       contract.account.contacts[0]?.name ||
       undefined;
-    const publicViewUrl = contract.publicToken
-      ? `${frontendUrl}/c/${contract.publicToken}`
-      : undefined;
+    const publicToken = await generateContractPublicToken(contract.id);
+    const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
 
     const emailSubject = `Reminder: ${buildContractSentSubject(
       contract.contractNumber,

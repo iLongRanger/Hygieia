@@ -49,6 +49,7 @@ import {
   restoreProposal,
   deleteProposal,
   downloadProposalPdf,
+  issueProposalPublicLink,
   updateProposalServiceTasks,
 } from '../../lib/proposals';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
@@ -470,17 +471,17 @@ const ProposalDetail = () => {
   };
 
   const handleCopyPublicLink = async () => {
-    if (!proposal?.publicToken) {
-      toast.error('No public link available. Send the proposal first.');
+    if (!proposal || !['sent', 'viewed', 'accepted'].includes(proposal.status)) {
+      toast.error('Send the proposal first to create a shareable link.');
       return;
     }
-    const url = `${window.location.origin}/p/${proposal.publicToken}`;
+
     try {
+      const url = await issueProposalPublicLink(proposal.id);
       await navigator.clipboard.writeText(url);
       toast.success('Public link copied to clipboard');
     } catch {
-      // Fallback for non-HTTPS
-      prompt('Copy this link:', url);
+      toast.error('Failed to generate public link');
     }
   };
 
@@ -609,7 +610,7 @@ const ProposalDetail = () => {
                   <Download className="h-4 w-4" />
                   Download PDF
                 </button>
-                {proposal.publicToken && (
+                {['sent', 'viewed', 'accepted'].includes(proposal.status) && (
                   <button
                     onClick={handleCopyPublicLink}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:bg-surface-800/10 hover:text-surface-900 dark:hover:text-white"
@@ -1359,7 +1360,7 @@ const ProposalDetail = () => {
               )}
 
               {/* Public link status */}
-              {proposal.publicToken && (
+              {['sent', 'viewed', 'accepted'].includes(proposal.status) && (
                 <div className="flex items-start gap-3">
                   <Link2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>

@@ -1,6 +1,6 @@
-import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForOpportunity } from './leadService';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
 
@@ -61,24 +61,24 @@ const publicContractSelect = {
 } as const;
 
 export async function generatePublicToken(contractId: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, hashedToken } = createPublicTokenPair();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_TOKEN_EXPIRY_DAYS);
 
   await prisma.contract.update({
     where: { id: contractId },
     data: {
-      publicToken: token,
+      publicToken: hashedToken,
       publicTokenExpiresAt: expiresAt,
     },
   });
 
-  return token;
+  return rawToken;
 }
 
 export async function getContractByPublicToken(token: string) {
   const contract = await prisma.contract.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       ...publicContractSelect,
       publicTokenExpiresAt: true,
@@ -98,7 +98,7 @@ export async function getContractByPublicToken(token: string) {
 
 export async function markPublicViewed(token: string, ipAddress?: string) {
   const contract = await prisma.contract.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
   });
 
@@ -127,7 +127,7 @@ export async function signContractPublic(
   ipAddress?: string
 ) {
   const contract = await prisma.contract.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: {
       id: true,
       status: true,

@@ -46,13 +46,14 @@ describe('quotationPublicService', () => {
     (prisma.quotation.update as jest.Mock).mockResolvedValue({ id: 'qt-1' });
 
     const token = await generatePublicToken('qt-1');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     expect(token).toHaveLength(64);
     expect(prisma.quotation.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'qt-1' },
         data: expect.objectContaining({
-          publicToken: token,
+          publicToken: hashedToken,
           publicTokenExpiresAt: expect.any(Date),
         }),
       })
