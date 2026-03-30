@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type { Notification } from '../types/crm';
+import { getAccessToken } from './authSession';
 
 type NotificationCreatedPayload = {
   notification: Notification;
@@ -26,18 +27,6 @@ let listenersBound = false;
 
 function isTestMode(): boolean {
   return import.meta.env.MODE === 'test';
-}
-
-function getAccessToken(): string | null {
-  try {
-    const raw = localStorage.getItem('auth-storage');
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.token || null;
-  } catch {
-    return null;
-  }
 }
 
 function getRealtimeBaseUrl(): string {

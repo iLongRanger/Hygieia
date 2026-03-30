@@ -1,5 +1,6 @@
 import api from './api';
 import { canUserAnyPermission, hasUserPermission } from './permissions';
+import { useAuthStore } from '../stores/authStore';
 
 interface StoredUser {
   id: string;
@@ -21,26 +22,13 @@ export async function verifyToken(): Promise<boolean> {
 
 // Check if user is authenticated (from storage)
 export function isAuthenticated(): boolean {
-  try {
-    const stored = localStorage.getItem('auth-storage');
-    if (!stored) return false;
-    const parsed = JSON.parse(stored);
-    return !!parsed?.state?.token && !!parsed?.state?.isAuthenticated;
-  } catch {
-    return false;
-  }
+  const { token, isAuthenticated: authenticated } = useAuthStore.getState();
+  return Boolean(token && authenticated);
 }
 
 // Get current user from storage
 export function getCurrentUser(): StoredUser | null {
-  try {
-    const stored = localStorage.getItem('auth-storage');
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    return parsed?.state?.user || null;
-  } catch {
-    return null;
-  }
+  return useAuthStore.getState().user;
 }
 
 // Check if current user has a permission

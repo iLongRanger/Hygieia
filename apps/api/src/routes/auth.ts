@@ -3,7 +3,6 @@ import {
   login,
   refreshAccessToken,
   getUserById,
-  createDevUser,
   logout,
   logoutAll,
   hashPassword,
@@ -15,7 +14,6 @@ import {
   UnauthorizedError,
   ValidationError,
 } from '../middleware/errorHandler';
-import { UserRole, isValidRole } from '../types/roles';
 import { authRateLimiter } from '../middleware/rateLimiter';
 import { validatePassword } from '../utils/passwordPolicy';
 
@@ -55,28 +53,6 @@ function getCookieValue(req: Request, name: string): string | null {
   }
 
   return null;
-}
-
-function assertDevCreateUserAccess(req: Request) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new BadRequestError(
-      'This endpoint is only available in development mode'
-    );
-  }
-
-  if (process.env.DEV_CREATE_USER_ENABLED !== 'true') {
-    throw new BadRequestError('This endpoint is disabled');
-  }
-
-  const configuredSecret = process.env.DEV_CREATE_USER_SECRET;
-  if (!configuredSecret) {
-    throw new BadRequestError('This endpoint is disabled');
-  }
-
-  const providedSecret = req.headers['x-dev-admin-secret'];
-  if (providedSecret !== configuredSecret) {
-    throw new UnauthorizedError('Invalid development access secret');
-  }
 }
 
 router.post(
@@ -283,63 +259,6 @@ router.get(
       res.json({
         data: {
           user,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-router.post(
-  '/dev/create-user',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      assertDevCreateUserAccess(req);
-
-      const { email, fullName, password, role } = req.body;
-
-      if (!email || typeof email !== 'string') {
-        throw new ValidationError('Email is required', { field: 'email' });
-      }
-
-      if (!fullName || typeof fullName !== 'string') {
-        throw new ValidationError('Full name is required', {
-          field: 'fullName',
-        });
-      }
-
-      if (!password || typeof password !== 'string') {
-        throw new ValidationError('Password is required', {
-          field: 'password',
-        });
-      }
-
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        throw new ValidationError(passwordValidation.error || 'Invalid password', {
-          field: 'password',
-        });
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new ValidationError('Invalid email format', { field: 'email' });
-      }
-
-      const userRole: UserRole = role && isValidRole(role) ? role : 'owner';
-
-      const result = await createDevUser(email, fullName, password, userRole);
-
-      setRefreshTokenCookie(res, result.tokens.refreshToken);
-      res.status(201).json({
-        data: {
-          user: result.user,
-          tokens: {
-            accessToken: result.tokens.accessToken,
-            expiresIn: result.tokens.expiresIn,
-            tokenType: 'Bearer',
-          },
         },
       });
     } catch (error) {

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import api from '../lib/api';
 import { canUserAnyPermission, hasUserPermission } from '../lib/permissions';
+import { clearAccessToken, setAccessToken } from '../lib/authSession';
 
 interface User {
   id: string;
@@ -17,11 +17,13 @@ interface AuthState {
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  authInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   setTokens: (accessToken: string, refreshToken?: string | null) => void;
+  initializeAuth: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   canAny: (permissions: string[]) => boolean;
   clearAuth: () => void;
@@ -39,54 +41,95 @@ function normalizeUser(user: User): User {
   };
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  token: null,
+  refreshToken: null,
+  isAuthenticated: false,
+  authInitialized: false,
+  login: async (email, password) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const response = await api.post('/auth/login', { email: normalizedEmail, password });
+    const { user, tokens } = response.data.data;
+    setAccessToken(tokens.accessToken);
+    set({
+      user: normalizeUser(user),
+      token: tokens.accessToken,
+      refreshToken: null,
+      isAuthenticated: true,
+      authInitialized: true,
+    });
+  },
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Ignore logout failures and clear client state regardless.
+    } finally {
+      clearAccessToken();
+      set({
+        user: null,
+        token: null,
+        refreshToken: null,
+        isAuthenticated: false,
+        authInitialized: true,
+      });
+      localStorage.removeItem('auth-storage');
+      sessionStorage.clear();
+    }
+  },
+  setUser: (user) => set({ user: normalizeUser(user) }),
+  setToken: (token) => {
+    setAccessToken(token);
+    set({ token, isAuthenticated: !!token });
+  },
+  setTokens: (accessToken, refreshToken = null) => {
+    setAccessToken(accessToken);
+    set({ token: accessToken, refreshToken, isAuthenticated: true });
+  },
+  initializeAuth: async () => {
+    if (get().authInitialized) {
+      return;
+    }
+
+    try {
+      const refreshResponse = await api.post('/auth/refresh');
+      const accessToken = refreshResponse.data.data.tokens.accessToken as string;
+      setAccessToken(accessToken);
+
+      const meResponse = await api.get('/auth/me');
+      set({
+        user: normalizeUser(meResponse.data.data.user),
+        token: accessToken,
+        refreshToken: null,
+        isAuthenticated: true,
+        authInitialized: true,
+      });
+    } catch {
+      clearAccessToken();
+      set({
+        user: null,
+        token: null,
+        refreshToken: null,
+        isAuthenticated: false,
+        authInitialized: true,
+      });
+      localStorage.removeItem('auth-storage');
+      sessionStorage.clear();
+    }
+  },
+  hasPermission: (permission) => hasUserPermission(permission, get().user),
+  canAny: (permissions) => canUserAnyPermission(permissions, get().user),
+  clearAuth: () => {
+    clearAccessToken();
+    set({
       user: null,
       token: null,
       refreshToken: null,
       isAuthenticated: false,
-      login: async (email, password) => {
-        const normalizedEmail = email.trim().toLowerCase();
-        const response = await api.post('/auth/login', { email: normalizedEmail, password });
-        const { user, tokens } = response.data.data;
-        set({
-          user: normalizeUser(user),
-          token: tokens.accessToken,
-          refreshToken: null,
-          isAuthenticated: true,
-        });
-      },
-      logout: async () => {
-        // Clear state immediately
-        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
-
-        // Clear all storage
-        localStorage.removeItem('auth-storage');
-        sessionStorage.clear();
-
-        // Revoke token on server (fire and forget)
-        api.post('/auth/logout').catch(() => {});
-      },
-      setUser: (user) => set({ user: normalizeUser(user) }),
-      setToken: (token) => set({ token, isAuthenticated: !!token }),
-      setTokens: (accessToken, refreshToken = null) =>
-        set({ token: accessToken, refreshToken, isAuthenticated: true }),
-      hasPermission: (permission) => hasUserPermission(permission, get().user),
-      canAny: (permissions) => canUserAnyPermission(permissions, get().user),
-      clearAuth: () => {
-        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
-        localStorage.removeItem('auth-storage');
-        sessionStorage.clear();
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
-);
+      authInitialized: true,
+    });
+    localStorage.removeItem('auth-storage');
+    sessionStorage.clear();
+  },
+}));

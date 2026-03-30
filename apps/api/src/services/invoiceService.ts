@@ -1,8 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
-import crypto from 'crypto';
 import { extractFacilityTimezone } from './serviceScheduleService';
+import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 // ==================== Interfaces ====================
 
@@ -351,7 +351,7 @@ export async function getInvoiceById(id: string) {
 
 export async function getInvoiceByPublicToken(token: string) {
   const invoice = await prisma.invoice.findUnique({
-    where: { publicToken: token },
+    where: { publicToken: hashPublicToken(token) },
     select: invoiceDetailSelect,
   });
   if (!invoice) throw new NotFoundError('Invoice not found');
@@ -370,10 +370,26 @@ export async function getInvoiceByPublicToken(token: string) {
   return invoice;
 }
 
+export async function generateInvoicePublicToken(invoiceId: string): Promise<string> {
+  const { rawToken, hashedToken } = createPublicTokenPair();
+  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      publicToken: hashedToken,
+      publicTokenExpiresAt: expiresAt,
+    },
+  });
+
+  return rawToken;
+}
+
 export async function createInvoice(input: InvoiceCreateInput) {
   const invoiceNumber = await generateInvoiceNumber();
   const taxRate = input.taxRate || 0;
   const { subtotal, taxAmount, totalAmount } = calculateTotals(input.items, taxRate);
+  const { hashedToken } = createPublicTokenPair();
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -393,7 +409,7 @@ export async function createInvoice(input: InvoiceCreateInput) {
       notes: input.notes,
       paymentInstructions: input.paymentInstructions,
       createdByUserId: input.createdByUserId,
-      publicToken: crypto.randomBytes(32).toString('hex'),
+      publicToken: hashedToken,
       publicTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
       items: {
         create: input.items.map((item, idx) => ({
@@ -790,4 +806,3 @@ export async function listInvoiceActivities(invoiceId: string) {
     orderBy: { createdAt: 'desc' },
   });
 }
-

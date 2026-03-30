@@ -45,7 +45,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredPermissions,
 }) => {
   const location = useLocation();
-  const { isAuthenticated, user, token, clearAuth, hasPermission } = useAuthStore();
+  const {
+    isAuthenticated,
+    user,
+    token,
+    clearAuth,
+    hasPermission,
+    initializeAuth,
+    authInitialized,
+  } = useAuthStore();
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
 
@@ -53,8 +61,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     let mounted = true;
 
     const validateAuth = async () => {
+      if (!authInitialized) {
+        await initializeAuth();
+      }
+
+      const currentToken = useAuthStore.getState().token;
+
       // No token means not authenticated
-      if (!token) {
+      if (!currentToken) {
         if (mounted) {
           setIsValid(false);
           setIsValidating(false);
@@ -98,7 +112,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return () => {
       mounted = false;
     };
-  }, [token, clearAuth]);
+  }, [token, clearAuth, initializeAuth, authInitialized]);
 
   // Show loading spinner while validating
   if (isValidating) {

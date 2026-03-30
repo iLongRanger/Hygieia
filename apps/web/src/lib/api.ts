@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { clearAccessToken, getAccessToken, setAccessToken } from './authSession';
 
 function getApiBaseUrl(): string {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -17,34 +18,9 @@ const api = axios.create({
   withCredentials: true, // Enable for CSRF cookies
 });
 
-// Get access token from storage
-function getStoredAccessToken(): string | null {
-  try {
-    const stored = localStorage.getItem('auth-storage');
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    return parsed?.state?.token || null;
-  } catch {
-    return null;
-  }
-}
-
-// Update access token in storage
-function setStoredAccessToken(accessToken: string): void {
-  try {
-    const stored = localStorage.getItem('auth-storage');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      parsed.state.token = accessToken;
-      localStorage.setItem('auth-storage', JSON.stringify(parsed));
-    }
-  } catch {
-    // Ignore storage errors
-  }
-}
-
 // Clear auth storage
 function clearAuth(): void {
+  clearAccessToken();
   localStorage.removeItem('auth-storage');
   sessionStorage.clear();
 }
@@ -72,7 +48,7 @@ async function refreshAccessToken(): Promise<string | null> {
     );
 
     const { accessToken } = response.data.data.tokens;
-    setStoredAccessToken(accessToken);
+    setAccessToken(accessToken);
     return accessToken;
   } catch {
     return null;
@@ -82,7 +58,7 @@ async function refreshAccessToken(): Promise<string | null> {
 // Request interceptor - add auth token and CSRF
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = getStoredAccessToken();
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

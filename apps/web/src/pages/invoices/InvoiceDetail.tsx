@@ -22,6 +22,7 @@ import {
   sendInvoice,
   recordPayment,
   voidInvoice,
+  issueInvoicePublicLink,
 } from '../../lib/invoices';
 import type { InvoiceDetail as InvoiceDetailType, InvoiceStatus, PaymentMethod } from '../../types/invoice';
 
@@ -120,11 +121,19 @@ const InvoiceDetail = () => {
     }
   };
 
-  const copyPublicLink = () => {
-    if (!invoice?.publicToken) return;
-    const url = `${window.location.origin}/i/${invoice.publicToken}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Link copied');
+  const copyPublicLink = async () => {
+    if (!invoice || ['draft', 'void', 'written_off'].includes(invoice.status)) {
+      toast.error('Send the invoice first to create a shareable link.');
+      return;
+    }
+
+    try {
+      const url = await issueInvoicePublicLink(invoice.id);
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Failed to generate invoice link');
+    }
   };
 
   if (loading) {
@@ -170,7 +179,7 @@ const InvoiceDetail = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {invoice.publicToken && (
+          {!['draft', 'void', 'written_off'].includes(invoice.status) && (
             <Button variant="secondary" size="sm" onClick={copyPublicLink}>
               <Copy className="mr-1.5 h-4 w-4" />
               Copy Link

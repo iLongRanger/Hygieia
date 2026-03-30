@@ -23,7 +23,9 @@ import {
   generateInvoiceFromContract,
   batchGenerateInvoices,
   listInvoiceActivities,
+  generateInvoicePublicToken,
 } from '../services/invoiceService';
+import { requireFrontendBaseUrl } from '../lib/appUrl';
 
 const router: Router = Router();
 
@@ -98,6 +100,26 @@ router.post('/:id/send', requirePermission(PERMISSIONS.INVOICES_WRITE), async (r
   const invoice = await sendInvoice(req.params.id, req.user!.id);
   res.json({ data: invoice });
 });
+
+router.post(
+  '/:id/public-link',
+  requirePermission(PERMISSIONS.INVOICES_READ),
+  async (req: Request, res: Response) => {
+    const invoice = await getInvoiceById(req.params.id);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    const frontendUrl = requireFrontendBaseUrl();
+    const publicToken = await generateInvoicePublicToken(req.params.id);
+
+    res.json({
+      data: {
+        publicUrl: `${frontendUrl}/i/${publicToken}`,
+      },
+    });
+  }
+);
 
 // Record payment
 router.post(

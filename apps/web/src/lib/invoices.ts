@@ -54,6 +54,11 @@ export async function sendInvoice(id: string): Promise<InvoiceDetail> {
   return response.data.data;
 }
 
+export async function issueInvoicePublicLink(id: string): Promise<string> {
+  const response = await api.post(`/invoices/${id}/public-link`);
+  return response.data.data.publicUrl;
+}
+
 export async function recordPayment(
   invoiceId: string,
   input: RecordPaymentInput
