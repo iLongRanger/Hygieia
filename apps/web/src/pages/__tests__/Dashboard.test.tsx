@@ -4,9 +4,19 @@ import Dashboard from '../Dashboard';
 import { useAuthStore } from '../../stores/authStore';
 
 const getDashboardStatsMock = vi.fn();
+const listContractsMock = vi.fn();
+const listJobsMock = vi.fn();
 
 vi.mock('../../lib/dashboard', () => ({
   getDashboardStats: (...args: unknown[]) => getDashboardStatsMock(...args),
+}));
+
+vi.mock('../../lib/contracts', () => ({
+  listContracts: (...args: unknown[]) => listContractsMock(...args),
+}));
+
+vi.mock('../../lib/jobs', () => ({
+  listJobs: (...args: unknown[]) => listJobsMock(...args),
 }));
 
 vi.mock('../../components/dashboard/LeadFunnelChart', () => ({
@@ -33,6 +43,8 @@ describe('Dashboard', () => {
       isAuthenticated: true,
     });
     getDashboardStatsMock.mockReset();
+    listContractsMock.mockReset();
+    listJobsMock.mockReset();
   });
 
   it('shows upcoming appointments from the API', async () => {
@@ -123,5 +135,42 @@ describe('Dashboard', () => {
     expect(screen.getByText('Rep One')).toBeInTheDocument();
     expect(screen.getByText('0 unassigned • 0 in progress • 0 completed')).toBeInTheDocument();
     expect(getDashboardStatsMock).toHaveBeenCalledWith({ period: 'month' });
+  });
+  it('shows team-focused dashboard labels for subcontractors', async () => {
+    useAuthStore.setState({
+      user: { id: 'sub-1', email: 'sub@example.com', fullName: 'Sub User', role: 'subcontractor' },
+      token: 'token',
+      isAuthenticated: true,
+    });
+    listContractsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'contract-1',
+          contractNumber: 'CONT-1',
+          title: 'Team Contract',
+          status: 'active',
+          facility: { name: 'HQ' },
+        },
+      ],
+    });
+    listJobsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'job-1',
+          jobNumber: 'JOB-1',
+          status: 'scheduled',
+          scheduledDate: new Date().toISOString(),
+          scheduledStartTime: '08:00',
+          facility: { name: 'HQ' },
+        },
+      ],
+    });
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText('Assigned Team Contracts')).toBeInTheDocument();
+    expect(screen.getByText('1 active team contracts')).toBeInTheDocument();
+    expect(screen.getByText('Team assignment')).toBeInTheDocument();
+    expect(screen.getByText('Team contract')).toBeInTheDocument();
   });
 });

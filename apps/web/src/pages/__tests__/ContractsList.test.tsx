@@ -14,6 +14,19 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => navigateMock,
     useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
+  it('shows team contracts heading for subcontractors', async () => {
+    useAuthStore.setState({
+      user: { id: 'sub-1', email: 'sub@example.com', fullName: 'Sub User', role: 'subcontractor' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
+
+    render(<ContractsList />);
+
+    expect(await screen.findByRole('heading', { name: 'Team Contracts' })).toBeInTheDocument();
+    expect(screen.getByText('Contracts assigned to your subcontractor team.')).toBeInTheDocument();
+  });
 });
 
 const listContractsMock = vi.fn();

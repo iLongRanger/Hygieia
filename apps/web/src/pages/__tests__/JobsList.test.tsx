@@ -255,4 +255,36 @@ describe('JobsList', () => {
     expect(screen.queryByRole('button', { name: /generate recurring/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /new job/i })).not.toBeInTheDocument();
   });
+  it('shows team job labels for subcontractors', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-1',
+          jobNumber: 'JOB-TEAM-1',
+          assignedTeam: { id: 'team-1', name: 'Sub Team A' },
+          assignedToUser: null,
+          workforceAssignmentType: 'subcontractor_team',
+        }),
+      ])
+    );
+
+    render(<JobsList />);
+
+    expect(await screen.findByRole('heading', { name: 'Team Jobs' })).toBeInTheDocument();
+    expect(screen.getByText('Sub Team A')).toBeInTheDocument();
+    expect(screen.getByText('Team assignment')).toBeInTheDocument();
+  });
 });

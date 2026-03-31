@@ -16,6 +16,83 @@ vi.mock('react-router-dom', async () => {
     useParams: () => mockParams,
     useNavigate: () => navigateMock,
   };
+  it('shows subcontractor team context and hides standard financial terms', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    getContractMock.mockResolvedValueOnce({
+      ...draftContract,
+      status: 'active',
+      subcontractorPayout: 1000,
+      facility: {
+        id: 'facility-1',
+        name: 'Main Office',
+        address: { street: '123 Main St', city: 'Austin', state: 'TX' },
+        accessInstructions: 'Use side entrance keypad',
+        parkingInfo: 'Park in rear lot',
+        specialRequirements: 'Wear PPE in production zone',
+        notes: 'Alarm code changes monthly',
+        areas: [{ id: 'area-1', name: 'Lobby', areaType: 'Common Area', squareFeet: 1200 }],
+        tasks: [{ name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' }],
+      },
+    });
+
+    render(<ContractDetail />);
+
+    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    expect(screen.getByText('Team-scoped contract view for your subcontractor assignment.')).toBeInTheDocument();
+    expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
+    expect(screen.getByText('Your Payout')).toBeInTheDocument();
+  });
+
+  it('hides financial terms for cleaner users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'clean-1',
+        email: 'clean@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    getContractMock.mockResolvedValueOnce({
+      ...draftContract,
+      status: 'active',
+      facility: {
+        id: 'facility-1',
+        name: 'Main Office',
+        address: { street: '123 Main St', city: 'Austin', state: 'TX' },
+        accessInstructions: 'Use side entrance keypad',
+        parkingInfo: 'Park in rear lot',
+        specialRequirements: 'Wear PPE in production zone',
+        notes: 'Alarm code changes monthly',
+        areas: [{ id: 'area-1', name: 'Lobby', areaType: 'Common Area', squareFeet: 1200 }],
+        tasks: [{ name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' }],
+      },
+    });
+
+    render(<ContractDetail />);
+
+    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your Payout')).not.toBeInTheDocument();
+  });
 });
 
 const getContractMock = vi.fn();
