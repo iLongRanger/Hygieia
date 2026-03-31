@@ -144,7 +144,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
         },
         {
           key: 'work',
-          title: 'My Work',
+          title: isSubcontractor ? 'Team Work' : 'My Work',
           icon: Briefcase,
           items: [
             { to: '/contracts', icon: FileSignature, label: isSubcontractor ? 'Team Contracts' : 'My Contracts' },

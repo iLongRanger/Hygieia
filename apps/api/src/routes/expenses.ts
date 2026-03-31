@@ -14,6 +14,7 @@ import {
 import {
   listExpenses,
   getExpenseById,
+  getExpenseByIdScoped,
   createExpense,
   updateExpense,
   deleteExpense,
@@ -103,6 +104,7 @@ router.get(
         {
           userId: req.user!.id,
           role: req.user!.role,
+          userTeamId: req.user!.teamId ?? null,
         }
       );
       res.json(result);
@@ -118,7 +120,11 @@ router.get(
   requirePermission(PERMISSIONS.EXPENSES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const expense = await getExpenseById(req.params.id);
+      const expense = await getExpenseByIdScoped(req.params.id, {
+        userId: req.user!.id,
+        role: req.user!.role,
+        userTeamId: req.user!.teamId ?? null,
+      });
       res.json({ data: expense });
     } catch (error) {
       next(error);

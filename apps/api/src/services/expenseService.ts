@@ -19,6 +19,7 @@ export interface ExpenseListParams {
 export interface ExpenseListOptions {
   userId?: string;
   role?: string;
+  userTeamId?: string | null;
 }
 
 export interface ExpenseCreateInput {
@@ -125,8 +126,14 @@ export async function listExpenses(params: ExpenseListParams, options?: ExpenseL
 
   const where: Record<string, unknown> = {};
 
-  // RBAC: cleaners and subcontractors see only their own expenses
-  if (options?.role && ['cleaner', 'subcontractor'].includes(options.role) && options.userId) {
+  // RBAC: subcontractors see expenses created by their team, cleaners only their own.
+  if (options?.role === 'subcontractor') {
+    if (options.userTeamId) {
+      where.createdByUser = { teamId: options.userTeamId };
+    } else if (options.userId) {
+      where.createdByUserId = options.userId;
+    }
+  } else if (options?.role === 'cleaner' && options.userId) {
     where.createdByUserId = options.userId;
   }
 
@@ -170,6 +177,37 @@ export async function getExpenseById(id: string) {
     select: expenseDetailSelect,
   });
   if (!expense) throw new NotFoundError('Expense not found');
+  return expense;
+}
+
+export async function getExpenseByIdScoped(
+  id: string,
+  options?: ExpenseListOptions
+) {
+  const expense = await prisma.expense.findUnique({
+    where: { id },
+    select: {
+      ...expenseDetailSelect,
+      createdByUser: {
+        select: { id: true, fullName: true, teamId: true },
+      },
+    },
+  });
+
+  if (!expense) throw new NotFoundError('Expense not found');
+
+  if (options?.role === 'subcontractor') {
+    const isTeamExpense = Boolean(options.userTeamId) && expense.createdByUser?.teamId === options.userTeamId;
+    const isOwnExpense = expense.createdByUserId === options.userId;
+    if (!isTeamExpense && !isOwnExpense) {
+      throw new NotFoundError('Expense not found');
+    }
+  }
+
+  if (options?.role === 'cleaner' && options.userId && expense.createdByUserId !== options.userId) {
+    throw new NotFoundError('Expense not found');
+  }
+
   return expense;
 }
 

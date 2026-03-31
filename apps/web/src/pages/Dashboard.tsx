@@ -94,7 +94,7 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       setLoading(true);
       try {
         const [contractRes, jobRes] = await Promise.all([
-          listContracts({ status: 'active', limit: 50 }),
+          listContracts({ limit: 50 }),
           listJobs({ limit: 20 }),
         ]);
         setContracts(contractRes.data || []);
@@ -109,12 +109,13 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
   }, []);
 
   const activeContracts = contracts.filter((c) => c.status === 'active');
+  const assignedContracts = isSubcontractor ? contracts : activeContracts;
   const upcomingJobs = jobs.filter(
     (j) => j.status === 'scheduled' || j.status === 'in_progress'
   );
   const completedJobs = jobs.filter((j) => j.status === 'completed');
   const activeJobs = jobs.filter((j) => j.status === 'in_progress');
-  const totalPayout = activeContracts.reduce((sum, c) => sum + Number(c.subcontractorPayout || 0), 0);
+  const visibleContracts = assignedContracts;
 
   if (loading) {
     return (
@@ -146,9 +147,13 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
         <StatCard
-          label={isSubcontractor ? 'Active Team Contracts' : 'Active Contracts'}
-          value={activeContracts.length}
-          subtitle={`${contracts.length} total ${isSubcontractor ? 'team' : 'direct'} assignments`}
+          label={isSubcontractor ? 'Assigned Team Contracts' : 'Active Contracts'}
+          value={isSubcontractor ? assignedContracts.length : activeContracts.length}
+          subtitle={
+            isSubcontractor
+              ? `${activeContracts.length} active team contracts`
+              : `${contracts.length} total direct assignments`
+          }
           icon={FileText}
           color="text-primary-600 dark:text-primary-400"
           bg="bg-primary-100 dark:bg-primary-900/30"
@@ -165,12 +170,13 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
         />
         {isSubcontractor ? (
           <StatCard
-            label="Monthly Payout"
-            value={formatCurrencyFull(totalPayout)}
-            subtitle="across active contracts"
-            icon={DollarSign}
+            label="Completed Jobs"
+            value={completedJobs.length}
+            subtitle={`${activeJobs.length} currently in progress`}
+            icon={CheckCircle}
             color="text-teal-600 dark:text-teal-400"
             bg="bg-teal-100 dark:bg-teal-900/30"
+            onClick={() => navigate('/jobs', dashboardBackState)}
           />
         ) : (
           <StatCard
@@ -220,6 +226,11 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                     {job.jobNumber} &middot; {new Date(job.scheduledDate).toLocaleDateString()}
                     {job.scheduledStartTime && ` at ${job.scheduledStartTime}`}
                   </div>
+                  {isSubcontractor && (
+                    <div className="mt-1 text-xs uppercase tracking-wide text-surface-400">
+                      Team assignment
+                    </div>
+                  )}
                 </div>
                 <Badge variant={getJobStatusVariant(job.status)} size="sm">
                   {job.status.replace('_', ' ')}
@@ -233,19 +244,19 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-            {isSubcontractor ? 'Active Team Contracts' : 'Active Contracts'}
+            {isSubcontractor ? 'Assigned Team Contracts' : 'Active Contracts'}
           </h2>
           <Button variant="ghost" size="sm" onClick={() => navigate('/contracts', dashboardBackState)}>
             View all
           </Button>
         </div>
-        {activeContracts.length === 0 ? (
+        {visibleContracts.length === 0 ? (
           <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
-            No active contracts assigned.
+            {isSubcontractor ? 'No team contracts assigned.' : 'No active contracts assigned.'}
           </p>
         ) : (
           <div className="space-y-2">
-            {activeContracts.map((contract) => (
+            {visibleContracts.map((contract) => (
               <button
                 key={contract.id}
                 onClick={() => navigate(`/contracts/${contract.id}`, dashboardBackState)}
@@ -256,16 +267,17 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                     {contract.title}
                   </div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">
-                    {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'}
+                    {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'} &middot; {contract.status.replace('_', ' ')}
                   </div>
-                </div>
-                {isSubcontractor && (
-                  <div className="text-right">
-                    <div className="font-semibold text-teal-600 dark:text-teal-400">
-                      {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
+                  {isSubcontractor && (
+                    <div className="mt-1 text-xs uppercase tracking-wide text-surface-400">
+                      Team contract
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+                <Badge variant={contract.status === 'active' ? 'success' : contract.status === 'pending_signature' ? 'info' : 'default'} size="sm">
+                  {contract.status.replace('_', ' ')}
+                </Badge>
               </button>
             ))}
           </div>
