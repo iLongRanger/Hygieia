@@ -540,13 +540,21 @@ const JobsList = () => {
       header: 'Assigned To',
       cell: (job: Job) => {
         const workforce = getWorkforceIndicator(job);
+        const assigneeLabel = job.assignedToUser?.fullName || job.assignedTeam?.name || '-';
+        const scopeLabel =
+          workforce.label === 'Subcontractor Team'
+            ? 'Team assignment'
+            : workforce.label === 'Internal Employee'
+              ? 'Direct assignment'
+              : 'Unassigned';
         return (
           <div>
             <div className="text-sm">
-              {job.assignedToUser?.fullName || job.assignedTeam?.name || '-'}
+              {assigneeLabel}
             </div>
-            <div className="mt-1">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <Badge variant={workforce.badgeVariant}>{workforce.label}</Badge>
+              <span className="text-xs text-surface-500">{scopeLabel}</span>
             </div>
           </div>
         );
@@ -607,10 +615,10 @@ const JobsList = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
-              Jobs
+              {isSubcontractor ? 'Team Jobs' : 'Jobs'}
             </h1>
             <p className="text-sm text-surface-500 dark:text-surface-400">
-              {pagination ? `${pagination.total} total` : 'Loading...'}
+              {pagination ? `${pagination.total} total ${isSubcontractor ? 'team ' : ''}jobs` : 'Loading...'}
             </p>
           </div>
         </div>
@@ -883,6 +891,13 @@ const JobsList = () => {
                                 <Badge variant={workforce.badgeVariant}>
                                   {job.assignedToUser?.fullName || job.assignedTeam?.name || workforce.label}
                                 </Badge>
+                                <span className="inline-flex items-center rounded-full border border-surface-200 px-2 py-0.5 text-xs text-surface-500 dark:border-surface-700">
+                                  {workforce.label === 'Subcontractor Team'
+                                    ? 'Team assignment'
+                                    : workforce.label === 'Internal Employee'
+                                      ? 'Direct assignment'
+                                      : 'Unassigned'}
+                                </span>
                               </div>
 
                               <div className="mt-3 flex items-center gap-1">

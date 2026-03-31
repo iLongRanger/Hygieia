@@ -91,7 +91,8 @@ const JobDetail = () => {
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const userRole = useAuthStore((state) => state.user?.role);
-  const isSubcontractor = userRole === 'subcontractor' || userRole === 'cleaner';
+  const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
+  const isSubcontractor = userRole === 'subcontractor';
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
   const [gettingLocation, setGettingLocation] = useState(false);
 
@@ -355,19 +356,19 @@ const JobDetail = () => {
               Complete
             </Button>
           )}
-          {!isSubcontractor && ['scheduled', 'in_progress'].includes(job.status) && (
+          {!isFieldWorker && ['scheduled', 'in_progress'].includes(job.status) && (
             <Button variant="secondary" size="sm" onClick={() => navigate(`/jobs/${id}/edit`)}>
               <Edit2 className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
           )}
-          {job.initialClean.canCompleteOnThisJob && !isSubcontractor && (
+          {job.initialClean.canCompleteOnThisJob && !isFieldWorker && (
             <Button variant="secondary" size="sm" onClick={handleCompleteInitialClean}>
               <CheckCircle className="mr-1.5 h-4 w-4" />
               Mark Initial Clean Complete
             </Button>
           )}
-          {!isSubcontractor && ['scheduled', 'in_progress'].includes(job.status) && (
+          {!isFieldWorker && ['scheduled', 'in_progress'].includes(job.status) && (
             <Button variant="secondary" size="sm" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
               Cancel
@@ -456,13 +457,17 @@ const JobDetail = () => {
                 </p>
               </div>
               <div>
-                <span className="text-surface-500 dark:text-surface-400">Internal Employee</span>
+                <span className="text-surface-500 dark:text-surface-400">
+                  {isSubcontractor ? 'Direct Employee Contact' : 'Internal Employee'}
+                </span>
                 <p className="font-medium text-surface-900 dark:text-surface-100">
                   {job.assignedToUser?.fullName || '-'}
                 </p>
               </div>
               <div>
-                <span className="text-surface-500 dark:text-surface-400">Subcontractor Team</span>
+                <span className="text-surface-500 dark:text-surface-400">
+                  {isSubcontractor ? 'Assigned Team' : 'Subcontractor Team'}
+                </span>
                 <p className="font-medium text-surface-900 dark:text-surface-100">
                   {job.assignedTeam?.name || '-'}
                 </p>
