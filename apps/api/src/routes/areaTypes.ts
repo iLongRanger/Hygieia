@@ -58,6 +58,7 @@ router.get(
 router.get(
   '/guidance',
   authenticate,
+  requirePermission(PERMISSIONS.AREA_TYPES_MANAGE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const names = ((req.query.names as string) || '')
