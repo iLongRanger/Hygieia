@@ -30,9 +30,8 @@ import {
   createAreaTemplate,
   updateAreaTemplate,
   deleteAreaTemplate,
-  listTaskTemplates,
 } from '../../lib/facilities';
-import { createTaskTemplate } from '../../lib/tasks';
+import { listTaskTemplates, createTaskTemplate } from '../../lib/tasks';
 import type {
   AreaType,
   FixtureType,

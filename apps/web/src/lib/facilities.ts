@@ -1,9 +1,4 @@
 import api from './api';
-import { listAccounts as listAccountsFromAccounts } from './accounts';
-import {
-  listTaskTemplates as listTaskTemplatesFromTasks,
-  listFacilityTasks as listFacilityTasksFromTasks,
-} from './tasks';
 import type {
   Facility,
   CreateFacilityInput,
@@ -24,7 +19,6 @@ import type {
   AreaTemplate,
   CreateAreaTemplateInput,
   UpdateAreaTemplateInput,
-  TaskTemplate,
 } from '../types/facility';
 
 export async function listFacilities(params?: {
@@ -330,45 +324,4 @@ export async function getFacilityTaskTimeBreakdown(
   return response.data.data;
 }
 
-// Compatibility re-exports for older facility-module imports used across the app.
-export async function listAccounts(params?: {
-  page?: number;
-  limit?: number;
-  type?: string;
-  accountManagerId?: string;
-  search?: string;
-  includeArchived?: boolean;
-  readyForProposal?: boolean;
-}) {
-  return listAccountsFromAccounts(params);
-}
-
-export async function listTaskTemplates(params?: {
-  page?: number;
-  limit?: number;
-  cleaningType?: string;
-  areaTypeId?: string;
-  facilityId?: string;
-  isGlobal?: boolean;
-  isActive?: boolean;
-  search?: string;
-  includeArchived?: boolean;
-}) {
-  return (await listTaskTemplatesFromTasks(params)) as unknown as PaginatedResponse<TaskTemplate>;
-}
-
-export async function listFacilityTasks(params?: {
-  page?: number;
-  limit?: number;
-  facilityId?: string;
-  areaId?: string;
-  taskTemplateId?: string;
-  cleaningFrequency?: string;
-  isRequired?: boolean;
-  priority?: number;
-  search?: string;
-  includeArchived?: boolean;
-}) {
-  return (await listFacilityTasksFromTasks(params)) as unknown as PaginatedResponse<FacilityTask>;
-}
 

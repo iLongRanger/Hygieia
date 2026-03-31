@@ -15,13 +15,12 @@ import {
   listAreaTypes,
   listFixtureTypes,
   getAreaTemplateByAreaType,
-  listFacilityTasks,
   createFacilityTask,
   updateFacilityTask,
   deleteFacilityTask,
-  listTaskTemplates,
   submitFacilityForProposal,
 } from '../../lib/facilities';
+import { listFacilityTasks, listTaskTemplates } from '../../lib/tasks';
 import type {
   Facility,
   Area,

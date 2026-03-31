@@ -31,7 +31,8 @@ import {
   updateProposal,
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
-import { listFacilities, listAreas, listFacilityTasks } from '../../lib/facilities';
+import { listFacilities, listAreas } from '../../lib/facilities';
+import { listFacilityTasks } from '../../lib/tasks';
 import {
   getFacilityPricingReadiness,
   getFacilityProposalTemplate,

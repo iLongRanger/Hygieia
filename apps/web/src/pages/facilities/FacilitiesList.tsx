@@ -25,8 +25,8 @@ import {
   createFacility,
   archiveFacility,
   restoreFacility,
-  listAccounts,
 } from '../../lib/facilities';
+import { listAccounts } from '../../lib/accounts';
 import type {
   Facility,
   Account,

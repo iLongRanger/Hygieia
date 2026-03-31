@@ -1,4 +1,5 @@
 import api from './api';
+import type { CleaningFrequency } from '../types/facility';
 import type {
   TaskTemplate,
   CreateTaskTemplateInput,
@@ -64,7 +65,7 @@ export async function listFacilityTasks(params?: {
   facilityId?: string;
   areaId?: string;
   taskTemplateId?: string;
-  cleaningFrequency?: string;
+  cleaningFrequency?: CleaningFrequency;
   isRequired?: boolean;
   priority?: number;
   search?: string;
