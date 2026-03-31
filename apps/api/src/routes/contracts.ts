@@ -290,7 +290,7 @@ router.get(
         userId: req.user?.id,
       });
 
-      if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
+      if (req.user?.role === 'subcontractor') {
         const safeContracts = result.data.map((contract: any) => {
           const payout =
             Number(contract.monthlyValue || 0) *
@@ -446,7 +446,9 @@ router.get(
 
         const isSubcontractor = req.user?.role === 'subcontractor';
         const payout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
-        const { monthlyValue, totalValue, ...safeContract } = contract as any;
+        const safeContract = isSubcontractor
+          ? (({ monthlyValue, totalValue, ...rest }) => rest)(contract as any)
+          : contract;
         const safeFacility = safeContract.facility
           ? {
               ...safeContract.facility,

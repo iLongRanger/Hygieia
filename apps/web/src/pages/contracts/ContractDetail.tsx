@@ -1064,8 +1064,8 @@ const ContractDetail = () => {
   useEffect(() => {
     if (id) {
       fetchContract(id);
-      fetchAmendments(id);
       if (!isLimitedContractViewer) {
+        fetchAmendments(id);
         fetchTeams();
         fetchUsers();
       }
@@ -1108,7 +1108,9 @@ const ContractDetail = () => {
 
   const refreshAll = (contractId: string) => {
     fetchContract(contractId);
-    fetchAmendments(contractId);
+    if (!isLimitedContractViewer) {
+      fetchAmendments(contractId);
+    }
     setActivityRefresh((n) => n + 1);
   };
 
@@ -2614,7 +2616,7 @@ const ContractDetail = () => {
               </div>
             </div>
           </Card>
-        ) : (
+        ) : !isLimitedContractViewer ? (
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-green-400" />
@@ -2649,7 +2651,7 @@ const ContractDetail = () => {
               </div>
             </div>
           </Card>
-        )}
+        ) : null}
 
         {/* Assignment — hidden for subcontractors */}
         {isLimitedContractViewer && contract.facility && (
