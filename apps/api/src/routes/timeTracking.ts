@@ -79,7 +79,7 @@ router.get(
 );
 
 // Get active entry for current user
-router.get('/active', async (req: Request, res: Response) => {
+router.get('/active', requirePermission(PERMISSIONS.TIME_TRACKING_READ), async (req: Request, res: Response) => {
   const entry = await getActiveEntry(req.user!.id);
   res.json({ data: entry });
 });
@@ -97,6 +97,7 @@ router.get('/entries/:id', requirePermission(PERMISSIONS.TIME_TRACKING_READ), as
 // Clock in
 router.post(
   '/clock-in',
+  requirePermission(PERMISSIONS.TIME_TRACKING_WRITE),
   validate(clockInSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -115,6 +116,7 @@ router.post(
 // Clock out
 router.post(
   '/clock-out',
+  requirePermission(PERMISSIONS.TIME_TRACKING_WRITE),
   validate(clockOutSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -132,13 +134,13 @@ router.post(
 );
 
 // Start break
-router.post('/break/start', async (req: Request, res: Response) => {
+router.post('/break/start', requirePermission(PERMISSIONS.TIME_TRACKING_WRITE), async (req: Request, res: Response) => {
   const entry = await startBreak(req.user!.id);
   res.json({ data: entry });
 });
 
 // End break
-router.post('/break/end', async (req: Request, res: Response) => {
+router.post('/break/end', requirePermission(PERMISSIONS.TIME_TRACKING_WRITE), async (req: Request, res: Response) => {
   const entry = await endBreak(req.user!.id);
   res.json({ data: entry });
 });
@@ -305,6 +307,7 @@ router.post(
 // Submit timesheet
 router.post(
   '/timesheets/:id/submit',
+  requirePermission(PERMISSIONS.TIME_TRACKING_WRITE),
   async (req: Request, res: Response) => {
     const timesheet = await submitTimesheet(req.params.id);
     res.json({ data: timesheet });
