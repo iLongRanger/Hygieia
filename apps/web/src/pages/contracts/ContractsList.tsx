@@ -125,7 +125,7 @@ const ContractsList = () => {
   const [needsAttention, setNeedsAttention] = useState(true);
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
-  const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
+  const isSubcontractor = userRole === 'subcontractor';
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canUseNeedsAttention = userRole === 'owner' || userRole === 'admin';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
@@ -370,9 +370,9 @@ const ContractsList = () => {
       ),
     },
     {
-      header: isFieldWorker ? 'Monthly Payout' : 'Monthly Value',
+      header: isSubcontractor ? 'Monthly Payout' : 'Monthly Value',
       cell: (contract: Contract) => {
-        const rawValue = isFieldWorker ? contract.subcontractorPayout : contract.monthlyValue;
+        const rawValue = isSubcontractor ? contract.subcontractorPayout : contract.monthlyValue;
         const numericValue = Number(rawValue);
         const valueLabel = Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-';
         return (

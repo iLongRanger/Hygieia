@@ -131,6 +131,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
 
   const isFieldWorker = user?.role === 'subcontractor' || user?.role === 'cleaner';
+  const isSubcontractor = user?.role === 'subcontractor';
 
   const effectiveSections: NavSection[] = isFieldWorker
     ? [
@@ -146,9 +147,10 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           title: 'My Work',
           icon: Briefcase,
           items: [
-            { to: '/contracts', icon: FileSignature, label: 'My Contracts' },
-            { to: '/jobs', icon: Briefcase, label: 'My Jobs' },
+            { to: '/contracts', icon: FileSignature, label: isSubcontractor ? 'Team Contracts' : 'My Contracts' },
+            { to: '/jobs', icon: Briefcase, label: isSubcontractor ? 'Team Jobs' : 'My Jobs' },
             { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
+            ...(isSubcontractor ? [{ to: '/finance/expenses', icon: Receipt, label: 'Expenses' }] : []),
           ],
         },
       ]

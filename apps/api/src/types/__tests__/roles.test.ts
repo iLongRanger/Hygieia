@@ -13,6 +13,7 @@ describe('roles utilities', () => {
     it('returns the highest role by hierarchy regardless of input order', () => {
       expect(resolveHighestRole(['manager', 'owner', 'cleaner'])).toBe('owner');
       expect(resolveHighestRole(['cleaner', 'admin'])).toBe('admin');
+      expect(resolveHighestRole(['cleaner', 'subcontractor'])).toBe('subcontractor');
     });
   });
 

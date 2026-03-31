@@ -249,8 +249,8 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   owner: 100,
   admin: 75,
   manager: 50,
+  subcontractor: 30,
   cleaner: 25,
-  subcontractor: 10,
 };
 
 export function hasPermission(role: UserRole, permission: string): boolean {

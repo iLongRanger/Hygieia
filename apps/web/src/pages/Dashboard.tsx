@@ -15,6 +15,7 @@ import {
   Receipt,
   FileText,
   Clock,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -80,12 +81,13 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
 
 const dashboardBackState = { state: { backLabel: 'Dashboard', backPath: '/' } };
 
-const SubcontractorDashboard = () => {
+const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const isSubcontractor = mode === 'subcontractor';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,13 +109,12 @@ const SubcontractorDashboard = () => {
   }, []);
 
   const activeContracts = contracts.filter((c) => c.status === 'active');
-  const totalPayout = activeContracts.reduce(
-    (sum, c) => sum + Number(c.subcontractorPayout || 0),
-    0
-  );
   const upcomingJobs = jobs.filter(
     (j) => j.status === 'scheduled' || j.status === 'in_progress'
   );
+  const completedJobs = jobs.filter((j) => j.status === 'completed');
+  const activeJobs = jobs.filter((j) => j.status === 'in_progress');
+  const totalPayout = activeContracts.reduce((sum, c) => sum + Number(c.subcontractorPayout || 0), 0);
 
   if (loading) {
     return (
@@ -138,23 +139,23 @@ const SubcontractorDashboard = () => {
           Welcome back, {user?.fullName?.split(' ')[0]}
         </h1>
         <p className="mt-1 text-surface-500 dark:text-surface-400">
-          Here's your work overview.
+          {isSubcontractor ? "Here's your team work overview." : "Here's your assigned work overview."}
         </p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
         <StatCard
-          label="Active Contracts"
+          label={isSubcontractor ? 'Active Team Contracts' : 'Active Contracts'}
           value={activeContracts.length}
-          subtitle={`${contracts.length} total assigned`}
+          subtitle={`${contracts.length} total ${isSubcontractor ? 'team' : 'direct'} assignments`}
           icon={FileText}
           color="text-primary-600 dark:text-primary-400"
           bg="bg-primary-100 dark:bg-primary-900/30"
           onClick={() => navigate('/contracts', dashboardBackState)}
         />
         <StatCard
-          label="Upcoming Jobs"
+          label={isSubcontractor ? 'Upcoming Team Jobs' : 'Upcoming Jobs'}
           value={upcomingJobs.length}
           subtitle="scheduled & in progress"
           icon={Briefcase}
@@ -162,14 +163,26 @@ const SubcontractorDashboard = () => {
           bg="bg-indigo-100 dark:bg-indigo-900/30"
           onClick={() => navigate('/jobs', dashboardBackState)}
         />
-        <StatCard
-          label="Monthly Payout"
-          value={formatCurrencyFull(totalPayout)}
-          subtitle="across active contracts"
-          icon={DollarSign}
-          color="text-teal-600 dark:text-teal-400"
-          bg="bg-teal-100 dark:bg-teal-900/30"
-        />
+        {isSubcontractor ? (
+          <StatCard
+            label="Monthly Payout"
+            value={formatCurrencyFull(totalPayout)}
+            subtitle="across active contracts"
+            icon={DollarSign}
+            color="text-teal-600 dark:text-teal-400"
+            bg="bg-teal-100 dark:bg-teal-900/30"
+          />
+        ) : (
+          <StatCard
+            label="Completed Jobs"
+            value={completedJobs.length}
+            subtitle={`${activeJobs.length} currently in progress`}
+            icon={CheckCircle}
+            color="text-teal-600 dark:text-teal-400"
+            bg="bg-teal-100 dark:bg-teal-900/30"
+            onClick={() => navigate('/jobs', dashboardBackState)}
+          />
+        )}
       </div>
 
       {/* Upcoming Jobs */}
@@ -220,7 +233,7 @@ const SubcontractorDashboard = () => {
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-            Active Contracts
+            {isSubcontractor ? 'Active Team Contracts' : 'Active Contracts'}
           </h2>
           <Button variant="ghost" size="sm" onClick={() => navigate('/contracts', dashboardBackState)}>
             View all
@@ -246,11 +259,13 @@ const SubcontractorDashboard = () => {
                     {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-semibold text-teal-600 dark:text-teal-400">
-                    {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
+                {isSubcontractor && (
+                  <div className="text-right">
+                    <div className="font-semibold text-teal-600 dark:text-teal-400">
+                      {formatCurrencyFull(Number(contract.subcontractorPayout || 0))}/mo
+                    </div>
                   </div>
-                </div>
+                )}
               </button>
             ))}
           </div>
@@ -619,8 +634,12 @@ const Dashboard = () => {
     return null;
   }
 
-  if (user.role === 'subcontractor' || user.role === 'cleaner') {
-    return <SubcontractorDashboard />;
+  if (user.role === 'subcontractor') {
+    return <FieldWorkerDashboard mode="subcontractor" />;
+  }
+
+  if (user.role === 'cleaner') {
+    return <FieldWorkerDashboard mode="cleaner" />;
   }
 
   return <AdminDashboard />;

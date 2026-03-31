@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../lib/prisma';
 import { jwtConfig, getJwtSecret } from '../config/jwt';
-import { UserRole } from '../types';
+import { UserRole, isValidRole, resolveHighestRole } from '../types';
 import {
   storeRefreshToken,
   isTokenRevoked,
@@ -42,6 +42,13 @@ export interface UserInfo {
 }
 
 const SALT_ROUNDS = 10;
+
+function resolvePrimaryUserRole(
+  roles: Array<{ role: { key: string } | null }>
+): UserRole {
+  const assignedRoles = roles.map((entry) => entry.role?.key).filter(isValidRole);
+  return resolveHighestRole(assignedRoles);
+}
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
@@ -156,7 +163,7 @@ export async function login(
     throw new Error('Account is not active');
   }
 
-  const primaryRole = (user.roles[0]?.role?.key as UserRole) || 'cleaner';
+  const primaryRole = resolvePrimaryUserRole(user.roles);
 
   const tokens = generateTokens({
     sub: user.id,
@@ -229,7 +236,7 @@ export async function refreshAccessToken(
       return null;
     }
 
-    const primaryRole = (user.roles[0]?.role?.key as UserRole) || 'cleaner';
+    const primaryRole = resolvePrimaryUserRole(user.roles);
 
     const tokens = generateTokens({
       sub: user.id,
@@ -293,7 +300,7 @@ export async function getUserById(id: string): Promise<UserInfo | null> {
     return null;
   }
 
-  const primaryRole = (user.roles[0]?.role?.key as UserRole) || 'cleaner';
+  const primaryRole = resolvePrimaryUserRole(user.roles);
 
   return {
     id: user.id,

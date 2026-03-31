@@ -3,6 +3,7 @@ import { ForbiddenError } from './errorHandler';
 import { prisma } from '../lib/prisma';
 import { logSecurityEvent } from '../lib/logger';
 import type { AuthenticatedUser } from '../types/express';
+import { applyDueContractAssignmentOverrideForContract } from '../services/contractAssignmentOverrideService';
 
 export type ResourceType =
   | 'lead'
@@ -182,6 +183,7 @@ export async function ensureOwnershipAccess(
     let hasAccess = false;
 
     if (resourceType === 'contract') {
+      await applyDueContractAssignmentOverrideForContract(resourceId);
       const contract = await prisma.contract.findUnique({
         where: { id: resourceId },
         select: { assignedTeamId: true, assignedToUserId: true },
@@ -229,6 +231,7 @@ export async function ensureOwnershipAccess(
 
   if (role === 'cleaner') {
     if (resourceType === 'contract') {
+      await applyDueContractAssignmentOverrideForContract(resourceId);
       const contract = await prisma.contract.findUnique({
         where: { id: resourceId },
         select: { assignedToUserId: true },
