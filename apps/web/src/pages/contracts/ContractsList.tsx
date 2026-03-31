@@ -457,7 +457,14 @@ const ContractsList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Contracts</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
+            {isSubcontractor ? 'Team Contracts' : 'Contracts'}
+          </h1>
+          <p className="text-sm text-surface-500 dark:text-surface-400">
+            {isSubcontractor ? 'Contracts assigned to your subcontractor team.' : `${total} total contracts`}
+          </p>
+        </div>
         {canWriteContracts && (
           <Button onClick={() => navigate('/contracts/new', { state: { backLabel: 'Contracts', backPath: '/contracts' } })}>
             <Plus className="mr-2 h-4 w-4" />

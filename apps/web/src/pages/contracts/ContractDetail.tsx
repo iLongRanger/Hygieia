@@ -2295,6 +2295,11 @@ const ContractDetail = () => {
             })()}
           </div>
           <p className="text-surface-500 dark:text-surface-400">{contract.title}</p>
+          {isSubcontractor && (
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              Team-scoped contract view for your subcontractor assignment.
+            </p>
+          )}
         </div>
         {!isLimitedContractViewer && (
           <div className="flex items-center gap-2">
