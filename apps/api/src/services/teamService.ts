@@ -5,6 +5,7 @@ import { buildSubcontractorWelcomeHtml, buildSubcontractorWelcomeSubject } from 
 import { isEmailConfigured } from '../config/email';
 import { sendNotificationEmail } from './emailService';
 import { requireWebAppBaseUrl } from '../lib/appUrl';
+import { ConflictError } from '../middleware/errorHandler';
 
 export interface TeamListParams {
   page?: number;
@@ -189,6 +190,38 @@ export async function updateTeam(id: string, input: TeamUpdateInput) {
 }
 
 export async function archiveTeam(id: string) {
+  const [activeContracts, scheduledAppointments, scheduledJobs] = await Promise.all([
+    prisma.contract.count({
+      where: {
+        assignedTeamId: id,
+        status: 'active',
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        assignedTeamId: id,
+        status: 'scheduled',
+      },
+    }),
+    prisma.job.count({
+      where: {
+        assignedTeamId: id,
+        status: { in: ['scheduled', 'in_progress'] },
+      },
+    }),
+  ]);
+
+  if (activeContracts > 0 || scheduledAppointments > 0 || scheduledJobs > 0) {
+    throw new ConflictError(
+      'This team still has live assignments. Reassign active contracts, scheduled walkthroughs, and scheduled jobs before archiving it.',
+      {
+        activeContracts,
+        scheduledAppointments,
+        scheduledJobs,
+      }
+    );
+  }
+
   const team = await prisma.team.update({
     where: { id },
     data: {
@@ -302,6 +335,9 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
         select: {
           id: true,
           email: true,
+          teamId: true,
+          fullName: true,
+          status: true,
           roles: {
             select: {
               role: {
@@ -325,18 +361,27 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
     throw new Error('Team contact email is required to send an invite');
   }
 
+  if (team.users.length > 1) {
+    throw new ConflictError(
+      'This subcontractor team has multiple linked users. Resolve team membership so only one user remains before sending an invite.'
+    );
+  }
+
   const subRole = await getOrCreateSubcontractorRole();
 
   let user =
     team.users.find((candidate) => candidate.email.toLowerCase() === contactEmail) ||
     team.users[0];
 
-  if (!user) {
-    const existingByEmail = await prisma.user.findUnique({
+  const findExistingByEmail = async () =>
+    prisma.user.findUnique({
       where: { email: contactEmail },
       select: {
         id: true,
         email: true,
+        teamId: true,
+        fullName: true,
+        status: true,
         roles: {
           select: {
             role: {
@@ -347,22 +392,52 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
       },
     });
 
-    if (existingByEmail) {
-      user = await prisma.user.update({
-        where: { id: existingByEmail.id },
-        data: { teamId: team.id },
-        select: {
-          id: true,
-          email: true,
-          roles: {
-            select: {
-              role: {
-                select: { key: true },
-              },
+  if (user && user.email.toLowerCase() !== contactEmail) {
+    const existingByEmail = await findExistingByEmail();
+
+    if (existingByEmail && existingByEmail.id !== user.id) {
+      throw new ConflictError(
+        'This contact email is already linked to another user. Use a different email or migrate that user first.'
+      );
+    }
+
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email: contactEmail,
+        fullName: team.contactName || team.name,
+        teamId: team.id,
+      },
+      select: {
+        id: true,
+        email: true,
+        teamId: true,
+        fullName: true,
+        status: true,
+        roles: {
+          select: {
+            role: {
+              select: { key: true },
             },
           },
         },
-      });
+      },
+    });
+  }
+
+  if (!user) {
+    const existingByEmail = await findExistingByEmail();
+
+    if (existingByEmail) {
+      if (existingByEmail.teamId && existingByEmail.teamId !== team.id) {
+        throw new ConflictError(
+          'This contact email is already linked to another subcontractor team. Migrate that subcontractor assignment first.'
+        );
+      }
+
+      throw new ConflictError(
+        'This contact email is already used by another user. Link that user manually or choose a different email.'
+      );
     } else {
       user = await prisma.user.create({
         data: {
@@ -377,6 +452,9 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
         select: {
           id: true,
           email: true,
+          teamId: true,
+          fullName: true,
+          status: true,
           roles: {
             select: {
               role: {

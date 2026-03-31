@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import * as teamService from '../teamService';
 import { prisma } from '../../lib/prisma';
-import { ValidationError } from '../../middleware/errorHandler';
+import { ConflictError, ValidationError } from '../../middleware/errorHandler';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -11,6 +11,15 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+    },
+    contract: {
+      count: jest.fn(),
+    },
+    appointment: {
+      count: jest.fn(),
+    },
+    job: {
+      count: jest.fn(),
     },
     role: {
       findUnique: jest.fn(),
@@ -84,6 +93,15 @@ describe('teamService', () => {
     expect(prisma.team.create).toHaveBeenCalled();
   });
 
+  it('archiveTeam should reject while live assignments still exist', async () => {
+    (prisma.contract.count as jest.Mock).mockResolvedValue(1);
+    (prisma.appointment.count as jest.Mock).mockResolvedValue(0);
+    (prisma.job.count as jest.Mock).mockResolvedValue(2);
+
+    await expect(teamService.archiveTeam('team-1')).rejects.toThrow(ConflictError);
+    expect(prisma.team.update).not.toHaveBeenCalled();
+  });
+
   it('resendSubcontractorInvite should fail before creating a token when app URL is missing', async () => {
     delete process.env.FRONTEND_URL;
     delete process.env.WEB_APP_URL;
@@ -108,5 +126,31 @@ describe('teamService', () => {
 
     await expect(teamService.resendSubcontractorInvite('team-1')).rejects.toThrow(ValidationError);
     expect(prisma.passwordSetToken.create).not.toHaveBeenCalled();
+  });
+
+  it('resendSubcontractorInvite should reject when contact email belongs to another team user', async () => {
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      id: 'team-1',
+      name: 'Alpha Team',
+      contactName: 'Alex Alpha',
+      contactEmail: 'shared@example.com',
+      users: [],
+    });
+    (prisma.role.findUnique as jest.Mock).mockResolvedValue({
+      id: 'role-1',
+      key: 'subcontractor',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-9',
+      email: 'shared@example.com',
+      teamId: 'team-9',
+      fullName: 'Shared User',
+      status: 'active',
+      roles: [{ role: { key: 'subcontractor' } }],
+    });
+
+    await expect(teamService.resendSubcontractorInvite('team-1')).rejects.toThrow(ConflictError);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 });

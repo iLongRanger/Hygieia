@@ -135,8 +135,9 @@ const TeamsList = () => {
       await archiveTeam(team.id);
       toast.success('Team archived');
       await fetchTeams();
-    } catch {
-      toast.error('Failed to archive team');
+    } catch (error: any) {
+      const message = error?.response?.data?.error?.message || 'Failed to archive team';
+      toast.error(message);
     }
   };
 
