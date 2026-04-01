@@ -309,6 +309,11 @@ router.post(
   '/timesheets/:id/submit',
   requirePermission(PERMISSIONS.TIME_TRACKING_WRITE),
   async (req: Request, res: Response) => {
+    await getTimesheetById(req.params.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     const timesheet = await submitTimesheet(req.params.id);
     res.json({ data: timesheet });
   }
@@ -319,6 +324,11 @@ router.post(
   '/timesheets/:id/approve',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
+    await getTimesheetById(req.params.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     const timesheet = await approveTimesheet(req.params.id, req.user!.id);
     res.json({ data: timesheet });
   }
@@ -330,6 +340,11 @@ router.post(
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   validate(rejectTimesheetSchema),
   async (req: Request, res: Response) => {
+    await getTimesheetById(req.params.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     const timesheet = await rejectTimesheet(req.params.id, req.body.notes);
     res.json({ data: timesheet });
   }
@@ -340,6 +355,11 @@ router.delete(
   '/timesheets/:id',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
+    await getTimesheetById(req.params.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     await deleteTimesheet(req.params.id);
     res.status(204).send();
   }
