@@ -208,6 +208,13 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      assertCanViewJob(req, existing);
+
       const parsed = startJobSchema.safeParse(req.body || {});
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -231,6 +238,13 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      assertCanViewJob(req, existing);
+
       const parsed = completeJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
