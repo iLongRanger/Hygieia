@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hygieia — System Flow Diagram</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --blue: #3b82f6;
+    --blue-dim: #1e3a5f;
+    --green: #22c55e;
+    --green-dim: #14532d;
+    --purple: #a855f7;
+    --purple-dim: #3b0764;
+    --orange: #f97316;
+    --orange-dim: #7c2d12;
+    --pink: #ec4899;
+    --pink-dim: #831843;
+    --cyan: #06b6d4;
+    --cyan-dim: #164e63;
+    --yellow: #eab308;
+    --yellow-dim: #713f12;
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 48px;
+  }
+
+  /* ── Section Title ── */
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+    padding-left: 12px;
+    border-left: 3px solid;
+  }
+
+  /* ── Pipeline Flow ── */
+  .pipeline {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 48px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .pipeline-step {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+  }
+
+  .step-box {
+    border-radius: 12px;
+    padding: 16px 14px;
+    min-height: 120px;
+    border: 1px solid var(--border);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .step-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .step-number {
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .step-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 6px;
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .step-desc li {
+    margin-bottom: 2px;
+    list-style: none;
+    padding-left: 12px;
+    position: relative;
+  }
+  .step-desc li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--text-muted);
+    font-weight: 700;
+  }
+
+  .arrow-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    padding-top: 40px;
+    color: var(--border);
+    font-size: 1.2rem;
+  }
+
+  /* ── Color Themes ── */
+  .theme-blue .step-box { background: var(--blue-dim); border-color: var(--blue); }
+  .theme-blue .step-number { background: var(--blue); color: #fff; }
+  .theme-green .step-box { background: var(--green-dim); border-color: var(--green); }
+  .theme-green .step-number { background: var(--green); color: #fff; }
+  .theme-purple .step-box { background: var(--purple-dim); border-color: var(--purple); }
+  .theme-purple .step-number { background: var(--purple); color: #fff; }
+  .theme-orange .step-box { background: var(--orange-dim); border-color: var(--orange); }
+  .theme-orange .step-number { background: var(--orange); color: #fff; }
+  .theme-pink .step-box { background: var(--pink-dim); border-color: var(--pink); }
+  .theme-pink .step-number { background: var(--pink); color: #fff; }
+  .theme-cyan .step-box { background: var(--cyan-dim); border-color: var(--cyan); }
+  .theme-cyan .step-number { background: var(--cyan); color: #fff; }
+  .theme-yellow .step-box { background: var(--yellow-dim); border-color: var(--yellow); }
+  .theme-yellow .step-number { background: var(--yellow); color: #fff; }
+
+  /* ── Tracks Wrapper ── */
+  .tracks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+
+  .track {
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+  }
+
+  .track-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .track-badge {
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .track-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .track-item .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .track-arrow {
+    text-align: center;
+    color: var(--border);
+    font-size: 0.9rem;
+    padding: 0 0 0 19px;
+  }
+
+  .commercial-track { background: var(--blue-dim); border-color: var(--blue); }
+  .commercial-track .track-badge { background: var(--blue); color: #fff; }
+  .commercial-track .track-item { background: rgba(59,130,246,0.1); }
+  .commercial-track .track-item .icon { background: var(--blue); color: #fff; }
+
+  .residential-track { background: var(--green-dim); border-color: var(--green); }
+  .residential-track .track-badge { background: var(--green); color: #fff; }
+  .residential-track .track-item { background: rgba(34,197,94,0.1); }
+  .residential-track .track-item .icon { background: var(--green); color: #fff; }
+
+  /* ── Roles Grid ── */
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .role-card {
+    border-radius: 12px;
+    padding: 18px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .role-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .role-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .role-perms {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .role-perms li {
+    list-style: none;
+    padding-left: 14px;
+    position: relative;
+  }
+  .role-perms li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-size: 0.65rem;
+  }
+  .role-perms li.no::before {
+    content: '✗';
+    color: var(--red);
+  }
+
+  /* ── Modules Grid ── */
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .module-card {
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: transform 0.2s;
+  }
+
+  .module-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .module-icon {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+  }
+
+  .module-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .module-route {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: monospace;
+  }
+
+  /* ── Converge Box ── */
+  .converge {
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 48px;
+  }
+
+  .converge-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .converge-items {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .converge-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .converge-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── Public Pages ── */
+  .public-pages {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+
+  .public-badge {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .public-badge code {
+    font-family: monospace;
+    color: var(--cyan);
+    font-size: 0.7rem;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .tracks { grid-template-columns: 1fr; }
+    .roles-grid { grid-template-columns: repeat(3, 1fr); }
+    .modules-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    .pipeline { flex-direction: column; align-items: stretch; }
+    .arrow-connector { transform: rotate(90deg); padding: 0; min-width: auto; min-height: 24px; }
+    .roles-grid { grid-template-columns: repeat(2, 1fr); }
+    .modules-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Hygieia System Flow</h1>
+  <p class="subtitle">End-to-end business management for commercial and residential cleaning operations</p>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- MAIN PIPELINE -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-title" style="border-color: var(--blue);">Lead-to-Revenue Pipeline</div>
+
+  <div class="pipeline">
+    <div class="pipeline-step theme-blue">
+      <div class="step-box">
+        <span class="step-number">1 — CRM</span>
+        <div class="step-title">Lead Intake</div>
+        <ul class="step-desc">
+          <li>Create or import lead</li>
+          <li>Assign to sales rep</li>
+          <li>Track source & type</li>
+          <li>Commercial or Residential</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-blue">
+      <div class="step-box">
+        <span class="step-number">2 — CRM</span>
+        <div class="step-title">Walk-Through</div>
+        <ul class="step-desc">
+          <li>Schedule appointment</li>
+          <li>On-site assessment</li>
+          <li>Capture facility details</li>
+          <li>Areas, fixtures, conditions</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-purple">
+      <div class="step-box">
+        <span class="step-number">3 — CRM</span>
+        <div class="step-title">Account Setup</div>
+        <ul class="step-desc">
+          <li>Convert lead to account</li>
+          <li>Create contacts</li>
+          <li>Set up facility profile</li>
+          <li>Assign pricing plan</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-orange">
+      <div class="step-box">
+        <span class="step-number">4 — SALES</span>
+        <div class="step-title">Proposal / Quote</div>
+        <ul class="step-desc">
+          <li>Generate pricing</li>
+          <li>Add services & items</li>
+          <li>Send for approval</li>
+          <li>Customer reviews online</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-green">
+      <div class="step-box">
+        <span class="step-number">5 — SALES</span>
+        <div class="step-title">Contract</div>
+        <ul class="step-desc">
+          <li>Auto-create from proposal</li>
+          <li>Digital signature</li>
+          <li>Set schedule & terms</li>
+          <li>Auto-renewal tracking</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-cyan">
+      <div class="step-box">
+        <span class="step-number">6 — OPS</span>
+        <div class="step-title">Job Execution</div>
+        <ul class="step-desc">
+          <li>Auto-schedule from contract</li>
+          <li>Assign to team/worker</li>
+          <li>Complete task checklists</li>
+          <li>Log time & notes</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arrow-connector">→</div>
+
+    <div class="pipeline-step theme-pink">
+      <div class="step-box">
+        <span class="step-number">7 — FINANCE</span>
+        <div class="step-title">Invoice & Pay</div>
+        <ul class="step-desc">
+          <li>Generate invoices</li>
+          <li>Send via public link</li>
+          <li>Record payments</li>
+          <li>Track aging & revenue</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- TWO TRACKS -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-title" style="border-color: var(--purple);">Commercial vs. Residential Tracks</div>
+
+  <div class="tracks">
+    <div class="track commercial-track">
+      <div class="track-title">
+        <span class="track-badge">Commercial</span>
+        Office, Retail, Warehouse
+      </div>
+      <div class="track-flow">
+        <div class="track-item"><span class="icon">1</span> Lead &amp; Appointment</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">2</span> Account &amp; Facility Setup</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">3</span> Proposal (dynamic pricing)</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">4</span> Customer Reviews &amp; Signs</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">5</span> Contract (amendments supported)</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">6</span> Jobs, Inspections, Invoices</div>
+      </div>
+    </div>
+
+    <div class="track residential-track">
+      <div class="track-title">
+        <span class="track-badge">Residential</span>
+        Houses, Condos, Apartments
+      </div>
+      <div class="track-flow">
+        <div class="track-item"><span class="icon">1</span> Account &amp; Property</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">2</span> Home Profile (beds, baths, sqft)</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">3</span> Residential Quote (plan-based pricing)</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">4</span> Customer Accepts Online</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">5</span> Contract (auto-converted)</div>
+        <div class="track-arrow">↓</div>
+        <div class="track-item"><span class="icon">6</span> Jobs, Inspections, Invoices</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- CONVERGENCE POINT -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="converge">
+    <div class="converge-title">Both tracks converge into shared operations</div>
+    <div class="converge-items">
+      <div class="converge-item"><span class="dot" style="background:var(--cyan)"></span> Job Scheduling</div>
+      <div class="converge-item"><span class="dot" style="background:var(--orange)"></span> Quality Inspections</div>
+      <div class="converge-item"><span class="dot" style="background:var(--yellow)"></span> Time Tracking</div>
+      <div class="converge-item"><span class="dot" style="background:var(--pink)"></span> Invoicing</div>
+      <div class="converge-item"><span class="dot" style="background:var(--green)"></span> Payroll</div>
+      <div class="converge-item"><span class="dot" style="background:var(--purple)"></span> Finance Reports</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ALL MODULES -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-title" style="border-color: var(--cyan);">System Modules</div>
+
+  <div class="modules-grid">
+    <div class="module-card"><div class="module-icon">📊</div><div class="module-name">Dashboard</div><div class="module-route">/</div></div>
+    <div class="module-card"><div class="module-icon">🎯</div><div class="module-name">Leads</div><div class="module-route">/leads</div></div>
+    <div class="module-card"><div class="module-icon">🏢</div><div class="module-name">Accounts</div><div class="module-route">/accounts</div></div>
+    <div class="module-card"><div class="module-icon">👤</div><div class="module-name">Contacts</div><div class="module-route">/contacts</div></div>
+    <div class="module-card"><div class="module-icon">🏗️</div><div class="module-name">Facilities</div><div class="module-route">/facilities</div></div>
+    <div class="module-card"><div class="module-icon">📝</div><div class="module-name">Proposals</div><div class="module-route">/proposals</div></div>
+    <div class="module-card"><div class="module-icon">💲</div><div class="module-name">Quotations</div><div class="module-route">/quotations</div></div>
+    <div class="module-card"><div class="module-icon">🏠</div><div class="module-name">Residential Quotes</div><div class="module-route">/residential/quotes</div></div>
+    <div class="module-card"><div class="module-icon">📋</div><div class="module-name">Contracts</div><div class="module-route">/contracts</div></div>
+    <div class="module-card"><div class="module-icon">🧾</div><div class="module-name">Invoices</div><div class="module-route">/invoices</div></div>
+    <div class="module-card"><div class="module-icon">🔧</div><div class="module-name">Jobs</div><div class="module-route">/jobs</div></div>
+    <div class="module-card"><div class="module-icon">🔍</div><div class="module-name">Inspections</div><div class="module-route">/inspections</div></div>
+    <div class="module-card"><div class="module-icon">⏱️</div><div class="module-name">Time Tracking</div><div class="module-route">/time-tracking</div></div>
+    <div class="module-card"><div class="module-icon">📅</div><div class="module-name">Appointments</div><div class="module-route">/appointments</div></div>
+    <div class="module-card"><div class="module-icon">💰</div><div class="module-name">Finance</div><div class="module-route">/finance</div></div>
+    <div class="module-card"><div class="module-icon">💳</div><div class="module-name">Expenses</div><div class="module-route">/finance/expenses</div></div>
+    <div class="module-card"><div class="module-icon">💵</div><div class="module-name">Payroll</div><div class="module-route">/finance/payroll</div></div>
+    <div class="module-card"><div class="module-icon">📈</div><div class="module-name">Reports</div><div class="module-route">/finance/reports</div></div>
+    <div class="module-card"><div class="module-icon">👥</div><div class="module-name">Teams</div><div class="module-route">/teams</div></div>
+    <div class="module-card"><div class="module-icon">✅</div><div class="module-name">Task Templates</div><div class="module-route">/tasks</div></div>
+    <div class="module-card"><div class="module-icon">🏷️</div><div class="module-name">Pricing</div><div class="module-route">/pricing</div></div>
+    <div class="module-card"><div class="module-icon">🏡</div><div class="module-name">Residential Pricing</div><div class="module-route">/residential/pricing</div></div>
+    <div class="module-card"><div class="module-icon">📦</div><div class="module-name">Service Catalog</div><div class="module-route">/quotations/catalog</div></div>
+    <div class="module-card"><div class="module-icon">🗺️</div><div class="module-name">Area Templates</div><div class="module-route">/area-templates</div></div>
+    <div class="module-card"><div class="module-icon">👤</div><div class="module-name">Users</div><div class="module-route">/users</div></div>
+    <div class="module-card"><div class="module-icon">⚙️</div><div class="module-name">Settings</div><div class="module-route">/settings/global</div></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- USER ROLES -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-title" style="border-color: var(--orange);">User Roles &amp; Access</div>
+
+  <div class="roles-grid">
+    <div class="role-card">
+      <div class="role-name"><span class="role-dot" style="background:var(--red)"></span> Owner</div>
+      <ul class="role-perms">
+        <li>Full system access</li>
+        <li>User management</li>
+        <li>System settings</li>
+        <li>Pricing configuration</li>
+        <li>All CRM &amp; Sales</li>
+        <li>All Finance &amp; Reports</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-name"><span class="role-dot" style="background:var(--orange)"></span> Admin</div>
+      <ul class="role-perms">
+        <li>User &amp; team management</li>
+        <li>Settings &amp; configuration</li>
+        <li>CRM read/write/admin</li>
+        <li>Sales read/write/admin</li>
+        <li>Operations management</li>
+        <li>Finance approve</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-name"><span class="role-dot" style="background:var(--yellow)"></span> Manager</div>
+      <ul class="role-perms">
+        <li>CRM read/write</li>
+        <li>Sales management</li>
+        <li>Scheduling &amp; appointments</li>
+        <li>Time tracking approval</li>
+        <li>Expense approval</li>
+        <li class="no">No user/settings admin</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-name"><span class="role-dot" style="background:var(--cyan)"></span> Cleaner</div>
+      <ul class="role-perms">
+        <li>Dashboard (view)</li>
+        <li>Assigned jobs &amp; tasks</li>
+        <li>Time tracking (own)</li>
+        <li>Payroll (view own)</li>
+        <li class="no">No CRM or sales access</li>
+        <li class="no">No pricing or settings</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-name"><span class="role-dot" style="background:var(--purple)"></span> Subcontractor</div>
+      <ul class="role-perms">
+        <li>Same as Cleaner, plus:</li>
+        <li>Expense tracking (own)</li>
+        <li>Tier-based pay rates</li>
+        <li class="no">No time tracking approval</li>
+        <li class="no">No CRM or sales access</li>
+        <li class="no">No pricing or settings</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- PUBLIC PAGES -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-title" style="border-color: var(--green);">Customer-Facing Public Pages</div>
+
+  <div class="public-pages">
+    <div class="public-badge">Proposal View <code>/p/:token</code></div>
+    <div class="public-badge">Contract Signature <code>/c/:token</code></div>
+    <div class="public-badge">Contract Amendment <code>/ca/:token</code></div>
+    <div class="public-badge">Quotation View <code>/q/:token</code></div>
+    <div class="public-badge">Residential Quote <code>/rq/:token</code></div>
+    <div class="public-badge">Invoice View <code>/i/:token</code></div>
+  </div>
+
+</div>
+</body>
+</html>
