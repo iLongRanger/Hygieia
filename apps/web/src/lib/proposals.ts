@@ -171,6 +171,50 @@ export async function remindProposal(id: string, data?: SendProposalInput): Prom
   await api.post(`/proposals/${id}/remind`, data || {});
 }
 
+// ==================== Pricing ====================
+
+export async function lockProposalPricing(id: string): Promise<Proposal> {
+  const response = await api.post(`/proposals/${id}/pricing/lock`);
+  return response.data.data;
+}
+
+export async function unlockProposalPricing(id: string): Promise<Proposal> {
+  const response = await api.post(`/proposals/${id}/pricing/unlock`);
+  return response.data.data;
+}
+
+export async function changeProposalPricingPlan(
+  id: string,
+  pricingPlanId: string
+): Promise<Proposal> {
+  const response = await api.post(`/proposals/${id}/pricing/plan`, { pricingPlanId });
+  return response.data.data;
+}
+
+export async function recalculateProposalPricing(
+  id: string,
+  data: {
+    serviceFrequency: string;
+    lockAfterRecalculation?: boolean;
+    workerCount?: number;
+  }
+): Promise<Proposal> {
+  const response = await api.post(`/proposals/${id}/pricing/recalculate`, data);
+  return response.data.data;
+}
+
+export async function getProposalPricingPreview(
+  id: string,
+  params: {
+    serviceFrequency: string;
+    pricingPlanId?: string;
+    workerCount?: number;
+  }
+): Promise<any> {
+  const response = await api.get(`/proposals/${id}/pricing/preview`, { params });
+  return response.data.data;
+}
+
 // Proposals available for contract creation (accepted proposals without existing contracts)
 export interface ProposalForContract {
   id: string;
