@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { ValidationError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess } from '../middleware/ownership';
 import { ZodError } from 'zod';
 import {
   jobListQuerySchema,
@@ -81,6 +82,17 @@ function assertCanCreateJob(req: Request): void {
   }
 }
 
+async function assertManagerJobScope(req: Request, accountId: string | null | undefined): Promise<void> {
+  if (req.user?.role !== 'manager' || !accountId) {
+    return;
+  }
+
+  await ensureManagerAccountAccess(req.user, accountId, {
+    path: req.path,
+    method: req.method,
+  });
+}
+
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
   return new ValidationError(firstError.message, {
@@ -109,6 +121,7 @@ router.get(
 
       const result = await listJobs(scopedParams, {
         userRole: req.user?.role,
+        userId: req.user?.id,
         userTeamId: req.user?.teamId ?? undefined,
       });
       res.json(result);
@@ -152,6 +165,7 @@ router.get(
         res.status(404).json({ error: 'Job not found' });
         return;
       }
+      await assertManagerJobScope(req, job.account?.id);
       assertCanViewJob(req, job);
       res.json({ data: job });
     } catch (error) {
@@ -170,6 +184,8 @@ router.post(
       assertCanCreateJob(req);
       const parsed = createJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+
+      await assertManagerJobScope(req, parsed.data.accountId);
 
       const job = await createJob({
         ...parsed.data,
@@ -190,6 +206,13 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = updateJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -213,6 +236,7 @@ router.post(
         res.status(404).json({ error: 'Job not found' });
         return;
       }
+      await assertManagerJobScope(req, existing.account?.id);
       assertCanViewJob(req, existing);
 
       const parsed = startJobSchema.safeParse(req.body || {});
@@ -243,6 +267,7 @@ router.post(
         res.status(404).json({ error: 'Job not found' });
         return;
       }
+      await assertManagerJobScope(req, existing.account?.id);
       assertCanViewJob(req, existing);
 
       const parsed = completeJobSchema.safeParse(req.body);
@@ -287,6 +312,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = cancelJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -306,6 +338,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = assignJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -330,6 +369,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = createJobTaskSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -348,6 +394,13 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.jobId);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = updateJobTaskSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -369,6 +422,12 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.jobId);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
       await deleteJobTask(req.params.taskId);
       res.json({ data: { id: req.params.taskId } });
     } catch (error) {
@@ -385,6 +444,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = createJobNoteSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -420,6 +486,14 @@ router.get(
   requirePermission(PERMISSIONS.JOBS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+      assertCanViewJob(req, existing);
+
       const activities = await listJobActivities(req.params.id);
       res.json({ data: activities });
     } catch (error) {

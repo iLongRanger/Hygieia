@@ -4,6 +4,7 @@ import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import { ValidationError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess } from '../middleware/ownership';
 import {
   listInspectionsSchema,
   createInspectionSchema,
@@ -43,6 +44,23 @@ const router: Router = Router();
 
 router.use(authenticate);
 
+async function assertInspectionAccess(req: Request, inspection: { accountId: string; inspectorUserId: string }) {
+  if (req.user?.role === 'manager') {
+    await ensureManagerAccountAccess(req.user, inspection.accountId, {
+      path: req.path,
+      method: req.method,
+    });
+  }
+
+  if (
+    req.user &&
+    (req.user.role === 'cleaner' || req.user.role === 'subcontractor') &&
+    inspection.inspectorUserId !== req.user.id
+  ) {
+    throw new ValidationError('Insufficient permissions');
+  }
+}
+
 // List inspections
 router.get(
   '/',
@@ -59,20 +77,26 @@ router.get(
         ? req.user.id
         : (inspectorUserId as string);
 
-    const result = await listInspections({
-      facilityId: facilityId as string,
-      accountId: accountId as string,
-      contractId: contractId as string,
-      jobId: jobId as string,
-      inspectorUserId: scopedInspectorUserId,
-      status: status as string,
-      dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-      dateTo: dateTo ? new Date(dateTo as string) : undefined,
-      minScore: minScore ? Number(minScore) : undefined,
-      maxScore: maxScore ? Number(maxScore) : undefined,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    const result = await listInspections(
+      {
+        facilityId: facilityId as string,
+        accountId: accountId as string,
+        contractId: contractId as string,
+        jobId: jobId as string,
+        inspectorUserId: scopedInspectorUserId,
+        status: status as string,
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        minScore: minScore ? Number(minScore) : undefined,
+        maxScore: maxScore ? Number(maxScore) : undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      }
+    );
 
     res.json(result);
   }
@@ -84,13 +108,7 @@ router.get(
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
     const inspection = await getInspectionById(req.params.id);
-    if (
-      req.user &&
-      (req.user.role === 'cleaner' || req.user.role === 'subcontractor') &&
-      inspection.inspectorUserId !== req.user.id
-    ) {
-      throw new ValidationError('Insufficient permissions');
-    }
+    await assertInspectionAccess(req, inspection);
     res.json({ data: inspection });
   }
 );
@@ -101,6 +119,13 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionSchema),
   async (req: Request, res: Response) => {
+    if (req.user?.role === 'manager') {
+      await ensureManagerAccountAccess(req.user, req.body.accountId, {
+        path: req.path,
+        method: req.method,
+      });
+    }
+
     const inspection = await createInspection({
       ...req.body,
       scheduledDate: new Date(req.body.scheduledDate + 'T12:00:00'),
@@ -116,6 +141,9 @@ router.patch(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(updateInspectionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const input = { ...req.body };
     if (input.scheduledDate) input.scheduledDate = new Date(input.scheduledDate + 'T12:00:00');
     const inspection = await updateInspection(req.params.id, input);
@@ -129,6 +157,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await getInspectionById(req.params.id);
+      await assertInspectionAccess(req, existing);
+
       const inspection = await startInspection(req.params.id, req.user!.id);
       res.json({ data: inspection });
     } catch (error) {
@@ -143,6 +174,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(completeInspectionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const inspection = await completeInspection(req.params.id, {
       ...req.body,
       defaultActionDueDate: req.body.defaultActionDueDate
@@ -160,6 +194,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(cancelInspectionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const inspection = await cancelInspection(
       req.params.id,
       req.user!.id,
@@ -175,6 +212,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(addInspectionItemSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const item = await addInspectionItem(req.params.id, req.body);
     res.status(201).json({ data: item });
   }
@@ -186,6 +226,9 @@ router.patch(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(updateInspectionItemSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const item = await updateInspectionItem(req.params.itemId, req.body);
     res.json({ data: item });
   }
@@ -196,6 +239,9 @@ router.delete(
   '/:id/items/:itemId',
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     await deleteInspectionItem(req.params.itemId);
     res.status(204).send();
   }
@@ -206,6 +252,9 @@ router.get(
   '/:id/actions',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const actions = await listInspectionCorrectiveActions(req.params.id);
     res.json({ data: actions });
   }
@@ -217,6 +266,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const action = await createInspectionCorrectiveAction(
       req.params.id,
       {
@@ -235,6 +287,9 @@ router.patch(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(updateInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const action = await updateInspectionCorrectiveAction(
       req.params.id,
       req.params.actionId,
@@ -254,6 +309,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(verifyInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const action = await verifyInspectionCorrectiveAction(
       req.params.id,
       req.params.actionId,
@@ -269,6 +327,9 @@ router.get(
   '/:id/signoffs',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const signoffs = await listInspectionSignoffs(req.params.id);
     res.json({ data: signoffs });
   }
@@ -280,6 +341,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionSignoffSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const signoff = await createInspectionSignoff(req.params.id, req.body, req.user!.id);
     res.status(201).json({ data: signoff });
   }
@@ -291,6 +355,9 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createReinspectionSchema),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const inspection = await createReinspection(
       req.params.id,
       {
@@ -308,6 +375,9 @@ router.get(
   '/:id/activities',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
+    const existing = await getInspectionById(req.params.id);
+    await assertInspectionAccess(req, existing);
+
     const activities = await listInspectionActivities(req.params.id);
     res.json({ data: activities });
   }

@@ -390,7 +390,10 @@ function isActionOpen(status: string): boolean {
 
 // ==================== Service ====================
 
-export async function listInspections(params: InspectionListParams) {
+export async function listInspections(
+  params: InspectionListParams,
+  options?: { userRole?: string; userId?: string }
+) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
@@ -401,6 +404,10 @@ export async function listInspections(params: InspectionListParams) {
   if (params.jobId) where.jobId = params.jobId;
   if (params.inspectorUserId) where.inspectorUserId = params.inspectorUserId;
   if (params.status) where.status = params.status;
+
+  if (options?.userRole === 'manager' && options.userId) {
+    where.account = { accountManagerId: options.userId };
+  }
 
   if (params.dateFrom || params.dateTo) {
     where.scheduledDate = {};
