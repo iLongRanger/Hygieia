@@ -293,7 +293,7 @@ router.post(
   }
 );
 
-// Reject quotation (internal)
+// Approve or reject quotation pricing (internal review)
 router.post(
   '/:id/pricing-approval',
   authenticate,
