@@ -20,6 +20,7 @@ describe('accessControl', () => {
     expect(isUserRole('admin')).toBe(true);
     expect(isUserRole('manager')).toBe(true);
     expect(isUserRole('cleaner')).toBe(true);
+    expect(isUserRole('subcontractor')).toBe(true);
     expect(isUserRole('superadmin')).toBe(false);
     expect(isUserRole('')).toBe(false);
   });
@@ -35,6 +36,7 @@ describe('accessControl', () => {
     expect(canAccessRoute('/users', 'owner')).toBe(true);
     expect(canAccessRoute('/users', 'manager')).toBe(false);
     expect(canAccessRoute('/users', 'cleaner')).toBe(false);
+    expect(canAccessRoute('/users', 'subcontractor')).toBe(false);
     expect(canAccessRoute('/users', null)).toBe(false);
     expect(canAccessRoute('/users', 'invalid')).toBe(false);
   });

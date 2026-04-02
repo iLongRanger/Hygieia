@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner';
+export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner' | 'subcontractor';
 
 const RESTRICTED_ROUTE_ROLES: Record<string, UserRole[]> = {
   '/area-templates': ['owner', 'admin', 'manager'],
@@ -13,7 +13,7 @@ export function getRequiredRoles(routePath: string): UserRole[] | undefined {
 }
 
 export function isUserRole(role: string): role is UserRole {
-  return ['owner', 'admin', 'manager', 'cleaner'].includes(role);
+  return ['owner', 'admin', 'manager', 'cleaner', 'subcontractor'].includes(role);
 }
 
 export function canAccessRoute(routePath: string, role?: string | null): boolean {
