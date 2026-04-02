@@ -615,10 +615,12 @@ const JobsList = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
-              {isSubcontractor ? 'Team Jobs' : 'Jobs'}
+              {isSubcontractor ? 'Assigned Jobs' : 'Jobs'}
             </h1>
             <p className="text-sm text-surface-500 dark:text-surface-400">
-              {pagination ? `${pagination.total} total ${isSubcontractor ? 'team ' : ''}jobs` : 'Loading...'}
+              {pagination
+                ? `${pagination.total} total ${isSubcontractor ? 'assigned ' : ''}jobs`
+                : 'Loading...'}
             </p>
           </div>
         </div>

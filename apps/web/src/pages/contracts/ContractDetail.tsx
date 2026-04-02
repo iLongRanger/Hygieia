@@ -2297,7 +2297,7 @@ const ContractDetail = () => {
           <p className="text-surface-500 dark:text-surface-400">{contract.title}</p>
           {isSubcontractor && (
             <p className="text-sm text-surface-500 dark:text-surface-400">
-              Team-scoped contract view for your subcontractor assignment.
+              Contract view for work assigned to your subcontractor team or directly to you.
             </p>
           )}
         </div>

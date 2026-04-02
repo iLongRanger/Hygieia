@@ -89,6 +89,18 @@ type FieldWorkerCounts = {
   completedJobs: number;
 };
 
+const getJobAssignmentLabel = (job: Job) => {
+  if (job.assignedTeam) return 'Team assignment';
+  if (job.assignedToUser) return 'Direct assignment';
+  return 'Unassigned';
+};
+
+const getContractAssignmentLabel = (contract: Contract) => {
+  if (contract.assignedTeam) return 'Team assignment';
+  if (contract.assignedToUser) return 'Direct assignment';
+  return 'Unassigned';
+};
+
 const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -172,7 +184,9 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
           Welcome back, {user?.fullName?.split(' ')[0]}
         </h1>
         <p className="mt-1 text-surface-500 dark:text-surface-400">
-          {isSubcontractor ? "Here's your team work overview." : "Here's your assigned work overview."}
+          {isSubcontractor
+            ? "Here's your assigned subcontractor work overview."
+            : "Here's your assigned work overview."}
         </p>
       </div>
 
@@ -260,7 +274,7 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                   </div>
                   {isSubcontractor && (
                     <div className="mt-1 text-xs uppercase tracking-wide text-surface-400">
-                      Team assignment
+                      {getJobAssignmentLabel(job)}
                     </div>
                   )}
                 </div>
@@ -276,7 +290,7 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-            {isSubcontractor ? 'Assigned Team Contracts' : 'Active Contracts'}
+            {isSubcontractor ? 'Assigned Contracts' : 'Active Contracts'}
           </h2>
           <Button variant="ghost" size="sm" onClick={() => navigate('/contracts', dashboardBackState)}>
             View all
@@ -284,7 +298,7 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
         </div>
         {visibleContracts.length === 0 ? (
           <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
-            {isSubcontractor ? 'No team contracts assigned.' : 'No active contracts assigned.'}
+            {isSubcontractor ? 'No subcontractor contracts assigned.' : 'No active contracts assigned.'}
           </p>
         ) : (
           <div className="space-y-2">
@@ -303,7 +317,7 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                   </div>
                   {isSubcontractor && (
                     <div className="mt-1 text-xs uppercase tracking-wide text-surface-400">
-                      Team contract
+                      {getContractAssignmentLabel(contract)}
                     </div>
                   )}
                 </div>
