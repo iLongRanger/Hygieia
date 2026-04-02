@@ -81,11 +81,26 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
 
 const dashboardBackState = { state: { backLabel: 'Dashboard', backPath: '/' } };
 
+type FieldWorkerCounts = {
+  totalContracts: number;
+  activeContracts: number;
+  scheduledJobs: number;
+  inProgressJobs: number;
+  completedJobs: number;
+};
+
 const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [counts, setCounts] = useState<FieldWorkerCounts>({
+    totalContracts: 0,
+    activeContracts: 0,
+    scheduledJobs: 0,
+    inProgressJobs: 0,
+    completedJobs: 0,
+  });
   const [loading, setLoading] = useState(true);
   const isSubcontractor = mode === 'subcontractor';
 
@@ -93,12 +108,30 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [contractRes, jobRes] = await Promise.all([
+        const [
+          contractRes,
+          activeContractRes,
+          scheduledJobRes,
+          inProgressJobRes,
+          completedJobRes,
+          jobRes,
+        ] = await Promise.all([
           listContracts({ limit: 50 }),
+          listContracts({ limit: 1, status: 'active' }),
+          listJobs({ limit: 1, status: 'scheduled' }),
+          listJobs({ limit: 1, status: 'in_progress' }),
+          listJobs({ limit: 1, status: 'completed' }),
           listJobs({ limit: 20 }),
         ]);
         setContracts(contractRes.data || []);
         setJobs(jobRes.data || []);
+        setCounts({
+          totalContracts: contractRes.pagination?.total || 0,
+          activeContracts: activeContractRes.pagination?.total || 0,
+          scheduledJobs: scheduledJobRes.pagination?.total || 0,
+          inProgressJobs: inProgressJobRes.pagination?.total || 0,
+          completedJobs: completedJobRes.pagination?.total || 0,
+        });
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -113,9 +146,8 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
   const upcomingJobs = jobs.filter(
     (j) => j.status === 'scheduled' || j.status === 'in_progress'
   );
-  const completedJobs = jobs.filter((j) => j.status === 'completed');
-  const activeJobs = jobs.filter((j) => j.status === 'in_progress');
   const visibleContracts = assignedContracts;
+  const upcomingJobsCount = counts.scheduledJobs + counts.inProgressJobs;
 
   if (loading) {
     return (
@@ -147,12 +179,12 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
         <StatCard
-          label={isSubcontractor ? 'Assigned Team Contracts' : 'Active Contracts'}
-          value={isSubcontractor ? assignedContracts.length : activeContracts.length}
+          label={isSubcontractor ? 'Assigned Contracts' : 'Active Contracts'}
+          value={isSubcontractor ? counts.totalContracts : counts.activeContracts}
           subtitle={
             isSubcontractor
-              ? `${activeContracts.length} active team contracts`
-              : `${contracts.length} total direct assignments`
+              ? `${counts.activeContracts} currently active`
+              : `${counts.totalContracts} total assigned contracts`
           }
           icon={FileText}
           color="text-primary-600 dark:text-primary-400"
@@ -160,8 +192,8 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
           onClick={() => navigate('/contracts', dashboardBackState)}
         />
         <StatCard
-          label={isSubcontractor ? 'Upcoming Team Jobs' : 'Upcoming Jobs'}
-          value={upcomingJobs.length}
+          label={isSubcontractor ? 'Assigned Jobs' : 'Upcoming Jobs'}
+          value={upcomingJobsCount}
           subtitle="scheduled & in progress"
           icon={Briefcase}
           color="text-indigo-600 dark:text-indigo-400"
@@ -171,8 +203,8 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
         {isSubcontractor ? (
           <StatCard
             label="Completed Jobs"
-            value={completedJobs.length}
-            subtitle={`${activeJobs.length} currently in progress`}
+            value={counts.completedJobs}
+            subtitle={`${counts.inProgressJobs} currently in progress`}
             icon={CheckCircle}
             color="text-teal-600 dark:text-teal-400"
             bg="bg-teal-100 dark:bg-teal-900/30"
@@ -181,8 +213,8 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
         ) : (
           <StatCard
             label="Completed Jobs"
-            value={completedJobs.length}
-            subtitle={`${activeJobs.length} currently in progress`}
+            value={counts.completedJobs}
+            subtitle={`${counts.inProgressJobs} currently in progress`}
             icon={CheckCircle}
             color="text-teal-600 dark:text-teal-400"
             bg="bg-teal-100 dark:bg-teal-900/30"
