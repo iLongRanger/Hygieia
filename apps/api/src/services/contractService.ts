@@ -110,8 +110,23 @@ function applyContractAccessScope(
   where: Prisma.ContractWhereInput,
   options?: ContractAccessOptions
 ) {
-  if (options?.userRole === 'subcontractor' && options.userTeamId) {
-    where.assignedTeamId = options.userTeamId;
+  if (options?.userRole === 'subcontractor') {
+    const subcontractorScope: Prisma.ContractWhereInput[] = [];
+
+    if (options.userTeamId) {
+      subcontractorScope.push({ assignedTeamId: options.userTeamId });
+    }
+
+    if (options.userId) {
+      subcontractorScope.push({ assignedToUserId: options.userId });
+    }
+
+    if (subcontractorScope.length > 0) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { OR: subcontractorScope },
+      ];
+    }
   }
 
   if (options?.userRole === 'cleaner' && options.userId) {
