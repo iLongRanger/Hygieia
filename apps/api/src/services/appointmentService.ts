@@ -694,8 +694,29 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
 }
 
 export async function deleteAppointment(id: string) {
-  return prisma.appointment.delete({
+  const existing = await prisma.appointment.findUnique({
     where: { id },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!existing) {
+    throw new NotFoundError('Appointment not found');
+  }
+
+  if (existing.status === 'completed') {
+    throw new BadRequestError('Completed appointments cannot be deleted');
+  }
+
+  if (existing.status === 'rescheduled') {
+    throw new BadRequestError('Rescheduled appointments cannot be deleted');
+  }
+
+  return prisma.appointment.update({
+    where: { id },
+    data: { status: 'canceled' },
     select: { id: true },
   });
 }
