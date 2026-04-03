@@ -176,6 +176,37 @@ const appointmentSelect = {
   },
 } satisfies Prisma.AppointmentSelect;
 
+async function assertNoAppointmentConflict(input: {
+  assignedToUserId: string;
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  excludeAppointmentId?: string;
+}) {
+  const overlappingAppointment = await prisma.appointment.findFirst({
+    where: {
+      assignedToUserId: input.assignedToUserId,
+      status: 'scheduled',
+      ...(input.excludeAppointmentId
+        ? { id: { not: input.excludeAppointmentId } }
+        : {}),
+      scheduledStart: { lt: input.scheduledEnd },
+      scheduledEnd: { gt: input.scheduledStart },
+    },
+    select: {
+      id: true,
+      scheduledStart: true,
+      scheduledEnd: true,
+      type: true,
+    },
+  });
+
+  if (overlappingAppointment) {
+    throw new BadRequestError(
+      'The assigned rep already has another appointment during this time window'
+    );
+  }
+}
+
 export async function listAppointments(
   params: AppointmentListParams,
   access: AppointmentAccessOptions = {}
@@ -241,6 +272,11 @@ export async function getAppointmentById(id: string) {
 
 export async function createAppointment(input: AppointmentCreateInput) {
   await assertAssignableAppointmentRep(input.assignedToUserId);
+  await assertNoAppointmentConflict({
+    assignedToUserId: input.assignedToUserId,
+    scheduledStart: input.scheduledStart,
+    scheduledEnd: input.scheduledEnd,
+  });
   let walkthroughLeadAccountId: string | null = null;
 
   if (input.type === 'walk_through') {
@@ -516,6 +552,9 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
       accountId: true,
       type: true,
       assignedToUserId: true,
+      scheduledStart: true,
+      scheduledEnd: true,
+      status: true,
     },
   });
 
@@ -572,6 +611,25 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
 
   if (input.assignedToUserId) {
     await assertAssignableAppointmentRep(input.assignedToUserId);
+  }
+
+  const resolvedAssignedToUserId = input.assignedToUserId ?? existing.assignedToUserId;
+  const resolvedStatus = input.status ?? existing.status;
+  const resolvedScheduledStart = input.scheduledStart ?? existing.scheduledStart;
+  const resolvedScheduledEnd = input.scheduledEnd ?? existing.scheduledEnd;
+
+  if (
+    resolvedStatus === 'scheduled' &&
+    resolvedAssignedToUserId &&
+    resolvedScheduledStart &&
+    resolvedScheduledEnd
+  ) {
+    await assertNoAppointmentConflict({
+      assignedToUserId: resolvedAssignedToUserId,
+      scheduledStart: resolvedScheduledStart,
+      scheduledEnd: resolvedScheduledEnd,
+      excludeAppointmentId: id,
+    });
   }
 
   const appointment = await prisma.appointment.update({
@@ -655,6 +713,13 @@ export async function rescheduleAppointment(
   if (existing.status === 'completed') {
     throw new BadRequestError('Cannot reschedule a completed appointment');
   }
+
+  await assertNoAppointmentConflict({
+    assignedToUserId: existing.assignedToUserId,
+    scheduledStart: input.scheduledStart,
+    scheduledEnd: input.scheduledEnd,
+    excludeAppointmentId: id,
+  });
 
   const appointment = await prisma.$transaction(async (tx) => {
     await tx.appointment.update({
