@@ -520,8 +520,21 @@ export async function createAppointment(input: AppointmentCreateInput) {
         data: { inspectionId: inspection.id },
       });
     } catch (e) {
-      // Don't fail appointment creation if inspection auto-create fails
-      console.error('Failed to auto-create inspection for appointment:', e);
+      logger.error('Failed to auto-create inspection for appointment', {
+        appointmentId: appointment.id,
+        facilityId: input.facilityId,
+        accountId: input.accountId,
+        assignedToUserId: input.assignedToUserId,
+        error: e,
+      });
+
+      await prisma.appointment.delete({
+        where: { id: appointment.id },
+      });
+
+      throw new BadRequestError(
+        'Failed to create the linked inspection record for this appointment'
+      );
     }
   }
 
