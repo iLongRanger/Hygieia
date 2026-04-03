@@ -62,6 +62,12 @@ export interface EditTimeEntryInput {
   editReason: string;
 }
 
+interface TimeTrackingAccessOptions {
+  userRole?: string;
+  userId?: string;
+  userTeamId?: string;
+}
+
 // ==================== Select objects ====================
 
 const timeEntryListSelect = {
@@ -121,14 +127,58 @@ function toIsoDate(date: Date): string {
 
 // ==================== Service ====================
 
+function getManagerTimeEntryScope(userId: string): Prisma.TimeEntryWhereInput {
+  return {
+    OR: [
+      { facility: { account: { accountManagerId: userId } } },
+      { contract: { account: { accountManagerId: userId } } },
+      { job: { account: { accountManagerId: userId } } },
+    ],
+  };
+}
+
+async function assertManagerCanWriteManualEntry(
+  input: ManualEntryInput,
+  options?: TimeTrackingAccessOptions
+) {
+  if (options?.userRole !== 'manager' || !options.userId) {
+    return;
+  }
+
+  const scopeChecks = await Promise.all([
+    input.jobId
+      ? prisma.job.findFirst({
+          where: { id: input.jobId, account: { accountManagerId: options.userId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    input.contractId
+      ? prisma.contract.findFirst({
+          where: { id: input.contractId, account: { accountManagerId: options.userId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    input.facilityId
+      ? prisma.facility.findFirst({
+          where: { id: input.facilityId, account: { accountManagerId: options.userId } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  if (!scopeChecks.some(Boolean)) {
+    throw new NotFoundError('Time entry target not found');
+  }
+}
+
 export async function listTimeEntries(
   params: TimeEntryListParams,
-  options?: { userRole?: string; userId?: string; userTeamId?: string }
+  options?: TimeTrackingAccessOptions
 ) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.TimeEntryWhereInput = {};
   if (params.userId) where.userId = params.userId;
   if (params.jobId) where.jobId = params.jobId;
   if (params.contractId) where.contractId = params.contractId;
@@ -146,6 +196,8 @@ export async function listTimeEntries(
     where.userId = options.userId;
   } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
     where.user = { teamId: options.userTeamId };
+  } else if (options?.userRole === 'manager' && options.userId) {
+    where.AND = [getManagerTimeEntryScope(options.userId)];
   }
 
   const [data, total] = await Promise.all([
@@ -172,7 +224,7 @@ export async function listTimeEntries(
 
 export async function getTimeEntryById(
   id: string,
-  options?: { userRole?: string; userId?: string; userTeamId?: string }
+  options?: TimeTrackingAccessOptions
 ) {
   const entry = await prisma.timeEntry.findUnique({
     where: { id },
@@ -185,6 +237,14 @@ export async function getTimeEntryById(
     if (entry.userId !== options.userId) throw new NotFoundError('Time entry not found');
   } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
     if (entry.user.teamId !== options.userTeamId) throw new NotFoundError('Time entry not found');
+  } else if (options?.userRole === 'manager' && options.userId) {
+    const hasAccess = await prisma.timeEntry.count({
+      where: {
+        id,
+        ...getManagerTimeEntryScope(options.userId),
+      },
+    });
+    if (!hasAccess) throw new NotFoundError('Time entry not found');
   }
 
   return entry;
@@ -487,7 +547,9 @@ export async function endBreak(userId: string) {
   return entry;
 }
 
-export async function createManualEntry(input: ManualEntryInput) {
+export async function createManualEntry(input: ManualEntryInput, options?: TimeTrackingAccessOptions) {
+  await assertManagerCanWriteManualEntry(input, options);
+
   const totalHours = computeHours(input.clockIn, input.clockOut, input.breakMinutes || 0);
 
   const entry = await prisma.timeEntry.create({
@@ -512,9 +574,8 @@ export async function createManualEntry(input: ManualEntryInput) {
   return entry;
 }
 
-export async function editTimeEntry(id: string, input: EditTimeEntryInput) {
-  const existing = await prisma.timeEntry.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Time entry not found');
+export async function editTimeEntry(id: string, input: EditTimeEntryInput, options?: TimeTrackingAccessOptions) {
+  const existing = await getTimeEntryById(id, options);
 
   const clockIn = input.clockIn || existing.clockIn;
   const clockOut = input.clockOut !== undefined ? input.clockOut : existing.clockOut;
@@ -545,9 +606,8 @@ export async function editTimeEntry(id: string, input: EditTimeEntryInput) {
   return entry;
 }
 
-export async function approveTimeEntry(id: string, approvedByUserId: string) {
-  const existing = await prisma.timeEntry.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Time entry not found');
+export async function approveTimeEntry(id: string, approvedByUserId: string, options?: TimeTrackingAccessOptions) {
+  const existing = await getTimeEntryById(id, options);
   if (existing.status === 'active') throw new BadRequestError('Cannot approve an active entry');
 
   const entry = await prisma.timeEntry.update({
@@ -563,9 +623,8 @@ export async function approveTimeEntry(id: string, approvedByUserId: string) {
   return entry;
 }
 
-export async function deleteTimeEntry(id: string) {
-  const existing = await prisma.timeEntry.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Time entry not found');
+export async function deleteTimeEntry(id: string, options?: TimeTrackingAccessOptions) {
+  const existing = await getTimeEntryById(id, options);
   if (existing.status === 'approved') throw new BadRequestError('Cannot delete an approved entry');
 
   await prisma.timeEntry.delete({ where: { id } });

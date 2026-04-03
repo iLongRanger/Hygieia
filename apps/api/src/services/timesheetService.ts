@@ -23,6 +23,12 @@ export interface GenerateTimesheetsBulkInput {
   periodEnd: Date;
 }
 
+interface TimesheetAccessOptions {
+  userRole?: string;
+  userId?: string;
+  userTeamId?: string;
+}
+
 // ==================== Select objects ====================
 
 const timesheetListSelect = {
@@ -65,14 +71,28 @@ const timesheetDetailSelect = {
 
 // ==================== Service ====================
 
+function getManagerTimesheetScope(userId: string): Prisma.TimesheetWhereInput {
+  return {
+    entries: {
+      some: {
+        OR: [
+          { facility: { account: { accountManagerId: userId } } },
+          { contract: { account: { accountManagerId: userId } } },
+          { job: { account: { accountManagerId: userId } } },
+        ],
+      },
+    },
+  };
+}
+
 export async function listTimesheets(
   params: TimesheetListParams,
-  options?: { userRole?: string; userId?: string; userTeamId?: string }
+  options?: TimesheetAccessOptions
 ) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.TimesheetWhereInput = {};
   if (params.userId) where.userId = params.userId;
   if (params.status) where.status = params.status;
 
@@ -81,6 +101,8 @@ export async function listTimesheets(
     where.userId = options.userId;
   } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
     where.user = { teamId: options.userTeamId };
+  } else if (options?.userRole === 'manager' && options.userId) {
+    where.AND = [getManagerTimesheetScope(options.userId)];
   }
 
   const [data, total] = await Promise.all([
@@ -107,7 +129,7 @@ export async function listTimesheets(
 
 export async function getTimesheetById(
   id: string,
-  options?: { userRole?: string; userId?: string; userTeamId?: string }
+  options?: TimesheetAccessOptions
 ) {
   const timesheet = await prisma.timesheet.findUnique({
     where: { id },
@@ -120,6 +142,14 @@ export async function getTimesheetById(
     if (timesheet.userId !== options.userId) throw new NotFoundError('Timesheet not found');
   } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
     if (timesheet.user.teamId !== options.userTeamId) throw new NotFoundError('Timesheet not found');
+  } else if (options?.userRole === 'manager' && options.userId) {
+    const hasAccess = await prisma.timesheet.count({
+      where: {
+        id,
+        ...getManagerTimesheetScope(options.userId),
+      },
+    });
+    if (!hasAccess) throw new NotFoundError('Timesheet not found');
   }
 
   return timesheet;

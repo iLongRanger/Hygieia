@@ -156,6 +156,10 @@ router.post(
       clockIn: new Date(req.body.clockIn),
       clockOut: new Date(req.body.clockOut),
       createdByUserId: req.user!.id,
+    }, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
     });
     res.status(201).json({ data: entry });
   }
@@ -170,7 +174,11 @@ router.patch(
     const input = { ...req.body, editedByUserId: req.user!.id };
     if (input.clockIn) input.clockIn = new Date(input.clockIn);
     if (input.clockOut) input.clockOut = new Date(input.clockOut);
-    const entry = await editTimeEntry(req.params.id, input);
+    const entry = await editTimeEntry(req.params.id, input, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     res.json({ data: entry });
   }
 );
@@ -180,7 +188,11 @@ router.post(
   '/entries/:id/approve',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
-    const entry = await approveTimeEntry(req.params.id, req.user!.id);
+    const entry = await approveTimeEntry(req.params.id, req.user!.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     res.json({ data: entry });
   }
 );
@@ -190,7 +202,11 @@ router.delete(
   '/entries/:id',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
-    await deleteTimeEntry(req.params.id);
+    await deleteTimeEntry(req.params.id, {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    });
     res.status(204).send();
   }
 );
