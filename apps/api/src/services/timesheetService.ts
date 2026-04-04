@@ -300,14 +300,26 @@ export async function approveTimesheet(id: string, approvedByUserId: string) {
   if (!existing) throw new NotFoundError('Timesheet not found');
   if (existing.status !== 'submitted') throw new BadRequestError('Timesheet can only be approved from submitted status');
 
-  const timesheet = await prisma.timesheet.update({
-    where: { id },
-    data: {
-      status: 'approved',
-      approvedByUserId,
-      approvedAt: new Date(),
-    },
-    select: timesheetDetailSelect,
+  const approvedAt = new Date();
+  const timesheet = await prisma.$transaction(async (tx) => {
+    await tx.timeEntry.updateMany({
+      where: { timesheetId: id },
+      data: {
+        status: 'approved',
+        approvedByUserId,
+        approvedAt,
+      },
+    });
+
+    return tx.timesheet.update({
+      where: { id },
+      data: {
+        status: 'approved',
+        approvedByUserId,
+        approvedAt,
+      },
+      select: timesheetDetailSelect,
+    });
   });
 
   return timesheet;
