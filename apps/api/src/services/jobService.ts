@@ -1572,14 +1572,6 @@ export async function regenerateRecurringJobsForContract(input: {
       ? input.assignedToUserId
       : (contract.assignedToUserId ?? null);
 
-  if (!resolvedAssignedTeamId && !resolvedAssignedToUserId) {
-    return {
-      canceled: 0,
-      created: 0,
-      message: 'Contract has no assignee; recurring jobs were not regenerated',
-    };
-  }
-
   const cancelResult = await prisma.job.updateMany({
     where: {
       contractId: input.contractId,
@@ -1594,6 +1586,14 @@ export async function regenerateRecurringJobsForContract(input: {
       completionNotes: input.reason || 'Recurring schedule changed; regenerated',
     },
   });
+
+  if (!resolvedAssignedTeamId && !resolvedAssignedToUserId) {
+    return {
+      canceled: cancelResult.count,
+      created: 0,
+      message: 'Contract has no assignee; stale recurring jobs were canceled but not regenerated',
+    };
+  }
 
   const generationResult = await generateJobsFromContract({
     contractId: input.contractId,
