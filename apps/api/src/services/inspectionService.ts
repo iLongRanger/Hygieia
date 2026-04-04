@@ -472,6 +472,82 @@ export async function getInspectionById(id: string) {
   return inspection;
 }
 
+function buildInspectionAppointmentWindow(scheduledDate: Date) {
+  const scheduledStart = new Date(scheduledDate);
+  scheduledStart.setHours(9, 0, 0, 0);
+  const scheduledEnd = new Date(scheduledStart);
+  scheduledEnd.setHours(10, 0, 0, 0);
+
+  return { scheduledStart, scheduledEnd };
+}
+
+async function createLinkedInspectionAppointment(input: {
+  inspectionId: string;
+  inspectionNumber: string;
+  accountId: string;
+  facilityId: string;
+  inspectorUserId: string;
+  scheduledDate: Date;
+  notes?: string | null;
+  createdByUserId: string;
+}) {
+  const { createAppointment } = await import('./appointmentService');
+  const { scheduledStart, scheduledEnd } = buildInspectionAppointmentWindow(input.scheduledDate);
+
+  await createAppointment({
+    accountId: input.accountId,
+    facilityId: input.facilityId,
+    assignedToUserId: input.inspectorUserId,
+    type: 'inspection',
+    status: 'scheduled',
+    scheduledStart,
+    scheduledEnd,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+    notes: input.notes ?? `Auto-created for inspection ${input.inspectionNumber}`,
+    createdByUserId: input.createdByUserId,
+    inspectionId: input.inspectionId,
+    skipAutoCreate: true,
+  });
+}
+
+async function syncLinkedInspectionAppointment(inspectionId: string, scheduledDate: Date, inspectorUserId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { inspectionId },
+    select: { id: true, status: true },
+  });
+
+  if (!appointment || ['completed', 'canceled', 'rescheduled'].includes(appointment.status)) {
+    return;
+  }
+
+  const { scheduledStart, scheduledEnd } = buildInspectionAppointmentWindow(scheduledDate);
+
+  await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: {
+      assignedToUserId: inspectorUserId,
+      scheduledStart,
+      scheduledEnd,
+    },
+  });
+}
+
+async function cancelLinkedInspectionAppointment(inspectionId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { inspectionId },
+    select: { id: true, status: true },
+  });
+
+  if (!appointment || ['completed', 'canceled', 'rescheduled'].includes(appointment.status)) {
+    return;
+  }
+
+  await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: { status: 'canceled' },
+  });
+}
+
 export async function createInspection(input: InspectionCreateInput) {
   const facility = await prisma.facility.findUnique({
     where: { id: input.facilityId },
@@ -554,31 +630,21 @@ export async function createInspection(input: InspectionCreateInput) {
     select: inspectionDetailSelect,
   });
 
-  // Auto-create linked appointment
   if (!input.skipAutoCreate) {
     try {
-      const { createAppointment } = await import('./appointmentService');
-      const scheduledStart = new Date(input.scheduledDate);
-      scheduledStart.setHours(9, 0, 0, 0);
-      const scheduledEnd = new Date(scheduledStart);
-      scheduledEnd.setHours(10, 0, 0, 0);
-
-      await createAppointment({
+      await createLinkedInspectionAppointment({
+        inspectionId: inspection.id,
+        inspectionNumber,
         accountId: input.accountId,
         facilityId: input.facilityId,
-        assignedToUserId: input.inspectorUserId,
-        type: 'inspection',
-        status: 'scheduled',
-        scheduledStart,
-        scheduledEnd,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-        notes: `Auto-created for inspection ${inspectionNumber}`,
+        inspectorUserId: input.inspectorUserId,
+        scheduledDate: input.scheduledDate,
         createdByUserId: input.createdByUserId,
-        inspectionId: inspection.id,
-        skipAutoCreate: true,
       });
     } catch (e) {
+      await prisma.inspection.delete({ where: { id: inspection.id } });
       console.error('Failed to auto-create appointment for inspection:', e);
+      throw new BadRequestError('Failed to create the linked appointment for this inspection');
     }
   }
 
@@ -615,6 +681,14 @@ export async function updateInspection(id: string, input: InspectionUpdateInput)
     },
     select: inspectionDetailSelect,
   });
+
+  if (input.scheduledDate !== undefined || input.inspectorUserId !== undefined) {
+    await syncLinkedInspectionAppointment(
+      id,
+      inspection.scheduledDate,
+      inspection.inspectorUserId
+    );
+  }
 
   return inspection;
 }
@@ -821,6 +895,8 @@ export async function cancelInspection(id: string, userId: string, reason?: stri
     },
     select: inspectionDetailSelect,
   });
+
+  await cancelLinkedInspectionAppointment(id);
 
   return inspection;
 }
@@ -1159,6 +1235,27 @@ export async function createReinspection(
     },
   });
 
+  try {
+    await createLinkedInspectionAppointment({
+      inspectionId: reinspection.id,
+      inspectionNumber,
+      accountId: inspection.accountId,
+      facilityId: inspection.facilityId,
+      inspectorUserId: assigneeUserId,
+      scheduledDate,
+      createdByUserId: userId,
+      notes: `Auto-created for reinspection ${inspectionNumber}`,
+    });
+  } catch (e) {
+    await prisma.inspectionCorrectiveAction.updateMany({
+      where: { followUpInspectionId: reinspection.id },
+      data: { followUpInspectionId: null },
+    });
+    await prisma.inspection.delete({ where: { id: reinspection.id } });
+    console.error('Failed to auto-create appointment for reinspection:', e);
+    throw new BadRequestError('Failed to create the linked appointment for this reinspection');
+  }
+
   await prisma.inspectionActivity.create({
     data: {
       inspectionId,
@@ -1171,32 +1268,6 @@ export async function createReinspection(
       },
     },
   });
-
-  // Auto-create linked appointment
-  try {
-    const { createAppointment } = await import('./appointmentService');
-    const scheduledStart = new Date(scheduledDate);
-    scheduledStart.setHours(9, 0, 0, 0);
-    const scheduledEnd = new Date(scheduledStart);
-    scheduledEnd.setHours(10, 0, 0, 0);
-
-    await createAppointment({
-      accountId: inspection.accountId,
-      facilityId: inspection.facilityId,
-      assignedToUserId: assigneeUserId,
-      type: 'inspection',
-      status: 'scheduled',
-      scheduledStart,
-      scheduledEnd,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-      notes: `Auto-created for reinspection ${inspectionNumber}`,
-      createdByUserId: userId,
-      inspectionId: reinspection.id,
-      skipAutoCreate: true,
-    });
-  } catch (e) {
-    console.error('Failed to auto-create appointment for reinspection:', e);
-  }
 
   if (assigneeUserId !== userId) {
     createNotification({
