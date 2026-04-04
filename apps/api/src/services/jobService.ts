@@ -301,6 +301,39 @@ function assertSingleWorkforceAssignment(input: {
   }
 }
 
+async function assertNoDirectJobConflict(input: {
+  assignedToUserId?: string | null;
+  scheduledStartTime?: Date | null;
+  scheduledEndTime?: Date | null;
+  excludeJobId?: string;
+}) {
+  if (!input.assignedToUserId || !input.scheduledStartTime || !input.scheduledEndTime) {
+    return;
+  }
+
+  const conflict = await prisma.job.findFirst({
+    where: {
+      assignedToUserId: input.assignedToUserId,
+      status: { in: ['scheduled', 'in_progress'] },
+      ...(input.excludeJobId ? { id: { not: input.excludeJobId } } : {}),
+      scheduledStartTime: { lt: input.scheduledEndTime },
+      scheduledEndTime: { gt: input.scheduledStartTime },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+    },
+  });
+
+  if (conflict) {
+    throw new BadRequestError(
+      `Assigned user already has overlapping job ${conflict.jobNumber}`
+    );
+  }
+}
+
 async function buildJobTaskSeedData(facilityId: string, jobId: string) {
   const facilityTasks = await prisma.facilityTask.findMany({
     where: {
@@ -583,6 +616,12 @@ export async function createJob(input: JobCreateInput) {
     throw new BadRequestError('Contract must be active to create jobs');
   }
 
+  await assertNoDirectJobConflict({
+    assignedToUserId: input.assignedToUserId ?? null,
+    scheduledStartTime: input.scheduledStartTime ?? null,
+    scheduledEndTime: input.scheduledEndTime ?? null,
+  });
+
   const jobNumber = await generateJobNumber();
 
   return prisma.$transaction(async (tx) => {
@@ -637,6 +676,25 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
   if (['completed', 'canceled', 'missed'].includes(existing.status)) {
     throw new BadRequestError('Cannot update a completed, canceled, or missed job');
   }
+
+  const timing = await prisma.job.findUnique({
+    where: { id },
+    select: {
+      assignedToUserId: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+    },
+  });
+
+  await assertNoDirectJobConflict({
+    assignedToUserId:
+      input.assignedToUserId !== undefined ? input.assignedToUserId : timing?.assignedToUserId,
+    scheduledStartTime:
+      input.scheduledStartTime !== undefined ? input.scheduledStartTime : timing?.scheduledStartTime,
+    scheduledEndTime:
+      input.scheduledEndTime !== undefined ? input.scheduledEndTime : timing?.scheduledEndTime,
+    excludeJobId: id,
+  });
 
   const job = await prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
@@ -1077,6 +1135,21 @@ export async function assignJob(
   if (['completed', 'canceled', 'missed'].includes(existing.status)) {
     throw new BadRequestError('Cannot reassign a completed, canceled, or missed job');
   }
+
+  const jobTiming = await prisma.job.findUnique({
+    where: { id },
+    select: {
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+    },
+  });
+
+  await assertNoDirectJobConflict({
+    assignedToUserId: userId,
+    scheduledStartTime: jobTiming?.scheduledStartTime,
+    scheduledEndTime: jobTiming?.scheduledEndTime,
+    excludeJobId: id,
+  });
 
   const job = await prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
