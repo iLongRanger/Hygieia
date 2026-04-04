@@ -576,6 +576,12 @@ export async function createManualEntry(input: ManualEntryInput, options?: TimeT
 
 export async function editTimeEntry(id: string, input: EditTimeEntryInput, options?: TimeTrackingAccessOptions) {
   const existing = await getTimeEntryById(id, options);
+  if (existing.status === 'approved') {
+    throw new BadRequestError('Cannot edit an approved entry');
+  }
+  if (existing.timesheetId) {
+    throw new BadRequestError('Cannot edit an entry that is already linked to a timesheet');
+  }
 
   const clockIn = input.clockIn || existing.clockIn;
   const clockOut = input.clockOut !== undefined ? input.clockOut : existing.clockOut;
@@ -626,6 +632,9 @@ export async function approveTimeEntry(id: string, approvedByUserId: string, opt
 export async function deleteTimeEntry(id: string, options?: TimeTrackingAccessOptions) {
   const existing = await getTimeEntryById(id, options);
   if (existing.status === 'approved') throw new BadRequestError('Cannot delete an approved entry');
+  if (existing.timesheetId) {
+    throw new BadRequestError('Cannot delete an entry that is already linked to a timesheet');
+  }
 
   await prisma.timeEntry.delete({ where: { id } });
 }
