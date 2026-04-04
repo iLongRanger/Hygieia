@@ -632,13 +632,35 @@ export async function deleteTimeEntry(id: string, options?: TimeTrackingAccessOp
 
 // ==================== Summary ====================
 
-export async function getUserTimeSummary(userId: string, dateFrom: Date, dateTo: Date) {
+export async function getUserTimeSummary(
+  userId: string,
+  dateFrom: Date,
+  dateTo: Date,
+  options?: TimeTrackingAccessOptions
+) {
+  if (options?.userRole === 'manager' && options.userId) {
+    const hasAccess = await prisma.timeEntry.count({
+      where: {
+        userId,
+        clockIn: { gte: dateFrom },
+        clockOut: { lte: dateTo },
+        status: { in: ['completed', 'edited', 'approved'] },
+        ...getManagerTimeEntryScope(options.userId),
+      },
+    });
+
+    if (!hasAccess) {
+      throw new NotFoundError('Time entry not found');
+    }
+  }
+
   const entries = await prisma.timeEntry.findMany({
     where: {
       userId,
       clockIn: { gte: dateFrom },
       clockOut: { lte: dateTo },
       status: { in: ['completed', 'edited', 'approved'] },
+      ...(options?.userRole === 'manager' && options.userId ? getManagerTimeEntryScope(options.userId) : {}),
     },
     select: {
       totalHours: true,

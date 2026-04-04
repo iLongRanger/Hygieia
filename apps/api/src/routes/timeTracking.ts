@@ -238,7 +238,12 @@ router.get('/summary/:userId', requirePermission(PERMISSIONS.TIME_TRACKING_READ)
   const summary = await getUserTimeSummary(
     targetUserId,
     new Date(dateFrom as string),
-    new Date(dateTo as string)
+    new Date(dateTo as string),
+    {
+      userRole: req.user?.role,
+      userId: req.user?.id,
+      userTeamId: req.user?.teamId ?? undefined,
+    }
   );
   res.json({ data: summary });
 });
@@ -293,6 +298,10 @@ router.post(
         userId: req.body.userId,
         periodStart: new Date(req.body.periodStart),
         periodEnd: new Date(req.body.periodEnd),
+      }, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? undefined,
       });
       res.status(201).json({ data: timesheet });
     } catch (error) {
@@ -312,6 +321,10 @@ router.post(
         userIds: req.body.userIds,
         periodStart: new Date(req.body.periodStart),
         periodEnd: new Date(req.body.periodEnd),
+      }, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? undefined,
       });
       res.status(201).json({ data: result });
     } catch (error) {

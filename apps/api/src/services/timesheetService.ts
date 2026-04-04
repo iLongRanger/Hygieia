@@ -155,7 +155,10 @@ export async function getTimesheetById(
   return timesheet;
 }
 
-export async function generateTimesheet(input: GenerateTimesheetInput) {
+async function generateTimesheetWithAccess(
+  input: GenerateTimesheetInput,
+  options?: TimesheetAccessOptions
+) {
   // Check if timesheet already exists for this period
   const existing = await prisma.timesheet.findFirst({
     where: {
@@ -167,16 +170,34 @@ export async function generateTimesheet(input: GenerateTimesheetInput) {
   if (existing) throw new BadRequestError('Timesheet already exists for this period');
 
   // Get all completed entries for the period
+  const entryWhere: Prisma.TimeEntryWhereInput = {
+    userId: input.userId,
+    clockIn: { gte: input.periodStart },
+    clockOut: { lte: input.periodEnd },
+    status: { in: ['completed', 'edited', 'approved'] },
+    timesheetId: null,
+  };
+
+  if (options?.userRole === 'manager' && options.userId) {
+    entryWhere.AND = [
+      {
+        OR: [
+          { facility: { account: { accountManagerId: options.userId } } },
+          { contract: { account: { accountManagerId: options.userId } } },
+          { job: { account: { accountManagerId: options.userId } } },
+        ],
+      },
+    ];
+  }
+
   const entries = await prisma.timeEntry.findMany({
-    where: {
-      userId: input.userId,
-      clockIn: { gte: input.periodStart },
-      clockOut: { lte: input.periodEnd },
-      status: { in: ['completed', 'edited', 'approved'] },
-      timesheetId: null,
-    },
+    where: entryWhere,
     select: { id: true, totalHours: true },
   });
+
+  if (entries.length === 0) {
+    throw new BadRequestError('No eligible time entries found for this period');
+  }
 
   const totalHours = entries.reduce(
     (sum, e) => sum + (e.totalHours ? parseFloat(e.totalHours.toString()) : 0),
@@ -212,7 +233,11 @@ export async function generateTimesheet(input: GenerateTimesheetInput) {
   return getTimesheetById(timesheet.id);
 }
 
-export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput) {
+export async function generateTimesheet(input: GenerateTimesheetInput, options?: TimesheetAccessOptions) {
+  return generateTimesheetWithAccess(input, options);
+}
+
+export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput, options?: TimesheetAccessOptions) {
   const dedupedUserIds = Array.from(new Set(input.userIds));
   const created: Awaited<ReturnType<typeof generateTimesheet>>[] = [];
   const skipped: Array<{ userId: string; reason: string }> = [];
@@ -224,11 +249,15 @@ export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput)
         userId,
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
-      });
+      }, options);
       created.push(timesheet);
     } catch (error) {
-      if (error instanceof BadRequestError && error.message === 'Timesheet already exists for this period') {
-        skipped.push({ userId, reason: 'Timesheet already exists for this period' });
+      if (
+        error instanceof BadRequestError &&
+        (error.message === 'Timesheet already exists for this period' ||
+          error.message === 'No eligible time entries found for this period')
+      ) {
+        skipped.push({ userId, reason: error.message });
         continue;
       }
 
