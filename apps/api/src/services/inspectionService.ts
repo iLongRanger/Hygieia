@@ -1117,6 +1117,18 @@ export async function createInspectionSignoff(
     throw new BadRequestError('Inspection must be completed before signoff');
   }
 
+  const existingSignoff = await prisma.inspectionSignoff.findFirst({
+    where: {
+      inspectionId,
+      signerType: input.signerType,
+    },
+    select: { id: true },
+  });
+
+  if (existingSignoff) {
+    throw new BadRequestError(`A ${input.signerType} signoff already exists for this inspection`);
+  }
+
   const signoff = await prisma.inspectionSignoff.create({
     data: {
       inspectionId,
