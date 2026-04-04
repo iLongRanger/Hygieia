@@ -1203,6 +1203,48 @@ export async function createReinspection(
     throw new BadRequestError('No failed items available for reinspection');
   }
 
+  const selectedItemIds = itemsForReinspection.map((item) => item.id);
+  const existingFollowUps = await prisma.inspectionCorrectiveAction.findMany({
+    where: {
+      inspectionId,
+      inspectionItemId: { in: selectedItemIds },
+      followUpInspectionId: { not: null },
+    },
+    select: {
+      inspectionItemId: true,
+      followUpInspectionId: true,
+    },
+  });
+
+  const followUpIds = Array.from(
+    new Set(
+      existingFollowUps
+        .map((action) => action.followUpInspectionId)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+  const followUpInspections = followUpIds.length
+    ? await prisma.inspection.findMany({
+        where: {
+          id: { in: followUpIds },
+          status: { in: ['scheduled', 'in_progress'] },
+        },
+        select: {
+          id: true,
+          inspectionNumber: true,
+          status: true,
+        },
+      })
+    : [];
+
+  const activeFollowUp = followUpInspections[0];
+
+  if (activeFollowUp) {
+    throw new BadRequestError(
+      `A follow-up reinspection is already active for these items: ${activeFollowUp.inspectionNumber}`
+    );
+  }
+
   const scheduledDate = input.scheduledDate ?? getDefaultCorrectiveActionDueDate(new Date());
   const inspectionNumber = await generateInspectionNumber();
   const assigneeUserId = input.inspectorUserId ?? inspection.inspectorUserId;
