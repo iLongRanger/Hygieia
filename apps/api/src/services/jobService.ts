@@ -634,8 +634,8 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
     select: { id: true, status: true },
   });
   if (!existing) throw new NotFoundError('Job not found');
-  if (['completed', 'canceled'].includes(existing.status)) {
-    throw new BadRequestError('Cannot update a completed or canceled job');
+  if (['completed', 'canceled', 'missed'].includes(existing.status)) {
+    throw new BadRequestError('Cannot update a completed, canceled, or missed job');
   }
 
   const job = await prisma.$transaction(async (tx) => {
@@ -1032,6 +1032,9 @@ export async function cancelJob(id: string, reason: string | null, userId: strin
   if (existing.status === 'completed') {
     throw new BadRequestError('Cannot cancel a completed job');
   }
+  if (existing.status === 'missed') {
+    throw new BadRequestError('Cannot cancel a missed job');
+  }
 
   return prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
@@ -1071,6 +1074,9 @@ export async function assignJob(
     select: { id: true, status: true },
   });
   if (!existing) throw new NotFoundError('Job not found');
+  if (['completed', 'canceled', 'missed'].includes(existing.status)) {
+    throw new BadRequestError('Cannot reassign a completed, canceled, or missed job');
+  }
 
   const job = await prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
