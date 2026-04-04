@@ -92,6 +92,7 @@ export interface GenerateJobsInput {
   assignedTeamId?: string | null;
   assignedToUserId?: string | null;
   createdByUserId: string;
+  ignoreCanceledExistingJobs?: boolean;
 }
 
 export interface StartJobOptions {
@@ -1387,9 +1388,9 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
         gte: input.dateFrom,
         lte: input.dateTo,
       },
-      status: { not: 'canceled' },
+      ...(input.ignoreCanceledExistingJobs ? { status: { not: 'canceled' } } : {}),
     },
-    select: { scheduledDate: true },
+    select: { scheduledDate: true, status: true },
   });
 
   const existingDates = new Set(
@@ -1522,6 +1523,7 @@ export async function autoGenerateRecurringJobsForContract(input: {
     assignedTeamId: resolvedAssignedTeamId,
     assignedToUserId: resolvedAssignedToUserId,
     createdByUserId: input.createdByUserId,
+    ignoreCanceledExistingJobs: true,
   });
 }
 

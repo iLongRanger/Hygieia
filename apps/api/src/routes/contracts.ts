@@ -725,6 +725,7 @@ router.patch(
                   assignedTeamId: contract.assignedTeam?.id ?? null,
                   assignedToUserId: contract.assignedToUser?.id ?? null,
                   createdByUserId: req.user.id,
+                  ignoreCanceledExistingJobs: true,
                 });
 
                 await logContractActivity({
