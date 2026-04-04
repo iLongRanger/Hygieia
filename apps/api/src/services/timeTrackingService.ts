@@ -615,6 +615,9 @@ export async function editTimeEntry(id: string, input: EditTimeEntryInput, optio
 export async function approveTimeEntry(id: string, approvedByUserId: string, options?: TimeTrackingAccessOptions) {
   const existing = await getTimeEntryById(id, options);
   if (existing.status === 'active') throw new BadRequestError('Cannot approve an active entry');
+  if (existing.timesheetId) {
+    throw new BadRequestError('Approve the timesheet instead of approving a linked time entry');
+  }
 
   const entry = await prisma.timeEntry.update({
     where: { id },
