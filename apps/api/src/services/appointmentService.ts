@@ -658,7 +658,9 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
       location: input.location,
       notes: input.notes,
       reminderSentAt:
-        input.scheduledStart !== undefined || input.scheduledEnd !== undefined
+        input.scheduledStart !== undefined ||
+        input.scheduledEnd !== undefined ||
+        input.assignedToUserId !== undefined
           ? null
           : undefined,
     },
