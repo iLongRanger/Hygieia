@@ -705,7 +705,10 @@ router.patch(
         if (contract.serviceCategory === 'residential' && contract.facility?.id && req.user?.id) {
           try {
             const existingResidentialJob = await prisma.job.findFirst({
-              where: { contractId: contract.id },
+              where: {
+                contractId: contract.id,
+                status: { not: 'canceled' },
+              },
               select: { id: true },
             });
 
