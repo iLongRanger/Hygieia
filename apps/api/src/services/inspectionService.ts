@@ -978,6 +978,25 @@ export async function updateInspectionCorrectiveAction(
   });
   if (!existingAction) throw new NotFoundError('Corrective action not found');
 
+  if (existingAction.status === 'verified' && input.status && input.status !== 'verified') {
+    throw new BadRequestError('Verified corrective actions cannot be moved back to another status');
+  }
+
+  if (existingAction.status === 'canceled' && input.status && input.status !== 'canceled') {
+    throw new BadRequestError('Canceled corrective actions cannot be reopened');
+  }
+
+  if (input.status === 'verified' && existingAction.status !== 'resolved') {
+    throw new BadRequestError('Corrective actions must be resolved before they can be verified');
+  }
+
+  if (
+    input.status === 'resolved' &&
+    !['open', 'in_progress', 'resolved'].includes(existingAction.status)
+  ) {
+    throw new BadRequestError('Only open or in-progress corrective actions can be resolved');
+  }
+
   const data: Record<string, unknown> = {
     ...(input.status !== undefined && { status: input.status }),
     ...(input.title !== undefined && { title: input.title }),
@@ -1036,9 +1055,12 @@ export async function verifyInspectionCorrectiveAction(
 ) {
   const existingAction = await prisma.inspectionCorrectiveAction.findFirst({
     where: { id: actionId, inspectionId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!existingAction) throw new NotFoundError('Corrective action not found');
+  if (existingAction.status !== 'resolved') {
+    throw new BadRequestError('Only resolved corrective actions can be verified');
+  }
 
   const action = await prisma.inspectionCorrectiveAction.update({
     where: { id: actionId },
