@@ -334,6 +334,9 @@ export async function deleteTimesheet(id: string) {
   const existing = await prisma.timesheet.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Timesheet not found');
   if (existing.status === 'approved') throw new BadRequestError('Cannot delete an approved timesheet');
+  if (existing.status === 'submitted') {
+    throw new BadRequestError('Cannot delete a submitted timesheet');
+  }
 
   // Unlink entries
   await prisma.timeEntry.updateMany({
