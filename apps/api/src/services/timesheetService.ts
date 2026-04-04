@@ -284,7 +284,9 @@ export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput,
 export async function submitTimesheet(id: string) {
   const existing = await prisma.timesheet.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Timesheet not found');
-  if (existing.status !== 'draft') throw new BadRequestError('Timesheet can only be submitted from draft status');
+  if (!['draft', 'rejected'].includes(existing.status)) {
+    throw new BadRequestError('Timesheet can only be submitted from draft or rejected status');
+  }
 
   const timesheet = await prisma.timesheet.update({
     where: { id },
