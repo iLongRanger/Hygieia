@@ -631,6 +631,18 @@ router.patch(
         throw handleZodError(parsed.error);
       }
 
+      const previousContract = await prisma.contract.findUnique({
+        where: { id: req.params.id },
+        select: { status: true },
+      });
+
+      if (!previousContract) {
+        throw new Error('Contract not found');
+      }
+
+      const becameActive =
+        previousContract.status !== 'active' && parsed.data.status === 'active';
+
       const contract = await updateContractStatus(
         req.params.id,
         parsed.data.status,
@@ -639,13 +651,13 @@ router.patch(
 
       await logContractActivity({
         contractId: contract.id,
-        action: parsed.data.status === 'active' ? 'activated' : 'status_changed',
+        action: becameActive ? 'activated' : 'status_changed',
         performedByUserId: req.user?.id,
         metadata: { newStatus: parsed.data.status },
       });
 
       // Send notifications on activation
-      if (parsed.data.status === 'active') {
+      if (becameActive) {
         const needsAssignment = !contract.assignedTeam?.id && !contract.assignedToUser?.id;
 
         try {
