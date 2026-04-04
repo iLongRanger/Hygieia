@@ -850,6 +850,9 @@ export async function completeJob(id: string, input: JobCompleteInput) {
   if (existing.status === 'canceled') {
     throw new BadRequestError('Cannot complete a canceled job');
   }
+  if (existing.status === 'missed') {
+    throw new BadRequestError('Cannot complete a missed job');
+  }
 
   // Geofence validation for cleaners/subcontractors
   const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
