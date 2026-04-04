@@ -568,6 +568,7 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
       scheduledStart: true,
       scheduledEnd: true,
       status: true,
+      inspectionId: true,
     },
   });
 
@@ -656,9 +657,30 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
       timezone: input.timezone,
       location: input.location,
       notes: input.notes,
+      reminderSentAt:
+        input.scheduledStart !== undefined || input.scheduledEnd !== undefined
+          ? null
+          : undefined,
     },
     select: appointmentSelect,
   });
+
+  if (
+    existing.inspectionId &&
+    (input.scheduledStart !== undefined || input.assignedToUserId !== undefined)
+  ) {
+    await prisma.inspection.update({
+      where: { id: existing.inspectionId },
+      data: {
+        ...(input.assignedToUserId !== undefined
+          ? { inspectorUserId: appointment.assignedToUser?.id ?? existing.assignedToUserId }
+          : {}),
+        ...(input.scheduledStart !== undefined
+          ? { scheduledDate: appointment.scheduledStart }
+          : {}),
+      },
+    });
+  }
 
   // Notify assigned user about the update
   if (appointment.assignedToUser?.id) {
@@ -737,6 +759,8 @@ export async function rescheduleAppointment(
       assignedToUserId: true,
       status: true,
       type: true,
+      timezone: true,
+      inspectionId: true,
     },
   });
 
@@ -758,7 +782,10 @@ export async function rescheduleAppointment(
   const appointment = await prisma.$transaction(async (tx) => {
     await tx.appointment.update({
       where: { id },
-      data: { status: 'rescheduled' },
+      data: {
+        status: 'rescheduled',
+        inspectionId: null,
+      },
     });
 
     const appointment = await tx.appointment.create({
@@ -772,14 +799,26 @@ export async function rescheduleAppointment(
         status: 'scheduled',
         scheduledStart: input.scheduledStart,
         scheduledEnd: input.scheduledEnd,
-        timezone: input.timezone,
+        timezone: input.timezone ?? existing.timezone,
         location: input.location ?? null,
         notes: input.notes ?? null,
         createdByUserId: userId,
         rescheduledFromId: existing.id,
+        inspectionId: existing.inspectionId ?? null,
+        reminderSentAt: null,
       },
       select: appointmentSelect,
     });
+
+    if (existing.inspectionId) {
+      await tx.inspection.update({
+        where: { id: existing.inspectionId },
+        data: {
+          scheduledDate: input.scheduledStart,
+          inspectorUserId: existing.assignedToUserId,
+        },
+      });
+    }
 
     return appointment;
   });
