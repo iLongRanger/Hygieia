@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { verifyOwnership } from '../middleware/ownership';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -57,7 +58,7 @@ router.get(
 );
 
 // Get invoice by ID
-router.get('/:id', requirePermission(PERMISSIONS.INVOICES_READ), async (req: Request, res: Response) => {
+router.get('/:id', requirePermission(PERMISSIONS.INVOICES_READ), verifyOwnership({ resourceType: 'invoice' }), async (req: Request, res: Response) => {
   const invoice = await getInvoiceById(req.params.id);
   res.json({ data: invoice });
 });
@@ -85,6 +86,7 @@ router.post(
 router.patch(
   '/:id',
   requirePermission(PERMISSIONS.INVOICES_WRITE),
+  verifyOwnership({ resourceType: 'invoice' }),
   validate(updateInvoiceSchema),
   async (req: Request, res: Response) => {
     const input = { ...req.body };
@@ -96,7 +98,7 @@ router.patch(
 );
 
 // Send invoice
-router.post('/:id/send', requirePermission(PERMISSIONS.INVOICES_WRITE), async (req: Request, res: Response) => {
+router.post('/:id/send', requirePermission(PERMISSIONS.INVOICES_WRITE), verifyOwnership({ resourceType: 'invoice' }), async (req: Request, res: Response) => {
   const invoice = await sendInvoice(req.params.id, req.user!.id);
   res.json({ data: invoice });
 });
@@ -104,6 +106,7 @@ router.post('/:id/send', requirePermission(PERMISSIONS.INVOICES_WRITE), async (r
 router.post(
   '/:id/public-link',
   requirePermission(PERMISSIONS.INVOICES_READ),
+  verifyOwnership({ resourceType: 'invoice' }),
   async (req: Request, res: Response) => {
     const invoice = await getInvoiceById(req.params.id);
     if (!invoice) {
@@ -125,6 +128,7 @@ router.post(
 router.post(
   '/:id/payments',
   requirePermission(PERMISSIONS.INVOICES_WRITE),
+  verifyOwnership({ resourceType: 'invoice' }),
   validate(recordPaymentSchema),
   async (req: Request, res: Response) => {
     const invoice = await recordPayment(req.params.id, {
@@ -140,6 +144,7 @@ router.post(
 router.post(
   '/:id/void',
   requirePermission(PERMISSIONS.INVOICES_ADMIN),
+  verifyOwnership({ resourceType: 'invoice' }),
   validate(voidInvoiceSchema),
   async (req: Request, res: Response) => {
     const invoice = await voidInvoice(req.params.id, req.user!.id, req.body.reason);
@@ -181,7 +186,7 @@ router.post(
 );
 
 // Get activities
-router.get('/:id/activities', requirePermission(PERMISSIONS.INVOICES_READ), async (req: Request, res: Response) => {
+router.get('/:id/activities', requirePermission(PERMISSIONS.INVOICES_READ), verifyOwnership({ resourceType: 'invoice' }), async (req: Request, res: Response) => {
   const activities = await listInvoiceActivities(req.params.id);
   res.json({ data: activities });
 });

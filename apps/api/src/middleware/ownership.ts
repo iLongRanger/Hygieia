@@ -13,7 +13,8 @@ export type ResourceType =
   | 'quotation'
   | 'contract'
   | 'contact'
-  | 'appointment';
+  | 'appointment'
+  | 'invoice';
 
 interface OwnershipContext {
   resourceType: ResourceType;
@@ -123,6 +124,17 @@ async function hasManagerAccess(
       });
       if (!appointment) return false;
       return appointment.account?.accountManagerId === userId;
+    }
+
+    case 'invoice': {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: resourceId },
+        select: {
+          account: { select: { accountManagerId: true } },
+        },
+      });
+      if (!invoice) return false;
+      return invoice.account.accountManagerId === userId;
     }
 
     default:
