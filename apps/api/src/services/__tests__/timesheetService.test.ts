@@ -87,7 +87,7 @@ describe('timesheetService', () => {
     });
 
     await expect(submitTimesheet('ts-1')).rejects.toThrow(
-      'Timesheet can only be submitted from draft status'
+      'Timesheet can only be submitted from draft or rejected status'
     );
   });
 
@@ -108,6 +108,31 @@ describe('timesheetService', () => {
           approvedByUserId: 'manager-1',
           approvedAt: expect.any(Date),
         }),
+      })
+    );
+    expect(prisma.timeEntry.updateMany).toHaveBeenCalledWith({
+      where: { timesheetId: 'ts-1' },
+      data: expect.objectContaining({
+        status: 'approved',
+        approvedByUserId: 'manager-1',
+        approvedAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it('submitTimesheet allows rejected status for resubmission', async () => {
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      status: 'rejected',
+    });
+    (prisma.timesheet.update as jest.Mock).mockResolvedValue({ id: 'ts-1', status: 'submitted' });
+
+    await submitTimesheet('ts-1');
+
+    expect(prisma.timesheet.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ts-1' },
+        data: { status: 'submitted' },
       })
     );
   });
