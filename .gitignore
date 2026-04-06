@@ -81,3 +81,6 @@ uploads/
 
 # Worktrees
 .worktrees/
+
+# CocoIndex
+.cocoindex_code/
