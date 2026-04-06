@@ -563,6 +563,7 @@ describe('Contract Routes', () => {
   });
 
   it('PATCH /:id/status should update status', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({ id: 'contract-1', status: 'draft' });
     (contractService.updateContractStatus as jest.Mock).mockResolvedValue({ id: 'contract-1' });
 
     const response = await request(app)
