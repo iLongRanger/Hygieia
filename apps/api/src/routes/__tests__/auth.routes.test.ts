@@ -18,6 +18,7 @@ jest.mock('../../middleware/auth', () => ({
 
 jest.mock('../../middleware/rateLimiter', () => ({
   authRateLimiter: (_req: any, _res: any, next: any) => next(),
+  sensitiveRateLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 jest.mock('../../services/authService');

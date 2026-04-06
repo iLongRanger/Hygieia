@@ -59,8 +59,8 @@ const navSections: NavSection[] = [
     key: 'dashboard',
     title: 'Dashboard',
     icon: Home,
-    directLink: '/',
-    items: [{ to: '/', icon: Home, label: 'Dashboard' }],
+    directLink: '/app',
+    items: [{ to: '/app', icon: Home, label: 'Dashboard' }],
   },
   {
     key: 'crm',
@@ -150,8 +150,8 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           key: 'dashboard',
           title: 'Dashboard',
           icon: Home,
-          directLink: '/',
-          items: [{ to: '/', icon: Home, label: 'Dashboard' }],
+          directLink: '/app',
+          items: [{ to: '/app', icon: Home, label: 'Dashboard' }],
         },
         {
           key: 'work',
@@ -176,7 +176,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   const isSectionActive = (section: NavSection) => {
     return section.items.some((item) => {
-      if (item.to === '/') return location.pathname === '/';
+      if (item.to === '/' || item.to === '/app') return location.pathname === item.to;
       return location.pathname.startsWith(item.to);
     });
   };
@@ -186,7 +186,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
     <li key={item.to}>
       <NavLink
         to={item.to}
-        end={item.to === '/'}
+        end={item.to === '/' || item.to === '/app'}
         onClick={onClickExtra}
         className={({ isActive: linkActive }) =>
           cn(

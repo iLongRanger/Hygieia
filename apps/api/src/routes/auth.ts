@@ -5,17 +5,24 @@ import {
   getUserById,
   logout,
   logoutAll,
-  hashPassword,
+  issuePasswordSetTokenForEmail,
+  consumePasswordSetToken,
+  changeOwnPassword,
 } from '../services/authService';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import {
-  BadRequestError,
   UnauthorizedError,
   ValidationError,
 } from '../middleware/errorHandler';
-import { authRateLimiter } from '../middleware/rateLimiter';
+import { authRateLimiter, sensitiveRateLimiter } from '../middleware/rateLimiter';
 import { validatePassword } from '../utils/passwordPolicy';
+import { isEmailConfigured } from '../config/email';
+import { sendNotificationEmail } from '../services/emailService';
+import { buildPasswordResetHtml, buildPasswordResetSubject } from '../templates/passwordReset';
+import { requireWebAppBaseUrl } from '../lib/appUrl';
+import { getUserById as getDetailedUserById, updateUser } from '../services/userService';
+import { updateCurrentUserProfileSchema } from '../schemas/user';
 
 const router: Router = Router();
 const REFRESH_TOKEN_COOKIE = 'hygieia_refresh_token';
@@ -108,6 +115,53 @@ router.post(
 );
 
 router.post(
+  '/forgot-password',
+  authRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        throw new ValidationError('Email is required', { field: 'email' });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        throw new ValidationError('Invalid email format', { field: 'email' });
+      }
+
+      const tokenResult = await issuePasswordSetTokenForEmail(normalizedEmail);
+      if (tokenResult && isEmailConfigured()) {
+        try {
+          const baseUrl = requireWebAppBaseUrl();
+          const resetUrl = `${baseUrl}/auth/reset-password?token=${tokenResult.token}`;
+          await sendNotificationEmail(
+            tokenResult.user.email,
+            buildPasswordResetSubject(),
+            buildPasswordResetHtml({
+              fullName: tokenResult.user.fullName,
+              resetUrl,
+            })
+          );
+        } catch {
+          // Keep response generic to avoid enumeration and leaking delivery details.
+        }
+      }
+
+      return res.json({
+        data: {
+          message:
+            'If an account exists for that email, a password reset link has been sent.',
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
   '/set-password',
   authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -125,27 +179,37 @@ router.post(
         });
       }
 
-      const passwordToken = await prisma.passwordSetToken.findUnique({
-        where: { token },
-        include: { user: true },
-      });
-
-      if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
-        return res.status(400).json({ error: 'Invalid or expired token' });
-      }
-
-      const passwordHash = await hashPassword(password);
-      await prisma.user.update({
-        where: { id: passwordToken.userId },
-        data: { passwordHash, status: 'active' },
-      });
-
-      await prisma.passwordSetToken.update({
-        where: { id: passwordToken.id },
-        data: { usedAt: new Date() },
-      });
+      await consumePasswordSetToken(token, password);
 
       return res.json({ message: 'Password set successfully. You can now log in.' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  '/reset-password',
+  authRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ error: 'Token and password are required' });
+      }
+
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({
+          error: passwordValidation.error || 'Invalid password',
+        });
+      }
+
+      await consumePasswordSetToken(token, password);
+
+      clearRefreshTokenCookie(res);
+      return res.json({ message: 'Password reset successfully. You can now log in.' });
     } catch (err) {
       next(err);
     }
@@ -260,6 +324,94 @@ router.get(
       res.json({
         data: {
           user,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/profile',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const user = await getDetailedUserById(req.user.id);
+      if (!user) {
+        throw new UnauthorizedError('User not found');
+      }
+
+      res.json({ data: user });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  '/profile',
+  authenticate,
+  sensitiveRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const parsed = updateCurrentUserProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const firstError = parsed.error.errors[0];
+        throw new ValidationError(firstError.message, {
+          field: firstError.path.join('.'),
+        });
+      }
+
+      const updatedUser = await updateUser(req.user.id, parsed.data);
+      res.json({ data: updatedUser });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/change-password',
+  authenticate,
+  sensitiveRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || typeof currentPassword !== 'string') {
+        throw new ValidationError('Current password is required', { field: 'currentPassword' });
+      }
+
+      if (!newPassword || typeof newPassword !== 'string') {
+        throw new ValidationError('New password is required', { field: 'newPassword' });
+      }
+
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
+        throw new ValidationError(passwordValidation.error || 'Invalid password', {
+          field: 'newPassword',
+        });
+      }
+
+      await changeOwnPassword(req.user.id, currentPassword, newPassword);
+      clearRefreshTokenCookie(res);
+
+      res.json({
+        data: {
+          message: 'Password changed successfully. Please sign in again.',
         },
       });
     } catch (error) {

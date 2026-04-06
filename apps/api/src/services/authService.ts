@@ -14,6 +14,7 @@ import {
 } from './tokenService';
 import { logAuthEvent } from '../lib/logger';
 import { UnauthorizedError } from '../middleware/errorHandler';
+import { validatePassword } from '../utils/passwordPolicy';
 
 export interface LoginCredentials {
   email: string;
@@ -48,6 +49,16 @@ function resolvePrimaryUserRole(
 ): UserRole {
   const assignedRoles = roles.map((entry) => entry.role?.key).filter(isValidRole);
   return resolveHighestRole(assignedRoles);
+}
+
+export interface PasswordTokenResult {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    status: string;
+  };
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -309,6 +320,118 @@ export async function getUserById(id: string): Promise<UserInfo | null> {
     role: primaryRole,
     teamId: user.teamId,
   };
+}
+
+export async function issuePasswordSetTokenForEmail(
+  email: string,
+  expiresInHours = 2
+): Promise<PasswordTokenResult | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      status: true,
+    },
+  });
+
+  if (!user || user.status === 'disabled') {
+    return null;
+  }
+
+  await prisma.passwordSetToken.updateMany({
+    where: {
+      userId: user.id,
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    data: { usedAt: new Date() },
+  });
+
+  const passwordToken = await prisma.passwordSetToken.create({
+    data: {
+      userId: user.id,
+      expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
+    },
+  });
+
+  return {
+    token: passwordToken.token,
+    user,
+  };
+}
+
+export async function consumePasswordSetToken(
+  token: string,
+  password: string
+): Promise<void> {
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    throw new UnauthorizedError(passwordValidation.error || 'Invalid password');
+  }
+
+  const passwordToken = await prisma.passwordSetToken.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+
+  if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
+    throw new UnauthorizedError('Invalid or expired token');
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: passwordToken.userId },
+      data: { passwordHash, status: 'active' },
+    }),
+    prisma.passwordSetToken.update({
+      where: { id: passwordToken.id },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+
+  await revokeAllUserTokens(passwordToken.userId, 'password_change');
+}
+
+export async function changeOwnPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      passwordHash: true,
+      status: true,
+    },
+  });
+
+  if (!user || user.status !== 'active' || !user.passwordHash) {
+    throw new UnauthorizedError('Invalid account state for password change');
+  }
+
+  const currentPasswordMatches = await verifyPassword(currentPassword, user.passwordHash);
+  if (!currentPasswordMatches) {
+    throw new UnauthorizedError('Current password is incorrect');
+  }
+
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.isValid) {
+    throw new UnauthorizedError(passwordValidation.error || 'Invalid password');
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+
+  await revokeAllUserTokens(userId, 'password_change');
 }
 
 export async function createSubcontractorUser(teamId: string): Promise<{ user: any; token: string } | null> {

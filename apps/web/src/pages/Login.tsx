@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { Button } from '../components/ui/Button';
@@ -27,7 +27,7 @@ const Login = () => {
 
     try {
       await login(email.trim(), password);
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       const apiMessage =
         err instanceof AxiosError
@@ -100,12 +100,12 @@ const Login = () => {
 
           <div className="flex items-center justify-between">
             <div className="text-sm">
-              <a
-                href="#"
+              <Link
+                to="/auth/forgot-password"
                 className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               >
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 

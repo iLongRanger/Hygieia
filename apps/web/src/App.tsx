@@ -62,11 +62,15 @@ import PublicContractAmendmentView from './pages/public/PublicContractAmendmentV
 import PublicQuotationView from './pages/public/PublicQuotationView';
 import PublicResidentialQuoteView from './pages/public/PublicResidentialQuoteView';
 import PublicInvoiceView from './pages/public/PublicInvoiceView';
+import LandingPage from './pages/public/LandingPage';
 import SetPassword from './pages/auth/SetPassword';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Unauthorized from './pages/Unauthorized';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { getRequiredPermissions } from './lib/routeAccess';
+import ProfilePage from './pages/profile/ProfilePage';
 
 function withRouteGuard(path: string, element: ReactNode) {
   const requiredPermissions = getRequiredPermissions(path);
@@ -110,8 +114,11 @@ function App() {
       />
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/set-password" element={<SetPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/p/:token" element={<PublicProposalView />} />
           <Route path="/c/:token" element={<PublicContractView />} />
           <Route path="/ca/:token" element={<PublicContractAmendmentView />} />
@@ -121,7 +128,8 @@ function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/app" element={<Dashboard />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/leads" element={withRouteGuard('/leads', <LeadsList />)} />
             <Route path="/leads/new" element={withRouteGuard('/leads', <LeadsList />)} />
             <Route path="/leads/:id" element={withRouteGuard('/leads', <LeadDetail />)} />
@@ -196,7 +204,7 @@ function App() {
               path="/users/:id"
               element={withRouteGuard('/users/:id', <UserDetail />)}
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
         </Routes>
       </Router>

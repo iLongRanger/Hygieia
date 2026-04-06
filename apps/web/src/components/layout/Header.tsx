@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
-import { Bell, Menu, User, Sun, Moon, CheckCheck } from 'lucide-react';
+import { Bell, Menu, User, Sun, Moon, CheckCheck, Settings, LogOut } from 'lucide-react';
 import {
   getUnreadCount,
   listNotifications,
@@ -26,10 +26,12 @@ interface HeaderProps {
 const Header = ({ onMenuClick }: HeaderProps) => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const { theme, toggleTheme } = useThemeStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -131,6 +133,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     setIsOpen(false);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-surface-200 bg-surface-50/80 px-4 backdrop-blur-xl dark:border-surface-700 dark:bg-surface-900/80 sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
@@ -229,18 +236,49 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           )}
         </div>
 
-        <div className="flex items-center gap-3 border-l border-surface-200 pl-3 dark:border-surface-700 sm:pl-4">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
-              {user?.fullName}
-            </p>
-            <p className="text-xs text-surface-500 dark:text-surface-400">
-              {user?.role || 'Admin'}
-            </p>
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
-            <User className="h-5 w-5" />
-          </div>
+        <div className="relative flex items-center gap-3 border-l border-surface-200 pl-3 dark:border-surface-700 sm:pl-4">
+          <button
+            type="button"
+            onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+            className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+            aria-label="Open profile menu"
+          >
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
+                {user?.fullName}
+              </p>
+              <p className="text-xs text-surface-500 dark:text-surface-400">
+                {user?.role || 'Admin'}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
+              <User className="h-5 w-5" />
+            </div>
+          </button>
+
+          {isProfileMenuOpen ? (
+            <div className="absolute right-0 top-full mt-2 w-52 rounded-lg border border-surface-200 bg-surface-50 py-2 shadow-lg dark:border-surface-700 dark:bg-surface-900">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/profile');
+                  setIsProfileMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-surface-700 transition hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-800"
+              >
+                <Settings className="h-4 w-4" />
+                My Profile
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-surface-700 transition hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-800"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>
