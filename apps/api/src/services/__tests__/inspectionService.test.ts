@@ -4,6 +4,7 @@ import {
   addInspectionItem,
   completeInspection,
   createInspection,
+  createInspectionSignoff,
   getInspectionById,
   listInspections,
   startInspection,
@@ -47,6 +48,7 @@ jest.mock('../../lib/prisma', () => ({
     inspectionSignoff: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -279,5 +281,26 @@ describe('inspectionService', () => {
         }),
       })
     );
+  });
+
+  it('createInspectionSignoff rejects duplicate signer types', async () => {
+    (prisma.inspection.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ins-1',
+      status: 'completed',
+    });
+    (prisma.inspectionSignoff.findFirst as jest.Mock).mockResolvedValue({
+      id: 'signoff-1',
+    });
+
+    await expect(
+      createInspectionSignoff(
+        'ins-1',
+        {
+          signerType: 'client',
+          signerName: 'Jane Client',
+        },
+        'manager-1'
+      )
+    ).rejects.toThrow('A client signoff already exists for this inspection');
   });
 });
