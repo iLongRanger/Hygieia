@@ -37,6 +37,9 @@ jest.mock('../../lib/prisma', () => ({
     facility: {
       findFirst: jest.fn(),
     },
+    inspection: {
+      update: jest.fn(),
+    },
     area: {
       count: jest.fn(),
     },
@@ -185,7 +188,9 @@ describe('appointmentService', () => {
       createdByUserId: 'admin-1',
     });
     (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
-    (prisma.appointment.findFirst as jest.Mock).mockResolvedValue({ id: 'appt-1' });
+    (prisma.appointment.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'appt-1' });
 
     await expect(
       appointmentService.createAppointment({
@@ -278,6 +283,40 @@ describe('appointmentService', () => {
           appointmentId: 'appt-1',
           scheduledStart: '2026-02-05T10:00:00.000Z',
           scheduledEnd: '2026-02-05T11:00:00.000Z',
+        }),
+      })
+    );
+  });
+
+  it('updateAppointment resets reminder state when reassigned', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      accountId: 'account-1',
+      leadId: null,
+      assignedToUserId: 'user-1',
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+      status: 'scheduled',
+      inspectionId: null,
+    });
+    (prisma.appointment.update as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      assignedToUser: { id: 'user-2', fullName: 'Rep Two', email: 'rep2@example.com' },
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+    });
+
+    await appointmentService.updateAppointment('appt-1', {
+      assignedToUserId: 'user-2',
+    });
+
+    expect(prisma.appointment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assignedToUserId: 'user-2',
+          reminderSentAt: null,
         }),
       })
     );
