@@ -27,6 +27,7 @@ import {
   X,
   PanelLeftOpen,
   PanelLeftClose,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
@@ -129,6 +130,16 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const isFieldWorker = user?.role === 'subcontractor' || user?.role === 'cleaner';
   const isSubcontractor = user?.role === 'subcontractor';
@@ -223,20 +234,53 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
       {/* Navigation */}
       <nav className="flex min-h-0 flex-1 flex-col justify-between overflow-y-scroll px-3 py-4">
-        <div className="space-y-4">
-          {visibleSections.map((section) => (
-            <div key={section.key}>
-              {!section.directLink && (
-                <div className="mb-1 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-surface-500">
+        <div className="space-y-1">
+          {visibleSections.map((section) => {
+            const active = isSectionActive(section);
+            const isOpen = section.directLink || openSections.has(section.key) || active;
+
+            if (section.directLink) {
+              return (
+                <ul key={section.key} className="space-y-0.5">
+                  {section.items.map((item) => renderNavLink(item))}
+                </ul>
+              );
+            }
+
+            return (
+              <div key={section.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.key)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                    active
+                      ? 'text-primary-400'
+                      : 'text-surface-500 hover:text-surface-300'
+                  )}
+                >
                   <section.icon className="h-3.5 w-3.5" />
-                  {section.title}
+                  <span className="flex-1 text-left">{section.title}</span>
+                  <ChevronRight
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform duration-200',
+                      isOpen && 'rotate-90'
+                    )}
+                  />
+                </button>
+                <div
+                  className={cn(
+                    'grid transition-[grid-template-rows] duration-200',
+                    isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  )}
+                >
+                  <ul className="space-y-0.5 overflow-hidden">
+                    {section.items.map((item) => renderNavLink(item))}
+                  </ul>
                 </div>
-              )}
-              <ul className="space-y-0.5">
-                {section.items.map((item) => renderNavLink(item))}
-              </ul>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* Sign out */}
@@ -393,22 +437,55 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
         </button>
       </div>
 
-      {/* Navigation — all sections expanded */}
+      {/* Navigation — collapsible sections */}
       <nav className="flex min-h-0 flex-1 flex-col justify-between overflow-y-scroll px-3 py-4">
-        <div className="space-y-4">
-          {visibleSections.map((section) => (
-            <div key={section.key}>
-              {!section.directLink && (
-                <div className="mb-1 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-surface-500">
+        <div className="space-y-1">
+          {visibleSections.map((section) => {
+            const active = isSectionActive(section);
+            const isOpen = section.directLink || openSections.has(section.key) || active;
+
+            if (section.directLink) {
+              return (
+                <ul key={section.key} className="space-y-0.5">
+                  {section.items.map((item) => renderNavLink(item, () => onClose?.()))}
+                </ul>
+              );
+            }
+
+            return (
+              <div key={section.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.key)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                    active
+                      ? 'text-primary-400'
+                      : 'text-surface-500 hover:text-surface-300'
+                  )}
+                >
                   <section.icon className="h-3.5 w-3.5" />
-                  {section.title}
+                  <span className="flex-1 text-left">{section.title}</span>
+                  <ChevronRight
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform duration-200',
+                      isOpen && 'rotate-90'
+                    )}
+                  />
+                </button>
+                <div
+                  className={cn(
+                    'grid transition-[grid-template-rows] duration-200',
+                    isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  )}
+                >
+                  <ul className="space-y-0.5 overflow-hidden">
+                    {section.items.map((item) => renderNavLink(item, () => onClose?.()))}
+                  </ul>
                 </div>
-              )}
-              <ul className="space-y-0.5">
-                {section.items.map((item) => renderNavLink(item, () => onClose?.()))}
-              </ul>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* Sign out */}
