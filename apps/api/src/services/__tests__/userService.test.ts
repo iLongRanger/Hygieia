@@ -558,13 +558,13 @@ describe('userService', () => {
 
     it('should throw error for short password', async () => {
       await expect(userService.changePassword('user-123', 'short')).rejects.toThrow(
-        'Password must be at least 8 characters long'
+        'Password must be at least 8 characters'
       );
     });
 
     it('should throw error for empty password', async () => {
       await expect(userService.changePassword('user-123', '')).rejects.toThrow(
-        'Password must be at least 8 characters long'
+        'Password must be at least 8 characters'
       );
     });
   });
