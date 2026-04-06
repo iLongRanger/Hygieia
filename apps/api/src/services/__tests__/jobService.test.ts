@@ -284,6 +284,41 @@ describe('jobService', () => {
     expect(prisma.job.create).not.toHaveBeenCalled();
   });
 
+  it('generateJobsFromContract preserves canceled dates unless explicitly ignored', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: 'team-1',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      { scheduledDate: new Date('2026-01-01T00:00:00.000Z'), status: 'canceled' },
+      { scheduledDate: new Date('2026-01-08T00:00:00.000Z'), status: 'scheduled' },
+    ]);
+
+    const result = await generateJobsFromContract({
+      contractId: 'contract-1',
+      dateFrom: new Date('2026-01-01T00:00:00.000Z'),
+      dateTo: new Date('2026-01-08T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(result).toEqual({
+      created: 0,
+      message: 'All dates already have jobs scheduled',
+    });
+    expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          status: { not: 'canceled' },
+        }),
+      })
+    );
+  });
+
   it('generateJobsFromContract creates jobs for missing dates', async () => {
     const year = new Date().getFullYear();
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
