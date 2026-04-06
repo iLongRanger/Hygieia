@@ -2,11 +2,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import {
+  ForbiddenError,
   NotFoundError,
   ValidationError,
   ConflictError,
 } from '../middleware/errorHandler';
 import { validatePassword } from '../utils/passwordPolicy';
+import { ROLE_HIERARCHY, type UserRole } from '../types/roles';
 import {
   listUsers,
   getUserById,
@@ -39,6 +41,14 @@ function handleZodError(error: ZodError): ValidationError {
       message: e.message,
     })),
   });
+}
+
+function ensureCallerOutranksTarget(callerRole: string, targetRole: string) {
+  const callerRank = ROLE_HIERARCHY[callerRole as UserRole] ?? 0;
+  const targetRank = ROLE_HIERARCHY[targetRole as UserRole] ?? 0;
+  if (callerRank <= targetRank) {
+    throw new ForbiddenError('Cannot modify a user with equal or higher role');
+  }
 }
 
 router.get(
@@ -191,6 +201,8 @@ router.post(
         throw new NotFoundError('User not found', { userId: id });
       }
 
+      ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
+
       const parsed = assignRoleSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
@@ -217,6 +229,8 @@ router.delete(
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
       }
+
+      ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
 
       const parsed = assignRoleSchema.safeParse({ role: roleKey });
       if (!parsed.success) {
@@ -253,6 +267,11 @@ router.patch(
       const existingUser = await getUserById(id);
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
+      }
+
+      // Allow users to change their own password; otherwise require higher role
+      if (req.user!.id !== id) {
+        ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
       }
 
       const user = await changePassword(id, password);
