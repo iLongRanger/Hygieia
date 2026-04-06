@@ -109,6 +109,7 @@ router.post(
 
 router.post(
   '/set-password',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { token, password } = req.body;
