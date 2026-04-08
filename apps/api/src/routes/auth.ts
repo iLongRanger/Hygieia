@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import {
-  login,
+  authenticateCredentials,
+  beginPasswordSetVerification,
+  completeLogin,
   refreshAccessToken,
   getUserById,
   logout,
@@ -8,8 +10,9 @@ import {
   issuePasswordSetTokenForEmail,
   consumePasswordSetToken,
   changeOwnPassword,
+  issueSmsVerificationChallenge,
+  verifySmsChallenge,
 } from '../services/authService';
-import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import {
   UnauthorizedError,
@@ -85,17 +88,47 @@ router.post(
         throw new ValidationError('Invalid email format', { field: 'email' });
       }
 
-      const result = await login(
-        { email: normalizedEmail, password },
-        {
-          ipAddress: req.ip || req.socket.remoteAddress,
-          userAgent: req.headers['user-agent'],
-        }
-      );
+      const user = await authenticateCredentials({
+        email: normalizedEmail,
+        password,
+      });
 
-      if (!result) {
+      if (!user) {
         throw new UnauthorizedError('Invalid email or password');
       }
+
+      res.json({
+        data: {
+          requiresTwoFactor: true,
+          verification: await issueSmsVerificationChallenge(user.id, 'login'),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/login/verify',
+  authRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { challengeId, code } = req.body;
+
+      if (!challengeId || typeof challengeId !== 'string') {
+        throw new ValidationError('Challenge ID is required', { field: 'challengeId' });
+      }
+
+      if (!code || typeof code !== 'string') {
+        throw new ValidationError('Verification code is required', { field: 'code' });
+      }
+
+      const challenge = await verifySmsChallenge(challengeId, code, 'login');
+      const result = await completeLogin(challenge.userId, {
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+      });
 
       setRefreshTokenCookie(res, result.tokens.refreshToken);
       res.json({
@@ -162,11 +195,30 @@ router.post(
 );
 
 router.post(
+  '/set-password/challenge',
+  authRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token } = req.body;
+
+      if (!token || typeof token !== 'string') {
+        throw new ValidationError('Token is required', { field: 'token' });
+      }
+
+      const result = await beginPasswordSetVerification(token);
+      return res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
   '/set-password',
   authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { token, password } = req.body;
+      const { token, password, challengeId, code } = req.body;
 
       if (!token || !password) {
         return res.status(400).json({ error: 'Token and password are required' });
@@ -179,7 +231,10 @@ router.post(
         });
       }
 
-      await consumePasswordSetToken(token, password);
+      await consumePasswordSetToken(token, password, {
+        smsChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
+        smsCode: typeof code === 'string' ? code : undefined,
+      });
 
       return res.json({ message: 'Password set successfully. You can now log in.' });
     } catch (err) {

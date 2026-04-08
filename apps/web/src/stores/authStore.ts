@@ -12,13 +12,20 @@ interface User {
   teamId?: string | null;
 }
 
+interface TwoFactorChallenge {
+  challengeId: string;
+  maskedPhone: string;
+  expiresInSeconds: number;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   authInitialized: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<TwoFactorChallenge>;
+  verifyLoginCode: (challengeId: string, code: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
@@ -50,6 +57,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   login: async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     const response = await api.post('/auth/login', { email: normalizedEmail, password });
+    return response.data.data.verification as TwoFactorChallenge;
+  },
+  verifyLoginCode: async (challengeId, code) => {
+    const response = await api.post('/auth/login/verify', { challengeId, code });
     const { user, tokens } = response.data.data;
     setAccessToken(tokens.accessToken);
     set({

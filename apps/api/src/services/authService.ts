@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../lib/prisma';
 import { jwtConfig, getJwtSecret } from '../config/jwt';
@@ -10,11 +11,11 @@ import {
   revokeToken,
   revokeAllUserTokens,
   type TokenMetadata,
-  type RevokeReason,
 } from './tokenService';
 import { logAuthEvent } from '../lib/logger';
 import { UnauthorizedError } from '../middleware/errorHandler';
 import { validatePassword } from '../utils/passwordPolicy';
+import { sendSms } from './smsService';
 
 export interface LoginCredentials {
   email: string;
@@ -114,16 +115,83 @@ export function generateTokens(payload: TokenPayload): AuthTokens {
   };
 }
 
-export interface LoginOptions {
-  credentials: LoginCredentials;
-  metadata?: TokenMetadata;
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  teamId?: string | null;
+  phone?: string | null;
 }
 
-export async function login(
-  credentials: LoginCredentials,
-  metadata: TokenMetadata = {}
-): Promise<{ tokens: AuthTokens; user: UserInfo } | null> {
-  const normalizedEmail = credentials.email.trim().toLowerCase();
+export type SmsChallengePurpose = 'login' | 'password_setup';
+
+export interface SmsChallengeResult {
+  challengeId: string;
+  maskedPhone: string;
+  expiresInSeconds: number;
+}
+
+const SMS_CHALLENGE_EXPIRY_MS = 10 * 60 * 1000;
+const SMS_CHALLENGE_MAX_ATTEMPTS = 5;
+
+function generateVerificationCode(): string {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+function hashVerificationCode(code: string): string {
+  return crypto.createHash('sha256').update(code).digest('hex');
+}
+
+function maskPhoneNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) {
+    return '***';
+  }
+
+  return `***-***-${digits.slice(-4)}`;
+}
+
+function buildVerificationMessage(code: string): string {
+  return `Your Hygieia verification code is ${code}. It expires in 10 minutes.`;
+}
+
+function resolveUserSmsPhone(user: {
+  phone?: string | null;
+  team?: { contactPhone?: string | null } | null;
+}): string | null {
+  const directPhone = typeof user.phone === 'string' ? user.phone.trim() : '';
+  if (directPhone) {
+    return directPhone;
+  }
+
+  const teamPhone = typeof user.team?.contactPhone === 'string' ? user.team.contactPhone.trim() : '';
+  return teamPhone || null;
+}
+
+function getPrimaryRoleFromUser(user: {
+  roles: Array<{ role: { key: string } | null }>;
+}): UserRole {
+  return resolvePrimaryUserRole(user.roles);
+}
+
+function buildUserInfo(user: {
+  id: string;
+  email: string;
+  fullName: string;
+  teamId?: string | null;
+  roles: Array<{ role: { key: string } | null }>;
+}): UserInfo {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: getPrimaryRoleFromUser(user),
+    teamId: user.teamId,
+  };
+}
+
+async function getAuthenticatableUser(normalizedEmail: string) {
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     include: {
@@ -132,8 +200,22 @@ export async function login(
           role: true,
         },
       },
+      team: {
+        select: {
+          contactPhone: true,
+        },
+      },
     },
   });
+
+  return user;
+}
+
+export async function authenticateCredentials(
+  credentials: LoginCredentials
+): Promise<AuthenticatedUser | null> {
+  const normalizedEmail = credentials.email.trim().toLowerCase();
+  const user = await getAuthenticatableUser(normalizedEmail);
 
   if (!user) {
     logAuthEvent('login_failed', {
@@ -174,16 +256,151 @@ export async function login(
     throw new Error('Account is not active');
   }
 
-  const primaryRole = resolvePrimaryUserRole(user.roles);
+  return {
+    ...buildUserInfo(user),
+    phone: resolveUserSmsPhone(user),
+  };
+}
 
+export async function issueSmsVerificationChallenge(
+  userId: string,
+  purpose: SmsChallengePurpose
+): Promise<SmsChallengeResult> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      team: {
+        select: {
+          contactPhone: true,
+        },
+      },
+    },
+  });
+
+  if (!user || user.status === 'disabled') {
+    throw new UnauthorizedError('Unable to send a verification code for this account.');
+  }
+
+  const phone = resolveUserSmsPhone(user);
+  if (!phone) {
+    throw new UnauthorizedError(
+      'A mobile number is required for verification. Contact an administrator to update this account.'
+    );
+  }
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + SMS_CHALLENGE_EXPIRY_MS);
+
+  await prisma.smsVerificationChallenge.updateMany({
+    where: {
+      userId,
+      purpose,
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    data: { consumedAt: new Date() },
+  });
+
+  const challenge = await prisma.smsVerificationChallenge.create({
+    data: {
+      userId,
+      purpose,
+      phone,
+      codeHash: hashVerificationCode(code),
+      expiresAt,
+    },
+  });
+
+  const sent = await sendSms(phone, buildVerificationMessage(code));
+  if (!sent) {
+    await prisma.smsVerificationChallenge.update({
+      where: { id: challenge.id },
+      data: { consumedAt: new Date() },
+    });
+    throw new UnauthorizedError('Unable to send a verification code right now. Please try again.');
+  }
+
+  return {
+    challengeId: challenge.id,
+    maskedPhone: maskPhoneNumber(phone),
+    expiresInSeconds: Math.floor(SMS_CHALLENGE_EXPIRY_MS / 1000),
+  };
+}
+
+export async function verifySmsChallenge(
+  challengeId: string,
+  code: string,
+  purpose: SmsChallengePurpose
+): Promise<{ userId: string }> {
+  const challenge = await prisma.smsVerificationChallenge.findUnique({
+    where: { id: challengeId },
+    select: {
+      id: true,
+      userId: true,
+      purpose: true,
+      codeHash: true,
+      expiresAt: true,
+      consumedAt: true,
+      attemptCount: true,
+    },
+  });
+
+  if (!challenge || challenge.purpose !== purpose) {
+    throw new UnauthorizedError('Invalid verification code.');
+  }
+
+  if (challenge.consumedAt || challenge.expiresAt < new Date()) {
+    throw new UnauthorizedError('Verification code has expired. Request a new code and try again.');
+  }
+
+  if (challenge.attemptCount >= SMS_CHALLENGE_MAX_ATTEMPTS) {
+    throw new UnauthorizedError('Too many failed verification attempts. Request a new code.');
+  }
+
+  const providedHash = hashVerificationCode(code.trim());
+  if (providedHash !== challenge.codeHash) {
+    await prisma.smsVerificationChallenge.update({
+      where: { id: challenge.id },
+      data: { attemptCount: { increment: 1 } },
+    });
+    throw new UnauthorizedError('Invalid verification code.');
+  }
+
+  await prisma.smsVerificationChallenge.update({
+    where: { id: challenge.id },
+    data: { consumedAt: new Date() },
+  });
+
+  return { userId: challenge.userId };
+}
+
+export async function completeLogin(
+  userId: string,
+  metadata: TokenMetadata = {}
+): Promise<{ tokens: AuthTokens; user: UserInfo }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      roles: {
+        include: {
+          role: true,
+        },
+      },
+    },
+  });
+
+  if (!user || user.status !== 'active') {
+    throw new UnauthorizedError('Account is not active');
+  }
+
+  const primaryRole = resolvePrimaryUserRole(user.roles);
   const tokens = generateTokens({
     sub: user.id,
     email: user.email,
     role: primaryRole,
   });
 
-  // Store refresh token for revocation tracking
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await storeRefreshToken(user.id, tokens.refreshTokenJti, expiresAt, metadata);
 
   await prisma.user.update({
@@ -197,14 +414,20 @@ export async function login(
 
   return {
     tokens,
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: primaryRole,
-      teamId: user.teamId,
-    },
+    user: buildUserInfo(user),
   };
+}
+
+export async function login(
+  credentials: LoginCredentials,
+  metadata: TokenMetadata = {}
+): Promise<{ tokens: AuthTokens; user: UserInfo } | null> {
+  const user = await authenticateCredentials(credentials);
+  if (!user) {
+    return null;
+  }
+
+  return completeLogin(user.id, metadata);
 }
 
 export async function refreshAccessToken(
@@ -365,7 +588,11 @@ export async function issuePasswordSetTokenForEmail(
 
 export async function consumePasswordSetToken(
   token: string,
-  password: string
+  password: string,
+  options?: {
+    smsChallengeId?: string;
+    smsCode?: string;
+  }
 ): Promise<void> {
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.isValid) {
@@ -379,6 +606,28 @@ export async function consumePasswordSetToken(
 
   if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
     throw new UnauthorizedError('Invalid or expired token');
+  }
+
+  const userRoles = await prisma.userRole.findMany({
+    where: { userId: passwordToken.userId },
+    include: { role: true },
+  });
+
+  const requiresSubcontractorVerification = resolvePrimaryUserRole(userRoles) === 'subcontractor';
+  if (requiresSubcontractorVerification) {
+    if (!options?.smsChallengeId || !options?.smsCode) {
+      throw new UnauthorizedError('SMS verification is required before setting this password.');
+    }
+
+    const verifiedChallenge = await verifySmsChallenge(
+      options.smsChallengeId,
+      options.smsCode,
+      'password_setup'
+    );
+
+    if (verifiedChallenge.userId !== passwordToken.userId) {
+      throw new UnauthorizedError('Verification code does not match this password setup link.');
+    }
   }
 
   const passwordHash = await hashPassword(password);
@@ -395,6 +644,47 @@ export async function consumePasswordSetToken(
   ]);
 
   await revokeAllUserTokens(passwordToken.userId, 'password_change');
+}
+
+export async function beginPasswordSetVerification(
+  token: string
+): Promise<
+  | ({ required: false })
+  | ({ required: true } & SmsChallengeResult)
+> {
+  const passwordToken = await prisma.passwordSetToken.findUnique({
+    where: { token },
+    include: {
+      user: {
+        include: {
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+          team: {
+            select: {
+              contactPhone: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
+    throw new UnauthorizedError('Invalid or expired token');
+  }
+
+  if (resolvePrimaryUserRole(passwordToken.user.roles) !== 'subcontractor') {
+    return { required: false };
+  }
+
+  const challenge = await issueSmsVerificationChallenge(passwordToken.userId, 'password_setup');
+  return {
+    required: true,
+    ...challenge,
+  };
 }
 
 export async function changeOwnPassword(

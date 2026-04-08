@@ -35,25 +35,33 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /login', () => {
-    it('should login successfully', async () => {
-      const mockResult = {
-        user: { id: 'user-1', email: 'test@example.com', fullName: 'Test', role: 'owner' as const },
-        tokens: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 },
+    it('should issue a two-factor challenge successfully', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        fullName: 'Test',
+        role: 'owner' as const,
+      };
+      const mockChallenge = {
+        challengeId: 'challenge-1',
+        maskedPhone: '***-***-1234',
+        expiresInSeconds: 600,
       };
 
-      (authService.login as jest.Mock).mockResolvedValue(mockResult);
+      (authService.authenticateCredentials as jest.Mock).mockResolvedValue(mockUser);
+      (authService.issueSmsVerificationChallenge as jest.Mock).mockResolvedValue(mockChallenge);
 
       const response = await request(app)
         .post('/api/v1/auth/login')
         .send({ email: 'test@example.com', password: 'Password123' })
         .expect(200);
 
-      expect(response.body.data.user).toEqual(mockResult.user);
-      expect(response.body.data.tokens.tokenType).toBe('Bearer');
+      expect(response.body.data.requiresTwoFactor).toBe(true);
+      expect(response.body.data.verification).toEqual(mockChallenge);
     });
 
     it('should return 401 for invalid credentials', async () => {
-      (authService.login as jest.Mock).mockResolvedValue(null);
+      (authService.authenticateCredentials as jest.Mock).mockResolvedValue(null);
 
       await request(app)
         .post('/api/v1/auth/login')
@@ -80,6 +88,53 @@ describe('Auth Routes', () => {
         .post('/api/v1/auth/login')
         .send({ email: 'invalid-email', password: 'Password123' })
         .expect(422);
+    });
+  });
+
+  describe('POST /login/verify', () => {
+    it('should complete login after valid SMS verification', async () => {
+      const mockResult = {
+        user: { id: 'user-1', email: 'test@example.com', fullName: 'Test', role: 'owner' as const },
+        tokens: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 },
+      };
+
+      (authService.verifySmsChallenge as jest.Mock).mockResolvedValue({ userId: 'user-1' });
+      (authService.completeLogin as jest.Mock).mockResolvedValue(mockResult);
+
+      const response = await request(app)
+        .post('/api/v1/auth/login/verify')
+        .send({ challengeId: 'challenge-1', code: '123456' })
+        .expect(200);
+
+      expect(response.body.data.user).toEqual(mockResult.user);
+      expect(response.body.data.tokens.tokenType).toBe('Bearer');
+    });
+
+    it('should return 422 when verification code is missing', async () => {
+      await request(app)
+        .post('/api/v1/auth/login/verify')
+        .send({ challengeId: 'challenge-1' })
+        .expect(422);
+    });
+  });
+
+  describe('POST /set-password/challenge', () => {
+    it('should return subcontractor verification requirements', async () => {
+      const mockChallenge = {
+        required: true,
+        challengeId: 'challenge-2',
+        maskedPhone: '***-***-5555',
+        expiresInSeconds: 600,
+      };
+
+      (authService.beginPasswordSetVerification as jest.Mock).mockResolvedValue(mockChallenge);
+
+      const response = await request(app)
+        .post('/api/v1/auth/set-password/challenge')
+        .send({ token: 'password-token' })
+        .expect(200);
+
+      expect(response.body.data).toEqual(mockChallenge);
     });
   });
 

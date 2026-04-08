@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import api from '../../lib/api';
+import { Shield } from 'lucide-react';
 
 const SetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -10,9 +11,58 @@ const SetPassword = () => {
   const token = searchParams.get('token');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [challengeRequired, setChallengeRequired] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+
+  const requestVerificationCode = async () => {
+    if (!token) {
+      return;
+    }
+
+    setSendingCode(true);
+    setError('');
+
+    try {
+      const response = await api.post('/auth/set-password/challenge', { token });
+      const result = response.data.data as
+        | { required: false }
+        | { required: true; challengeId: string; maskedPhone: string };
+
+      if (!result.required) {
+        setChallengeRequired(false);
+        setChallengeId(null);
+        setMaskedPhone('');
+        return;
+      }
+
+      setChallengeRequired(true);
+      setChallengeId(result.challengeId);
+      setMaskedPhone(result.maskedPhone);
+      setVerificationCode('');
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error?.message ||
+          err.response?.data?.error ||
+          'Failed to send a verification code.'
+      );
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    requestVerificationCode();
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,13 +76,26 @@ const SetPassword = () => {
       setError('Passwords do not match');
       return;
     }
+    if (challengeRequired && !verificationCode.trim()) {
+      setError('Verification code is required');
+      return;
+    }
 
     try {
       setLoading(true);
-      await api.post('/auth/set-password', { token, password });
+      await api.post('/auth/set-password', {
+        token,
+        password,
+        challengeId,
+        code: verificationCode.trim(),
+      });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to set password. The link may have expired.');
+      setError(
+        err.response?.data?.error?.message ||
+          err.response?.data?.error ||
+          'Failed to set password. The link may have expired.'
+      );
     } finally {
       setLoading(false);
     }
@@ -68,6 +131,32 @@ const SetPassword = () => {
         <p className="text-surface-500 dark:text-surface-400 mb-6">Choose a password to activate your Hygieia portal account.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {challengeRequired && (
+            <>
+              <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                We sent a verification code to <span className="font-medium">{maskedPhone}</span>.
+              </div>
+              <Input
+                label="Verification code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="Enter the 6-digit code"
+                icon={<Shield className="h-5 w-5" />}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={requestVerificationCode}
+                isLoading={sendingCode}
+              >
+                Resend verification code
+              </Button>
+            </>
+          )}
           <Input
             label="Password"
             type="password"
@@ -84,7 +173,7 @@ const SetPassword = () => {
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
           <Button type="submit" isLoading={loading} className="w-full">
-            Set Password
+            {challengeRequired ? 'Verify and set password' : 'Set Password'}
           </Button>
         </form>
       </div>

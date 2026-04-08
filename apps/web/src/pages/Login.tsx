@@ -5,20 +5,25 @@ import { useThemeStore } from '../stores/themeStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { Mail, Lock, Sun, Moon } from 'lucide-react';
+import { Mail, Lock, Shield, Sun, Moon } from 'lucide-react';
 import { AxiosError } from 'axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [maskedPhone, setMaskedPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const login = useAuthStore((state) => state.login);
+  const verifyLoginCode = useAuthStore((state) => state.verifyLoginCode);
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('reason') === 'inactivity';
+  const isVerifying = !!challengeId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,17 +31,37 @@ const Login = () => {
     setError('');
 
     try {
-      await login(email.trim(), password);
-      navigate('/app');
+      if (isVerifying) {
+        if (!verificationCode.trim()) {
+          setError('Verification code is required');
+          return;
+        }
+
+        await verifyLoginCode(challengeId, verificationCode.trim());
+        navigate('/app');
+        return;
+      }
+
+      const challenge = await login(email.trim(), password);
+      setChallengeId(challenge.challengeId);
+      setMaskedPhone(challenge.maskedPhone);
+      setVerificationCode('');
     } catch (err) {
       const apiMessage =
         err instanceof AxiosError
           ? (err.response?.data as { error?: { message?: string } } | undefined)?.error?.message
           : undefined;
-      setError(apiMessage || 'Invalid email or password');
+      setError(apiMessage || (isVerifying ? 'Invalid verification code' : 'Invalid email or password'));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBackToCredentials = () => {
+    setChallengeId(null);
+    setMaskedPhone('');
+    setVerificationCode('');
+    setError('');
   };
 
   return (
@@ -72,24 +97,45 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            <Input
-              type="email"
-              label="Email address"
-              placeholder="admin@hygieia.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              icon={<Mail className="h-5 w-5" />}
-              required
-            />
-            <Input
-              type="password"
-              label="Password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              icon={<Lock className="h-5 w-5" />}
-              required
-            />
+            {!isVerifying ? (
+              <>
+                <Input
+                  type="email"
+                  label="Email address"
+                  placeholder="admin@hygieia.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  icon={<Mail className="h-5 w-5" />}
+                  required
+                />
+                <Input
+                  type="password"
+                  label="Password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  icon={<Lock className="h-5 w-5" />}
+                  required
+                />
+              </>
+            ) : (
+              <>
+                <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                  We sent a verification code to <span className="font-medium">{maskedPhone}</span>.
+                </div>
+                <Input
+                  label="Verification code"
+                  placeholder="Enter the 6-digit code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  icon={<Shield className="h-5 w-5" />}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                />
+              </>
+            )}
           </div>
 
           {error && (
@@ -98,19 +144,29 @@ const Login = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link
-                to="/auth/forgot-password"
-                className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              >
-                Forgot your password?
-              </Link>
+          {!isVerifying ? (
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <Link
+                  to="/auth/forgot-password"
+                  className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBackToCredentials}
+              className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+            >
+              Use a different email or password
+            </button>
+          )}
 
           <Button type="submit" className="w-full" isLoading={isLoading}>
-            Sign in
+            {isVerifying ? 'Verify and sign in' : 'Sign in'}
           </Button>
         </form>
 
