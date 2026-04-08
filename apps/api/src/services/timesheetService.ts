@@ -301,6 +301,7 @@ export async function approveTimesheet(id: string, approvedByUserId: string) {
   const existing = await prisma.timesheet.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Timesheet not found');
   if (existing.status !== 'submitted') throw new BadRequestError('Timesheet can only be approved from submitted status');
+  if (existing.userId === approvedByUserId) throw new BadRequestError('Cannot approve your own timesheet');
 
   const approvedAt = new Date();
   const timesheet = await prisma.$transaction(async (tx) => {
