@@ -18,7 +18,7 @@ const invoiceItemSchema = z.object({
   itemType: z.enum(['service', 'additional', 'adjustment', 'credit']).optional(),
   description: z.string().min(1).max(500),
   quantity: z.number().positive(),
-  unitPrice: z.number(),
+  unitPrice: z.number().min(0),
   sortOrder: z.number().int().min(0).optional(),
 });
 
