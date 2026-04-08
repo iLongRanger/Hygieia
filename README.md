@@ -1,15 +1,15 @@
-# Hygieia - Cleaning Business Management System
+# Hygieia
 
-Single-tenant web application for managing cleaning operations across CRM, sales, operations, inspections, time tracking, billing, and finance. Supports both commercial and residential accounts.
+Single-tenant cleaning operations platform covering CRM, sales, contracts, field operations, inspections, workforce management, billing, and finance. The system supports both commercial and residential business lines.
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
-- npm 9+
+- npm 9+ or a compatible workspace-aware package manager
 - PostgreSQL 14+
-- Redis (recommended for local development)
-- Docker and Docker Compose (optional but recommended)
+- Redis 7+ for rate limiting, notifications, and background workers
+- Docker and Docker Compose for local infrastructure, if desired
 
 ### Installation
 
@@ -20,37 +20,43 @@ npm install
 # 2. Configure environment variables
 cp .env.example .env
 
-# 3. Run database migrations
-npm run db:migrate
+# 3. Start local infrastructure if needed
+docker compose up -d postgres redis
 
-# 4. (Optional) Seed baseline data
+# 4. Apply database migrations and generate Prisma client
+npm run db:migrate:deploy:local
+
+# 5. (Optional) Seed baseline data
 npm run db:seed
 
-# 5. Start API + Web
+# 6. Start the API and web apps
 npm run dev
 ```
 
-By default this starts:
-- API: `http://localhost:3001`
-- Web: `http://localhost:5173`
+### Local Runtime Defaults
+- API dev server: `http://localhost:3001`
+- Web dev server: `http://localhost:5173`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6379`
 
-## Current Modules
+Docker compose also exposes a containerized web app on `http://localhost:3000`.
 
-| Module | Description |
-|--------|-------------|
-| **CRM** | Leads, Accounts (commercial + residential), Contacts, Appointments, Opportunities |
-| **Sales** | Proposals, Quotations (one-time), Residential Quotes, One-Time Service Catalog |
-| **Contracts** | Contracts, Amendments, Team/Employee Assignment with Override Scheduling, Renewal |
-| **Operations** | Jobs (recurring + one-time), Teams, Facilities, Residential Properties, Task Templates |
-| **Quality** | Inspections, Inspection Templates, Corrective Actions, Signoffs |
-| **Workforce** | Time Tracking (clock-in/out, breaks), Timesheets (generate, approve), Manual Entries |
-| **Billing** | Invoices (manual + contract-based + batch generation), Payment Recording |
-| **Finance** | Expenses (with categories + approval), Payroll (generate, approve, pay), Finance Reports |
-| **Settings** | Global Settings, Pricing Plans (commercial + residential), Area/Proposal Templates, Users, Background Services |
-| **Public Links** | Proposal, Contract, Contract Amendment, Quotation, Residential Quote, Invoice public views |
-| **Notifications** | In-app realtime (Socket.IO) + database-stored notifications |
+## Product Surface
+
+| Area | Capabilities |
+|------|--------------|
+| Identity & Access | JWT auth, refresh tokens, SMS login verification, password setup/reset, RBAC |
+| CRM | Lead sources, leads, opportunities, accounts, contacts, appointments |
+| Sales | Commercial proposals, one-time quotations, residential quotes, proposal templates |
+| Contracts | Contracts, amendments, renewals, public signing, team assignment overrides |
+| Operations | Facilities, areas, facility tasks, task templates, teams, jobs |
+| Residential | Residential pricing plans, residential properties, residential quote workflow |
+| Quality | Inspections, templates, signoffs, corrective actions |
+| Workforce | Time tracking, breaks, manual entries, timesheets |
+| Billing | Invoices, contract-based generation, batch generation, public invoice view, payment recording |
+| Finance | Expenses, payroll, finance reports |
+| Notifications | Database-backed notifications, Socket.IO realtime delivery, email/SMS reminders |
+| Settings | Global branding/settings, background service controls, pricing settings |
 
 ## Architecture
 
@@ -59,107 +65,111 @@ By default this starts:
 ```text
 hygieia/
   apps/
-    api/        Express + TypeScript API (40 route modules + 6 public)
-    web/        React + Vite + TypeScript app
+    api/        Express + TypeScript API
+    web/        React + Vite + TypeScript frontend
   packages/
-    database/   Prisma schema + migrations
+    database/   Prisma schema, migrations, seed, backfill scripts
+    shared/     Shared workspace code
     types/      Shared TypeScript types
+    ui/         Shared UI package
     utils/      Shared utilities
-    ui/         Shared UI components
-    shared/     Shared code
 ```
 
-### Backend Runtime
-- Entry: `apps/api/src/index.ts`
-- Auth: JWT middleware + 5-role RBAC (owner, admin, manager, cleaner, subcontractor)
-- ORM: Prisma + PostgreSQL
-- Validation: Zod-based request schemas
-- Realtime: Socket.IO user-room notifications
-- Rate Limiting: Redis-backed (global + sensitive + public endpoint limiters)
-- Background Schedulers:
-  - Appointment/contract/proposal reminders
-  - Recurring job auto-generation
-  - Job nearing-end alerts
-  - Contract assignment override application
-  - Contract amendment auto-apply
+### Backend
+- Entry point: `apps/api/src/index.ts`
+- Stack: Express, TypeScript, Prisma, PostgreSQL
+- Validation: Zod schemas
+- Realtime: Socket.IO
+- Rate limiting: Redis-backed middleware
+- Notifications: email + SMS delivery helpers plus in-app notifications
+- Background services started from the API entrypoint:
+  - reminders
+  - recurring job auto-generation
+  - job end alerts
+  - contract assignment override application
+  - contract amendment auto-apply
 
-### Frontend Runtime
-- Entry: `apps/web/src/main.tsx`
+### Frontend
+- Entry point: `apps/web/src/main.tsx`
 - Router: `apps/web/src/App.tsx`
-- State: Zustand stores + React Query
-- API client: Axios with access-token refresh
-- Route access control: Permission-based route guards via `routeAccess.ts`
-- UI: Tailwind CSS + Lucide React icons
+- State: Zustand
+- Data fetching: TanStack React Query
+- HTTP client: Axios with access-token refresh
+- Styling: Tailwind CSS
 
-### Security
-- JWT authentication with token refresh
-- Role-based access control (RBAC) with 75 permission constants
-- IDOR protection via ownership middleware (8 resource types)
-- Rate limiting on auth, sensitive operations, and public endpoints
-- Helmet security headers, CORS validation
+### Authentication and Security
+- Email/password login is a two-step flow with SMS verification
+- Refresh tokens are also stored in an HTTP-only cookie for the auth routes
+- 5 system roles: `owner`, `admin`, `manager`, `cleaner`, `subcontractor`
+- Permission-based route gating in the web app
+- Ownership middleware protects sensitive resource access
+- Helmet, CORS validation, and request rate limiting are enabled in the API
 
-## API Surface
+## API and Web Surface
 
-All routes at `/api/v1/`. See [SYSTEM_UNDERSTANDING.md](./SYSTEM_UNDERSTANDING.md) for the complete endpoint listing.
+All API routes are mounted under `/api/v1/`.
 
-**Authenticated modules (40):** Auth, Users, Lead Sources, Leads, Appointments, Notifications, Accounts, Contacts, Opportunities, Facilities, Area Types, Areas, Task Templates, Facility Tasks, Pricing Settings, Residential (pricing plans, properties, quotes), Fixture Types, Area Templates, Proposals, Proposal Templates, Contracts (with amendments), Teams, Global Settings, Dashboard, Jobs, Inspections, Inspection Templates, Time Tracking (with timesheets), Invoices, Quotations, One-Time Service Catalog, Expenses, Payroll, Finance.
+- Authenticated API route modules: `34`
+- Public API route modules: `6`
+- Public web routes: landing page plus 6 tokenized public document pages
 
-**Public modules (6):** Proposals, Contracts, Contract Amendments, Invoices, Quotations, Residential Quotes.
+Public document routes currently include:
+- proposals
+- contracts
+- contract amendments
+- quotations
+- residential quotes
+- invoices
 
 ## Scripts
 
-### Root Scripts
-- `npm run dev` - Start API and web in parallel
-- `npm run dev:api` - Start API only
-- `npm run dev:web` - Start web only
-- `npm run build` - Build all workspaces
-- `npm run test` - Run workspace tests via Turbo
-- `npm run test:unit` - Run workspace unit tests via Turbo
-- `npm run test:integration` - Run workspace integration tests via Turbo
-- `npm run test:e2e` - Run Playwright tests in `tests/e2e`
-- `npm run lint` - Lint all workspaces
-- `npm run lint:fix` - Autofix lint issues
-- `npm run typecheck` - Typecheck all workspaces
-- `npm run db:migrate` - Run Prisma migrations
-- `npm run db:seed` - Seed database
-- `npm run db:studio` - Open Prisma Studio
-- `npm run db:reset` - Reset database
+### Root
+- `npm run dev`
+- `npm run dev:api`
+- `npm run dev:web`
+- `npm run build`
+- `npm run test`
+- `npm run test:unit`
+- `npm run test:integration`
+- `npm run test:e2e`
+- `npm run lint`
+- `npm run lint:fix`
+- `npm run typecheck`
+- `npm run db:migrate`
+- `npm run db:migrate:deploy:local`
+- `npm run db:migrate:deploy:local:safe`
+- `npm run db:generate`
+- `npm run db:seed`
+- `npm run db:studio`
+- `npm run db:reset`
 
-### Coverage Scripts
-- API coverage: `cd apps/api && npm run test:coverage`
-- Web coverage: `cd apps/web && npm run test:coverage`
+### Workspace Highlights
+- API tests: `cd apps/api && npm test`
+- Web tests: `cd apps/web && npm test`
+- API typecheck: `cd apps/api && npm run typecheck`
+- Web typecheck: `cd apps/web && npm run typecheck`
 
 ## Environment Notes
 
-- API defaults come from `.env.example`.
-- Web dev proxy defaults are defined in `apps/web/vite.config.ts`.
-- Ensure `CORS_ORIGIN` and `VITE_API_BASE_URL` match your local/prod URLs.
-- In production, set `FRONTEND_URL` and `WEB_APP_URL` so outbound public and app links can be generated correctly.
+Root `.env.example` defines the development defaults used by the API. Important settings include:
+- `DATABASE_URL`
+- `REDIS_URL`
+- `FRONTEND_URL`
+- `WEB_APP_URL`
+- `CORS_ORIGIN`
+- `RESEND_API_KEY`
+- `TWILIO_*`
+- `REMINDERS_ENABLED`
+- `GEOCODING_ENABLED`
 
-## Documentation
+For local API runtime, the app resolves a direct PostgreSQL URL even if a Prisma proxy URL is present in the process environment.
 
-Core docs live in `Documentation/` and project root:
-- [System Understanding](./SYSTEM_UNDERSTANDING.md)
-- [Development Guide](./DEVELOPMENT.md)
-- [Testing Guide](./TESTING.md)
-- [Production Checklist](./PRODUCTION_CHECKLIST.md)
-- [RBAC Diagram](./Documentation/RBAC_DIAGRAM.html)
-- [Frontend RBAC Model](./Documentation/FRONTEND_RBAC_MODEL.md)
+## Current Status
 
-## Project Status
+Status checked on 2026-04-08:
+- API typecheck is currently failing
+- Web typecheck is currently failing
+- Public invoice API and web page both exist
+- Auth flow includes SMS verification for login and conditional password setup verification
 
-Active development. As of 2026-03-26:
-- API typecheck passes
-- Web typecheck has known TypeScript drift (active release risk)
-- 40 authenticated + 6 public API route modules
-- 5 public web routes (proposal, contract, amendment, quotation, residential quote)
-
-Before production deployment:
-- Keep migrations clean and applied in all environments
-- Require passing tests and typechecks
-- Run manual UAT on critical business flows
-- Verify scheduler/notification behavior in staging
-
-## License
-
-MIT
+This README is intended to stay high-signal. For detailed endpoint, workflow, and route-access coverage, see [SYSTEM_UNDERSTANDING.md](A:\Projects\Hygieia\SYSTEM_UNDERSTANDING.md).

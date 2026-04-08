@@ -12,6 +12,10 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is not configured for Prisma');
 }
 
+if (process.env.DATABASE_URL !== databaseUrl) {
+  process.env.DATABASE_URL = databaseUrl;
+}
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
