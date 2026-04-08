@@ -52,7 +52,7 @@ export const addressSchema = z.object({
   serviceDays: z.array(scheduleWeekdaySchema).optional(),
   allowedWindowStart: timeSchema.optional(),
   allowedWindowEnd: timeSchema.optional(),
-}).passthrough().superRefine((value, ctx) => {
+}).superRefine((value, ctx) => {
   const schedule = value.serviceSchedule ?? value.clientServiceSchedule;
   const topLevelScheduleProvided =
     value.serviceFrequency !== undefined ||
