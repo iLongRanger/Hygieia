@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface SubcontractorWelcomeData {
   teamName: string;
@@ -41,10 +42,10 @@ export function buildSubcontractorWelcomeHtml(
           <tr>
             <td style="padding: 30px;">
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Hello <strong>${data.teamName}</strong>,
+                Hello <strong>${escapeHtml(data.teamName)}</strong>,
               </p>
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                You've been assigned to contract <strong>${data.contractNumber}</strong> at <strong>${data.facilityName}</strong>.
+                You've been assigned to contract <strong>${escapeHtml(data.contractNumber)}</strong> at <strong>${escapeHtml(data.facilityName)}</strong>.
               </p>
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
                 A portal account has been created for you. Click the button below to set your password and access your contracts, jobs, and time tracking:

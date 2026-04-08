@@ -14,6 +14,7 @@ import {
   markPublicViewed,
   signContractAmendmentPublic,
 } from '../services/contractAmendmentPublicService';
+import { escapeHtml } from '../utils/escapeHtml';
 
 const router: Router = Router();
 
@@ -157,12 +158,14 @@ router.post('/:token/sign', async (req: Request, res: Response, next: NextFuncti
             emailRecipients.add(branding.companyEmail);
           }
 
+          const safeName = escapeHtml(parsed.data.signedByName);
+          const safeEmail = escapeHtml(parsed.data.signedByEmail);
           const subject =
             `Contract amendment #${amendment.amendmentNumber} signed for ${amendment.contract.contractNumber}`;
           const html =
-            `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) signed amendment ` +
-            `<strong>#${amendment.amendmentNumber}: ${amendment.title}</strong> ` +
-            `for contract ${amendment.contract.contractNumber}.</p>`;
+            `<p>${safeName} (${safeEmail}) signed amendment ` +
+            `<strong>#${escapeHtml(String(amendment.amendmentNumber))}: ${escapeHtml(amendment.title)}</strong> ` +
+            `for contract ${escapeHtml(amendment.contract.contractNumber)}.</p>`;
 
           await Promise.allSettled(
             [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))

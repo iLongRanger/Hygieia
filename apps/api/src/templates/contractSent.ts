@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface ContractSentEmailData {
   contractNumber: string;
@@ -9,15 +10,6 @@ interface ContractSentEmailData {
   recipientName?: string;
   customMessage?: string;
   publicViewUrl?: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 export function buildContractSentHtmlWithBranding(

@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface TeamAssignedEmailData {
   contractNumber: string;
@@ -20,8 +21,8 @@ function buildServiceRows(services: TeamAssignedEmailData['proposalServices']): 
     .map(
       (s) =>
         `<tr>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${s.serviceName}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${s.frequency}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${escapeHtml(s.serviceName)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${escapeHtml(s.frequency)}</td>
         </tr>`
     )
     .join('');
@@ -33,9 +34,9 @@ function buildTaskRows(tasks: TeamAssignedEmailData['facilityTasks']): string {
     .map(
       (t) =>
         `<tr>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${t.name}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${t.area || '—'}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${t.frequency}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${escapeHtml(t.name)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${t.area ? escapeHtml(t.area) : '—'}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${escapeHtml(t.frequency)}</td>
         </tr>`
     )
     .join('');
@@ -76,22 +77,22 @@ export function buildContractTeamAssignedHtmlWithBranding(
 
               <!-- Contract Details -->
               <p style="color: #333; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
-                <strong>${data.teamName}</strong> has been assigned to contract <strong>${data.contractNumber}</strong> — "${data.title}".
+                <strong>${escapeHtml(data.teamName)}</strong> has been assigned to contract <strong>${escapeHtml(data.contractNumber)}</strong> — "${escapeHtml(data.title)}".
               </p>
 
               <table cellpadding="8" cellspacing="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 6px; width: 100%;">
-                <tr><td style="color: #666; font-size: 13px; width: 140px;">Contract</td><td style="font-weight: bold;">${data.contractNumber}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Title</td><td style="font-weight: bold;">${data.title}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Start Date</td><td style="font-weight: bold;">${data.startDate}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Frequency</td><td style="font-weight: bold;">${data.serviceFrequency}</td></tr>
+                <tr><td style="color: #666; font-size: 13px; width: 140px;">Contract</td><td style="font-weight: bold;">${escapeHtml(data.contractNumber)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Title</td><td style="font-weight: bold;">${escapeHtml(data.title)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Start Date</td><td style="font-weight: bold;">${escapeHtml(data.startDate)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Frequency</td><td style="font-weight: bold;">${escapeHtml(data.serviceFrequency)}</td></tr>
               </table>
 
               <!-- Facility Info -->
               <h3 style="color: #333; font-size: 15px; margin: 0 0 10px; border-bottom: 2px solid ${branding.themePrimaryColor}; padding-bottom: 6px;">Facility</h3>
               <table cellpadding="8" cellspacing="0" style="margin: 0 0 24px; width: 100%;">
-                <tr><td style="color: #666; font-size: 13px; width: 140px;">Name</td><td style="font-weight: bold;">${data.facilityName}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Address</td><td>${data.facilityAddress}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Building Type</td><td>${data.buildingType}</td></tr>
+                <tr><td style="color: #666; font-size: 13px; width: 140px;">Name</td><td style="font-weight: bold;">${escapeHtml(data.facilityName)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Address</td><td>${escapeHtml(data.facilityAddress)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Building Type</td><td>${escapeHtml(data.buildingType)}</td></tr>
               </table>
 
               <!-- Subcontract Pay -->

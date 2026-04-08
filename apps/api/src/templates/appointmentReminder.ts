@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface AppointmentReminderEmailData {
   appointmentType: string;
@@ -23,7 +24,7 @@ export function buildAppointmentReminderHtml(
     : '';
 
   const locationRow = data.location
-    ? `<tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Location</td><td style="font-weight: bold; padding: 6px 8px;">${data.location}</td></tr>`
+    ? `<tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Location</td><td style="font-weight: bold; padding: 6px 8px;">${escapeHtml(data.location)}</td></tr>`
     : '';
 
   return `
@@ -46,11 +47,11 @@ export function buildAppointmentReminderHtml(
           <tr>
             <td style="padding: 30px;">
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Hi ${data.assignedToName}, this is a reminder about your upcoming appointment.
+                Hi ${escapeHtml(data.assignedToName)}, this is a reminder about your upcoming appointment.
               </p>
               <table cellpadding="0" cellspacing="0" style="margin: 15px 0; background-color: #eff6ff; border-radius: 6px; width: 100%;">
                 <tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Type</td><td style="font-weight: bold; padding: 6px 8px;">${formatType(data.appointmentType)}</td></tr>
-                <tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Contact</td><td style="font-weight: bold; padding: 6px 8px;">${data.contactName}${data.companyName ? ` (${data.companyName})` : ''}</td></tr>
+                <tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Contact</td><td style="font-weight: bold; padding: 6px 8px;">${escapeHtml(data.contactName)}${data.companyName ? ` (${escapeHtml(data.companyName)})` : ''}</td></tr>
                 <tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">Start</td><td style="font-weight: bold; padding: 6px 8px;">${data.scheduledStart}</td></tr>
                 <tr><td style="color: #666; font-size: 13px; padding: 6px 8px;">End</td><td style="font-weight: bold; padding: 6px 8px;">${data.scheduledEnd}</td></tr>
                 ${locationRow}

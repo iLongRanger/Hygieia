@@ -1,5 +1,6 @@
 import { companyConfig } from '../config/company';
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface AcceptedEmailData {
   proposalNumber: string;
@@ -56,13 +57,13 @@ export function buildProposalAcceptedHtmlWithBranding(
           <tr>
             <td style="padding: 30px;">
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Great news! The proposal <strong>${data.proposalNumber}</strong> - "${data.title}" has been accepted.
+                Great news! The proposal <strong>${escapeHtml(data.proposalNumber)}</strong> - "${escapeHtml(data.title)}" has been accepted.
               </p>
               <table cellpadding="8" cellspacing="0" style="margin: 15px 0; background-color: #f0fdf4; border-radius: 6px; width: 100%;">
-                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${data.accountName}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Total</td><td style="font-weight: bold;">${data.totalAmount}</td></tr>
-                <tr><td style="color: #666; font-size: 13px;">Accepted</td><td style="font-weight: bold;">${data.acceptedAt}</td></tr>
-                ${data.signatureName ? `<tr><td style="color: #666; font-size: 13px;">Signed by</td><td style="font-weight: bold;">${data.signatureName}</td></tr>` : ''}
+                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${escapeHtml(data.accountName)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Total</td><td style="font-weight: bold;">${escapeHtml(data.totalAmount)}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Accepted</td><td style="font-weight: bold;">${escapeHtml(data.acceptedAt)}</td></tr>
+                ${data.signatureName ? `<tr><td style="color: #666; font-size: 13px;">Signed by</td><td style="font-weight: bold;">${escapeHtml(data.signatureName)}</td></tr>` : ''}
               </table>
             </td>
           </tr>

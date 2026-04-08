@@ -1,18 +1,11 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface NotificationEmailData {
   title: string;
   body: string | null;
   actionUrl?: string | null;
   actionLabel?: string;
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 export function buildNotificationEmailHtml(

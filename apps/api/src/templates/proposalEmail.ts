@@ -1,5 +1,6 @@
 import { companyConfig } from '../config/company';
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface ProposalEmailData {
   proposalNumber: string;
@@ -69,8 +70,8 @@ export function buildProposalEmailHtmlWithBranding(
           <!-- Body -->
           <tr>
             <td style="padding: 30px;">
-              <h2 style="color: ${branding.themePrimaryColor}; margin: 0 0 10px 0; font-size: 20px;">Proposal: ${data.title}</h2>
-              <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">${data.proposalNumber}</p>
+              <h2 style="color: ${branding.themePrimaryColor}; margin: 0 0 10px 0; font-size: 20px;">Proposal: ${escapeHtml(data.title)}</h2>
+              <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">${escapeHtml(data.proposalNumber)}</p>
 
               <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
                 <tr>
@@ -81,8 +82,8 @@ export function buildProposalEmailHtmlWithBranding(
                         <td style="color: #666; font-size: 13px; padding-bottom: 4px; text-align: right;">Total Amount</td>
                       </tr>
                       <tr>
-                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold;">${data.accountName}</td>
-                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold; text-align: right;">${data.totalAmount}</td>
+                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold;">${escapeHtml(data.accountName)}</td>
+                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold; text-align: right;">${escapeHtml(data.totalAmount)}</td>
                       </tr>
                     </table>
                   </td>

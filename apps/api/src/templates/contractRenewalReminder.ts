@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface RenewalReminderEmailData {
   contractNumber: string;
@@ -36,10 +37,10 @@ export function buildContractRenewalReminderHtmlWithBranding(
           <tr>
             <td style="padding: 30px;">
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Contract <strong>${data.contractNumber}</strong> - "${data.title}" is expiring in <strong>${data.daysUntilExpiry} days</strong>.
+                Contract <strong>${escapeHtml(data.contractNumber)}</strong> - "${escapeHtml(data.title)}" is expiring in <strong>${data.daysUntilExpiry} days</strong>.
               </p>
               <table cellpadding="8" cellspacing="0" style="margin: 15px 0; background-color: #fffbeb; border-radius: 6px; width: 100%;">
-                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${data.accountName}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${escapeHtml(data.accountName)}</td></tr>
                 <tr><td style="color: #666; font-size: 13px;">End Date</td><td style="font-weight: bold;">${data.endDate}</td></tr>
                 <tr><td style="color: #666; font-size: 13px;">Days Remaining</td><td style="font-weight: bold;">${data.daysUntilExpiry}</td></tr>
               </table>

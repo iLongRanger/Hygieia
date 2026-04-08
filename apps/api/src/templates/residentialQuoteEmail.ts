@@ -1,4 +1,5 @@
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface ResidentialQuoteEmailData {
   quoteNumber: string;
@@ -37,8 +38,8 @@ export function buildResidentialQuoteEmailHtmlWithBranding(
           </tr>
           <tr>
             <td style="padding: 30px;">
-              <h2 style="color: ${branding.themePrimaryColor}; margin: 0 0 10px 0; font-size: 20px;">Residential Quote: ${data.title}</h2>
-              <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">${data.quoteNumber}</p>
+              <h2 style="color: ${branding.themePrimaryColor}; margin: 0 0 10px 0; font-size: 20px;">Residential Quote: ${escapeHtml(data.title)}</h2>
+              <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">${escapeHtml(data.quoteNumber)}</p>
               <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
                 <tr>
                   <td style="padding: 12px; background-color: #f8f8f8; border-radius: 6px;">
@@ -48,8 +49,8 @@ export function buildResidentialQuoteEmailHtmlWithBranding(
                         <td style="color: #666; font-size: 13px; padding-bottom: 4px; text-align: right;">Quote Total</td>
                       </tr>
                       <tr>
-                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold;">${data.customerName}</td>
-                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold; text-align: right;">${data.totalAmount}</td>
+                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold;">${escapeHtml(data.customerName)}</td>
+                        <td style="color: ${branding.themePrimaryColor}; font-size: 16px; font-weight: bold; text-align: right;">${escapeHtml(data.totalAmount)}</td>
                       </tr>
                     </table>
                   </td>

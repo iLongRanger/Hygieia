@@ -1,5 +1,6 @@
 import { companyConfig } from '../config/company';
 import type { GlobalBranding } from '../types/branding';
+import { escapeHtml } from '../utils/escapeHtml';
 
 interface ActivatedEmailData {
   contractNumber: string;
@@ -38,10 +39,10 @@ export function buildContractActivatedHtmlWithBranding(
           <tr>
             <td style="padding: 30px;">
               <p style="color: #333; font-size: 14px; line-height: 1.6;">
-                Contract <strong>${data.contractNumber}</strong> - "${data.title}" has been activated.
+                Contract <strong>${escapeHtml(data.contractNumber)}</strong> - "${escapeHtml(data.title)}" has been activated.
               </p>
               <table cellpadding="8" cellspacing="0" style="margin: 15px 0; background-color: #f0fdf4; border-radius: 6px; width: 100%;">
-                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${data.accountName}</td></tr>
+                <tr><td style="color: #666; font-size: 13px;">Client</td><td style="font-weight: bold;">${escapeHtml(data.accountName)}</td></tr>
                 <tr><td style="color: #666; font-size: 13px;">Monthly Value</td><td style="font-weight: bold;">${data.monthlyValue}</td></tr>
                 <tr><td style="color: #666; font-size: 13px;">Start Date</td><td style="font-weight: bold;">${data.startDate}</td></tr>
                 <tr><td style="color: #666; font-size: 13px;">Activated</td><td style="font-weight: bold;">${data.activatedAt}</td></tr>

@@ -16,6 +16,7 @@ import { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
 import { hashPublicToken } from '../services/publicTokenService';
+import { escapeHtml } from '../utils/escapeHtml';
 
 const router: Router = Router();
 
@@ -156,8 +157,10 @@ router.post(
               emailRecipients.add(branding.companyEmail);
             }
 
-            const subject = `Contract ${fullContract.contractNumber} signed by ${parsed.data.signedByName}`;
-            const html = `<p>${parsed.data.signedByName} (${parsed.data.signedByEmail}) has signed contract <strong>${fullContract.contractNumber}: ${fullContract.title}</strong> for ${fullContract.account.name}.</p>`;
+            const safeName = escapeHtml(parsed.data.signedByName);
+            const safeEmail = escapeHtml(parsed.data.signedByEmail);
+            const subject = `Contract ${fullContract.contractNumber} signed by ${safeName}`;
+            const html = `<p>${safeName} (${safeEmail}) has signed contract <strong>${escapeHtml(fullContract.contractNumber)}: ${escapeHtml(fullContract.title)}</strong> for ${escapeHtml(fullContract.account.name)}.</p>`;
 
             await Promise.allSettled(
               [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))
@@ -243,7 +246,7 @@ router.get(
       }
 
       const fileBuffer = decodeDataUrlToBuffer(contract.termsDocumentDataUrl);
-      const safeFilename = contract.termsDocumentName.replace(/"/g, '');
+      const safeFilename = contract.termsDocumentName.replace(/[^a-zA-Z0-9._\- ]/g, '_');
 
       res.set({
         'Content-Type': contract.termsDocumentMimeType,
