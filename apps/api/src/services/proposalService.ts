@@ -137,7 +137,6 @@ const proposalSelect = {
   publicTokenExpiresAt: true,
   signatureName: true,
   signatureDate: true,
-  signatureIp: true,
   account: {
     select: {
       id: true,

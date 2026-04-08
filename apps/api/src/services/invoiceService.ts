@@ -110,7 +110,6 @@ const invoiceDetailSelect = {
   balanceDue: true,
   notes: true,
   paymentInstructions: true,
-  publicToken: true,
   publicTokenExpiresAt: true,
   sentAt: true,
   viewedAt: true,
