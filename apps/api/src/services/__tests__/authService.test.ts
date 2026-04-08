@@ -147,6 +147,11 @@ describe('authService', () => {
               role: true,
             },
           },
+          team: {
+            select: {
+              contactPhone: true,
+            },
+          },
         },
       });
       expect(result).toBeDefined();
