@@ -15,6 +15,9 @@ vi.mock('../../lib/facilities', () => ({
   createFacility: (...args: unknown[]) => createFacilityMock(...args),
   archiveFacility: (...args: unknown[]) => archiveFacilityMock(...args),
   restoreFacility: (...args: unknown[]) => restoreFacilityMock(...args),
+}));
+
+vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
 }));
 

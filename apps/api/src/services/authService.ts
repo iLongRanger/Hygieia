@@ -16,6 +16,12 @@ import { logAuthEvent } from '../lib/logger';
 import { UnauthorizedError } from '../middleware/errorHandler';
 import { validatePassword } from '../utils/passwordPolicy';
 import { sendSms } from './smsService';
+import { sendNotificationEmail } from './emailService';
+import { isEmailConfigured } from '../config/email';
+import {
+  buildLoginVerificationHtml,
+  buildLoginVerificationSubject,
+} from '../templates/loginVerification';
 
 export interface LoginCredentials {
   email: string;
@@ -124,7 +130,14 @@ export interface AuthenticatedUser {
   phone?: string | null;
 }
 
-export type SmsChallengePurpose = 'login' | 'password_setup';
+export type EmailChallengePurpose = 'login';
+export type SmsChallengePurpose = 'password_setup' | 'password_change';
+
+export interface EmailChallengeResult {
+  challengeId: string;
+  maskedEmail: string;
+  expiresInSeconds: number;
+}
 
 export interface SmsChallengeResult {
   challengeId: string;
@@ -132,8 +145,8 @@ export interface SmsChallengeResult {
   expiresInSeconds: number;
 }
 
-const SMS_CHALLENGE_EXPIRY_MS = 10 * 60 * 1000;
-const SMS_CHALLENGE_MAX_ATTEMPTS = 5;
+const VERIFICATION_CHALLENGE_EXPIRY_MS = 10 * 60 * 1000;
+const VERIFICATION_CHALLENGE_MAX_ATTEMPTS = 5;
 
 function generateVerificationCode(): string {
   return crypto.randomInt(100000, 1000000).toString();
@@ -141,6 +154,19 @@ function generateVerificationCode(): string {
 
 function hashVerificationCode(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex');
+}
+
+function maskEmailAddress(email: string): string {
+  const [localPart, domain] = email.split('@');
+  if (!localPart || !domain) {
+    return '***';
+  }
+
+  if (localPart.length <= 2) {
+    return `${localPart[0] || '*'}***@${domain}`;
+  }
+
+  return `${localPart.slice(0, 2)}***@${domain}`;
 }
 
 function maskPhoneNumber(phone: string): string {
@@ -289,7 +315,7 @@ export async function issueSmsVerificationChallenge(
   }
 
   const code = generateVerificationCode();
-  const expiresAt = new Date(Date.now() + SMS_CHALLENGE_EXPIRY_MS);
+  const expiresAt = new Date(Date.now() + VERIFICATION_CHALLENGE_EXPIRY_MS);
 
   await prisma.smsVerificationChallenge.updateMany({
     where: {
@@ -323,7 +349,7 @@ export async function issueSmsVerificationChallenge(
   return {
     challengeId: challenge.id,
     maskedPhone: maskPhoneNumber(phone),
-    expiresInSeconds: Math.floor(SMS_CHALLENGE_EXPIRY_MS / 1000),
+    expiresInSeconds: Math.floor(VERIFICATION_CHALLENGE_EXPIRY_MS / 1000),
   };
 }
 
@@ -353,7 +379,7 @@ export async function verifySmsChallenge(
     throw new UnauthorizedError('Verification code has expired. Request a new code and try again.');
   }
 
-  if (challenge.attemptCount >= SMS_CHALLENGE_MAX_ATTEMPTS) {
+  if (challenge.attemptCount >= VERIFICATION_CHALLENGE_MAX_ATTEMPTS) {
     throw new UnauthorizedError('Too many failed verification attempts. Request a new code.');
   }
 
@@ -367,6 +393,123 @@ export async function verifySmsChallenge(
   }
 
   await prisma.smsVerificationChallenge.update({
+    where: { id: challenge.id },
+    data: { consumedAt: new Date() },
+  });
+
+  return { userId: challenge.userId };
+}
+
+export async function issueEmailVerificationChallenge(
+  userId: string,
+  purpose: EmailChallengePurpose
+): Promise<EmailChallengeResult> {
+  if (!isEmailConfigured()) {
+    throw new UnauthorizedError('Email verification is not available right now. Please contact support.');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      status: true,
+    },
+  });
+
+  if (!user || user.status !== 'active') {
+    throw new UnauthorizedError('Unable to send a verification code for this account.');
+  }
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + VERIFICATION_CHALLENGE_EXPIRY_MS);
+
+  await prisma.emailVerificationChallenge.updateMany({
+    where: {
+      userId,
+      purpose,
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    data: { consumedAt: new Date() },
+  });
+
+  const challenge = await prisma.emailVerificationChallenge.create({
+    data: {
+      userId,
+      purpose,
+      email: user.email,
+      codeHash: hashVerificationCode(code),
+      expiresAt,
+    },
+  });
+
+  const sent = await sendNotificationEmail(
+    user.email,
+    buildLoginVerificationSubject(),
+    buildLoginVerificationHtml({
+      fullName: user.fullName,
+      code,
+      expiresInMinutes: Math.floor(VERIFICATION_CHALLENGE_EXPIRY_MS / 60000),
+    })
+  );
+
+  if (!sent) {
+    await prisma.emailVerificationChallenge.update({
+      where: { id: challenge.id },
+      data: { consumedAt: new Date() },
+    });
+    throw new UnauthorizedError('Unable to send a verification code right now. Please try again.');
+  }
+
+  return {
+    challengeId: challenge.id,
+    maskedEmail: maskEmailAddress(user.email),
+    expiresInSeconds: Math.floor(VERIFICATION_CHALLENGE_EXPIRY_MS / 1000),
+  };
+}
+
+export async function verifyEmailVerificationChallenge(
+  challengeId: string,
+  code: string,
+  purpose: EmailChallengePurpose
+): Promise<{ userId: string }> {
+  const challenge = await prisma.emailVerificationChallenge.findUnique({
+    where: { id: challengeId },
+    select: {
+      id: true,
+      userId: true,
+      purpose: true,
+      codeHash: true,
+      expiresAt: true,
+      consumedAt: true,
+      attemptCount: true,
+    },
+  });
+
+  if (!challenge || challenge.purpose !== purpose) {
+    throw new UnauthorizedError('Invalid verification code.');
+  }
+
+  if (challenge.consumedAt || challenge.expiresAt < new Date()) {
+    throw new UnauthorizedError('Verification code has expired. Request a new code and try again.');
+  }
+
+  if (challenge.attemptCount >= VERIFICATION_CHALLENGE_MAX_ATTEMPTS) {
+    throw new UnauthorizedError('Too many failed verification attempts. Request a new code.');
+  }
+
+  const providedHash = hashVerificationCode(code.trim());
+  if (providedHash !== challenge.codeHash) {
+    await prisma.emailVerificationChallenge.update({
+      where: { id: challenge.id },
+      data: { attemptCount: { increment: 1 } },
+    });
+    throw new UnauthorizedError('Invalid verification code.');
+  }
+
+  await prisma.emailVerificationChallenge.update({
     where: { id: challenge.id },
     data: { consumedAt: new Date() },
   });
@@ -687,10 +830,20 @@ export async function beginPasswordSetVerification(
   };
 }
 
+export async function beginPasswordChangeVerification(
+  userId: string
+): Promise<SmsChallengeResult> {
+  return issueSmsVerificationChallenge(userId, 'password_change');
+}
+
 export async function changeOwnPassword(
   userId: string,
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
+  options?: {
+    smsChallengeId?: string;
+    smsCode?: string;
+  }
 ): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -713,6 +866,20 @@ export async function changeOwnPassword(
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.isValid) {
     throw new UnauthorizedError(passwordValidation.error || 'Invalid password');
+  }
+
+  if (!options?.smsChallengeId || !options?.smsCode) {
+    throw new UnauthorizedError('SMS verification is required before changing your password.');
+  }
+
+  const verifiedChallenge = await verifySmsChallenge(
+    options.smsChallengeId,
+    options.smsCode,
+    'password_change'
+  );
+
+  if (verifiedChallenge.userId !== userId) {
+    throw new UnauthorizedError('Verification code does not match this account.');
   }
 
   const passwordHash = await hashPassword(newPassword);

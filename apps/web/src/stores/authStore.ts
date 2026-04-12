@@ -14,8 +14,22 @@ interface User {
 
 interface TwoFactorChallenge {
   challengeId: string;
-  maskedPhone: string;
+  maskedEmail: string;
   expiresInSeconds: number;
+}
+
+function isTwoFactorChallenge(value: unknown): value is TwoFactorChallenge {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const challenge = value as Partial<TwoFactorChallenge>;
+  return (
+    typeof challenge.challengeId === 'string' &&
+    challenge.challengeId.length > 0 &&
+    typeof challenge.maskedEmail === 'string' &&
+    typeof challenge.expiresInSeconds === 'number'
+  );
 }
 
 interface AuthState {
@@ -57,7 +71,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   login: async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     const response = await api.post('/auth/login', { email: normalizedEmail, password });
-    return response.data.data.verification as TwoFactorChallenge;
+    const payload = response.data?.data;
+    const challenge = payload?.verification ?? payload;
+
+    if (!isTwoFactorChallenge(challenge)) {
+      throw new Error('Email verification challenge was not returned by the server');
+    }
+
+    return challenge;
   },
   verifyLoginCode: async (challengeId, code) => {
     const response = await api.post('/auth/login/verify', { challengeId, code });

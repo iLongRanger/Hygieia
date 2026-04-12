@@ -149,8 +149,11 @@ vi.mock('../../lib/users', () => ({
 
 vi.mock('../../lib/facilities', () => ({
   listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
-  listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
   getAreaTemplateByAreaType: (...args: unknown[]) => getAreaTemplateByAreaTypeMock(...args),
+}));
+
+vi.mock('../../lib/tasks', () => ({
+  listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
 }));
 
 vi.mock('../../lib/pricing', async () => {

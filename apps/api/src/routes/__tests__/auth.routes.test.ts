@@ -35,7 +35,7 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /login', () => {
-    it('should issue a two-factor challenge successfully', async () => {
+    it('should issue an email verification challenge successfully', async () => {
       const mockUser = {
         id: 'user-1',
         email: 'test@example.com',
@@ -44,12 +44,12 @@ describe('Auth Routes', () => {
       };
       const mockChallenge = {
         challengeId: 'challenge-1',
-        maskedPhone: '***-***-1234',
+        maskedEmail: 'te***@example.com',
         expiresInSeconds: 600,
       };
 
       (authService.authenticateCredentials as jest.Mock).mockResolvedValue(mockUser);
-      (authService.issueSmsVerificationChallenge as jest.Mock).mockResolvedValue(mockChallenge);
+      (authService.issueEmailVerificationChallenge as jest.Mock).mockResolvedValue(mockChallenge);
 
       const response = await request(app)
         .post('/api/v1/auth/login')
@@ -92,13 +92,13 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /login/verify', () => {
-    it('should complete login after valid SMS verification', async () => {
+    it('should complete login after valid email verification', async () => {
       const mockResult = {
         user: { id: 'user-1', email: 'test@example.com', fullName: 'Test', role: 'owner' as const },
         tokens: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 900 },
       };
 
-      (authService.verifySmsChallenge as jest.Mock).mockResolvedValue({ userId: 'user-1' });
+      (authService.verifyEmailVerificationChallenge as jest.Mock).mockResolvedValue({ userId: 'user-1' });
       (authService.completeLogin as jest.Mock).mockResolvedValue(mockResult);
 
       const response = await request(app)
@@ -135,6 +135,26 @@ describe('Auth Routes', () => {
         .expect(200);
 
       expect(response.body.data).toEqual(mockChallenge);
+    });
+  });
+
+  describe('POST /change-password/challenge', () => {
+    it('should issue a password change SMS challenge for the authenticated user', async () => {
+      const mockChallenge = {
+        challengeId: 'challenge-3',
+        maskedPhone: '***-***-1234',
+        expiresInSeconds: 600,
+      };
+
+      (authService.beginPasswordChangeVerification as jest.Mock).mockResolvedValue(mockChallenge);
+
+      const response = await request(app)
+        .post('/api/v1/auth/change-password/challenge')
+        .send({})
+        .expect(200);
+
+      expect(response.body.data).toEqual(mockChallenge);
+      expect(authService.beginPasswordChangeVerification).toHaveBeenCalledWith('user-1');
     });
   });
 
@@ -240,6 +260,33 @@ describe('Auth Routes', () => {
       await request(app)
         .get('/api/v1/auth/me')
         .expect(401);
+    });
+  });
+
+  describe('POST /change-password', () => {
+    it('should forward the SMS challenge and code to the password change service', async () => {
+      (authService.changeOwnPassword as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/v1/auth/change-password')
+        .send({
+          currentPassword: 'Current123',
+          newPassword: 'Updated123',
+          challengeId: 'challenge-3',
+          code: '123456',
+        })
+        .expect(200);
+
+      expect(response.body.data.message).toContain('Password changed successfully');
+      expect(authService.changeOwnPassword).toHaveBeenCalledWith(
+        'user-1',
+        'Current123',
+        'Updated123',
+        {
+          smsChallengeId: 'challenge-3',
+          smsCode: '123456',
+        }
+      );
     });
   });
 });

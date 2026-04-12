@@ -39,6 +39,7 @@ const archiveQuotationMock = vi.fn();
 const restoreQuotationMock = vi.fn();
 const deleteQuotationMock = vi.fn();
 const setQuotationPricingApprovalMock = vi.fn();
+const issueQuotationPublicLinkMock = vi.fn();
 
 vi.mock('../../lib/quotations', () => ({
   getQuotation: (...args: unknown[]) => getQuotationMock(...args),
@@ -48,6 +49,7 @@ vi.mock('../../lib/quotations', () => ({
   archiveQuotation: (...args: unknown[]) => archiveQuotationMock(...args),
   restoreQuotation: (...args: unknown[]) => restoreQuotationMock(...args),
   deleteQuotation: (...args: unknown[]) => deleteQuotationMock(...args),
+  issueQuotationPublicLink: (...args: unknown[]) => issueQuotationPublicLinkMock(...args),
   setQuotationPricingApproval: (...args: unknown[]) => setQuotationPricingApprovalMock(...args),
 }));
 
@@ -103,6 +105,7 @@ describe('QuotationDetail', () => {
     archiveQuotationMock.mockResolvedValue({ ...quotation, archivedAt: '2026-02-10T00:00:00.000Z' });
     restoreQuotationMock.mockResolvedValue({ ...quotation, archivedAt: null });
     deleteQuotationMock.mockResolvedValue(undefined);
+    issueQuotationPublicLinkMock.mockResolvedValue('https://example.com/q/public-token-1');
   });
 
   afterEach(() => {
@@ -121,6 +124,7 @@ describe('QuotationDetail', () => {
   it('copies public link to clipboard', async () => {
     const user = userEvent.setup();
     const toast = (await import('react-hot-toast')).default;
+    getQuotationMock.mockResolvedValueOnce({ ...quotation, status: 'sent' });
     render(<QuotationDetail />);
 
     await screen.findByText('QT-2026-0001');

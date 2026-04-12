@@ -283,7 +283,7 @@ describe('JobsList', () => {
 
     render(<JobsList />);
 
-    expect(await screen.findByRole('heading', { name: 'Team Jobs' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Assigned Jobs' })).toBeInTheDocument();
     expect(screen.getByText('Sub Team A')).toBeInTheDocument();
     expect(screen.getByText('Team assignment')).toBeInTheDocument();
   });

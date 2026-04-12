@@ -2,11 +2,17 @@ import axios from 'axios';
 import logger from '../lib/logger';
 import { isSmsConfigured, smsConfig } from '../config/sms';
 
-function normalizePhone(input: string): string | null {
+export function normalizePhone(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith('+')) return trimmed;
   const digits = trimmed.replace(/\D/g, '');
+  if (trimmed.startsWith('+')) {
+    if (digits.length >= 8 && digits.length <= 15) {
+      return `+${digits}`;
+    }
+
+    return null;
+  }
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
   return null;
@@ -48,4 +54,3 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
     return false;
   }
 }
-

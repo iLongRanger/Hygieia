@@ -8,12 +8,16 @@ import { Card } from '../components/ui/Card';
 import { Mail, Lock, Shield, Sun, Moon } from 'lucide-react';
 import { AxiosError } from 'axios';
 
+interface PendingChallenge {
+  challengeId: string;
+  maskedEmail: string;
+}
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [maskedPhone, setMaskedPhone] = useState('');
+  const [pendingChallenge, setPendingChallenge] = useState<PendingChallenge | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,7 +27,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('reason') === 'inactivity';
-  const isVerifying = !!challengeId;
+  const isVerifying = pendingChallenge !== null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,29 +41,35 @@ const Login = () => {
           return;
         }
 
-        await verifyLoginCode(challengeId, verificationCode.trim());
+        await verifyLoginCode(pendingChallenge.challengeId, verificationCode.trim());
         navigate('/app');
         return;
       }
 
       const challenge = await login(email.trim(), password);
-      setChallengeId(challenge.challengeId);
-      setMaskedPhone(challenge.maskedPhone);
+      setPendingChallenge({
+        challengeId: challenge.challengeId,
+        maskedEmail: challenge.maskedEmail,
+      });
       setVerificationCode('');
     } catch (err) {
       const apiMessage =
         err instanceof AxiosError
           ? (err.response?.data as { error?: { message?: string } } | undefined)?.error?.message
           : undefined;
-      setError(apiMessage || (isVerifying ? 'Invalid verification code' : 'Invalid email or password'));
+      setError(
+        apiMessage ||
+          (isVerifying
+            ? 'Invalid verification code'
+            : 'Unable to start email verification. Check the email and password, then try again.')
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleBackToCredentials = () => {
-    setChallengeId(null);
-    setMaskedPhone('');
+    setPendingChallenge(null);
     setVerificationCode('');
     setError('');
   };
@@ -85,7 +95,9 @@ const Login = () => {
             HYGIEIA<span className="text-primary-600 dark:text-primary-400">.</span>
           </h1>
           <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
-            Sign in to manage your cleaning operations
+            {isVerifying
+              ? 'Enter the email verification code to finish signing in'
+              : 'Sign in to manage your cleaning operations'}
           </p>
         </div>
 
@@ -121,7 +133,7 @@ const Login = () => {
             ) : (
               <>
                 <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
-                  We sent a verification code to <span className="font-medium">{maskedPhone}</span>.
+                  We sent a verification code to <span className="font-medium">{pendingChallenge.maskedEmail}</span>.
                 </div>
                 <Input
                   label="Verification code"

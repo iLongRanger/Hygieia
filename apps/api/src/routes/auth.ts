@@ -1,8 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import {
   authenticateCredentials,
+  beginPasswordChangeVerification,
   beginPasswordSetVerification,
   completeLogin,
+  issueEmailVerificationChallenge,
   refreshAccessToken,
   getUserById,
   logout,
@@ -10,8 +12,7 @@ import {
   issuePasswordSetTokenForEmail,
   consumePasswordSetToken,
   changeOwnPassword,
-  issueSmsVerificationChallenge,
-  verifySmsChallenge,
+  verifyEmailVerificationChallenge,
 } from '../services/authService';
 import { authenticate } from '../middleware/auth';
 import {
@@ -100,7 +101,7 @@ router.post(
       res.json({
         data: {
           requiresTwoFactor: true,
-          verification: await issueSmsVerificationChallenge(user.id, 'login'),
+          verification: await issueEmailVerificationChallenge(user.id, 'login'),
         },
       });
     } catch (error) {
@@ -124,7 +125,7 @@ router.post(
         throw new ValidationError('Verification code is required', { field: 'code' });
       }
 
-      const challenge = await verifySmsChallenge(challengeId, code, 'login');
+      const challenge = await verifyEmailVerificationChallenge(challengeId, code, 'login');
       const result = await completeLogin(challenge.userId, {
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
@@ -435,6 +436,24 @@ router.patch(
 );
 
 router.post(
+  '/change-password/challenge',
+  authenticate,
+  sensitiveRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const result = await beginPasswordChangeVerification(req.user.id);
+      res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
   '/change-password',
   authenticate,
   sensitiveRateLimiter,
@@ -444,7 +463,7 @@ router.post(
         throw new UnauthorizedError('Not authenticated');
       }
 
-      const { currentPassword, newPassword } = req.body;
+      const { currentPassword, newPassword, challengeId, code } = req.body;
 
       if (!currentPassword || typeof currentPassword !== 'string') {
         throw new ValidationError('Current password is required', { field: 'currentPassword' });
@@ -461,7 +480,10 @@ router.post(
         });
       }
 
-      await changeOwnPassword(req.user.id, currentPassword, newPassword);
+      await changeOwnPassword(req.user.id, currentPassword, newPassword, {
+        smsChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
+        smsCode: typeof code === 'string' ? code : undefined,
+      });
       clearRefreshTokenCookie(res);
 
       res.json({

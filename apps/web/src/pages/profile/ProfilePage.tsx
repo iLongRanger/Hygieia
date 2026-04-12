@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
-import { KeyRound, Phone, Save, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { KeyRound, Phone, Save, Shield, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { getCurrentProfile, updateCurrentProfile, changeOwnPassword } from '../../lib/profile';
+import {
+  changeOwnPassword,
+  getCurrentProfile,
+  requestOwnPasswordChangeChallenge,
+  updateCurrentProfile,
+} from '../../lib/profile';
 import { useAuthStore } from '../../stores/authStore';
 
 const ProfilePage = () => {
@@ -14,6 +19,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [sendingPasswordCode, setSendingPasswordCode] = useState(false);
   const [profile, setProfile] = useState({
     fullName: '',
     email: '',
@@ -25,6 +31,9 @@ const ProfilePage = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [passwordChallengeId, setPasswordChallengeId] = useState<string | null>(null);
+  const [passwordVerificationCode, setPasswordVerificationCode] = useState('');
+  const [maskedPasswordPhone, setMaskedPasswordPhone] = useState('');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -93,13 +102,44 @@ const ProfilePage = () => {
       return;
     }
 
+    if (!passwordChallengeId) {
+      try {
+        setSendingPasswordCode(true);
+        const challenge = await requestOwnPasswordChangeChallenge();
+        setPasswordChallengeId(challenge.challengeId);
+        setMaskedPasswordPhone(challenge.maskedPhone);
+        setPasswordVerificationCode('');
+        toast.success(`Verification code sent to ${challenge.maskedPhone}`);
+      } catch (error) {
+        const apiMessage =
+          error instanceof AxiosError
+            ? (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message
+            : undefined;
+        toast.error(apiMessage || 'Failed to send verification code');
+      } finally {
+        setSendingPasswordCode(false);
+      }
+
+      return;
+    }
+
+    if (!passwordVerificationCode.trim()) {
+      toast.error('Verification code is required');
+      return;
+    }
+
     try {
       setChangingPassword(true);
       const result = await changeOwnPassword(
         passwords.currentPassword,
-        passwords.newPassword
+        passwords.newPassword,
+        passwordChallengeId,
+        passwordVerificationCode.trim()
       );
       toast.success(result.message);
+      setPasswordChallengeId(null);
+      setMaskedPasswordPhone('');
+      setPasswordVerificationCode('');
       clearAuth();
       window.location.href = '/login';
     } catch (error) {
@@ -217,6 +257,35 @@ const ProfilePage = () => {
                 setPasswords((current) => ({ ...current, confirmPassword: event.target.value }))
               }
             />
+            {passwordChallengeId && (
+              <>
+                <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                  We sent a verification code to <span className="font-medium">{maskedPasswordPhone}</span>.
+                </div>
+                <Input
+                  label="Verification Code"
+                  value={passwordVerificationCode}
+                  onChange={(event) => setPasswordVerificationCode(event.target.value)}
+                  placeholder="Enter the 6-digit code"
+                  icon={<Shield className="h-5 w-5" />}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setPasswordChallengeId(null);
+                    void handleChangePassword();
+                  }}
+                  isLoading={sendingPasswordCode}
+                >
+                  Resend Verification Code
+                </Button>
+              </>
+            )}
           </div>
 
           <div className="rounded-lg border border-surface-200 bg-surface-100 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-800/50 dark:text-surface-300">
@@ -226,7 +295,7 @@ const ProfilePage = () => {
           <div className="flex justify-end">
             <Button
               onClick={handleChangePassword}
-              isLoading={changingPassword}
+              isLoading={changingPassword || sendingPasswordCode}
               disabled={
                 !passwords.currentPassword ||
                 !passwords.newPassword ||
@@ -234,7 +303,7 @@ const ProfilePage = () => {
               }
             >
               <KeyRound className="mr-2 h-4 w-4" />
-              Update Password
+              {passwordChallengeId ? 'Verify and Update Password' : 'Send Verification Code'}
             </Button>
           </div>
         </Card>

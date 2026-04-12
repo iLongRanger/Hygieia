@@ -142,7 +142,7 @@ describe('Dashboard', () => {
       token: 'token',
       isAuthenticated: true,
     });
-    listContractsMock.mockResolvedValue({
+    listContractsMock.mockImplementation(async () => ({
       data: [
         {
           id: 'contract-1',
@@ -150,10 +150,12 @@ describe('Dashboard', () => {
           title: 'Team Contract',
           status: 'active',
           facility: { name: 'HQ' },
+          assignedTeam: { id: 'team-1', name: 'Sub Team A' },
         },
       ],
-    });
-    listJobsMock.mockResolvedValue({
+      pagination: { page: 1, limit: 50, total: 1, totalPages: 1 },
+    }));
+    listJobsMock.mockImplementation(async () => ({
       data: [
         {
           id: 'job-1',
@@ -162,15 +164,17 @@ describe('Dashboard', () => {
           scheduledDate: new Date().toISOString(),
           scheduledStartTime: '08:00',
           facility: { name: 'HQ' },
+          assignedTeam: { id: 'team-1', name: 'Sub Team A' },
         },
       ],
-    });
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    }));
 
     render(<Dashboard />);
 
-    expect(await screen.findByText('Assigned Team Contracts')).toBeInTheDocument();
-    expect(screen.getByText('1 active team contracts')).toBeInTheDocument();
-    expect(screen.getByText('Team assignment')).toBeInTheDocument();
-    expect(screen.getByText('Team contract')).toBeInTheDocument();
+    expect(await screen.findAllByText('Assigned Contracts')).toHaveLength(2);
+    expect(screen.getByText('1 currently active')).toBeInTheDocument();
+    expect(screen.getAllByText('Team assignment')).toHaveLength(2);
+    expect(screen.getByText('HQ')).toBeInTheDocument();
   });
 });

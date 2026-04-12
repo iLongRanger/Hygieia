@@ -21,12 +21,25 @@ export async function updateCurrentProfile(
 
 export async function changeOwnPassword(
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
+  challengeId: string,
+  code: string
 ): Promise<{ message: string }> {
   const response = await api.post('/auth/change-password', {
     currentPassword,
     newPassword,
+    challengeId,
+    code,
   });
+  return response.data.data;
+}
+
+export async function requestOwnPasswordChangeChallenge(): Promise<{
+  challengeId: string;
+  maskedPhone: string;
+  expiresInSeconds: number;
+}> {
+  const response = await api.post('/auth/change-password/challenge');
   return response.data.data;
 }
 

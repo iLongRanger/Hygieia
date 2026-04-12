@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '../../test/test-utils';
+import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
@@ -47,13 +47,16 @@ vi.mock('../../lib/facilities', () => ({
   listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
   listFixtureTypes: (...args: unknown[]) => listFixtureTypesMock(...args),
   getAreaTemplateByAreaType: (...args: unknown[]) => getAreaTemplateByAreaTypeMock(...args),
-  listFacilityTasks: (...args: unknown[]) => listFacilityTasksMock(...args),
   createFacilityTask: (...args: unknown[]) => createFacilityTaskMock(...args),
   updateFacilityTask: (...args: unknown[]) => updateFacilityTaskMock(...args),
   deleteFacilityTask: (...args: unknown[]) => deleteFacilityTaskMock(...args),
+  submitFacilityForProposal: (...args: unknown[]) => submitFacilityForProposalMock(...args),
+}));
+
+vi.mock('../../lib/tasks', () => ({
+  listFacilityTasks: (...args: unknown[]) => listFacilityTasksMock(...args),
   listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
   bulkCreateFacilityTasks: (...args: unknown[]) => bulkCreateFacilityTasksMock(...args),
-  submitFacilityForProposal: (...args: unknown[]) => submitFacilityForProposalMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -377,9 +380,9 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
-    const modal = await screen.findByRole('dialog', { name: /submit facility for proposal/i });
+    await screen.findByText(/submit facility for proposal/i);
     await user.type(screen.getByLabelText(/review notes/i), 'Ready for proposal');
-    await user.click(within(modal).getByRole('button', { name: /complete walkthrough/i }));
+    await user.click(screen.getByRole('button', { name: /complete walkthrough/i }));
 
     await waitFor(() => {
       expect(submitFacilityForProposalMock).toHaveBeenCalledWith(
@@ -407,13 +410,13 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
-    const modal = await screen.findByRole('dialog', { name: /submit facility for proposal/i });
-    await user.click(within(modal).getByRole('button', { name: /save as draft/i }));
+    await screen.findByText(/submit facility for proposal/i);
+    await user.click(screen.getByRole('button', { name: /save as draft/i }));
 
     await waitFor(() => {
       expect(submitFacilityForProposalMock).not.toHaveBeenCalled();
     });
-    expect(screen.queryByRole('dialog', { name: /submit facility for proposal/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/submit facility for proposal/i)).not.toBeInTheDocument();
   });
 
   it('hides submit for proposal when facility already has proposal or contract', async () => {

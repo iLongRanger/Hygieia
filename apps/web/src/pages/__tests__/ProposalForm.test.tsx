@@ -38,6 +38,9 @@ vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
   listAreas: (...args: unknown[]) => listAreasMock(...args),
   listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
+}));
+
+vi.mock('../../lib/tasks', () => ({
   listFacilityTasks: (...args: unknown[]) => listFacilityTasksMock(...args),
 }));
 
