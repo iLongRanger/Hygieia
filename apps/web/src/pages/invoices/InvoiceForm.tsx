@@ -14,12 +14,12 @@ import { listFacilities } from '../../lib/facilities';
 import type { Account } from '../../types/crm';
 import type { InvoiceItemType } from '../../types/invoice';
 
-type DraftItem = {
+interface DraftItem {
   description: string;
   quantity: string;
   unitPrice: string;
   itemType: InvoiceItemType;
-};
+}
 
 const ITEM_TYPE_OPTIONS = [
   { value: 'service', label: 'Service' },
@@ -50,7 +50,7 @@ const InvoiceForm = () => {
   useEffect(() => {
     const loadAccounts = async () => {
       try {
-        const res = await listAccounts({ page: 1, limit: 200 });
+        const res = await listAccounts({ page: 1, limit: 100 });
         setAccounts(res.data);
       } catch {
         toast.error('Failed to load accounts');

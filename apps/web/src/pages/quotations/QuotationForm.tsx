@@ -11,6 +11,7 @@ import { getQuotation, createQuotation, updateQuotation } from '../../lib/quotat
 import { listAccounts } from '../../lib/accounts';
 import { listFacilities } from '../../lib/facilities';
 import { listOneTimeServiceCatalog } from '../../lib/oneTimeServiceCatalog';
+import { extractApiErrorMessage } from '../../lib/api';
 import type {
   QuotationService,
   CreateQuotationInput,
@@ -72,7 +73,7 @@ const QuotationForm = () => {
     (async () => {
       try {
         const [accountsRes, catalogRes] = await Promise.all([
-          listAccounts({ limit: 200 }),
+          listAccounts({ limit: 100 }),
           listOneTimeServiceCatalog({ includeInactive: false }),
         ]);
         setAccounts(accountsRes.data || []);
@@ -389,8 +390,8 @@ const QuotationForm = () => {
         toast.success('Quotation created');
         navigate(`/quotations/${result.id}`);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || error.response?.data?.message || 'Failed to save quotation');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to save quotation'));
     } finally {
       setSaving(false);
     }
