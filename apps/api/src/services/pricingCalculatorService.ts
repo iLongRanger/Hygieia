@@ -2,7 +2,6 @@ import { prisma } from '../lib/prisma';
 import { getDefaultPricingSettings, getPricingSettingsById } from './pricingSettingsService';
 import type {
   FloorTypeMultipliers,
-  FrequencyMultipliers,
   ConditionMultipliers,
   TrafficMultipliers,
   SqftPerLaborHour,
@@ -152,17 +151,17 @@ export async function calculateFacilityPricing(
     ? {
         id: facilityOverride.facilityId,
         name: facilityOverride.facilityName,
-        buildingType: facilityOverride.buildingType || 'other',
+        buildingType: facilityOverride.buildingType ?? 'other',
         areas: facilityOverride.areas.map((area) => ({
           id: area.id,
           name: area.name,
           squareFeet: area.squareFeet,
           quantity: area.quantity ?? 1,
-          floorType: area.floorType || 'vct',
-          conditionLevel: area.conditionLevel || 'standard',
-          trafficLevel: area.trafficLevel || 'medium',
+          floorType: area.floorType ?? 'vct',
+          conditionLevel: area.conditionLevel ?? 'standard',
+          trafficLevel: area.trafficLevel ?? 'medium',
           areaType: {
-            name: area.areaTypeName || area.name || 'Area',
+            name: area.areaTypeName ?? area.name ?? 'Area',
           },
         })),
       }
@@ -201,7 +200,6 @@ export async function calculateFacilityPricing(
 
   // Extract multipliers
   const floorTypeMultipliers = pricingSettings.floorTypeMultipliers as FloorTypeMultipliers;
-  const frequencyMultipliers = pricingSettings.frequencyMultipliers as FrequencyMultipliers;
   const taskComplexityAddOns = pricingSettings.taskComplexityAddOns as TaskComplexityAddOns;
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
   const trafficMultipliers = pricingSettings.trafficMultipliers as TrafficMultipliers;
@@ -209,12 +207,10 @@ export async function calculateFacilityPricing(
   const difficultyMultiplier = 1.0;
 
   // Get building type and look up productivity rate
-  const buildingType = facility.buildingType || 'other';
+  const buildingType = facility.buildingType ?? 'other';
   const sqftPerLaborHour = sqftPerLaborHourMap[buildingType as keyof SqftPerLaborHour] ?? sqftPerLaborHourMap.other ?? 2500;
 
   // Get frequency multiplier (used to calculate monthly visits)
-  const frequencyMultiplier = frequencyMultipliers[serviceFrequency as keyof FrequencyMultipliers] ?? 1.0;
-
   // Calculate monthly visits based on frequency
   const monthlyVisits = getMonthlyVisits(serviceFrequency);
 
@@ -234,17 +230,17 @@ export async function calculateFacilityPricing(
   let totalSupplyCost = 0;
 
   for (const area of facility.areas) {
-    const squareFeet = Number(area.squareFeet) || 0;
-    const quantity = area.quantity || 1;
+    const squareFeet = Number(area.squareFeet) ?? 0;
+    const quantity = area.quantity ?? 1;
     const totalAreaSqFt = squareFeet * quantity;
     totalSquareFeet += totalAreaSqFt;
 
     // Get multipliers for this area
-    const floorType = area.floorType || 'vct';
+    const floorType = area.floorType ?? 'vct';
     const floorMultiplier = floorTypeMultipliers[floorType as keyof FloorTypeMultipliers] ?? 1.0;
-    const conditionLevel = area.conditionLevel || 'standard';
+    const conditionLevel = area.conditionLevel ?? 'standard';
     const conditionMultiplier = conditionMultipliers[conditionLevel as keyof ConditionMultipliers] ?? 1.0;
-    const trafficLevel = area.trafficLevel || 'medium';
+    const trafficLevel = area.trafficLevel ?? 'medium';
     const trafficMultiplier = trafficMultipliers?.[trafficLevel as keyof TrafficMultipliers] ?? 1.0;
 
     // Calculate labor hours based on square footage and productivity rate
@@ -286,7 +282,7 @@ export async function calculateFacilityPricing(
 
     areaBreakdowns.push({
       areaId: area.id,
-      areaName: area.name || area.areaType.name,
+      areaName: area.name ?? area.areaType.name,
       areaTypeName: area.areaType.name,
       squareFeet: totalAreaSqFt,
       floorType,
@@ -327,7 +323,7 @@ export async function calculateFacilityPricing(
   const monthlyCostBeforeProfit = totalCostPerVisit * monthlyVisits * difficultyMultiplier;
 
   // Apply profit margin: Final Price = Cost / (1 - Margin)
-  let subtotal = monthlyCostBeforeProfit / (1 - targetProfitMargin);
+  const subtotal = monthlyCostBeforeProfit / (1 - targetProfitMargin);
   const profitAmount = subtotal - monthlyCostBeforeProfit;
 
   // Apply task complexity add-on
@@ -446,9 +442,9 @@ export async function isFacilityReadyForPricing(facilityId: string): Promise<{
     };
   }
 
-  const totalSquareFeet = facility.areas.reduce((sum: number, area: { squareFeet: any; quantity: number | null }) => {
-    const sqFt = Number(area.squareFeet) || 0;
-    const qty = area.quantity || 1;
+  const totalSquareFeet = facility.areas.reduce((sum: number, area: { squareFeet: number | string | null; quantity: number | null }) => {
+    const sqFt = Number(area.squareFeet ?? 0);
+    const qty = area.quantity ?? 1;
     return sum + (sqFt * qty);
   }, 0);
 
@@ -525,9 +521,9 @@ export async function getFacilityTasksGrouped(
   const byFrequency = new Map<string, { name: string; areaName: string }[]>();
 
   for (const task of facilityTasks) {
-    const taskName = task.customName || task.taskTemplate?.name || 'Unnamed Task';
-    const areaId = task.area?.id || 'facility-wide';
-    const areaName = task.area?.name || task.area?.areaType?.name || 'Facility-Wide';
+    const taskName = task.customName ?? task.taskTemplate?.name ?? 'Unnamed Task';
+    const areaId = task.area?.id ?? 'facility-wide';
+    const areaName = task.area?.name ?? task.area?.areaType?.name ?? 'Facility-Wide';
     const frequency = task.cleaningFrequency;
 
     // Group by area
@@ -615,7 +611,7 @@ export async function generateProposalServicesFromFacility(
 
   // Create one service line per area with tasks in description
   const areaPriceTotal = pricing.areas.reduce(
-    (sum, area) => sum + Number(area.monthlyPrice || 0),
+    (sum, area) => sum + Number(area.monthlyPrice ?? 0),
     0
   );
   const targetMonthlyTotal = pricing.monthlyTotal;
@@ -655,12 +651,12 @@ export async function generateProposalServicesFromFacility(
 
     for (const freq of frequencyOrder) {
       if (tasksByFreq[freq] && tasksByFreq[freq].length > 0) {
-        descriptionParts.push(`${frequencyLabels[freq] || freq}: ${tasksByFreq[freq].join(', ')}`);
+        descriptionParts.push(`${frequencyLabels[freq] ?? freq}: ${tasksByFreq[freq].join(', ')}`);
       }
     }
 
     // Collect all task names for includedTasks array
-    const allTasks = areaTasks?.tasks.map(t => t.name) || [];
+    const allTasks = areaTasks?.tasks.map((t) => t.name) ?? [];
 
     let scaledMonthlyPrice = areaPricing.monthlyPrice;
     if (applyScaling) {
@@ -714,7 +710,7 @@ function getMonthlyVisits(frequency: string): number {
     monthly: 1,
     quarterly: 0.33,
   };
-  return visitsMap[frequency] || 4.33;
+  return visitsMap[frequency] ?? 4.33;
 }
 
 function getFrequencyLabel(frequency: string): string {
@@ -731,7 +727,7 @@ function getFrequencyLabel(frequency: string): string {
     monthly: 'Monthly',
     quarterly: 'Quarterly',
   };
-  return labels[frequency] || frequency;
+  return labels[frequency] ?? frequency;
 }
 
 function mapFrequencyToServiceType(frequency: string): string {
@@ -748,7 +744,7 @@ function mapFrequencyToServiceType(frequency: string): string {
     monthly: 'monthly',
     quarterly: 'quarterly',
   };
-  return mapping[frequency] || 'monthly';
+  return mapping[frequency] ?? 'monthly';
 }
 
 function mapFrequencyToProposalFrequency(frequency: string): string {
@@ -765,5 +761,5 @@ function mapFrequencyToProposalFrequency(frequency: string): string {
     monthly: 'monthly',
     quarterly: 'quarterly',
   };
-  return mapping[frequency] || 'monthly';
+  return mapping[frequency] ?? 'monthly';
 }
