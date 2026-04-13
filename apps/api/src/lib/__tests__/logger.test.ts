@@ -6,7 +6,7 @@ import { describe, it, expect } from '@jest/globals';
 describe('logger module', () => {
   describe('logger configuration', () => {
     it('should use LOG_LEVEL environment variable or default to info', () => {
-      const logLevel = process.env.LOG_LEVEL || 'info';
+      const logLevel = process.env.LOG_LEVEL ?? 'info';
       expect(['error', 'warn', 'info', 'debug']).toContain(logLevel);
     });
 

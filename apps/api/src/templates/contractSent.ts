@@ -30,7 +30,7 @@ export function buildContractSentHtmlWithBranding(
   const logoBlock = branding.logoDataUrl
     ? `<img src="${branding.logoDataUrl}" alt="${branding.companyName} logo" style="max-height: 64px; margin-bottom: 12px;" />`
     : '';
-  const recipientName = data.recipientName?.trim() || data.accountName;
+  const recipientName = data.recipientName?.trim() ?? data.accountName;
   const messageHtml = data.customMessage?.trim()
     ? `<p style="color: #333; font-size: 14px; line-height: 1.6; white-space: pre-line;">${escapeHtml(data.customMessage)}</p>`
     : `<p style="color: #333; font-size: 14px; line-height: 1.6;">

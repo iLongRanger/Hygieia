@@ -30,7 +30,7 @@ export function buildContractAmendmentSentHtmlWithBranding(
   const logoBlock = branding.logoDataUrl
     ? `<img src="${branding.logoDataUrl}" alt="${branding.companyName} logo" style="max-height: 64px; margin-bottom: 12px;" />`
     : '';
-  const recipientName = data.recipientName?.trim() || data.accountName;
+  const recipientName = data.recipientName?.trim() ?? data.accountName;
 
   return `
 <!DOCTYPE html>

@@ -6,7 +6,7 @@ import {
   autoSetLeadStatusForOpportunity,
 } from './leadService';
 
-const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
 const publicProposalSelect = {
   id: true,
@@ -100,7 +100,7 @@ export async function getProposalByPublicToken(token: string) {
   return proposal;
 }
 
-export async function markPublicViewed(token: string, ipAddress?: string) {
+export async function markPublicViewed(token: string, _ipAddress?: string) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
@@ -128,7 +128,7 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
 export async function acceptProposalPublic(
   token: string,
   signatureName: string,
-  ipAddress?: string
+  _ipAddress?: string
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: hashPublicToken(token) },
@@ -156,7 +156,7 @@ export async function acceptProposalPublic(
         acceptedAt: new Date(),
         signatureName,
         signatureDate: new Date(),
-        signatureIp: ipAddress ?? null,
+        signatureIp: _ipAddress ?? null,
       },
     });
 
@@ -183,7 +183,7 @@ export async function acceptProposalPublic(
 export async function rejectProposalPublic(
   token: string,
   rejectionReason: string,
-  ipAddress?: string
+  _ipAddress?: string
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: hashPublicToken(token) },

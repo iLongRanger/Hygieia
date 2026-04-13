@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import {
   authenticateCredentials,
   beginPasswordChangeVerification,
@@ -127,7 +128,7 @@ router.post(
 
       const challenge = await verifyEmailVerificationChallenge(challengeId, code, 'login');
       const result = await completeLogin(challenge.userId, {
-        ipAddress: req.ip || req.socket.remoteAddress,
+        ipAddress: req.ip ?? req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
       });
 
@@ -228,7 +229,7 @@ router.post(
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         return res.status(400).json({
-          error: passwordValidation.error || 'Invalid password',
+          error: passwordValidation.error ?? 'Invalid password',
         });
       }
 
@@ -258,7 +259,7 @@ router.post(
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         return res.status(400).json({
-          error: passwordValidation.error || 'Invalid password',
+          error: passwordValidation.error ?? 'Invalid password',
         });
       }
 
@@ -338,7 +339,7 @@ router.post(
       }
 
       const tokens = await refreshAccessToken(refreshToken, {
-        ipAddress: req.ip || req.socket.remoteAddress,
+        ipAddress: req.ip ?? req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
       });
 
@@ -475,7 +476,7 @@ router.post(
 
       const passwordValidation = validatePassword(newPassword);
       if (!passwordValidation.isValid) {
-        throw new ValidationError(passwordValidation.error || 'Invalid password', {
+        throw new ValidationError(passwordValidation.error ?? 'Invalid password', {
           field: 'newPassword',
         });
       }

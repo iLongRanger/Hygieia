@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { ensureOneTimeJobForAcceptedQuotation } from './quotationService';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
-const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
 const publicQuotationSelect = {
   id: true,
@@ -73,7 +73,7 @@ export async function getQuotationByPublicToken(token: string) {
   return quotation;
 }
 
-export async function markPublicViewed(token: string, ipAddress?: string) {
+export async function markPublicViewed(token: string, _ipAddress?: string) {
   const quotation = await prisma.quotation.findUnique({
     where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },
@@ -100,7 +100,7 @@ export async function markPublicViewed(token: string, ipAddress?: string) {
 export async function acceptQuotationPublic(
   token: string,
   signatureName: string,
-  ipAddress?: string
+  _ipAddress?: string
 ) {
   const quotation = await prisma.quotation.findUnique({
     where: { publicToken: hashPublicToken(token) },
@@ -152,7 +152,7 @@ export async function acceptQuotationPublic(
         acceptedAt: new Date(),
         signatureName,
         signatureDate: new Date(),
-        signatureIp: ipAddress ?? null,
+        signatureIp: _ipAddress ?? null,
       },
     });
   }
@@ -173,7 +173,7 @@ export async function acceptQuotationPublic(
 export async function rejectQuotationPublic(
   token: string,
   rejectionReason: string,
-  ipAddress?: string
+  _ipAddress?: string
 ) {
   const quotation = await prisma.quotation.findUnique({
     where: { publicToken: hashPublicToken(token) },
