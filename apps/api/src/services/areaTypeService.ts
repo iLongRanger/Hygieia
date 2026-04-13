@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 export interface AreaTypeListParams {
   page?: number;
@@ -169,13 +169,19 @@ export async function getAreaTypeGuidance(
     const lower = name.toLowerCase();
     // Exact match
     if (guidanceByType.has(lower)) {
-      result[name] = guidanceByType.get(lower)!;
+      const guidance = guidanceByType.get(lower);
+      if (guidance) {
+        result[name] = guidance;
+      }
       continue;
     }
     // Prefix match: "office 1" starts with "office"
     const match = sortedTypeNames.find((typeName) => lower.startsWith(typeName));
     if (match) {
-      result[name] = guidanceByType.get(match)!;
+      const guidance = guidanceByType.get(match);
+      if (guidance) {
+        result[name] = guidance;
+      }
     }
   }
   return result;

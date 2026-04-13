@@ -24,7 +24,7 @@ import { prisma } from '../../lib/prisma';
  * Registry that holds all available pricing strategies
  */
 class PricingStrategyRegistry {
-  private strategies: Map<string, PricingStrategy> = new Map();
+  private strategies = new Map<string, PricingStrategy>();
 
   constructor() {
     // Register built-in strategies
@@ -57,7 +57,11 @@ class PricingStrategyRegistry {
     if (!strategy) {
       // Fall back to default if strategy not found
       console.warn(`Pricing strategy '${key}' not found, falling back to default`);
-      return this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY)!;
+      const fallback = this.strategies.get(DEFAULT_PRICING_STRATEGY_KEY);
+      if (!fallback) {
+        throw new Error(`Default pricing strategy '${DEFAULT_PRICING_STRATEGY_KEY}' is not registered`);
+      }
+      return fallback;
     }
     return strategy;
   }

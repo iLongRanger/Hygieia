@@ -530,13 +530,19 @@ export async function getFacilityTasksGrouped(
     if (!byArea.has(areaId)) {
       byArea.set(areaId, { areaName, tasks: [] });
     }
-    byArea.get(areaId)!.tasks.push({ name: taskName, frequency });
+    const areaGroup = byArea.get(areaId);
+    if (areaGroup) {
+      areaGroup.tasks.push({ name: taskName, frequency });
+    }
 
     // Group by frequency
     if (!byFrequency.has(frequency)) {
       byFrequency.set(frequency, []);
     }
-    byFrequency.get(frequency)!.push({ name: taskName, areaName });
+    const frequencyGroup = byFrequency.get(frequency);
+    if (frequencyGroup) {
+      frequencyGroup.push({ name: taskName, areaName });
+    }
   }
 
   return { byArea, byFrequency };

@@ -767,11 +767,12 @@ export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string):
     return service.description ? `${line} - ${service.description}` : line;
   });
 
+  const facilityId = quotation.facilityId;
+  const scheduledDate = quotation.scheduledDate;
+  const scheduledStartTime = quotation.scheduledStartTime;
+  const scheduledEndTime = quotation.scheduledEndTime;
+
   try {
-    const facilityId = quotation.facilityId!;
-    const scheduledDate = quotation.scheduledDate!;
-    const scheduledStartTime = quotation.scheduledStartTime!;
-    const scheduledEndTime = quotation.scheduledEndTime!;
 
     return await prisma.$transaction(async (tx) => {
     const year = new Date().getFullYear();

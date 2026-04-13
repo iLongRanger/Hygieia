@@ -685,7 +685,7 @@ export async function getDashboardStats(
       title: c.title,
       accountName: c.account.name,
       monthlyValue: Number(c.monthlyValue),
-      endDate: c.endDate!.toISOString().slice(0, 10),
+      endDate: c.endDate?.toISOString().slice(0, 10) ?? null,
       status: c.status,
     })),
     revenueByMonth,

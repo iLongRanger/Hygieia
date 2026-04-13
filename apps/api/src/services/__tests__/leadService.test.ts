@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as leadService from '../leadService';
 import { prisma } from '../../lib/prisma';
-import { createTestLead, mockPaginatedResult } from '../../test/helpers';
+import { createTestLead } from '../../test/helpers';
 import { createNotification } from '../notificationService';
 
 jest.mock('../../lib/prisma', () => ({

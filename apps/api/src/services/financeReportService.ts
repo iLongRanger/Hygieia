@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
+import type { Decimal } from '@prisma/client/runtime/library';
 
 function toNumber(val: Decimal | number | null | undefined): number {
   if (val == null) return 0;
@@ -390,7 +390,10 @@ export async function getRevenueReport(dateFrom?: Date, dateTo?: Date) {
   >();
 
   for (const inv of paidInvoices) {
-    const monthKey = formatMonthKey(new Date(inv.paidAt!));
+    if (!inv.paidAt) {
+      continue;
+    }
+    const monthKey = formatMonthKey(new Date(inv.paidAt));
     monthSet.add(monthKey);
 
     let entry = accountMap.get(inv.accountId);
