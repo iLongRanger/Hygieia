@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { geocodeAddressIfNeeded } from './geocodingService';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { completeAppointment } from './appointmentService';
@@ -309,7 +309,7 @@ export async function createFacility(input: FacilityCreateInput) {
         accountId: input.accountId,
         facilityId: facility.id,
         primaryContactId: primaryContact?.id ?? null,
-        title: lead?.companyName?.trim() || lead?.contactName?.trim() || normalizedName,
+        title: lead?.companyName?.trim() ?? lead?.contactName?.trim() ?? normalizedName,
         source: null,
         estimatedValue: lead?.estimatedValue ?? null,
         probability: lead?.probability ?? 0,
@@ -596,16 +596,20 @@ export async function getTaskTimeBreakdown(
     if (!tasksByArea.has(areaId)) {
       tasksByArea.set(areaId, []);
     }
-    tasksByArea.get(areaId)!.push(task);
+    const tasksForArea = tasksByArea.get(areaId);
+    if (tasksForArea) {
+      tasksForArea.push(task);
+    }
   }
 
   const areaBreakdowns: AreaTimeBreakdown[] = [];
   let grandTotalMinutes = 0;
 
   for (const area of facility.areas) {
-    const totalAreaSqFt = (Number(area.squareFeet) || 0) * (area.quantity || 1);
-    const totalRoomCount = (area.roomCount || 0) * (area.quantity || 1);
-    const totalUnitCount = (area.unitCount || 0) * (area.quantity || 1);
+    const areaQuantity = area.quantity ?? 1;
+    const totalAreaSqFt = (Number(area.squareFeet) ?? 0) * areaQuantity;
+    const totalRoomCount = (area.roomCount ?? 0) * areaQuantity;
+    const totalUnitCount = (area.unitCount ?? 0) * areaQuantity;
 
     const areaTasks = tasksByArea.get(area.id) ?? [];
     const taskBreakdowns: TaskTimeBreakdownItem[] = [];
@@ -616,7 +620,7 @@ export async function getTaskTimeBreakdown(
     for (const fixture of area.fixtures) {
       areaFixtureCounts.set(
         fixture.fixtureTypeId,
-        (fixture.count || 0) * (area.quantity || 1)
+        (fixture.count ?? 0) * areaQuantity
       );
     }
 
@@ -631,12 +635,12 @@ export async function getTaskTimeBreakdown(
       const fixtureMinutesMap: Record<string, number> = {};
       if (template?.fixtureMinutes) {
         for (const fm of template.fixtureMinutes) {
-          fixtureMinutesMap[fm.fixtureTypeId] = Number(fm.minutesPerFixture) || 0;
+          fixtureMinutesMap[fm.fixtureTypeId] = Number(fm.minutesPerFixture) ?? 0;
         }
       }
       if (task.fixtureMinutes) {
         for (const fm of task.fixtureMinutes) {
-          fixtureMinutesMap[fm.fixtureTypeId] = Number(fm.minutesPerFixture) || 0;
+          fixtureMinutesMap[fm.fixtureTypeId] = Number(fm.minutesPerFixture) ?? 0;
         }
       }
 
@@ -652,7 +656,7 @@ export async function getTaskTimeBreakdown(
         taskMinutes += minutesPerFixture * fixtureCount;
       }
 
-      const taskName = task.customName || template?.name || 'Unnamed Task';
+      const taskName = task.customName ?? template?.name ?? 'Unnamed Task';
       taskBreakdowns.push({
         taskId: task.id,
         taskName,
@@ -664,18 +668,18 @@ export async function getTaskTimeBreakdown(
 
     // Add time from area fixtures with minutesPerItem
     for (const fixture of area.fixtures) {
-      const minutesPerItem = Number(fixture.minutesPerItem) || 0;
+      const minutesPerItem = Number(fixture.minutesPerItem) ?? 0;
       if (minutesPerItem > 0) {
-        const fixtureCount = (fixture.count || 0) * (area.quantity || 1);
+        const fixtureCount = (fixture.count ?? 0) * areaQuantity;
         areaTotalMinutes += minutesPerItem * fixtureCount;
       }
     }
 
     areaBreakdowns.push({
       id: area.id,
-      name: area.name || area.areaType.name,
+      name: area.name ?? area.areaType.name,
       squareFeet: totalAreaSqFt,
-      floorType: area.floorType || 'vct',
+      floorType: area.floorType ?? 'vct',
       tasks: taskBreakdowns,
       totalMinutes: roundToTwo(areaTotalMinutes),
     });
@@ -687,7 +691,7 @@ export async function getTaskTimeBreakdown(
   const facilityWideTasks = tasksByArea.get(null) ?? [];
   if (facilityWideTasks.length > 0) {
     const totalFacilitySqFt = facility.areas.reduce((sum, area) => {
-      return sum + (Number(area.squareFeet) || 0) * (area.quantity || 1);
+      return sum + (Number(area.squareFeet) ?? 0) * (area.quantity ?? 1);
     }, 0);
 
     const taskBreakdowns: TaskTimeBreakdownItem[] = [];
@@ -701,7 +705,7 @@ export async function getTaskTimeBreakdown(
       let taskMinutes = baseMinutes;
       taskMinutes += perSqftMinutes * totalFacilitySqFt;
 
-      const taskName = task.customName || template?.name || 'Unnamed Task';
+      const taskName = task.customName ?? template?.name ?? 'Unnamed Task';
       taskBreakdowns.push({
         taskId: task.id,
         taskName,

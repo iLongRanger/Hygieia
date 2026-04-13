@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { ValidationError } from '../middleware/errorHandler';
 
 export interface FacilityTaskListParams {
@@ -125,11 +125,11 @@ const facilityTaskSelect = {
   },
 } satisfies Prisma.FacilityTaskSelect;
 
-type DuplicateCandidateTask = {
+interface DuplicateCandidateTask {
   id: string;
   customName: string | null;
   taskTemplate: { id: string; name: string } | null;
-};
+}
 
 function normalizeTaskName(value: string | null | undefined): string {
   return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -425,9 +425,7 @@ export async function updateFacilityTask(
   const nextCustomName =
     input.customName !== undefined ? input.customName : existingTask.customName;
   const nextCleaningFrequency =
-    input.cleaningFrequency !== undefined
-      ? input.cleaningFrequency
-      : existingTask.cleaningFrequency;
+    input.cleaningFrequency ?? existingTask.cleaningFrequency;
 
   await ensureNoDuplicateFacilityTask({
     facilityId: existingTask.facilityId,
@@ -524,7 +522,7 @@ export async function bulkCreateFacilityTasks(
     },
   });
 
-  const resolvedFrequency = cleaningFrequency || undefined;
+  const resolvedFrequency = cleaningFrequency ?? undefined;
   const existingTasks = await prisma.facilityTask.findMany({
     where: {
       facilityId,
@@ -556,7 +554,7 @@ export async function bulkCreateFacilityTasks(
   const tasks = templates
     .map((template) => {
       const taskFrequency =
-        cleaningFrequency || mapCleaningTypeToFrequency(template.cleaningType);
+        cleaningFrequency ?? mapCleaningTypeToFrequency(template.cleaningType);
       const nameKey = `${taskFrequency}::${normalizeTaskName(template.name)}`;
 
       if (existingNameKeys.has(nameKey) || seenIncomingKeys.has(nameKey)) {
@@ -566,7 +564,7 @@ export async function bulkCreateFacilityTasks(
       seenIncomingKeys.add(nameKey);
       return {
         facilityId,
-        areaId: areaId || null,
+        areaId: areaId ?? null,
         taskTemplateId: template.id,
         estimatedMinutes: template.estimatedMinutes,
         // Use provided frequency, or map cleaningType to frequency, or default to daily
@@ -598,5 +596,5 @@ function mapCleaningTypeToFrequency(cleaningType: string): string {
     move_out: 'as_needed',
     post_construction: 'as_needed',
   };
-  return mapping[cleaningType] || 'daily';
+  return mapping[cleaningType] ?? 'daily';
 }
