@@ -1,5 +1,6 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
+import type { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
@@ -60,6 +61,15 @@ import {
 import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
+type ResidentialQuotePayload = NonNullable<Awaited<ReturnType<typeof getResidentialQuoteById>>>;
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  return req.user;
+}
 
 async function getResidentialQuoteNotificationRecipients(accountId: string) {
   const account = await prisma.account.findUnique({
@@ -179,7 +189,8 @@ router.post(
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
-      const plan = await createResidentialPricingPlan(parsed.data, req.user!.id);
+      const user = requireAuthenticatedUser(req);
+      const plan = await createResidentialPricingPlan(parsed.data, user.id);
       res.status(201).json({ data: plan });
     } catch (error) {
       next(error);
@@ -293,7 +304,8 @@ router.post(
         path: req.path,
         method: req.method,
       });
-      const property = await createResidentialProperty(parsed.data, req.user!.id);
+      const user = requireAuthenticatedUser(req);
+      const property = await createResidentialProperty(parsed.data, user.id);
       res.status(201).json({ data: property });
     } catch (error) {
       next(error);
@@ -407,7 +419,8 @@ router.post(
         path: req.path,
         method: req.method,
       });
-      const quote = await createResidentialQuote(parsed.data, req.user!.id);
+      const user = requireAuthenticatedUser(req);
+      const quote = await createResidentialQuote(parsed.data, user.id);
       res.status(201).json({ data: quote });
     } catch (error) {
       next(error);
@@ -555,7 +568,7 @@ router.post(
             },
             branding
           );
-          const pdfBuffer = await generateResidentialQuotePdf(quote as any);
+          const pdfBuffer = await generateResidentialQuotePdf(quote as ResidentialQuotePayload);
           const subject = buildResidentialQuoteEmailSubject(quote.quoteNumber, quote.title);
           await sendResidentialQuoteEmail(emailTo, subject, html, pdfBuffer, quote.quoteNumber);
         } catch (emailError) {
@@ -613,7 +626,7 @@ router.get(
         throw new NotFoundError('Residential quote not found');
       }
 
-      const pdfBuffer = await generateResidentialQuotePdf(quote as any);
+      const pdfBuffer = await generateResidentialQuotePdf(quote as ResidentialQuotePayload);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${quote.quoteNumber}.pdf"`);
@@ -688,7 +701,8 @@ router.post(
       if (!existing) {
         throw new NotFoundError('Residential quote not found');
       }
-      const contract = await convertResidentialQuoteToContract(req.params.id, parsed.data, req.user!.id);
+      const user = requireAuthenticatedUser(req);
+      const contract = await convertResidentialQuoteToContract(req.params.id, parsed.data, user.id);
       res.json({ data: contract });
     } catch (error) {
       next(error);

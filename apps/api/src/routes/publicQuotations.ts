@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   getQuotationByPublicToken,
@@ -10,15 +11,16 @@ import {
   logQuotationActivity,
 } from '../services/quotationService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
-import { sendNotificationEmail } from '../services/emailService';
+import { generateQuotationPdf } from '../services/pdfService';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicAcceptQuotationSchema, publicRejectQuotationSchema } from '../schemas/quotation';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
+type PublicQuotationPayload = NonNullable<Awaited<ReturnType<typeof getQuotationByPublicToken>>>;
 
 const publicRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -191,6 +193,31 @@ router.post(
         data: result.quotation,
         message: result.rejectedNow ? 'Quotation rejected' : 'Quotation already rejected',
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Download PDF via public token
+router.get(
+  '/:token/pdf',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const quotation = await getQuotationByPublicToken(req.params.token);
+      if (!quotation) {
+        throw new NotFoundError('Quotation not found or link has expired');
+      }
+
+      const pdfBuffer = await generateQuotationPdf(quotation as PublicQuotationPayload);
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${quotation.quotationNumber}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
     } catch (error) {
       next(error);
     }
