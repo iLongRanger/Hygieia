@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import {
@@ -27,10 +28,18 @@ import {
   listUsersQuerySchema,
   assignRoleSchema,
 } from '../schemas/user';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  return req.user;
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -195,13 +204,14 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
+      const user = requireAuthenticatedUser(req);
 
       const existingUser = await getUserById(id);
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
       }
 
-      ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
+      ensureCallerOutranksTarget(user.role, existingUser.role?.key ?? 'cleaner');
 
       const parsed = assignRoleSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -224,13 +234,14 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id, roleKey } = req.params;
+      const user = requireAuthenticatedUser(req);
 
       const existingUser = await getUserById(id);
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
       }
 
-      ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
+      ensureCallerOutranksTarget(user.role, existingUser.role?.key ?? 'cleaner');
 
       const parsed = assignRoleSchema.safeParse({ role: roleKey });
       if (!parsed.success) {
@@ -254,6 +265,7 @@ router.patch(
     try {
       const { id } = req.params;
       const { password } = req.body;
+      const user = requireAuthenticatedUser(req);
 
       if (!password) {
         throw new ValidationError('Password is required');
@@ -261,7 +273,7 @@ router.patch(
 
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
-        throw new ValidationError(passwordValidation.error || 'Invalid password');
+        throw new ValidationError(passwordValidation.error ?? 'Invalid password');
       }
 
       const existingUser = await getUserById(id);
@@ -270,13 +282,13 @@ router.patch(
       }
 
       // Allow users to change their own password; otherwise require higher role
-      if (req.user!.id !== id) {
-        ensureCallerOutranksTarget(req.user!.role, existingUser.role?.key ?? 'cleaner');
+      if (user.id !== id) {
+        ensureCallerOutranksTarget(user.role, existingUser.role?.key ?? 'cleaner');
       }
 
-      const user = await changePassword(id, password);
+      const updatedUser = await changePassword(id, password);
 
-      res.json({ data: user, message: 'Password updated successfully' });
+      res.json({ data: updatedUser, message: 'Password updated successfully' });
     } catch (error) {
       next(error);
     }

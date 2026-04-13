@@ -44,7 +44,7 @@ import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
-type QuotationPayload = NonNullable<Awaited<ReturnType<typeof getQuotationById>>>;
+type QuotationPdfPayload = NonNullable<Awaited<ReturnType<typeof getQuotationById>>>;
 
 function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   if (!req.user) {
@@ -222,7 +222,7 @@ router.post(
       if (emailTo && isEmailConfigured()) {
         try {
           logger.info(`Generating PDF for quotation ${quotation.quotationNumber}`);
-          const pdfBuffer = await generateQuotationPdf(quotation as QuotationPayload);
+          const pdfBuffer = await generateQuotationPdf(quotation as QuotationPdfPayload);
 
           const branding = await getBrandingSafe();
           const html = buildQuotationEmailHtmlWithBranding(
@@ -456,7 +456,7 @@ router.get(
         throw new NotFoundError('Quotation not found');
       }
 
-      const pdfBuffer = await generateQuotationPdf(quotation as QuotationPayload);
+      const pdfBuffer = await generateQuotationPdf(quotation as QuotationPdfPayload);
 
       res.set({
         'Content-Type': 'application/pdf',
