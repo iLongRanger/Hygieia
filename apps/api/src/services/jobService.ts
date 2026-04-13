@@ -107,13 +107,13 @@ type WorkforceAssignmentType =
   | 'internal_employee'
   | 'subcontractor_team';
 
-type InitialCleanStatus = {
+interface InitialCleanStatus {
   included: boolean;
   completed: boolean;
   completedAt: Date | null;
   eligibleJobId: string | null;
   canCompleteOnThisJob: boolean;
-};
+}
 
 function readCalendarColor(source: unknown): string | null {
   if (!source || typeof source !== 'object' || Array.isArray(source)) {
@@ -122,6 +122,18 @@ function readCalendarColor(source: unknown): string | null {
 
   const calendarColor = (source as Record<string, unknown>).calendarColor;
   return typeof calendarColor === 'string' ? calendarColor : null;
+}
+
+function normalizeGeoLocation(geoLocation: {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}): { latitude: number; longitude: number; accuracy: number | null } {
+  return {
+    latitude: geoLocation.latitude,
+    longitude: geoLocation.longitude,
+    accuracy: geoLocation.accuracy ?? null,
+  };
 }
 
 // ==================== Select Objects ====================
@@ -358,7 +370,7 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string) {
 
   return facilityTasks
     .map((task) => {
-      const taskName = task.customName || task.taskTemplate?.name;
+      const taskName = task.customName ?? task.taskTemplate?.name;
       if (!taskName) return null;
 
       return {
@@ -559,7 +571,7 @@ export async function listJobs(
   if (jobCategory) where.jobCategory = jobCategory;
   if (status) where.status = status;
 
-  if (dateFrom || dateTo) {
+  if (dateFrom != null || dateTo != null) {
     where.scheduledDate = {};
     if (dateFrom) where.scheduledDate.gte = dateFrom;
     if (dateTo) where.scheduledDate.lte = dateTo;
@@ -632,8 +644,8 @@ export async function createJob(input: JobCreateInput) {
         contractId: input.contractId,
         facilityId: input.facilityId,
         accountId: input.accountId,
-        jobType: input.jobType || 'special_job',
-        jobCategory: input.jobCategory || 'one_time',
+        jobType: input.jobType ?? 'special_job',
+        jobCategory: input.jobCategory ?? 'one_time',
         assignedTeamId: input.assignedTeamId ?? null,
         assignedToUserId: input.assignedToUserId ?? null,
         status: 'scheduled',
@@ -779,7 +791,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
 
     const scheduleCheck = validateServiceWindow(normalizedSchedule, timezone, new Date());
     if (!scheduleCheck.allowed) {
-      const canOverride = options.managerOverride && MANAGER_ROLES.has(options.userRole || '');
+      const canOverride = options.managerOverride && MANAGER_ROLES.has(options.userRole ?? '');
       if (!canOverride) {
         throw new BadRequestError(
           'Outside allowed service window',
@@ -807,7 +819,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
 
   // Geofence validation for cleaners/subcontractors
   const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
-  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(options.userRole || '');
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(options.userRole ?? '');
 
   let geofenceResult: { verified: true; distanceMeters: number; allowedRadiusMeters: number } | null =
     null;
@@ -823,7 +835,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
     const facilityCoords = getCoordinatesFromAddress(facilityAddress);
 
     if (facilityCoords) {
-      geofenceResult = validateGeofence(options.geoLocation as any, facilityCoords);
+      geofenceResult = validateGeofence(normalizeGeoLocation(options.geoLocation), facilityCoords);
     }
   }
 
@@ -845,7 +857,7 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
         metadata: options.managerOverride
           ? {
               managerOverride: true,
-              overrideReason: options.overrideReason || null,
+              overrideReason: options.overrideReason ?? null,
             }
           : {},
       },
@@ -915,7 +927,7 @@ export async function completeJob(id: string, input: JobCompleteInput) {
 
   // Geofence validation for cleaners/subcontractors
   const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
-  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(input.userRole || '');
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(input.userRole ?? '');
 
   let geofenceResult: { verified: true; distanceMeters: number; allowedRadiusMeters: number } | null =
     null;
@@ -931,7 +943,7 @@ export async function completeJob(id: string, input: JobCompleteInput) {
     const facilityCoords = getCoordinatesFromAddress(facilityAddress);
 
     if (facilityCoords) {
-      geofenceResult = validateGeofence(input.geoLocation as any, facilityCoords);
+      geofenceResult = validateGeofence(normalizeGeoLocation(input.geoLocation), facilityCoords);
     }
   }
 
@@ -1281,17 +1293,17 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
     contract.serviceSchedule !== null && contract.serviceSchedule !== undefined;
   const normalizedSchedule = normalizeServiceSchedule(
     contract.serviceSchedule,
-    contract.serviceFrequency || 'weekly'
+    contract.serviceFrequency ?? 'weekly'
   );
   if (!normalizedSchedule) {
     throw new BadRequestError('Contract service schedule is not configured');
   }
 
   const facilityTimezone = extractFacilityTimezone(contract.facility?.address);
-  const effectiveTimezone = facilityTimezone || 'UTC';
+  const effectiveTimezone = facilityTimezone ?? 'UTC';
 
-  const frequency = (contract.serviceFrequency || 'weekly').toLowerCase();
-  let datesToGenerate: string[] = [];
+  const frequency = (contract.serviceFrequency ?? 'weekly').toLowerCase();
+  const datesToGenerate: string[] = [];
 
   if (!hasExplicitSchedule) {
     const current = new Date(`${toIsoDate(input.dateFrom)}T00:00:00.000Z`);
@@ -1583,7 +1595,7 @@ export async function regenerateRecurringJobsForContract(input: {
     },
     data: {
       status: 'canceled',
-      completionNotes: input.reason || 'Recurring schedule changed; regenerated',
+      completionNotes: input.reason ?? 'Recurring schedule changed; regenerated',
     },
   });
 
@@ -2116,7 +2128,7 @@ export async function createJobNote(jobId: string, input: JobNoteCreateInput) {
     const note = await tx.jobNote.create({
       data: {
         jobId,
-        noteType: input.noteType || 'general',
+        noteType: input.noteType ?? 'general',
         content: input.content,
         photoUrl: input.photoUrl ?? null,
         createdByUserId: input.createdByUserId,
