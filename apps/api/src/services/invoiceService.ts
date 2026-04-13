@@ -311,7 +311,7 @@ export async function listInvoices(params: InvoiceListParams) {
     where.status = { notIn: ['paid', 'void', 'written_off'] };
   }
 
-  if (params.dateFrom || params.dateTo) {
+  if (params.dateFrom != null || params.dateTo != null) {
     where.issueDate = {};
     if (params.dateFrom) (where.issueDate as Record<string, unknown>).gte = params.dateFrom;
     if (params.dateTo) (where.issueDate as Record<string, unknown>).lte = params.dateTo;
@@ -386,7 +386,7 @@ export async function generateInvoicePublicToken(invoiceId: string): Promise<str
 
 export async function createInvoice(input: InvoiceCreateInput) {
   const invoiceNumber = await generateInvoiceNumber();
-  const taxRate = input.taxRate || 0;
+  const taxRate = input.taxRate ?? 0;
   const { subtotal, taxAmount, totalAmount } = calculateTotals(input.items, taxRate);
   const { hashedToken } = createPublicTokenPair();
 
@@ -412,7 +412,7 @@ export async function createInvoice(input: InvoiceCreateInput) {
       publicTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
       items: {
         create: input.items.map((item, idx) => ({
-          itemType: item.itemType || 'service',
+          itemType: item.itemType ?? 'service',
           description: item.description,
           quantity: new Prisma.Decimal(item.quantity),
           unitPrice: new Prisma.Decimal(item.unitPrice),
@@ -442,14 +442,14 @@ export async function updateInvoice(id: string, input: InvoiceUpdateInput) {
   return prisma.$transaction(async (tx) => {
     if (input.items !== undefined) {
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
-      const taxRate = input.taxRate !== undefined ? input.taxRate : parseFloat(existing.taxRate.toString());
+      const taxRate = input.taxRate ?? parseFloat(existing.taxRate.toString());
       const { subtotal, taxAmount, totalAmount } = calculateTotals(input.items, taxRate);
       const amountPaid = parseFloat(existing.amountPaid.toString());
 
       await tx.invoiceItem.createMany({
         data: input.items.map((item, idx) => ({
           invoiceId: id,
-          itemType: item.itemType || 'service',
+          itemType: item.itemType ?? 'service',
           description: item.description,
           quantity: new Prisma.Decimal(item.quantity),
           unitPrice: new Prisma.Decimal(item.unitPrice),
@@ -616,7 +616,7 @@ export async function generateInvoiceFromContract(
   });
   if (!contract) throw new NotFoundError('Contract not found');
 
-  const timezone = extractFacilityTimezone(contract.facility?.address) || 'UTC';
+  const timezone = extractFacilityTimezone(contract.facility?.address) ?? 'UTC';
   const window = normalizePeriodWindow(periodStart, periodEnd, timezone);
   const monthlyValue = parseFloat(contract.monthlyValue.toString());
   const serviceAmount = prorate
@@ -653,7 +653,7 @@ export async function generateInvoiceFromContract(
     items: [
       {
         itemType: 'service',
-        description: `${contract.title || contract.contractNumber} - Cleaning Services (${toIsoDate(window.start)} to ${toIsoDate(window.end)})`,
+        description: `${contract.title ?? contract.contractNumber} - Cleaning Services (${toIsoDate(window.start)} to ${toIsoDate(window.end)})`,
         quantity: 1,
         unitPrice: serviceAmount,
       },
@@ -705,10 +705,11 @@ export async function batchGenerateInvoices(
     >();
 
     for (const contract of activeContracts) {
-      if (!contract.facility || contract.facility.archivedAt || contract.facility.status !== 'active') {
+      const facilityIsArchived = contract.facility?.archivedAt != null;
+      if (!contract.facility || facilityIsArchived || contract.facility.status !== 'active') {
         continue;
       }
-      const existing = contractsByAccount.get(contract.accountId) || [];
+      const existing = contractsByAccount.get(contract.accountId) ?? [];
       existing.push(contract);
       contractsByAccount.set(contract.accountId, existing);
     }
@@ -743,8 +744,8 @@ export async function batchGenerateInvoices(
           const serviceAmount = prorate
             ? calculateProratedAmount(monthlyValue, normalizedWindow.start, normalizedWindow.end)
             : monthlyValue;
-          const label = contract.title || contract.contractNumber;
-          const facilityName = contract.facility?.name || 'Facility';
+          const label = contract.title ?? contract.contractNumber;
+          const facilityName = contract.facility?.name ?? 'Facility';
 
           return {
             itemType: 'service' as const,
