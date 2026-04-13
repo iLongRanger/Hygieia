@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../lib/prisma';
 import { jwtConfig, getJwtSecret } from '../config/jwt';
-import { UserRole, isValidRole, resolveHighestRole } from '../types';
+import type { UserRole} from '../types';
+import { isValidRole, resolveHighestRole } from '../types';
 import {
   storeRefreshToken,
   isTokenRevoked,
@@ -49,10 +50,12 @@ export interface UserInfo {
   teamId?: string | null;
 }
 
+type CreatedSubcontractorUser = Awaited<ReturnType<typeof prisma.user.create>>;
+
 const SALT_ROUNDS = 10;
 
 function resolvePrimaryUserRole(
-  roles: Array<{ role: { key: string } | null }>
+  roles: { role: { key: string } | null }[]
 ): UserRole {
   const assignedRoles = roles.map((entry) => entry.role?.key).filter(isValidRole);
   return resolveHighestRole(assignedRoles);
@@ -196,7 +199,7 @@ function resolveUserSmsPhone(user: {
 }
 
 function getPrimaryRoleFromUser(user: {
-  roles: Array<{ role: { key: string } | null }>;
+  roles: { role: { key: string } | null }[];
 }): UserRole {
   return resolvePrimaryUserRole(user.roles);
 }
@@ -206,7 +209,7 @@ function buildUserInfo(user: {
   email: string;
   fullName: string;
   teamId?: string | null;
-  roles: Array<{ role: { key: string } | null }>;
+  roles: { role: { key: string } | null }[];
 }): UserInfo {
   return {
     id: user.id,
@@ -375,7 +378,9 @@ export async function verifySmsChallenge(
     throw new UnauthorizedError('Invalid verification code.');
   }
 
-  if (challenge.consumedAt || challenge.expiresAt < new Date()) {
+  const smsChallengeExpired =
+    challenge.consumedAt != null ? true : challenge.expiresAt < new Date();
+  if (smsChallengeExpired) {
     throw new UnauthorizedError('Verification code has expired. Request a new code and try again.');
   }
 
@@ -492,7 +497,9 @@ export async function verifyEmailVerificationChallenge(
     throw new UnauthorizedError('Invalid verification code.');
   }
 
-  if (challenge.consumedAt || challenge.expiresAt < new Date()) {
+  const emailChallengeExpired =
+    challenge.consumedAt != null ? true : challenge.expiresAt < new Date();
+  if (emailChallengeExpired) {
     throw new UnauthorizedError('Verification code has expired. Request a new code and try again.');
   }
 
@@ -739,7 +746,7 @@ export async function consumePasswordSetToken(
 ): Promise<void> {
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.isValid) {
-    throw new UnauthorizedError(passwordValidation.error || 'Invalid password');
+    throw new UnauthorizedError(passwordValidation.error ?? 'Invalid password');
   }
 
   const passwordToken = await prisma.passwordSetToken.findUnique({
@@ -747,7 +754,13 @@ export async function consumePasswordSetToken(
     include: { user: true },
   });
 
-  if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
+  const passwordTokenInvalid =
+    passwordToken == null
+      ? true
+      : passwordToken.usedAt != null
+        ? true
+        : passwordToken.expiresAt < new Date();
+  if (passwordTokenInvalid) {
     throw new UnauthorizedError('Invalid or expired token');
   }
 
@@ -815,7 +828,13 @@ export async function beginPasswordSetVerification(
     },
   });
 
-  if (!passwordToken || passwordToken.usedAt || passwordToken.expiresAt < new Date()) {
+  const passwordSetupTokenInvalid =
+    passwordToken == null
+      ? true
+      : passwordToken.usedAt != null
+        ? true
+        : passwordToken.expiresAt < new Date();
+  if (passwordSetupTokenInvalid) {
     throw new UnauthorizedError('Invalid or expired token');
   }
 
@@ -865,7 +884,7 @@ export async function changeOwnPassword(
 
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.isValid) {
-    throw new UnauthorizedError(passwordValidation.error || 'Invalid password');
+    throw new UnauthorizedError(passwordValidation.error ?? 'Invalid password');
   }
 
   if (!options?.smsChallengeId || !options?.smsCode) {
@@ -891,7 +910,9 @@ export async function changeOwnPassword(
   await revokeAllUserTokens(userId, 'password_change');
 }
 
-export async function createSubcontractorUser(teamId: string): Promise<{ user: any; token: string } | null> {
+export async function createSubcontractorUser(
+  teamId: string
+): Promise<{ user: CreatedSubcontractorUser; token: string } | null> {
   const team = await prisma.team.findUnique({
     where: { id: teamId },
     include: { users: true },
@@ -932,7 +953,7 @@ export async function createSubcontractorUser(teamId: string): Promise<{ user: a
   const user = await prisma.user.create({
     data: {
       email: team.contactEmail.toLowerCase(),
-      fullName: team.contactName || team.name,
+      fullName: team.contactName ?? team.name,
       teamId: team.id,
       status: 'pending',
       roles: {
