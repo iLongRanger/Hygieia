@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 export interface AreaTemplateListParams {
   page?: number;
@@ -239,7 +239,7 @@ export async function updateAreaTemplate(id: string, input: AreaTemplateUpdateIn
     });
     updateData.tasks = {
       deleteMany: {},
-      create: (taskLinks || []).map((task) => ({
+      create: (taskLinks ?? []).map((task) => ({
         taskTemplateId: task.taskTemplateId,
         sortOrder: task.sortOrder ?? 0,
       })),
@@ -260,14 +260,14 @@ export async function deleteAreaTemplate(id: string) {
   });
 }
 
-type LegacyTaskInput = {
+interface LegacyTaskInput {
   name: string;
   baseMinutes?: number;
   perSqftMinutes?: number;
   perUnitMinutes?: number;
   perRoomMinutes?: number;
   sortOrder?: number;
-};
+}
 
 async function buildAreaTemplateTaskLinks(params: {
   taskTemplates?: { id: string; sortOrder?: number }[];
@@ -300,7 +300,7 @@ async function buildAreaTemplateTaskLinks(params: {
           data: {
             name: task.name,
             cleaningType: 'daily',
-            areaTypeId: areaTypeId || null,
+            areaTypeId: areaTypeId === '' ? null : areaTypeId,
             estimatedMinutes: Math.round(task.baseMinutes ?? 0),
             baseMinutes: task.baseMinutes ?? 0,
             perSqftMinutes: task.perSqftMinutes ?? 0,

@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import logger from '../lib/logger';
@@ -70,7 +70,8 @@ function deriveOpportunityTitle(lead: {
   companyName?: string | null;
   contactName: string;
 }): string {
-  return lead.companyName?.trim() || lead.contactName.trim();
+  const companyName = lead.companyName?.trim();
+  return companyName ? companyName : lead.contactName.trim();
 }
 
 async function assertAssignableAppointmentRep(userId: string) {
@@ -232,7 +233,7 @@ export async function listAppointments(
   if (type) where.type = type;
   if (status) where.status = status;
 
-  if (dateFrom || dateTo) {
+  if ((dateFrom ?? dateTo) !== undefined) {
     const overlapFilters: Prisma.AppointmentWhereInput[] = [];
 
     if (dateTo) {
@@ -932,8 +933,13 @@ export async function completeAppointment(
     });
 
     if (appointment.type === 'walk_through') {
+      const leadId = appointment.leadId;
+      if (!leadId) {
+        throw new NotFoundError('Walkthrough appointment is missing its lead');
+      }
+
       await tx.lead.update({
-        where: { id: appointment.leadId! },
+        where: { id: leadId },
         data: { status: 'walk_through_completed' },
       });
 

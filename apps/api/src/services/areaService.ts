@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 export interface AreaListParams {
   page?: number;
@@ -216,7 +216,8 @@ export async function getAreaById(id: string) {
 
 export async function createArea(input: AreaCreateInput) {
   const shouldApplyTemplate = input.applyTemplate !== false; // Default to true
-  const normalizedName = input.name?.trim() || null;
+  const trimmedName = input.name?.trim();
+  const normalizedName = trimmedName ? trimmedName : null;
 
   return prisma.$transaction(async (tx) => {
     // 1. Fetch template if applyTemplate is true
@@ -248,7 +249,7 @@ export async function createArea(input: AreaCreateInput) {
           fixtureTypeId: item.fixtureType.id,
           count: item.defaultCount,
           minutesPerItem: item.minutesPerItem,
-        })) || [];
+        })) ?? [];
 
     // 3. Auto-compute squareFeet from length × width if both provided
     const computedSqft = (input.length != null && input.width != null)
@@ -286,10 +287,15 @@ export async function createArea(input: AreaCreateInput) {
     // 4. Create facility tasks from template (if applyTemplate)
     let tasksCreated = 0;
     if (shouldApplyTemplate && template?.tasks?.length) {
-      const excludeIds = new Set(input.excludeTaskTemplateIds || []);
+      const excludeIds = new Set(input.excludeTaskTemplateIds ?? []);
       const taskTemplateIds = template.tasks
-        .filter(t => t.taskTemplate && !excludeIds.has(t.taskTemplate.id))
-        .map(t => t.taskTemplate!.id);
+        .flatMap((task) => {
+          if (!task.taskTemplate || excludeIds.has(task.taskTemplate.id)) {
+            return [];
+          }
+
+          return [task.taskTemplate.id];
+        });
 
       if (taskTemplateIds.length > 0) {
         // Fetch task template details for creating facility tasks
@@ -329,7 +335,7 @@ function mapCleaningTypeToFrequency(cleaningType: string): string {
     move_out: 'as_needed',
     post_construction: 'as_needed',
   };
-  return mapping[cleaningType] || 'daily';
+  return mapping[cleaningType] ?? 'daily';
 }
 
 export async function updateArea(id: string, input: AreaUpdateInput) {
