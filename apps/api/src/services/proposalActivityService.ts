@@ -4,7 +4,7 @@ export interface LogActivityInput {
   proposalId: string;
   action: string;
   performedByUserId?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   ipAddress?: string | null;
 }
 

@@ -68,6 +68,8 @@ interface TimeTrackingAccessOptions {
   userTeamId?: string;
 }
 
+type GeoLocationCoordinates = NonNullable<ReturnType<typeof getCoordinatesFromGeoLocation>>;
+
 // ==================== Select objects ====================
 
 const timeEntryListSelect = {
@@ -105,20 +107,6 @@ function computeHours(clockIn: Date, clockOut: Date, breakMinutes: number): numb
   const diffHours = diffMs / 3600000;
   const breakHours = breakMinutes / 60;
   return Math.max(0, Math.round((diffHours - breakHours) * 100) / 100);
-}
-
-function toObject(input: unknown): Record<string, unknown> | null {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-  return input as Record<string, unknown>;
-}
-
-function toNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
 }
 
 function toIsoDate(date: Date): string {
@@ -185,7 +173,7 @@ export async function listTimeEntries(
   if (params.facilityId) where.facilityId = params.facilityId;
   if (params.status) where.status = params.status;
 
-  if (params.dateFrom || params.dateTo) {
+  if (params.dateFrom ?? params.dateTo) {
     where.clockIn = {};
     if (params.dateFrom) (where.clockIn as Record<string, unknown>).gte = params.dateFrom;
     if (params.dateTo) (where.clockIn as Record<string, unknown>).lte = params.dateTo;
@@ -269,7 +257,7 @@ export async function clockIn(input: ClockInInput) {
   let scheduleOverrideMeta: Record<string, unknown> | null = null;
 
   let linkedFacilityAddress: unknown = null;
-  if (input.jobId || input.contractId) {
+  if (input.jobId ?? input.contractId) {
     const linkedJob = input.jobId
       ? await prisma.job.findUnique({
           where: { id: input.jobId },
@@ -318,7 +306,7 @@ export async function clockIn(input: ClockInInput) {
       linkedContract?.facility?.address ??
       null;
 
-    const scheduleSource = linkedJob?.contract || linkedContract;
+    const scheduleSource = linkedJob?.contract ?? linkedContract;
     const hasExplicitSchedule =
       scheduleSource?.serviceSchedule !== null &&
       scheduleSource?.serviceSchedule !== undefined;
@@ -340,7 +328,7 @@ export async function clockIn(input: ClockInInput) {
 
       const scheduleCheck = validateServiceWindow(schedule, timezone, new Date());
       if (!scheduleCheck.allowed) {
-        const canOverride = input.managerOverride && managerRoles.has(input.userRole || '');
+        const canOverride = input.managerOverride && managerRoles.has(input.userRole ?? '');
         if (!canOverride) {
           throw new BadRequestError('Outside allowed service window', {
             code: 'OUTSIDE_SERVICE_WINDOW',
@@ -418,7 +406,7 @@ export async function clockIn(input: ClockInInput) {
   }
 
   const geoLocationData: Record<string, unknown> = {
-    ...(input.geoLocation || {}),
+    ...(input.geoLocation ?? {}),
     geofence: {
       verified: true,
       distanceMeters,
@@ -464,7 +452,7 @@ export async function clockOut(
 
   // Geofence validation on clock-out for cleaners/subcontractors when linked to a job
   const GEOFENCE_EXEMPT_ROLES = new Set(['owner', 'admin', 'manager']);
-  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(userRole || '') && active.job;
+  const requiresGeofence = !GEOFENCE_EXEMPT_ROLES.has(userRole ?? '') && active.job;
 
   let clockOutGeofence = null;
   if (requiresGeofence) {
@@ -475,21 +463,21 @@ export async function clockOut(
     }
     const facilityCoords = getCoordinatesFromAddress(active.job?.facility?.address);
     if (facilityCoords) {
-      clockOutGeofence = validateGeofence(geoLocation as any, facilityCoords);
+      clockOutGeofence = validateGeofence(geoLocation as GeoLocationCoordinates, facilityCoords);
     }
   }
 
   const clockOutTime = new Date();
   const totalHours = computeHours(active.clockIn, clockOutTime, active.breakMinutes);
 
-  const existingGeo = (active.geoLocation as Record<string, unknown>) || {};
+  const existingGeo = (active.geoLocation as Record<string, unknown>) ?? {};
   const entry = await prisma.timeEntry.update({
     where: { id: active.id },
     data: {
       clockOut: clockOutTime,
       totalHours: new Prisma.Decimal(totalHours),
       status: 'completed',
-      notes: notes || active.notes,
+      notes: notes ?? active.notes,
       geoLocation: (geoLocation
         ? { ...existingGeo, clockOutLocation: { ...geoLocation, geofence: clockOutGeofence } }
         : existingGeo) as Prisma.InputJsonValue,
@@ -507,7 +495,7 @@ export async function startBreak(userId: string) {
   if (!active) throw new BadRequestError('No active clock-in found');
 
   // Store break start time in geoLocation metadata (reusing JSON field)
-  const geo = (active.geoLocation as Record<string, unknown>) || {};
+  const geo = (active.geoLocation as Record<string, unknown>) ?? {};
   if (geo.breakStartedAt) throw new BadRequestError('Already on break');
 
   const entry = await prisma.timeEntry.update({
@@ -527,13 +515,13 @@ export async function endBreak(userId: string) {
   });
   if (!active) throw new BadRequestError('No active clock-in found');
 
-  const geo = (active.geoLocation as Record<string, unknown>) || {};
+  const geo = (active.geoLocation as Record<string, unknown>) ?? {};
   if (!geo.breakStartedAt) throw new BadRequestError('Not currently on break');
 
   const breakStart = new Date(geo.breakStartedAt as string);
   const breakDurationMinutes = Math.round((new Date().getTime() - breakStart.getTime()) / 60000);
 
-  const { breakStartedAt, ...restGeo } = geo;
+  const { breakStartedAt: _breakStartedAt, ...restGeo } = geo;
 
   const entry = await prisma.timeEntry.update({
     where: { id: active.id },
@@ -550,7 +538,7 @@ export async function endBreak(userId: string) {
 export async function createManualEntry(input: ManualEntryInput, options?: TimeTrackingAccessOptions) {
   await assertManagerCanWriteManualEntry(input, options);
 
-  const totalHours = computeHours(input.clockIn, input.clockOut, input.breakMinutes || 0);
+  const totalHours = computeHours(input.clockIn, input.clockOut, input.breakMinutes ?? 0);
 
   const entry = await prisma.timeEntry.create({
     data: {
@@ -561,7 +549,7 @@ export async function createManualEntry(input: ManualEntryInput, options?: TimeT
       entryType: 'manual',
       clockIn: input.clockIn,
       clockOut: input.clockOut,
-      breakMinutes: input.breakMinutes || 0,
+      breakMinutes: input.breakMinutes ?? 0,
       totalHours: new Prisma.Decimal(totalHours),
       notes: input.notes,
       status: 'completed',
@@ -583,9 +571,11 @@ export async function editTimeEntry(id: string, input: EditTimeEntryInput, optio
     throw new BadRequestError('Cannot edit an entry that is already linked to a timesheet');
   }
 
-  const clockIn = input.clockIn || existing.clockIn;
-  const clockOut = input.clockOut !== undefined ? input.clockOut : existing.clockOut;
-  const breakMinutes = input.breakMinutes !== undefined ? input.breakMinutes : existing.breakMinutes;
+  const clockIn = input.clockIn ?? existing.clockIn;
+  const clockOut = Object.prototype.hasOwnProperty.call(input, 'clockOut')
+    ? input.clockOut
+    : existing.clockOut;
+  const breakMinutes = input.breakMinutes ?? existing.breakMinutes;
 
   let totalHours: number | null = null;
   if (clockOut) {
