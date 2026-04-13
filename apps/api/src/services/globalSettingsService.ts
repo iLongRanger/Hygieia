@@ -2,13 +2,13 @@ import { prisma } from '../lib/prisma';
 import type { GlobalBranding } from '../types/branding';
 
 const DEFAULT_BRANDING: GlobalBranding = {
-  companyName: process.env.COMPANY_NAME || 'Hygieia Cleaning Services',
-  companyEmail: process.env.COMPANY_EMAIL || null,
-  companyPhone: process.env.COMPANY_PHONE || null,
-  companyWebsite: process.env.COMPANY_WEBSITE || null,
-  companyAddress: process.env.COMPANY_ADDRESS || null,
-  companyTimezone: process.env.COMPANY_TIMEZONE || 'UTC',
-  logoDataUrl: process.env.COMPANY_LOGO_PATH || null,
+  companyName: process.env.COMPANY_NAME ?? 'Hygieia Cleaning Services',
+  companyEmail: process.env.COMPANY_EMAIL ?? null,
+  companyPhone: process.env.COMPANY_PHONE ?? null,
+  companyWebsite: process.env.COMPANY_WEBSITE ?? null,
+  companyAddress: process.env.COMPANY_ADDRESS ?? null,
+  companyTimezone: process.env.COMPANY_TIMEZONE ?? 'UTC',
+  logoDataUrl: process.env.COMPANY_LOGO_PATH ?? null,
   themePrimaryColor: '#1a1a2e',
   themeAccentColor: '#d4af37',
   themeBackgroundColor: '#f5f5f5',
@@ -31,17 +31,17 @@ export interface UpdateGlobalSettingsInput {
 
 function mergeWithDefaults(input: Partial<GlobalBranding> | null | undefined): GlobalBranding {
   return {
-    companyName: input?.companyName || DEFAULT_BRANDING.companyName,
+    companyName: input?.companyName ?? DEFAULT_BRANDING.companyName,
     companyEmail: input?.companyEmail ?? DEFAULT_BRANDING.companyEmail,
     companyPhone: input?.companyPhone ?? DEFAULT_BRANDING.companyPhone,
     companyWebsite: input?.companyWebsite ?? DEFAULT_BRANDING.companyWebsite,
     companyAddress: input?.companyAddress ?? DEFAULT_BRANDING.companyAddress,
-    companyTimezone: input?.companyTimezone || DEFAULT_BRANDING.companyTimezone,
+    companyTimezone: input?.companyTimezone ?? DEFAULT_BRANDING.companyTimezone,
     logoDataUrl: input?.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
-    themePrimaryColor: input?.themePrimaryColor || DEFAULT_BRANDING.themePrimaryColor,
-    themeAccentColor: input?.themeAccentColor || DEFAULT_BRANDING.themeAccentColor,
-    themeBackgroundColor: input?.themeBackgroundColor || DEFAULT_BRANDING.themeBackgroundColor,
-    themeTextColor: input?.themeTextColor || DEFAULT_BRANDING.themeTextColor,
+    themePrimaryColor: input?.themePrimaryColor ?? DEFAULT_BRANDING.themePrimaryColor,
+    themeAccentColor: input?.themeAccentColor ?? DEFAULT_BRANDING.themeAccentColor,
+    themeBackgroundColor: input?.themeBackgroundColor ?? DEFAULT_BRANDING.themeBackgroundColor,
+    themeTextColor: input?.themeTextColor ?? DEFAULT_BRANDING.themeTextColor,
   };
 }
 
@@ -98,6 +98,6 @@ export function getDefaultBranding(): GlobalBranding {
 
 export async function getGlobalSettingsTimezone(): Promise<string> {
   const settings = await getGlobalSettings();
-  return settings.companyTimezone || 'UTC';
+  return settings.companyTimezone ?? 'UTC';
 }
 
