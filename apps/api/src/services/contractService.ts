@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
 import { generateContractTerms } from './contractTemplateService';
-import { tierToPercentage, percentageToTier } from '../lib/subcontractorTiers';
+import { percentageToTier } from '../lib/subcontractorTiers';
 import {
   extractFacilityTimezone,
   mapProposalFrequencyToContractFrequency,
@@ -45,7 +45,7 @@ export interface ContractCreateInput {
   startDate: Date;
   endDate?: Date | null;
   serviceFrequency?: string | null;
-  serviceSchedule?: any;
+  serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
@@ -68,7 +68,7 @@ export interface ContractUpdateInput {
   startDate?: Date;
   endDate?: Date | null;
   serviceFrequency?: string | null;
-  serviceSchedule?: any;
+  serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue?: number;
@@ -319,6 +319,8 @@ const {
   ...contractSelectWithoutAssignedUser
 } = contractSelect;
 
+type ContractRecord = ReturnType<typeof withLegacyPendingDefaults<Prisma.ContractGetPayload<{ select: typeof contractSelect }>>>;
+
 function isLegacyContractColumnError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   const missingColumns = [
@@ -332,7 +334,7 @@ function isLegacyContractColumnError(error: unknown): boolean {
   return error.message.includes('does not exist') && missingColumns.some((c) => error.message.includes(c));
 }
 
-function withLegacyPendingDefaults<T extends Record<string, any>>(contract: T) {
+function withLegacyPendingDefaults<T extends Record<string, unknown>>(contract: T) {
   return {
     ...contract,
     assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
@@ -465,7 +467,7 @@ async function generateContractNumber(): Promise<string> {
 
   let nextSequence = 1;
   if (lastContract) {
-    const lastSequence = parseInt(lastContract.contractNumber.split('-')[2] || '0');
+    const lastSequence = parseInt(lastContract.contractNumber.split('-')[2] ?? '0');
     nextSequence = lastSequence + 1;
   }
 
@@ -478,7 +480,7 @@ async function generateContractNumber(): Promise<string> {
 export async function listContracts(
   params: ContractListParams,
   options?: ContractAccessOptions
-): Promise<PaginatedResult<any>> {
+): Promise<PaginatedResult<ContractRecord>> {
   const {
     page = 1,
     limit = 10,
@@ -692,7 +694,7 @@ export async function createContract(data: ContractCreateInput) {
     termsAndConditions = await generateContractTerms({
       contractNumber,
       title: data.title,
-      accountName: account?.name || 'Client',
+      accountName: account?.name ?? 'Client',
       facilityName: facility?.name,
       facilityAddress: facility?.address,
       startDate: data.startDate,
@@ -715,7 +717,7 @@ export async function createContract(data: ContractCreateInput) {
     status: 'draft',
     account: { connect: { id: data.accountId } },
     ...(data.facilityId && { facility: { connect: { id: data.facilityId } } }),
-    proposal: { connect: { id: data.proposalId! } },
+    proposal: { connect: { id: data.proposalId } },
     ...(proposal.opportunityId && { opportunity: { connect: { id: proposal.opportunityId } } }),
     startDate: data.startDate,
     endDate: data.endDate,
@@ -782,16 +784,16 @@ export async function createContractFromProposal(
   );
   const normalizedProposalSchedule = normalizeServiceSchedule(
     proposal.serviceSchedule,
-    proposal.serviceFrequency || mappedProposalFrequency || 'weekly'
+    proposal.serviceFrequency ?? mappedProposalFrequency ?? 'weekly'
   );
   const resolvedServiceFrequency =
-    proposal.serviceFrequency ||
-    mappedProposalFrequency ||
+    proposal.serviceFrequency ??
+    mappedProposalFrequency ??
     'monthly';
   const resolvedServiceSchedule = normalizedProposalSchedule;
 
   // Reverse-lookup subcontractor tier from proposal's pricing snapshot
-  const snapshot = proposal.pricingSnapshot as Record<string, any> | null;
+  const snapshot = proposal.pricingSnapshot as Record<string, unknown> | null;
   const snapshotPct = snapshot?.subcontractorPercentage;
   const subcontractorTier = snapshotPct != null
     ? percentageToTier(Number(snapshotPct))
@@ -799,28 +801,28 @@ export async function createContractFromProposal(
 
   const contractData: Prisma.ContractCreateInput = {
     contractNumber,
-    title: overrides?.title || proposal.title,
+    title: overrides?.title ?? proposal.title,
     status: 'draft',
     account: { connect: { id: proposal.accountId } },
     ...(proposal.facilityId && { facility: { connect: { id: proposal.facilityId } } }),
     proposal: { connect: { id: proposalId } },
     ...(proposal.opportunityId && { opportunity: { connect: { id: proposal.opportunityId } } }),
-    startDate: overrides?.startDate || new Date(),
-    endDate: overrides?.endDate || null,
+    startDate: overrides?.startDate ?? new Date(),
+    endDate: overrides?.endDate ?? null,
     serviceFrequency: resolvedServiceFrequency,
     serviceSchedule:
       (resolvedServiceSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
     autoRenew: overrides?.autoRenew ?? false,
     renewalNoticeDays: overrides?.renewalNoticeDays ?? 30,
     monthlyValue,
-    totalValue: overrides?.totalValue || null,
-    billingCycle: overrides?.billingCycle || 'monthly',
-    paymentTerms: overrides?.paymentTerms || proposal.account.paymentTerms || 'Net 30',
-    termsAndConditions: overrides?.termsAndConditions || proposal.termsAndConditions || null,
+    totalValue: overrides?.totalValue ?? null,
+    billingCycle: overrides?.billingCycle ?? 'monthly',
+    paymentTerms: overrides?.paymentTerms ?? proposal.account.paymentTerms ?? 'Net 30',
+    termsAndConditions: overrides?.termsAndConditions ?? proposal.termsAndConditions ?? null,
     termsDocumentName: overrides?.termsDocumentName ?? null,
     termsDocumentMimeType: overrides?.termsDocumentMimeType ?? null,
     termsDocumentDataUrl: overrides?.termsDocumentDataUrl ?? null,
-    specialInstructions: overrides?.specialInstructions || proposal.notes,
+    specialInstructions: overrides?.specialInstructions ?? proposal.notes,
     includesInitialClean: true,
     subcontractorTier,
     createdByUser: { connect: { id: createdByUserId } },
@@ -1081,7 +1083,7 @@ export async function assignContractTeam(
 
   await validateContractAssignee(teamId, assignedToUserId);
 
-  const data: any = {
+  const data: Prisma.ContractUpdateInput = {
     assignedTeamId: teamId,
     assignedToUserId: assignedToUserId,
     pendingAssignedTeamId: null,
@@ -1122,7 +1124,7 @@ export async function assignContractTeam(
     });
   }
 
-  if (teamId || assignedToUserId) {
+  if (teamId ?? assignedToUserId) {
     if (contract.opportunityId) {
       await autoSetLeadStatusForOpportunity(contract.opportunityId, 'won', {
         mode: 'advance',
@@ -1149,7 +1151,7 @@ async function validateContractAssignee(
       },
     });
 
-    if (!team || team.archivedAt || !team.isActive) {
+    if (!team?.isActive || team.archivedAt) {
       throw new Error('Team not found or inactive');
     }
   }
@@ -1307,7 +1309,7 @@ export interface RenewContractInput {
   endDate?: Date | null;
   monthlyValue?: number;
   serviceFrequency?: string | null;
-  serviceSchedule?: any;
+  serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   billingCycle?: string;
@@ -1435,7 +1437,7 @@ export interface StandaloneContractCreateInput {
   startDate: Date;
   endDate?: Date | null;
   serviceFrequency?: string | null;
-  serviceSchedule?: any;
+  serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
@@ -1476,7 +1478,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     termsAndConditions = await generateContractTerms({
       contractNumber,
       title: data.title,
-      accountName: account?.name || 'Client',
+      accountName: account?.name ?? 'Client',
       facilityName: facility?.name,
       facilityAddress: facility?.address,
       startDate: data.startDate,
@@ -1527,7 +1529,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
  * Get active contracts expiring within the given number of days
  */
 export async function getExpiringContracts(
-  daysAhead: number = 30,
+  daysAhead = 30,
   options?: ContractAccessOptions
 ) {
   const now = new Date();
