@@ -24,7 +24,7 @@ import {
 } from './leadService';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
-const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -323,10 +323,6 @@ type ResidentialPricingPlanRecord = Prisma.ResidentialPricingPlanGetPayload<{
   select: typeof residentialPricingPlanSelect;
 }>;
 
-type ResidentialQuoteDetailRecord = Prisma.ResidentialQuoteGetPayload<{
-  select: typeof residentialQuoteDetailSelect;
-}>;
-
 type ResidentialQuoteListRecord = Prisma.ResidentialQuoteGetPayload<{
   select: typeof residentialQuoteListSelect;
 }>;
@@ -455,7 +451,7 @@ function getSteppedRecordValue(record: Record<string, number>, value: number) {
 function buildManualReviewReasons(
   input: ResidentialQuotePreviewInput,
   settings: ResidentialPricingPlanSettings,
-  addOns: Array<{ requiresManualReview: boolean }>
+  addOns: { requiresManualReview: boolean }[]
 ) {
   const reasons: string[] = [];
 
@@ -516,7 +512,7 @@ function resolveAddOnDefinitions(
 
     return {
       code: addOn.code,
-      label: addOn.label?.trim() || addOn.code.replace(/_/g, ' '),
+      label: addOn.label?.trim() ?? addOn.code.replace(/_/g, ' '),
       description: toNullableString(definition.description),
       pricingType: definition.pricingType,
       unitLabel: toNullableString(definition.unitLabel),
@@ -837,7 +833,7 @@ async function resolveResidentialPricingPlan(pricingPlanId?: string | null) {
       where: { id: pricingPlanId },
       select: residentialPricingPlanSelect,
     });
-    if (!plan || plan.archivedAt || !plan.isActive) {
+    if (!plan || plan.archivedAt != null || !plan.isActive) {
       throw new BadRequestError('Residential pricing plan is not available');
     }
     return plan;
@@ -883,7 +879,7 @@ async function resolveResidentialProperty(propertyId: string, accountId?: string
     select: residentialPropertySelect,
   });
 
-  if (!property || property.archivedAt || property.status !== 'active') {
+  if (!property || property.archivedAt != null || property.status !== 'active') {
     throw new BadRequestError('Residential property is not available');
   }
 
@@ -1344,8 +1340,13 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
     customerName: input.customerName ?? existing.customerName,
     customerEmail: input.customerEmail ?? existing.customerEmail,
     customerPhone: input.customerPhone ?? existing.customerPhone,
-    homeAddress: (input.homeAddress ?? (existing.homeAddress as any)) ?? null,
-    homeProfile: (input.homeProfile ?? (existing.homeProfile as any)) as CreateResidentialQuoteInput['homeProfile'],
+    homeAddress:
+      (input.homeAddress ??
+        (existing.homeAddress as CreateResidentialQuoteInput['homeAddress'])) ??
+      null,
+    homeProfile:
+      (input.homeProfile ??
+        (existing.homeProfile as CreateResidentialQuoteInput['homeProfile'])),
     pricingPlanId: input.pricingPlanId ?? existing.pricingPlan?.id ?? null,
     addOns:
       input.addOns ??
@@ -1828,7 +1829,7 @@ export async function convertResidentialQuoteToContract(
     homeProfile: resolvedHomeProfile,
   });
 
-  if (quote.customerEmail || quote.customerPhone) {
+  if (quote.customerEmail != null || quote.customerPhone != null) {
     const primaryContact = await prisma.contact.findFirst({
       where: {
         accountId: account.id,

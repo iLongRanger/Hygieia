@@ -3,9 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   calculatePricing,
   generateProposalServices,
-  resolvePricingPlanId,
   resolvePricingPlan,
-  getStrategyForPricingType,
   type PricingBreakdown,
   type PricingSettingsSnapshot,
 } from './pricing';
@@ -345,8 +343,8 @@ function deriveOpportunityTitle(lead: {
   contactName?: string | null;
 } | null) {
   return lead?.companyName?.trim()
-    || lead?.contactName?.trim()
-    || 'Sales Opportunity';
+    ?? lead?.contactName?.trim()
+    ?? 'Sales Opportunity';
 }
 
 async function ensureFacilityScopedOpportunity(
@@ -650,7 +648,7 @@ export async function createProposal(input: ProposalCreateInput) {
 
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;
-  const serviceFrequency = input.serviceFrequency || '5x_week';
+  const serviceFrequency = input.serviceFrequency ?? '5x_week';
   const serviceSchedule = normalizeServiceSchedule(
     input.serviceSchedule ?? null,
     serviceFrequency
@@ -835,7 +833,11 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
   }
 
   // If items or services are being updated, recalculate totals
-  if (input.proposalItems || input.proposalServices || input.taxRate !== undefined) {
+  if (
+    input.proposalItems !== undefined
+    || input.proposalServices !== undefined
+    || input.taxRate !== undefined
+  ) {
     const currentProposal = await prisma.proposal.findUnique({
       where: { id },
       include: {

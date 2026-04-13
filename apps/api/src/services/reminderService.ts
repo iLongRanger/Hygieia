@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
 import { createBulkNotifications, createNotification } from './notificationService';
 import { sendProposalEmail, sendEmail } from './emailService';
+import { sendSms } from './smsService';
 import { isEmailConfigured } from '../config/email';
 import {
   buildAppointmentReminderHtml,
@@ -61,15 +62,51 @@ function shouldSendFollowUpReminder(
 }
 
 function resolveContactRecipients(
-  contacts: Array<{ email: string | null; isPrimary: boolean }>
+  contacts: { email: string | null; isPrimary: boolean }[]
 ): { to: string | null; cc: string[] } {
   const primary = contacts.find((contact) => contact.isPrimary && contact.email);
   const fallback = contacts.find((contact) => contact.email);
-  const to = (primary?.email || fallback?.email || null) as string | null;
+  const to = primary?.email ?? fallback?.email ?? null;
   const cc = contacts
     .filter((contact) => contact.email && contact.email !== to)
     .map((contact) => contact.email as string);
   return { to, cc };
+}
+
+function formatShortDateTime(value: Date): string {
+  return new Date(value).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function humanizeLabel(value: string | null | undefined): string {
+  if (!value) return 'service';
+  return value.replace(/_/g, ' ');
+}
+
+function resolveClientPhone(input: {
+  leadPrimaryPhone?: string | null;
+  accountBillingPhone?: string | null;
+  contacts?: { phone?: string | null; isPrimary?: boolean }[];
+}): string | null {
+  if (input.leadPrimaryPhone) {
+    return input.leadPrimaryPhone;
+  }
+
+  const primaryContactPhone = input.contacts?.find(
+    (contact) => contact.isPrimary && contact.phone
+  )?.phone;
+  if (primaryContactPhone) {
+    return primaryContactPhone;
+  }
+
+  const anyContactPhone = input.contacts?.find((contact) => contact.phone)?.phone;
+  if (anyContactPhone) {
+    return anyContactPhone;
+  }
+
+  return input.accountBillingPhone ?? null;
 }
 
 async function getAdminUserIds(): Promise<string[]> {
@@ -118,11 +155,23 @@ export async function sendAppointmentReminders(): Promise<number> {
         select: {
           contactName: true,
           companyName: true,
+          primaryPhone: true,
         },
       },
       account: {
         select: {
           name: true,
+          billingPhone: true,
+          contacts: {
+            where: {
+              archivedAt: null,
+            },
+            select: {
+              phone: true,
+              isPrimary: true,
+            },
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          },
         },
       },
     },
@@ -177,6 +226,17 @@ export async function sendAppointmentReminders(): Promise<number> {
         emailHtml,
       });
 
+      const clientPhone = resolveClientPhone({
+        leadPrimaryPhone: appt.lead?.primaryPhone ?? null,
+        accountBillingPhone: appt.account?.billingPhone ?? null,
+        contacts: appt.account?.contacts ?? [],
+      });
+
+      if (clientPhone) {
+        const smsMessage = `Reminder: your ${humanizeLabel(appt.type)} with Hygieia is scheduled for ${formatShortDateTime(appt.scheduledStart)} at ${appt.location ?? 'your service location'}.`;
+        await sendSms(clientPhone, smsMessage);
+      }
+
       await prisma.appointment.update({
         where: { id: appt.id },
         data: { reminderSentAt: new Date() },
@@ -191,12 +251,108 @@ export async function sendAppointmentReminders(): Promise<number> {
   return sent;
 }
 
+export async function sendUpcomingJobReminders(): Promise<number> {
+  const now = new Date();
+  const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const jobs = await prisma.job.findMany({
+    where: {
+      status: 'scheduled',
+      scheduledStartTime: {
+        not: null,
+        gte: now,
+        lte: in24Hours,
+      },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      jobType: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      facility: {
+        select: {
+          name: true,
+        },
+      },
+      account: {
+        select: {
+          name: true,
+          billingPhone: true,
+          contacts: {
+            where: {
+              archivedAt: null,
+            },
+            select: {
+              phone: true,
+              isPrimary: true,
+            },
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          },
+        },
+      },
+    },
+  });
+
+  if (jobs.length === 0) return 0;
+
+  const alreadyReminded = await prisma.jobActivity.findMany({
+    where: {
+      jobId: { in: jobs.map((job) => job.id) },
+      action: 'client_reminder_sent',
+    },
+    select: { jobId: true },
+  });
+
+  const remindedJobIds = new Set(alreadyReminded.map((activity) => activity.jobId));
+  let sent = 0;
+
+  for (const job of jobs) {
+    if (remindedJobIds.has(job.id) || !job.scheduledStartTime) continue;
+
+    const clientPhone = resolveClientPhone({
+      accountBillingPhone: job.account?.billingPhone ?? null,
+      contacts: job.account?.contacts ?? [],
+    });
+
+    if (!clientPhone) continue;
+
+    const serviceLabel =
+      job.facility?.name || job.account?.name || humanizeLabel(job.jobType);
+    const smsMessage = `Reminder: your Hygieia cleaning service for ${serviceLabel} is scheduled for ${formatShortDateTime(job.scheduledStartTime)}. Reply to your coordinator if you need to make a change.`;
+
+    try {
+      const smsSent = await sendSms(clientPhone, smsMessage);
+      if (!smsSent) continue;
+
+      await prisma.jobActivity.create({
+        data: {
+          jobId: job.id,
+          action: 'client_reminder_sent',
+          metadata: {
+            channel: 'sms',
+            phone: clientPhone,
+            scheduledStartTime: job.scheduledStartTime.toISOString(),
+          },
+        },
+      });
+      remindedJobIds.add(job.id);
+      sent += 1;
+    } catch (error) {
+      logger.error(`Failed to send upcoming job reminder for ${job.id}:`, error);
+    }
+  }
+
+  logger.info(`Sent ${sent} upcoming job reminders`);
+  return sent;
+}
+
 /**
  * Send reminders for contracts expiring within the specified number of days.
  * Returns the number of reminders sent.
  */
 export async function sendContractExpiryReminders(
-  daysThreshold: number = 30
+  daysThreshold = 30
 ): Promise<number> {
   const now = new Date();
   const startOfToday = atUtcStartOfDay(now);
@@ -559,8 +715,8 @@ export async function sendContractFollowUpReminders(): Promise<number> {
     if (!to) continue;
 
     const recipientNameFromContact =
-      contract.account.contacts.find((contact) => contact.isPrimary)?.name ||
-      contract.account.contacts[0]?.name ||
+      contract.account.contacts.find((contact) => contact.isPrimary)?.name ??
+      contract.account.contacts[0]?.name ??
       undefined;
     const publicToken = await generateContractPublicToken(contract.id);
     const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
@@ -579,7 +735,7 @@ export async function sendContractFollowUpReminders(): Promise<number> {
           currency: 'USD',
         }).format(Number(contract.monthlyValue)),
         startDate: new Date(contract.startDate).toLocaleDateString(),
-        recipientName: recipientNameFromContact || contract.account.name,
+        recipientName: recipientNameFromContact ?? contract.account.name,
         customMessage: 'Friendly reminder to review and sign the contract.',
         publicViewUrl,
       },

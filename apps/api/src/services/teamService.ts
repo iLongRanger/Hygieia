@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
 import { buildSubcontractorWelcomeHtml, buildSubcontractorWelcomeSubject } from '../templates/subcontractorWelcome';
 import { isEmailConfigured } from '../config/email';
@@ -90,7 +90,9 @@ function formatTeam(team: TeamWithMetadata) {
   };
 }
 
-export async function listTeams(params: TeamListParams): Promise<PaginatedResult<any>> {
+type TeamListItem = ReturnType<typeof formatTeam>;
+
+export async function listTeams(params: TeamListParams): Promise<PaginatedResult<TeamListItem>> {
   const {
     page = 1,
     limit = 20,
@@ -370,7 +372,7 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
   const subRole = await getOrCreateSubcontractorRole();
 
   let user =
-    team.users.find((candidate) => candidate.email.toLowerCase() === contactEmail) ||
+    team.users.find((candidate) => candidate.email.toLowerCase() === contactEmail) ??
     team.users[0];
 
   const findExistingByEmail = async () =>
@@ -405,7 +407,7 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
       where: { id: user.id },
       data: {
         email: contactEmail,
-        fullName: team.contactName || team.name,
+        fullName: team.contactName ?? team.name,
         teamId: team.id,
       },
       select: {
@@ -442,7 +444,7 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
       user = await prisma.user.create({
         data: {
           email: contactEmail,
-          fullName: team.contactName || team.name,
+          fullName: team.contactName ?? team.name,
           teamId: team.id,
           status: 'pending',
           roles: {

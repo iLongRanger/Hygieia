@@ -205,7 +205,7 @@ export class PerHourV1Strategy implements PricingStrategy {
         `${area.squareFeet} sq ft ${area.floorType} flooring`,
       ];
 
-      const fixtures = fixturesByArea.get(area.areaId) || [];
+      const fixtures = fixturesByArea.get(area.areaId) ?? [];
       if (fixtures.length > 0) {
         const fixtureSummary = fixtures
           .map((fixture) => `${fixture.name} x${fixture.count}`)
@@ -226,11 +226,11 @@ export class PerHourV1Strategy implements PricingStrategy {
 
       for (const freq of frequencyOrder) {
         if (tasksByFreq[freq] && tasksByFreq[freq].length > 0) {
-          descriptionParts.push(`${frequencyLabels[freq] || freq}: ${tasksByFreq[freq].join(', ')}`);
+          descriptionParts.push(`${frequencyLabels[freq] ?? freq}: ${tasksByFreq[freq].join(', ')}`);
         }
       }
 
-      const allTasks = areaTasks?.tasks.map((t) => t.name) || [];
+      const allTasks = areaTasks?.tasks.map((t) => t.name) ?? [];
       const areaShare = totalAreaCost > 0 ? area.monthlyPrice / totalAreaCost : 0;
       const areaMonthlyPrice = roundToTwo(pricing.monthlyTotal * areaShare);
 

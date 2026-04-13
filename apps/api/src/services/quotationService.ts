@@ -239,9 +239,10 @@ function derivePricingApproval(
 
   for (const service of services) {
     const meta = service.pricingMeta ?? {};
-    const standardAmount = getPricingNumber((meta as any).standardAmount);
-    const price = roundToCurrency(Number(service.price) || 0);
-    const explicitDiscountPercent = getPricingNumber((meta as any).discountPercent);
+    const metaRecord = meta as Record<string, unknown>;
+    const standardAmount = getPricingNumber(metaRecord.standardAmount);
+    const price = roundToCurrency(Number(service.price) ?? 0);
+    const explicitDiscountPercent = getPricingNumber(metaRecord.discountPercent);
     const inferredDiscountPercent =
       standardAmount && standardAmount > 0
         ? ((standardAmount - price) / standardAmount) * 100
@@ -251,7 +252,7 @@ function derivePricingApproval(
     );
 
     if (discountPercent > 0) {
-      const overrideReason = (meta as any).overrideReason;
+      const overrideReason = metaRecord.overrideReason;
       if (!overrideReason || typeof overrideReason !== 'string' || !overrideReason.trim()) {
         reasonRequired = true;
       }
@@ -687,7 +688,7 @@ export async function setQuotationPricingApproval(params: {
     throw new BadRequestError('Quotation pricing is not awaiting approval');
   }
 
-  if (params.action === 'rejected' && (!params.reason || !params.reason.trim())) {
+  if (params.action === 'rejected' && (!params.reason?.trim())) {
     throw new BadRequestError('Rejection reason is required');
   }
 
@@ -811,11 +812,11 @@ export async function ensureOneTimeJobForAcceptedQuotation(quotationId: string):
       select: { id: true, jobNumber: true },
     });
 
-    const tasks: Array<{
+    const tasks: {
       taskName: string;
       description: string | null;
       status: string;
-    }> = [];
+    }[] = [];
     for (const service of quotation.services) {
       const includedTasks = Array.isArray(service.includedTasks)
         ? (service.includedTasks as unknown[]).filter((task): task is string => typeof task === 'string')
