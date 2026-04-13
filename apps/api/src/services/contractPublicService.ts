@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { autoAdvanceLeadStatusForAccount, autoSetLeadStatusForOpportunity } from './leadService';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
-const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
 const publicContractSelect = {
   id: true,
@@ -96,7 +96,7 @@ export async function getContractByPublicToken(token: string) {
   return contract;
 }
 
-export async function markPublicViewed(token: string, ipAddress?: string) {
+export async function markPublicViewed(token: string, _ipAddress?: string) {
   const contract = await prisma.contract.findUnique({
     where: { publicToken: hashPublicToken(token) },
     select: { id: true, status: true, viewedAt: true },

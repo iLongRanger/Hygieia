@@ -47,7 +47,7 @@ function formatFrequency(freq: string | null | undefined): string {
     quarterly: 'Quarterly',
     annually: 'Annually',
   };
-  return freq ? map[freq] || freq : 'As agreed upon';
+  return freq ? (map[freq] ?? freq) : 'As agreed upon';
 }
 
 function formatAddress(value: unknown): string {
@@ -66,7 +66,7 @@ function formatAddress(value: unknown): string {
   const parts = [
     line1 as string | undefined,
     [city, state, postal].filter(Boolean).join(', '),
-    country || undefined,
+    country ?? undefined,
   ].filter(Boolean);
 
   return parts.length ? parts.join(', ') : '[Facility Address]';
@@ -80,7 +80,7 @@ function formatBillingCycle(cycle: string | null | undefined): string {
     quarterly: 'quarterly',
     annually: 'annually',
   };
-  return cycle ? map[cycle] || cycle : 'monthly';
+  return cycle ? (map[cycle] ?? cycle) : 'monthly';
 }
 
 /**
@@ -96,13 +96,13 @@ export async function generateContractTerms(data: ContractTemplateData): Promise
   }
 
   const companyName = branding.companyName;
-  const companyAddress = branding.companyAddress || '[Company Address]';
-  const companyPhone = branding.companyPhone || '[Company Phone]';
-  const companyEmail = branding.companyEmail || '[Company Email]';
+  const companyAddress = branding.companyAddress ?? '[Company Address]';
+  const companyPhone = branding.companyPhone ?? '[Company Phone]';
+  const companyEmail = branding.companyEmail ?? '[Company Email]';
 
   const accountName = data.accountName;
   const facilityAddress = formatAddress(data.facilityAddress);
-  const facilityName = data.facilityName || 'the designated facility';
+  const facilityName = data.facilityName ?? 'the designated facility';
   const startDate = formatDate(data.startDate);
   const endDate = formatDate(data.endDate);
   const monthlyValue = formatCurrency(data.monthlyValue);
@@ -114,10 +114,11 @@ export async function generateContractTerms(data: ContractTemplateData): Promise
   const scheduleWindow = normalizedSchedule
     ? `${formatTimeLabel(normalizedSchedule.allowedWindowStart)} to ${formatTimeLabel(normalizedSchedule.allowedWindowEnd)}`
     : 'Mutually agreed time window';
-  const facilityTimezone = data.facilityTimezone || extractFacilityTimezone(data.facilityAddress) || '[Facility timezone]';
+  const facilityTimezone =
+    data.facilityTimezone ?? extractFacilityTimezone(data.facilityAddress) ?? '[Facility timezone]';
   const billingCycle = formatBillingCycle(data.billingCycle);
-  const paymentTerms = data.paymentTerms || 'Net 30';
-  const contractNumber = data.contractNumber || '[To Be Assigned]';
+  const paymentTerms = data.paymentTerms ?? 'Net 30';
+  const contractNumber = data.contractNumber ?? '[To Be Assigned]';
   const autoRenew = data.autoRenew ?? false;
   const renewalNoticeDays = data.renewalNoticeDays ?? 30;
   const hasEndDate = !!data.endDate;

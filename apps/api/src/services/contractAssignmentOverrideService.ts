@@ -10,7 +10,7 @@ export interface ContractAssignmentOverrideCycleResult {
   notifications: number;
 }
 
-type DueContractOverride = {
+interface DueContractOverride {
   id: string;
   contractNumber: string;
   title: string;
@@ -28,7 +28,7 @@ type DueContractOverride = {
   pendingAssignedToUser: { id: string; fullName: string } | null;
   assignedTeam: { id: string; name: string } | null;
   assignedToUser: { id: string; fullName: string } | null;
-};
+}
 
 function atUtcStartOfDay(value: Date): Date {
   const isoDate = value.toISOString().slice(0, 10);
@@ -39,7 +39,7 @@ function isMissingOverrideColumnsError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const maybeError = error as { code?: string; meta?: { column?: string } };
   if (maybeError.code !== 'P2022') return false;
-  const column = maybeError.meta?.column || '';
+  const column = maybeError.meta?.column ?? '';
   return column.includes('contracts.pending_assigned_') || column.includes('contracts.assignment_override_');
 }
 
@@ -142,8 +142,10 @@ async function applyContractAssignmentOverride(
 
   let notifications = 0;
   if (recipientIds.size > 0) {
-    const fromLabel = contract.assignedToUser?.fullName || contract.assignedTeam?.name || 'current assignee';
-    const toLabel = contract.pendingAssignedToUser?.fullName || contract.pendingAssignedTeam?.name || 'new assignee';
+    const fromLabel =
+      contract.assignedToUser?.fullName ?? contract.assignedTeam?.name ?? 'current assignee';
+    const toLabel =
+      contract.pendingAssignedToUser?.fullName ?? contract.pendingAssignedTeam?.name ?? 'new assignee';
     const created = await createBulkNotifications([...recipientIds], {
       type: 'contract_assignment_override_applied',
       title: `Contract assignment updated: ${contract.contractNumber}`,
