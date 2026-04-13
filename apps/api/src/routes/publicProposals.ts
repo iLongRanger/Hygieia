@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   getProposalByPublicToken,
@@ -15,11 +16,12 @@ import { getDefaultBranding, getGlobalSettings } from '../services/globalSetting
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicAcceptSchema, publicRejectSchema } from '../schemas/publicProposal';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
 
 const router: Router = Router();
+type PublicProposalPayload = NonNullable<Awaited<ReturnType<typeof getProposalByPublicToken>>>;
 
 // Rate limiting for public endpoints
 const publicRateLimiter = rateLimit({
@@ -269,7 +271,7 @@ router.get(
         throw new NotFoundError('Proposal not found or link has expired');
       }
 
-      const pdfBuffer = await generateProposalPdf(proposal as any);
+      const pdfBuffer = await generateProposalPdf(proposal as PublicProposalPayload);
 
       res.set({
         'Content-Type': 'application/pdf',

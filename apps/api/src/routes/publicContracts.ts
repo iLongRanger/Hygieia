@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   getContractByPublicToken,
@@ -12,13 +13,14 @@ import { getDefaultBranding, getGlobalSettings } from '../services/globalSetting
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicSignContractSchema } from '../schemas/publicContract';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
 import { hashPublicToken } from '../services/publicTokenService';
 import { escapeHtml } from '../utils/escapeHtml';
 
 const router: Router = Router();
+type PublicContractPayload = NonNullable<Awaited<ReturnType<typeof getContractByPublicToken>>>;
 
 function decodeDataUrlToBuffer(dataUrl: string): Buffer {
   const commaIndex = dataUrl.indexOf(',');
@@ -204,7 +206,7 @@ router.get(
         contractDoc?.termsDocumentMimeType === 'application/pdf' &&
         contractDoc.termsDocumentDataUrl
           ? decodeDataUrlToBuffer(contractDoc.termsDocumentDataUrl)
-          : await generateContractPdf(contract as any);
+          : await generateContractPdf(contract as PublicContractPayload);
 
       res.set({
         'Content-Type': 'application/pdf',
