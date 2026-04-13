@@ -85,7 +85,7 @@ function withServiceScheduleValidation<T extends z.ZodTypeAny>(
   frequencyKey: string,
   scheduleKey: string
 ) {
-  return schema.superRefine((data: any, ctx) => {
+  return schema.superRefine((data: Record<string, unknown>, ctx) => {
     const frequency = data[frequencyKey] as z.infer<typeof serviceFrequencySchema> | null | undefined;
     const schedule = data[scheduleKey] as z.infer<typeof contractServiceScheduleSchema> | null | undefined;
     if (!frequency || !schedule) return;
@@ -124,7 +124,7 @@ const termsDocumentDataUrlSchema = z
 
 const withTermsDocumentValidation = <T extends z.ZodTypeAny>(schema: T) =>
   schema.refine(
-    (data: any) =>
+    (data: Record<string, unknown>) =>
       !data.termsDocumentDataUrl || (!!data.termsDocumentName && !!data.termsDocumentMimeType),
     {
       message: 'termsDocumentName and termsDocumentMimeType are required when termsDocumentDataUrl is provided',
@@ -419,7 +419,7 @@ export const contractAmendmentStatusSchema = z.enum([
   'canceled',
 ]);
 
-export const contractAmendmentScopeSchema = z.record(z.any()).optional().nullable();
+export const contractAmendmentScopeSchema = z.record(z.unknown()).optional().nullable();
 
 export const createContractAmendmentSchema = withServiceScheduleValidation(
   z.object({
@@ -432,7 +432,7 @@ export const createContractAmendmentSchema = withServiceScheduleValidation(
     newMonthlyValue: z.coerce.number().positive().optional().nullable(),
     newServiceFrequency: serviceFrequencySchema.optional().nullable(),
     newServiceSchedule: contractServiceScheduleSchema.optional().nullable(),
-    pricingSnapshot: z.record(z.any()).optional().nullable(),
+    pricingSnapshot: z.record(z.unknown()).optional().nullable(),
     workingScope: contractAmendmentScopeSchema,
   }),
   'newServiceFrequency',
@@ -450,7 +450,7 @@ export const updateContractAmendmentSchema = withServiceScheduleValidation(
     newMonthlyValue: z.coerce.number().positive().optional().nullable(),
     newServiceFrequency: serviceFrequencySchema.optional().nullable(),
     newServiceSchedule: contractServiceScheduleSchema.optional().nullable(),
-    pricingSnapshot: z.record(z.any()).optional().nullable(),
+    pricingSnapshot: z.record(z.unknown()).optional().nullable(),
     workingScope: contractAmendmentScopeSchema,
     status: z.enum(['draft', 'submitted', 'canceled']).optional(),
   }),

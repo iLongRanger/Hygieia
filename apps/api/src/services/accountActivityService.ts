@@ -12,6 +12,38 @@ export interface CreateAccountActivityInput {
   performedByUserId?: string | null;
 }
 
+interface AccountActivityListItem {
+  id: string;
+  entryType: CreateAccountActivityInput['entryType'];
+  note: string;
+  createdAt: Date;
+  performedByUser: {
+    id: string;
+    fullName: string | null;
+    email: string;
+  } | null;
+}
+
+interface AccountActivityModel {
+  findMany(args: {
+    where: { accountId: string };
+    select: typeof activitySelect;
+    orderBy: { createdAt: 'desc' };
+    skip: number;
+    take: number;
+  }): Promise<AccountActivityListItem[]>;
+  count(args: { where: { accountId: string } }): Promise<number>;
+  create(args: {
+    data: {
+      accountId: string;
+      entryType: CreateAccountActivityInput['entryType'];
+      note: string;
+      performedByUserId: string | null;
+    };
+    select: typeof activitySelect;
+  }): Promise<AccountActivityListItem>;
+}
+
 const activitySelect = {
   id: true,
   entryType: true,
@@ -32,7 +64,7 @@ export async function listAccountActivities(
 ) {
   const page = params.page ?? 1;
   const limit = params.limit ?? 50;
-  const accountActivityModel = (prisma as any).accountActivity;
+  const accountActivityModel = (prisma as unknown as { accountActivity: AccountActivityModel }).accountActivity;
 
   const [data, total] = await Promise.all([
     accountActivityModel.findMany({
@@ -57,7 +89,7 @@ export async function listAccountActivities(
 }
 
 export async function createAccountActivity(input: CreateAccountActivityInput) {
-  const accountActivityModel = (prisma as any).accountActivity;
+  const accountActivityModel = (prisma as unknown as { accountActivity: AccountActivityModel }).accountActivity;
   return accountActivityModel.create({
     data: {
       accountId: input.accountId,

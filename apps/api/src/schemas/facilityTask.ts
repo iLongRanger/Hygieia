@@ -41,7 +41,7 @@ export const createFacilityTaskSchema = z
       })
     ).optional().default([]),
   })
-  .refine((data) => data.customName || data.taskTemplateId, {
+  .refine((data) => (data.customName ?? data.taskTemplateId) !== undefined, {
     message: 'Either customName or taskTemplateId must be provided',
     path: ['customName'],
   });
