@@ -24,11 +24,11 @@ interface SendEmailOptions {
   cc?: string[];
   subject: string;
   html: string;
-  attachments?: Array<{
+  attachments?: {
     filename: string;
     content: Buffer;
     contentType: string;
-  }>;
+  }[];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -161,7 +161,7 @@ export async function sendProposalEmail(
   const attachments = pdfBuffer
     ? [
         {
-          filename: `${proposalNumber || 'proposal'}.pdf`,
+          filename: `${proposalNumber ?? 'proposal'}.pdf`,
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
@@ -189,7 +189,7 @@ export async function sendResidentialQuoteEmail(
   const attachments = pdfBuffer
     ? [
         {
-          filename: `${quoteNumber || 'residential-quote'}.pdf`,
+          filename: `${quoteNumber ?? 'residential-quote'}.pdf`,
           content: pdfBuffer,
           contentType: 'application/pdf',
         },

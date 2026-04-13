@@ -81,7 +81,7 @@ export async function geocodeAddressIfNeeded(
 
   try {
     const userAgent =
-      process.env.GEOCODING_USER_AGENT ||
+      process.env.GEOCODING_USER_AGENT ??
       'Hygieia/1.0 (facility-geocoder)';
     const response = await axios.get('https://nominatim.openstreetmap.org/search', {
       params: {

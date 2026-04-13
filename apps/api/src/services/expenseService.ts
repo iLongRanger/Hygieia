@@ -143,7 +143,7 @@ export async function listExpenses(params: ExpenseListParams, options?: ExpenseL
   if (params.facilityId) where.facilityId = params.facilityId;
   if (params.status) where.status = params.status;
 
-  if (params.dateFrom || params.dateTo) {
+  if ((params.dateFrom ?? params.dateTo) !== undefined) {
     where.date = {};
     if (params.dateFrom) (where.date as Record<string, unknown>).gte = new Date(params.dateFrom);
     if (params.dateTo) (where.date as Record<string, unknown>).lte = new Date(params.dateTo);
