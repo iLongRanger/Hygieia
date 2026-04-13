@@ -333,7 +333,7 @@ async function generateInspectionNumber(): Promise<string> {
 
 // ==================== Scoring ====================
 
-function calculateOverallScore(items: Array<{ score: string | null; rating: number | null; weight?: number }>): {
+function calculateOverallScore(items: { score: string | null; rating: number | null; weight?: number }[]): {
   score: number;
   rating: string;
 } {
@@ -409,7 +409,7 @@ export async function listInspections(
     where.account = { accountManagerId: options.userId };
   }
 
-  if (params.dateFrom || params.dateTo) {
+  if ((params.dateFrom ?? params.dateTo) !== undefined) {
     where.scheduledDate = {};
     if (params.dateFrom) (where.scheduledDate as Record<string, unknown>).gte = params.dateFrom;
     if (params.dateTo) (where.scheduledDate as Record<string, unknown>).lte = params.dateTo;
@@ -502,7 +502,7 @@ async function createLinkedInspectionAppointment(input: {
     status: 'scheduled',
     scheduledStart,
     scheduledEnd,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'America/New_York',
     notes: input.notes ?? `Auto-created for inspection ${input.inspectionNumber}`,
     createdByUserId: input.createdByUserId,
     inspectionId: input.inspectionId,
@@ -571,13 +571,13 @@ export async function createInspection(input: InspectionCreateInput) {
   const inspectionNumber = await generateInspectionNumber();
 
   // If template provided, pre-populate items from template
-  let templateItems: Array<{
+  let templateItems: {
     templateItemId: string;
     category: string;
     itemText: string;
     sortOrder: number;
     weight: number;
-  }> = [];
+  }[] = [];
 
   if (input.templateId) {
     const template = await prisma.inspectionTemplate.findUnique({
@@ -656,7 +656,7 @@ export async function createInspection(input: InspectionCreateInput) {
       title: `Inspection ${inspectionNumber} assigned to you`,
       body: `Scheduled for ${input.scheduledDate.toLocaleDateString()}`,
       metadata: { inspectionId: inspection.id, facilityId: input.facilityId },
-    }).catch(() => {});
+    }).catch(() => undefined);
   }
 
   return inspection;
@@ -774,14 +774,14 @@ export async function completeInspection(id: string, input: InspectionCompleteIn
   const inspectionItemsById = new Map(existing.items.map((item) => [item.id, item]));
 
   // Update items with scores
-  const itemsForScoring: Array<{ score: string | null; rating: number | null; weight?: number }> = [];
-  const failedItems: Array<{
+  const itemsForScoring: { score: string | null; rating: number | null; weight?: number }[] = [];
+  const failedItems: {
     itemId: string;
     itemText: string;
     category: string;
     notes: string | null;
     severity: 'critical' | 'major' | 'minor';
-  }> = [];
+  }[] = [];
 
   for (const itemScore of input.items) {
     const existingItem = inspectionItemsById.get(itemScore.id);
@@ -1352,7 +1352,7 @@ export async function createReinspection(
       title: `Reinspection ${inspectionNumber} assigned to you`,
       body: `Scheduled for ${scheduledDate.toLocaleDateString()}`,
       metadata: { inspectionId: reinspection.id, facilityId: inspection.facilityId },
-    }).catch(() => {});
+    }).catch(() => undefined);
   }
 
   return getInspectionById(reinspection.id);
