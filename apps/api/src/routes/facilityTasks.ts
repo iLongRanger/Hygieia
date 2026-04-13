@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
@@ -17,7 +18,8 @@ import {
   updateFacilityTaskSchema,
   listFacilityTasksQuerySchema,
 } from '../schemas/facilityTask';
-import { ZodError, z } from 'zod';
+import type { ZodError} from 'zod';
+import { z } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -126,7 +128,7 @@ router.post(
         parsed.data.facilityId,
         parsed.data.taskTemplateIds,
         req.user.id,
-        parsed.data.areaId || undefined,
+        parsed.data.areaId ?? undefined,
         parsed.data.cleaningFrequency
       );
 

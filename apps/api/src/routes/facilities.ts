@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { ensureManagerAccountAccess, verifyOwnership } from '../middleware/ownership';
@@ -30,7 +31,7 @@ import {
   listFacilitiesQuerySchema,
   submitFacilityForProposalSchema,
 } from '../schemas/facility';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 import { SUBCONTRACTOR_TIER_MAP } from '../lib/subcontractorTiers';
 
@@ -292,7 +293,7 @@ router.get(
       // Check if facility is ready
       const readiness = await isFacilityReadyForPricing(req.params.id);
       if (!readiness.isReady) {
-        throw new ValidationError(readiness.reason || 'Facility is not ready for proposal');
+        throw new ValidationError(readiness.reason ?? 'Facility is not ready for proposal');
       }
 
       // Get pricing calculation using selected plan

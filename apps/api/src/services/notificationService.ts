@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { sendNotificationEmail } from './emailService';
 import { isEmailConfigured } from '../config/email';
 import logger from '../lib/logger';
@@ -139,8 +139,8 @@ export async function createNotification(input: CreateNotificationInput) {
       });
 
       if (user?.email) {
-        const subject = emailSubject || title;
-        const html = emailHtml || buildDefaultNotificationHtml(title, body || '');
+        const subject = emailSubject ?? title;
+        const html = emailHtml ?? buildDefaultNotificationHtml(title, body ?? '');
         const sent = await sendNotificationEmail(user.email, subject, html);
 
         if (sent) {

@@ -72,7 +72,7 @@ const INTL_DAY_MAP: Record<string, DayKey> = {
 };
 
 function normalizeFrequencyKey(value: string | null | undefined): string {
-  return (value || '').trim().toLowerCase();
+  return (value ?? '').trim().toLowerCase();
 }
 
 function normalizeHourMinute(value: string): string | null {
@@ -215,7 +215,7 @@ export function mapProposalFrequencyToContractFrequency(
     case 'quarterly':
       return 'quarterly';
     default:
-      return frequency || null;
+      return frequency ?? null;
   }
 }
 

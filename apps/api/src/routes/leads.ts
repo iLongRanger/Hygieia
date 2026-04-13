@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
@@ -21,7 +22,7 @@ import {
   convertLeadSchema,
 } from '../schemas/lead';
 import { BadRequestError } from '../middleware/errorHandler';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -226,7 +227,7 @@ router.post(
       // Check if lead can be converted
       const canConvert = await canConvertLead(req.params.id);
       if (!canConvert.canConvert) {
-        throw new BadRequestError(canConvert.reason || 'Lead cannot be converted');
+        throw new BadRequestError(canConvert.reason ?? 'Lead cannot be converted');
       }
 
       const result = await convertLead(req.params.id, {

@@ -240,8 +240,8 @@ export async function generateTimesheet(input: GenerateTimesheetInput, options?:
 export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput, options?: TimesheetAccessOptions) {
   const dedupedUserIds = Array.from(new Set(input.userIds));
   const created: Awaited<ReturnType<typeof generateTimesheet>>[] = [];
-  const skipped: Array<{ userId: string; reason: string }> = [];
-  const failed: Array<{ userId: string; error: string }> = [];
+  const skipped: { userId: string; reason: string }[] = [];
+  const failed: { userId: string; error: string }[] = [];
 
   for (const userId of dedupedUserIds) {
     try {
@@ -337,7 +337,7 @@ export async function rejectTimesheet(id: string, notes?: string) {
     where: { id },
     data: {
       status: 'rejected',
-      notes: notes || existing.notes,
+      notes: notes ?? existing.notes,
     },
     select: timesheetDetailSelect,
   });

@@ -217,7 +217,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
       });
 
       for (const contract of contracts) {
-        const tier = contract.subcontractorTier || 'tier1';
+        const tier = contract.subcontractorTier ?? 'tier1';
         const tierPct = TIER_PERCENTAGES[tier] ?? 0.45;
 
         // Check attendance: did they clock in AND out for each scheduled job in the period?
@@ -310,7 +310,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
           select: { clockIn: true, clockOut: true, totalHours: true, status: true },
         });
 
-        if (!timeEntry || !timeEntry.clockIn) {
+        if (!timeEntry?.clockIn) {
           flagged = true;
           flagReasons.push(`Missing check-in for job ${job.id}`);
           // Don't add these hours

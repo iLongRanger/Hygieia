@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
-import { UserRole, isValidRole } from '../types/roles';
-import { Prisma } from '@prisma/client';
+import type { UserRole} from '../types/roles';
+import { isValidRole } from '../types/roles';
+import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { validatePassword } from '../utils/passwordPolicy';
 
@@ -354,7 +355,7 @@ export async function removeRole(userId: string, roleKey: UserRole) {
 export async function changePassword(userId: string, password: string) {
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.isValid) {
-    throw new Error(passwordValidation.error || 'Invalid password');
+    throw new Error(passwordValidation.error ?? 'Invalid password');
   }
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
