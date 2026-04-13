@@ -1,6 +1,8 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -21,6 +23,13 @@ import {
 const router: Router = Router();
 
 router.use(authenticate);
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 // List templates
 router.get(
@@ -46,9 +55,10 @@ router.get(
   '/by-contract/:contractId',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const template = await getOrCreateTemplateForContract(
       req.params.contractId,
-      req.user!.id
+      user.id
     );
     res.json({ data: template });
   }
@@ -70,9 +80,10 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_ADMIN),
   validate(createInspectionTemplateSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const template = await createInspectionTemplate({
       ...req.body,
-      createdByUserId: req.user!.id,
+      createdByUserId: user.id,
     });
     res.status(201).json({ data: template });
   }

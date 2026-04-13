@@ -1,7 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { NotFoundError, UnauthorizedError, ValidationError } from '../middleware/errorHandler';
 import {
   listAreaTemplates,
   getAreaTemplateById,
@@ -15,10 +16,17 @@ import {
   updateAreaTemplateSchema,
   listAreaTemplatesQuerySchema,
 } from '../schemas/areaTemplate';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -95,9 +103,10 @@ router.post(
         throw handleZodError(parsed.error);
       }
 
+      const user = requireAuthenticatedUser(req);
       const template = await createAreaTemplate({
         ...parsed.data,
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
       res.status(201).json({ data: template });
     } catch (error) {

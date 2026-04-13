@@ -1,9 +1,10 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { ValidationError } from '../middleware/errorHandler';
+import { UnauthorizedError, ValidationError } from '../middleware/errorHandler';
 import { ensureManagerAccountAccess } from '../middleware/ownership';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import {
   jobListQuerySchema,
   createJobSchema,
@@ -39,6 +40,13 @@ import {
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 function assertCanEditJob(req: Request): void {
   if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
@@ -138,13 +146,14 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       assertCanGenerateRecurringJobs(req);
       const parsed = generateJobsSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
       const result = await generateJobsFromContract({
         ...parsed.data,
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
       res.json({ data: result });
     } catch (error) {
@@ -181,6 +190,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       assertCanCreateJob(req);
       const parsed = createJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
@@ -189,7 +199,7 @@ router.post(
 
       const job = await createJob({
         ...parsed.data,
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
       res.status(201).json({ data: job });
     } catch (error) {
@@ -216,7 +226,7 @@ router.patch(
       const parsed = updateJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const job = await updateJob(req.params.id, parsed.data, req.user!.id);
+      const job = await updateJob(req.params.id, parsed.data, user.id);
       res.json({ data: job });
     } catch (error) {
       next(error);
@@ -231,6 +241,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const existing = await getJobById(req.params.id);
       if (!existing) {
         res.status(404).json({ error: 'Job not found' });
@@ -242,10 +253,10 @@ router.post(
       const parsed = startJobSchema.safeParse(req.body || {});
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const job = await startJob(req.params.id, req.user!.id, {
+      const job = await startJob(req.params.id, user.id, {
         managerOverride: parsed.data.managerOverride,
         overrideReason: parsed.data.overrideReason ?? null,
-        userRole: req.user?.role,
+        userRole: user.role,
         geoLocation: parsed.data.geoLocation ?? null,
       });
       res.json({ data: job });
@@ -262,6 +273,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const existing = await getJobById(req.params.id);
       if (!existing) {
         res.status(404).json({ error: 'Job not found' });
@@ -275,8 +287,8 @@ router.post(
 
       const job = await completeJob(req.params.id, {
         ...parsed.data,
-        userId: req.user!.id,
-        userRole: req.user?.role,
+        userId: user.id,
+        userRole: user.role,
       });
       res.json({ data: job });
     } catch (error) {
@@ -296,7 +308,7 @@ router.post(
       const parsed = completeInitialCleanForJobSchema.safeParse(req.body || {});
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const job = await completeInitialCleanForJob(req.params.id, req.user!.id);
+      const job = await completeInitialCleanForJob(req.params.id, user.id);
       res.json({ data: job });
     } catch (error) {
       next(error);
@@ -311,6 +323,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       assertCanEditJob(req);
       const existing = await getJobById(req.params.id);
       if (!existing) {
@@ -322,7 +335,7 @@ router.post(
       const parsed = cancelJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const job = await cancelJob(req.params.id, parsed.data.reason ?? null, req.user!.id);
+      const job = await cancelJob(req.params.id, parsed.data.reason ?? null, user.id);
       res.json({ data: job });
     } catch (error) {
       next(error);
@@ -337,6 +350,7 @@ router.post(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       assertCanEditJob(req);
       const existing = await getJobById(req.params.id);
       if (!existing) {
@@ -352,7 +366,7 @@ router.post(
         req.params.id,
         parsed.data.assignedTeamId ?? null,
         parsed.data.assignedToUserId ?? null,
-        req.user!.id
+        user.id
       );
       res.json({ data: job });
     } catch (error) {
@@ -393,6 +407,7 @@ router.patch(
   requirePermission(PERMISSIONS.JOBS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       assertCanEditJob(req);
       const existing = await getJobById(req.params.jobId);
       if (!existing) {
@@ -406,7 +421,7 @@ router.patch(
 
       const task = await updateJobTask(req.params.taskId, {
         ...parsed.data,
-        completedByUserId: parsed.data.status === 'completed' ? req.user!.id : undefined,
+        completedByUserId: parsed.data.status === 'completed' ? user.id : undefined,
       });
       res.json({ data: task });
     } catch (error) {
@@ -456,7 +471,7 @@ router.post(
 
       const note = await createJobNote(req.params.id, {
         ...parsed.data,
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
       res.status(201).json({ data: note });
     } catch (error) {

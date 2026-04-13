@@ -1,7 +1,9 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -31,6 +33,13 @@ import { requireFrontendBaseUrl } from '../lib/appUrl';
 const router: Router = Router();
 
 router.use(authenticate);
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 // List invoices
 router.get(
@@ -69,13 +78,14 @@ router.post(
   requirePermission(PERMISSIONS.INVOICES_WRITE),
   validate(createInvoiceSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const input = {
       ...req.body,
       issueDate: new Date(req.body.issueDate),
       dueDate: new Date(req.body.dueDate),
       periodStart: req.body.periodStart ? new Date(req.body.periodStart) : null,
       periodEnd: req.body.periodEnd ? new Date(req.body.periodEnd) : null,
-      createdByUserId: req.user!.id,
+      createdByUserId: user.id,
     };
     const invoice = await createInvoice(input);
     res.status(201).json({ data: invoice });
@@ -99,7 +109,8 @@ router.patch(
 
 // Send invoice
 router.post('/:id/send', requirePermission(PERMISSIONS.INVOICES_WRITE), verifyOwnership({ resourceType: 'invoice' }), async (req: Request, res: Response) => {
-  const invoice = await sendInvoice(req.params.id, req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const invoice = await sendInvoice(req.params.id, user.id);
   res.json({ data: invoice });
 });
 
@@ -131,10 +142,11 @@ router.post(
   verifyOwnership({ resourceType: 'invoice' }),
   validate(recordPaymentSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const invoice = await recordPayment(req.params.id, {
       ...req.body,
       paymentDate: new Date(req.body.paymentDate),
-      recordedByUserId: req.user!.id,
+      recordedByUserId: user.id,
     });
     res.json({ data: invoice });
   }
@@ -147,7 +159,8 @@ router.post(
   verifyOwnership({ resourceType: 'invoice' }),
   validate(voidInvoiceSchema),
   async (req: Request, res: Response) => {
-    const invoice = await voidInvoice(req.params.id, req.user!.id, req.body.reason);
+    const user = requireAuthenticatedUser(req);
+    const invoice = await voidInvoice(req.params.id, user.id, req.body.reason);
     res.json({ data: invoice });
   }
 );
@@ -158,11 +171,12 @@ router.post(
   requirePermission(PERMISSIONS.INVOICES_WRITE),
   validate(generateFromContractSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const invoice = await generateInvoiceFromContract(
       req.body.contractId,
       new Date(req.body.periodStart),
       new Date(req.body.periodEnd),
-      req.user!.id,
+      user.id,
       req.body.prorate ?? true
     );
     res.status(201).json({ data: invoice });
@@ -175,10 +189,11 @@ router.post(
   requirePermission(PERMISSIONS.INVOICES_ADMIN),
   validate(batchGenerateSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const result = await batchGenerateInvoices(
       new Date(req.body.periodStart),
       new Date(req.body.periodEnd),
-      req.user!.id,
+      user.id,
       req.body.prorate ?? true
     );
     res.json({ data: result });

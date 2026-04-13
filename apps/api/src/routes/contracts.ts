@@ -720,7 +720,7 @@ router.patch(
 
         // Auto-create inspection template from contract tasks
         try {
-          await autoCreateInspectionTemplate(contract.id, req.user!.id);
+          await autoCreateInspectionTemplate(contract.id, requireAuthenticatedUser(req).id);
         } catch (templateError) {
           logger.error('Failed to auto-create inspection template:', templateError);
         }
@@ -854,13 +854,21 @@ router.patch(
         throw new ValidationError('Only owner and admin can schedule assignment overrides');
       }
 
+      const user = requireAuthenticatedUser(req);
+      const effectivityDate = parsed.data.effectivityDate ?? null;
+      if (shouldScheduleOverride && !effectivityDate) {
+        throw new ValidationError(
+          'Effectivity date is required when overriding an existing contract assignment'
+        );
+      }
+
       const contract = shouldScheduleOverride
         ? await scheduleContractAssignmentOverride(
             req.params.id,
             nextTeamId,
             nextAssignedToUserId,
-            parsed.data.effectivityDate!,
-            req.user!.id,
+            effectivityDate as Date,
+            user.id,
             parsed.data.subcontractorTier
           )
         : await assignContractTeam(
@@ -873,7 +881,7 @@ router.patch(
       await logContractActivity({
         contractId: contract.id,
         action: shouldScheduleOverride ? 'assignment_override_scheduled' : 'team_assigned',
-        performedByUserId: req.user?.id,
+        performedByUserId: user.id,
         metadata: {
           previousTeamId: existingContract.assignedTeam?.id ?? null,
           previousAssignedToUserId: existingContract.assignedToUser?.id ?? null,
@@ -918,11 +926,11 @@ router.patch(
             type: 'contract_assignment_override_scheduled',
             title: `Assignment change scheduled for ${contract.contractNumber}`,
             body:
-              `A new contract assignee will take effect on ${parsed.data.effectivityDate!.toLocaleDateString()}. ` +
+              `A new contract assignee will take effect on ${effectivityDate?.toLocaleDateString()}. ` +
               'Future scheduled jobs on and after this date will be reassigned automatically.',
             metadata: {
               contractId: contract.id,
-              effectivityDate: parsed.data.effectivityDate!.toISOString(),
+              effectivityDate: effectivityDate?.toISOString() ?? null,
               previousTeamId: existingContract.assignedTeam?.id ?? null,
               previousAssignedToUserId: existingContract.assignedToUser?.id ?? null,
               nextTeamId,
@@ -937,8 +945,8 @@ router.patch(
               contractId: contract.id,
               assignedTeamId: nextTeamId,
               assignedToUserId: nextAssignedToUserId,
-              performedByUserId: req.user.id,
-              onOrAfterDate: parsed.data.effectivityDate!,
+              performedByUserId: user.id,
+              onOrAfterDate: effectivityDate as Date,
             });
 
             if (reassignmentResult.updated > 0) {
@@ -949,7 +957,7 @@ router.patch(
                 metadata: {
                   reassigned: reassignmentResult.updated,
                   source: 'assignment_override',
-                  effectivityDate: parsed.data.effectivityDate!.toISOString(),
+                  effectivityDate: effectivityDate?.toISOString() ?? null,
                 },
               });
             }
@@ -1241,7 +1249,7 @@ router.post(
       await logContractActivity({
         contractId: req.params.id,
         action: 'sent',
-        performedByUserId: req.user!.id,
+        performedByUserId: requireAuthenticatedUser(req).id,
         metadata: {
           emailTo: parsed.data.emailTo,
           emailCc: parsed.data.emailCc,
@@ -1266,7 +1274,7 @@ router.post(
           emailTo = primary.email;
           emailCc = contacts
             .filter((c) => !c.isPrimary && c.email)
-            .map((c) => c.email!);
+            .flatMap((c) => (c.email ? [c.email] : []));
         }
       } else {
         const matchedRecipient = contacts.find((c) => c.email?.toLowerCase() === emailTo?.toLowerCase());

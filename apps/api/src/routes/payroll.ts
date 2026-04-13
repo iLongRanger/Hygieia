@@ -1,6 +1,8 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -21,6 +23,13 @@ import {
 const router: Router = Router();
 
 router.use(authenticate);
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 // List payroll runs
 router.get(
@@ -43,9 +52,10 @@ router.get(
   '/:id',
   requirePermission(PERMISSIONS.PAYROLL_READ),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const run = await getPayrollRunById(req.params.id, {
-      userRole: req.user!.role,
-      userId: req.user!.id,
+      userRole: user.role,
+      userId: user.id,
     });
     res.json({ data: run });
   }
@@ -67,7 +77,8 @@ router.post(
   '/:id/approve',
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
   async (req: Request, res: Response) => {
-    const run = await approvePayrollRun(req.params.id, req.user!.id);
+    const user = requireAuthenticatedUser(req);
+    const run = await approvePayrollRun(req.params.id, user.id);
     res.json({ data: run });
   }
 );
@@ -88,10 +99,11 @@ router.patch(
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
   validate(adjustPayrollEntrySchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const run = await adjustPayrollEntry(
       req.params.entryId,
       req.body,
-      req.user!.id
+      user.id
     );
     res.json({ data: run });
   }

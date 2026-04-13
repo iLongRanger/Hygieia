@@ -1,6 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -13,7 +15,6 @@ import {
 } from '../schemas/expense';
 import {
   listExpenses,
-  getExpenseById,
   getExpenseByIdScoped,
   createExpense,
   updateExpense,
@@ -28,6 +29,13 @@ import {
 const router: Router = Router();
 
 router.use(authenticate);
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 // ==================== Categories (must come before /:id) ====================
 
@@ -85,6 +93,7 @@ router.get(
   validate(listExpensesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const {
         categoryId, jobId, contractId, facilityId, status,
         dateFrom, dateTo, page, limit,
@@ -102,9 +111,9 @@ router.get(
           limit: limit ? Number(limit) : undefined,
         },
         {
-          userId: req.user!.id,
-          role: req.user!.role,
-          userTeamId: req.user!.teamId ?? null,
+          userId: user.id,
+          role: user.role,
+          userTeamId: user.teamId ?? null,
         }
       );
       res.json(result);
@@ -120,10 +129,11 @@ router.get(
   requirePermission(PERMISSIONS.EXPENSES_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const expense = await getExpenseByIdScoped(req.params.id, {
-        userId: req.user!.id,
-        role: req.user!.role,
-        userTeamId: req.user!.teamId ?? null,
+        userId: user.id,
+        role: user.role,
+        userTeamId: user.teamId ?? null,
       });
       res.json({ data: expense });
     } catch (error) {
@@ -139,10 +149,11 @@ router.post(
   validate(createExpenseSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const expense = await createExpense({
         ...req.body,
         date: new Date(req.body.date),
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
       res.status(201).json({ data: expense });
     } catch (error) {
@@ -188,7 +199,8 @@ router.post(
   requirePermission(PERMISSIONS.EXPENSES_APPROVE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const expense = await approveExpense(req.params.id, req.user!.id);
+      const user = requireAuthenticatedUser(req);
+      const expense = await approveExpense(req.params.id, user.id);
       res.json({ data: expense });
     } catch (error) {
       next(error);

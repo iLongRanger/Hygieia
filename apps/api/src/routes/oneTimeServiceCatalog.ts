@@ -1,8 +1,8 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { ValidationError } from '../middleware/errorHandler';
+import { UnauthorizedError, ValidationError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import {
   createOneTimeServiceCatalogItemSchema,
@@ -17,6 +17,13 @@ import {
 } from '../services/oneTimeServiceCatalogService';
 
 const router: Router = Router();
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -49,10 +56,11 @@ router.post(
   requirePermission(PERMISSIONS.QUOTATIONS_ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const parsed = createOneTimeServiceCatalogItemSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const item = await createOneTimeServiceCatalogItem(parsed.data, req.user!.id);
+      const item = await createOneTimeServiceCatalogItem(parsed.data, user.id);
       res.status(201).json({ data: item });
     } catch (error) {
       next(error);

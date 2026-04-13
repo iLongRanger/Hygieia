@@ -1,9 +1,10 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
-import { ValidationError } from '../middleware/errorHandler';
+import { UnauthorizedError, ValidationError } from '../middleware/errorHandler';
 import { ensureManagerAccountAccess } from '../middleware/ownership';
 import {
   listInspectionsSchema,
@@ -43,6 +44,13 @@ import {
 const router: Router = Router();
 
 router.use(authenticate);
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
 
 async function assertInspectionAccess(req: Request, inspection: { accountId: string; inspectorUserId: string }) {
   if (req.user?.role === 'manager') {
@@ -119,6 +127,7 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     if (req.user?.role === 'manager') {
       await ensureManagerAccountAccess(req.user, req.body.accountId, {
         path: req.path,
@@ -129,7 +138,7 @@ router.post(
     const inspection = await createInspection({
       ...req.body,
       scheduledDate: new Date(req.body.scheduledDate + 'T12:00:00'),
-      createdByUserId: req.user!.id,
+      createdByUserId: user.id,
     });
     res.status(201).json({ data: inspection });
   }
@@ -157,10 +166,11 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const existing = await getInspectionById(req.params.id);
       await assertInspectionAccess(req, existing);
 
-      const inspection = await startInspection(req.params.id, req.user!.id);
+      const inspection = await startInspection(req.params.id, user.id);
       res.json({ data: inspection });
     } catch (error) {
       next(error);
@@ -174,6 +184,7 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(completeInspectionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
@@ -182,7 +193,7 @@ router.post(
       defaultActionDueDate: req.body.defaultActionDueDate
         ? new Date(req.body.defaultActionDueDate)
         : undefined,
-      userId: req.user!.id,
+      userId: user.id,
     });
     res.json({ data: inspection });
   }
@@ -194,12 +205,13 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(cancelInspectionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
     const inspection = await cancelInspection(
       req.params.id,
-      req.user!.id,
+      user.id,
       req.body.reason
     );
     res.json({ data: inspection });
@@ -266,6 +278,7 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
@@ -275,7 +288,7 @@ router.post(
         ...req.body,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : req.body.dueDate,
       },
-      req.user!.id
+      user.id
     );
     res.status(201).json({ data: action });
   }
@@ -287,6 +300,7 @@ router.patch(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(updateInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
@@ -297,7 +311,7 @@ router.patch(
         ...req.body,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : req.body.dueDate,
       },
-      req.user!.id
+      user.id
     );
     res.json({ data: action });
   }
@@ -309,13 +323,14 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(verifyInspectionCorrectiveActionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
     const action = await verifyInspectionCorrectiveAction(
       req.params.id,
       req.params.actionId,
-      req.user!.id,
+      user.id,
       req.body.notes
     );
     res.json({ data: action });
@@ -341,10 +356,11 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createInspectionSignoffSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
-    const signoff = await createInspectionSignoff(req.params.id, req.body, req.user!.id);
+    const signoff = await createInspectionSignoff(req.params.id, req.body, user.id);
     res.status(201).json({ data: signoff });
   }
 );
@@ -355,6 +371,7 @@ router.post(
   requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   validate(createReinspectionSchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
@@ -364,7 +381,7 @@ router.post(
         ...req.body,
         scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate + 'T12:00:00') : undefined,
       },
-      req.user!.id
+      user.id
     );
     res.status(201).json({ data: inspection });
   }

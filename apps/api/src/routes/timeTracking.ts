@@ -1,7 +1,9 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { prisma } from '../lib/prisma';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -44,6 +46,13 @@ const router: Router = Router();
 
 router.use(authenticate);
 
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new UnauthorizedError('Not authenticated');
+  }
+  return req.user;
+}
+
 // ==================== Time Entries ====================
 
 // List time entries
@@ -80,7 +89,8 @@ router.get(
 
 // Get active entry for current user
 router.get('/active', requirePermission(PERMISSIONS.TIME_TRACKING_READ), async (req: Request, res: Response) => {
-  const entry = await getActiveEntry(req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const entry = await getActiveEntry(user.id);
   res.json({ data: entry });
 });
 
@@ -101,10 +111,11 @@ router.post(
   validate(clockInSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const entry = await clockIn({
-        userId: req.user!.id,
+        userId: user.id,
         ...req.body,
-        userRole: req.user?.role,
+        userRole: user.role,
       });
       res.status(201).json({ data: entry });
     } catch (error) {
@@ -120,11 +131,12 @@ router.post(
   validate(clockOutSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const entry = await clockOut(
-        req.user!.id,
+        user.id,
         req.body.notes,
         req.body.geoLocation,
-        req.user?.role
+        user.role
       );
       res.json({ data: entry });
     } catch (error) {
@@ -135,13 +147,15 @@ router.post(
 
 // Start break
 router.post('/break/start', requirePermission(PERMISSIONS.TIME_TRACKING_WRITE), async (req: Request, res: Response) => {
-  const entry = await startBreak(req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const entry = await startBreak(user.id);
   res.json({ data: entry });
 });
 
 // End break
 router.post('/break/end', requirePermission(PERMISSIONS.TIME_TRACKING_WRITE), async (req: Request, res: Response) => {
-  const entry = await endBreak(req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const entry = await endBreak(user.id);
   res.json({ data: entry });
 });
 
@@ -151,15 +165,16 @@ router.post(
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   validate(manualEntrySchema),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     const entry = await createManualEntry({
       ...req.body,
       clockIn: new Date(req.body.clockIn),
       clockOut: new Date(req.body.clockOut),
-      createdByUserId: req.user!.id,
+      createdByUserId: user.id,
     }, {
-      userRole: req.user?.role,
-      userId: req.user?.id,
-      userTeamId: req.user?.teamId ?? undefined,
+      userRole: user.role,
+      userId: user.id,
+      userTeamId: user.teamId ?? undefined,
     });
     res.status(201).json({ data: entry });
   }
@@ -171,13 +186,14 @@ router.patch(
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   validate(editTimeEntrySchema),
   async (req: Request, res: Response) => {
-    const input = { ...req.body, editedByUserId: req.user!.id };
+    const user = requireAuthenticatedUser(req);
+    const input = { ...req.body, editedByUserId: user.id };
     if (input.clockIn) input.clockIn = new Date(input.clockIn);
     if (input.clockOut) input.clockOut = new Date(input.clockOut);
     const entry = await editTimeEntry(req.params.id, input, {
-      userRole: req.user?.role,
-      userId: req.user?.id,
-      userTeamId: req.user?.teamId ?? undefined,
+      userRole: user.role,
+      userId: user.id,
+      userTeamId: user.teamId ?? undefined,
     });
     res.json({ data: entry });
   }
@@ -188,10 +204,11 @@ router.post(
   '/entries/:id/approve',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
-    const entry = await approveTimeEntry(req.params.id, req.user!.id, {
-      userRole: req.user?.role,
-      userId: req.user?.id,
-      userTeamId: req.user?.teamId ?? undefined,
+    const user = requireAuthenticatedUser(req);
+    const entry = await approveTimeEntry(req.params.id, user.id, {
+      userRole: user.role,
+      userId: user.id,
+      userTeamId: user.teamId ?? undefined,
     });
     res.json({ data: entry });
   }
@@ -353,12 +370,13 @@ router.post(
   '/timesheets/:id/approve',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
+    const user = requireAuthenticatedUser(req);
     await getTimesheetById(req.params.id, {
-      userRole: req.user?.role,
-      userId: req.user?.id,
-      userTeamId: req.user?.teamId ?? undefined,
+      userRole: user.role,
+      userId: user.id,
+      userTeamId: user.teamId ?? undefined,
     });
-    const timesheet = await approveTimesheet(req.params.id, req.user!.id);
+    const timesheet = await approveTimesheet(req.params.id, user.id);
     res.json({ data: timesheet });
   }
 );
