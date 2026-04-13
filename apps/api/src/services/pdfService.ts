@@ -1,4 +1,4 @@
-// @ts-ignore - pdfmake/src/printer has no type declarations
+// @ts-expect-error - pdfmake/src/printer has no type declarations
 import PdfPrinter from 'pdfmake/src/printer.js';
 import type { TDocumentDefinitions, Content, TableCell } from 'pdfmake/interfaces';
 import { getDefaultBranding, getGlobalSettings } from './globalSettingsService';
@@ -27,6 +27,60 @@ const BASE_COLORS = {
   headerBg: '#f5f5f5',
   white: '#ffffff',
 };
+
+interface AddressLike {
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  postalCode?: string | null;
+}
+
+interface PdfTableNode {
+  table: {
+    body: TableCell[][];
+  };
+}
+
+interface ProposalOperationalEstimate {
+  durationRangePerVisit?: {
+    minHours?: number | string | null;
+    maxHours?: number | string | null;
+  } | null;
+  recommendedCrewSize?: number | null;
+  hoursPerVisit?: number | string | null;
+}
+
+interface ProposalPricingSnapshot {
+  operationalEstimate?: ProposalOperationalEstimate | null;
+}
+
+interface ResidentialHomeProfile {
+  homeType?: string | null;
+  squareFeet?: number | string | null;
+  bedrooms?: number | null;
+  fullBathrooms?: number | null;
+  halfBathrooms?: number | null;
+  condition?: string | null;
+  occupiedStatus?: string | null;
+  hasPets?: boolean | null;
+  parkingAccess?: string | null;
+  entryNotes?: string | null;
+  specialInstructions?: string | null;
+  lastProfessionalCleaning?: string | null;
+}
+
+interface QuotationPricingMeta {
+  quantity?: number;
+  unitType?: string | null;
+  unitPrice?: number | string | null;
+  discountPercent?: number | null;
+  addOns?: {
+    name: string;
+    quantity: number;
+    total: number | string;
+  }[];
+}
 
 function formatCurrency(amount: number | string): string {
   return new Intl.NumberFormat('en-US', {
@@ -66,16 +120,16 @@ interface ProposalForPdf {
   validUntil?: string | Date | null;
   createdAt: string | Date;
   account: { name: string };
-  facility?: { name: string; address?: any } | null;
+  facility?: { name: string; address?: AddressLike | null } | null;
   createdByUser: { fullName: string; email: string };
-  proposalItems: Array<{
+  proposalItems: {
     itemType: string;
     description: string;
     quantity: number | string;
     unitPrice: number | string;
     totalPrice: number | string;
-  }>;
-  proposalServices: Array<{
+  }[];
+  proposalServices: {
     serviceName: string;
     serviceType: string;
     frequency: string;
@@ -83,9 +137,9 @@ interface ProposalForPdf {
     hourlyRate?: number | string | null;
     monthlyPrice: number | string;
     description?: string | null;
-    includedTasks?: string[] | any;
-  }>;
-  pricingSnapshot?: any | null;
+    includedTasks?: string[] | null;
+  }[];
+  pricingSnapshot?: ProposalPricingSnapshot | null;
 }
 
 export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buffer> {
@@ -206,8 +260,8 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
     for (const service of proposal.proposalServices) {
       // Parse description: first line is area info, remaining are "Frequency: task1, task2"
-      const lines = service.description?.split('\n') || [];
-      const areaInfo = lines[0] || '';
+      const lines = service.description?.split('\n') ?? [];
+      const areaInfo = lines[0] ?? '';
       const taskGroups: { label: string; tasks: string[] }[] = [];
       for (let i = 1; i < lines.length; i++) {
         const match = lines[i].match(/^(.+?):\s*(.+)$/);
@@ -309,7 +363,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         {
           stack: [
             { text: 'Crew Size', fontSize: 8, color: COLORS.lightText },
-            { text: `${estimate.recommendedCrewSize || 1} cleaners`, fontSize: 10, bold: true, color: COLORS.text },
+            { text: `${estimate.recommendedCrewSize ?? 1} cleaners`, fontSize: 10, bold: true, color: COLORS.text },
           ],
           width: '*',
         },
@@ -368,9 +422,9 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
           body: areasBody,
         },
       layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length ? 1 : 0.5),
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length ? 1 : 0.5),
         vLineWidth: () => 0,
-        hLineColor: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length - 1 ? COLORS.accent : COLORS.border),
+        hLineColor: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length - 1 ? COLORS.accent : COLORS.border),
         paddingLeft: () => 8,
         paddingRight: () => 8,
         paddingTop: () => 6,
@@ -383,7 +437,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
   // Line Items
   const visibleProposalItems = proposal.proposalItems.filter(
-    (item) => Number(item.totalPrice || 0) > 0
+    (item) => Number(item.totalPrice ?? 0) > 0
   );
   if (visibleProposalItems.length > 0) {
     content.push({ text: 'Line Items', style: 'sectionHeader' });
@@ -413,7 +467,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         body: itemsBody,
       },
       layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
         vLineWidth: () => 0,
         hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
         paddingLeft: () => 8,
@@ -469,7 +523,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
           ],
         },
         layout: {
-          hLineWidth: (i: number, node: any) => (i === node.table.body.length - 1 ? 1 : 0),
+          hLineWidth: (i: number, node: PdfTableNode) => (i === node.table.body.length - 1 ? 1 : 0),
           vLineWidth: () => 0,
           hLineColor: () => COLORS.accent,
           paddingTop: () => 4,
@@ -634,7 +688,7 @@ interface ContractForPdf {
   signedDate?: string | Date | null;
   createdAt: string | Date;
   account: { name: string };
-  facility?: { name: string; address?: any } | null;
+  facility?: { name: string; address?: AddressLike | null } | null;
   createdByUser: { fullName: string; email: string };
 }
 
@@ -655,19 +709,19 @@ interface ResidentialQuoteForPdf {
   account?: { name: string } | null;
   property?: {
     name: string;
-    serviceAddress?: any;
-    homeProfile?: any;
+    serviceAddress?: AddressLike | null;
+    homeProfile?: ResidentialHomeProfile | null;
   } | null;
-  homeAddress?: any;
-  homeProfile?: any;
-  addOns?: Array<{
+  homeAddress?: AddressLike | null;
+  homeProfile?: ResidentialHomeProfile | null;
+  addOns?: {
     label: string;
     quantity: number;
     pricingType: 'flat' | 'per_unit';
     unitLabel?: string | null;
     unitPrice: number | string;
     lineTotal: number | string;
-  }>;
+  }[];
   priceBreakdown?: {
     baseSubtotal?: number | string;
     recurringDiscount?: number | string;
@@ -772,7 +826,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
 
   const clientInfo: Content[] = [
     { text: 'Prepared For:', style: 'sectionLabel' },
-    { text: quote.customerName || quote.account?.name || 'Residential Client', style: 'clientName' },
+    { text: quote.customerName ?? quote.account?.name ?? 'Residential Client', style: 'clientName' },
   ];
   if (quote.property?.name) {
     clientInfo.push({ text: quote.property.name, style: 'clientDetail' });
@@ -797,7 +851,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
       {
         stack: [
           { text: 'Service Location', fontSize: 8, color: COLORS.lightText },
-          { text: quote.property?.name || 'Residential Property', fontSize: 10, bold: true },
+          { text: quote.property?.name ?? 'Residential Property', fontSize: 10, bold: true },
           ...(addressLine ? [{ text: addressLine, fontSize: 9, color: COLORS.text }] : []),
         ],
         width: '*',
@@ -855,14 +909,14 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
         {
           stack: [
             { text: 'Home Type', fontSize: 8, color: COLORS.lightText },
-            { text: formatResidentialServiceType(String(homeProfile.homeType || '')), fontSize: 10, bold: true },
+            { text: formatResidentialServiceType(String(homeProfile.homeType ?? '')), fontSize: 10, bold: true },
           ],
           width: '*',
         },
         {
           stack: [
             { text: 'Square Feet', fontSize: 8, color: COLORS.lightText },
-            { text: Number(homeProfile.squareFeet || 0).toLocaleString(), fontSize: 10, bold: true },
+            { text: Number(homeProfile.squareFeet ?? 0).toLocaleString(), fontSize: 10, bold: true },
           ],
           width: '*',
         },
@@ -870,7 +924,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
           stack: [
             { text: 'Bedrooms / Baths', fontSize: 8, color: COLORS.lightText },
             {
-              text: `${homeProfile.bedrooms || 0} bd / ${(homeProfile.fullBathrooms || 0) + (homeProfile.halfBathrooms || 0) * 0.5} ba`,
+              text: `${homeProfile.bedrooms ?? 0} bd / ${((homeProfile.fullBathrooms ?? 0) + (homeProfile.halfBathrooms ?? 0) * 0.5)} ba`,
               fontSize: 10,
               bold: true,
             },
@@ -886,14 +940,14 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
         {
           stack: [
             { text: 'Condition', fontSize: 8, color: COLORS.lightText },
-            { text: formatResidentialServiceType(String(homeProfile.condition || 'standard')), fontSize: 10, bold: true },
+            { text: formatResidentialServiceType(String(homeProfile.condition ?? 'standard')), fontSize: 10, bold: true },
           ],
           width: '*',
         },
         {
           stack: [
             { text: 'Occupancy', fontSize: 8, color: COLORS.lightText },
-            { text: formatResidentialServiceType(String(homeProfile.occupiedStatus || 'occupied')), fontSize: 10, bold: true },
+            { text: formatResidentialServiceType(String(homeProfile.occupiedStatus ?? 'occupied')), fontSize: 10, bold: true },
           ],
           width: '*',
         },
@@ -946,7 +1000,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
     for (const addOn of quote.addOns) {
       addOnBody.push([
         { text: addOn.label, fontSize: 9 },
-        { text: String(addOn.quantity || 1), alignment: 'right' as const, fontSize: 9 },
+        { text: String(addOn.quantity ?? 1), alignment: 'right' as const, fontSize: 9 },
         {
           text:
             addOn.pricingType === 'per_unit' && addOn.unitLabel
@@ -966,7 +1020,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
         body: addOnBody,
       },
       layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
         vLineWidth: () => 0,
         hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
         paddingLeft: () => 8,
@@ -1036,7 +1090,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
           ],
         },
         layout: {
-          hLineWidth: (i: number, node: any) => (i === node.table.body.length - 1 ? 1 : 0),
+          hLineWidth: (i: number, node: PdfTableNode) => (i === node.table.body.length - 1 ? 1 : 0),
           vLineWidth: () => 0,
           hLineColor: () => COLORS.accent,
           paddingTop: () => 4,
@@ -1253,7 +1307,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
   // Service Terms Table
   content.push({ text: 'Service Terms', style: 'sectionHeader' });
 
-  const termsBody: any[][] = [
+  const termsBody: TableCell[][] = [
     [
       { text: 'Start Date', style: 'tableHeader' },
       { text: formatDate(contract.startDate) },
@@ -1292,7 +1346,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
       { text: 'Timezone / Anchor', style: 'tableHeader' },
       {
         text:
-          `${extractFacilityTimezone(contract.facility?.address) || 'Facility timezone'} ` +
+          `${extractFacilityTimezone(contract.facility?.address) ?? 'Facility timezone'} ` +
           '(start day anchor)',
       },
     ]);
@@ -1305,7 +1359,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
       body: termsBody,
     },
     layout: {
-      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+      hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
       vLineWidth: () => 0,
       hLineColor: () => COLORS.border,
       paddingLeft: () => 8,
@@ -1319,7 +1373,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
   // Financial Terms
   content.push({ text: 'Financial Terms', style: 'sectionHeader' });
 
-  const financialBody: any[][] = [
+  const financialBody: TableCell[][] = [
     [
       { text: 'Monthly Value', style: 'tableHeader' },
       { text: formatCurrency(contract.monthlyValue), bold: true, color: COLORS.primary },
@@ -1348,7 +1402,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
       body: financialBody,
     },
     layout: {
-      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+      hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
       vLineWidth: () => 0,
       hLineColor: () => COLORS.border,
       paddingLeft: () => 8,
@@ -1489,6 +1543,377 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
       columns: [
         {
           text: `${branding.companyName} - ${contract.contractNumber}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          margin: [40, 0, 0, 0] as [number, number, number, number],
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          fontSize: 8,
+          color: COLORS.lightText,
+          alignment: 'right' as const,
+          margin: [0, 0, 40, 0] as [number, number, number, number],
+        },
+      ],
+    }),
+  };
+
+  return buildPdfBuffer(docDefinition);
+}
+
+// ============================================================
+// Quotation PDF
+// ============================================================
+
+interface QuotationForPdf {
+  quotationNumber: string;
+  title: string;
+  status: string;
+  description?: string | null;
+  subtotal: number | string;
+  taxRate: number | string;
+  taxAmount: number | string;
+  totalAmount: number | string;
+  validUntil?: string | Date | null;
+  scheduledDate?: string | Date | null;
+  scheduledStartTime?: string | Date | null;
+  scheduledEndTime?: string | Date | null;
+  termsAndConditions?: string | null;
+  signatureName?: string | null;
+  signatureDate?: string | Date | null;
+  createdAt: string | Date;
+  account: { name: string };
+  facility?: { name: string; address?: AddressLike | null } | null;
+  createdByUser: { fullName: string; email: string };
+  services: {
+    serviceName: string;
+    description?: string | null;
+    price: number | string;
+    includedTasks?: string[] | null;
+    pricingMeta?: QuotationPricingMeta | null;
+    sortOrder?: number;
+  }[];
+}
+
+function formatQuotationTime(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  return new Date(date).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export async function generateQuotationPdf(quotation: QuotationForPdf): Promise<Buffer> {
+  let branding: GlobalBranding;
+  try {
+    branding = await getGlobalSettings();
+  } catch {
+    branding = getDefaultBranding();
+  }
+
+  const COLORS = {
+    ...BASE_COLORS,
+    primary: branding.themePrimaryColor,
+    accent: branding.themeAccentColor,
+  };
+
+  const content: Content[] = [];
+
+  // Company Header
+  const headerStack: Content[] = [];
+  if (branding.logoDataUrl) {
+    headerStack.push({
+      image: branding.logoDataUrl,
+      fit: [120, 60],
+      margin: [0, 0, 0, 8] as [number, number, number, number],
+    });
+  }
+
+  headerStack.push(
+    { text: branding.companyName, style: 'companyName' },
+    ...(branding.companyAddress ? [{ text: branding.companyAddress, style: 'companyDetail' }] : []),
+    ...(branding.companyPhone ? [{ text: branding.companyPhone, style: 'companyDetail' }] : []),
+    ...(branding.companyEmail ? [{ text: branding.companyEmail, style: 'companyDetail' }] : []),
+    ...(branding.companyWebsite ? [{ text: branding.companyWebsite, style: 'companyDetail' }] : [])
+  );
+
+  const metaStack: Content[] = [
+    { text: 'QUOTATION', style: 'proposalLabel' },
+    { text: quotation.quotationNumber, style: 'proposalNumber' },
+    { text: `Date: ${formatDate(quotation.createdAt)}`, style: 'proposalMeta' },
+  ];
+  if (quotation.validUntil) {
+    metaStack.push({ text: `Valid Until: ${formatDate(quotation.validUntil)}`, style: 'proposalMeta' });
+  }
+  if (quotation.scheduledDate) {
+    const timeRange = [
+      formatQuotationTime(quotation.scheduledStartTime),
+      formatQuotationTime(quotation.scheduledEndTime),
+    ].filter(Boolean).join(' - ');
+    metaStack.push({
+      text: `Scheduled: ${formatDate(quotation.scheduledDate)}${timeRange ? ` ${timeRange}` : ''}`,
+      style: 'proposalMeta',
+    });
+  }
+
+  content.push({
+    columns: [
+      { stack: headerStack, width: '*' },
+      { stack: metaStack, width: 200, alignment: 'right' as const },
+    ],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  // Divider
+  content.push({
+    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: COLORS.accent }],
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  // Title
+  content.push({
+    text: quotation.title,
+    style: 'proposalTitle',
+    margin: [0, 0, 0, 15] as [number, number, number, number],
+  });
+
+  // Client Info
+  const clientInfo: Content[] = [
+    { text: 'Prepared For:', style: 'sectionLabel' },
+    { text: quotation.account.name, style: 'clientName' },
+  ];
+  if (quotation.facility) {
+    clientInfo.push({ text: quotation.facility.name, style: 'clientDetail' });
+    if (quotation.facility.address) {
+      const addr = quotation.facility.address;
+      const addrParts = [addr.street, addr.city, addr.state, addr.zip ?? addr.postalCode]
+        .filter(Boolean)
+        .join(', ');
+      if (addrParts) {
+        clientInfo.push({ text: addrParts, style: 'clientDetail' });
+      }
+    }
+  }
+  content.push({
+    stack: clientInfo,
+    margin: [0, 0, 0, 20] as [number, number, number, number],
+  });
+
+  // Description
+  if (quotation.description) {
+    content.push({ text: 'Description', style: 'sectionHeader' });
+    content.push({
+      text: quotation.description,
+      style: 'bodyText',
+      margin: [0, 0, 0, 15] as [number, number, number, number],
+    });
+  }
+
+  // Services Table
+  if (quotation.services.length > 0) {
+    content.push({ text: 'Services', style: 'sectionHeader' });
+
+    const servicesBody: TableCell[][] = [
+      [
+        { text: 'Service', style: 'tableHeader' },
+        { text: 'Details', style: 'tableHeader' },
+        { text: 'Amount', style: 'tableHeader', alignment: 'right' as const },
+      ],
+    ];
+
+    for (const service of quotation.services) {
+      const details: string[] = [];
+      if (service.description) details.push(service.description);
+
+      const meta = service.pricingMeta;
+      if (meta) {
+        if (typeof meta.quantity === 'number' && meta.unitType) {
+          const unitLabel = meta.unitType === 'per_window' ? 'window' : meta.unitType === 'per_sqft' ? 'sqft' : meta.unitType === 'fixed' ? 'service' : meta.unitType.replace(/_/g, ' ');
+          details.push(`${meta.quantity} ${unitLabel}${typeof meta.unitPrice === 'number' ? ` @ ${formatCurrency(meta.unitPrice)}/${unitLabel}` : ''}`);
+        }
+        if (typeof meta.discountPercent === 'number' && meta.discountPercent > 0) {
+          details.push(`${meta.discountPercent.toFixed(2)}% discount applied`);
+        }
+        if (Array.isArray(meta.addOns)) {
+          for (const addOn of meta.addOns) {
+            details.push(`Add-on: ${addOn.name} x${addOn.quantity} (${formatCurrency(addOn.total)})`);
+          }
+        }
+      }
+
+      const tasks = Array.isArray(service.includedTasks) ? service.includedTasks : [];
+
+      servicesBody.push([
+        {
+          stack: [
+            { text: service.serviceName, bold: true, fontSize: 10 },
+            ...(tasks.length > 0
+              ? tasks.map((task: string) => ({
+                  text: `\u2022 ${task}`,
+                  fontSize: 8,
+                  color: COLORS.lightText,
+                  margin: [4, 1, 0, 0] as [number, number, number, number],
+                }))
+              : []),
+          ],
+        },
+        { text: details.join('\n'), fontSize: 9, color: COLORS.lightText },
+        { text: formatCurrency(service.price), alignment: 'right' as const, bold: true, fontSize: 10 },
+      ]);
+    }
+
+    content.push({
+      table: {
+        headerRows: 1,
+        widths: ['*', 160, 90],
+        body: servicesBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: (i: number) => (i === 0 || i === 1 ? COLORS.accent : COLORS.border),
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+        fillColor: (rowIndex: number) => (rowIndex === 0 ? COLORS.headerBg : null),
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
+    });
+  }
+
+  // Financial Summary
+  const summaryRows: TableCell[][] = [
+    [
+      { text: 'Subtotal', alignment: 'right' as const, color: COLORS.lightText },
+      { text: formatCurrency(quotation.subtotal), alignment: 'right' as const },
+    ],
+  ];
+
+  if (Number(quotation.taxRate) > 0) {
+    summaryRows.push([
+      {
+        text: `Tax (${(Number(quotation.taxRate) * 100).toFixed(1)}%)`,
+        alignment: 'right' as const,
+        color: COLORS.lightText,
+      },
+      { text: formatCurrency(quotation.taxAmount), alignment: 'right' as const },
+    ]);
+  }
+
+  summaryRows.push([
+    { text: 'Total', alignment: 'right' as const, bold: true, fontSize: 14 },
+    {
+      text: formatCurrency(quotation.totalAmount),
+      alignment: 'right' as const,
+      bold: true,
+      fontSize: 14,
+      color: COLORS.primary,
+    },
+  ]);
+
+  content.push({
+    columns: [
+      { width: '*', text: '' },
+      {
+        width: 250,
+        table: {
+          widths: ['*', 100],
+          body: summaryRows,
+        },
+        layout: {
+          hLineWidth: (i: number, node: PdfTableNode) => (i === node.table.body.length - 1 ? 1 : 0),
+          vLineWidth: () => 0,
+          hLineColor: () => COLORS.accent,
+          paddingTop: () => 4,
+          paddingBottom: () => 4,
+        },
+      },
+    ],
+    margin: [0, 10, 0, 25] as [number, number, number, number],
+  });
+
+  // Terms & Conditions
+  if (quotation.termsAndConditions) {
+    content.push({ text: 'Terms & Conditions', style: 'sectionHeader' });
+    content.push({
+      text: quotation.termsAndConditions,
+      style: 'bodyText',
+      margin: [0, 0, 0, 15] as [number, number, number, number],
+    });
+  }
+
+  // Signature Block
+  const sigLine = { type: 'line' as const, x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: COLORS.border };
+
+  const clientSigStack: Content[] = [
+    { canvas: [sigLine] },
+    { text: 'Client Signature', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+  ];
+
+  if (quotation.signatureName) {
+    clientSigStack.push(
+      { text: quotation.signatureName, fontSize: 10, margin: [0, 4, 0, 0] as [number, number, number, number] },
+      { text: `Signed: ${formatDate(quotation.signatureDate)}`, style: 'signatureLabel' },
+    );
+  } else {
+    clientSigStack.push(
+      { text: '\n', fontSize: 6 },
+      { canvas: [sigLine] },
+      { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+      { text: '\n', fontSize: 6 },
+      { canvas: [sigLine] },
+      { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+    );
+  }
+
+  content.push({
+    columns: [
+      { stack: clientSigStack, width: '*' },
+      {
+        stack: [
+          { canvas: [sigLine] },
+          { text: 'Company Representative', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+          { text: '\n', fontSize: 6 },
+          { canvas: [sigLine] },
+          { text: 'Printed Name', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+          { text: '\n', fontSize: 6 },
+          { canvas: [sigLine] },
+          { text: 'Date', style: 'signatureLabel', margin: [0, 5, 0, 0] as [number, number, number, number] },
+        ],
+        width: '*',
+      },
+    ],
+    margin: [0, 30, 0, 0] as [number, number, number, number],
+  });
+
+  const docDefinition: TDocumentDefinitions = {
+    content,
+    defaultStyle: {
+      font: 'Helvetica',
+      fontSize: 10,
+      color: COLORS.text,
+    },
+    styles: {
+      companyName: { fontSize: 18, bold: true, color: COLORS.primary },
+      companyDetail: { fontSize: 9, color: COLORS.lightText, margin: [0, 1, 0, 0] as [number, number, number, number] },
+      proposalLabel: { fontSize: 22, bold: true, color: COLORS.accent },
+      proposalNumber: { fontSize: 11, color: COLORS.lightText, margin: [0, 2, 0, 0] as [number, number, number, number] },
+      proposalMeta: { fontSize: 9, color: COLORS.lightText, margin: [0, 2, 0, 0] as [number, number, number, number] },
+      proposalTitle: { fontSize: 16, bold: true, color: COLORS.primary },
+      sectionLabel: { fontSize: 9, color: COLORS.lightText, margin: [0, 0, 0, 2] as [number, number, number, number] },
+      clientName: { fontSize: 14, bold: true, color: COLORS.primary },
+      clientDetail: { fontSize: 10, color: COLORS.lightText, margin: [0, 1, 0, 0] as [number, number, number, number] },
+      sectionHeader: { fontSize: 13, bold: true, color: COLORS.primary, margin: [0, 10, 0, 5] as [number, number, number, number] },
+      bodyText: { fontSize: 10, color: COLORS.text, lineHeight: 1.4 },
+      tableHeader: { fontSize: 9, bold: true, color: COLORS.primary },
+      signatureLabel: { fontSize: 8, color: COLORS.lightText },
+    },
+    pageMargins: [40, 40, 40, 60] as [number, number, number, number],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        {
+          text: `${branding.companyName} - ${quotation.quotationNumber}`,
           fontSize: 8,
           color: COLORS.lightText,
           margin: [40, 0, 0, 0] as [number, number, number, number],
