@@ -113,7 +113,7 @@ function buildAreaMatchKey(input: {
   areaTypeId?: string | null;
   name?: string | null;
 }) {
-  return `${input.areaTypeId || ''}::${normalizeText(input.name)}`;
+  return `${input.areaTypeId ?? ''}::${normalizeText(input.name)}`;
 }
 
 function buildTaskMatchKey(input: {
@@ -123,14 +123,20 @@ function buildTaskMatchKey(input: {
   cleaningFrequency?: string | null;
 }) {
   return [
-    input.areaId || '',
-    input.taskTemplateId || '',
+    input.areaId ?? '',
+    input.taskTemplateId ?? '',
     normalizeText(input.customName),
     normalizeText(input.cleaningFrequency),
   ].join('::');
 }
 
-function mapAmendment(amendment: any) {
+function mapAmendment<
+  T extends {
+    oldMonthlyValue: Prisma.Decimal | number | null | undefined;
+    newMonthlyValue: Prisma.Decimal | number | null | undefined;
+    monthlyDelta: Prisma.Decimal | number | null | undefined;
+  },
+>(amendment: T) {
   return {
     ...amendment,
     oldMonthlyValue: toNumber(amendment.oldMonthlyValue),
@@ -139,19 +145,27 @@ function mapAmendment(amendment: any) {
   };
 }
 
-type AmendmentWorkingScope = {
+interface AmendmentWorkingScope {
   facility?: {
     id?: string;
     name?: string;
     buildingType?: string | null;
   } | null;
-  areas?: Array<Record<string, any>>;
-  tasks?: Array<Record<string, any>>;
+  areas?: Record<string, unknown>[];
+  tasks?: Record<string, unknown>[];
   contract?: {
     serviceFrequency?: string | null;
     serviceSchedule?: Record<string, unknown> | null;
   } | null;
-};
+}
+
+function toWorkingScope(value: unknown): AmendmentWorkingScope {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as AmendmentWorkingScope;
+}
 
 async function buildContractScopeSnapshot(contractId: string) {
   const contract = await prisma.contract.findUnique({
@@ -317,12 +331,12 @@ async function createAmendmentActivity(
 }
 
 function getLatestWorkingScope(
-  amendment: { snapshots?: Array<{ snapshotType: string; scopeJson: unknown }> }
+  amendment: { snapshots?: { snapshotType: string; scopeJson: unknown }[] }
 ): AmendmentWorkingScope {
   const snapshots = amendment.snapshots ?? [];
   for (let index = snapshots.length - 1; index >= 0; index -= 1) {
     if (snapshots[index]?.snapshotType === 'working') {
-      return ((snapshots[index].scopeJson as Record<string, any> | null) ?? {}) as AmendmentWorkingScope;
+      return toWorkingScope(snapshots[index]?.scopeJson);
     }
   }
   return {};
@@ -335,6 +349,15 @@ function toSafeString(value: unknown, fallback: string) {
 function toSafeNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function trimToNullableString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 function buildSqftScopeOverride(
@@ -928,11 +951,12 @@ export async function applyContractAmendment(
   const workingScope = getLatestWorkingScope(existing);
   const areas = Array.isArray(workingScope.areas) ? workingScope.areas : [];
   const tasks = Array.isArray(workingScope.tasks) ? workingScope.tasks : [];
+  const facilityId = existing.contract.facilityId;
 
   const applied = await prisma.$transaction(async (tx) => {
     const currentAreas = await tx.area.findMany({
       where: {
-        facilityId: existing.contract.facilityId!,
+        facilityId,
         archivedAt: null,
       },
       select: {
@@ -944,7 +968,7 @@ export async function applyContractAmendment(
 
     const currentTasks = await tx.facilityTask.findMany({
       where: {
-        facilityId: existing.contract.facilityId!,
+        facilityId,
         archivedAt: null,
       },
       select: {
@@ -1000,7 +1024,7 @@ export async function applyContractAmendment(
           where: { id: matchedAreaId },
           data: {
             areaTypeId,
-            name: typeof area.name === 'string' ? area.name.trim() || null : null,
+            name: trimToNullableString(area.name),
             quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
             squareFeet: toSafeNumber(area.squareFeet),
             floorType: toSafeString(area.floorType, 'vct'),
@@ -1020,9 +1044,9 @@ export async function applyContractAmendment(
       } else {
         const created = await tx.area.create({
           data: {
-            facilityId: existing.contract.facilityId!,
+            facilityId,
             areaTypeId,
-            name: typeof area.name === 'string' ? area.name.trim() || null : null,
+            name: trimToNullableString(area.name),
             quantity: Math.max(1, Math.round(toSafeNumber(area.quantity, 1))),
             squareFeet: toSafeNumber(area.squareFeet),
             floorType: toSafeString(area.floorType, 'vct'),
@@ -1124,7 +1148,7 @@ export async function applyContractAmendment(
       } else {
         const created = await tx.facilityTask.create({
           data: {
-            facilityId: existing.contract.facilityId!,
+            facilityId,
             areaId: resolvedAreaId,
             taskTemplateId:
               typeof task.taskTemplateId === 'string' ? task.taskTemplateId : null,

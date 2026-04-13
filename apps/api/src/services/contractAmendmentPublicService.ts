@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
-const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS || '30', 10);
+const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
 const publicContractAmendmentSelect = {
   id: true,
