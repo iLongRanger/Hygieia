@@ -1,5 +1,6 @@
-import { Server as HttpServer } from 'http';
-import { Server, Socket } from 'socket.io';
+import type { Server as HttpServer } from 'http';
+import type { Socket } from 'socket.io';
+import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret, jwtConfig } from '../config/jwt';
 import { prisma } from './prisma';
@@ -81,7 +82,7 @@ export function initializeRealtime(server: HttpServer): Server {
 
   io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
       credentials: true,
     },
   });

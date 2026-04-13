@@ -1,13 +1,13 @@
 export * from './jwt';
 
 export const config = {
-  port: parseInt(process.env.PORT || '3101', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  port: parseInt(process.env.PORT ?? '3101', 10),
+  nodeEnv: process.env.NODE_ENV ?? 'development',
   isDevelopment: process.env.NODE_ENV !== 'production',
   isProduction: process.env.NODE_ENV === 'production',
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
     credentials: true,
   },
 
@@ -24,6 +24,6 @@ export const config = {
   },
 
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   },
 };

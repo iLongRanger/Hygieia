@@ -1,12 +1,12 @@
 export const smsConfig = {
   get twilioAccountSid() {
-    return process.env.TWILIO_ACCOUNT_SID || '';
+    return process.env.TWILIO_ACCOUNT_SID ?? '';
   },
   get twilioAuthToken() {
-    return process.env.TWILIO_AUTH_TOKEN || '';
+    return process.env.TWILIO_AUTH_TOKEN ?? '';
   },
   get twilioFromNumber() {
-    return process.env.TWILIO_FROM_NUMBER || '';
+    return process.env.TWILIO_FROM_NUMBER ?? '';
   },
 };
 
@@ -17,4 +17,3 @@ export function isSmsConfigured(): boolean {
     !!smsConfig.twilioFromNumber
   );
 }
-

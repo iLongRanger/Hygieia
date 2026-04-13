@@ -39,7 +39,7 @@ export const globalRateLimiter = rateLimit({
     });
   },
   keyGenerator: (req: Request) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return req.ip ?? req.socket.remoteAddress ?? 'unknown';
   },
 });
 
@@ -65,7 +65,7 @@ export const authRateLimiter = rateLimit({
     });
   },
   keyGenerator: (req: Request) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return req.ip ?? req.socket.remoteAddress ?? 'unknown';
   },
 });
 
@@ -91,6 +91,6 @@ export const sensitiveRateLimiter = rateLimit({
     });
   },
   keyGenerator: (req: Request) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return req.ip ?? req.socket.remoteAddress ?? 'unknown';
   },
 });

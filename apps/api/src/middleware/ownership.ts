@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from './errorHandler';
 import { prisma } from '../lib/prisma';
 import { logSecurityEvent } from '../lib/logger';
@@ -154,7 +154,7 @@ export function verifyOwnership(context: OwnershipContext) {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const paramName = context.paramName || 'id';
+      const paramName = context.paramName ?? 'id';
       const resourceId = req.params[paramName];
 
       if (!resourceId) {

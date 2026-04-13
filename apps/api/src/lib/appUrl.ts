@@ -15,11 +15,11 @@ function getPrimaryCorsOrigin(): string | null {
 }
 
 export function getFrontendBaseUrl(): string | null {
-  return normalizeBaseUrl(process.env.FRONTEND_URL || process.env.WEB_APP_URL) || getPrimaryCorsOrigin();
+  return normalizeBaseUrl(process.env.FRONTEND_URL ?? process.env.WEB_APP_URL) ?? getPrimaryCorsOrigin();
 }
 
 export function getWebAppBaseUrl(): string | null {
-  return normalizeBaseUrl(process.env.WEB_APP_URL || process.env.FRONTEND_URL) || getPrimaryCorsOrigin();
+  return normalizeBaseUrl(process.env.WEB_APP_URL ?? process.env.FRONTEND_URL) ?? getPrimaryCorsOrigin();
 }
 
 export function requireFrontendBaseUrl(): string {

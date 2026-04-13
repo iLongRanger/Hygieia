@@ -13,7 +13,7 @@ const result = dotenv.config({ path: envPath, override: shouldOverrideProcessEnv
 const loadedEnv = result.parsed ?? {};
 
 function getProtocol(url?: string): string {
-  return url?.split('://')[0] || 'missing';
+  return url?.split('://')[0] ?? 'missing';
 }
 
 function isPrismaProxyUrl(url?: string): boolean {

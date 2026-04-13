@@ -1,9 +1,9 @@
 export const emailConfig = {
   get resendApiKey() {
-    return process.env.RESEND_API_KEY || '';
+    return process.env.RESEND_API_KEY ?? '';
   },
   get from() {
-    return process.env.EMAIL_FROM || 'onboarding@resend.dev';
+    return process.env.EMAIL_FROM ?? 'onboarding@resend.dev';
   },
 };
 

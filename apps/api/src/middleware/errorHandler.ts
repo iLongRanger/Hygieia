@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../lib/logger';
 
@@ -68,7 +68,7 @@ export function requestIdMiddleware(
   _res: Response,
   next: NextFunction
 ): void {
-  req.requestId = (req.headers['x-request-id'] as string) || uuidv4();
+  req.requestId = (req.headers['x-request-id'] as string) ?? uuidv4();
   next();
 }
 
@@ -78,7 +78,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  const requestId = req.requestId || uuidv4();
+  const requestId = req.requestId ?? uuidv4();
   const timestamp = new Date().toISOString();
 
   if (err instanceof AppError) {

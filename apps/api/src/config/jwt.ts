@@ -1,4 +1,4 @@
-import { Algorithm } from 'jsonwebtoken';
+import type { Algorithm } from 'jsonwebtoken';
 
 export interface JwtConfig {
   accessTokenExpiry: string;
@@ -19,7 +19,7 @@ export const jwtConfig: JwtConfig = {
 };
 
 export function getJwtSecret(): string {
-  const secret = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET;
+  const secret = process.env.SUPABASE_JWT_SECRET ?? process.env.JWT_SECRET;
   if (!secret) {
     throw new Error(
       'JWT_SECRET or SUPABASE_JWT_SECRET environment variable is required'

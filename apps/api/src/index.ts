@@ -1,6 +1,7 @@
 import './env.js';
 
-import express, { Application } from 'express';
+import type { Application } from 'express';
+import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -60,10 +61,10 @@ import { startContractAssignmentOverrideScheduler } from './services/contractAss
 import { startContractAmendmentAutoApplyScheduler } from './services/contractAmendmentAutoApplyScheduler';
 
 const app: Application = express();
-const PORT = process.env.PORT || 3101;
+const PORT = process.env.PORT ?? 3101;
 
 function parseConfiguredOrigins(): string[] {
-  return (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  return (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -120,9 +121,9 @@ app.get('/health', (req, res) => {
   if (isInternal) {
     res.json({
       ...basicInfo,
-      version: process.env.npm_package_version || '0.1.0',
+      version: process.env.npm_package_version ?? '0.1.0',
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV ?? 'development',
     });
   } else {
     res.json(basicInfo);
