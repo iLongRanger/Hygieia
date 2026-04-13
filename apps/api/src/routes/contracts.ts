@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import {
@@ -69,8 +70,7 @@ import { buildSubcontractorWelcomeSubject, buildSubcontractorWelcomeHtml } from 
 import { createSubcontractorUser } from '../services/authService';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
-import { BadRequestError } from '../middleware/errorHandler';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 import { createBulkNotifications } from '../services/notificationService';
 import { autoCreateInspectionTemplate } from '../services/inspectionTemplateService';
@@ -100,6 +100,17 @@ import { getWebAppBaseUrl, requireFrontendBaseUrl } from '../lib/appUrl';
 import { getProposalById } from '../services/proposalService';
 
 const router: Router = Router();
+type ContractRecord = Awaited<ReturnType<typeof getContractById>>;
+type ContractPayload = NonNullable<ContractRecord>;
+type FacilityTask = Awaited<ReturnType<typeof getFacilityTasksForContract>>[number];
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  return req.user;
+}
 
 function decodeDataUrlToBuffer(dataUrl: string): Buffer {
   const commaIndex = dataUrl.indexOf(',');
@@ -126,12 +137,12 @@ async function getBrandingSafe() {
     const branding = await getGlobalSettings();
     return {
       companyName: branding?.companyName || 'Hygieia',
-      companyAddress: branding?.companyAddress || null,
-      companyPhone: branding?.companyPhone || null,
-      companyEmail: branding?.companyEmail || null,
-      companyWebsite: branding?.companyWebsite || null,
+      companyAddress: branding?.companyAddress ?? null,
+      companyPhone: branding?.companyPhone ?? null,
+      companyEmail: branding?.companyEmail ?? null,
+      companyWebsite: branding?.companyWebsite ?? null,
       companyTimezone: branding?.companyTimezone || 'UTC',
-      logoDataUrl: branding?.logoDataUrl || null,
+      logoDataUrl: branding?.logoDataUrl ?? null,
       themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
       themeAccentColor: branding?.themeAccentColor || '#d4af37',
       themeBackgroundColor: branding?.themeBackgroundColor || '#f5f5f5',
@@ -141,12 +152,12 @@ async function getBrandingSafe() {
     const branding = getDefaultBranding();
     return {
       companyName: branding?.companyName || 'Hygieia',
-      companyAddress: branding?.companyAddress || null,
-      companyPhone: branding?.companyPhone || null,
-      companyEmail: branding?.companyEmail || null,
-      companyWebsite: branding?.companyWebsite || null,
+      companyAddress: branding?.companyAddress ?? null,
+      companyPhone: branding?.companyPhone ?? null,
+      companyEmail: branding?.companyEmail ?? null,
+      companyWebsite: branding?.companyWebsite ?? null,
       companyTimezone: branding?.companyTimezone || 'UTC',
-      logoDataUrl: branding?.logoDataUrl || null,
+      logoDataUrl: branding?.logoDataUrl ?? null,
       themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
       themeAccentColor: branding?.themeAccentColor || '#d4af37',
       themeBackgroundColor: branding?.themeBackgroundColor || '#f5f5f5',
@@ -239,12 +250,12 @@ async function getContractAmendmentClientRecipients(contractId: string) {
     },
   });
 
-  return (contract?.account.contacts || []).filter((contact) => Boolean(contact.email));
+  return (contract?.account.contacts ?? []).filter((contact) => Boolean(contact.email));
 }
 
 async function getSubcontractorTeamUsers(
   teamId: string
-): Promise<Array<{ id: string; email: string; fullName: string }>> {
+): Promise<{ id: string; email: string; fullName: string }[]> {
   const teamSubcontractors = await prisma.userRole.findMany({
     where: {
       role: { key: 'subcontractor' },
@@ -291,11 +302,11 @@ router.get(
       });
 
       if (req.user?.role === 'subcontractor') {
-        const safeContracts = result.data.map((contract: any) => {
+        const safeContracts = result.data.map((contract) => {
           const payout =
-            Number(contract.monthlyValue || 0) *
+            Number(contract.monthlyValue ?? 0) *
             tierToPercentage(contract.subcontractorTier);
-          const { monthlyValue, totalValue, ...safeContract } = contract;
+          const { monthlyValue: _monthlyValue, totalValue: _totalValue, ...safeContract } = contract;
           return { ...safeContract, subcontractorPayout: payout };
         });
 
@@ -389,9 +400,9 @@ router.post(
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : null,
         monthlyValue: Number(monthlyValue),
-        billingCycle: billingCycle || 'monthly',
-        paymentTerms: paymentTerms || 'Net 30',
-        serviceFrequency: serviceFrequency || null,
+        billingCycle: billingCycle ?? 'monthly',
+        paymentTerms: paymentTerms ?? 'Net 30',
+        serviceFrequency: serviceFrequency ?? null,
         autoRenew: autoRenew ?? false,
         renewalNoticeDays: renewalNoticeDays ?? 30,
       });
@@ -445,9 +456,9 @@ router.get(
           : [[], []];
 
         const isSubcontractor = req.user?.role === 'subcontractor';
-        const payout = Number(contract.monthlyValue || 0) * tierToPercentage(contract.subcontractorTier);
+        const payout = Number(contract.monthlyValue ?? 0) * tierToPercentage(contract.subcontractorTier);
         const safeContract = isSubcontractor
-          ? (({ monthlyValue, totalValue, ...rest }) => rest)(contract as any)
+          ? (({ monthlyValue: _monthlyValue, totalValue: _totalValue, ...rest }) => rest)(contract)
           : contract;
         const safeFacility = safeContract.facility
           ? {
@@ -455,15 +466,15 @@ router.get(
               areas: facilityAreas.map((area) => ({
                 id: area.id,
                 name: area.name,
-                areaType: area.areaType?.name || null,
-                squareFeet: Number(area.squareFeet || 0),
+                areaType: area.areaType?.name ?? null,
+                squareFeet: Number(area.squareFeet ?? 0),
                 floorType: area.floorType,
                 roomCount: area.roomCount,
                 unitCount: area.unitCount,
               })),
-              tasks: facilityTasks.map((task: any) => ({
-                name: task.taskTemplate?.name || task.customName || 'Unnamed task',
-                areaName: task.area?.name || null,
+              tasks: facilityTasks.map((task: FacilityTask) => ({
+                name: task.taskTemplate?.name ?? task.customName ?? 'Unnamed task',
+                areaName: task.area?.name ?? null,
                 cleaningFrequency: task.cleaningFrequency,
               })),
             }
@@ -769,7 +780,7 @@ router.patch(
                   notes:
                     typeof contract.specialInstructions === 'string' && contract.specialInstructions.trim()
                       ? contract.specialInstructions
-                      : `Residential ${contract.residentialServiceType?.replace(/_/g, ' ') || 'service'} job`,
+                      : `Residential ${contract.residentialServiceType?.replace(/_/g, ' ') ?? 'service'} job`,
                   createdByUserId: req.user.id,
                 });
 
@@ -822,7 +833,7 @@ router.patch(
       const nextTeamId = parsed.data.teamId ?? null;
       const nextAssignedToUserId = parsed.data.assignedToUserId ?? null;
       const hasCurrentAssignment = Boolean(
-        existingContract.assignedTeam?.id || existingContract.assignedToUser?.id
+        existingContract.assignedTeam?.id ?? existingContract.assignedToUser?.id
       );
       const assignmentChanged =
         (existingContract.assignedTeam?.id ?? null) !== nextTeamId ||
@@ -830,7 +841,7 @@ router.patch(
         (nextTeamId &&
           parsed.data.subcontractorTier !== undefined &&
           parsed.data.subcontractorTier !== existingContract.subcontractorTier);
-      const hasNextAssignment = Boolean(nextTeamId || nextAssignedToUserId);
+      const hasNextAssignment = Boolean(nextTeamId ?? nextAssignedToUserId);
       const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentChanged;
 
       if (shouldScheduleOverride && !parsed.data.effectivityDate) {
@@ -839,7 +850,7 @@ router.patch(
         );
       }
 
-      if (parsed.data.effectivityDate && !['owner', 'admin'].includes(req.user?.role || '')) {
+      if (parsed.data.effectivityDate && !['owner', 'admin'].includes(req.user?.role ?? '')) {
         throw new ValidationError('Only owner and admin can schedule assignment overrides');
       }
 
@@ -951,7 +962,7 @@ router.patch(
       }
 
       // Send notification when an assignee is set (team or internal employee)
-      if (parsed.data.teamId || parsed.data.assignedToUserId) {
+      if (parsed.data.teamId ?? parsed.data.assignedToUserId) {
         if (req.user?.id) {
           try {
             const reassignmentResult = await reassignScheduledJobsForContract({
@@ -1083,7 +1094,7 @@ router.patch(
 
         try {
           const notifData = await getTeamAssignmentNotificationData(contract.id);
-          if (notifData && notifData.assignedTeam) {
+        if (notifData?.assignedTeam) {
             const facilityTasks = notifData.facility?.id
               ? await getFacilityTasksForContract(notifData.facility.id)
               : [];
@@ -1092,24 +1103,24 @@ router.patch(
             const subPct = tierToPercentage(notifData.subcontractorTier);
             const subcontractPay = monthlyValue * subPct;
 
-            const facilityAddress = notifData.facility?.address as Record<string, any> | null;
+            const facilityAddress = notifData.facility?.address as Record<string, unknown> | null;
             const addressStr = typeof facilityAddress === 'object' && facilityAddress
               ? [facilityAddress.street, facilityAddress.city, facilityAddress.state, facilityAddress.zip].filter(Boolean).join(', ')
-              : String(facilityAddress || '');
+              : String(facilityAddress ?? '');
 
             const emailData = {
               contractNumber: notifData.contractNumber,
               title: notifData.title,
               subcontractPay: `$${subcontractPay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
               startDate: new Date(notifData.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-              serviceFrequency: notifData.serviceFrequency || 'As scheduled',
-              facilityName: notifData.facility?.name || 'N/A',
+              serviceFrequency: notifData.serviceFrequency ?? 'As scheduled',
+              facilityName: notifData.facility?.name ?? 'N/A',
               facilityAddress: addressStr || 'N/A',
-              buildingType: notifData.facility?.buildingType || 'N/A',
+              buildingType: notifData.facility?.buildingType ?? 'N/A',
               teamName: notifData.assignedTeam.name,
-              proposalServices: notifData.proposal?.proposalServices || [],
-              facilityTasks: facilityTasks.map((ft: any) => ({
-                name: ft.taskTemplate?.name || ft.customName || 'Unnamed task',
+              proposalServices: notifData.proposal?.proposalServices ?? [],
+              facilityTasks: facilityTasks.map((ft: FacilityTask) => ({
+                name: ft.taskTemplate?.name ?? ft.customName ?? 'Unnamed task',
                 area: ft.area?.name,
                 frequency: ft.cleaningFrequency,
               })),
@@ -1176,7 +1187,7 @@ router.patch(
                   buildSubcontractorWelcomeHtml({
                     teamName: team.name,
                     contractNumber: contract.contractNumber,
-                    facilityName: contract.facility?.name || 'N/A',
+                    facilityName: contract.facility?.name ?? 'N/A',
                     setPasswordUrl,
                   }, branding)
                 );
@@ -1239,14 +1250,15 @@ router.post(
 
       // 4. Resolve recipient/contact context for defaults and personalization
       let emailTo = parsed.data.emailTo;
-      let emailCc = parsed.data.emailCc || [];
+      const user = requireAuthenticatedUser(req);
+      let emailCc = parsed.data.emailCc ?? [];
       const contacts = await prisma.contact.findMany({
         where: { accountId: contract.account.id, archivedAt: null, email: { not: null } },
         select: { name: true, email: true, isPrimary: true },
         orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
       });
-      const primary = contacts.find((c) => c.isPrimary) || contacts[0];
-      const firstNameFromName = (name?: string | null) => name?.trim().split(/\s+/)[0] || undefined;
+      const primary = contacts.find((c) => c.isPrimary) ?? contacts[0];
+      const firstNameFromName = (name?: string | null) => name?.trim().split(/\s+/)[0] ?? undefined;
       let recipientFirstName = firstNameFromName(primary?.name);
 
       if (!emailTo) {
@@ -1272,7 +1284,7 @@ router.post(
             const publicViewUrl = `${frontendUrl}/c/${publicToken}`;
 
             logger.info(`Generating PDF for contract ${sent.contractNumber}`);
-            const pdfBuffer = await generateContractPdf(sent as any);
+            const pdfBuffer = await generateContractPdf(sent as ContractPayload);
             const termsDocument = await prisma.contract.findUnique({
               where: { id: sent.id },
               select: {
@@ -1281,7 +1293,7 @@ router.post(
                 termsDocumentDataUrl: true,
               },
             });
-            const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+            const attachments: { filename: string; content: Buffer; contentType: string }[] = [
               {
                 filename: `${sent.contractNumber}.pdf`,
                 content: pdfBuffer,
@@ -1297,7 +1309,7 @@ router.post(
               });
             }
 
-            const emailSubject = parsed.data.emailSubject || buildContractSentSubject(
+            const emailSubject = parsed.data.emailSubject ?? buildContractSentSubject(
               sent.contractNumber,
               sent.title
             );
@@ -1308,7 +1320,7 @@ router.post(
               accountName: sent.account.name,
               monthlyValue: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(sent.monthlyValue)),
               startDate: new Date(sent.startDate).toLocaleDateString(),
-              recipientName: recipientFirstName || sent.account.name,
+              recipientName: recipientFirstName ?? sent.account.name,
               customMessage: parsed.data.emailBody,
               publicViewUrl,
             }, branding);
@@ -1326,7 +1338,7 @@ router.post(
             await logContractActivity({
               contractId: req.params.id,
               action: 'email_sent',
-              performedByUserId: req.user!.id,
+              performedByUserId: user.id,
               metadata: { to: emailTo, cc: emailCc },
             });
           } catch (emailError) {
@@ -1537,8 +1549,8 @@ router.post(
           const regenerationResult = await regenerateRecurringJobsForContract({
             contractId: contract.id,
             createdByUserId: req.user.id,
-            assignedTeamId: contract.assignedTeam?.id || null,
-            assignedToUserId: contract.assignedToUser?.id || null,
+            assignedTeamId: contract.assignedTeam?.id ?? null,
+            assignedToUserId: contract.assignedToUser?.id ?? null,
             reason: 'Recurring schedule updated from contract renewal',
           });
 
@@ -1663,7 +1675,7 @@ router.get(
         },
       });
 
-      if (!contract || !contract.termsDocumentDataUrl || !contract.termsDocumentName || !contract.termsDocumentMimeType) {
+      if (!contract?.termsDocumentDataUrl || !contract.termsDocumentName || !contract.termsDocumentMimeType) {
         throw new NotFoundError('Terms document not found');
       }
 
@@ -1706,7 +1718,7 @@ router.get(
         termsDocument?.termsDocumentMimeType === 'application/pdf' &&
         termsDocument.termsDocumentDataUrl
           ? decodeDataUrlToBuffer(termsDocument.termsDocumentDataUrl)
-          : await generateContractPdf(contract as any);
+          : await generateContractPdf(contract as ContractPayload);
 
       await logContractActivity({
         contractId: contract.id,
@@ -1847,7 +1859,7 @@ router.patch(
             title: `Contract amendment submitted for approval`,
             body:
               `Amendment #${amendment.amendmentNumber} for ` +
-              `${contractNumber || title || 'this contract'} was submitted for approval.`,
+              `${contractNumber ?? title ?? 'this contract'} was submitted for approval.`,
             metadata: {
               contractId: req.params.id,
               amendmentId: amendment.id,
@@ -1986,27 +1998,30 @@ router.post(
       });
 
       const amendment = await getContractAmendmentById(req.params.amendmentId);
+      if (!amendment) {
+        throw new NotFoundError('Amendment not found');
+      }
       const branding = await getBrandingSafe();
 
       await Promise.allSettled(
         clientRecipients
-          .filter((contact) => Boolean(contact.email))
+          .filter((contact): contact is typeof contact & { email: string } => Boolean(contact.email))
           .map((contact) =>
             sendNotificationEmail(
-              contact.email!,
-              buildContractAmendmentSentSubject(amendment!.amendmentNumber, amendment!.title),
+              contact.email,
+              buildContractAmendmentSentSubject(amendment.amendmentNumber, amendment.title),
               buildContractAmendmentSentHtmlWithBranding(
                 {
-                  amendmentNumber: amendment!.amendmentNumber,
-                  title: amendment!.title,
-                  contractNumber: amendment!.contract?.contractNumber || 'Contract',
-                  accountName: amendment!.contract?.account?.name || 'Client',
+                  amendmentNumber: amendment.amendmentNumber,
+                  title: amendment.title,
+                  contractNumber: amendment.contract?.contractNumber ?? 'Contract',
+                  accountName: amendment.contract?.account?.name ?? 'Client',
                   newMonthlyValue: new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: 'USD',
-                  }).format(Number(amendment!.newMonthlyValue || amendment!.oldMonthlyValue || 0)),
-                  effectiveDate: new Date(amendment!.effectiveDate).toLocaleDateString(),
-                  recipientName: contact.name || undefined,
+                  }).format(Number(amendment.newMonthlyValue ?? amendment.oldMonthlyValue ?? 0)),
+                  effectiveDate: new Date(amendment.effectiveDate).toLocaleDateString(),
+                  recipientName: contact.name ?? undefined,
                   publicViewUrl,
                 },
                 branding
@@ -2020,8 +2035,8 @@ router.post(
         action: 'amendment_sent_to_client',
         performedByUserId: req.user.id,
         metadata: {
-          amendmentId: amendment!.id,
-          amendmentNumber: amendment!.amendmentNumber,
+          amendmentId: amendment.id,
+          amendmentNumber: amendment.amendmentNumber,
           publicViewUrl,
         },
       });

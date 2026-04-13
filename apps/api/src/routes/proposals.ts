@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import {
@@ -52,12 +53,22 @@ import {
   pricingPreviewQuerySchema,
 } from '../schemas/proposal';
 import { listActivitiesQuerySchema } from '../schemas/proposalActivity';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { prisma } from '../lib/prisma';
 import { requireFrontendBaseUrl } from '../lib/appUrl';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
+type ProposalRecord = Awaited<ReturnType<typeof getProposalById>>;
+type ProposalPayload = NonNullable<ProposalRecord>;
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  return req.user;
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -199,7 +210,7 @@ router.post(
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
         pricingPlanId: parsed.data.pricingPlanId,
-        pricingSnapshot: parsed.data.pricingSnapshot as any,
+        pricingSnapshot: parsed.data.pricingSnapshot,
         createdByUserId: req.user.id,
       });
 
@@ -249,10 +260,11 @@ router.patch(
           proposal.status === 'rejected'
             ? 'Revised after rejection'
             : 'Revised after sending';
-        await createVersion(req.params.id, req.user!.id, changeReason);
+        const user = requireAuthenticatedUser(req);
+        await createVersion(req.params.id, user.id, changeReason);
       }
 
-      const updateData: any = {
+      const updateData: Parameters<typeof updateProposal>[1] = {
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
         title: parsed.data.title,
@@ -285,11 +297,12 @@ router.patch(
       }
 
       const updated = await updateProposal(req.params.id, updateData);
+      const user = requireAuthenticatedUser(req);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'updated',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -324,13 +337,15 @@ router.post(
 
       const frontendUrl = requireFrontendBaseUrl();
 
+      const user = requireAuthenticatedUser(req);
+
       // 1. Lock pricing if not already locked
       if (!proposal.pricingLocked) {
         await lockProposalPricing(req.params.id);
       }
 
       // 2. Create version snapshot
-      await createVersion(req.params.id, req.user!.id, 'Proposal sent');
+      await createVersion(req.params.id, user.id, 'Proposal sent');
 
       // 3. Generate public token
       const publicToken = await generatePublicToken(req.params.id);
@@ -342,7 +357,7 @@ router.post(
       await logActivity({
         proposalId: req.params.id,
         action: 'sent',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: {
           emailTo: parsed.data.emailTo,
@@ -352,7 +367,7 @@ router.post(
 
       // 6. Auto-resolve recipient from account contacts if not provided
       let emailTo = parsed.data.emailTo;
-      let emailCc = parsed.data.emailCc || [];
+      let emailCc = parsed.data.emailCc ?? [];
       if (!emailTo) {
         const contacts = await prisma.contact.findMany({
           where: { accountId: proposal.account.id, archivedAt: null, email: { not: null } },
@@ -363,8 +378,8 @@ router.post(
         if (primary?.email) {
           emailTo = primary.email;
           emailCc = contacts
-            .filter((c) => !c.isPrimary && c.email)
-            .map((c) => c.email!);
+            .filter((c): c is typeof c & { email: string } => !c.isPrimary && Boolean(c.email))
+            .map((c) => c.email);
         }
       }
 
@@ -376,9 +391,9 @@ router.post(
             const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
             logger.info(`Generating PDF for proposal ${sent.proposalNumber}`);
-            const pdfBuffer = await generateProposalPdf(sent as any);
+            const pdfBuffer = await generateProposalPdf(sent as ProposalPayload);
 
-            const emailSubject = parsed.data.emailSubject || buildProposalEmailSubject(
+            const emailSubject = parsed.data.emailSubject ?? buildProposalEmailSubject(
               sent.proposalNumber,
               sent.title
             );
@@ -406,7 +421,7 @@ router.post(
             await logActivity({
               proposalId: req.params.id,
               action: 'email_sent',
-              performedByUserId: req.user!.id,
+              performedByUserId: user.id,
               ipAddress: req.ip,
               metadata: { to: emailTo, cc: emailCc },
             });
@@ -439,12 +454,13 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const viewed = await markProposalAsViewed(req.params.id);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'viewed',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -477,15 +493,16 @@ router.post(
         throw new ValidationError('Only sent or viewed proposals can be accepted');
       }
 
+      const user = requireAuthenticatedUser(req);
       const accepted = await acceptProposal(req.params.id);
 
       // Create version snapshot
-      await createVersion(req.params.id, req.user!.id, 'Proposal accepted');
+      await createVersion(req.params.id, user.id, 'Proposal accepted');
 
       await logActivity({
         proposalId: req.params.id,
         action: 'accepted',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -536,12 +553,13 @@ router.post(
         throw new ValidationError('Only sent or viewed proposals can be rejected');
       }
 
+      const user = requireAuthenticatedUser(req);
       const rejected = await rejectProposal(req.params.id, parsed.data.rejectionReason);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'rejected',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: { rejectionReason: parsed.data.rejectionReason },
       });
@@ -584,12 +602,13 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const archived = await archiveProposal(req.params.id);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'archived',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -613,12 +632,13 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const restored = await restoreProposal(req.params.id);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'restored',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -656,7 +676,7 @@ router.post(
 
       // Auto-resolve recipient from account contacts if not provided
       let remindEmailTo = parsed.data.emailTo;
-      let remindEmailCc = parsed.data.emailCc || [];
+      let remindEmailCc = parsed.data.emailCc ?? [];
       if (!remindEmailTo) {
         const contacts = await prisma.contact.findMany({
           where: { accountId: proposal.account.id, archivedAt: null, email: { not: null } },
@@ -667,11 +687,12 @@ router.post(
         if (primary?.email) {
           remindEmailTo = primary.email;
           remindEmailCc = contacts
-            .filter((c) => !c.isPrimary && c.email)
-            .map((c) => c.email!);
+            .filter((c): c is typeof c & { email: string } => !c.isPrimary && Boolean(c.email))
+            .map((c) => c.email);
         }
       }
 
+      const user = requireAuthenticatedUser(req);
       if (remindEmailTo) {
         if (!isEmailConfigured()) {
           logger.warn('Email not configured — skipping reminder email send');
@@ -684,9 +705,9 @@ router.post(
           const publicViewUrl = `${frontendUrl}/p/${publicToken}`;
 
           logger.info(`Generating PDF for reminder ${proposal.proposalNumber}`);
-          const pdfBuffer = await generateProposalPdf(proposal as any);
+          const pdfBuffer = await generateProposalPdf(proposal as ProposalPayload);
 
-          const emailSubject = parsed.data.emailSubject || `Reminder: Proposal ${proposal.proposalNumber}`;
+          const emailSubject = parsed.data.emailSubject ?? `Reminder: Proposal ${proposal.proposalNumber}`;
           const branding = await getBrandingSafe();
           const emailHtml = buildProposalEmailHtmlWithBranding({
             proposalNumber: proposal.proposalNumber,
@@ -715,7 +736,7 @@ router.post(
           await logActivity({
             proposalId: req.params.id,
             action: 'reminder_sent',
-            performedByUserId: req.user!.id,
+            performedByUserId: user.id,
             ipAddress: req.ip,
             metadata: { to: remindEmailTo, cc: remindEmailCc },
           });
@@ -773,10 +794,11 @@ router.delete(
       }
 
       // Log before delete since cascade will remove activities
+      const user = requireAuthenticatedUser(req);
       await logActivity({
         proposalId: req.params.id,
         action: 'deleted',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: { proposalNumber: proposal.proposalNumber },
       });
@@ -808,10 +830,11 @@ router.patch(
         parsed.data.includedTasks
       );
 
+      const user = requireAuthenticatedUser(req);
       await logActivity({
         proposalId: req.params.proposalId,
         action: 'service_tasks_updated',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: { serviceId: req.params.serviceId },
       });
@@ -840,7 +863,7 @@ router.get(
         throw new NotFoundError('Proposal not found');
       }
 
-      const pdfBuffer = await generateProposalPdf(proposal as any);
+      const pdfBuffer = await generateProposalPdf(proposal as ProposalPayload);
 
       res.set({
         'Content-Type': 'application/pdf',
@@ -957,12 +980,13 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const locked = await lockProposalPricing(req.params.id);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'pricing_locked',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -986,12 +1010,13 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const unlocked = await unlockProposalPricing(req.params.id);
 
       await logActivity({
         proposalId: req.params.id,
         action: 'pricing_unlocked',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
       });
 
@@ -1020,6 +1045,7 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const updated = await changeProposalPricingPlan(
         req.params.id,
         parsed.data.pricingPlanId
@@ -1028,7 +1054,7 @@ router.post(
       await logActivity({
         proposalId: req.params.id,
         action: 'pricing_plan_changed',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: { pricingPlanId: parsed.data.pricingPlanId },
       });
@@ -1058,6 +1084,7 @@ router.post(
         throw new NotFoundError('Proposal not found');
       }
 
+      const user = requireAuthenticatedUser(req);
       const recalculated = await recalculateProposalPricing(
         req.params.id,
         parsed.data.serviceFrequency,
@@ -1068,12 +1095,12 @@ router.post(
       );
 
       // Create version snapshot after recalculation
-      await createVersion(req.params.id, req.user!.id, 'Pricing recalculated');
+      await createVersion(req.params.id, user.id, 'Pricing recalculated');
 
       await logActivity({
         proposalId: req.params.id,
         action: 'pricing_recalculated',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         ipAddress: req.ip,
         metadata: { serviceFrequency: parsed.data.serviceFrequency },
       });
