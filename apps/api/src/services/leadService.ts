@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import { geocodeAddressIfNeeded } from './geocodingService';
@@ -13,7 +13,6 @@ import {
   hasNormalizedNameMatch,
   hasNormalizedPhoneMatch,
   normalizeComparableEmail,
-  normalizeComparableName,
   normalizeComparablePhone,
 } from '../lib/dedupe';
 
@@ -174,7 +173,7 @@ function deriveOpportunityTitle(lead: {
   companyName?: string | null;
   contactName: string;
 }): string {
-  return lead.companyName?.trim() || lead.contactName.trim();
+  return lead.companyName?.trim() ?? lead.contactName.trim();
 }
 
 type OpportunityPipelineStatus =
@@ -713,12 +712,12 @@ export async function convertLead(
 
       const proposedAccountName = input.accountData.name.trim();
       const proposedBillingEmail = normalizeComparableEmail(
-        input.accountData.billingEmail || lead.primaryEmail
+        input.accountData.billingEmail ?? lead.primaryEmail
       );
       const proposedBillingPhone = normalizeComparablePhone(
-        input.accountData.billingPhone || lead.primaryPhone
+        input.accountData.billingPhone ?? lead.primaryPhone
       );
-      const rawBillingPhone = input.accountData.billingPhone || lead.primaryPhone;
+      const rawBillingPhone = input.accountData.billingPhone ?? lead.primaryPhone;
 
       const accountCandidates = await tx.account.findMany({
         where: {
@@ -751,10 +750,10 @@ export async function convertLead(
           type: resolvedAccountType,
           industry: input.accountData.industry,
           website: input.accountData.website,
-          billingEmail: proposedBillingEmail || null,
-          billingPhone: rawBillingPhone || null,
+          billingEmail: proposedBillingEmail ?? null,
+          billingPhone: rawBillingPhone ?? null,
           billingAddress: lead.address as Prisma.InputJsonValue,
-          paymentTerms: input.accountData.paymentTerms || 'NET30',
+          paymentTerms: input.accountData.paymentTerms ?? 'NET30',
           notes: input.accountData.notes,
           createdByUserId: input.userId,
         },
@@ -826,9 +825,9 @@ export async function convertLead(
       ? await tx.contact.update({
           where: { id: existingPrimaryOrMatch.id },
           data: {
-            name: existingPrimaryOrMatch.name || lead.contactName,
-            email: existingPrimaryOrMatch.email || lead.primaryEmail,
-            phone: existingPrimaryOrMatch.phone || lead.primaryPhone,
+            name: existingPrimaryOrMatch.name ?? lead.contactName,
+            email: existingPrimaryOrMatch.email ?? lead.primaryEmail,
+            phone: existingPrimaryOrMatch.phone ?? lead.primaryPhone,
           },
           select: {
             id: true,
