@@ -28,13 +28,13 @@ export interface PublicContract {
   };
   facility?: {
     name: string;
-    address: any;
+    address: Record<string, unknown>;
   } | null;
   proposal?: {
     id: string;
     proposalNumber: string;
     title: string;
-    proposalServices?: Array<{
+    proposalServices?: {
       id: string;
       serviceName: string;
       frequency?: string | null;
@@ -43,7 +43,7 @@ export interface PublicContract {
       estimatedHours?: number | null;
       hourlyRate?: number | null;
       includedTasks?: string[];
-    }>;
+    }[];
   } | null;
 }
 

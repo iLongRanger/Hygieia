@@ -8,7 +8,6 @@ interface InspectorGuidanceProps {
 }
 
 export const InspectorGuidance: React.FC<InspectorGuidanceProps> = ({
-  category,
   guidanceItems,
 }) => {
   const [expanded, setExpanded] = useState(false);

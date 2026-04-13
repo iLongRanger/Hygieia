@@ -6,10 +6,8 @@ import {
   Square,
   Coffee,
   Filter,
-  Plus,
   Check,
   X,
-  User,
   ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -33,10 +31,30 @@ import {
 } from '../../lib/timeTracking';
 import { completeJob, getJob, listJobs } from '../../lib/jobs';
 import { requestGeolocation } from '../../lib/geolocation';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { TimeEntry, TimeEntryStatus } from '../../types/timeTracking';
 import type { Pagination } from '../../types/crm';
 import type { Job } from '../../types/job';
 import { useAuthStore } from '../../stores/authStore';
+
+interface TimeTrackingErrorDetails {
+  code?: string;
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  timezone?: string;
+}
+
+const getTimeTrackingErrorDetails = (error: unknown): TimeTrackingErrorDetails | null => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return null;
+  }
+
+  return (
+    error as {
+      response?: { data?: { error?: { details?: TimeTrackingErrorDetails } } };
+    }
+  ).response?.data?.error?.details || null;
+};
 
 const STATUSES = [
   { value: '', label: 'All Statuses' },
@@ -196,8 +214,8 @@ const TimeTrackingPage = () => {
       setClockInNotes('');
       toast.success('Clocked in!');
       fetchEntries();
-    } catch (err: any) {
-      const details = err?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getTimeTrackingErrorDetails(error);
       const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
       if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
         const confirmed = confirm(
@@ -228,7 +246,7 @@ const TimeTrackingPage = () => {
           return;
         }
       }
-      const message = err instanceof Error ? err.message : 'Failed to clock in';
+      const message = error instanceof Error ? error.message : 'Failed to clock in';
       toast.error(
         details?.code === 'OUTSIDE_SERVICE_WINDOW'
           ? 'Outside allowed service window'
@@ -263,8 +281,8 @@ const TimeTrackingPage = () => {
       if (requiresGeofence && activeEntry?.job) {
         try {
           geoLocation = await requestGeolocation();
-        } catch (geoError: any) {
-          toast.error(geoError.message || 'Failed to get location');
+        } catch (geoError) {
+          toast.error(extractApiErrorMessage(geoError, 'Failed to get location'));
           setClockingOut(false);
           return;
         }
@@ -273,8 +291,8 @@ const TimeTrackingPage = () => {
       setActiveEntry(null);
       toast.success('Clocked out!');
       fetchEntries();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getTimeTrackingErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
         toast.error('You must be at the facility to clock out');
       } else {
@@ -294,8 +312,8 @@ const TimeTrackingPage = () => {
       if (requiresGeofence) {
         try {
           geoLocation = await requestGeolocation();
-        } catch (geoError: any) {
-          toast.error(geoError.message || 'Failed to get location');
+        } catch (geoError) {
+          toast.error(extractApiErrorMessage(geoError, 'Failed to get location'));
           setClockingOut(false);
           return;
         }
@@ -310,8 +328,8 @@ const TimeTrackingPage = () => {
       setClockOutNotes('');
       toast.success('Job completed and clocked out');
       fetchEntries();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getTimeTrackingErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
         toast.error('You must be at the facility to complete this job');
       } else {

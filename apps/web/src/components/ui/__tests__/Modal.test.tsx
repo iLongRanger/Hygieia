@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, within } from '../../../test/test-utils';
+import { render, screen } from '../../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import { Modal } from '../Modal';
 
@@ -62,7 +62,7 @@ describe('Modal', () => {
     });
 
     it('should render close button with X icon', () => {
-      const { container } = render(
+      render(
         <Modal isOpen={true} onClose={() => {}} title="Test">
           <div>Content</div>
         </Modal>

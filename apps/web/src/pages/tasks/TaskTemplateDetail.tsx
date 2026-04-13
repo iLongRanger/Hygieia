@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import {
 
   Clock,
@@ -49,7 +49,6 @@ const DIFFICULTY_LEVELS = [
 
 const TaskTemplateDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [template, setTemplate] = useState<TaskTemplate | null>(null);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
@@ -591,5 +590,3 @@ const TaskTemplateDetail = () => {
 };
 
 export default TaskTemplateDetail;
-
-

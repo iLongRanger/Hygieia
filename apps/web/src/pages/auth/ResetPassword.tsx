@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { resetPassword } from '../../lib/profile';
+import { extractApiErrorMessage } from '../../lib/api';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -37,8 +38,8 @@ const ResetPassword = () => {
       setLoading(true);
       await resetPassword(token, password);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.response?.data?.error || 'Failed to reset password. The link may have expired.');
+    } catch (err) {
+      setError(extractApiErrorMessage(err, 'Failed to reset password. The link may have expired.'));
     } finally {
       setLoading(false);
     }

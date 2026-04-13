@@ -44,10 +44,10 @@ export interface ResidentialAddOnDefinition {
 export interface ResidentialPricingPlanSettings {
   strategyKey: ResidentialStrategyKey;
   homeTypeBasePrices: Record<ResidentialHomeType, number>;
-  sqftBrackets: Array<{
+  sqftBrackets: {
     upTo: number | null;
     adjustment: number;
-  }>;
+  }[];
   bedroomAdjustments: Record<string, number>;
   bathroomAdjustments: {
     fullBath: number;
@@ -167,7 +167,7 @@ export interface ResidentialQuotePreview {
     confidenceLevel: 'high' | 'medium' | 'low';
     manualReviewRequired: boolean;
     manualReviewReasons: string[];
-    addOns: Array<{
+    addOns: {
       code: string;
       label: string;
       pricingType: 'flat' | 'per_unit';
@@ -176,7 +176,7 @@ export interface ResidentialQuotePreview {
       unitPrice: number;
       estimatedMinutes: number;
       lineTotal: number;
-    }>;
+    }[];
     guidance: string[];
   };
   settingsSnapshot: ResidentialPricingPlanSettings;
@@ -251,7 +251,7 @@ export interface ResidentialQuote {
     isPrimary: boolean;
     status: ResidentialPropertyStatus;
   } | null;
-  addOns?: Array<{
+  addOns?: {
     id: string;
     code: string;
     label: string;
@@ -263,10 +263,10 @@ export interface ResidentialQuote {
     estimatedMinutes: number;
     lineTotal: string;
     sortOrder: number;
-  }>;
+  }[];
 }
 
-export interface PublicResidentialQuote extends ResidentialQuote {}
+export type PublicResidentialQuote = ResidentialQuote
 
 export interface ResidentialProperty {
   id: string;

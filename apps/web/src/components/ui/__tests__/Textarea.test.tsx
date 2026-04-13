@@ -47,7 +47,6 @@ describe('Textarea', () => {
 
     it('should associate label with textarea', () => {
       render(<Textarea label="Description" id="description" />);
-      const label = screen.getByText('Description');
       const textarea = screen.getByRole('textbox');
       expect(textarea).toHaveAttribute('id', 'description');
     });

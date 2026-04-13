@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
 
   Check,
@@ -37,7 +36,6 @@ import {
 } from './PricingPlanBuilder';
 
 const PricingSettingsPage = () => {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [settingsList, setSettingsList] = useState<PricingSettings[]>([]);
   const [selectedSettings, setSelectedSettings] = useState<PricingSettings | null>(null);

@@ -12,6 +12,20 @@ const publicApi = axios.create({
   },
 });
 
+interface BrandingConfig {
+  companyName?: string | null;
+  companyEmail?: string | null;
+  companyPhone?: string | null;
+  companyWebsite?: string | null;
+  companyAddress?: string | null;
+  logoDataUrl?: string | null;
+  themePrimaryColor?: string | null;
+  themeAccentColor?: string | null;
+  themeBackgroundColor?: string | null;
+  themeTextColor?: string | null;
+  companyTimezone?: string | null;
+}
+
 export interface PublicQuotation {
   id: string;
   quotationNumber: string;
@@ -29,7 +43,7 @@ export interface PublicQuotation {
   signatureName: string | null;
   signatureDate: string | null;
   account: { name: string };
-  facility: { name: string; address: any } | null;
+  facility: { name: string; address: Record<string, unknown> } | null;
   createdByUser: { fullName: string; email: string };
   services: {
     serviceName: string;
@@ -45,13 +59,13 @@ export interface PublicQuotation {
       discountPercent?: number;
       discountAmount?: number;
       overrideReason?: string | null;
-      addOns?: Array<{
+      addOns?: {
         code?: string;
         name: string;
         quantity: number;
         unitPrice: number;
         total: number;
-      }>;
+      }[];
     };
     sortOrder: number;
   }[];
@@ -59,7 +73,7 @@ export interface PublicQuotation {
 
 export interface PublicQuotationResponse {
   data: PublicQuotation;
-  branding: any;
+  branding: BrandingConfig;
 }
 
 export async function getPublicQuotation(token: string): Promise<PublicQuotationResponse> {

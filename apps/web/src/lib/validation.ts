@@ -5,9 +5,9 @@
 // Validation patterns
 export const patterns = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  phone: /^[\d\s\-\+\(\)\.]+$/,
-  url: /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&'()*+,;=%]*)?$/,
-  postalCode: /^[A-Za-z\d\s\-]+$/,
+  phone: /^[\d\s+().-]+$/,
+  url: /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w\-._~:/?#[\]@!$&'()*+,;=%]*)?$/,
+  postalCode: /^[A-Za-z\d\s-]+$/,
   numeric: /^\d+$/,
   decimal: /^\d+(\.\d{1,2})?$/,
 };
@@ -147,7 +147,7 @@ export function validateDateRange(
  * Form validation helper - validates multiple fields
  * @returns Array of error messages, empty if all valid
  */
-export function validateForm(validations: Array<string | null>): string[] {
+export function validateForm(validations: (string | null)[]): string[] {
   return validations.filter((error): error is string => error !== null);
 }
 

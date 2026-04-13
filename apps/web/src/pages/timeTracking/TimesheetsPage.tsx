@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   FileSpreadsheet,
   Plus,
@@ -78,7 +77,6 @@ function getPrimaryRoleKey(user: User): (typeof ROLE_GROUP_ORDER)[number] {
 }
 
 const TimesheetsPage = () => {
-  const navigate = useNavigate();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canApprove = hasPermission(PERMISSIONS.TIME_TRACKING_APPROVE);
 

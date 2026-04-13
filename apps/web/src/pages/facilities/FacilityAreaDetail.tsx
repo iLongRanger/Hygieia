@@ -1,4 +1,4 @@
-import { Edit2, ListPlus, Plus, Ruler, Trash2 } from 'lucide-react';
+import { Edit2, ListPlus, Plus, Trash2 } from 'lucide-react';
 
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -79,7 +79,6 @@ function groupTasksByFrequency(
 export function FacilityAreaDetail({
   area,
   tasks,
-  onBack,
   onEditArea,
   onAddTask,
   onBulkAddTasks,

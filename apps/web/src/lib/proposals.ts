@@ -94,7 +94,7 @@ export async function deleteProposal(id: string): Promise<void> {
 export interface ProposalActivity {
   id: string;
   action: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   ipAddress: string | null;
   createdAt: string;
   performedByUser: {
@@ -107,7 +107,7 @@ export interface ProposalActivity {
 export async function getProposalActivities(
   proposalId: string,
   params?: { page?: number; limit?: number }
-): Promise<{ data: ProposalActivity[]; pagination: any }> {
+): Promise<{ data: ProposalActivity[]; pagination: PaginatedResponse<ProposalActivity>['pagination'] }> {
   const response = await api.get(`/proposals/${proposalId}/activities`, { params });
   return response.data;
 }
@@ -210,7 +210,7 @@ export async function getProposalPricingPreview(
     pricingPlanId?: string;
     workerCount?: number;
   }
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const response = await api.get(`/proposals/${id}/pricing/preview`, { params });
   return response.data.data;
 }

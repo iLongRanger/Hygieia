@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
@@ -14,7 +14,6 @@ import {
   Timer,
   Receipt,
   FileText,
-  Clock,
   CheckCircle,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -65,9 +64,6 @@ const EXPORT_OPTIONS: { value: ExportType; label: string }[] = [
   { value: 'contracts', label: 'Contracts' },
 ];
 
-const formatCurrencyFull = (amount: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-
 const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     scheduled: 'info',
@@ -81,13 +77,13 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
 
 const dashboardBackState = { state: { backLabel: 'Dashboard', backPath: '/' } };
 
-type FieldWorkerCounts = {
+interface FieldWorkerCounts {
   totalContracts: number;
   activeContracts: number;
   scheduledJobs: number;
   inProgressJobs: number;
   completedJobs: number;
-};
+}
 
 const getJobAssignmentLabel = (job: Job) => {
   if (job.assignedTeam) return 'Team assignment';

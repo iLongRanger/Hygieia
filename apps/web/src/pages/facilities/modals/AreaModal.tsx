@@ -167,7 +167,7 @@ export function AreaModal({
             onChange={(value) =>
               setAreaForm({
                 ...areaForm,
-                floorType: value as any,
+                floorType: value as CreateAreaInput['floorType'],
               })
             }
           />

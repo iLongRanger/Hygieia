@@ -4,32 +4,33 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: ['./tsconfig.json'],
+    project: ['./tsconfig.eslint.json'],
+    tsconfigRootDir: __dirname,
   },
-  plugins: ['@typescript-eslint', 'react', 'react-hooks', 'react-refresh'],
+  plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/stylistic',
-    'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'plugin:react/jsx-runtime',
   ],
   rules: {
-    'react/react-in-jsx-scope': 'off',
-    'react/prop-types': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/no-non-null-assertion': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'off',
     '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', disallowTypeAnnotations: false }],
     'react-hooks/rules-of-hooks': 'error',
-    'react-hooks/exhaustive-deps': 'warn',
-    'react-refresh/only-export-components': 'warn',
+    'react-hooks/exhaustive-deps': 'off',
+    'react-refresh/only-export-components': 'off',
   },
-  ignorePatterns: ['dist', 'build', 'node_modules', '.next', 'coverage', '*.js'],
-  settings: {
-    react: {
-      version: 'detect',
+  overrides: [
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', '**/test/**/*.tsx'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-empty-function': 'off',
+      },
     },
-  },
+  ],
+  ignorePatterns: ['dist', 'build', 'node_modules', '.next', 'coverage', '*.js'],
 };

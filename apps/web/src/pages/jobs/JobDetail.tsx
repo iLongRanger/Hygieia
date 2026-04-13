@@ -6,12 +6,7 @@ import {
   Play,
   CheckCircle,
   XCircle,
-  Clock,
   MapPin,
-  User,
-  Users,
-  FileText,
-  MessageSquare,
   Plus,
   Trash2,
   AlertTriangle,
@@ -34,8 +29,28 @@ import {
   createJobNote,
 } from '../../lib/jobs';
 import { requestGeolocation } from '../../lib/geolocation';
-import type { JobDetail as JobDetailType, JobStatus, JobTask, JobNote } from '../../types/job';
+import { extractApiErrorMessage } from '../../lib/api';
+import type { JobDetail as JobDetailType, JobStatus, JobTask } from '../../types/job';
 import { useAuthStore } from '../../stores/authStore';
+
+interface JobActionErrorDetails {
+  code?: string;
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  timezone?: string;
+}
+
+const getJobActionErrorDetails = (error: unknown): JobActionErrorDetails | null => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return null;
+  }
+
+  return (
+    error as {
+      response?: { data?: { error?: { details?: JobActionErrorDetails } } };
+    }
+  ).response?.data?.error?.details || null;
+};
 
 const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<JobStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -122,8 +137,8 @@ const JobDetail = () => {
         setGettingLocation(true);
         try {
           geoLocation = await requestGeolocation();
-        } catch (geoError: any) {
-          toast.error(geoError.message || 'Failed to get location');
+        } catch (geoError) {
+          toast.error(extractApiErrorMessage(geoError, 'Failed to get location'));
           return;
         } finally {
           setGettingLocation(false);
@@ -133,8 +148,8 @@ const JobDetail = () => {
       await startJob(id, { geoLocation });
       toast.success('Job started & clocked in');
       fetchJob();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getJobActionErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
         toast.error('You must be at the facility to start this job');
         return;
@@ -176,8 +191,8 @@ const JobDetail = () => {
         setGettingLocation(true);
         try {
           geoLocation = await requestGeolocation();
-        } catch (geoError: any) {
-          toast.error(geoError.message || 'Failed to get location');
+        } catch (geoError) {
+          toast.error(extractApiErrorMessage(geoError, 'Failed to get location'));
           return;
         } finally {
           setGettingLocation(false);
@@ -191,8 +206,8 @@ const JobDetail = () => {
       toast.success('Job completed & clocked out');
       setShowCompleteForm(false);
       fetchJob();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getJobActionErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
         toast.error('You must be at the facility to complete this job');
         return;
@@ -222,10 +237,8 @@ const JobDetail = () => {
       await completeInitialCleanForJob(id);
       toast.success('Initial clean marked complete');
       fetchJob();
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.error?.message || 'Failed to mark initial clean complete'
-      );
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to mark initial clean complete'));
     }
   };
 

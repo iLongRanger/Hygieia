@@ -89,13 +89,13 @@ export async function batchGenerateInvoices(
   skipped: number;
   duplicates: number;
   errors: number;
-  results: Array<{
+  results: {
     accountId: string;
     status: 'generated' | 'skipped_duplicate' | 'error';
     reason?: string;
     invoiceId?: string;
     lineItems?: number;
-  }>;
+  }[];
 }> {
   const response = await api.post('/invoices/batch-generate', input);
   return response.data.data;
@@ -106,8 +106,24 @@ export async function listInvoiceActivities(invoiceId: string): Promise<InvoiceA
   return response.data.data;
 }
 
+interface InvoiceBranding {
+  companyName?: string | null;
+  companyEmail?: string | null;
+  companyPhone?: string | null;
+  companyWebsite?: string | null;
+  companyAddress?: string | null;
+  logoDataUrl?: string | null;
+  themePrimaryColor?: string | null;
+  themeAccentColor?: string | null;
+  themeBackgroundColor?: string | null;
+  themeTextColor?: string | null;
+  companyTimezone?: string | null;
+}
+
 // Public
-export async function getPublicInvoice(token: string): Promise<{ data: InvoiceDetail; branding: any }> {
+export async function getPublicInvoice(
+  token: string
+): Promise<{ data: InvoiceDetail; branding: InvoiceBranding }> {
   const response = await api.get(`/public/invoices/${token}`);
   return response.data;
 }

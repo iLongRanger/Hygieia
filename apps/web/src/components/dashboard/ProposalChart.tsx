@@ -13,6 +13,12 @@ interface ProposalChartProps {
   data: { status: string; count: number; totalAmount: number }[];
 }
 
+interface ProposalChartTooltipPayload {
+  payload?: {
+    amount?: number;
+  };
+}
+
 const STATUS_COLORS: Record<string, string> = {
   draft: '#94a3b8',
   sent: '#3b82f6',
@@ -90,8 +96,8 @@ const ProposalChart: React.FC<ProposalChartProps> = ({ data }) => {
               borderRadius: 8,
               color: isDark ? '#e2e8f0' : '#1e293b',
             }}
-            formatter={(value: number, name: string, props: any) => [
-              `${value} (${formatCurrency(props.payload.amount)})`,
+            formatter={(value: number, name: string, props: ProposalChartTooltipPayload) => [
+              `${value} (${formatCurrency(props.payload?.amount ?? 0)})`,
               name,
             ]}
           />

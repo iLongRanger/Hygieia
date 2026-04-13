@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Shield, Mail, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -353,5 +353,4 @@ const UsersList = () => {
 };
 
 export default UsersList;
-
 

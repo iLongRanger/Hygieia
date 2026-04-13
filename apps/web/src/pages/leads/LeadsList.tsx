@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -40,6 +40,7 @@ import { listOpportunities, updateOpportunity } from '../../lib/opportunities';
 import { getResidentialPropertyJourneyState } from '../../lib/accountPipeline';
 import { listResidentialQuotes, updateResidentialQuote } from '../../lib/residential';
 import { listUsers } from '../../lib/users';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { Account, Lead, Opportunity, CreateLeadInput, LeadSource, ResidentialPropertySummary } from '../../types/crm';
 import type { Contract } from '../../types/contract';
 import type { Job } from '../../types/job';
@@ -450,8 +451,8 @@ const LeadsList = () => {
       toast.success('Opportunity updated');
       setEditingOpportunity(null);
       fetchPipelineOpportunities();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update opportunity');
+    } catch (err) {
+      toast.error(extractApiErrorMessage(err, 'Failed to update opportunity'));
     } finally {
       setSavingOpportunity(false);
     }
@@ -469,8 +470,8 @@ const LeadsList = () => {
       toast.success('Residential quote updated');
       setEditingResOpp(null);
       fetchPipelineOpportunities();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update quote');
+    } catch (err) {
+      toast.error(extractApiErrorMessage(err, 'Failed to update quote'));
     } finally {
       setSavingResOpp(false);
     }

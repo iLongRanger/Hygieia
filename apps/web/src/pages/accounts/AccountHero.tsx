@@ -1,9 +1,7 @@
-import React from 'react';
 import type { Account } from '../../types/crm';
 import type { Contract } from '../../types/contract';
 import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
-import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { formatCurrency, formatShortDate, getTypeVariant } from './account-constants';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -72,9 +70,7 @@ function getAccountHealth(
 export function AccountHero({
   account,
   activeContract,
-  proposalTotal,
   contractTotal,
-  contacts,
   recentJobs,
   canAdminAccounts,
   onEdit,

@@ -4,11 +4,8 @@ import {
   DollarSign,
   CheckCircle,
   XCircle,
-  Building2,
-  Calendar,
   Mail,
   Phone,
-  Globe,
 } from 'lucide-react';
 import {
   getPublicQuotation,
@@ -16,6 +13,7 @@ import {
   rejectPublicQuotation,
   type PublicQuotation,
 } from '../../lib/publicQuotations';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { GlobalBranding } from '../../types/globalSettings';
 
 const formatCurrency = (amount: number | string) =>
@@ -83,8 +81,8 @@ const PublicQuotationView = () => {
       setQuotation(updated);
       setAcceptModalOpen(false);
       setActionComplete('accepted');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to accept quotation');
+    } catch (err) {
+      alert(extractApiErrorMessage(err, 'Failed to accept quotation'));
     } finally {
       setSubmitting(false);
     }
@@ -98,8 +96,8 @@ const PublicQuotationView = () => {
       setQuotation(updated);
       setRejectModalOpen(false);
       setActionComplete('rejected');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to reject quotation');
+    } catch (err) {
+      alert(extractApiErrorMessage(err, 'Failed to reject quotation'));
     } finally {
       setSubmitting(false);
     }

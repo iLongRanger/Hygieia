@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import api from '../../lib/api';
+import api, { extractApiErrorMessage } from '../../lib/api';
 import { Shield } from 'lucide-react';
 
 const SetPassword = () => {
@@ -45,12 +45,8 @@ const SetPassword = () => {
       setChallengeId(result.challengeId);
       setMaskedPhone(result.maskedPhone);
       setVerificationCode('');
-    } catch (err: any) {
-      setError(
-        err.response?.data?.error?.message ||
-          err.response?.data?.error ||
-          'Failed to send a verification code.'
-      );
+    } catch (err) {
+      setError(extractApiErrorMessage(err, 'Failed to send a verification code.'));
     } finally {
       setSendingCode(false);
     }
@@ -90,12 +86,8 @@ const SetPassword = () => {
         code: verificationCode.trim(),
       });
       setSuccess(true);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.error?.message ||
-          err.response?.data?.error ||
-          'Failed to set password. The link may have expired.'
-      );
+    } catch (err) {
+      setError(extractApiErrorMessage(err, 'Failed to set password. The link may have expired.'));
     } finally {
       setLoading(false);
     }

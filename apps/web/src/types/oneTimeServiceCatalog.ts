@@ -39,7 +39,7 @@ export interface CreateOneTimeServiceCatalogItemInput {
   maxDiscountPercent?: number;
   requiresSchedule?: boolean;
   isActive?: boolean;
-  addOns?: Array<{
+  addOns?: {
     id?: string;
     name: string;
     code: string;
@@ -47,7 +47,7 @@ export interface CreateOneTimeServiceCatalogItemInput {
     defaultQuantity?: number;
     isActive?: boolean;
     sortOrder?: number;
-  }>;
+  }[];
 }
 
 export type UpdateOneTimeServiceCatalogItemInput = Partial<CreateOneTimeServiceCatalogItemInput>;

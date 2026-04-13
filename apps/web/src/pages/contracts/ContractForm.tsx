@@ -17,7 +17,6 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
 import {
   getContract,
   updateContract,
@@ -25,6 +24,7 @@ import {
   generateContractTerms,
   listContracts,
 } from '../../lib/contracts';
+import { extractApiErrorMessage } from '../../lib/api';
 import {
   getProposalsAvailableForContract,
   getProposal,
@@ -329,7 +329,7 @@ const ContractForm = () => {
     }
   };
 
-  const handleChange = (field: keyof ContractFormData, value: any) => {
+  const handleChange = (field: keyof ContractFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
@@ -436,9 +436,9 @@ const ContractForm = () => {
       }
 
       navigate('/contracts');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to save contract:', error);
-      toast.error(error.response?.data?.message || 'Failed to save contract');
+      toast.error(extractApiErrorMessage(error, 'Failed to save contract'));
     } finally {
       setSaving(false);
     }
@@ -835,7 +835,7 @@ const ContractForm = () => {
                               billingCycle: formData.billingCycle,
                               paymentTerms: formData.paymentTerms,
                               serviceFrequency: formData.serviceFrequency,
-                              serviceSchedule: selectedProposalSchedule as any,
+                              serviceSchedule: selectedProposalSchedule,
                               autoRenew: formData.autoRenew,
                               renewalNoticeDays: formData.renewalNoticeDays,
                               title: formData.title,

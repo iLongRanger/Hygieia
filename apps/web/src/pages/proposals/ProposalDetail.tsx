@@ -52,7 +52,21 @@ import {
   issueProposalPublicLink,
   updateProposalServiceTasks,
 } from '../../lib/proposals';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
+
+interface AppliedAreaMultiplier {
+  areaId?: string;
+  areaName?: string;
+  quantity?: number;
+  squareFeet?: number;
+  floorType?: string | null;
+  floorMultiplier?: number;
+  conditionLevel?: string | null;
+  conditionMultiplier?: number;
+  trafficLevel?: string | null;
+  trafficMultiplier?: number;
+}
 
 const getStatusVariant = (status: ProposalStatus) => {
   const variants: Record<ProposalStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
@@ -169,7 +183,7 @@ const findAppliedFrequencyMultiplier = (
   return null;
 };
 
-type TaskGroup = { key: string; label: string; tasks: string[] };
+interface TaskGroup { key: string; label: string; tasks: string[] }
 
 const TaskGroupStepper = ({
   serviceId,
@@ -401,7 +415,7 @@ const ProposalDetail = () => {
     }
   };
 
-  const handleSend = async (data?: any) => {
+  const handleSend = async (data?: import('../../types/proposal').SendProposalInput) => {
     if (!proposal) return;
 
     try {
@@ -414,8 +428,8 @@ const ProposalDetail = () => {
       }
       setSendModalOpen(false);
       fetchProposal(proposal.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send proposal');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to send proposal'));
       throw error;
     }
   };
@@ -427,8 +441,8 @@ const ProposalDetail = () => {
       await acceptProposal(proposal.id);
       toast.success('Proposal accepted');
       fetchProposal(proposal.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to accept proposal');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to accept proposal'));
     }
   };
 
@@ -441,8 +455,8 @@ const ProposalDetail = () => {
       await rejectProposal(proposal.id, { rejectionReason: reason });
       toast.success('Proposal rejected');
       fetchProposal(proposal.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to reject proposal');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to reject proposal'));
     }
   };
 
@@ -1101,7 +1115,7 @@ const ProposalDetail = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
-                          {appliedAreaMultipliers.map((area: any, index: number) => (
+                          {appliedAreaMultipliers.map((area: AppliedAreaMultiplier, index: number) => (
                             <tr key={`${area.areaId || area.areaName || 'area'}-${index}`} className="bg-surface-50/[0.02]">
                               <td className="px-3 py-2 text-surface-900 dark:text-white">
                                 {area.areaName || 'Area'}

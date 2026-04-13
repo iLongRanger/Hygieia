@@ -6,6 +6,7 @@ import {
   declinePublicResidentialQuote,
   getPublicResidentialQuote,
 } from '../../lib/residential';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { GlobalBranding } from '../../types/globalSettings';
 import type { PublicResidentialQuote } from '../../types/residential';
 
@@ -91,8 +92,8 @@ export default function PublicResidentialQuoteView() {
       setQuote(updated);
       setAcceptOpen(false);
       setActionComplete('accepted');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to accept residential quote');
+    } catch (err) {
+      alert(extractApiErrorMessage(err, 'Failed to accept residential quote'));
     } finally {
       setSubmitting(false);
     }
@@ -106,8 +107,8 @@ export default function PublicResidentialQuoteView() {
       setQuote(updated);
       setDeclineOpen(false);
       setActionComplete('declined');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to decline residential quote');
+    } catch (err) {
+      alert(extractApiErrorMessage(err, 'Failed to decline residential quote'));
     } finally {
       setSubmitting(false);
     }

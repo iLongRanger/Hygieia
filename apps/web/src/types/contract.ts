@@ -127,7 +127,7 @@ export interface Contract {
   facility?: {
     id: string;
     name: string;
-    address: any;
+    address: Record<string, unknown>;
     buildingType?: string | null;
     accessInstructions?: string | null;
     parkingInfo?: string | null;
@@ -222,7 +222,7 @@ export type ContractAmendmentType =
 export interface ContractAmendmentScopeSnapshot {
   id: string;
   snapshotType: 'before' | 'working' | 'after' | string;
-  scopeJson: Record<string, any>;
+  scopeJson: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -280,7 +280,7 @@ export interface ContractAmendmentWorkingScope {
 export interface ContractAmendmentActivity {
   id: string;
   action: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   createdAt: string;
   performedByUser?: {
     id: string;
@@ -307,7 +307,7 @@ export interface ContractAmendment {
   newServiceFrequency?: ServiceFrequency | null;
   oldServiceSchedule?: ServiceSchedule | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, any> | null;
+  pricingSnapshot?: Record<string, unknown> | null;
   approvedAt?: string | null;
   sentAt?: string | null;
   viewedAt?: string | null;
@@ -508,7 +508,7 @@ export interface CreateContractAmendmentInput {
   newMonthlyValue?: number | null;
   newServiceFrequency?: ServiceFrequency | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, any> | null;
+  pricingSnapshot?: Record<string, unknown> | null;
   workingScope?: ContractAmendmentWorkingScope | null;
 }
 
@@ -522,7 +522,7 @@ export interface UpdateContractAmendmentInput {
   newMonthlyValue?: number | null;
   newServiceFrequency?: ServiceFrequency | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, any> | null;
+  pricingSnapshot?: Record<string, unknown> | null;
   workingScope?: ContractAmendmentWorkingScope | null;
   status?: Extract<ContractAmendmentStatus, 'draft' | 'submitted' | 'canceled'>;
 }

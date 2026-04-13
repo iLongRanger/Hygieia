@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import {
   FileText,
   CheckCircle,
@@ -17,6 +18,7 @@ import {
 } from '../../lib/publicContractAmendments';
 import type { PublicContractAmendment } from '../../types/publicContractAmendment';
 import type { GlobalBranding } from '../../types/globalSettings';
+import { extractApiErrorMessage } from '../../lib/api';
 
 const formatCurrency = (amount: number | string | null | undefined) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount || 0));
@@ -30,7 +32,24 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
-const formatAddress = (address: any): string => {
+type AddressValue = string | Record<string, unknown> | null | undefined;
+type AmendmentArea = {
+  id?: string;
+  tempId?: string;
+  name?: string | null;
+  areaType?: { name?: string | null } | null;
+} & Record<string, unknown>;
+type AmendmentTask = {
+  id?: string;
+  tempId?: string;
+  areaId?: string | null;
+  customName?: string | null;
+  taskTemplate?: { name?: string | null } | null;
+  name?: string | null;
+  cleaningFrequency?: string | null;
+} & Record<string, unknown>;
+
+const formatAddress = (address: AddressValue): string => {
   if (!address) return '';
   if (typeof address === 'string') return address;
   const lines: string[] = [];
@@ -64,14 +83,14 @@ const formatFrequency = (value: string | null | undefined) => {
   return frequencyLabels[value] || value.replace(/_/g, ' ');
 };
 
-type AmendmentWorkingScope = {
-  areas?: Array<Record<string, any>>;
-  tasks?: Array<Record<string, any>>;
-};
+interface AmendmentWorkingScope {
+  areas?: AmendmentArea[];
+  tasks?: AmendmentTask[];
+}
 
 const getLatestWorkingScope = (
   amendment: PublicContractAmendment
-): { areas: Array<Record<string, any>>; tasks: Array<Record<string, any>> } => {
+): { areas: AmendmentArea[]; tasks: AmendmentTask[] } => {
   const workingSnapshot = [...(amendment.snapshots || [])]
     .reverse()
     .find((snapshot) => snapshot.snapshotType === 'working');
@@ -82,10 +101,10 @@ const getLatestWorkingScope = (
   };
 };
 
-const getAreaDisplayName = (area: Record<string, any>, index: number) =>
+const getAreaDisplayName = (area: AmendmentArea, index: number) =>
   area.name || area.areaType?.name || `Area ${index + 1}`;
 
-const getTaskDisplayName = (task: Record<string, any>, index: number) =>
+const getTaskDisplayName = (task: AmendmentTask, index: number) =>
   task.customName || task.taskTemplate?.name || task.name || `Task ${index + 1}`;
 
 const getFrequencyOrder = (value: string | null | undefined) => {
@@ -107,8 +126,8 @@ const getFrequencyOrder = (value: string | null | undefined) => {
   return order[(value || '').toLowerCase()] ?? 99;
 };
 
-const groupTasksByFrequency = (tasks: Array<Record<string, any>>) => {
-  const grouped = new Map<string, { tasks: Array<Record<string, any>>; order: number }>();
+const groupTasksByFrequency = (tasks: AmendmentTask[]) => {
+  const grouped = new Map<string, { tasks: AmendmentTask[]; order: number }>();
   for (const task of tasks) {
     const label = formatFrequency(task.cleaningFrequency);
     const current = grouped.get(label) || {
@@ -133,7 +152,7 @@ const FrequencyTaskStepper = ({
   primaryColor,
 }: {
   sectionKey: string;
-  groupedTasks: Array<readonly [string, Array<Record<string, any>>]>;
+  groupedTasks: (readonly [string, AmendmentTask[]])[];
   accentColor: string;
   primaryColor: string;
 }) => {
@@ -241,12 +260,12 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
             companyTimezone: response.branding.companyTimezone || 'UTC',
           });
         }
-      } catch (err: any) {
+      } catch (error) {
         if (!ignore) {
           setError(
-            err?.response?.status === 404
+            axios.isAxiosError(error) && error.response?.status === 404
               ? 'This amendment was not found or the link has expired.'
-              : err?.response?.data?.message || 'Failed to load amendment'
+              : extractApiErrorMessage(error, 'Failed to load amendment')
           );
         }
       } finally {
@@ -274,8 +293,8 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
       setAmendment(updated);
       setSignModalOpen(false);
       setActionComplete(true);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to sign amendment');
+    } catch (error) {
+      setError(extractApiErrorMessage(error, 'Failed to sign amendment'));
     } finally {
       setSubmitting(false);
     }

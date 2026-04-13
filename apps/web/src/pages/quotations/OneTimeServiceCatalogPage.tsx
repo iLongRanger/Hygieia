@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -12,6 +11,7 @@ import {
   listOneTimeServiceCatalog,
   updateOneTimeServiceCatalogItem,
 } from '../../lib/oneTimeServiceCatalog';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { OneTimeServiceCatalogItem } from '../../types/oneTimeServiceCatalog';
 
 const KNOWN_SERVICE_TYPES = ['window_cleaning', 'carpet_cleaning', 'custom'] as const;
@@ -43,7 +43,6 @@ const EMPTY_ITEM = {
 };
 
 const OneTimeServiceCatalogPage = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState<OneTimeServiceCatalogItem[]>([]);
   const [newItem, setNewItem] = useState(EMPTY_ITEM);
   const [saving, setSaving] = useState(false);
@@ -90,8 +89,8 @@ const OneTimeServiceCatalogPage = () => {
       toast.success('One-time service standard created');
       setNewItem(EMPTY_ITEM);
       await load();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create one-time service standard');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to create one-time service standard'));
     } finally {
       setSaving(false);
     }
@@ -163,8 +162,8 @@ const OneTimeServiceCatalogPage = () => {
       toast.success('One-time service standard updated');
       cancelEdit();
       await load();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update one-time service standard');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to update one-time service standard'));
     } finally {
       setUpdating(false);
     }

@@ -110,7 +110,7 @@ export interface Proposal {
   pricingStrategyVersion?: string | null;
   // Pricing plan fields
   pricingPlanId?: string | null;
-  pricingSnapshot?: any | null;
+  pricingSnapshot?: Record<string, unknown> | null;
   pricingLocked?: boolean;
   pricingLockedAt?: string | null;
   // Public access fields
@@ -129,7 +129,7 @@ export interface Proposal {
   facility?: {
     id: string;
     name: string;
-    address: any;
+    address: Record<string, unknown>;
     defaultPricingPlanId?: string | null;
   } | null;
   createdByUser: {
@@ -156,7 +156,7 @@ export interface CreateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan (optional - will use defaults if not provided)
   pricingPlanId?: string | null;
-  pricingSnapshot?: any | null;
+  pricingSnapshot?: Record<string, unknown> | null;
 }
 
 export interface UpdateProposalInput {
@@ -175,7 +175,7 @@ export interface UpdateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan
   pricingPlanId?: string | null;
-  pricingSnapshot?: any | null;
+  pricingSnapshot?: Record<string, unknown> | null;
 }
 
 export interface ListProposalsParams {
@@ -204,7 +204,12 @@ export interface RejectProposalInput {
 export interface ProposalVersion {
   id: string;
   versionNumber: number;
-  snapshot: any;
+  snapshot: {
+    status?: string;
+    totalAmount?: string | number;
+    proposalServices?: unknown[];
+    proposalItems?: unknown[];
+  };
   changeReason: string | null;
   createdAt: string;
   changedByUser: {

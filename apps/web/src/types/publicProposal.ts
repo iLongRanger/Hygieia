@@ -39,15 +39,15 @@ export interface PublicProposal {
       variabilityPercentage: number;
     };
   } | null;
-  proposalItems: Array<{
+  proposalItems: {
     itemType: string;
     description: string;
     quantity: number;
     unitPrice: number;
     totalPrice: number;
     sortOrder: number;
-  }>;
-  proposalServices: Array<{
+  }[];
+  proposalServices: {
     serviceName: string;
     serviceType: string;
     frequency: string;
@@ -57,7 +57,7 @@ export interface PublicProposal {
     description: string | null;
     includedTasks: string[];
     sortOrder: number;
-  }>;
+  }[];
 }
 
 export interface PublicProposalResponse {

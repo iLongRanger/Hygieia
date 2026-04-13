@@ -3,7 +3,7 @@ import { History, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { getProposalVersions, getProposalVersion } from '../../lib/proposals';
-import type { ProposalVersionSummary } from '../../types/proposal';
+import type { ProposalVersion, ProposalVersionSummary } from '../../types/proposal';
 
 const formatCurrency = (amount: string | number) => {
   return new Intl.NumberFormat('en-US', {
@@ -31,7 +31,7 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
   const [versions, setVersions] = useState<ProposalVersionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedVersion, setExpandedVersion] = useState<number | null>(null);
-  const [snapshotData, setSnapshotData] = useState<any>(null);
+  const [snapshotData, setSnapshotData] = useState<ProposalVersion['snapshot'] | null>(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
   useEffect(() => {

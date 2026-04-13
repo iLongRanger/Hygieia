@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { extractApiErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import {
   getFacility,
@@ -46,13 +47,11 @@ import { SubmitProposalModal } from './modals/SubmitProposalModal';
 import {
   isCleaningFrequency,
   ORDERED_CLEANING_FREQUENCIES,
-  CLEANING_FREQUENCIES,
 } from './facility-constants';
 import type { AreaTemplateTaskSelection, AreaItemInput } from './facility-constants';
 
 const FacilityDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'area-detail'>('overview');
@@ -754,7 +753,7 @@ const FacilityDetail = () => {
     if (!id) return;
     try {
       setSubmittingForProposal(true);
-      const result = await submitFacilityForProposal(id, submitProposalNotes || null);
+      await submitFacilityForProposal(id, submitProposalNotes || null);
       setFacility((prev) => (
         prev
           ? {
@@ -766,13 +765,9 @@ const FacilityDetail = () => {
       setShowSubmitProposalModal(false);
       setSubmitProposalNotes('');
       toast.success('Facility submitted. Walkthrough marked completed and pipeline updated.');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to submit facility for proposal:', error);
-      const message =
-        error?.response?.data?.error?.message
-        || error?.response?.data?.message
-        || 'Failed to submit facility for proposal';
-      toast.error(message);
+      toast.error(extractApiErrorMessage(error, 'Failed to submit facility for proposal'));
     } finally {
       setSubmittingForProposal(false);
     }

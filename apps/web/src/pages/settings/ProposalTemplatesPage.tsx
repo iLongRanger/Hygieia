@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
 
   FileText,
@@ -18,6 +17,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { extractApiErrorMessage } from '../../lib/api';
 import {
   listTemplates,
   createTemplate,
@@ -32,7 +32,6 @@ import type {
 } from '../../types/proposalTemplate';
 
 const ProposalTemplatesPage: React.FC = () => {
-  const navigate = useNavigate();
   const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
@@ -95,8 +94,8 @@ const ProposalTemplatesPage: React.FC = () => {
       }
       setModalOpen(false);
       fetchTemplates();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save template');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to save template'));
     } finally {
       setSaving(false);
     }

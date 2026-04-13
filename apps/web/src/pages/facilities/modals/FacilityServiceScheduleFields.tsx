@@ -11,12 +11,12 @@ type ServiceScheduleDay =
   | 'saturday'
   | 'sunday';
 
-type FacilitySchedule = {
+interface FacilitySchedule {
   frequency: string;
   days: ServiceScheduleDay[];
   allowedWindowStart: string;
   allowedWindowEnd: string;
-};
+}
 
 const SCHEDULE_FREQUENCIES = [
   { value: '1x_week', label: '1x per Week' },

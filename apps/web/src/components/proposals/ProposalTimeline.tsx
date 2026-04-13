@@ -17,19 +17,7 @@ import {
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { getProposalActivities } from '../../lib/proposals';
-
-interface ProposalActivity {
-  id: string;
-  action: string;
-  metadata: Record<string, any>;
-  ipAddress: string | null;
-  createdAt: string;
-  performedByUser: {
-    id: string;
-    fullName: string;
-    email: string;
-  } | null;
-}
+import type { ProposalActivity } from '../../lib/proposals';
 
 const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   created: { icon: FileText, label: 'Proposal created', color: 'text-surface-500 dark:text-surface-400' },

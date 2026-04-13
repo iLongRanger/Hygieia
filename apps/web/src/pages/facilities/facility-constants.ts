@@ -60,7 +60,7 @@ export function isCleaningFrequency(
   return CLEANING_FREQUENCY_VALUES.has(value);
 }
 
-export type AreaTemplateTaskSelection = {
+export interface AreaTemplateTaskSelection {
   id: string;
   taskTemplateId: string | null;
   name: string;
@@ -71,7 +71,7 @@ export type AreaTemplateTaskSelection = {
   perUnitMinutes: number;
   perRoomMinutes: number;
   include: boolean;
-};
+}
 
 export type AreaItemInput = NonNullable<CreateAreaInput['fixtures']>[0];
 

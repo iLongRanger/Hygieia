@@ -8,7 +8,6 @@ import {
   Building2,
   FileText,
   DollarSign,
-  GripVertical,
   Sparkles,
   AlertCircle,
   CheckCircle2,
@@ -40,10 +39,9 @@ import {
   type PricingSettings,
   type FacilityPricingReadiness,
   type PricingBreakdown,
-  type FacilityProposalTemplate,
 } from '../../lib/pricing';
+import { extractApiErrorMessage } from '../../lib/api';
 import type {
-  Proposal,
   CreateProposalInput,
   UpdateProposalInput,
   ProposalItem,
@@ -65,6 +63,14 @@ import ClientServiceScheduleCard from '../../components/proposals/ClientServiceS
 import { listTemplates } from '../../lib/proposalTemplates';
 import type { ProposalTemplate } from '../../types/proposalTemplate';
 import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
+
+interface SuggestedProposalItem {
+  itemType?: ProposalItemType;
+  description: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice?: number;
+}
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -122,10 +128,10 @@ const BUSINESS_DAY_ORDER = DAY_ORDER.filter((day) =>
   ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day)
 ) as ServiceScheduleDay[];
 
-type ServiceDescriptionGroup = {
+interface ServiceDescriptionGroup {
   label: string;
   tasks: string[];
-};
+}
 
 const serviceDescriptionLabel = (value: string): string => {
   const normalized = value.trim().toLowerCase().replace(/[^a-z]/g, '');
@@ -244,15 +250,6 @@ const DAY_ALIAS_MAP: Record<string, ServiceScheduleDay> = {
   sat: 'saturday',
   sunday: 'sunday',
   sun: 'sunday',
-};
-
-const mapPricingFrequencyToScheduleFrequency = (
-  frequency: string
-): ProposalScheduleFrequency => {
-  if (frequency === 'daily') return '7x_week';
-  return (SCHEDULE_FREQUENCIES.some((opt) => opt.value === frequency)
-    ? frequency
-    : '5x_week') as ProposalScheduleFrequency;
 };
 
 const mapScheduleFrequencyToPricingFrequency = (
@@ -428,7 +425,7 @@ const ProposalForm = () => {
   // Reference data
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [termsTemplates, setTermsTemplates] = useState<ProposalTemplate[]>([]);
+  const [, setTermsTemplates] = useState<ProposalTemplate[]>([]);
 
   // Form data
   const [formData, setFormData] = useState<CreateProposalInput>({
@@ -766,9 +763,6 @@ const ProposalForm = () => {
       if (isEditMode || scheduleTouchedByUser || !formData.facilityId) return;
 
       const addressDefaults = extractFacilityAddressSchedule(selectedFacility);
-      const preferredFrequency =
-        addressDefaults?.frequency ||
-        ((formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency);
       setFormData((prev) => {
         const currentFrequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
         const nextFrequency =
@@ -837,7 +831,7 @@ const ProposalForm = () => {
       }));
 
       // Convert suggested items to proposal items
-      const newItems: ProposalItem[] = template.suggestedItems.map((item: any, index: number) => ({
+      const newItems: ProposalItem[] = template.suggestedItems.map((item: SuggestedProposalItem, index: number) => ({
         itemType: (item.itemType as ProposalItemType) || 'other',
         description: item.description,
         quantity: item.quantity || 1,
@@ -871,17 +865,17 @@ const ProposalForm = () => {
       // Store the full pricing breakdown for internal view
       setPricingBreakdown(template.pricing);
       toast.success(`Auto-populated ${newServices.length} service(s) from adjusted facility scope`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to auto-populate from facility:', error);
       setPricingBreakdown(null);
-      toast.error(error.response?.data?.message || 'Failed to calculate pricing from facility');
+      toast.error(extractApiErrorMessage(error, 'Failed to calculate pricing from facility'));
     } finally {
       setLoadingPricing(false);
     }
   };
 
   // Handle form field changes
-  const handleChange = (field: keyof CreateProposalInput, value: any) => {
+  const handleChange = (field: keyof CreateProposalInput, value: unknown) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
       // Clear facility when account changes
@@ -962,7 +956,7 @@ const ProposalForm = () => {
     }));
   };
 
-  const updateItem = (index: number, field: keyof ProposalItem, value: any) => {
+  const updateItem = (index: number, field: keyof ProposalItem, value: unknown) => {
     setFormData((prev) => {
       const items = [...(prev.proposalItems || [])];
       const item = { ...items[index], [field]: value };
@@ -996,7 +990,7 @@ const ProposalForm = () => {
     setExpandedServices((prev) => new Set(prev).add(newIndex));
   };
 
-  const updateService = (index: number, field: keyof ProposalService, value: any) => {
+  const updateService = (index: number, field: keyof ProposalService, value: unknown) => {
     setFormData((prev) => {
       const services = [...(prev.proposalServices || [])];
       services[index] = { ...services[index], [field]: value };
@@ -1105,12 +1099,9 @@ const ProposalForm = () => {
         toast.success('Proposal created successfully');
       }
       navigate('/proposals');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to save proposal:', error);
-      toast.error(getApiErrorMessage(
-        error,
-        `Failed to ${isEditMode ? 'update' : 'create'} proposal`
-      ));
+      toast.error(extractApiErrorMessage(error, `Failed to ${isEditMode ? 'update' : 'create'} proposal`));
     } finally {
       setSaving(false);
     }
@@ -1873,7 +1864,3 @@ const ProposalForm = () => {
 };
 
 export default ProposalForm;
-  const getApiErrorMessage = (error: any, fallback: string) =>
-    error?.response?.data?.error?.message
-    || error?.response?.data?.message
-    || fallback;

@@ -137,7 +137,7 @@ const ExpensesPage = () => {
   useEffect(() => {
     listExpenseCategories()
       .then(setCategories)
-      .catch(() => {});
+      .catch(() => undefined);
   }, []);
 
   const updateParam = (key: string, value: string) => {

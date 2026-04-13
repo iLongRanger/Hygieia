@@ -437,13 +437,9 @@ export interface UpdateFacilityTaskInput {
   fixtureMinutes?: { fixtureTypeId: string; minutesPerFixture: number }[];
 }
 
-export interface TasksGroupedByArea {
-  [areaId: string]: {
+export type TasksGroupedByArea = Record<string, {
     areaName: string;
     tasks: { name: string; frequency: string }[];
-  };
-}
+  }>;
 
-export interface TasksGroupedByFrequency {
-  [frequency: string]: { name: string; areaName: string }[];
-}
+export type TasksGroupedByFrequency = Record<string, { name: string; areaName: string }[]>;

@@ -6,9 +6,6 @@ import {
   Briefcase,
   Building2,
   Calendar,
-  Clock,
-  Users,
-  User,
   FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -22,6 +19,7 @@ import { listContracts } from '../../lib/contracts';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import { useAuthStore } from '../../stores/authStore';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { Contract } from '../../types/contract';
 import type { CreateJobInput, UpdateJobInput } from '../../types/job';
 
@@ -85,7 +83,7 @@ const JobForm = () => {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [contractsRes, teamsRes, usersRes] = await Promise.all([
-        listContracts({ status: 'active' as any, limit: 100 }),
+        listContracts({ status: 'active', limit: 100 }),
         listTeams({ limit: 100 }),
         listUsers({ limit: 100 }),
       ]);
@@ -224,11 +222,8 @@ const JobForm = () => {
         toast.success('Job created successfully');
       }
       navigate('/jobs');
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message ||
-          `Failed to ${isEditMode ? 'update' : 'create'} job`
-      );
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, `Failed to ${isEditMode ? 'update' : 'create'} job`));
     } finally {
       setSaving(false);
     }

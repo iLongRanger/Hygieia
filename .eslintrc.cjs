@@ -24,5 +24,22 @@ module.exports = {
     '@typescript-eslint/prefer-optional-chain': 'error',
     'no-console': 'off',
   },
+  overrides: [
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx', '**/test/**/*.ts', '**/test/**/*.tsx'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-empty-function': 'off',
+        '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+    {
+      files: ['**/src/types/express.ts'],
+      rules: {
+        '@typescript-eslint/no-namespace': 'off',
+      },
+    },
+  ],
   ignorePatterns: ['dist', 'build', 'node_modules', '.next', 'coverage', '*.js'],
 };

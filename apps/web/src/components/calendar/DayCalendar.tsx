@@ -70,11 +70,11 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
   );
 
   const gridAppointments = useMemo(() => {
-    const segments: Array<{
+    const segments: {
       appointment: Appointment;
       rowStart: number;
       rowEnd: number;
-    }> = [];
+    }[] = [];
     const gridStart = START_HOUR * 60;
     const gridEnd = END_HOUR * 60;
 
@@ -90,7 +90,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
 
       if (endMinutes <= gridStart || startMinutes >= gridEnd) return;
 
-      let rowStart = Math.floor((startMinutes - gridStart) / STEP_MINS) + 1;
+      const rowStart = Math.floor((startMinutes - gridStart) / STEP_MINS) + 1;
       let rowEnd = Math.ceil((endMinutes - gridStart) / STEP_MINS) + 1;
       if (rowEnd <= rowStart) rowEnd = rowStart + 1;
 

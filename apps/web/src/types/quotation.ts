@@ -22,13 +22,13 @@ export interface QuotationService {
     discountPercent?: number;
     discountAmount?: number;
     overrideReason?: string | null;
-    addOns?: Array<{
+    addOns?: {
       code?: string;
       name: string;
       quantity: number;
       unitPrice: number;
       total: number;
-    }>;
+    }[];
   };
   sortOrder?: number;
 }
@@ -87,7 +87,7 @@ export interface Quotation {
   facility?: {
     id: string;
     name: string;
-    address?: any;
+    address?: Record<string, unknown>;
   } | null;
   createdByUser: {
     id: string;

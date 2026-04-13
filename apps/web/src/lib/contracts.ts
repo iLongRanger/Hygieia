@@ -18,6 +18,25 @@ import type {
 } from '../types/contract';
 import type { FacilityPricingResult } from './pricing';
 
+export interface ContractActivity {
+  id: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  performedByUser: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+interface ActivityPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 interface PaginatedResponse<T> {
   data: T[];
   pagination: {
@@ -217,14 +236,14 @@ export async function downloadContractTermsDocument(
 export async function getContractActivities(
   contractId: string,
   params?: { page?: number; limit?: number }
-): Promise<{ data: any[]; pagination: any }> {
+): Promise<{ data: ContractActivity[]; pagination: ActivityPagination }> {
   const response = await api.get(`/contracts/${contractId}/activities`, { params });
   return response.data;
 }
 
 // Expiring Contracts
 
-export async function getExpiringContracts(days: number = 30): Promise<Contract[]> {
+export async function getExpiringContracts(days = 30): Promise<Contract[]> {
   const response = await api.get('/contracts/expiring', { params: { days } });
   return response.data.data;
 }

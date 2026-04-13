@@ -11,7 +11,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, icon, hint, showCharacterCount, ...props }, ref) => {
-    const inputId = props.id ?? useId();
+    const generatedId = useId();
+    const inputId = props.id ?? generatedId;
     const currentLength = typeof props.value === 'string' ? props.value.length : 0;
     const maxLength = props.maxLength;
     const showCounter = showCharacterCount && maxLength;

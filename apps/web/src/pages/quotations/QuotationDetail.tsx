@@ -15,7 +15,6 @@ import {
   ExternalLink,
   Clock,
   Eye,
-  FileText,
   Copy,
   Trash2,
 } from 'lucide-react';
@@ -40,6 +39,7 @@ import {
   issueQuotationPublicLink,
   setQuotationPricingApproval,
 } from '../../lib/quotations';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { Quotation, QuotationStatus } from '../../types/quotation';
 
 const getStatusVariant = (status: QuotationStatus) => {
@@ -139,12 +139,12 @@ const QuotationDetail = () => {
       toast.success('Quotation sent');
       setShowSendModal(false);
       if (result.publicUrl) {
-        navigator.clipboard.writeText(result.publicUrl).catch(() => {});
+        navigator.clipboard.writeText(result.publicUrl).catch(() => undefined);
         toast.success('Public link copied to clipboard');
       }
       fetchQuotation();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send quotation');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to send quotation'));
     } finally {
       setSending(false);
     }
@@ -189,8 +189,8 @@ const QuotationDetail = () => {
       await setQuotationPricingApproval(quotation.id, { action, reason: reason || null });
       toast.success(`Pricing ${action}`);
       fetchQuotation();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || `Failed to ${action} pricing`);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, `Failed to ${action} pricing`));
     }
   };
 

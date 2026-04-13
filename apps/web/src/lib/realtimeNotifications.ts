@@ -1,21 +1,22 @@
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import type { Notification } from '../types/crm';
 import { getAccessToken } from './authSession';
 
-type NotificationCreatedPayload = {
+interface NotificationCreatedPayload {
   notification: Notification;
   unreadCount: number;
-};
+}
 
-type NotificationUpdatedPayload = {
+interface NotificationUpdatedPayload {
   notification: Notification;
   unreadCount: number;
-};
+}
 
-type NotificationAllReadPayload = {
+interface NotificationAllReadPayload {
   markedCount: number;
   unreadCount: number;
-};
+}
 
 const EVENT_CREATED = 'notification-created';
 const EVENT_UPDATED = 'notification-updated';

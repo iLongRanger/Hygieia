@@ -85,8 +85,6 @@ const QuotationsList = () => {
   const [search, setSearch] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -113,10 +111,6 @@ const QuotationsList = () => {
           accountId: accountIdFilter,
         });
         setQuotations(response?.data || []);
-        if (response?.pagination) {
-          setTotal(response.pagination.total);
-          setTotalPages(response.pagination.totalPages);
-        }
       } catch (error) {
         console.error('Failed to fetch quotations:', error);
         toast.error('Failed to load quotations');

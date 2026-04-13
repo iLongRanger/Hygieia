@@ -1,5 +1,5 @@
 import api from './api';
-import type { Pagination, PaginatedResponse } from '../types/crm';
+import type { PaginatedResponse } from '../types/crm';
 import type {
   Job,
   JobDetail,

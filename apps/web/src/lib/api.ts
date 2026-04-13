@@ -1,5 +1,10 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { clearAccessToken, getAccessToken, setAccessToken } from './authSession';
+
+interface ApiErrorPayload {
+  error?: string | { message?: string };
+}
 
 function getApiBaseUrl(): string {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -7,6 +12,24 @@ function getApiBaseUrl(): string {
 }
 
 const apiBaseUrl = getApiBaseUrl();
+
+export function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    const apiError = error.response?.data?.error;
+    if (typeof apiError === 'string' && apiError) {
+      return apiError;
+    }
+    if (typeof apiError?.message === 'string' && apiError.message) {
+      return apiError.message;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 // Create axios instance with security configurations
 const api = axios.create({

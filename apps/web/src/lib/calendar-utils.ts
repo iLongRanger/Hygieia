@@ -77,7 +77,6 @@ export function getAppointmentColors(appointment: Appointment) {
 
 export function getCalendarDays(year: number, month: number): Date[] {
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
 
   // Get the starting day (Sunday = 0)
   const startOffset = firstDay.getDay();
@@ -138,7 +137,7 @@ export function groupAppointmentsByDate(
   }
 
   // Sort appointments within each day by start time
-  for (const [key, dayAppointments] of grouped) {
+  for (const [, dayAppointments] of grouped) {
     dayAppointments.sort(
       (a, b) =>
         new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()

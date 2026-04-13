@@ -34,7 +34,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     },
     ref
   ) => {
-    const selectId = props.id ?? useId();
+    const generatedId = useId();
+    const selectId = props.id ?? generatedId;
 
     return (
       <div className="w-full">

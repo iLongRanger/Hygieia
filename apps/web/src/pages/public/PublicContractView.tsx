@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import {
   FileText,
   Download,
@@ -17,6 +18,7 @@ import {
 } from '../../lib/publicContracts';
 import type { PublicContract } from '../../types/publicContract';
 import type { GlobalBranding } from '../../types/globalSettings';
+import { extractApiErrorMessage } from '../../lib/api';
 
 const formatCurrency = (amount: number | string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
@@ -46,7 +48,7 @@ const formatDate = (date: string | null | undefined) => {
   });
 };
 
-const formatAddress = (address: any): string => {
+const formatAddress = (address: string | Record<string, unknown> | null | undefined): string => {
   if (!address) return '';
   if (typeof address === 'string') return address;
   const lines: string[] = [];
@@ -81,10 +83,10 @@ const formatTime24h = (value: string): string => {
 const normalizeServiceBullet = (value: string): string =>
   value.replace(/^[\s*-•]+/, '').trim();
 
-type ServiceTaskGroup = {
+interface ServiceTaskGroup {
   label: string;
   tasks: string[];
-};
+}
 
 const ServiceTaskStepper: React.FC<{
   serviceId: string;
@@ -182,10 +184,7 @@ const buildServiceTaskGroups = (
   const grouped = new Map<string, Set<string>>();
 
   const addTask = (label: string, value: string) => {
-    let normalized = value.trim();
-    while (normalized.startsWith('-') || normalized.startsWith('*')) {
-      normalized = normalized.slice(1).trimStart();
-    }
+    const normalized = normalizeServiceBullet(value);
     if (!normalized) return;
     const normalizedLabel = serviceTaskGroupLabel(label);
     if (!grouped.has(normalizedLabel)) {
@@ -252,9 +251,9 @@ const PublicContractView: React.FC = () => {
         companyTimezone: 'UTC',
         ...response.branding,
       });
-    } catch (err: any) {
+    } catch (error) {
       setError(
-        err.response?.status === 404
+        axios.isAxiosError(error) && error.response?.status === 404
           ? 'This contract was not found or the link has expired.'
           : 'Failed to load contract. Please try again later.'
       );
@@ -271,8 +270,8 @@ const PublicContractView: React.FC = () => {
       setContract(updated);
       setSignModalOpen(false);
       setActionComplete(true);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to sign contract');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to sign contract'));
     } finally {
       setSubmitting(false);
     }

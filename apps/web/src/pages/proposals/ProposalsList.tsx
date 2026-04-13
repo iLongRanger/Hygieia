@@ -36,6 +36,7 @@ import {
   downloadProposalPdf,
   remindProposal,
 } from '../../lib/proposals';
+import { extractApiErrorMessage } from '../../lib/api';
 import SendProposalModal from '../../components/proposals/SendProposalModal';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
 
@@ -178,7 +179,7 @@ const ProposalsList = () => {
     }
   };
 
-  const handleSendFromModal = async (data?: any) => {
+  const handleSendFromModal = async (data?: import('../../types/proposal').SendProposalInput) => {
     if (!sendModalProposal) return;
     try {
       if (['sent', 'viewed'].includes(sendModalProposal.status)) {
@@ -190,8 +191,8 @@ const ProposalsList = () => {
       }
       setSendModalProposal(null);
       fetchProposals(page, search, { status: statusFilter, includeArchived });
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send proposal');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to send proposal'));
       throw error;
     }
   };
@@ -203,9 +204,9 @@ const ProposalsList = () => {
       await acceptProposal(id);
       toast.success('Proposal accepted');
       fetchProposals(page, search, { status: statusFilter, includeArchived });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to accept proposal:', error);
-      toast.error(error.response?.data?.message || 'Failed to accept proposal');
+      toast.error(extractApiErrorMessage(error, 'Failed to accept proposal'));
     }
   };
 
@@ -217,9 +218,9 @@ const ProposalsList = () => {
       await rejectProposal(id, { rejectionReason: reason });
       toast.success('Proposal rejected');
       fetchProposals(page, search, { status: statusFilter, includeArchived });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to reject proposal:', error);
-      toast.error(error.response?.data?.message || 'Failed to reject proposal');
+      toast.error(extractApiErrorMessage(error, 'Failed to reject proposal'));
     }
   };
 
@@ -587,4 +588,3 @@ const ProposalsList = () => {
 };
 
 export default ProposalsList;
-

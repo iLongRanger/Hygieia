@@ -111,8 +111,8 @@ export interface GenerateTimesheetsBulkInput {
 
 export interface GenerateTimesheetsBulkResult {
   created: TimesheetDetail[];
-  skipped: Array<{ userId: string; reason: string }>;
-  failed: Array<{ userId: string; error: string }>;
+  skipped: { userId: string; reason: string }[];
+  failed: { userId: string; error: string }[];
   summary: {
     requested: number;
     created: number;

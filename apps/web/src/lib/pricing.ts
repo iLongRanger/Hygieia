@@ -1,5 +1,6 @@
 import api from './api';
 import type { PaginatedResponse } from '../types/crm';
+import type { Proposal } from '../types/proposal';
 
 // ============================================================
 // Pricing Plans API
@@ -308,8 +309,8 @@ export async function getFacilityPricingReadiness(facilityId: string): Promise<F
 
 export async function getFacilityPricing(
   facilityId: string,
-  frequency: string = '5x_week',
-  taskComplexity: string = 'standard',
+  frequency = '5x_week',
+  taskComplexity = 'standard',
   pricingPlanId?: string
 ): Promise<FacilityPricingResult> {
   const response = await api.get(`/facilities/${facilityId}/pricing`, {
@@ -339,15 +340,15 @@ export interface SuggestedProposalService {
 }
 
 export interface FacilityProposalTemplate {
-  facility: any;
+  facility: Record<string, unknown>;
   pricing: PricingBreakdown;
   suggestedServices: SuggestedProposalService[];
-  suggestedItems: any[];
+  suggestedItems: unknown[];
 }
 
 export async function getFacilityProposalTemplate(
   facilityId: string,
-  frequency: string = '5x_week',
+  frequency = '5x_week',
   pricingPlanId?: string,
   workerCount?: number,
   subcontractorTier?: string,
@@ -371,12 +372,12 @@ export async function getFacilityProposalTemplate(
 // Proposal Pricing API
 // ============================================================
 
-export async function lockProposalPricing(proposalId: string): Promise<any> {
+export async function lockProposalPricing(proposalId: string): Promise<Proposal> {
   const response = await api.post(`/proposals/${proposalId}/pricing/lock`);
   return response.data.data;
 }
 
-export async function unlockProposalPricing(proposalId: string): Promise<any> {
+export async function unlockProposalPricing(proposalId: string): Promise<Proposal> {
   const response = await api.post(`/proposals/${proposalId}/pricing/unlock`);
   return response.data.data;
 }
@@ -384,7 +385,7 @@ export async function unlockProposalPricing(proposalId: string): Promise<any> {
 export async function changeProposalPricingPlan(
   proposalId: string,
   pricingPlanId: string
-): Promise<any> {
+): Promise<Proposal> {
   const response = await api.post(`/proposals/${proposalId}/pricing/plan`, {
     pricingPlanId,
   });
@@ -394,9 +395,9 @@ export async function changeProposalPricingPlan(
 export async function recalculateProposalPricing(
   proposalId: string,
   serviceFrequency: string,
-  lockAfterRecalculation: boolean = false,
+  lockAfterRecalculation = false,
   workerCount?: number
-): Promise<any> {
+): Promise<Proposal> {
   const response = await api.post(`/proposals/${proposalId}/pricing/recalculate`, {
     serviceFrequency,
     lockAfterRecalculation,

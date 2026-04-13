@@ -10,7 +10,8 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, hint, showCharacterCount, ...props }, ref) => {
-    const textareaId = props.id ?? useId();
+    const generatedId = useId();
+    const textareaId = props.id ?? generatedId;
     const currentLength = typeof props.value === 'string' ? props.value.length : 0;
     const maxLength = props.maxLength;
     const showCounter = showCharacterCount && maxLength;

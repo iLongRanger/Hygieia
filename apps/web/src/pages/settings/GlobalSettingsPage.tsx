@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
+import { extractApiErrorMessage } from '../../lib/api';
 import {
   getGlobalSettings,
   updateGlobalSettings,
@@ -200,8 +201,8 @@ const GlobalSettingsPage: React.FC = () => {
       });
       setSettings(updated);
       toast.success('Global settings updated');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to update settings');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to update settings'));
     } finally {
       setSaving(false);
     }
@@ -250,8 +251,8 @@ const GlobalSettingsPage: React.FC = () => {
       });
       updateServiceState(service.serviceKey, () => updated);
       toast.success('Background service updated');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to update background service');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to update background service'));
     } finally {
       setSavingServiceKey(null);
     }
@@ -268,8 +269,8 @@ const GlobalSettingsPage: React.FC = () => {
       updateServiceState(serviceKey, () => updated);
       setBackgroundServiceLogs((prev) => ({ ...prev, [serviceKey]: logs }));
       toast.success('Background service run triggered');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to trigger background service');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to trigger background service'));
     } finally {
       setRunningServiceKey(null);
     }
@@ -318,8 +319,8 @@ const GlobalSettingsPage: React.FC = () => {
       const updated = await uploadCompanyLogo(logoDataUrl);
       setSettings(updated);
       toast.success('Logo updated');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to upload logo');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to upload logo'));
     } finally {
       event.target.value = '';
       setUploadingLogo(false);

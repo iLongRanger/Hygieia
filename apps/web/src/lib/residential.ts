@@ -214,7 +214,22 @@ export async function restoreResidentialQuote(id: string): Promise<ResidentialQu
 
 export async function getPublicResidentialQuote(
   token: string
-): Promise<{ data: PublicResidentialQuote; branding: any }> {
+): Promise<{
+  data: PublicResidentialQuote;
+  branding: {
+    companyName?: string | null;
+    companyEmail?: string | null;
+    companyPhone?: string | null;
+    companyWebsite?: string | null;
+    companyAddress?: string | null;
+    logoDataUrl?: string | null;
+    themePrimaryColor?: string | null;
+    themeAccentColor?: string | null;
+    themeBackgroundColor?: string | null;
+    themeTextColor?: string | null;
+    companyTimezone?: string | null;
+  };
+}> {
   const response = await api.get(`/public/residential-quotes/${token}`);
   return response.data;
 }

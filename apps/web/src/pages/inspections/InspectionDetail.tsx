@@ -32,6 +32,7 @@ import {
   getAreaGuidance,
 } from '../../lib/inspections';
 import { InspectorGuidance } from '../../components/inspections/InspectorGuidance';
+import { extractApiErrorMessage } from '../../lib/api';
 import type {
   InspectionDetail as InspectionDetailType,
   InspectionItem,
@@ -181,8 +182,8 @@ const InspectionDetail = () => {
       setInspection(data);
       setShowReviewModal(false);
       toast.success(`Inspection completed — Score: ${data.overallScore ? parseFloat(data.overallScore).toFixed(0) : 0}%`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to complete inspection');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to complete inspection'));
     }
   };
 

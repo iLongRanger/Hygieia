@@ -16,18 +16,7 @@ import {
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { getContractActivities } from '../../lib/contracts';
-
-interface ContractActivity {
-  id: string;
-  action: string;
-  metadata: Record<string, any>;
-  createdAt: string;
-  performedByUser: {
-    id: string;
-    fullName: string;
-    email: string;
-  } | null;
-}
+import type { ContractActivity } from '../../lib/contracts';
 
 const ACTION_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   created: { icon: FileText, label: 'Contract created', color: 'text-surface-500 dark:text-surface-400' },

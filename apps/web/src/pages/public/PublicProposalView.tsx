@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import {
   FileText,
   Download,
@@ -20,6 +21,7 @@ import {
   rejectPublicProposal,
   downloadPublicProposalPdf,
 } from '../../lib/publicProposals';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { PublicProposal } from '../../types/publicProposal';
 import type { GlobalBranding } from '../../types/globalSettings';
 
@@ -79,7 +81,7 @@ const formatAddress = (
   return lines.join(', ');
 };
 
-type TaskGroup = { key: string; label: string; tasks: string[] };
+interface TaskGroup { key: string; label: string; tasks: string[] }
 const TaskGroupStepper: React.FC<{
   serviceId: string;
   groups: TaskGroup[];
@@ -268,9 +270,9 @@ const PublicProposalView: React.FC = () => {
         companyTimezone: 'UTC',
         ...response.branding,
       });
-    } catch (err: any) {
+    } catch (error) {
       setError(
-        err.response?.status === 404
+        axios.isAxiosError(error) && error.response?.status === 404
           ? 'This proposal was not found or the link has expired.'
           : 'Failed to load proposal. Please try again later.'
       );
@@ -287,8 +289,8 @@ const PublicProposalView: React.FC = () => {
       setProposal(updated);
       setAcceptModalOpen(false);
       setActionComplete('accepted');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to accept proposal');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to accept proposal'));
     } finally {
       setSubmitting(false);
     }
@@ -302,8 +304,8 @@ const PublicProposalView: React.FC = () => {
       setProposal(updated);
       setRejectModalOpen(false);
       setActionComplete('rejected');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to reject proposal');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to reject proposal'));
     } finally {
       setSubmitting(false);
     }

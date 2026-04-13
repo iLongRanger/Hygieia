@@ -41,7 +41,6 @@ import {
   getContract,
   updateContract,
   updateContractStatus,
-  signContract,
   sendContract,
   terminateContract,
   archiveContract,
@@ -99,9 +98,20 @@ import {
   isCleaningFrequency,
   type AreaTemplateTaskSelection,
 } from '../facilities/facility-constants';
+import { extractApiErrorMessage } from '../../lib/api';
+
+type AddressValue = string | Record<string, unknown> | null | undefined;
+type DraftArea = ContractAmendmentWorkingScope['areas'][number];
+type DraftTask = ContractAmendmentWorkingScope['tasks'][number];
+interface DraftScopeComparison {
+  contract?: ContractAmendmentWorkingScope['contract'];
+  facility?: ContractAmendmentWorkingScope['facility'];
+  areas?: DraftArea[];
+  tasks?: DraftTask[];
+}
 
 // Format address object into readable string
-const formatAddress = (address: any): string => {
+const formatAddress = (address: AddressValue): string => {
   if (!address) return '';
   if (typeof address === 'string') return address;
 
@@ -208,10 +218,10 @@ const formatFrequency = (value: string | null | undefined) => {
 const normalizeServiceBullet = (value: string): string =>
   value.replace(/^[\s*-•]+/, '').trim();
 
-type ServiceTaskGroup = {
+interface ServiceTaskGroup {
   label: string;
   tasks: string[];
-};
+}
 
 const ServiceTaskStepper = ({
   serviceId,
@@ -314,10 +324,7 @@ const buildServiceTaskGroups = (
   const grouped = new Map<string, Set<string>>();
 
   const addTask = (label: string, value: string) => {
-    let normalized = value.trim();
-    while (normalized.startsWith('-') || normalized.startsWith('*')) {
-      normalized = normalized.slice(1).trimStart();
-    }
+    const normalized = normalizeServiceBullet(value);
     if (!normalized) return;
     const normalizedLabel = serviceTaskGroupLabel(label);
     if (!grouped.has(normalizedLabel)) {
@@ -793,13 +800,13 @@ const normalizeLabel = (value: string | null | undefined, fallback: string) => {
   return trimmed || fallback;
 };
 
-const getAreaComparisonKey = (area: Record<string, any>, index: number) =>
+const getAreaComparisonKey = (area: DraftArea, index: number) =>
   area.id || area.tempId || `${normalizeLabel(area.name, `Area ${index + 1}`)}-${index}`;
 
-const getAreaDisplayName = (area: Record<string, any>, index: number) =>
+const getAreaDisplayName = (area: DraftArea, index: number) =>
   normalizeLabel(area.name, area.areaType?.name || `Area ${index + 1}`);
 
-const getTaskComparisonKey = (task: Record<string, any>, index: number) =>
+const getTaskComparisonKey = (task: DraftTask, index: number) =>
   task.id ||
   task.tempId ||
   [
@@ -809,10 +816,10 @@ const getTaskComparisonKey = (task: Record<string, any>, index: number) =>
     index,
   ].join(':');
 
-const getTaskDisplayName = (task: Record<string, any>, index: number) =>
+const getTaskDisplayName = (task: DraftTask, index: number) =>
   normalizeLabel(task.customName, task.taskTemplate?.name || `Task ${index + 1}`);
 
-const getTaskAreaNameMap = (areas: Record<string, any>[]) => {
+const getTaskAreaNameMap = (areas: DraftArea[]) => {
   const map = new Map<string, string>();
   areas.forEach((area, index) => {
     const id = area.id || area.tempId;
@@ -824,7 +831,7 @@ const getTaskAreaNameMap = (areas: Record<string, any>[]) => {
 };
 
 const describeTaskForComparison = (
-  task: Record<string, any>,
+  task: DraftTask,
   index: number,
   areaNameMap: Map<string, string>
 ) => {
@@ -834,10 +841,10 @@ const describeTaskForComparison = (
 };
 
 const buildComparisonList = (
-  beforeItems: Record<string, any>[],
-  targetItems: Record<string, any>[],
-  getKey: (item: Record<string, any>, index: number) => string,
-  getLabel: (item: Record<string, any>, index: number) => string
+  beforeItems: DraftArea[] | DraftTask[],
+  targetItems: DraftArea[] | DraftTask[],
+  getKey: (item: DraftArea | DraftTask, index: number) => string,
+  getLabel: (item: DraftArea | DraftTask, index: number) => string
 ) => {
   const beforeMap = new Map(beforeItems.map((item, index) => [getKey(item, index), getLabel(item, index)]));
   const targetMap = new Map(targetItems.map((item, index) => [getKey(item, index), getLabel(item, index)]));
@@ -852,7 +859,7 @@ const buildComparisonList = (
   return { added, removed };
 };
 
-const getScheduleSummary = (scope: Record<string, any> | undefined) => {
+const getScheduleSummary = (scope: DraftScopeComparison | undefined) => {
   const frequency = formatFrequency(scope?.contract?.serviceFrequency);
   const days = getScheduleDays(scope?.contract?.serviceSchedule);
   if (days.length === 0) return frequency;
@@ -893,21 +900,29 @@ const getAmendmentActivityLabel = (action: string) => {
 
 const getAmendmentActivityDetails = (activity: {
   action: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }) => {
   const metadata = activity.metadata || {};
 
   switch (activity.action) {
     case 'rejected':
-      return metadata.rejectedReason ? `Reason: ${metadata.rejectedReason}` : null;
+      return typeof metadata.rejectedReason === 'string' ? `Reason: ${metadata.rejectedReason}` : null;
     case 'applied': {
       const parts = [
-        `${metadata.updatedAreaCount ?? 0} areas updated`,
-        `${metadata.createdAreaCount ?? 0} areas added`,
-        `${metadata.removedAreaCount ?? metadata.archivedAreaCount ?? 0} areas removed`,
-        `${metadata.updatedTaskCount ?? 0} tasks updated`,
-        `${metadata.createdTaskCount ?? 0} tasks added`,
-        `${metadata.removedTaskCount ?? metadata.archivedTaskCount ?? 0} tasks removed`,
+        `${typeof metadata.updatedAreaCount === 'number' ? metadata.updatedAreaCount : 0} areas updated`,
+        `${typeof metadata.createdAreaCount === 'number' ? metadata.createdAreaCount : 0} areas added`,
+        `${typeof metadata.removedAreaCount === 'number'
+          ? metadata.removedAreaCount
+          : typeof metadata.archivedAreaCount === 'number'
+            ? metadata.archivedAreaCount
+            : 0} areas removed`,
+        `${typeof metadata.updatedTaskCount === 'number' ? metadata.updatedTaskCount : 0} tasks updated`,
+        `${typeof metadata.createdTaskCount === 'number' ? metadata.createdTaskCount : 0} tasks added`,
+        `${typeof metadata.removedTaskCount === 'number'
+          ? metadata.removedTaskCount
+          : typeof metadata.archivedTaskCount === 'number'
+            ? metadata.archivedTaskCount
+            : 0} tasks removed`,
       ];
       return parts.join(' • ');
     }
@@ -923,7 +938,7 @@ const buildWorkingScopeForComparison = (
   const latestSnapshot =
     getLatestAmendmentSnapshot(amendment, 'after') ||
     getLatestAmendmentSnapshot(amendment, 'working');
-  const snapshotScope = (latestSnapshot?.scopeJson || {}) as Record<string, any>;
+  const snapshotScope = (latestSnapshot?.scopeJson || {}) as DraftScopeComparison;
 
   return {
     ...snapshotScope,
@@ -1201,8 +1216,8 @@ const ContractDetail = () => {
       } else {
         toast.success(teamId ? `${teamName || 'Team'} assigned successfully` : 'Team unassigned successfully');
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'Failed to assign team');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to assign team'));
     } finally {
       setAssigningTeam(false);
     }
@@ -1215,8 +1230,8 @@ const ContractDetail = () => {
       await updateContractStatus(contract.id, 'active');
       toast.success('Contract activated successfully');
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to activate contract');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to activate contract'));
     }
   };
 
@@ -1231,28 +1246,6 @@ const ContractDetail = () => {
     Boolean(contract?.signedDate) &&
     (contract?.status === 'sent' || contract?.status === 'viewed' || contract?.status === 'pending_signature');
 
-  const handleSign = async () => {
-    if (!contract) return;
-
-    const signedByName = prompt('Enter signer name:');
-    if (!signedByName) return;
-
-    const signedByEmail = prompt('Enter signer email:');
-    if (!signedByEmail) return;
-
-    try {
-      await signContract(contract.id, {
-        signedDate: new Date().toISOString().split('T')[0],
-        signedByName,
-        signedByEmail,
-      });
-      toast.success('Contract signed successfully');
-      refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to sign contract');
-    }
-  };
-
   const handleTerminate = async () => {
     if (!contract) return;
 
@@ -1265,8 +1258,8 @@ const ContractDetail = () => {
       await terminateContract(contract.id, { terminationReason: reason });
       toast.success('Contract terminated');
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to terminate contract');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to terminate contract'));
     }
   };
 
@@ -1341,8 +1334,8 @@ const ContractDetail = () => {
       toast.success('Contract renewed successfully');
       setShowRenewModal(false);
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to renew contract');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to renew contract'));
     } finally {
       setRenewing(false);
     }
@@ -1440,8 +1433,8 @@ const ContractDetail = () => {
       setShowAmendmentDetailModal(true);
       toast.success('Amendment draft created');
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to create amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to create amendment'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -1455,8 +1448,8 @@ const ContractDetail = () => {
       const detail = await getContractAmendmentApi(contract.id, amendmentId);
       setSelectedAmendment(detail);
       setShowAmendmentDetailModal(true);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to load amendment detail');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to load amendment detail'));
     } finally {
       setAmendmentDetailLoading(false);
     }
@@ -1882,8 +1875,8 @@ const ContractDetail = () => {
       setAmendmentScopeDirty(false);
       toast.success('Amendment draft saved');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to save amendment draft');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to save amendment draft'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -1917,8 +1910,8 @@ const ContractDetail = () => {
       setAmendmentScopeDirty(false);
       toast.success('Amendment price recalculated');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to recalculate amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to recalculate amendment'));
     } finally {
       setAmendmentPricingLoading(false);
     }
@@ -1976,8 +1969,8 @@ const ContractDetail = () => {
       setSelectedAmendment(updated);
       toast.success('Amendment submitted');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to submit amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to submit amendment'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -1991,8 +1984,8 @@ const ContractDetail = () => {
       setSelectedAmendment(updated);
       toast.success('Amendment approved');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to approve amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to approve amendment'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2006,8 +1999,8 @@ const ContractDetail = () => {
       setSelectedAmendment(result.amendment);
       toast.success('Amendment sent to client');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to send amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to send amendment'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2027,8 +2020,8 @@ const ContractDetail = () => {
       setSelectedAmendment(updated);
       toast.success('Amendment rejected');
       fetchAmendments(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to reject amendment');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to reject amendment'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2084,8 +2077,8 @@ const ContractDetail = () => {
         } ${summaryParts.join(' • ')}`
       );
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to apply contract change');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to apply contract change'));
     } finally {
       setAmendmentSubmitting(false);
     }
@@ -2131,8 +2124,8 @@ const ContractDetail = () => {
       await sendContract(contract.id, data);
       toast.success('Contract sent successfully');
       refreshAll(contract.id);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send contract');
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to send contract'));
       throw error;
     }
   };
@@ -2168,7 +2161,7 @@ const ContractDetail = () => {
     terminated: 4,
   };
   const currentPipelineIndex = pipelineStatusIndex[contract.status];
-  const pipelineDates: Array<string | null | undefined> = [
+  const pipelineDates: (string | null | undefined)[] = [
     contract.createdAt,
     contract.sentAt,
     contract.viewedAt,
@@ -2210,7 +2203,7 @@ const ContractDetail = () => {
     };
   });
   const beforeAmendmentSnapshot = getLatestAmendmentSnapshot(selectedAmendment, 'before');
-  const beforeAmendmentScope = (beforeAmendmentSnapshot?.scopeJson || {}) as Record<string, any>;
+  const beforeAmendmentScope = (beforeAmendmentSnapshot?.scopeJson || {}) as DraftScopeComparison;
   const targetAmendmentScope = buildWorkingScopeForComparison(
     selectedAmendment,
     amendmentWorkingScope
@@ -3403,7 +3396,7 @@ const ContractDetail = () => {
               onChange={(value) =>
                 setRenewalFormData({
                   ...renewalFormData,
-                  billingCycle: value as any,
+                  billingCycle: value as RenewContractInput['billingCycle'],
                 })
               }
             />
@@ -3418,7 +3411,7 @@ const ContractDetail = () => {
               onChange={(value) =>
                 setRenewalFormData({
                   ...renewalFormData,
-                  serviceFrequency: (value || null) as any,
+                  serviceFrequency: (value || null) as RenewContractInput['serviceFrequency'],
                 })
               }
             />
@@ -3662,7 +3655,7 @@ const ContractDetail = () => {
                         current
                           ? {
                               ...current,
-                              newServiceFrequency: (value || null) as any,
+                              newServiceFrequency: (value || null) as ContractAmendment['newServiceFrequency'],
                               newServiceSchedule: {
                                 ...(current.newServiceSchedule || {}),
                                 days: nextDays as ServiceSchedule['days'],

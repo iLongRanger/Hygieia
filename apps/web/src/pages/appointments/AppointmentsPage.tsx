@@ -18,6 +18,8 @@ import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
 import { listFacilities } from '../../lib/facilities';
+
+void React;
 import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
 import { PERMISSIONS } from '../../lib/permissions';
 import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../../types/crm';
@@ -1298,4 +1300,3 @@ const AppointmentsPage = () => {
 };
 
 export default AppointmentsPage;
-

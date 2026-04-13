@@ -1,4 +1,3 @@
-import React from 'react';
 import { Users, Calendar, Clock, BarChart3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { formatShortDate } from './account-constants';

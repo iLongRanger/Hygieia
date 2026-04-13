@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import { extractApiErrorMessage } from '../../lib/api';
 import {
   listTeams,
   createTeam,
@@ -120,9 +121,8 @@ const TeamsList = () => {
       setShowModal(false);
       resetForm();
       await fetchTeams();
-    } catch (error: any) {
-      const message = error?.response?.data?.error?.message || 'Failed to save team';
-      toast.error(message);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to save team'));
     } finally {
       setSaving(false);
     }
@@ -135,9 +135,8 @@ const TeamsList = () => {
       await archiveTeam(team.id);
       toast.success('Team archived');
       await fetchTeams();
-    } catch (error: any) {
-      const message = error?.response?.data?.error?.message || 'Failed to archive team';
-      toast.error(message);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to archive team'));
     }
   };
 

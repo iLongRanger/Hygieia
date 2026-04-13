@@ -31,6 +31,7 @@ import { listContracts } from '../../lib/contracts';
 import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import { getDateRange, getWeekRange, getDayRange } from '../../lib/calendar-utils';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { Job, JobStatus } from '../../types/job';
 import type { Contract } from '../../types/contract';
 import type { Team } from '../../types/team';
@@ -74,6 +75,25 @@ const getStatusIcon = (status: JobStatus) => {
     missed: AlertTriangle,
   };
   return icons[status];
+};
+
+interface JobListErrorDetails {
+  code?: string;
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  timezone?: string;
+}
+
+const getJobListErrorDetails = (error: unknown): JobListErrorDetails | null => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return null;
+  }
+
+  return (
+    error as {
+      response?: { data?: { error?: { details?: JobListErrorDetails } } };
+    }
+  ).response?.data?.error?.details || null;
 };
 
 const getAccountTypeBadge = (accountType?: string | null) => {
@@ -323,7 +343,7 @@ const JobsList = () => {
   };
 
   // No-op: jobs are created from contracts, not from calendar clicks
-  const handleCalendarCreateClick = () => {};
+  const handleCalendarCreateClick = () => undefined;
 
   const openGenerateModal = async () => {
     setShowGenerateModal(true);
@@ -400,12 +420,8 @@ const JobsList = () => {
 
       setShowGenerateModal(false);
       await fetchJobs();
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.error ||
-        'Failed to generate recurring jobs';
-      toast.error(message);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to generate recurring jobs'));
     } finally {
       setGenerating(false);
     }
@@ -416,8 +432,8 @@ const JobsList = () => {
       await startJob(id);
       toast.success('Job started');
       fetchJobs();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getJobListErrorDetails(error);
       const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
       if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
         const confirmed = confirm(
@@ -445,8 +461,8 @@ const JobsList = () => {
       await completeJob(id);
       toast.success('Job completed');
       fetchJobs();
-    } catch (error: any) {
-      const details = error?.response?.data?.error?.details;
+    } catch (error) {
+      const details = getJobListErrorDetails(error);
       if (details?.code === 'ACTIVE_CLOCK_IN_REQUIRED') {
         toast.error('Clock in to this job first, then complete it.');
         return;

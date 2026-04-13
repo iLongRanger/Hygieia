@@ -37,15 +37,15 @@ export interface PublicContractAmendment {
     };
     facility?: {
       name: string;
-      address: any;
+      address: Record<string, unknown>;
     } | null;
   };
-  snapshots?: Array<{
+  snapshots?: {
     id: string;
     snapshotType: string;
-    scopeJson: Record<string, any>;
+    scopeJson: Record<string, unknown>;
     createdAt: string;
-  }>;
+  }[];
 }
 
 export interface PublicContractAmendmentResponse {

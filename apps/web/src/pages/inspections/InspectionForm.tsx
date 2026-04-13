@@ -6,7 +6,6 @@ import {
   ClipboardCheck,
   Building2,
   Calendar,
-  User,
   FileText,
   CheckCircle2,
 } from 'lucide-react';
@@ -26,6 +25,7 @@ import {
 import { listFacilities } from '../../lib/facilities';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
+import { extractApiErrorMessage } from '../../lib/api';
 import type { CreateInspectionInput, UpdateInspectionInput, InspectionTemplateDetail } from '../../types/inspection';
 
 interface FacilityOption {
@@ -38,11 +38,11 @@ interface UserOption {
   id: string;
   fullName: string;
   email: string;
-  roles?: Array<{
+  roles?: {
     role: {
       key: string;
     };
-  }>;
+  }[];
 }
 
 interface ContractOption {
@@ -246,12 +246,9 @@ const InspectionForm = () => {
         toast.success('Inspection created successfully');
       }
       navigate('/inspections');
-    } catch (error: any) {
-      console.error('Failed to create inspection:', error.response?.data || error);
-      toast.error(
-        error.response?.data?.message ||
-          `Failed to ${isEditMode ? 'update' : 'create'} inspection`
-      );
+    } catch (error) {
+      console.error('Failed to create inspection:', error);
+      toast.error(extractApiErrorMessage(error, `Failed to ${isEditMode ? 'update' : 'create'} inspection`));
     } finally {
       setSaving(false);
     }

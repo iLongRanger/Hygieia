@@ -6,9 +6,6 @@ import {
   Send,
   DollarSign,
   Ban,
-  Building2,
-  Calendar,
-  FileText,
   Copy,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -155,8 +152,6 @@ const InvoiceDetail = () => {
       </div>
     );
   }
-
-  const isEditable = invoice.status === 'draft';
 
   return (
     <div className="space-y-6">
