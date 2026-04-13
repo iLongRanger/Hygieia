@@ -87,7 +87,7 @@ export interface PerHourTaskContext {
   fixtureMinutes: Record<string, number>;
 }
 
-type PerHourTaskSource = {
+interface PerHourTaskSource {
   id: string;
   areaId: string | null;
   cleaningFrequency: string;
@@ -104,7 +104,7 @@ type PerHourTaskSource = {
     fixtureMinutes: { fixtureTypeId: string; minutesPerFixture: number | null }[];
   } | null;
   fixtureMinutes: { fixtureTypeId: string; minutesPerFixture: number | null }[];
-};
+}
 
 export async function calculatePerHourPricing(
   options: CalculatePerHourPricingOptions
@@ -114,7 +114,6 @@ export async function calculatePerHourPricing(
     serviceFrequency,
     taskComplexity = 'standard',
     pricingPlanId,
-    workerCount = 1,
     excludedAreaIds = [],
     excludedTaskIds = [],
     facilityOverride,
@@ -131,15 +130,15 @@ export async function calculatePerHourPricing(
     ? {
         id: facilityOverride.facilityId,
         name: facilityOverride.facilityName,
-        buildingType: facilityOverride.buildingType || 'other',
+        buildingType: facilityOverride.buildingType ?? 'other',
         areas: facilityOverride.areas.map((area) => ({
           id: area.id,
           name: area.name,
           squareFeet: area.squareFeet,
           quantity: area.quantity ?? 1,
-          floorType: area.floorType || 'vct',
-          conditionLevel: area.conditionLevel || 'standard',
-          trafficLevel: area.trafficLevel || 'medium',
+          floorType: area.floorType ?? 'vct',
+          conditionLevel: area.conditionLevel ?? 'standard',
+          trafficLevel: area.trafficLevel ?? 'medium',
           roomCount: area.roomCount ?? 0,
           unitCount: area.unitCount ?? 0,
           fixtures: (area.fixtures ?? []).map((fixture) => ({
@@ -184,7 +183,7 @@ export async function calculatePerHourPricing(
     ? facilityOverride.tasks.map((task) => ({
         id: task.id,
         areaId: task.areaId ?? null,
-        cleaningFrequency: task.cleaningFrequency || 'daily',
+        cleaningFrequency: task.cleaningFrequency ?? 'daily',
         estimatedMinutes: task.estimatedMinutes ?? null,
         baseMinutesOverride: task.baseMinutesOverride ?? task.estimatedMinutes ?? null,
         perSqftMinutesOverride: task.perSqftMinutesOverride ?? null,
@@ -235,7 +234,7 @@ export async function calculatePerHourPricing(
       ).map((task) => ({
         id: task.id,
         areaId: task.areaId ?? null,
-        cleaningFrequency: task.cleaningFrequency || 'daily',
+        cleaningFrequency: task.cleaningFrequency ?? 'daily',
         estimatedMinutes: task.estimatedMinutes ? Number(task.estimatedMinutes) : null,
         baseMinutesOverride: task.baseMinutesOverride ? Number(task.baseMinutesOverride) : null,
         perSqftMinutesOverride: task.perSqftMinutesOverride ? Number(task.perSqftMinutesOverride) : null,
@@ -275,7 +274,7 @@ export async function calculatePerHourPricing(
   const conditionMultipliers = pricingSettings.conditionMultipliers as ConditionMultipliers;
   const minimumMonthlyCharge = Number(pricingSettings.minimumMonthlyCharge);
 
-  const buildingType = facility.buildingType || 'other';
+  const buildingType = facility.buildingType ?? 'other';
   const taskAddOn = taskComplexityAddOns[taskComplexity as keyof TaskComplexityAddOns] ?? 0;
   const selectedMonthlyVisits = getMonthlyVisits(serviceFrequency);
 
@@ -286,26 +285,29 @@ export async function calculatePerHourPricing(
     if (!tasksByArea.has(areaId)) {
       tasksByArea.set(areaId, []);
     }
-    tasksByArea.get(areaId)!.push(task);
+    const tasks = tasksByArea.get(areaId);
+    if (tasks) {
+      tasks.push(task);
+    }
   }
 
   const areaContexts: PerHourAreaContext[] = facility.areas.map((area) => {
     const fixtures = area.fixtures.map((fixture) => ({
       fixtureTypeId: fixture.fixtureTypeId,
       count: fixture.count,
-      minutesPerItem: Number(fixture.minutesPerItem) || 0,
+      minutesPerItem: Number(fixture.minutesPerItem ?? 0),
     }));
     const tasks = buildPerHourTasks(tasksByArea.get(area.id) ?? []);
     return {
       id: area.id,
-      name: area.name || area.areaType.name,
-      squareFeet: Number(area.squareFeet) || 0,
-      quantity: area.quantity || 1,
-      floorType: area.floorType || 'vct',
-      conditionLevel: area.conditionLevel || 'standard',
-      trafficLevel: area.trafficLevel || 'medium',
-      roomCount: area.roomCount || 0,
-      unitCount: area.unitCount || 0,
+      name: area.name ?? area.areaType.name,
+      squareFeet: Number(area.squareFeet ?? 0),
+      quantity: area.quantity ?? 1,
+      floorType: area.floorType ?? 'vct',
+      conditionLevel: area.conditionLevel ?? 'standard',
+      trafficLevel: area.trafficLevel ?? 'medium',
+      roomCount: area.roomCount ?? 0,
+      unitCount: area.unitCount ?? 0,
       fixtures,
       tasks,
     };
@@ -315,8 +317,8 @@ export async function calculatePerHourPricing(
   const facilityWideTasks = tasksByArea.get(null) ?? [];
   if (facilityWideTasks.length > 0) {
     const totalSquareFeet = facility.areas.reduce((sum, area) => {
-      const sqFt = Number(area.squareFeet) || 0;
-      const qty = area.quantity || 1;
+      const sqFt = Number(area.squareFeet ?? 0);
+      const qty = area.quantity ?? 1;
       return sum + sqFt * qty;
     }, 0);
 
@@ -460,7 +462,7 @@ export async function calculatePerHourPricing(
     : totalMonthlyCost;
 
   // Apply profit margin: Final Price = Cost / (1 - Margin)
-  let subtotal = totalMonthlyCost / (1 - targetProfitMargin);
+  const subtotal = totalMonthlyCost / (1 - targetProfitMargin);
   const profitAmount = subtotal - totalMonthlyCost;
 
   // Apply task complexity add-on
