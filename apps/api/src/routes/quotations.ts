@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import {
@@ -14,7 +15,6 @@ import {
   createQuotation,
   updateQuotation,
   sendQuotation,
-  markQuotationAsViewed,
   acceptQuotation,
   rejectQuotation,
   archiveQuotation,
@@ -24,8 +24,9 @@ import {
   setQuotationPricingApproval,
 } from '../services/quotationService';
 import { generatePublicToken } from '../services/quotationPublicService';
-import { sendNotificationEmail } from '../services/emailService';
+import { sendEmail } from '../services/emailService';
 import { buildQuotationEmailHtmlWithBranding, buildQuotationEmailSubject } from '../templates/quotationEmail';
+import { generateQuotationPdf } from '../services/pdfService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
 import logger from '../lib/logger';
 import { isEmailConfigured } from '../config/email';
@@ -39,10 +40,19 @@ import {
   rejectQuotationSchema,
   quotationPricingApprovalSchema,
 } from '../schemas/quotation';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
+type QuotationPayload = NonNullable<Awaited<ReturnType<typeof getQuotationById>>>;
+
+function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  return req.user;
+}
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];
@@ -131,16 +141,17 @@ router.post(
         path: req.path,
         method: req.method,
       });
+      const user = requireAuthenticatedUser(req);
 
       const quotation = await createQuotation({
         ...parsed.data,
-        createdByUserId: req.user!.id,
+        createdByUserId: user.id,
       });
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'created',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       res.status(201).json({ data: quotation });
@@ -160,16 +171,17 @@ router.put(
     try {
       const parsed = updateQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+      const user = requireAuthenticatedUser(req);
 
       const quotation = await updateQuotation(req.params.id, {
         ...parsed.data,
-        updatedByUserId: req.user!.id,
+        updatedByUserId: user.id,
       });
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'updated',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       res.json({ data: quotation });
@@ -192,6 +204,7 @@ router.post(
 
       const frontendBaseUrl = requireFrontendBaseUrl();
       const quotation = await sendQuotation(req.params.id);
+      const user = requireAuthenticatedUser(req);
 
       // Generate public token
       const token = await generatePublicToken(quotation.id);
@@ -200,14 +213,17 @@ router.post(
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'sent',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         metadata: { publicUrl },
       });
 
       // Send email if configured and recipient provided
-      const emailTo = parsed.data?.emailTo || quotation.account.billingEmail;
+      const emailTo = parsed.data?.emailTo ?? quotation.account.billingEmail;
       if (emailTo && isEmailConfigured()) {
         try {
+          logger.info(`Generating PDF for quotation ${quotation.quotationNumber}`);
+          const pdfBuffer = await generateQuotationPdf(quotation as QuotationPayload);
+
           const branding = await getBrandingSafe();
           const html = buildQuotationEmailHtmlWithBranding(
             {
@@ -226,7 +242,16 @@ router.post(
             branding
           );
           const subject = buildQuotationEmailSubject(quotation.quotationNumber, quotation.title);
-          await sendNotificationEmail(emailTo, subject, html);
+          await sendEmail({
+            to: emailTo,
+            subject,
+            html,
+            attachments: [{
+              filename: `${quotation.quotationNumber}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf',
+            }],
+          });
         } catch (emailError) {
           logger.error('Failed to send quotation email:', emailError);
         }
@@ -277,13 +302,14 @@ router.post(
     try {
       const parsed = acceptQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+      const user = requireAuthenticatedUser(req);
 
       const quotation = await acceptQuotation(req.params.id, parsed.data?.signatureName);
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'accepted',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       res.json({ data: quotation });
@@ -303,18 +329,19 @@ router.post(
     try {
       const parsed = quotationPricingApprovalSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+      const user = requireAuthenticatedUser(req);
 
       const quotation = await setQuotationPricingApproval({
         quotationId: req.params.id,
         action: parsed.data.action,
         reason: parsed.data.reason,
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: `pricing_approval_${parsed.data.action}`,
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         metadata: parsed.data.reason ? { reason: parsed.data.reason } : undefined,
       });
 
@@ -334,13 +361,14 @@ router.post(
     try {
       const parsed = rejectQuotationSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
+      const user = requireAuthenticatedUser(req);
 
       const quotation = await rejectQuotation(req.params.id, parsed.data.rejectionReason);
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'rejected',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
         metadata: { rejectionReason: parsed.data.rejectionReason },
       });
 
@@ -359,12 +387,13 @@ router.post(
   verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const quotation = await archiveQuotation(req.params.id);
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'archived',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       res.json({ data: quotation });
@@ -382,12 +411,13 @@ router.post(
   verifyOwnership({ resourceType: 'quotation' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
       const quotation = await restoreQuotation(req.params.id);
 
       await logQuotationActivity({
         quotationId: quotation.id,
         action: 'restored',
-        performedByUserId: req.user!.id,
+        performedByUserId: user.id,
       });
 
       res.json({ data: quotation });
@@ -407,6 +437,34 @@ router.delete(
     try {
       await deleteQuotation(req.params.id);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Download quotation as PDF
+router.get(
+  '/:id/pdf',
+  authenticate,
+  requirePermission(PERMISSIONS.QUOTATIONS_READ),
+  verifyOwnership({ resourceType: 'quotation' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const quotation = await getQuotationById(req.params.id);
+      if (!quotation) {
+        throw new NotFoundError('Quotation not found');
+      }
+
+      const pdfBuffer = await generateQuotationPdf(quotation as QuotationPayload);
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${quotation.quotationNumber}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
     } catch (error) {
       next(error);
     }
