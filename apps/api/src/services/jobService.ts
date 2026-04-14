@@ -157,7 +157,7 @@ async function notifyJobAssignmentRecipients(input: {
     id: string;
     jobNumber: string;
     facility: { name: string };
-    assignedTeam: { id: string; name: string } | null;
+    assignedTeam: { id: string; name?: string } | null;
     assignedToUser: { id: string } | null;
   };
   previousAssignedTeamId?: string | null;
@@ -202,7 +202,9 @@ async function notifyJobAssignmentRecipients(input: {
 
   await createBulkNotifications(recipientUserIds, {
     type: 'job_assigned',
-    title: `Job ${input.job.jobNumber} assigned to ${input.job.assignedTeam.name}`,
+    title: input.job.assignedTeam.name
+      ? `Job ${input.job.jobNumber} assigned to ${input.job.assignedTeam.name}`
+      : `Job ${input.job.jobNumber} assigned to your team`,
     body: `Job ${input.job.jobNumber} at ${input.job.facility.name} has been assigned to your team.`,
     metadata: {
       jobId: input.job.id,
@@ -211,6 +213,73 @@ async function notifyJobAssignmentRecipients(input: {
       assignedTeamId: nextAssignedTeamId,
     },
   });
+}
+
+async function notifyBulkJobAssignmentRecipients(input: {
+  jobs: {
+    id: string;
+    jobNumber: string;
+    facility: { name: string };
+    assignedTeamId: string | null;
+    assignedToUserId: string | null;
+  }[];
+  nextAssignedTeamId: string | null;
+  nextAssignedToUserId: string | null;
+}): Promise<number> {
+  let notifications = 0;
+
+  for (const job of input.jobs) {
+    const previousAssignedTeamId = job.assignedTeamId ?? null;
+    const previousAssignedToUserId = job.assignedToUserId ?? null;
+
+    if (
+      previousAssignedTeamId === input.nextAssignedTeamId &&
+      previousAssignedToUserId === input.nextAssignedToUserId
+    ) {
+      continue;
+    }
+
+    if (input.nextAssignedToUserId) {
+      const created = await createNotification({
+        userId: input.nextAssignedToUserId,
+        type: 'job_assigned',
+        title: `Job ${job.jobNumber} assigned to you`,
+        body: `You have been assigned job ${job.jobNumber} at ${job.facility.name}.`,
+        metadata: {
+          jobId: job.id,
+          jobNumber: job.jobNumber,
+          facilityName: job.facility.name,
+          assignedToUserId: input.nextAssignedToUserId,
+        },
+      });
+      if (created) {
+        notifications += 1;
+      }
+      continue;
+    }
+
+    if (input.nextAssignedTeamId) {
+      const recipientUserIds = await getTeamUserIds(input.nextAssignedTeamId);
+      if (recipientUserIds.length === 0) {
+        continue;
+      }
+
+      const created = await createBulkNotifications(recipientUserIds, {
+        type: 'job_assigned',
+        title: `Job ${job.jobNumber} assigned to your team`,
+        body: `Job ${job.jobNumber} at ${job.facility.name} has been assigned to your team.`,
+        metadata: {
+          jobId: job.id,
+          jobNumber: job.jobNumber,
+          facilityName: job.facility.name,
+          assignedTeamId: input.nextAssignedTeamId,
+        },
+      });
+      notifications += created.length;
+    }
+  }
+
+  return notifications;
 }
 
 // ==================== Select Objects ====================
@@ -1308,11 +1377,19 @@ export async function reassignScheduledJobsForContract(input: {
     },
     select: {
       id: true,
+      jobNumber: true,
+      facility: {
+        select: {
+          name: true,
+        },
+      },
+      assignedTeamId: true,
+      assignedToUserId: true,
     },
   });
 
   if (jobs.length === 0) {
-    return { updated: 0 };
+    return { updated: 0, notifications: 0 };
   }
 
   await prisma.$transaction(async (tx) => {
@@ -1340,7 +1417,13 @@ export async function reassignScheduledJobsForContract(input: {
     });
   });
 
-  return { updated: jobs.length };
+  const notifications = await notifyBulkJobAssignmentRecipients({
+    jobs,
+    nextAssignedTeamId: input.assignedTeamId,
+    nextAssignedToUserId: input.assignedToUserId,
+  });
+
+  return { updated: jobs.length, notifications };
 }
 
 // ==================== Generate Jobs From Contract ====================

@@ -11,6 +11,7 @@ import {
   createJob,
   generateJobsFromContract,
   listJobs,
+  reassignScheduledJobsForContract,
   runRecurringJobsAutoRegenerationCycle,
   runJobNearingEndNoCheckInAlertCycle,
   updateJob,
@@ -25,6 +26,7 @@ jest.mock('../../lib/prisma', () => ({
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     facilityTask: {
       findMany: jest.fn(),
@@ -48,6 +50,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     jobActivity: {
       create: jest.fn(),
+      createMany: jest.fn(),
       findMany: jest.fn(),
     },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
@@ -75,7 +78,11 @@ describe('jobService', () => {
     );
     (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.jobTask.createMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prisma.job.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prisma.jobActivity.createMany as jest.Mock).mockResolvedValue({ count: 0 });
     (sendSms as jest.Mock).mockResolvedValue(true);
+    (createNotification as jest.Mock).mockResolvedValue({ id: 'notification-1' });
+    (createBulkNotifications as jest.Mock).mockResolvedValue([]);
   });
 
   it('listJobs applies filters and pagination', async () => {
@@ -354,6 +361,80 @@ describe('jobService', () => {
 
     expect(createNotification).not.toHaveBeenCalled();
     expect(createBulkNotifications).not.toHaveBeenCalled();
+  });
+
+  it('reassignScheduledJobsForContract notifies each newly reassigned direct assignee', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'job-10',
+        jobNumber: 'WO-2026-0100',
+        facility: { name: 'HQ' },
+        assignedTeamId: 'team-1',
+        assignedToUserId: null,
+      },
+      {
+        id: 'job-11',
+        jobNumber: 'WO-2026-0101',
+        facility: { name: 'Branch' },
+        assignedTeamId: null,
+        assignedToUserId: 'user-4',
+      },
+    ]);
+
+    const result = await reassignScheduledJobsForContract({
+      contractId: 'contract-1',
+      assignedTeamId: null,
+      assignedToUserId: 'user-8',
+      performedByUserId: 'admin-1',
+    });
+
+    expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          assignedTeamId: null,
+          assignedToUserId: 'user-8',
+        },
+      })
+    );
+    expect(createNotification).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ updated: 2, notifications: 2 });
+  });
+
+  it('reassignScheduledJobsForContract notifies team members for team-based reassignment', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'job-10',
+        jobNumber: 'WO-2026-0100',
+        facility: { name: 'HQ' },
+        assignedTeamId: null,
+        assignedToUserId: 'user-4',
+      },
+    ]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: 'team-user-1' },
+      { id: 'team-user-2' },
+    ]);
+    (createBulkNotifications as jest.Mock).mockResolvedValue([{ id: 'n-1' }, { id: 'n-2' }]);
+
+    const result = await reassignScheduledJobsForContract({
+      contractId: 'contract-1',
+      assignedTeamId: 'team-9',
+      assignedToUserId: null,
+      performedByUserId: 'admin-1',
+    });
+
+    expect(createBulkNotifications).toHaveBeenCalledWith(
+      ['team-user-1', 'team-user-2'],
+      expect.objectContaining({
+        type: 'job_assigned',
+        title: 'Job WO-2026-0100 assigned to your team',
+        metadata: expect.objectContaining({
+          jobId: 'job-10',
+          assignedTeamId: 'team-9',
+        }),
+      })
+    );
+    expect(result).toEqual({ updated: 1, notifications: 2 });
   });
 
   it('generateJobsFromContract skips dates that already have jobs', async () => {

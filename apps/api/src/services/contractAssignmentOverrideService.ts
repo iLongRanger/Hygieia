@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
-import { createBulkNotifications } from './notificationService';
+import { createBulkNotifications, createNotification } from './notificationService';
 import { logContractActivity } from './contractActivityService';
 
 export interface ContractAssignmentOverrideCycleResult {
@@ -57,6 +57,64 @@ async function getTeamUserIds(teamId: string | null): Promise<string[]> {
   return users.map((user) => user.id);
 }
 
+async function notifyReassignedJobs(input: {
+  jobs: {
+    id: string;
+    jobNumber: string;
+    facility: { name: string };
+    assignedTeamId: string | null;
+    assignedToUserId: string | null;
+  }[];
+  nextTeamId: string | null;
+  nextUserId: string | null;
+}): Promise<number> {
+  let notifications = 0;
+  const teamRecipientIds = input.nextTeamId ? await getTeamUserIds(input.nextTeamId) : [];
+
+  for (const job of input.jobs) {
+    if (
+      job.assignedTeamId === input.nextTeamId &&
+      job.assignedToUserId === input.nextUserId
+    ) {
+      continue;
+    }
+
+    if (input.nextUserId) {
+      const created = await createNotification({
+        userId: input.nextUserId,
+        type: 'job_assigned',
+        title: `Job ${job.jobNumber} assigned to you`,
+        body: `You have been assigned job ${job.jobNumber} at ${job.facility.name}.`,
+        metadata: {
+          jobId: job.id,
+          jobNumber: job.jobNumber,
+          facilityName: job.facility.name,
+          assignedToUserId: input.nextUserId,
+        },
+      });
+      if (created) notifications += 1;
+      continue;
+    }
+
+    if (teamRecipientIds.length > 0 && input.nextTeamId) {
+      const created = await createBulkNotifications(teamRecipientIds, {
+        type: 'job_assigned',
+        title: `Job ${job.jobNumber} assigned to your team`,
+        body: `Job ${job.jobNumber} at ${job.facility.name} has been assigned to your team.`,
+        metadata: {
+          jobId: job.id,
+          jobNumber: job.jobNumber,
+          facilityName: job.facility.name,
+          assignedTeamId: input.nextTeamId,
+        },
+      });
+      notifications += created.length;
+    }
+  }
+
+  return notifications;
+}
+
 async function applyContractAssignmentOverride(
   contract: DueContractOverride
 ): Promise<{
@@ -75,6 +133,27 @@ async function applyContractAssignmentOverride(
   if (!nextTeamId && !nextUserId) {
     return { applied: false, reassignedJobs: 0, notifications: 0 };
   }
+
+  const affectedJobs = await prisma.job.findMany({
+    where: {
+      contractId: contract.id,
+      status: 'scheduled',
+      scheduledDate: {
+        gte: effectiveDate,
+      },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      facility: {
+        select: {
+          name: true,
+        },
+      },
+      assignedTeamId: true,
+      assignedToUserId: true,
+    },
+  });
 
   const updateResult = await prisma.$transaction(async (tx) => {
     const jobsResult = await tx.job.updateMany({
@@ -164,6 +243,12 @@ async function applyContractAssignmentOverride(
     });
     notifications = created.length;
   }
+
+  notifications += await notifyReassignedJobs({
+    jobs: affectedJobs,
+    nextTeamId,
+    nextUserId,
+  });
 
   return {
     applied: true,
