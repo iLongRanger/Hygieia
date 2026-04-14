@@ -15,6 +15,7 @@ import {
   Receipt,
   FileText,
   CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -73,6 +74,23 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
     missed: 'error',
   };
   return map[status] || 'default';
+};
+
+const getSettlementVariant = (status?: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch (status) {
+    case 'ready':
+    case 'approved_both':
+      return 'success';
+    case 'needs_review':
+      return 'warning';
+    case 'approved_invoice_only':
+    case 'approved_payroll_only':
+      return 'info';
+    case 'excluded':
+      return 'error';
+    default:
+      return 'default';
+  }
 };
 
 const dashboardBackState = { state: { backLabel: 'Dashboard', backPath: '/' } };
@@ -339,6 +357,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [unassignedJobs, setUnassignedJobs] = useState<Job[]>([]);
+  const [reviewJobs, setReviewJobs] = useState<Job[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -350,7 +370,19 @@ const AdminDashboard = () => {
             ? { dateFrom, dateTo }
             : { period };
         const data = await getDashboardStats(params);
-        if (!cancelled) setStats(data);
+        const [unassignedJobsResult, reviewJobsResult] = await Promise.all([
+          listJobs({ limit: 20, status: 'scheduled' }),
+          listJobs({ limit: 6, settlementStatus: 'needs_review' }),
+        ]);
+        if (!cancelled) {
+          setStats(data);
+          setUnassignedJobs(
+            (unassignedJobsResult.data || []).filter(
+              (job) => !job.assignedTeam && !job.assignedToUser
+            )
+          );
+          setReviewJobs(reviewJobsResult.data || []);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -593,6 +625,135 @@ const AdminDashboard = () => {
             bg="bg-rose-100 dark:bg-rose-900/30"
             onClick={() => navigate('/invoices', dashboardBackState)}
           />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-warning-100 p-2 dark:bg-warning-900/30">
+                  <AlertTriangle className="h-5 w-5 text-warning-700 dark:text-warning-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+                    Jobs Needing Review
+                  </h3>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    Settlement exceptions blocking invoice and payroll
+                  </p>
+                </div>
+              </div>
+              <Badge variant="warning" size="sm">{reviewJobs.length}</Badge>
+            </div>
+
+            {reviewJobs.length === 0 ? (
+              <div className="mt-6 rounded-xl border border-surface-200 bg-surface-50 px-4 py-8 text-center dark:border-surface-700 dark:bg-surface-800/40">
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-200">
+                  No jobs currently need review
+                </p>
+                <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                  Exception follow-up items will appear here as soon as the scheduler flags them.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {reviewJobs.map((job) => (
+                  <button
+                    key={job.id}
+                    onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
+                    className="flex w-full items-start justify-between rounded-lg border border-warning-200 bg-warning-50/60 px-4 py-3 text-left transition-colors hover:bg-warning-100 dark:border-warning-800/60 dark:bg-warning-900/10 dark:hover:bg-warning-900/20"
+                  >
+                    <div>
+                      <div className="font-medium text-surface-900 dark:text-surface-100">
+                        {job.jobNumber}
+                      </div>
+                      <div className="text-sm text-surface-600 dark:text-surface-300">
+                        {job.facility.name} • {job.account.name}
+                      </div>
+                      <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                        {new Date(job.scheduledDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          timeZone: 'UTC',
+                        })}
+                      </div>
+                      {job.settlement?.issueSummary && (
+                        <div className="mt-2 text-xs text-warning-900 dark:text-warning-100">
+                          {job.settlement.issueSummary}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={getSettlementVariant(job.settlement?.status)} size="sm">
+                      Needs Review
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
+                  <Briefcase className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+                    Unassigned Jobs
+                  </h3>
+                  <p className="text-sm text-surface-500 dark:text-surface-400">
+                    Scheduled work missing a direct owner
+                  </p>
+                </div>
+              </div>
+              <Badge variant="warning" size="sm">{unassignedJobs.length}</Badge>
+            </div>
+
+            {unassignedJobs.length === 0 ? (
+              <div className="mt-6 rounded-xl border border-surface-200 bg-surface-50 px-4 py-8 text-center dark:border-surface-700 dark:bg-surface-800/40">
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-200">
+                  No unassigned jobs right now
+                </p>
+                <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                  Scheduled jobs without an assignee will appear here for quick triage.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {unassignedJobs.map((job) => (
+                  <button
+                    key={job.id}
+                    onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
+                    className="flex w-full items-start justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                  >
+                    <div>
+                      <div className="font-medium text-surface-900 dark:text-surface-100">
+                        {job.jobNumber}
+                      </div>
+                      <div className="text-sm text-surface-600 dark:text-surface-300">
+                        {job.facility.name} • {job.account.name}
+                      </div>
+                      <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                        {new Date(job.scheduledDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          timeZone: 'UTC',
+                        })}
+                      </div>
+                    </div>
+                    <Badge variant={getJobStatusVariant(job.status)} size="sm">
+                      {job.status.replace(/_/g, ' ')}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
       )}
 

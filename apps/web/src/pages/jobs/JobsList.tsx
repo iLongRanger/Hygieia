@@ -855,17 +855,58 @@ const JobsList = () => {
 
       {!loading && !(viewMode === 'calendar' && calendarLoading) && settlementReviewJobs.length > 0 && (
         <Card>
-          <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800/60 dark:bg-warning-900/20">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
-              <div>
-                <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
-                  {settlementReviewJobs.length} job{settlementReviewJobs.length === 1 ? '' : 's'} waiting on settlement review
-                </p>
-                <p className="text-xs text-warning-800 dark:text-surface-200">
-                  These jobs are blocked from invoice and payroll generation until the exception is reviewed.
-                </p>
+          <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-800/60 dark:bg-warning-900/20">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
+                <div>
+                  <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
+                    Jobs Needing Review
+                  </p>
+                  <p className="mt-1 text-xs text-warning-800 dark:text-surface-200">
+                    {settlementReviewJobs.length} job{settlementReviewJobs.length === 1 ? '' : 's'} are blocked from invoice and payroll generation until the exception is reviewed.
+                  </p>
+                </div>
               </div>
+              <Badge variant="warning">{settlementReviewJobs.length}</Badge>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {settlementReviewJobs.slice(0, 6).map((job) => (
+                <button
+                  key={job.id}
+                  type="button"
+                  onClick={() => navigate(`/jobs/${job.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } })}
+                  className="rounded-lg border border-warning-200 bg-surface-50 px-3 py-3 text-left transition-colors hover:bg-warning-100/60 dark:border-warning-800/60 dark:bg-surface-900/40 dark:hover:bg-warning-900/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">
+                        {job.jobNumber}
+                      </p>
+                      <p className="mt-1 text-xs text-surface-600 dark:text-surface-300">
+                        {job.facility.name}
+                      </p>
+                    </div>
+                    <Badge variant="warning">Needs Review</Badge>
+                  </div>
+                  <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
+                    {new Date(job.scheduledDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      timeZone: 'UTC',
+                    })}
+                    {job.assignedToUser?.fullName ? ` • ${job.assignedToUser.fullName}` : ''}
+                    {!job.assignedToUser && job.assignedTeam?.name ? ` • ${job.assignedTeam.name}` : ''}
+                  </p>
+                  {job.settlement?.issueSummary && (
+                    <p className="mt-2 line-clamp-2 text-xs text-warning-900 dark:text-warning-100">
+                      {job.settlement.issueSummary}
+                    </p>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </Card>
