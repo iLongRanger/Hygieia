@@ -234,8 +234,8 @@ router.post(
       }
 
       await consumePasswordSetToken(token, password, {
-        smsChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
-        smsCode: typeof code === 'string' ? code : undefined,
+        emailChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
+        emailCode: typeof code === 'string' ? code : undefined,
       });
 
       return res.json({ message: 'Password set successfully. You can now log in.' });
@@ -250,7 +250,7 @@ router.post(
   authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { token, password } = req.body;
+      const { token, password, challengeId, code } = req.body;
 
       if (!token || !password) {
         return res.status(400).json({ error: 'Token and password are required' });
@@ -263,7 +263,10 @@ router.post(
         });
       }
 
-      await consumePasswordSetToken(token, password);
+      await consumePasswordSetToken(token, password, {
+        emailChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
+        emailCode: typeof code === 'string' ? code : undefined,
+      });
 
       clearRefreshTokenCookie(res);
       return res.json({ message: 'Password reset successfully. You can now log in.' });

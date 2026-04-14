@@ -13,7 +13,7 @@ const SetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [maskedPhone, setMaskedPhone] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [challengeRequired, setChallengeRequired] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -31,19 +31,11 @@ const SetPassword = () => {
     try {
       const response = await api.post('/auth/set-password/challenge', { token });
       const result = response.data.data as
-        | { required: false }
-        | { required: true; challengeId: string; maskedPhone: string };
-
-      if (!result.required) {
-        setChallengeRequired(false);
-        setChallengeId(null);
-        setMaskedPhone('');
-        return;
-      }
+        | { required: true; challengeId: string; maskedEmail: string };
 
       setChallengeRequired(true);
       setChallengeId(result.challengeId);
-      setMaskedPhone(result.maskedPhone);
+      setMaskedEmail(result.maskedEmail);
       setVerificationCode('');
     } catch (err) {
       setError(extractApiErrorMessage(err, 'Failed to send a verification code.'));
@@ -125,9 +117,9 @@ const SetPassword = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {challengeRequired && (
             <>
-              <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
-                We sent a verification code to <span className="font-medium">{maskedPhone}</span>.
-              </div>
+                <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                We sent a verification code to <span className="font-medium">{maskedEmail}</span>.
+                </div>
               <Input
                 label="Verification code"
                 value={verificationCode}

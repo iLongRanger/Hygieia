@@ -133,7 +133,7 @@ export interface AuthenticatedUser {
   phone?: string | null;
 }
 
-export type EmailChallengePurpose = 'login';
+export type EmailChallengePurpose = 'login' | 'password_setup';
 export type SmsChallengePurpose = 'password_setup' | 'password_change';
 
 export interface EmailChallengeResult {
@@ -294,7 +294,7 @@ export async function authenticateCredentials(
 export async function issueSmsVerificationChallenge(
   userId: string,
   purpose: SmsChallengePurpose
-): Promise<SmsChallengeResult> {
+): Promise<{ challengeId: string; maskedPhone: string; expiresInSeconds: number }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -740,8 +740,8 @@ export async function consumePasswordSetToken(
   token: string,
   password: string,
   options?: {
-    smsChallengeId?: string;
-    smsCode?: string;
+    emailChallengeId?: string;
+    emailCode?: string;
   }
 ): Promise<void> {
   const passwordValidation = validatePassword(password);
@@ -764,26 +764,18 @@ export async function consumePasswordSetToken(
     throw new UnauthorizedError('Invalid or expired token');
   }
 
-  const userRoles = await prisma.userRole.findMany({
-    where: { userId: passwordToken.userId },
-    include: { role: true },
-  });
+  if (!options?.emailChallengeId || !options?.emailCode) {
+    throw new UnauthorizedError('Email verification is required before setting this password.');
+  }
 
-  const requiresSubcontractorVerification = resolvePrimaryUserRole(userRoles) === 'subcontractor';
-  if (requiresSubcontractorVerification) {
-    if (!options?.smsChallengeId || !options?.smsCode) {
-      throw new UnauthorizedError('SMS verification is required before setting this password.');
-    }
+  const verifiedChallenge = await verifyEmailVerificationChallenge(
+    options.emailChallengeId,
+    options.emailCode,
+    'password_setup'
+  );
 
-    const verifiedChallenge = await verifySmsChallenge(
-      options.smsChallengeId,
-      options.smsCode,
-      'password_setup'
-    );
-
-    if (verifiedChallenge.userId !== passwordToken.userId) {
-      throw new UnauthorizedError('Verification code does not match this password setup link.');
-    }
+  if (verifiedChallenge.userId !== passwordToken.userId) {
+    throw new UnauthorizedError('Verification code does not match this password setup link.');
   }
 
   const passwordHash = await hashPassword(password);
@@ -805,8 +797,7 @@ export async function consumePasswordSetToken(
 export async function beginPasswordSetVerification(
   token: string
 ): Promise<
-  | ({ required: false })
-  | ({ required: true } & SmsChallengeResult)
+  { required: true } & EmailChallengeResult
 > {
   const passwordToken = await prisma.passwordSetToken.findUnique({
     where: { token },
@@ -838,11 +829,7 @@ export async function beginPasswordSetVerification(
     throw new UnauthorizedError('Invalid or expired token');
   }
 
-  if (resolvePrimaryUserRole(passwordToken.user.roles) !== 'subcontractor') {
-    return { required: false };
-  }
-
-  const challenge = await issueSmsVerificationChallenge(passwordToken.userId, 'password_setup');
+  const challenge = await issueEmailVerificationChallenge(passwordToken.userId, 'password_setup');
   return {
     required: true,
     ...challenge,

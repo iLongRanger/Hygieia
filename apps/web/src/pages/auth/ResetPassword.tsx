@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { resetPassword } from '../../lib/profile';
+import { requestPasswordTokenChallenge, resetPassword } from '../../lib/profile';
 import { extractApiErrorMessage } from '../../lib/api';
+import { Shield } from 'lucide-react';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -11,9 +12,41 @@ const ResetPassword = () => {
   const token = searchParams.get('token');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+
+  const requestVerificationCode = async () => {
+    if (!token) {
+      return;
+    }
+
+    setSendingCode(true);
+    setError('');
+
+    try {
+      const result = await requestPasswordTokenChallenge(token);
+      setChallengeId(result.challengeId);
+      setMaskedEmail(result.maskedEmail);
+      setVerificationCode('');
+    } catch (err) {
+      setError(extractApiErrorMessage(err, 'Failed to send a verification code.'));
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    void requestVerificationCode();
+  }, [token]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -34,9 +67,14 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!challengeId || !verificationCode.trim()) {
+      setError('Verification code is required.');
+      return;
+    }
+
     try {
       setLoading(true);
-      await resetPassword(token, password);
+      await resetPassword(token, password, challengeId, verificationCode.trim());
       setSuccess(true);
     } catch (err) {
       setError(extractApiErrorMessage(err, 'Failed to reset password. The link may have expired.'));
@@ -77,6 +115,28 @@ const ResetPassword = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+            We sent a verification code to <span className="font-medium">{maskedEmail}</span>.
+          </div>
+          <Input
+            label="Verification code"
+            value={verificationCode}
+            onChange={(event) => setVerificationCode(event.target.value)}
+            placeholder="Enter the 6-digit code"
+            icon={<Shield className="h-5 w-5" />}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => void requestVerificationCode()}
+            isLoading={sendingCode}
+          >
+            Resend verification code
+          </Button>
           <Input
             label="New Password"
             type="password"

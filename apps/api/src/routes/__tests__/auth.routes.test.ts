@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import { Application } from 'express';
+import type { Application } from 'express';
 import * as authService from '../../services/authService';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 
@@ -119,11 +119,11 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /set-password/challenge', () => {
-    it('should return subcontractor verification requirements', async () => {
+    it('should return email verification requirements for password setup', async () => {
       const mockChallenge = {
         required: true,
         challengeId: 'challenge-2',
-        maskedPhone: '***-***-5555',
+        maskedEmail: 'te***@example.com',
         expiresInSeconds: 600,
       };
 
@@ -285,6 +285,32 @@ describe('Auth Routes', () => {
         {
           smsChallengeId: 'challenge-3',
           smsCode: '123456',
+        }
+      );
+    });
+  });
+
+  describe('POST /set-password', () => {
+    it('should forward the email challenge and code to the password setup service', async () => {
+      (authService.consumePasswordSetToken as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/v1/auth/set-password')
+        .send({
+          token: 'password-token',
+          password: 'Updated123',
+          challengeId: 'challenge-4',
+          code: '654321',
+        })
+        .expect(200);
+
+      expect(response.body.message).toContain('Password set successfully');
+      expect(authService.consumePasswordSetToken).toHaveBeenCalledWith(
+        'password-token',
+        'Updated123',
+        {
+          emailChallengeId: 'challenge-4',
+          emailCode: '654321',
         }
       );
     });
