@@ -41,6 +41,11 @@ const formatCurrency = (value: string) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(value));
 };
 
+const formatDate = (value: string | null) => {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString();
+};
+
 const PAYMENT_METHODS = [
   { value: 'check', label: 'Check' },
   { value: 'ach', label: 'ACH' },
@@ -307,10 +312,26 @@ const InvoiceDetail = () => {
               </thead>
               <tbody>
                 {invoice.items.map((item) => (
-                  <tr key={item.id} className="border-b border-surface-100 dark:border-surface-800">
+                  <tr key={item.id} className="border-b border-surface-100 dark:border-surface-800 align-top">
                     <td className="py-2 text-surface-700 dark:text-surface-300">
-                      <Badge variant="default" size="sm" className="mr-2">{item.itemType}</Badge>
-                      {item.description}
+                      <div>
+                        <Badge variant="default" size="sm" className="mr-2">{item.itemType}</Badge>
+                        {item.description}
+                      </div>
+                      {item.jobAllocations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {item.jobAllocations.map((allocation) => (
+                            <span
+                              key={allocation.id}
+                              className="inline-flex items-center rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300"
+                            >
+                              {allocation.job.jobNumber}
+                              {allocation.job.facility ? ` • ${allocation.job.facility.name}` : ''}
+                              {` • ${formatDate(allocation.job.scheduledDate)}`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2 text-right text-surface-600">{parseFloat(item.quantity).toFixed(2)}</td>
                     <td className="py-2 text-right text-surface-600">{formatCurrency(item.unitPrice)}</td>
@@ -342,6 +363,37 @@ const InvoiceDetail = () => {
           </div>
         </div>
       </Card>
+
+      {invoice.jobAllocations.length > 0 && (
+        <Card>
+          <div className="p-4">
+            <h3 className="mb-4 text-sm font-semibold text-surface-900 dark:text-surface-50">
+              Linked Jobs
+            </h3>
+            <div className="space-y-2">
+              {invoice.jobAllocations.map((allocation) => (
+                <div
+                  key={allocation.id}
+                  className="flex flex-col gap-1 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-surface-900 dark:text-surface-100">
+                      {allocation.job.jobNumber}
+                      {allocation.job.facility ? ` • ${allocation.job.facility.name}` : ''}
+                    </p>
+                    <p className="text-xs text-surface-500">
+                      Service date {formatDate(allocation.job.scheduledDate)}
+                    </p>
+                  </div>
+                  <div className="text-sm font-medium text-surface-700 dark:text-surface-200">
+                    {formatCurrency(allocation.allocatedAmount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Notes */}
       {invoice.notes && (

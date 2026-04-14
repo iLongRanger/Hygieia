@@ -52,6 +52,7 @@ export interface InvoiceDetail {
   facility: { id: string; name: string } | null;
   createdByUser: { id: string; fullName: string };
   items: InvoiceItem[];
+  jobAllocations: InvoiceJobAllocation[];
   payments: InvoicePayment[];
   activities: InvoiceActivity[];
 }
@@ -64,6 +65,21 @@ export interface InvoiceItem {
   unitPrice: string;
   totalPrice: string;
   sortOrder: number;
+  jobAllocations: InvoiceJobAllocation[];
+}
+
+export interface InvoiceJobAllocation {
+  id: string;
+  jobId: string;
+  invoiceItemId?: string | null;
+  allocatedAmount: string;
+  createdAt?: string;
+  job: {
+    id: string;
+    jobNumber: string;
+    scheduledDate: string;
+    facility: { id: string; name: string } | null;
+  };
 }
 
 export interface InvoicePayment {

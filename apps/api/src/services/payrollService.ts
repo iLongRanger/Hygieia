@@ -25,6 +25,127 @@ const TIER_PERCENTAGES: Record<string, number> = {
   tier3: 0.55,
 };
 
+const eligiblePayrollJobSelect = Prisma.validator<Prisma.JobSelect>()({
+  id: true,
+  jobNumber: true,
+  contractId: true,
+  scheduledDate: true,
+  contract: {
+    select: {
+      id: true,
+      monthlyValue: true,
+      subcontractorTier: true,
+      serviceFrequency: true,
+    },
+  },
+  timeEntries: {
+    where: {
+      clockOut: { not: null },
+      status: { in: ['completed', 'approved'] },
+    },
+    select: {
+      id: true,
+      userId: true,
+      contractId: true,
+      clockIn: true,
+      clockOut: true,
+      totalHours: true,
+      user: {
+        select: {
+          id: true,
+          payType: true,
+          hourlyPayRate: true,
+          roles: {
+            select: {
+              role: { select: { key: true } },
+            },
+          },
+        },
+      },
+    },
+  },
+});
+
+type EligiblePayrollJob = Prisma.JobGetPayload<{
+  select: typeof eligiblePayrollJobSelect;
+}>;
+
+type GroupedPayrollEntry = {
+  userId: string;
+  payType: 'hourly' | 'percentage';
+  contractId: string | null;
+  contractMonthlyValue: number | null;
+  tierPercentage: number | null;
+  hourlyRate: number | null;
+  scheduledHours: number;
+  grossPay: number;
+  status: 'valid' | 'flagged';
+  flagReasons: string[];
+  jobAllocations: {
+    jobId: string;
+    allocatedHours: number | null;
+    allocatedGrossPay: number;
+  }[];
+};
+
+function getPayrollEligibilityFilter() {
+  return {
+    status: 'completed',
+    payrollAllocations: { none: {} },
+    OR: [
+      { settlementReview: null },
+      { settlementReview: { status: { in: ['ready', 'approved_payroll_only', 'approved_both'] } } },
+    ],
+  } satisfies Prisma.JobWhereInput;
+}
+
+function getMonthlyVisits(frequency: string | null | undefined): number {
+  const normalized = (frequency ?? '').trim().toLowerCase();
+  const visitsMap: Record<string, number> = {
+    '1x_week': 4.33,
+    '2x_week': 8.67,
+    '3x_week': 13,
+    '4x_week': 17.33,
+    '5x_week': 21.67,
+    '7x_week': 30.33,
+    daily: 30,
+    weekly: 4.33,
+    biweekly: 2.17,
+    bi_weekly: 2.17,
+    monthly: 1,
+    quarterly: 0.33,
+  };
+
+  return visitsMap[normalized] ?? 4.33;
+}
+
+function calculateEntryHours(entry: {
+  totalHours: Prisma.Decimal | null;
+  clockIn: Date;
+  clockOut: Date | null;
+}): number {
+  if (entry.totalHours != null) {
+    return Number(entry.totalHours);
+  }
+  if (!entry.clockOut) {
+    return 0;
+  }
+
+  const diffMs = entry.clockOut.getTime() - entry.clockIn.getTime();
+  return Math.max(0, Math.round((diffMs / 3600000) * 100) / 100);
+}
+
+function derivePerJobBillableAmount(contract: {
+  monthlyValue: Prisma.Decimal;
+  serviceFrequency: string | null;
+} | null): number {
+  if (!contract) return 0;
+  const monthlyValue = Number(contract.monthlyValue);
+  const monthlyVisits = getMonthlyVisits(contract.serviceFrequency);
+  if (monthlyVisits <= 0) return monthlyValue;
+  return Math.round((monthlyValue / monthlyVisits) * 100) / 100;
+}
+
 // ==================== Select objects ====================
 
 const payrollRunListSelect = {
@@ -109,6 +230,24 @@ export async function getPayrollRunById(
           user: { select: payrollEntryUserSelect },
           contract: { select: { id: true, contractNumber: true, title: true } },
           adjustedByUser: { select: { id: true, fullName: true } },
+          jobAllocations: {
+            select: {
+              id: true,
+              jobId: true,
+              allocatedHours: true,
+              allocatedGrossPay: true,
+              createdAt: true,
+              job: {
+                select: {
+                  id: true,
+                  jobNumber: true,
+                  scheduledDate: true,
+                  facility: { select: { id: true, name: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' as const },
+          },
         },
         orderBy: { createdAt: 'asc' as const },
       },
@@ -157,28 +296,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
     throw new BadRequestError('A payroll run already exists for this period');
   }
 
-  // 2. Get all active cleaners and subcontractors
-  const workers = await prisma.user.findMany({
-    where: {
-      status: 'active',
-      roles: {
-        some: {
-          role: { key: { in: ['cleaner', 'subcontractor'] } },
-        },
-      },
-    },
-    select: {
-      id: true,
-      fullName: true,
-      payType: true,
-      hourlyPayRate: true,
-      roles: {
-        select: { role: { select: { key: true } } },
-      },
-    },
-  });
-
-  // 3. Get default hourly rate from pricingSettings
+  // 2. Get default hourly rate from pricingSettings
   const pricingSettings = await prisma.pricingSettings.findFirst({
     select: { laborCostPerHour: true },
   });
@@ -186,168 +304,80 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
     ? parseFloat(pricingSettings.laborCostPerHour.toString())
     : 18;
 
-  // 4. Build entries for each worker
-  const entryData: Prisma.PayrollEntryCreateManyInput[] = [];
+  const eligibleJobs = await prisma.job.findMany({
+    where: {
+      ...getPayrollEligibilityFilter(),
+      scheduledDate: { gte: pStart, lte: pEnd },
+    },
+    select: eligiblePayrollJobSelect,
+    orderBy: [{ scheduledDate: 'asc' }, { createdAt: 'asc' }],
+  });
 
-  for (const worker of workers) {
-    const workerRoles = worker.roles.map((r) => r.role.key);
-    const isSubcontractor = workerRoles.includes('subcontractor');
+  const groupedEntries = new Map<string, GroupedPayrollEntry>();
 
-    // Determine effective payType
-    let effectivePayType: string;
-    if (worker.payType) {
-      effectivePayType = worker.payType;
-    } else {
-      effectivePayType = isSubcontractor ? 'percentage' : 'hourly';
+  for (const job of eligibleJobs) {
+    const completedEntries = job.timeEntries.filter((entry) => calculateEntryHours(entry) > 0);
+    if (completedEntries.length === 0) {
+      continue;
     }
 
-    if (effectivePayType === 'percentage') {
-      // ---- PERCENTAGE PAY ----
-      // Get active contracts assigned to this worker
-      const contracts = await prisma.contract.findMany({
-        where: {
-          assignedToUserId: worker.id,
-          status: 'active',
-        },
-        select: {
-          id: true,
-          monthlyValue: true,
-          subcontractorTier: true,
-        },
-      });
+    const totalJobHours = completedEntries.reduce(
+      (sum, entry) => sum + calculateEntryHours(entry),
+      0
+    );
+    const jobBillableAmount = derivePerJobBillableAmount(job.contract);
 
-      for (const contract of contracts) {
-        const tier = contract.subcontractorTier ?? 'tier1';
-        const tierPct = TIER_PERCENTAGES[tier] ?? 0.45;
+    for (const entry of completedEntries) {
+      const workerRoles = entry.user.roles.map((role) => role.role.key);
+      const isSubcontractor = workerRoles.includes('subcontractor');
+      const payType = ((entry.user.payType ?? (isSubcontractor ? 'percentage' : 'hourly')) === 'percentage'
+        ? 'percentage'
+        : 'hourly') as 'hourly' | 'percentage';
 
-        // Check attendance: did they clock in AND out for each scheduled job in the period?
-        const scheduledJobs = await prisma.job.findMany({
-          where: {
-            contractId: contract.id,
-            assignedToUserId: worker.id,
-            scheduledDate: { gte: pStart, lte: pEnd },
-          },
-          select: { id: true },
-        });
-
-        let allPresent = true;
-        const missedJobIds: string[] = [];
-
-        for (const job of scheduledJobs) {
-          const timeEntry = await prisma.timeEntry.findFirst({
-            where: {
-              userId: worker.id,
-              jobId: job.id,
-              NOT: { clockOut: null },
-            },
-          });
-          if (!timeEntry) {
-            allPresent = false;
-            missedJobIds.push(job.id);
-          }
-        }
-
-        const monthlyValue = parseFloat(contract.monthlyValue.toString());
-        const grossPay = Math.round(monthlyValue * tierPct * 100) / 100;
-
-        entryData.push({
-          payrollRunId: '', // placeholder, set in transaction
-          userId: worker.id,
-          payType: 'percentage',
-          contractId: contract.id,
-          contractMonthlyValue: new Prisma.Decimal(monthlyValue),
-          tierPercentage: new Prisma.Decimal(tierPct * 100),
-          grossPay: new Prisma.Decimal(grossPay),
-          status: allPresent ? 'valid' : 'flagged',
-          flagReason: allPresent
-            ? null
-            : `Missed clock-in/out for ${missedJobIds.length} of ${scheduledJobs.length} scheduled jobs`,
-        });
-      }
-    } else {
-      // ---- HOURLY PAY ----
-      const hourlyRate = worker.hourlyPayRate
-        ? parseFloat(worker.hourlyPayRate.toString())
+      const hours = calculateEntryHours(entry);
+      const share = totalJobHours > 0 ? hours / totalJobHours : 1 / completedEntries.length;
+      const tier = job.contract?.subcontractorTier ?? 'tier1';
+      const tierPct = TIER_PERCENTAGES[tier] ?? 0.45;
+      const hourlyRate = entry.user.hourlyPayRate
+        ? Number(entry.user.hourlyPayRate)
         : defaultHourlyRate;
+      const grossPay = payType === 'percentage'
+        ? Math.round(jobBillableAmount * tierPct * share * 100) / 100
+        : Math.round(hours * hourlyRate * 100) / 100;
 
-      // Get scheduled jobs in the period
-      const scheduledJobs = await prisma.job.findMany({
-        where: {
-          assignedToUserId: worker.id,
-          scheduledDate: { gte: pStart, lte: pEnd },
-        },
-        select: {
-          id: true,
-          scheduledStartTime: true,
-          scheduledEndTime: true,
-          estimatedHours: true,
-          status: true,
-        },
+      const key = payType === 'percentage'
+        ? `${entry.userId}:percentage:${job.contractId ?? 'none'}`
+        : `${entry.userId}:hourly:${hourlyRate}`;
+
+      const existingGroup: GroupedPayrollEntry = groupedEntries.get(key) ?? {
+        userId: entry.userId,
+        payType,
+        contractId: payType === 'percentage' ? (job.contractId ?? null) : null,
+        contractMonthlyValue: payType === 'percentage' && job.contract ? Number(job.contract.monthlyValue) : null,
+        tierPercentage: payType === 'percentage' ? tierPct * 100 : null,
+        hourlyRate: payType === 'hourly' ? hourlyRate : null,
+        scheduledHours: 0,
+        grossPay: 0,
+        status: 'valid' as const,
+        flagReasons: [],
+        jobAllocations: [],
+      };
+
+      existingGroup.scheduledHours += hours;
+      existingGroup.grossPay += grossPay;
+      existingGroup.jobAllocations.push({
+        jobId: job.id,
+        allocatedHours: payType === 'hourly' ? hours : null,
+        allocatedGrossPay: grossPay,
       });
 
-      let totalScheduledHours = 0;
-      let flagged = false;
-      const flagReasons: string[] = [];
-
-      for (const job of scheduledJobs) {
-        // Calculate scheduled hours for this job
-        let jobHours = 0;
-        if (job.estimatedHours) {
-          jobHours = parseFloat(job.estimatedHours.toString());
-        } else if (job.scheduledStartTime && job.scheduledEndTime) {
-          const diffMs =
-            new Date(job.scheduledEndTime).getTime() -
-            new Date(job.scheduledStartTime).getTime();
-          jobHours = diffMs / (1000 * 60 * 60);
-        }
-
-        // Check if they have a time entry with clock-in for this job
-        const timeEntry = await prisma.timeEntry.findFirst({
-          where: {
-            userId: worker.id,
-            jobId: job.id,
-          },
-          select: { clockIn: true, clockOut: true, totalHours: true, status: true },
-        });
-
-        if (!timeEntry?.clockIn) {
-          flagged = true;
-          flagReasons.push(`Missing check-in for job ${job.id}`);
-          // Don't add these hours
-          continue;
-        }
-
-        // Check if completed within expected hours
-        if (!timeEntry.clockOut) {
-          flagged = true;
-          flagReasons.push(`Missing clock-out for job ${job.id}`);
-          continue;
-        }
-
-        // Worker checked in and completed - pay scheduled hours
-        totalScheduledHours += jobHours;
-      }
-
-      const grossPay = Math.round(totalScheduledHours * hourlyRate * 100) / 100;
-
-      entryData.push({
-        payrollRunId: '', // placeholder
-        userId: worker.id,
-        payType: 'hourly',
-        scheduledHours: new Prisma.Decimal(Math.round(totalScheduledHours * 100) / 100),
-        hourlyRate: new Prisma.Decimal(hourlyRate),
-        grossPay: new Prisma.Decimal(grossPay),
-        status: flagged ? 'flagged' : 'valid',
-        flagReason: flagged ? flagReasons.join('; ') : null,
-      });
+      groupedEntries.set(key, existingGroup);
     }
   }
 
-  // 5. Create PayrollRun + entries in a transaction
-  const totalGross = entryData.reduce(
-    (sum, e) => sum + parseFloat(e.grossPay.toString()),
-    0
-  );
+  const groupedValues = [...groupedEntries.values()].filter((entry) => entry.jobAllocations.length > 0);
+
+  const totalGross = groupedValues.reduce((sum, entry) => sum + entry.grossPay, 0);
 
   const run = await prisma.$transaction(async (tx) => {
     const payrollRun = await tx.payrollRun.create({
@@ -356,17 +386,48 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
         periodEnd: pEnd,
         status: 'draft',
         totalGrossPay: new Prisma.Decimal(Math.round(totalGross * 100) / 100),
-        totalEntries: entryData.length,
+        totalEntries: groupedValues.length,
       },
     });
 
-    if (entryData.length > 0) {
-      await tx.payrollEntry.createMany({
-        data: entryData.map((e) => ({
-          ...e,
+    for (const groupedEntry of groupedValues) {
+      const payrollEntry = await tx.payrollEntry.create({
+        data: {
           payrollRunId: payrollRun.id,
-        })),
+          userId: groupedEntry.userId,
+          payType: groupedEntry.payType,
+          scheduledHours: groupedEntry.payType === 'hourly'
+            ? new Prisma.Decimal(Math.round(groupedEntry.scheduledHours * 100) / 100)
+            : null,
+          hourlyRate: groupedEntry.hourlyRate != null
+            ? new Prisma.Decimal(groupedEntry.hourlyRate)
+            : null,
+          contractId: groupedEntry.contractId,
+          contractMonthlyValue: groupedEntry.contractMonthlyValue != null
+            ? new Prisma.Decimal(groupedEntry.contractMonthlyValue)
+            : null,
+          tierPercentage: groupedEntry.tierPercentage != null
+            ? new Prisma.Decimal(groupedEntry.tierPercentage)
+            : null,
+          grossPay: new Prisma.Decimal(Math.round(groupedEntry.grossPay * 100) / 100),
+          status: groupedEntry.status,
+          flagReason: groupedEntry.flagReasons.length > 0 ? groupedEntry.flagReasons.join('; ') : null,
+        },
+        select: { id: true },
       });
+
+      for (const allocation of groupedEntry.jobAllocations) {
+        await tx.payrollJobAllocation.create({
+          data: {
+            payrollEntryId: payrollEntry.id,
+            jobId: allocation.jobId,
+            allocatedHours: allocation.allocatedHours != null
+              ? new Prisma.Decimal(Math.round(allocation.allocatedHours * 100) / 100)
+              : null,
+            allocatedGrossPay: new Prisma.Decimal(Math.round(allocation.allocatedGrossPay * 100) / 100),
+          },
+        });
+      }
     }
 
     return payrollRun;

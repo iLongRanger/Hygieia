@@ -33,6 +33,21 @@ export interface PayrollEntry {
   user: { id: string; fullName: string; role: string };
   contract: { id: string; contractNumber: string; title: string } | null;
   adjustedByUser: { id: string; fullName: string } | null;
+  jobAllocations: PayrollJobAllocation[];
+}
+
+export interface PayrollJobAllocation {
+  id: string;
+  jobId: string;
+  allocatedHours: string | null;
+  allocatedGrossPay: string;
+  createdAt: string;
+  job: {
+    id: string;
+    jobNumber: string;
+    scheduledDate: string;
+    facility: { id: string; name: string } | null;
+  };
 }
 
 export interface PayrollRunDetail extends PayrollRun {

@@ -82,6 +82,11 @@ const formatDate = (value: string | null) => {
   return new Date(value).toLocaleDateString();
 };
 
+const formatHours = (value: string | null) => {
+  if (!value) return '-';
+  return `${parseFloat(value).toFixed(2)} hrs`;
+};
+
 // ---- Generate Modal ----
 interface GenerateModalProps {
   isOpen: boolean;
@@ -625,7 +630,7 @@ const PayrollPage = () => {
                                 <tr
                                   key={entry.id}
                                   className={cn(
-                                    'border-b border-surface-100 last:border-0 dark:border-surface-800',
+                                    'border-b border-surface-100 last:border-0 dark:border-surface-800 align-top',
                                     entry.status === 'flagged' &&
                                       'bg-amber-50 dark:bg-amber-900/20'
                                   )}
@@ -634,11 +639,28 @@ const PayrollPage = () => {
                                     {entry.payType}
                                   </td>
                                   <td className="py-2 pr-4 text-surface-700 dark:text-surface-300">
-                                    {entry.payType === 'hourly'
-                                      ? `${entry.scheduledHours || '-'} hrs`
-                                      : entry.contract
-                                        ? entry.contract.contractNumber
-                                        : '-'}
+                                    <div>
+                                      {entry.payType === 'hourly'
+                                        ? formatHours(entry.scheduledHours)
+                                        : entry.contract
+                                          ? entry.contract.contractNumber
+                                          : '-'}
+                                    </div>
+                                    {entry.jobAllocations.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {entry.jobAllocations.map((allocation) => (
+                                          <div
+                                            key={allocation.id}
+                                            className="text-xs text-surface-500 dark:text-surface-400"
+                                          >
+                                            {allocation.job.jobNumber}
+                                            {allocation.job.facility ? ` • ${allocation.job.facility.name}` : ''}
+                                            {` • ${formatDate(allocation.job.scheduledDate)}`}
+                                            {allocation.allocatedHours ? ` • ${formatHours(allocation.allocatedHours)}` : ''}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="py-2 pr-4 text-surface-700 dark:text-surface-300">
                                     {entry.payType === 'hourly'
@@ -650,7 +672,19 @@ const PayrollPage = () => {
                                         : '-'}
                                   </td>
                                   <td className="py-2 pr-4 font-medium text-surface-900 dark:text-surface-100">
-                                    {formatCurrency(entry.grossPay)}
+                                    <div>{formatCurrency(entry.grossPay)}</div>
+                                    {entry.jobAllocations.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {entry.jobAllocations.map((allocation) => (
+                                          <div
+                                            key={allocation.id}
+                                            className="text-xs font-normal text-surface-500 dark:text-surface-400"
+                                          >
+                                            {formatCurrency(allocation.allocatedGrossPay)}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="py-2 pr-4">
                                     <div className="flex items-center gap-1.5">

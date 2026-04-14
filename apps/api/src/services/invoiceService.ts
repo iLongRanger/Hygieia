@@ -65,6 +65,35 @@ interface NormalizedPeriodWindow {
   timezone: string;
 }
 
+const jobInvoiceCandidateSelect = Prisma.validator<Prisma.JobSelect>()({
+  id: true,
+  jobNumber: true,
+  accountId: true,
+  contractId: true,
+  facilityId: true,
+  scheduledDate: true,
+  facility: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  contract: {
+    select: {
+      id: true,
+      contractNumber: true,
+      title: true,
+      monthlyValue: true,
+      paymentTerms: true,
+      serviceFrequency: true,
+    },
+  },
+});
+
+type JobInvoiceCandidate = Prisma.JobGetPayload<{
+  select: typeof jobInvoiceCandidateSelect;
+}>;
+
 const MAX_BILLING_WINDOW_DAYS = 31;
 const DEFAULT_PAYMENT_TERMS_DAYS = 30;
 const batchIdempotencyLocks = new Map<string, number>();
@@ -130,8 +159,42 @@ const invoiceDetailSelect = {
       unitPrice: true,
       totalPrice: true,
       sortOrder: true,
+      jobAllocations: {
+        select: {
+          id: true,
+          jobId: true,
+          allocatedAmount: true,
+          job: {
+            select: {
+              id: true,
+              jobNumber: true,
+              scheduledDate: true,
+              facility: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' as const },
+      },
     },
     orderBy: { sortOrder: 'asc' as const },
+  },
+  jobAllocations: {
+    select: {
+      id: true,
+      jobId: true,
+      invoiceItemId: true,
+      allocatedAmount: true,
+      createdAt: true,
+      job: {
+        select: {
+          id: true,
+          jobNumber: true,
+          scheduledDate: true,
+          facility: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' as const },
   },
   payments: {
     select: {
@@ -250,6 +313,26 @@ function addUtcDays(date: Date, days: number): Date {
   return next;
 }
 
+function getMonthlyVisits(frequency: string | null | undefined): number {
+  const normalized = (frequency ?? '').trim().toLowerCase();
+  const visitsMap: Record<string, number> = {
+    '1x_week': 4.33,
+    '2x_week': 8.67,
+    '3x_week': 13,
+    '4x_week': 17.33,
+    '5x_week': 21.67,
+    '7x_week': 30.33,
+    daily: 30,
+    weekly: 4.33,
+    biweekly: 2.17,
+    bi_weekly: 2.17,
+    monthly: 1,
+    quarterly: 0.33,
+  };
+
+  return visitsMap[normalized] ?? 4.33;
+}
+
 function getUtcDaysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
@@ -291,6 +374,137 @@ function runWithBatchIdempotency<T>(key: string, action: () => Promise<T>): Prom
   batchIdempotencyLocks.set(key, now + BATCH_IDEMPOTENCY_TTL_MS);
   return action().finally(() => {
     batchIdempotencyLocks.delete(key);
+  });
+}
+
+function getJobBasedInvoiceEligibilityFilter() {
+  return {
+    status: 'completed',
+    invoiceAllocations: { none: {} },
+    OR: [
+      { settlementReview: null },
+      { settlementReview: { status: { in: ['ready', 'approved_invoice_only', 'approved_both'] } } },
+    ],
+  } satisfies Prisma.JobWhereInput;
+}
+
+function derivePerJobBillableAmount(job: JobInvoiceCandidate): number {
+  if (!job.contract) {
+    throw new BadRequestError(`Job ${job.jobNumber} is missing a contract and cannot be invoiced automatically`);
+  }
+
+  const monthlyValue = Number(job.contract.monthlyValue);
+  const monthlyVisits = getMonthlyVisits(job.contract.serviceFrequency);
+  if (monthlyVisits <= 0) {
+    throw new BadRequestError(`Job ${job.jobNumber} has an invalid service frequency for billing`);
+  }
+
+  return Math.round((monthlyValue / monthlyVisits) * 100) / 100;
+}
+
+async function createInvoiceFromJobs(input: {
+  jobs: JobInvoiceCandidate[];
+  createdByUserId: string;
+  issueDate: Date;
+  dueDate: Date;
+  periodStart: Date;
+  periodEnd: Date;
+}) {
+  if (input.jobs.length === 0) {
+    throw new BadRequestError('No eligible completed jobs found to invoice');
+  }
+
+  const accountId = input.jobs[0].accountId;
+  const contractId =
+    input.jobs.every((job) => job.contractId && job.contractId === input.jobs[0].contractId)
+      ? input.jobs[0].contractId
+      : null;
+  const facilityId =
+    input.jobs.every((job) => job.facilityId === input.jobs[0].facilityId)
+      ? input.jobs[0].facilityId
+      : null;
+
+  const jobLineItems = input.jobs.map((job, index) => ({
+    job,
+    sortOrder: index,
+    amount: derivePerJobBillableAmount(job),
+    description: `${job.facility.name} - ${job.contract?.title ?? job.contract?.contractNumber ?? 'Completed Service'} (${job.jobNumber} on ${toIsoDate(job.scheduledDate)})`,
+  }));
+
+  const subtotal = Math.round(
+    jobLineItems.reduce((sum, item) => sum + item.amount, 0) * 100
+  ) / 100;
+  const invoiceNumber = await generateInvoiceNumber();
+  const { hashedToken } = createPublicTokenPair();
+
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.create({
+      data: {
+        invoiceNumber,
+        contractId,
+        accountId,
+        facilityId,
+        issueDate: input.issueDate,
+        dueDate: input.dueDate,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        subtotal: new Prisma.Decimal(subtotal),
+        taxRate: new Prisma.Decimal(0),
+        taxAmount: new Prisma.Decimal(0),
+        totalAmount: new Prisma.Decimal(subtotal),
+        balanceDue: new Prisma.Decimal(subtotal),
+        createdByUserId: input.createdByUserId,
+        publicToken: hashedToken,
+        publicTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      },
+      select: { id: true },
+    });
+
+    for (const lineItem of jobLineItems) {
+      const createdItem = await tx.invoiceItem.create({
+        data: {
+          invoiceId: invoice.id,
+          itemType: 'service',
+          description: lineItem.description,
+          quantity: new Prisma.Decimal(1),
+          unitPrice: new Prisma.Decimal(lineItem.amount),
+          totalPrice: new Prisma.Decimal(lineItem.amount),
+          sortOrder: lineItem.sortOrder,
+        },
+        select: { id: true },
+      });
+
+      await tx.invoiceJobAllocation.create({
+        data: {
+          invoiceId: invoice.id,
+          invoiceItemId: createdItem.id,
+          jobId: lineItem.job.id,
+          allocatedAmount: new Prisma.Decimal(lineItem.amount),
+        },
+      });
+    }
+
+    await tx.invoiceActivity.create({
+      data: {
+        invoiceId: invoice.id,
+        action: 'created',
+        performedByUserId: input.createdByUserId,
+        metadata: {
+          source: 'completed_jobs',
+          jobCount: input.jobs.length,
+          jobIds: input.jobs.map((job) => job.id),
+        },
+      },
+    });
+
+    const detailed = await tx.invoice.findUnique({
+      where: { id: invoice.id },
+      select: invoiceDetailSelect,
+    });
+    if (!detailed) {
+      throw new NotFoundError('Invoice not found after creation');
+    }
+    return detailed;
   });
 }
 
@@ -605,11 +819,6 @@ export async function generateInvoiceFromContract(
     where: { id: contractId },
     select: {
       id: true,
-      contractNumber: true,
-      title: true,
-      accountId: true,
-      facilityId: true,
-      monthlyValue: true,
       paymentTerms: true,
       facility: { select: { address: true } },
     },
@@ -618,46 +827,35 @@ export async function generateInvoiceFromContract(
 
   const timezone = extractFacilityTimezone(contract.facility?.address) ?? 'UTC';
   const window = normalizePeriodWindow(periodStart, periodEnd, timezone);
-  const monthlyValue = parseFloat(contract.monthlyValue.toString());
-  const serviceAmount = prorate
-    ? calculateProratedAmount(monthlyValue, window.start, window.end)
-    : monthlyValue;
   const termsDays = parsePaymentTermsDays(contract.paymentTerms);
   const issueDate = atUtcStartOfDay(window.end);
   const dueDate = atUtcStartOfDay(addUtcDays(issueDate, termsDays));
+  void prorate;
 
-  const overlap = await prisma.invoice.findFirst({
+  const jobs = await prisma.job.findMany({
     where: {
+      ...getJobBasedInvoiceEligibilityFilter(),
       contractId,
-      status: { notIn: ['void', 'written_off'] },
-      periodStart: { not: null, lte: window.end },
-      periodEnd: { not: null, gte: window.start },
+      scheduledDate: {
+        gte: atUtcStartOfDay(window.start),
+        lte: atUtcStartOfDay(window.end),
+      },
     },
-    select: { id: true, invoiceNumber: true },
+    select: jobInvoiceCandidateSelect,
+    orderBy: [{ scheduledDate: 'asc' }, { createdAt: 'asc' }],
   });
-  if (overlap) {
-    throw new BadRequestError(
-      `Invoice ${overlap.invoiceNumber} already covers an overlapping billing period`
-    );
+
+  if (jobs.length === 0) {
+    throw new BadRequestError('No eligible completed jobs found for this contract and period');
   }
 
-  return createInvoice({
-    contractId,
-    accountId: contract.accountId,
-    facilityId: contract.facilityId,
+  return createInvoiceFromJobs({
+    jobs,
+    createdByUserId,
     issueDate,
     dueDate,
     periodStart: window.start,
     periodEnd: window.end,
-    createdByUserId,
-    items: [
-      {
-        itemType: 'service',
-        description: `${contract.title ?? contract.contractNumber} - Cleaning Services (${toIsoDate(window.start)} to ${toIsoDate(window.end)})`,
-        quantity: 1,
-        unitPrice: serviceAmount,
-      },
-    ],
   });
 }
 
@@ -671,105 +869,69 @@ export async function batchGenerateInvoices(
   const batchKey = `invoice_batch:${toIsoDate(normalizedWindow.start)}:${toIsoDate(normalizedWindow.end)}:${normalizedWindow.timezone}:${prorate ? 'prorate' : 'full'}`;
 
   return runWithBatchIdempotency(batchKey, async () => {
-    const activeContracts = await prisma.contract.findMany({
-      where: { status: 'active', archivedAt: null },
-      select: {
-        id: true,
-        contractNumber: true,
-        title: true,
-        accountId: true,
-        monthlyValue: true,
-        paymentTerms: true,
-        facility: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            archivedAt: true,
-          },
+    const eligibleJobs = await prisma.job.findMany({
+      where: {
+        ...getJobBasedInvoiceEligibilityFilter(),
+        scheduledDate: {
+          gte: atUtcStartOfDay(normalizedWindow.start),
+          lte: atUtcStartOfDay(normalizedWindow.end),
         },
       },
+      select: jobInvoiceCandidateSelect,
+      orderBy: [{ accountId: 'asc' }, { scheduledDate: 'asc' }, { createdAt: 'asc' }],
     });
 
     const results: {
       accountId: string;
-      status: 'generated' | 'skipped_duplicate' | 'error';
+      status: 'generated' | 'skipped_no_jobs' | 'error';
       reason?: string;
       invoiceId?: string;
       lineItems?: number;
     }[] = [];
 
-    const contractsByAccount = new Map<
+    const jobsByAccount = new Map<
       string,
-      typeof activeContracts
+      typeof eligibleJobs
     >();
 
-    for (const contract of activeContracts) {
-      const facilityIsArchived = contract.facility?.archivedAt != null;
-      if (!contract.facility || facilityIsArchived || contract.facility.status !== 'active') {
+    for (const job of eligibleJobs) {
+      if (!job.contract) {
+        results.push({
+          accountId: job.accountId,
+          status: 'error',
+          reason: `Job ${job.jobNumber} is missing a contract`,
+        });
         continue;
       }
-      const existing = contractsByAccount.get(contract.accountId) ?? [];
-      existing.push(contract);
-      contractsByAccount.set(contract.accountId, existing);
+      const existing = jobsByAccount.get(job.accountId) ?? [];
+      existing.push(job);
+      jobsByAccount.set(job.accountId, existing);
     }
 
-    for (const [accountId, accountContracts] of contractsByAccount.entries()) {
+    for (const [accountId, accountJobs] of jobsByAccount.entries()) {
       try {
-        const existingOverlap = await prisma.invoice.findFirst({
-          where: {
-            accountId,
-            status: { notIn: ['void', 'written_off'] },
-            periodStart: { not: null, lte: normalizedWindow.end },
-            periodEnd: { not: null, gte: normalizedWindow.start },
-          },
-          select: { id: true, invoiceNumber: true },
-        });
-
-        if (existingOverlap) {
-          results.push({
-            accountId,
-            status: 'skipped_duplicate',
-            reason: `Overlaps with ${existingOverlap.invoiceNumber}`,
-          });
+        if (accountJobs.length === 0) {
+          results.push({ accountId, status: 'skipped_no_jobs', reason: 'No eligible completed jobs found' });
           continue;
         }
 
         const issueDate = atUtcStartOfDay(normalizedWindow.end);
-        const paymentTerms = accountContracts[0]?.paymentTerms;
+        const paymentTerms = accountJobs[0]?.contract?.paymentTerms;
         const dueDate = atUtcStartOfDay(addUtcDays(issueDate, parsePaymentTermsDays(paymentTerms)));
-
-        const items = accountContracts.map((contract) => {
-          const monthlyValue = parseFloat(contract.monthlyValue.toString());
-          const serviceAmount = prorate
-            ? calculateProratedAmount(monthlyValue, normalizedWindow.start, normalizedWindow.end)
-            : monthlyValue;
-          const label = contract.title ?? contract.contractNumber;
-          const facilityName = contract.facility?.name ?? 'Facility';
-
-          return {
-            itemType: 'service' as const,
-            description: `${facilityName} - ${label} (${toIsoDate(normalizedWindow.start)} to ${toIsoDate(normalizedWindow.end)})`,
-            quantity: 1,
-            unitPrice: serviceAmount,
-          };
-        });
-
-        const invoice = await createInvoice({
-          accountId,
+        const invoice = await createInvoiceFromJobs({
+          jobs: accountJobs,
+          createdByUserId,
           issueDate,
           dueDate,
           periodStart: normalizedWindow.start,
           periodEnd: normalizedWindow.end,
-          createdByUserId,
-          items,
         });
 
         results.push({
           accountId,
           status: 'generated',
           invoiceId: invoice.id,
-          lineItems: items.length,
+          lineItems: accountJobs.length,
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
@@ -783,7 +945,7 @@ export async function batchGenerateInvoices(
       prorate,
       generated: results.filter((r) => r.status === 'generated').length,
       skipped: results.filter((r) => r.status !== 'generated').length,
-      duplicates: results.filter((r) => r.status === 'skipped_duplicate').length,
+      duplicates: 0,
       errors: results.filter((r) => r.status === 'error').length,
       results,
     };
