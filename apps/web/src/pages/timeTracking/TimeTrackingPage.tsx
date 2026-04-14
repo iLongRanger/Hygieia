@@ -75,6 +75,41 @@ const getStatusVariant = (status: TimeEntryStatus): 'default' | 'success' | 'war
   return map[status];
 };
 
+const getSettlementVariant = (status?: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch (status) {
+    case 'ready':
+    case 'approved_both':
+      return 'success';
+    case 'needs_review':
+      return 'warning';
+    case 'approved_invoice_only':
+    case 'approved_payroll_only':
+      return 'info';
+    case 'excluded':
+      return 'error';
+    default:
+      return 'default';
+  }
+};
+
+const formatSettlementLabel = (status?: string) => {
+  switch (status) {
+    case 'approved_both':
+      return 'Approved Both';
+    case 'approved_invoice_only':
+      return 'Invoice Only';
+    case 'approved_payroll_only':
+      return 'Payroll Only';
+    case 'needs_review':
+      return 'Needs Review';
+    case 'excluded':
+      return 'Excluded';
+    case 'ready':
+    default:
+      return 'Ready';
+  }
+};
+
 const formatDuration = (hours: string | null) => {
   if (!hours) return '—';
   const h = parseFloat(hours);
@@ -447,6 +482,17 @@ const TimeTrackingPage = () => {
       ),
     },
     {
+      header: 'Settlement',
+      cell: (row: TimeEntry) =>
+        row.job?.settlement ? (
+          <Badge variant={getSettlementVariant(row.job.settlement.status)} size="sm">
+            {formatSettlementLabel(row.job.settlement.status)}
+          </Badge>
+        ) : (
+          <span className="text-sm text-surface-400">-</span>
+        ),
+    },
+    {
       header: '',
       cell: (row: TimeEntry) =>
         (row.status === 'completed' || row.status === 'edited') ? (
@@ -527,10 +573,25 @@ const TimeTrackingPage = () => {
                   </div>
                 )}
                 {selectedEntry.job && (
-                  <div className="flex justify-between">
-                    <span className="text-surface-500">Job</span>
-                    <span className="text-surface-700 dark:text-surface-300">{selectedEntry.job.jobNumber}</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-surface-500">Job</span>
+                      <span className="text-surface-700 dark:text-surface-300">{selectedEntry.job.jobNumber}</span>
+                    </div>
+                    <div className="flex justify-between items-start gap-4">
+                      <span className="text-surface-500">Settlement</span>
+                      <div className="text-right">
+                        <Badge variant={getSettlementVariant(selectedEntry.job.settlement.status)} size="sm">
+                          {formatSettlementLabel(selectedEntry.job.settlement.status)}
+                        </Badge>
+                        <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                          {selectedEntry.job.settlement.invoiceEligible ? 'Invoice eligible' : 'Invoice blocked'}
+                          {' • '}
+                          {selectedEntry.job.settlement.payrollEligible ? 'Payroll eligible' : 'Payroll blocked'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
                 {selectedEntry.contract && (
                   <div className="flex justify-between">
@@ -569,6 +630,24 @@ const TimeTrackingPage = () => {
             <div className="p-4">
               <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-2">Edit Reason</h3>
               <p className="text-sm text-surface-600 dark:text-surface-400">{selectedEntry.editReason}</p>
+            </div>
+          </Card>
+        )}
+
+        {selectedEntry.job?.settlement.issueSummary && (
+          <Card>
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-2">
+                Job Settlement Review
+              </h3>
+              <p className="text-sm text-surface-600 dark:text-surface-400">
+                {selectedEntry.job.settlement.issueSummary}
+              </p>
+              {selectedEntry.job.settlement.reviewNotes && (
+                <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+                  Review notes: {selectedEntry.job.settlement.reviewNotes}
+                </p>
+              )}
             </div>
           </Card>
         )}

@@ -12,6 +12,10 @@ import {
   normalizeServiceSchedule,
   validateServiceWindow,
 } from './serviceScheduleService';
+import {
+  getJobSettlementView,
+  jobSettlementReviewSelect,
+} from './jobSettlementService';
 
 // ==================== Interfaces ====================
 
@@ -84,7 +88,16 @@ const timeEntryListSelect = {
   status: true,
   createdAt: true,
   user: { select: { id: true, fullName: true } },
-  job: { select: { id: true, jobNumber: true } },
+  job: {
+    select: {
+      id: true,
+      jobNumber: true,
+      status: true,
+      settlementReview: {
+        select: jobSettlementReviewSelect,
+      },
+    },
+  },
   contract: { select: { id: true, contractNumber: true } },
   facility: { select: { id: true, name: true } },
   approvedByUser: { select: { id: true, fullName: true } },
@@ -99,6 +112,32 @@ const timeEntryDetailSelect = {
   geoLocation: true,
   updatedAt: true,
 };
+
+function mapTimeEntrySettlement<T extends {
+  job: {
+    id: string;
+    jobNumber: string;
+    status: string;
+    settlementReview?: typeof jobSettlementReviewSelect extends Prisma.JobSettlementReviewSelect ? unknown : never;
+  } | null;
+}>(entry: T) {
+  if (!entry.job) {
+    return entry;
+  }
+
+  const { settlementReview, status, ...job } = entry.job as T['job'] & {
+    settlementReview?: Parameters<typeof getJobSettlementView>[1];
+  };
+
+  return {
+    ...entry,
+    job: {
+      ...job,
+      status,
+      settlement: getJobSettlementView(status, settlementReview),
+    },
+  };
+}
 
 // ==================== Helpers ====================
 
@@ -200,7 +239,7 @@ export async function listTimeEntries(
   ]);
 
   return {
-    data,
+    data: data.map((entry) => mapTimeEntrySettlement(entry)),
     pagination: {
       page,
       limit,
@@ -235,7 +274,7 @@ export async function getTimeEntryById(
     if (!hasAccess) throw new NotFoundError('Time entry not found');
   }
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function getActiveEntry(userId: string) {
@@ -243,7 +282,7 @@ export async function getActiveEntry(userId: string) {
     where: { userId, status: 'active', clockOut: null },
     select: timeEntryDetailSelect,
   });
-  return entry;
+  return entry ? mapTimeEntrySettlement(entry) : entry;
 }
 
 export async function clockIn(input: ClockInInput) {
@@ -433,7 +472,7 @@ export async function clockIn(input: ClockInInput) {
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function clockOut(
@@ -485,7 +524,7 @@ export async function clockOut(
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function startBreak(userId: string) {
@@ -506,7 +545,7 @@ export async function startBreak(userId: string) {
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function endBreak(userId: string) {
@@ -532,7 +571,7 @@ export async function endBreak(userId: string) {
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function createManualEntry(input: ManualEntryInput, options?: TimeTrackingAccessOptions) {
@@ -559,7 +598,7 @@ export async function createManualEntry(input: ManualEntryInput, options?: TimeT
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function editTimeEntry(id: string, input: EditTimeEntryInput, options?: TimeTrackingAccessOptions) {
@@ -599,7 +638,7 @@ export async function editTimeEntry(id: string, input: EditTimeEntryInput, optio
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function approveTimeEntry(id: string, approvedByUserId: string, options?: TimeTrackingAccessOptions) {
@@ -619,7 +658,7 @@ export async function approveTimeEntry(id: string, approvedByUserId: string, opt
     select: timeEntryDetailSelect,
   });
 
-  return entry;
+  return mapTimeEntrySettlement(entry);
 }
 
 export async function deleteTimeEntry(id: string, options?: TimeTrackingAccessOptions) {

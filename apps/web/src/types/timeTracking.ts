@@ -1,5 +1,32 @@
 export type TimeEntryStatus = 'active' | 'completed' | 'edited' | 'approved' | 'rejected';
 export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+export type TimeEntryJobSettlementStatus =
+  | 'ready'
+  | 'needs_review'
+  | 'approved_invoice_only'
+  | 'approved_payroll_only'
+  | 'approved_both'
+  | 'excluded';
+
+export interface TimeEntryJobSettlement {
+  id: string | null;
+  status: TimeEntryJobSettlementStatus;
+  issueCode: string | null;
+  issueSummary: string | null;
+  workerExplanation: string | null;
+  workerRespondedAt: string | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  reviewedByUser: {
+    id: string;
+    fullName: string;
+  } | null;
+  lastWorkerReminderAt: string | null;
+  lastManagerReminderAt: string | null;
+  requiresManagerReview: boolean;
+  invoiceEligible: boolean;
+  payrollEligible: boolean;
+}
 
 export interface TimeEntry {
   id: string;
@@ -16,7 +43,12 @@ export interface TimeEntry {
   timesheetId: string | null;
   createdAt: string;
   user: { id: string; fullName: string };
-  job: { id: string; jobNumber: string } | null;
+  job: {
+    id: string;
+    jobNumber: string;
+    status: string;
+    settlement: TimeEntryJobSettlement;
+  } | null;
   contract: { id: string; contractNumber: string } | null;
   facility: { id: string; name: string } | null;
   approvedByUser: { id: string; fullName: string } | null;
@@ -53,7 +85,12 @@ export interface TimesheetDetail extends Timesheet {
     totalHours: string | null;
     notes: string | null;
     status: string;
-    job: { id: string; jobNumber: string } | null;
+    job: {
+      id: string;
+      jobNumber: string;
+      status: string;
+      settlement: TimeEntryJobSettlement;
+    } | null;
     facility: { id: string; name: string } | null;
   }[];
 }
