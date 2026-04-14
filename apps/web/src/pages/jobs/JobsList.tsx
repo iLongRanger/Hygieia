@@ -32,7 +32,7 @@ import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import { getDateRange, getWeekRange, getDayRange } from '../../lib/calendar-utils';
 import { extractApiErrorMessage } from '../../lib/api';
-import type { Job, JobStatus, WorkforceAssignmentType } from '../../types/job';
+import type { Job, JobSettlementStatus, JobStatus, WorkforceAssignmentType } from '../../types/job';
 import type { Contract } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User } from '../../types/user';
@@ -61,6 +61,16 @@ const JOB_ASSIGNMENTS = [
   { value: 'unassigned', label: 'Unassigned' },
 ];
 
+const JOB_SETTLEMENT_STATUSES = [
+  { value: '', label: 'All Settlement States' },
+  { value: 'ready', label: 'Ready' },
+  { value: 'needs_review', label: 'Needs Review' },
+  { value: 'approved_invoice_only', label: 'Invoice Only' },
+  { value: 'approved_payroll_only', label: 'Payroll Only' },
+  { value: 'approved_both', label: 'Approved Both' },
+  { value: 'excluded', label: 'Excluded' },
+];
+
 const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const variants: Record<JobStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     scheduled: 'info',
@@ -81,6 +91,43 @@ const getStatusIcon = (status: JobStatus) => {
     missed: AlertTriangle,
   };
   return icons[status];
+};
+
+const getSettlementVariant = (
+  status?: JobSettlementStatus
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch (status) {
+    case 'ready':
+    case 'approved_both':
+      return 'success';
+    case 'needs_review':
+      return 'warning';
+    case 'approved_invoice_only':
+    case 'approved_payroll_only':
+      return 'info';
+    case 'excluded':
+      return 'error';
+    default:
+      return 'default';
+  }
+};
+
+const formatSettlementLabel = (status?: JobSettlementStatus) => {
+  switch (status) {
+    case 'approved_both':
+      return 'Approved Both';
+    case 'approved_invoice_only':
+      return 'Invoice Only';
+    case 'approved_payroll_only':
+      return 'Payroll Only';
+    case 'needs_review':
+      return 'Needs Review';
+    case 'excluded':
+      return 'Excluded';
+    case 'ready':
+    default:
+      return 'Ready';
+  }
 };
 
 interface JobListErrorDetails {
@@ -251,6 +298,7 @@ const JobsList = () => {
   const viewMode: JobsViewMode = rawViewMode === 'table' ? 'table' : rawViewMode === 'calendar' ? 'calendar' : 'schedule';
   const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
+  const settlementStatusFilter = searchParams.get('settlementStatus') || '';
   const assignmentFilter = (searchParams.get('assignment') || '') as AssignmentFilter;
   const dateFrom = searchParams.get('dateFrom') || '';
   const dateTo = searchParams.get('dateTo') || '';
@@ -261,6 +309,7 @@ const JobsList = () => {
       const params: Record<string, string | number> = { page, limit: 25 };
       if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
+      if (settlementStatusFilter) params.settlementStatus = settlementStatusFilter;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
 
@@ -272,7 +321,7 @@ const JobsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, jobTypeFilter, statusFilter, dateFrom, dateTo]);
+  }, [page, jobTypeFilter, statusFilter, settlementStatusFilter, dateFrom, dateTo]);
 
   const fetchCalendarJobs = useCallback(async () => {
     try {
@@ -286,6 +335,7 @@ const JobsList = () => {
       const params: Record<string, string | number> = { dateFrom: df, dateTo: dt, limit: 500 };
       if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
+      if (settlementStatusFilter) params.settlementStatus = settlementStatusFilter;
       const result = await listJobs(params);
       setCalendarJobs(result.data);
     } catch {
@@ -293,7 +343,7 @@ const JobsList = () => {
     } finally {
       setCalendarLoading(false);
     }
-  }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter]);
+  }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter, settlementStatusFilter]);
 
   const filteredJobs = useMemo(() => {
     if (!assignmentFilter) {
@@ -551,10 +601,15 @@ const JobsList = () => {
       cell: (job: Job) => {
         const Icon = getStatusIcon(job.status);
         return (
-          <Badge variant={getStatusVariant(job.status)}>
-            <Icon className="mr-1 h-3 w-3" />
-            {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-          </Badge>
+          <div className="flex flex-col gap-1">
+            <Badge variant={getStatusVariant(job.status)}>
+              <Icon className="mr-1 h-3 w-3" />
+              {job.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            </Badge>
+            <Badge variant={getSettlementVariant(job.settlement?.status)}>
+              {formatSettlementLabel(job.settlement?.status)}
+            </Badge>
+          </div>
         );
       },
     },
@@ -659,6 +714,9 @@ const JobsList = () => {
   const unassignedJobs = filteredJobs.filter((job) => getAssignmentType(job) === 'unassigned');
   const unassignedCalendarJobs = filteredCalendarJobs.filter((job) => getAssignmentType(job) === 'unassigned');
   const visibleUnassignedJobs = viewMode === 'calendar' ? unassignedCalendarJobs : unassignedJobs;
+  const settlementReviewJobs = (viewMode === 'calendar' ? filteredCalendarJobs : filteredJobs).filter(
+    (job) => job.settlement?.status === 'needs_review'
+  );
 
   return (
     <div className="space-y-6">
@@ -751,6 +809,14 @@ const JobsList = () => {
             </div>
             <div className="w-full sm:w-48">
               <Select
+                label="Settlement"
+                options={JOB_SETTLEMENT_STATUSES}
+                value={settlementStatusFilter}
+                onChange={(val) => updateFilter('settlementStatus', val)}
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
                 label="Assignment"
                 options={JOB_ASSIGNMENTS}
                 value={assignmentFilter}
@@ -783,6 +849,24 @@ const JobsList = () => {
               <X className="mr-1 h-4 w-4" />
               Clear
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {!loading && !(viewMode === 'calendar' && calendarLoading) && settlementReviewJobs.length > 0 && (
+        <Card>
+          <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800/60 dark:bg-warning-900/20">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
+              <div>
+                <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
+                  {settlementReviewJobs.length} job{settlementReviewJobs.length === 1 ? '' : 's'} waiting on settlement review
+                </p>
+                <p className="text-xs text-warning-800 dark:text-surface-200">
+                  These jobs are blocked from invoice and payroll generation until the exception is reviewed.
+                </p>
+              </div>
+            </div>
           </div>
         </Card>
       )}
@@ -970,6 +1054,9 @@ const JobsList = () => {
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 <Badge variant={job.jobCategory === 'recurring' ? 'info' : 'default'}>
                                   {job.jobCategory === 'recurring' ? 'Recurring' : 'One-Time'}
+                                </Badge>
+                                <Badge variant={getSettlementVariant(job.settlement?.status)}>
+                                  {formatSettlementLabel(job.settlement?.status)}
                                 </Badge>
                                 <Badge variant={workforce.badgeVariant}>
                                   {job.assignedToUser?.fullName || job.assignedTeam?.name || workforce.label}

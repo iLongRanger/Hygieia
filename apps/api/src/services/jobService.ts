@@ -6,6 +6,13 @@ import { createBulkNotifications, createNotification } from './notificationServi
 import { sendSms } from './smsService';
 import { completeInitialClean as completeContractInitialClean } from './contractService';
 import {
+  clearJobSettlementReview,
+  flagJobForSettlementReview,
+  getJobSettlementView,
+  jobSettlementReviewSelect,
+  type JobSettlementStatus,
+} from './jobSettlementService';
+import {
   extractFacilityTimezone,
   normalizeServiceSchedule,
   type ServiceWeekday,
@@ -24,6 +31,7 @@ export interface JobListParams {
   jobType?: string;
   jobCategory?: string;
   status?: string;
+  settlementStatus?: JobSettlementStatus;
   dateFrom?: Date;
   dateTo?: Date;
   page?: number;
@@ -349,6 +357,9 @@ const jobSelect = {
       fullName: true,
     },
   },
+  settlementReview: {
+    select: jobSettlementReviewSelect,
+  },
 } satisfies Prisma.JobSelect;
 
 const jobDetailSelect = {
@@ -447,6 +458,9 @@ const jobDetailSelect = {
     },
     orderBy: { createdAt: 'desc' as const },
     take: 50,
+  },
+  settlementReview: {
+    select: jobSettlementReviewSelect,
   },
 } satisfies Prisma.JobSelect;
 
@@ -727,6 +741,7 @@ export async function listJobs(
     jobType,
     jobCategory,
     status,
+    settlementStatus,
     dateFrom,
     dateTo,
     page = 1,
@@ -755,6 +770,15 @@ export async function listJobs(
   if (jobType) where.jobType = jobType;
   if (jobCategory) where.jobCategory = jobCategory;
   if (status) where.status = status;
+  if (settlementStatus === 'ready') {
+    where.OR = [
+      ...(where.OR ?? []),
+      { settlementReview: null },
+      { settlementReview: { status: 'ready' } },
+    ];
+  } else if (settlementStatus) {
+    where.settlementReview = { status: settlementStatus };
+  }
 
   if (dateFrom != null || dateTo != null) {
     where.scheduledDate = {};
@@ -776,7 +800,10 @@ export async function listJobs(
   ]);
 
   return {
-    data: data.map((job) => withWorkforceMetadata(job)),
+    data: data.map((job) => ({
+      ...withWorkforceMetadata(job),
+      settlement: getJobSettlementView(job.status, job.settlementReview),
+    })),
     pagination: {
       page,
       limit,
@@ -798,6 +825,7 @@ export async function getJobById(id: string) {
   const initialClean = await buildInitialCleanStatus(job);
   return {
     ...withWorkforceMetadata(job),
+    settlement: getJobSettlementView(job.status, job.settlementReview),
     initialClean,
   };
 }
@@ -1208,7 +1236,12 @@ export async function completeJob(id: string, input: JobCompleteInput) {
       });
     }
 
-    return withWorkforceMetadata(job);
+    await clearJobSettlementReview(id);
+
+    return {
+      ...withWorkforceMetadata(job),
+      settlement: getJobSettlementView(job.status, null),
+    };
   });
 }
 
@@ -1322,7 +1355,12 @@ export async function cancelJob(id: string, reason: string | null, userId: strin
       },
     });
 
-    return withWorkforceMetadata(job);
+    await clearJobSettlementReview(id);
+
+    return {
+      ...withWorkforceMetadata(job),
+      settlement: getJobSettlementView(job.status, null),
+    };
   });
 }
 
@@ -1912,6 +1950,7 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
   checked: number;
   alerted: number;
   notifications: number;
+  settlementReviewsTriggered: number;
 }> {
   const now = input?.now ?? new Date();
   const leadHours = input?.leadHours ?? JOB_NO_CHECKIN_ALERT_HOURS;
@@ -1998,6 +2037,7 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
 
   let alerted = 0;
   let notifications = 0;
+  let settlementReviewsTriggered = 0;
 
   for (const job of candidateJobs) {
     if (jobsWithTimeTracking.has(job.id)) continue;
@@ -2243,10 +2283,51 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
     }
   }
 
+  const unresolvedJobs = await prisma.job.findMany({
+    where: {
+      status: { in: ['scheduled', 'in_progress'] },
+      scheduledEndTime: {
+        not: null,
+        lte: now,
+      },
+      actualEndTime: null,
+      timeEntries: {
+        some: {},
+      },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      facility: { select: { name: true } },
+      settlementReview: {
+        select: {
+          status: true,
+        },
+      },
+    },
+  });
+
+  for (const job of unresolvedJobs) {
+    if (job.settlementReview?.status === 'needs_review') {
+      continue;
+    }
+
+    await flagJobForSettlementReview({
+      jobId: job.id,
+      issueCode: 'missing_completion',
+      issueSummary: `${job.jobNumber} at ${job.facility.name} has recorded work but is still not completed.`,
+      notifyWorker: true,
+      notifyManagers: true,
+    });
+    alerted += 1;
+    settlementReviewsTriggered += 1;
+  }
+
   return {
-    checked: candidateJobs.length,
+    checked: candidateJobs.length + unresolvedJobs.length,
     alerted,
     notifications,
+    settlementReviewsTriggered,
   };
 }
 

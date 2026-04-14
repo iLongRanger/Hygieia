@@ -18,6 +18,8 @@ import {
   createJobTaskSchema,
   updateJobTaskSchema,
   createJobNoteSchema,
+  submitJobSettlementExplanationSchema,
+  reviewJobSettlementSchema,
 } from '../schemas/job';
 import {
   listJobs,
@@ -37,6 +39,10 @@ import {
   deleteJobNote,
   listJobActivities,
 } from '../services/jobService';
+import {
+  reviewJobSettlement,
+  submitJobSettlementExplanation,
+} from '../services/jobSettlementService';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -162,6 +168,61 @@ router.post(
   }
 );
 
+router.post(
+  '/:id/settlement-explanation',
+  authenticate,
+  requirePermission(PERMISSIONS.JOBS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+      assertCanViewJob(req, existing);
+
+      const parsed = submitJobSettlementExplanationSchema.safeParse(req.body);
+      if (!parsed.success) throw handleZodError(parsed.error);
+
+      const settlement = await submitJobSettlementExplanation(req.params.id, user.id, parsed.data);
+      res.json({ data: settlement });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/review-settlement',
+  authenticate,
+  requirePermission(PERMISSIONS.JOBS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      if (!['owner', 'admin', 'manager'].includes(user.role)) {
+        throw new ValidationError('Insufficient permissions');
+      }
+
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
+      const parsed = reviewJobSettlementSchema.safeParse(req.body);
+      if (!parsed.success) throw handleZodError(parsed.error);
+
+      const settlement = await reviewJobSettlement(req.params.id, user.id, parsed.data);
+      res.json({ data: settlement });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Get job by ID
 router.get(
   '/:id',
@@ -226,6 +287,7 @@ router.patch(
       const parsed = updateJobSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
+      const user = requireAuthenticatedUser(req);
       const job = await updateJob(req.params.id, parsed.data, user.id);
       res.json({ data: job });
     } catch (error) {
@@ -308,6 +370,7 @@ router.post(
       const parsed = completeInitialCleanForJobSchema.safeParse(req.body || {});
       if (!parsed.success) throw handleZodError(parsed.error);
 
+      const user = requireAuthenticatedUser(req);
       const job = await completeInitialCleanForJob(req.params.id, user.id);
       res.json({ data: job });
     } catch (error) {
@@ -469,6 +532,7 @@ router.post(
       const parsed = createJobNoteSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
+      const user = requireAuthenticatedUser(req);
       const note = await createJobNote(req.params.id, {
         ...parsed.data,
         createdByUserId: user.id,

@@ -26,11 +26,11 @@ async function runJobAlertCycle(): Promise<void> {
   try {
     const result = await runJobNearingEndNoCheckInAlertCycle();
     logger.info(
-      `Job alert cycle complete: checked=${result.checked}, alerted=${result.alerted}, notifications=${result.notifications}`
+      `Job alert cycle complete: checked=${result.checked}, alerted=${result.alerted}, notifications=${result.notifications}, settlementReviewsTriggered=${result.settlementReviewsTriggered}`
     );
     await createBackgroundServiceRunLog(SERVICE_KEY, {
       status: 'success',
-      summary: `Checked ${result.checked} jobs, alerted ${result.alerted}, created ${result.notifications} notifications`,
+      summary: `Checked ${result.checked} jobs, alerted ${result.alerted}, created ${result.notifications} notifications, triggered ${result.settlementReviewsTriggered} settlement reviews`,
       details: result as unknown as Record<string, unknown>,
       startedAt,
       endedAt: new Date(),

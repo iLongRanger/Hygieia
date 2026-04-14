@@ -11,6 +11,8 @@ import type {
   GenerateJobsInput,
   CreateJobTaskInput,
   CreateJobNoteInput,
+  ReviewJobSettlementInput,
+  SubmitJobSettlementExplanationInput,
 } from '../types/job';
 
 export interface JobListParams {
@@ -22,6 +24,7 @@ export interface JobListParams {
   jobType?: string;
   jobCategory?: string;
   status?: string;
+  settlementStatus?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;
@@ -150,5 +153,21 @@ export async function deleteJobNote(
 // Job Activities
 export async function listJobActivities(jobId: string): Promise<JobActivity[]> {
   const response = await api.get(`/jobs/${jobId}/activities`);
+  return response.data.data;
+}
+
+export async function submitJobSettlementExplanation(
+  jobId: string,
+  input: SubmitJobSettlementExplanationInput
+) {
+  const response = await api.post(`/jobs/${jobId}/settlement-explanation`, input);
+  return response.data.data;
+}
+
+export async function reviewJobSettlement(
+  jobId: string,
+  input: ReviewJobSettlementInput
+) {
+  const response = await api.post(`/jobs/${jobId}/review-settlement`, input);
   return response.data.data;
 }

@@ -4,6 +4,33 @@ export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'canceled' |
 export type JobTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type JobNoteType = 'general' | 'issue' | 'photo';
 export type WorkforceAssignmentType = 'unassigned' | 'internal_employee' | 'subcontractor_team';
+export type JobSettlementStatus =
+  | 'ready'
+  | 'needs_review'
+  | 'approved_invoice_only'
+  | 'approved_payroll_only'
+  | 'approved_both'
+  | 'excluded';
+
+export interface JobSettlement {
+  id: string | null;
+  status: JobSettlementStatus;
+  issueCode: string | null;
+  issueSummary: string | null;
+  workerExplanation: string | null;
+  workerRespondedAt: string | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  reviewedByUser: {
+    id: string;
+    fullName: string;
+  } | null;
+  lastWorkerReminderAt: string | null;
+  lastManagerReminderAt: string | null;
+  requiresManagerReview: boolean;
+  invoiceEligible: boolean;
+  payrollEligible: boolean;
+}
 
 export interface Job {
   id: string;
@@ -76,6 +103,7 @@ export interface Job {
     calendarColor?: string | null;
   } | null;
   workforceAssignmentType?: WorkforceAssignmentType;
+  settlement?: JobSettlement;
   createdByUser: {
     id: string;
     fullName: string;
@@ -166,6 +194,15 @@ export interface GenerateJobsInput {
   dateTo: string;
   assignedTeamId?: string | null;
   assignedToUserId?: string | null;
+}
+
+export interface SubmitJobSettlementExplanationInput {
+  explanation: string;
+}
+
+export interface ReviewJobSettlementInput {
+  decision: Exclude<JobSettlementStatus, 'ready' | 'needs_review'>;
+  reviewNotes?: string | null;
 }
 
 export interface CreateJobTaskInput {

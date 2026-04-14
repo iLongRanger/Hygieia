@@ -17,6 +17,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import {
   getJob,
   startJob,
@@ -27,10 +28,17 @@ import {
   updateJobTask,
   deleteJobTask,
   createJobNote,
+  submitJobSettlementExplanation,
+  reviewJobSettlement,
 } from '../../lib/jobs';
 import { requestGeolocation } from '../../lib/geolocation';
 import { extractApiErrorMessage } from '../../lib/api';
-import type { JobDetail as JobDetailType, JobStatus, JobTask } from '../../types/job';
+import type {
+  JobDetail as JobDetailType,
+  JobSettlementStatus,
+  JobStatus,
+  JobTask,
+} from '../../types/job';
 import { useAuthStore } from '../../stores/authStore';
 
 interface JobActionErrorDetails {
@@ -61,6 +69,57 @@ const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' 
     missed: 'default',
   };
   return map[status];
+};
+
+const getSettlementVariant = (
+  status?: JobSettlementStatus
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  switch (status) {
+    case 'ready':
+    case 'approved_both':
+      return 'success';
+    case 'needs_review':
+      return 'warning';
+    case 'approved_invoice_only':
+    case 'approved_payroll_only':
+      return 'info';
+    case 'excluded':
+      return 'error';
+    default:
+      return 'default';
+  }
+};
+
+const formatSettlementLabel = (status?: JobSettlementStatus) => {
+  switch (status) {
+    case 'approved_both':
+      return 'Approved Both';
+    case 'approved_invoice_only':
+      return 'Invoice Only';
+    case 'approved_payroll_only':
+      return 'Payroll Only';
+    case 'needs_review':
+      return 'Needs Review';
+    case 'excluded':
+      return 'Excluded';
+    case 'ready':
+    default:
+      return 'Ready';
+  }
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 };
 
 const getWorkforceIndicator = (job: JobDetailType): {
@@ -127,11 +186,19 @@ const JobDetail = () => {
   // Complete form
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
-  const userRole = useAuthStore((state) => state.user?.role);
+  const currentUser = useAuthStore((state) => state.user);
+  const userRole = currentUser?.role;
   const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
   const isSubcontractor = userRole === 'subcontractor';
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [explanation, setExplanation] = useState('');
+  const [submittingExplanation, setSubmittingExplanation] = useState(false);
+  const [reviewDecision, setReviewDecision] = useState<
+    Exclude<JobSettlementStatus, 'ready' | 'needs_review'>
+  >('approved_both');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const fetchJob = async () => {
     if (!id) return;
@@ -339,6 +406,51 @@ const JobDetail = () => {
   const contactPhone = primaryContact?.mobile || primaryContact?.phone || job.account.billingPhone || null;
   const serviceAddress = formatAddress(job.facility.address);
   const showCommercialLinks = !isFieldWorker;
+  const settlement = job.settlement;
+  const canReviewSettlement = ['owner', 'admin', 'manager'].includes(userRole || '');
+  const isAssignedWorker =
+    Boolean(currentUser?.id) &&
+    (job.assignedToUser?.id === currentUser?.id ||
+      (Boolean(currentUser?.teamId) && job.assignedTeam?.id === currentUser?.teamId));
+  const canSubmitSettlementExplanation =
+    Boolean(isAssignedWorker) && settlement?.status === 'needs_review';
+
+  const handleSubmitSettlementExplanation = async () => {
+    if (!id || !explanation.trim()) {
+      toast.error('Explanation is required');
+      return;
+    }
+
+    try {
+      setSubmittingExplanation(true);
+      await submitJobSettlementExplanation(id, { explanation: explanation.trim() });
+      toast.success('Explanation submitted for review');
+      setExplanation('');
+      await fetchJob();
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to submit explanation'));
+    } finally {
+      setSubmittingExplanation(false);
+    }
+  };
+
+  const handleReviewSettlement = async () => {
+    if (!id) return;
+
+    try {
+      setSubmittingReview(true);
+      await reviewJobSettlement(id, {
+        decision: reviewDecision,
+        reviewNotes: reviewNotes.trim() || null,
+      });
+      toast.success('Settlement decision saved');
+      await fetchJob();
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to save settlement review'));
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -852,7 +964,151 @@ const JobDetail = () => {
         </div>
 
         {/* Sidebar - Activity */}
-        <div>
+        <div className="space-y-6">
+          <Card>
+            <h3 className="mb-3 text-sm font-semibold text-surface-900 dark:text-surface-100">
+              Settlement
+            </h3>
+            <div className="space-y-4 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={getSettlementVariant(settlement?.status)}>
+                  {formatSettlementLabel(settlement?.status)}
+                </Badge>
+                <Badge variant={settlement?.invoiceEligible ? 'success' : 'default'}>
+                  {settlement?.invoiceEligible ? 'Invoice Eligible' : 'Invoice Blocked'}
+                </Badge>
+                <Badge variant={settlement?.payrollEligible ? 'success' : 'default'}>
+                  {settlement?.payrollEligible ? 'Payroll Eligible' : 'Payroll Blocked'}
+                </Badge>
+              </div>
+
+              {settlement?.issueSummary && (
+                <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-warning-900 dark:border-warning-800/60 dark:bg-warning-900/20 dark:text-warning-100">
+                  <p className="font-medium">Issue</p>
+                  <p className="mt-1">{settlement.issueSummary}</p>
+                  {settlement.issueCode && (
+                    <p className="mt-1 text-xs uppercase tracking-wide text-warning-700 dark:text-warning-300">
+                      {settlement.issueCode.replace(/_/g, ' ')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Worker Reminder
+                  </p>
+                  <p className="mt-1 text-surface-900 dark:text-surface-100">
+                    {formatDateTime(settlement?.lastWorkerReminderAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Manager Reminder
+                  </p>
+                  <p className="mt-1 text-surface-900 dark:text-surface-100">
+                    {formatDateTime(settlement?.lastManagerReminderAt)}
+                  </p>
+                </div>
+              </div>
+
+              {settlement?.workerExplanation && (
+                <div className="rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    Worker Explanation
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-300">
+                    {settlement.workerExplanation}
+                  </p>
+                  <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
+                    Submitted {formatDateTime(settlement.workerRespondedAt)}
+                  </p>
+                </div>
+              )}
+
+              {settlement?.reviewNotes && (
+                <div className="rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    Review Notes
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-300">
+                    {settlement.reviewNotes}
+                  </p>
+                  <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
+                    {settlement.reviewedByUser?.fullName || 'Manager'} on {formatDateTime(settlement.reviewedAt)}
+                  </p>
+                </div>
+              )}
+
+              {canSubmitSettlementExplanation && (
+                <div className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    Provide Explanation
+                  </p>
+                  <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                    Explain the missed logout, incomplete closeout, or any other issue that blocked settlement.
+                  </p>
+                  <textarea
+                    value={explanation}
+                    onChange={(e) => setExplanation(e.target.value)}
+                    placeholder="Describe what happened and why the job was not closed properly."
+                    className="mt-3 w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                    rows={4}
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleSubmitSettlementExplanation}
+                      isLoading={submittingExplanation}
+                    >
+                      Submit Explanation
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {canReviewSettlement && settlement?.requiresManagerReview && (
+                <div className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    Manager Review
+                  </p>
+                  <div className="mt-3">
+                    <Select
+                      label="Decision"
+                      value={reviewDecision}
+                      onChange={(value) =>
+                        setReviewDecision(value as Exclude<JobSettlementStatus, 'ready' | 'needs_review'>)
+                      }
+                      options={[
+                        { value: 'approved_both', label: 'Approve for invoice and payroll' },
+                        { value: 'approved_invoice_only', label: 'Approve invoice only' },
+                        { value: 'approved_payroll_only', label: 'Approve payroll only' },
+                        { value: 'excluded', label: 'Exclude from settlement' },
+                      ]}
+                    />
+                  </div>
+                  <textarea
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Review notes"
+                    className="mt-3 w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
+                    rows={4}
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleReviewSettlement}
+                      isLoading={submittingReview}
+                    >
+                      Save Review
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+
           <Card>
             <h3 className="mb-3 text-sm font-semibold text-surface-900 dark:text-surface-100">
               Activity

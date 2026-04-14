@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { createBulkNotifications, createNotification } from '../notificationService';
 import { sendSms } from '../smsService';
 import { completeInitialClean as completeContractInitialClean } from '../contractService';
+import { flagJobForSettlementReview } from '../jobSettlementService';
 import {
   assignJob,
   autoGenerateRecurringJobsForContract,
@@ -70,6 +71,28 @@ jest.mock('../contractService', () => ({
   completeInitialClean: jest.fn(),
 }));
 
+jest.mock('../jobSettlementService', () => ({
+  clearJobSettlementReview: jest.fn(),
+  flagJobForSettlementReview: jest.fn(),
+  getJobSettlementView: jest.fn(() => ({
+    id: null,
+    status: 'ready',
+    issueCode: null,
+    issueSummary: null,
+    workerExplanation: null,
+    workerRespondedAt: null,
+    reviewNotes: null,
+    reviewedAt: null,
+    reviewedByUser: null,
+    lastWorkerReminderAt: null,
+    lastManagerReminderAt: null,
+    requiresManagerReview: false,
+    invoiceEligible: false,
+    payrollEligible: false,
+  })),
+  jobSettlementReviewSelect: {},
+}));
+
 describe('jobService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -83,6 +106,7 @@ describe('jobService', () => {
     (sendSms as jest.Mock).mockResolvedValue(true);
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notification-1' });
     (createBulkNotifications as jest.Mock).mockResolvedValue([]);
+    (flagJobForSettlementReview as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('listJobs applies filters and pagination', async () => {
@@ -823,26 +847,33 @@ describe('jobService', () => {
   });
 
   it('runJobNearingEndNoCheckInAlertCycle notifies admins for jobs near end with no check-in', async () => {
-    (prisma.job.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'job-1',
-        jobNumber: 'WO-2026-0100',
-        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
-        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
-        scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
-        facility: { id: 'facility-1', name: 'HQ' },
-        contract: { id: 'contract-1', contractNumber: 'CT-100' },
-        assignedToUser: {
-          id: 'cleaner-1',
-          fullName: 'Cleaner One',
-          email: 'cleaner@example.com',
-          phone: '+15550003333',
+    (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          id: 'job-1',
+          jobNumber: 'WO-2026-0100',
+          scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+          scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
+          facility: { id: 'facility-1', name: 'HQ' },
+          contract: { id: 'contract-1', contractNumber: 'CT-100' },
+          assignedToUser: {
+            id: 'cleaner-1',
+            fullName: 'Cleaner One',
+            email: 'cleaner@example.com',
+            phone: '+15550003333',
+          },
+          assignedTeam: null,
         },
-        assignedTeam: null,
-      },
-    ]);
-    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.jobActivity.findMany as jest.Mock).mockResolvedValue([]);
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([
       { id: 'admin-1', phone: '+15550001111' },
       { id: 'owner-1', phone: '+15550002222' },
@@ -880,6 +911,7 @@ describe('jobService', () => {
       checked: 1,
       alerted: 1,
       notifications: 3,
+      settlementReviewsTriggered: 0,
     });
     expect(sendSms).toHaveBeenCalledTimes(3);
     expect(sendSms).toHaveBeenCalledWith('+15550001111', expect.stringContaining('WO-2026-0100'));
@@ -888,32 +920,39 @@ describe('jobService', () => {
   });
 
   it('runJobNearingEndNoCheckInAlertCycle skips jobs with time entries or prior alert', async () => {
-    (prisma.job.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'job-1',
-        jobNumber: 'WO-2026-0100',
-        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
-        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
-        scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
-        facility: { id: 'facility-1', name: 'HQ' },
-        contract: null,
-        assignedToUser: null,
-        assignedTeam: { id: 'team-1', name: 'Team Alpha' },
-      },
-      {
-        id: 'job-2',
-        jobNumber: 'WO-2026-0101',
-        scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
-        scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
-        scheduledEndTime: new Date('2026-02-26T17:30:00.000Z'),
-        facility: { id: 'facility-2', name: 'Branch' },
-        contract: null,
-        assignedToUser: null,
-        assignedTeam: { id: 'team-1', name: 'Team Alpha' },
-      },
-    ]);
-    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([{ jobId: 'job-1' }]);
-    (prisma.jobActivity.findMany as jest.Mock).mockResolvedValue([{ jobId: 'job-2' }]);
+    (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          id: 'job-1',
+          jobNumber: 'WO-2026-0100',
+          scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+          scheduledEndTime: new Date('2026-02-26T18:00:00.000Z'),
+          facility: { id: 'facility-1', name: 'HQ' },
+          contract: null,
+          assignedToUser: null,
+          assignedTeam: { id: 'team-1', name: 'Team Alpha' },
+        },
+        {
+          id: 'job-2',
+          jobNumber: 'WO-2026-0101',
+          scheduledDate: new Date('2026-02-26T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-02-26T16:00:00.000Z'),
+          scheduledEndTime: new Date('2026-02-26T17:30:00.000Z'),
+          facility: { id: 'facility-2', name: 'Branch' },
+          contract: null,
+          assignedToUser: null,
+          assignedTeam: { id: 'team-1', name: 'Team Alpha' },
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([{ jobId: 'job-1' }])
+      .mockResolvedValueOnce([]);
+    (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([{ jobId: 'job-2' }])
+      .mockResolvedValueOnce([]);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin-1' }]);
 
     const result = await runJobNearingEndNoCheckInAlertCycle({
@@ -926,6 +965,7 @@ describe('jobService', () => {
       checked: 2,
       alerted: 0,
       notifications: 0,
+      settlementReviewsTriggered: 0,
     });
   });
 
@@ -949,11 +989,14 @@ describe('jobService', () => {
           },
           assignedTeam: null,
         },
-      ]);
+      ])
+      .mockResolvedValueOnce([]);
     (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([
@@ -995,6 +1038,79 @@ describe('jobService', () => {
       checked: 0,
       alerted: 1,
       notifications: 3,
+      settlementReviewsTriggered: 0,
+    });
+  });
+
+  it('runJobNearingEndNoCheckInAlertCycle flags unresolved completed-work jobs for settlement review', async () => {
+    (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'job-12',
+          jobNumber: 'WO-2026-0212',
+          facility: { name: 'North Tower' },
+          settlementReview: null,
+        },
+      ]);
+    (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: new Date('2026-02-26T16:00:00.000Z'),
+    });
+
+    expect(flagJobForSettlementReview).toHaveBeenCalledWith({
+      jobId: 'job-12',
+      issueCode: 'missing_completion',
+      issueSummary: 'WO-2026-0212 at North Tower has recorded work but is still not completed.',
+      notifyWorker: true,
+      notifyManagers: true,
+    });
+    expect(result).toEqual({
+      checked: 1,
+      alerted: 1,
+      notifications: 0,
+      settlementReviewsTriggered: 1,
+    });
+  });
+
+  it('runJobNearingEndNoCheckInAlertCycle skips unresolved jobs already waiting on settlement review', async () => {
+    (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'job-13',
+          jobNumber: 'WO-2026-0213',
+          facility: { name: 'South Tower' },
+          settlementReview: { status: 'needs_review' },
+        },
+      ]);
+    (prisma.timeEntry.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.jobActivity.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: new Date('2026-02-26T16:00:00.000Z'),
+    });
+
+    expect(flagJobForSettlementReview).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      checked: 1,
+      alerted: 0,
+      notifications: 0,
+      settlementReviewsTriggered: 0,
     });
   });
 

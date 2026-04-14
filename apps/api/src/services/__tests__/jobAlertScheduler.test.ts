@@ -49,6 +49,7 @@ describe('jobAlertScheduler', () => {
       checked: 0,
       alerted: 0,
       notifications: 0,
+      settlementReviewsTriggered: 0,
     });
     markBackgroundServiceRunStartMock.mockResolvedValue(undefined);
     markBackgroundServiceRunSuccessMock.mockResolvedValue(undefined);

@@ -1,8 +1,9 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import { Application } from 'express';
+import type { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as jobService from '../../services/jobService';
+import * as jobSettlementService from '../../services/jobSettlementService';
 
 const mockAuthUser: { id: string; role: string; teamId?: string } = {
   id: 'user-1',
@@ -21,6 +22,7 @@ jest.mock('../../middleware/rbac', () => ({
 }));
 
 jest.mock('../../services/jobService');
+jest.mock('../../services/jobSettlementService');
 
 describe('Job Routes', () => {
   let app: Application;
@@ -85,5 +87,72 @@ describe('Job Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('job-1');
+  });
+
+  it('POST /:id/settlement-explanation should submit an explanation for an assigned cleaner', async () => {
+    mockAuthUser.role = 'cleaner';
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      account: { id: 'account-1' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-1' },
+    });
+    (jobSettlementService.submitJobSettlementExplanation as jest.Mock).mockResolvedValue({
+      id: 'review-1',
+      status: 'needs_review',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/jobs/job-1/settlement-explanation')
+      .send({ explanation: 'Door was locked when I arrived.' })
+      .expect(200);
+
+    expect(response.body.data).toEqual({
+      id: 'review-1',
+      status: 'needs_review',
+    });
+    expect(jobSettlementService.submitJobSettlementExplanation).toHaveBeenCalledWith(
+      'job-1',
+      'user-1',
+      { explanation: 'Door was locked when I arrived.' }
+    );
+  });
+
+  it('POST /:id/review-settlement should reject cleaner users', async () => {
+    mockAuthUser.role = 'cleaner';
+
+    await request(app)
+      .post('/api/v1/jobs/job-1/review-settlement')
+      .send({ decision: 'approved_both' })
+      .expect(422);
+
+    expect(jobSettlementService.reviewJobSettlement).not.toHaveBeenCalled();
+  });
+
+  it('POST /:id/review-settlement should allow owner users to review a settlement', async () => {
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      account: { id: 'account-1' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-2' },
+    });
+    (jobSettlementService.reviewJobSettlement as jest.Mock).mockResolvedValue({
+      id: 'review-1',
+      status: 'approved_both',
+    });
+
+    const response = await request(app)
+      .post('/api/v1/jobs/job-1/review-settlement')
+      .send({ decision: 'approved_both', reviewNotes: 'Confirmed manually.' })
+      .expect(200);
+
+    expect(response.body.data).toEqual({
+      id: 'review-1',
+      status: 'approved_both',
+    });
+    expect(jobSettlementService.reviewJobSettlement).toHaveBeenCalledWith('job-1', 'user-1', {
+      decision: 'approved_both',
+      reviewNotes: 'Confirmed manually.',
+    });
   });
 });

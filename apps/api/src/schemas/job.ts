@@ -2,6 +2,14 @@ import { z } from 'zod';
 
 export const jobTypeSchema = z.enum(['scheduled_service', 'special_job']);
 export const jobCategorySchema = z.enum(['recurring', 'one_time']);
+export const jobSettlementStatusSchema = z.enum([
+  'ready',
+  'needs_review',
+  'approved_invoice_only',
+  'approved_payroll_only',
+  'approved_both',
+  'excluded',
+]);
 
 export const jobListQuerySchema = z.object({
   contractId: z.string().uuid().optional(),
@@ -13,6 +21,7 @@ export const jobListQuerySchema = z.object({
   jobType: jobTypeSchema.optional(),
   jobCategory: jobCategorySchema.optional(),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled', 'missed']).optional(),
+  settlementStatus: jobSettlementStatusSchema.optional(),
   dateFrom: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
   dateTo: z.string().optional().transform((v) => (v ? new Date(v) : undefined)),
   page: z
@@ -144,4 +153,18 @@ export const createJobNoteSchema = z.object({
   noteType: z.enum(['general', 'issue', 'photo']).optional().default('general'),
   content: z.string().min(1),
   photoUrl: z.string().nullable().optional(),
+});
+
+export const submitJobSettlementExplanationSchema = z.object({
+  explanation: z.string().min(1).max(2000),
+});
+
+export const reviewJobSettlementSchema = z.object({
+  decision: z.enum([
+    'approved_invoice_only',
+    'approved_payroll_only',
+    'approved_both',
+    'excluded',
+  ]),
+  reviewNotes: z.string().max(2000).nullable().optional(),
 });
