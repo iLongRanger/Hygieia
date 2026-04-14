@@ -794,7 +794,7 @@ const JobsList = () => {
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
               <div>
                 <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
-                  {visibleUnassignedJobs.length} unassigned job{visibleUnassignedJobs.length === 1 ? '' : 's'} in this {viewMode} view
+                  {visibleUnassignedJobs.length} unassigned job{visibleUnassignedJobs.length === 1 ? '' : 's'}
                 </p>
                 <p className="text-xs text-warning-800 dark:text-surface-200">
                   Assign these jobs to avoid missed scheduling and ownership gaps.

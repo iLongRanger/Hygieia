@@ -321,7 +321,7 @@ describe('JobsList', () => {
     expect(screen.queryByText('JOB-ASSIGNED')).not.toBeInTheDocument();
   });
 
-  it('shows an alert when unassigned jobs are visible in the table', async () => {
+  it('shows a top alert when unassigned jobs are visible in the table', async () => {
     listJobsMock.mockResolvedValue(
       mockPaginatedResponse([
         mockJob({
@@ -337,10 +337,10 @@ describe('JobsList', () => {
     render(<JobsList />, { initialRoute: '/jobs?view=table' });
 
     expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
-    expect(screen.getByText(/1 unassigned job in this table view/i)).toBeInTheDocument();
+    expect(screen.getByText(/^1 unassigned job$/i)).toBeInTheDocument();
   });
 
-  it('shows an alert when unassigned jobs are visible in the schedule view', async () => {
+  it('shows the same top alert in the schedule view', async () => {
     listJobsMock.mockResolvedValue(
       mockPaginatedResponse([
         mockJob({
@@ -356,10 +356,10 @@ describe('JobsList', () => {
     render(<JobsList />, { initialRoute: '/jobs?view=schedule' });
 
     expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
-    expect(screen.getByText(/1 unassigned job in this schedule view/i)).toBeInTheDocument();
+    expect(screen.getByText(/^1 unassigned job$/i)).toBeInTheDocument();
   });
 
-  it('shows an alert when unassigned jobs are visible in the calendar view', async () => {
+  it('shows the same top alert in the calendar view', async () => {
     listJobsMock.mockResolvedValue(
       mockPaginatedResponse([
         mockJob({
@@ -377,7 +377,7 @@ describe('JobsList', () => {
     await waitFor(() => {
       expect(listJobsMock).toHaveBeenCalledTimes(2);
     });
-    expect(screen.getByText(/1 unassigned job in this calendar view/i)).toBeInTheDocument();
+    expect(screen.getByText(/^1 unassigned job$/i)).toBeInTheDocument();
   });
 
   it('hides the unassigned alert when only assigned jobs are shown', async () => {
@@ -403,13 +403,13 @@ describe('JobsList', () => {
 
     render(<JobsList />, { initialRoute: '/jobs?view=table' });
 
-    expect(await screen.findByText(/1 unassigned job in this table view/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^1 unassigned job$/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     await user.selectOptions(screen.getByLabelText(/assignment/i), 'assigned');
 
     await waitFor(() => {
-      expect(screen.queryByText(/unassigned job in this table view/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^1 unassigned job$/i)).not.toBeInTheDocument();
     });
     expect(screen.getByText('JOB-ASSIGNED')).toBeInTheDocument();
     expect(screen.queryByText('JOB-UNASSIGNED')).not.toBeInTheDocument();
