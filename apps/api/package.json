@@ -19,10 +19,7 @@
   },
   "dependencies": {
     "@hygieia/database": "workspace:*",
-    "@hygieia/types": "workspace:*",
-    "@hygieia/utils": "workspace:*",
     "@prisma/client": "^5.22.0",
-    "@supabase/supabase-js": "^2.38.4",
     "axios": "^1.6.2",
     "bcryptjs": "^3.0.3",
     "compression": "^1.7.4",

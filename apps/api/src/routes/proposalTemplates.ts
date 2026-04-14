@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
@@ -17,7 +18,7 @@ import {
   updateTemplateSchema,
   listTemplatesQuerySchema,
 } from '../schemas/proposalTemplate';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
@@ -58,7 +59,7 @@ router.get(
   '/default',
   authenticate,
   requirePermission(PERMISSIONS.PROPOSAL_TEMPLATES_READ),
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const template = await getDefaultTemplate();
       res.json({ data: template });

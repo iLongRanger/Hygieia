@@ -1,11 +1,13 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import type {
+  TimePeriod,
+  ExportType} from '../services/dashboardService';
 import {
   getDashboardStats,
-  exportDashboardCsv,
-  TimePeriod,
-  ExportType,
+  exportDashboardCsv
 } from '../services/dashboardService';
 import { PERMISSIONS } from '../types';
 import { ForbiddenError } from '../middleware/errorHandler';

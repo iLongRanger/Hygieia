@@ -218,9 +218,9 @@ router.post(
         throw handleZodError(parsed.error);
       }
 
-      const user = await assignRole(id, parsed.data.role);
+      const updated = await assignRole(id, parsed.data.role);
 
-      res.json({ data: user });
+      res.json({ data: updated });
     } catch (error) {
       next(error);
     }
@@ -248,9 +248,9 @@ router.delete(
         throw handleZodError(parsed.error);
       }
 
-      const user = await removeRole(id, parsed.data.role);
+      const updated = await removeRole(id, parsed.data.role);
 
-      res.json({ data: user });
+      res.json({ data: updated });
     } catch (error) {
       next(error);
     }

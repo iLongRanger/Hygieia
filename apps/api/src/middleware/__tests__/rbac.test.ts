@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { requirePermission, requireRole, requireRoleAtLeast } from '../rbac';
 
 describe('rbac middleware', () => {

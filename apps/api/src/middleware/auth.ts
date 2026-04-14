@@ -1,8 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { jwtConfig, getJwtSecret } from '../config/jwt';
-import { UserRole, isValidRole, resolveHighestRole } from '../types';
+import type { UserRole} from '../types';
+import { isValidRole, resolveHighestRole } from '../types';
 
 interface JwtPayload {
   sub: string;

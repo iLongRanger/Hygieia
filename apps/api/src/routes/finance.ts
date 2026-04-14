@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
@@ -44,7 +45,7 @@ router.get(
 router.get(
   '/reports/ar-aging',
   requirePermission(PERMISSIONS.FINANCE_REPORTS_READ),
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await getArAgingReport();
       res.json({ data });

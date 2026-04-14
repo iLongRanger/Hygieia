@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import request from 'supertest';
-import { Application } from 'express';
+import type { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as contractService from '../../services/contractService';
 import * as contractPublicService from '../../services/contractPublicService';

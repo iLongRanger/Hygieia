@@ -37,7 +37,6 @@ export class SqftSettingsV1Strategy implements PricingStrategy {
       subcontractorPercentageOverride,
       workerCount = 1,
       excludedAreaIds,
-      excludedTaskIds,
     } = context;
 
     // Use the existing pricing calculator

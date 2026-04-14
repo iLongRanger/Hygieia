@@ -1,9 +1,9 @@
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
-type OpportunityClient = {
+interface OpportunityClient {
   opportunity: {
     findMany: (args: Prisma.OpportunityFindManyArgs) => Promise<
-      Array<{
+      {
         id: string;
         accountId: string | null;
         facilityId: string | null;
@@ -11,10 +11,10 @@ type OpportunityClient = {
         status: string;
         updatedAt: Date;
         createdAt: Date;
-      }>
+      }[]
     >;
   };
-};
+}
 
 const OPPORTUNITY_PRIORITY: Record<string, number> = {
   negotiation: 60,

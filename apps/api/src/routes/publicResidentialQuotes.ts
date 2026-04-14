@@ -1,5 +1,6 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
+import type { ZodError } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {

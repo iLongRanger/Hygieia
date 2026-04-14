@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { UserRole, hasPermission, isRoleAtLeast } from '../types/roles';
+import type { Request, Response, NextFunction } from 'express';
+import type { UserRole} from '../types/roles';
+import { hasPermission, isRoleAtLeast } from '../types/roles';
 
 export function requireRole(...allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {

@@ -11,8 +11,8 @@ interface TeamAssignedEmailData {
   facilityAddress: string;
   buildingType: string;
   teamName: string;
-  proposalServices: Array<{ serviceName: string; frequency: string; description?: string | null }>;
-  facilityTasks: Array<{ name: string; area?: string; frequency: string }>;
+  proposalServices: { serviceName: string; frequency: string; description?: string | null }[];
+  facilityTasks: { name: string; area?: string; frequency: string }[];
 }
 
 function buildServiceRows(services: TeamAssignedEmailData['proposalServices']): string {

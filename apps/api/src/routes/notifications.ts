@@ -1,8 +1,9 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireAnyRole } from '../middleware/rbac';
 import { ValidationError } from '../middleware/errorHandler';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import {
   listNotificationsQuerySchema,
   markNotificationReadSchema,

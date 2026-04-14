@@ -1,4 +1,3 @@
-import { companyConfig } from '../config/company';
 import type { GlobalBranding } from '../types/branding';
 import { escapeHtml } from '../utils/escapeHtml';
 

@@ -92,6 +92,6 @@ export function buildResidentialQuoteEmailHtmlWithBranding(
 </html>`;
 }
 
-export function buildResidentialQuoteEmailSubject(quoteNumber: string, title: string) {
+export function buildResidentialQuoteEmailSubject(quoteNumber: string, _title: string) {
   return `Your residential quote is ready: ${quoteNumber}`;
 }

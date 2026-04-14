@@ -1,6 +1,7 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import { createBulkNotifications } from '../services/notificationService';
 import { sendNotificationEmail } from '../services/emailService';

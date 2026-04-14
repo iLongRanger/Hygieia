@@ -70,7 +70,7 @@ export interface PricingSettingsSnapshot {
     };
     variabilityPercentage: number;
   };
-  appliedAreaMultipliers?: Array<{
+  appliedAreaMultipliers?: {
     areaId: string;
     areaName: string;
     squareFeet: number;
@@ -81,7 +81,7 @@ export interface PricingSettingsSnapshot {
     conditionMultiplier: number;
     trafficLevel?: string;
     trafficMultiplier?: number;
-  }>;
+  }[];
 }
 
 /**

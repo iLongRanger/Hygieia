@@ -1,4 +1,4 @@
-import { Application } from 'express';
+import type { Application } from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';

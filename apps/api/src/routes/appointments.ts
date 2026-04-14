@@ -1,9 +1,10 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireAnyRole, requireManager } from '../middleware/rbac';
 import { NotFoundError, ValidationError, BadRequestError } from '../middleware/errorHandler';
 import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import {
   createAppointmentSchema,
   updateAppointmentSchema,

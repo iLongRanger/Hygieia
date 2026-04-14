@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { verifyOwnership } from '../ownership';
 import { ForbiddenError } from '../errorHandler';
 import { prisma } from '../../lib/prisma';

@@ -1,8 +1,6 @@
 export type UserRole = 'owner' | 'admin' | 'manager' | 'cleaner' | 'subcontractor';
 
-export interface RolePermissions {
-  [key: string]: boolean;
-}
+export type RolePermissions = Record<string, boolean>;
 
 export const rolePermissions: Record<UserRole, RolePermissions> = {
   owner: {

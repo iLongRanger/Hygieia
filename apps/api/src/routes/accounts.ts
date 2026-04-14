@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { verifyOwnership } from '../middleware/ownership';
@@ -30,7 +31,7 @@ import {
   listAccountActivitiesQuerySchema,
   createAccountActivitySchema,
 } from '../schemas/accountActivity';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import { PERMISSIONS } from '../types';
 
 const router: Router = Router();
