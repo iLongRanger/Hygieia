@@ -136,6 +136,83 @@ function normalizeGeoLocation(geoLocation: {
   };
 }
 
+async function getTeamUserIds(teamId: string | null): Promise<string[]> {
+  if (!teamId) {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      teamId,
+      status: { in: ['active', 'pending'] },
+    },
+    select: { id: true },
+  });
+
+  return users.map((user) => user.id);
+}
+
+async function notifyJobAssignmentRecipients(input: {
+  job: {
+    id: string;
+    jobNumber: string;
+    facility: { name: string };
+    assignedTeam: { id: string; name: string } | null;
+    assignedToUser: { id: string } | null;
+  };
+  previousAssignedTeamId?: string | null;
+  previousAssignedToUserId?: string | null;
+}) {
+  const nextAssignedTeamId = input.job.assignedTeam?.id ?? null;
+  const nextAssignedToUserId = input.job.assignedToUser?.id ?? null;
+  const previousAssignedTeamId = input.previousAssignedTeamId ?? null;
+  const previousAssignedToUserId = input.previousAssignedToUserId ?? null;
+
+  if (
+    nextAssignedTeamId === previousAssignedTeamId &&
+    nextAssignedToUserId === previousAssignedToUserId
+  ) {
+    return;
+  }
+
+  if (!nextAssignedTeamId && !nextAssignedToUserId) {
+    return;
+  }
+
+  if (nextAssignedToUserId) {
+    await createNotification({
+      userId: nextAssignedToUserId,
+      type: 'job_assigned',
+      title: `Job ${input.job.jobNumber} assigned to you`,
+      body: `You have been assigned job ${input.job.jobNumber} at ${input.job.facility.name}.`,
+      metadata: {
+        jobId: input.job.id,
+        jobNumber: input.job.jobNumber,
+        facilityName: input.job.facility.name,
+        assignedToUserId: nextAssignedToUserId,
+      },
+    });
+    return;
+  }
+
+  const recipientUserIds = await getTeamUserIds(nextAssignedTeamId);
+  if (recipientUserIds.length === 0 || !input.job.assignedTeam) {
+    return;
+  }
+
+  await createBulkNotifications(recipientUserIds, {
+    type: 'job_assigned',
+    title: `Job ${input.job.jobNumber} assigned to ${input.job.assignedTeam.name}`,
+    body: `Job ${input.job.jobNumber} at ${input.job.facility.name} has been assigned to your team.`,
+    metadata: {
+      jobId: input.job.id,
+      jobNumber: input.job.jobNumber,
+      facilityName: input.job.facility.name,
+      assignedTeamId: nextAssignedTeamId,
+    },
+  });
+}
+
 // ==================== Select Objects ====================
 
 const jobSelect = {
@@ -683,7 +760,12 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
   assertSingleWorkforceAssignment(input);
   const existing = await prisma.job.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+    },
   });
   if (!existing) throw new NotFoundError('Job not found');
   if (['completed', 'canceled', 'missed'].includes(existing.status)) {
@@ -734,6 +816,12 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
     });
 
     return job;
+  });
+
+  await notifyJobAssignmentRecipients({
+    job,
+    previousAssignedTeamId: existing.assignedTeamId,
+    previousAssignedToUserId: existing.assignedToUserId,
   });
 
   return withWorkforceMetadata(job);
@@ -1142,7 +1230,12 @@ export async function assignJob(
   });
   const existing = await prisma.job.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+    },
   });
   if (!existing) throw new NotFoundError('Job not found');
   if (['completed', 'canceled', 'missed'].includes(existing.status)) {
@@ -1186,19 +1279,11 @@ export async function assignJob(
     return job;
   });
 
-  if (userId) {
-    await createNotification({
-      userId,
-      type: 'job_assigned',
-      title: `Job ${job.jobNumber} assigned to you`,
-      body: `You have been assigned job ${job.jobNumber} at ${job.facility.name}.`,
-      metadata: {
-        jobId: job.id,
-        jobNumber: job.jobNumber,
-        facilityName: job.facility.name,
-      },
-    });
-  }
+  await notifyJobAssignmentRecipients({
+    job,
+    previousAssignedTeamId: existing.assignedTeamId,
+    previousAssignedToUserId: existing.assignedToUserId,
+  });
 
   return withWorkforceMetadata(job);
 }

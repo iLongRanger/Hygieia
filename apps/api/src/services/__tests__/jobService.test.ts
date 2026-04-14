@@ -13,6 +13,7 @@ import {
   listJobs,
   runRecurringJobsAutoRegenerationCycle,
   runJobNearingEndNoCheckInAlertCycle,
+  updateJob,
 } from '../jobService';
 
 jest.mock('../../lib/prisma', () => ({
@@ -222,11 +223,15 @@ describe('jobService', () => {
     (prisma.job.findUnique as jest.Mock).mockResolvedValue({
       id: 'job-1',
       status: 'scheduled',
+      assignedTeamId: null,
+      assignedToUserId: null,
     });
     (prisma.job.update as jest.Mock).mockResolvedValue({
       id: 'job-1',
       jobNumber: 'WO-2026-0011',
       facility: { name: 'HQ' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-7' },
     });
 
     await assignJob('job-1', null, 'user-7', 'admin-1');
@@ -253,6 +258,102 @@ describe('jobService', () => {
         }),
       })
     );
+  });
+
+  it('assignJob sends notifications to active team members when team assignment is present', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      status: 'scheduled',
+      assignedTeamId: null,
+      assignedToUserId: null,
+    });
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: 'team-user-1' },
+      { id: 'team-user-2' },
+    ]);
+    (prisma.job.update as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      jobNumber: 'WO-2026-0011',
+      facility: { name: 'HQ' },
+      assignedTeam: { id: 'team-9', name: 'Night Shift' },
+      assignedToUser: null,
+    });
+
+    await assignJob('job-1', 'team-9', null, 'admin-1');
+
+    expect(createBulkNotifications).toHaveBeenCalledWith(
+      ['team-user-1', 'team-user-2'],
+      expect.objectContaining({
+        type: 'job_assigned',
+        title: 'Job WO-2026-0011 assigned to Night Shift',
+        metadata: expect.objectContaining({
+          jobId: 'job-1',
+          assignedTeamId: 'team-9',
+        }),
+      })
+    );
+  });
+
+  it('updateJob sends notification when direct assignee changes', async () => {
+    (prisma.job.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'job-2',
+        status: 'scheduled',
+        assignedTeamId: null,
+        assignedToUserId: 'user-1',
+      })
+      .mockResolvedValueOnce({
+        assignedToUserId: 'user-1',
+        scheduledStartTime: null,
+        scheduledEndTime: null,
+      });
+    (prisma.job.update as jest.Mock).mockResolvedValue({
+      id: 'job-2',
+      jobNumber: 'WO-2026-0012',
+      facility: { name: 'Branch' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-8' },
+    });
+
+    await updateJob('job-2', { assignedToUserId: 'user-8' }, 'admin-1');
+
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-8',
+        type: 'job_assigned',
+        metadata: expect.objectContaining({
+          jobId: 'job-2',
+          assignedToUserId: 'user-8',
+        }),
+      })
+    );
+  });
+
+  it('updateJob does not send notification when assignee is unchanged', async () => {
+    (prisma.job.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'job-2',
+        status: 'scheduled',
+        assignedTeamId: null,
+        assignedToUserId: 'user-8',
+      })
+      .mockResolvedValueOnce({
+        assignedToUserId: 'user-8',
+        scheduledStartTime: null,
+        scheduledEndTime: null,
+      });
+    (prisma.job.update as jest.Mock).mockResolvedValue({
+      id: 'job-2',
+      jobNumber: 'WO-2026-0012',
+      facility: { name: 'Branch' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-8' },
+    });
+
+    await updateJob('job-2', { notes: 'Adjusted window only' }, 'admin-1');
+
+    expect(createNotification).not.toHaveBeenCalled();
+    expect(createBulkNotifications).not.toHaveBeenCalled();
   });
 
   it('generateJobsFromContract skips dates that already have jobs', async () => {
