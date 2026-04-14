@@ -498,6 +498,25 @@ const PublicContractView: React.FC = () => {
                 <div className="font-medium text-surface-900">{contract.paymentTerms}</div>
               </div>
             </div>
+            {Number(contract.taxAmount || 0) > 0 && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-surface-200 pt-4">
+                <div>
+                  <div className="text-sm text-surface-500">Subtotal Before Tax</div>
+                  <div className="font-medium text-surface-900">
+                    {formatCurrency(Number(contract.monthlyValue) - Number(contract.taxAmount || 0))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-surface-500">
+                    Included Tax
+                    {Number(contract.taxRate || 0) > 0 ? ` (${(Number(contract.taxRate || 0) * 100).toFixed(1)}%)` : ''}
+                  </div>
+                  <div className="font-medium text-surface-900">
+                    {formatCurrency(Number(contract.taxAmount || 0))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

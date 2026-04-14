@@ -202,10 +202,11 @@ const PublicInvoiceView = () => {
                   <span className="text-surface-500">Subtotal</span>
                   <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
                 </div>
-                {Number(invoice.taxRate) > 0 && (
+                {Number(invoice.taxAmount) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-surface-500">
-                      Tax ({(Number(invoice.taxRate) * 100).toFixed(1)}%)
+                      Included Tax
+                      {Number(invoice.taxRate) > 0 ? ` (${(Number(invoice.taxRate) * 100).toFixed(1)}%)` : ''}
                     </span>
                     <span>{formatCurrency(invoice.taxAmount)}</span>
                   </div>
@@ -230,6 +231,11 @@ const PublicInvoiceView = () => {
             </div>
           </div>
         </div>
+        {Number(invoice.taxAmount) > 0 && (
+          <p className="mt-3 text-right text-xs text-surface-500">
+            Tax is already included in the billed total.
+          </p>
+        )}
 
         {/* Payment Instructions */}
         {invoice.paymentInstructions && (

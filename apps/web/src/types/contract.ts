@@ -80,6 +80,8 @@ export interface Contract {
   autoRenew: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
+  taxRate?: number | null;
+  taxAmount?: number | null;
   totalValue?: number | null;
   billingCycle: BillingCycle;
   residentialServiceType?: ResidentialContractServiceType | null;
@@ -152,6 +154,9 @@ export interface Contract {
     id: string;
     proposalNumber: string;
     title: string;
+    taxRate?: number | null;
+    taxAmount?: number | null;
+    totalAmount?: number | null;
     proposalServices?: {
       id: string;
       serviceName: string;
@@ -352,6 +357,8 @@ export interface CreateContractInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: BillingCycle;
   paymentTerms?: string;
@@ -392,6 +399,8 @@ export interface UpdateContractInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue?: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: BillingCycle;
   paymentTerms?: string;
@@ -463,6 +472,8 @@ export interface RenewContractInput {
   startDate?: string;
   endDate?: string | null;
   monthlyValue?: number;
+  taxRate?: number;
+  taxAmount?: number;
   serviceFrequency?: ServiceFrequency | null;
   serviceSchedule?: ServiceSchedule | null;
   autoRenew?: boolean;
@@ -488,6 +499,8 @@ export interface CreateStandaloneContractInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: BillingCycle;
   paymentTerms?: string;

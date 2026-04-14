@@ -84,6 +84,7 @@ const jobInvoiceCandidateSelect = Prisma.validator<Prisma.JobSelect>()({
       contractNumber: true,
       title: true,
       monthlyValue: true,
+      taxRate: true,
       paymentTerms: true,
       serviceFrequency: true,
     },
@@ -313,26 +314,6 @@ function addUtcDays(date: Date, days: number): Date {
   return next;
 }
 
-function getMonthlyVisits(frequency: string | null | undefined): number {
-  const normalized = (frequency ?? '').trim().toLowerCase();
-  const visitsMap: Record<string, number> = {
-    '1x_week': 4.33,
-    '2x_week': 8.67,
-    '3x_week': 13,
-    '4x_week': 17.33,
-    '5x_week': 21.67,
-    '7x_week': 30.33,
-    daily: 30,
-    weekly: 4.33,
-    biweekly: 2.17,
-    bi_weekly: 2.17,
-    monthly: 1,
-    quarterly: 0.33,
-  };
-
-  return visitsMap[normalized] ?? 4.33;
-}
-
 function getUtcDaysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
@@ -388,18 +369,47 @@ function getJobBasedInvoiceEligibilityFilter() {
   } satisfies Prisma.JobWhereInput;
 }
 
-function derivePerJobBillableAmount(job: JobInvoiceCandidate): number {
-  if (!job.contract) {
-    throw new BadRequestError(`Job ${job.jobNumber} is missing a contract and cannot be invoiced automatically`);
+function calculateContractInvoiceAmount(
+  contractMonthlyValue: number,
+  periodStart: Date,
+  periodEnd: Date,
+  prorate: boolean
+): number {
+  if (!Number.isFinite(contractMonthlyValue) || contractMonthlyValue < 0) {
+    throw new BadRequestError('Contract is missing a valid monthly billing value');
   }
 
-  const monthlyValue = Number(job.contract.monthlyValue);
-  const monthlyVisits = getMonthlyVisits(job.contract.serviceFrequency);
-  if (monthlyVisits <= 0) {
-    throw new BadRequestError(`Job ${job.jobNumber} has an invalid service frequency for billing`);
+  if (!prorate) {
+    return Math.round(contractMonthlyValue * 100) / 100;
   }
 
-  return Math.round((monthlyValue / monthlyVisits) * 100) / 100;
+  return calculateProratedAmount(contractMonthlyValue, periodStart, periodEnd);
+}
+
+function splitInclusiveTax(totalGrossAmount: number, taxRate: number): {
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+} {
+  if (!Number.isFinite(taxRate) || taxRate <= 0) {
+    const roundedTotal = Math.round(totalGrossAmount * 100) / 100;
+    return { subtotal: roundedTotal, taxAmount: 0, totalAmount: roundedTotal };
+  }
+
+  const totalAmount = Math.round(totalGrossAmount * 100) / 100;
+  const subtotal = Math.round((totalAmount / (1 + taxRate)) * 100) / 100;
+  const taxAmount = Math.round((totalAmount - subtotal) * 100) / 100;
+  return { subtotal, taxAmount, totalAmount };
+}
+
+function splitAmountAcrossJobs(totalAmount: number, jobCount: number): number[] {
+  if (jobCount <= 0) return [];
+
+  const totalCents = Math.round(totalAmount * 100);
+  const baseCents = Math.floor(totalCents / jobCount);
+  const remainder = totalCents - baseCents * jobCount;
+
+  return Array.from({ length: jobCount }, (_, index) => (baseCents + (index < remainder ? 1 : 0)) / 100);
 }
 
 async function createInvoiceFromJobs(input: {
@@ -409,6 +419,7 @@ async function createInvoiceFromJobs(input: {
   dueDate: Date;
   periodStart: Date;
   periodEnd: Date;
+  prorate: boolean;
 }) {
   if (input.jobs.length === 0) {
     throw new BadRequestError('No eligible completed jobs found to invoice');
@@ -424,16 +435,56 @@ async function createInvoiceFromJobs(input: {
       ? input.jobs[0].facilityId
       : null;
 
-  const jobLineItems = input.jobs.map((job, index) => ({
-    job,
-    sortOrder: index,
-    amount: derivePerJobBillableAmount(job),
-    description: `${job.facility.name} - ${job.contract?.title ?? job.contract?.contractNumber ?? 'Completed Service'} (${job.jobNumber} on ${toIsoDate(job.scheduledDate)})`,
-  }));
+  const jobsByContract = new Map<string, JobInvoiceCandidate[]>();
 
-  const subtotal = Math.round(
-    jobLineItems.reduce((sum, item) => sum + item.amount, 0) * 100
-  ) / 100;
+  for (const job of input.jobs) {
+    if (!job.contractId || !job.contract) {
+      throw new BadRequestError(`Job ${job.jobNumber} is missing a contract and cannot be invoiced automatically`);
+    }
+
+    const existing = jobsByContract.get(job.contractId) ?? [];
+    existing.push(job);
+    jobsByContract.set(job.contractId, existing);
+  }
+
+  const invoiceLineItems = Array.from(jobsByContract.values()).map((contractJobs, index) => {
+    const firstJob = contractJobs[0];
+    const contractName = firstJob.contract?.title ?? firstJob.contract?.contractNumber ?? 'Monthly Service';
+    const facilityName = firstJob.facility?.name ?? 'Service Location';
+    const grossAmount = calculateContractInvoiceAmount(
+      Number(firstJob.contract?.monthlyValue ?? 0),
+      input.periodStart,
+      input.periodEnd,
+      input.prorate
+    );
+    const taxRate = Number(firstJob.contract?.taxRate ?? 0);
+    const split = splitInclusiveTax(grossAmount, taxRate);
+
+    return {
+      sortOrder: index,
+      description: `${facilityName} - ${contractName} monthly service (${toIsoDate(input.periodStart)} to ${toIsoDate(input.periodEnd)})`,
+      grossAmount: split.totalAmount,
+      netAmount: split.subtotal,
+      taxAmount: split.taxAmount,
+      taxRate,
+      jobs: contractJobs,
+      allocations: splitAmountAcrossJobs(split.subtotal, contractJobs.length),
+    };
+  });
+
+  const taxBreakdown = invoiceLineItems.reduce(
+    (acc, item) => {
+      acc.subtotal += item.netAmount;
+      acc.taxAmount += item.taxAmount;
+      acc.totalAmount += item.grossAmount;
+      return acc;
+    },
+    { subtotal: 0, taxAmount: 0, totalAmount: 0 }
+  );
+  const subtotal = Math.round(taxBreakdown.subtotal * 100) / 100;
+  const taxAmount = Math.round(taxBreakdown.taxAmount * 100) / 100;
+  const totalAmount = Math.round(taxBreakdown.totalAmount * 100) / 100;
+  const effectiveTaxRate = subtotal > 0 ? Math.round((taxAmount / subtotal) * 10000) / 10000 : 0;
   const invoiceNumber = await generateInvoiceNumber();
   const { hashedToken } = createPublicTokenPair();
 
@@ -449,10 +500,10 @@ async function createInvoiceFromJobs(input: {
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
         subtotal: new Prisma.Decimal(subtotal),
-        taxRate: new Prisma.Decimal(0),
-        taxAmount: new Prisma.Decimal(0),
-        totalAmount: new Prisma.Decimal(subtotal),
-        balanceDue: new Prisma.Decimal(subtotal),
+        taxRate: new Prisma.Decimal(effectiveTaxRate),
+        taxAmount: new Prisma.Decimal(taxAmount),
+        totalAmount: new Prisma.Decimal(totalAmount),
+        balanceDue: new Prisma.Decimal(totalAmount),
         createdByUserId: input.createdByUserId,
         publicToken: hashedToken,
         publicTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
@@ -460,28 +511,30 @@ async function createInvoiceFromJobs(input: {
       select: { id: true },
     });
 
-    for (const lineItem of jobLineItems) {
+    for (const lineItem of invoiceLineItems) {
       const createdItem = await tx.invoiceItem.create({
         data: {
           invoiceId: invoice.id,
           itemType: 'service',
           description: lineItem.description,
           quantity: new Prisma.Decimal(1),
-          unitPrice: new Prisma.Decimal(lineItem.amount),
-          totalPrice: new Prisma.Decimal(lineItem.amount),
+          unitPrice: new Prisma.Decimal(lineItem.netAmount),
+          totalPrice: new Prisma.Decimal(lineItem.netAmount),
           sortOrder: lineItem.sortOrder,
         },
         select: { id: true },
       });
 
-      await tx.invoiceJobAllocation.create({
-        data: {
-          invoiceId: invoice.id,
-          invoiceItemId: createdItem.id,
-          jobId: lineItem.job.id,
-          allocatedAmount: new Prisma.Decimal(lineItem.amount),
-        },
-      });
+      for (const [jobIndex, job] of lineItem.jobs.entries()) {
+        await tx.invoiceJobAllocation.create({
+          data: {
+            invoiceId: invoice.id,
+            invoiceItemId: createdItem.id,
+            jobId: job.id,
+            allocatedAmount: new Prisma.Decimal(lineItem.allocations[jobIndex] ?? 0),
+          },
+        });
+      }
     }
 
     await tx.invoiceActivity.create({
@@ -492,6 +545,8 @@ async function createInvoiceFromJobs(input: {
         metadata: {
           source: 'completed_jobs',
           jobCount: input.jobs.length,
+          billingMode: 'monthly_contract_value',
+          taxIncluded: taxAmount > 0,
           jobIds: input.jobs.map((job) => job.id),
         },
       },
@@ -830,7 +885,6 @@ export async function generateInvoiceFromContract(
   const termsDays = parsePaymentTermsDays(contract.paymentTerms);
   const issueDate = atUtcStartOfDay(window.end);
   const dueDate = atUtcStartOfDay(addUtcDays(issueDate, termsDays));
-  void prorate;
 
   const jobs = await prisma.job.findMany({
     where: {
@@ -856,6 +910,7 @@ export async function generateInvoiceFromContract(
     dueDate,
     periodStart: window.start,
     periodEnd: window.end,
+    prorate,
   });
 }
 
@@ -925,13 +980,14 @@ export async function batchGenerateInvoices(
           dueDate,
           periodStart: normalizedWindow.start,
           periodEnd: normalizedWindow.end,
+          prorate,
         });
 
         results.push({
           accountId,
           status: 'generated',
           invoiceId: invoice.id,
-          lineItems: accountJobs.length,
+          lineItems: invoice.items.length,
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';

@@ -346,10 +346,11 @@ const InvoiceDetail = () => {
                   <td colSpan={3} className="py-2 text-right text-surface-500">Subtotal</td>
                   <td className="py-2 text-right font-medium">{formatCurrency(invoice.subtotal)}</td>
                 </tr>
-                {parseFloat(invoice.taxRate) > 0 && (
+                {parseFloat(invoice.taxAmount) > 0 && (
                   <tr>
                     <td colSpan={3} className="py-1 text-right text-surface-500">
-                      Tax ({(parseFloat(invoice.taxRate) * 100).toFixed(1)}%)
+                      Included Tax
+                      {parseFloat(invoice.taxRate) > 0 ? ` (${(parseFloat(invoice.taxRate) * 100).toFixed(1)}%)` : ''}
                     </td>
                     <td className="py-1 text-right">{formatCurrency(invoice.taxAmount)}</td>
                   </tr>
@@ -361,6 +362,11 @@ const InvoiceDetail = () => {
               </tfoot>
             </table>
           </div>
+          {parseFloat(invoice.taxAmount) > 0 && (
+            <p className="mt-3 text-xs text-surface-500 dark:text-surface-400">
+              Tax is already included in the billed total.
+            </p>
+          )}
         </div>
       </Card>
 

@@ -1206,6 +1206,8 @@ model Contract {
 
   // Financial Terms
   monthlyValue      Decimal  @map("monthly_value") @db.Decimal(12, 2)
+  taxRate           Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  taxAmount         Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
   totalValue        Decimal? @map("total_value") @db.Decimal(12, 2)
   billingCycle      String   @default("monthly") @map("billing_cycle") @db.VarChar(20)
   paymentTerms      String   @default("Net 30") @map("payment_terms") @db.VarChar(50)

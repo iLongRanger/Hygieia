@@ -21,12 +21,55 @@ interface DraftItem {
   itemType: InvoiceItemType;
 }
 
+interface InvoiceContractDefaults {
+  contractId: string | null;
+  facilityId: string | null;
+  paymentTerms: string;
+  taxRate: number;
+}
+
 const ITEM_TYPE_OPTIONS = [
   { value: 'service', label: 'Service' },
   { value: 'additional', label: 'Additional' },
   { value: 'adjustment', label: 'Adjustment' },
   { value: 'credit', label: 'Credit' },
 ];
+
+const DEFAULT_PAYMENT_TERMS_DAYS = 30;
+
+const parsePaymentTermsDays = (paymentTerms?: string | null) => {
+  if (!paymentTerms) return DEFAULT_PAYMENT_TERMS_DAYS;
+  const normalized = paymentTerms.trim().toLowerCase();
+
+  const netMatch = normalized.match(/net\s*(\d{1,3})/i);
+  if (netMatch) return Number(netMatch[1]);
+
+  const numberMatch = normalized.match(/(\d{1,3})/);
+  if (numberMatch) return Number(numberMatch[1]);
+
+  return DEFAULT_PAYMENT_TERMS_DAYS;
+};
+
+const addDaysToIsoDate = (isoDate: string, days: number) => {
+  const next = new Date(`${isoDate}T00:00:00.000Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+};
+
+const splitInclusiveTax = (grossAmount: number, taxRate: number) => {
+  if (!Number.isFinite(taxRate) || taxRate <= 0) {
+    return {
+      subtotal: Math.round(grossAmount * 100) / 100,
+      taxAmount: 0,
+    };
+  }
+
+  const roundedGross = Math.round(grossAmount * 100) / 100;
+  const subtotal = Math.round((roundedGross / (1 + taxRate)) * 100) / 100;
+  const taxAmount = Math.round((roundedGross - subtotal) * 100) / 100;
+
+  return { subtotal, taxAmount };
+};
 
 const InvoiceForm = () => {
   const navigate = useNavigate();
@@ -35,11 +78,16 @@ const InvoiceForm = () => {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingContractItems, setLoadingContractItems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [contractDefaults, setContractDefaults] = useState<InvoiceContractDefaults>({
+    contractId: null,
+    facilityId: null,
+    paymentTerms: '',
+    taxRate: 0,
+  });
   const [form, setForm] = useState({
     accountId: '',
     issueDate: today,
     dueDate: today,
-    taxRate: '0',
     notes: '',
     paymentInstructions: '',
   });
@@ -70,6 +118,12 @@ const InvoiceForm = () => {
   useEffect(() => {
     const loadAccountContractItems = async () => {
       if (!form.accountId) {
+        setContractDefaults({
+          contractId: null,
+          facilityId: null,
+          paymentTerms: '',
+          taxRate: 0,
+        });
         setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
         return;
       }
@@ -96,22 +150,61 @@ const InvoiceForm = () => {
         ]);
 
         const activeFacilityIds = new Set(facilitiesRes.data.map((facility) => facility.id));
-        const contractItems = contractsRes.data
+        const activeContracts = contractsRes.data
           .filter((contract) => contract.facility?.id && activeFacilityIds.has(contract.facility.id))
-          .map((contract) => ({
-            description: `${contract.facility?.name ?? 'Facility'} - ${contract.title}`,
-            quantity: '1',
-            unitPrice: String(contract.monthlyValue ?? 0),
-            itemType: 'service' as InvoiceItemType,
-          }));
+          .map((contract) => {
+            const grossAmount = Number(contract.monthlyValue ?? 0);
+            const taxRate = Number(contract.taxRate ?? 0);
+            const split = splitInclusiveTax(grossAmount, taxRate);
 
-        if (contractItems.length === 0) {
+            return {
+              ...contract,
+              invoiceItem: {
+                description: `${contract.facility?.name ?? 'Facility'} - ${contract.title}`,
+                quantity: '1',
+                unitPrice: String(split.subtotal),
+                itemType: 'service' as InvoiceItemType,
+              },
+              derivedTaxAmount: split.taxAmount,
+            };
+          });
+
+        if (activeContracts.length === 0) {
+          setContractDefaults({
+            contractId: null,
+            facilityId: null,
+            paymentTerms: '',
+            taxRate: 0,
+          });
           setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
           toast('No active facility contracts found for this account');
           return;
         }
 
-        setItems(contractItems);
+        const totalNet = activeContracts.reduce(
+          (sum, contract) => sum + Number(contract.invoiceItem.unitPrice),
+          0
+        );
+        const totalTax = activeContracts.reduce(
+          (sum, contract) => sum + Number(contract.derivedTaxAmount),
+          0
+        );
+        const effectiveTaxRate = totalNet > 0 ? Math.round((totalTax / totalNet) * 10000) / 10000 : 0;
+        const primaryContract = activeContracts[0];
+        const paymentTerms = primaryContract.paymentTerms ?? '';
+        const dueDate = addDaysToIsoDate(form.issueDate, parsePaymentTermsDays(paymentTerms));
+
+        setContractDefaults({
+          contractId: activeContracts.length === 1 ? primaryContract.id : null,
+          facilityId: activeContracts.length === 1 ? (primaryContract.facility?.id ?? null) : null,
+          paymentTerms,
+          taxRate: effectiveTaxRate,
+        });
+        setForm((prev) => ({
+          ...prev,
+          dueDate,
+        }));
+        setItems(activeContracts.map((contract) => contract.invoiceItem));
       } catch {
         toast.error('Failed to load contract line items');
       } finally {
@@ -120,7 +213,7 @@ const InvoiceForm = () => {
     };
 
     void loadAccountContractItems();
-  }, [form.accountId]);
+  }, [form.accountId, form.issueDate]);
 
   const updateItem = (index: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -166,19 +259,15 @@ const InvoiceForm = () => {
       return;
     }
 
-    const taxRatePercent = Number(form.taxRate);
-    if (Number.isNaN(taxRatePercent) || taxRatePercent < 0 || taxRatePercent > 100) {
-      toast.error('Tax rate must be between 0 and 100');
-      return;
-    }
-
     try {
       setSubmitting(true);
       const invoice = await createInvoice({
+        contractId: contractDefaults.contractId,
         accountId: form.accountId,
+        facilityId: contractDefaults.facilityId,
         issueDate: form.issueDate,
         dueDate: form.dueDate,
-        taxRate: taxRatePercent / 100,
+        taxRate: contractDefaults.taxRate,
         notes: form.notes || null,
         paymentInstructions: form.paymentInstructions || null,
         items: parsedItems,
@@ -225,20 +314,15 @@ const InvoiceForm = () => {
             label="Due Date"
             type="date"
             value={form.dueDate}
-            onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
-            required
+            disabled
           />
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input
-            label="Tax Rate (%)"
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            value={form.taxRate}
-            onChange={(e) => setForm((prev) => ({ ...prev, taxRate: e.target.value }))}
+            label="Payment Terms"
+            value={contractDefaults.paymentTerms || 'No contract terms found'}
+            disabled
           />
           <Input
             label="Payment Instructions"
@@ -269,6 +353,9 @@ const InvoiceForm = () => {
             Loading active facility contracts...
           </p>
         )}
+        <p className="text-sm text-surface-500 dark:text-surface-400">
+          Listed prices are before tax. Invoice tax is calculated from the contract and the final total matches the contract price.
+        </p>
 
         {items.map((item, index) => (
           <div key={`invoice-item-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 md:grid-cols-12 dark:border-surface-700">

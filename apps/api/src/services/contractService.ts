@@ -49,6 +49,8 @@ export interface ContractCreateInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: string;
   paymentTerms?: string;
@@ -72,6 +74,8 @@ export interface ContractUpdateInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue?: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: string;
   paymentTerms?: string;
@@ -167,6 +171,8 @@ const contractSelect = {
   autoRenew: true,
   renewalNoticeDays: true,
   monthlyValue: true,
+  taxRate: true,
+  taxAmount: true,
   totalValue: true,
   billingCycle: true,
   paymentTerms: true,
@@ -230,6 +236,9 @@ const contractSelect = {
       id: true,
       proposalNumber: true,
       title: true,
+      taxRate: true,
+      taxAmount: true,
+      totalAmount: true,
       proposalServices: {
         orderBy: { sortOrder: 'asc' },
         select: {
@@ -656,7 +665,7 @@ export async function createContract(data: ContractCreateInput) {
   // If proposalId is provided, validate the proposal
   const proposal = await prisma.proposal.findUnique({
     where: { id: data.proposalId },
-    select: { status: true, opportunityId: true },
+    select: { status: true, opportunityId: true, taxRate: true, taxAmount: true },
   });
 
   if (!proposal) {
@@ -727,6 +736,8 @@ export async function createContract(data: ContractCreateInput) {
     autoRenew: data.autoRenew,
     renewalNoticeDays: data.renewalNoticeDays,
     monthlyValue: data.monthlyValue,
+    taxRate: data.taxRate ?? Number(proposal.taxRate ?? 0),
+    taxAmount: data.taxAmount ?? Number(proposal.taxAmount ?? 0),
     totalValue: data.totalValue,
     billingCycle: data.billingCycle,
     paymentTerms: data.paymentTerms,
@@ -815,6 +826,8 @@ export async function createContractFromProposal(
     autoRenew: overrides?.autoRenew ?? false,
     renewalNoticeDays: overrides?.renewalNoticeDays ?? 30,
     monthlyValue,
+    taxRate: overrides?.taxRate ?? Number(proposal.taxRate ?? 0),
+    taxAmount: overrides?.taxAmount ?? Number(proposal.taxAmount ?? 0),
     totalValue: overrides?.totalValue ?? null,
     billingCycle: overrides?.billingCycle ?? 'monthly',
     paymentTerms: overrides?.paymentTerms ?? proposal.account.paymentTerms ?? 'Net 30',
@@ -1365,6 +1378,8 @@ export async function renewContract(
   if (input.startDate !== undefined) updateData.startDate = input.startDate;
   if (input.endDate !== undefined) updateData.endDate = input.endDate;
   if (input.monthlyValue !== undefined) updateData.monthlyValue = input.monthlyValue;
+  if (input.taxRate !== undefined) updateData.taxRate = input.taxRate;
+  if (input.taxAmount !== undefined) updateData.taxAmount = input.taxAmount;
   if (input.serviceFrequency !== undefined) updateData.serviceFrequency = input.serviceFrequency;
   if (input.serviceSchedule !== undefined || input.serviceFrequency !== undefined) {
     const normalized = normalizeServiceSchedule(input.serviceSchedule, input.serviceFrequency);
@@ -1441,6 +1456,8 @@ export interface StandaloneContractCreateInput {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   monthlyValue: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalValue?: number | null;
   billingCycle?: string;
   paymentTerms?: string;
@@ -1509,6 +1526,8 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     autoRenew: data.autoRenew ?? false,
     renewalNoticeDays: data.renewalNoticeDays ?? 30,
     monthlyValue: data.monthlyValue,
+    taxRate: data.taxRate ?? 0,
+    taxAmount: data.taxAmount ?? 0,
     totalValue: data.totalValue,
     billingCycle: data.billingCycle ?? 'monthly',
     paymentTerms: data.paymentTerms ?? 'Net 30',
