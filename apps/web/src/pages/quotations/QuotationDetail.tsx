@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-
   Edit2,
   Send,
   CheckCircle,
@@ -17,6 +16,7 @@ import {
   Eye,
   Copy,
   Trash2,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -38,6 +38,7 @@ import {
   deleteQuotation,
   issueQuotationPublicLink,
   setQuotationPricingApproval,
+  downloadQuotationPdf,
 } from '../../lib/quotations';
 import { extractApiErrorMessage } from '../../lib/api';
 import type { Quotation, QuotationStatus } from '../../types/quotation';
@@ -127,6 +128,23 @@ const QuotationDetail = () => {
 
   useEffect(() => {
     fetchQuotation();
+  }, [fetchQuotation]);
+
+  // Auto-refresh when the tab regains focus so client-side accept/reject via
+  // the public link shows up in the admin view without a manual reload.
+  useEffect(() => {
+    const onFocus = () => {
+      fetchQuotation();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') fetchQuotation();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [fetchQuotation]);
 
   const handleSend = async () => {
@@ -242,6 +260,16 @@ const QuotationDetail = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!quotation) return;
+    try {
+      await downloadQuotationPdf(quotation.id, quotation.quotationNumber);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to download PDF');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -295,6 +323,10 @@ const QuotationDetail = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Download PDF
+          </Button>
           {['sent', 'viewed', 'accepted'].includes(quotation.status) && (
             <Button variant="secondary" size="sm" onClick={copyPublicLink}>
               <Copy className="mr-1.5 h-3.5 w-3.5" />

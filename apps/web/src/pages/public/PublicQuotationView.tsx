@@ -6,11 +6,13 @@ import {
   XCircle,
   Mail,
   Phone,
+  Download,
 } from 'lucide-react';
 import {
   getPublicQuotation,
   acceptPublicQuotation,
   rejectPublicQuotation,
+  downloadPublicQuotationPdf,
   type PublicQuotation,
 } from '../../lib/publicQuotations';
 import { extractApiErrorMessage } from '../../lib/api';
@@ -103,6 +105,15 @@ const PublicQuotationView = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!token || !quotation) return;
+    try {
+      await downloadPublicQuotationPdf(token, quotation.quotationNumber);
+    } catch {
+      alert('Failed to download PDF');
+    }
+  };
+
   const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
   const accentColor = branding?.themeAccentColor || '#d4af37';
   const companyName = branding?.companyName || 'Hygieia Cleaning Services';
@@ -133,12 +144,23 @@ const PublicQuotationView = () => {
     <div className="min-h-screen bg-surface-50">
       {/* Header */}
       <div style={{ backgroundColor: primaryColor }} className="py-8 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          {branding?.logoDataUrl && (
-            <img src={branding.logoDataUrl} alt="Logo" className="h-16 mx-auto mb-4" />
-          )}
-          <h1 style={{ color: accentColor }} className="text-2xl font-bold">{companyName}</h1>
-          <p className="text-white/70 text-sm mt-1">Quotation</p>
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center">
+            {branding?.logoDataUrl && (
+              <img src={branding.logoDataUrl} alt="Logo" className="h-16 mx-auto mb-4" />
+            )}
+            <h1 style={{ color: accentColor }} className="text-2xl font-bold">{companyName}</h1>
+            <p className="text-white/70 text-sm mt-1">Quotation</p>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/80 hover:text-white border border-white/30 rounded-lg hover:bg-white/10 transition"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </button>
+          </div>
         </div>
       </div>
 

@@ -93,3 +93,17 @@ export async function issueQuotationPublicLink(id: string): Promise<string> {
   const response = await api.post(`/quotations/${id}/public-link`);
   return response.data.data.publicUrl;
 }
+
+export async function downloadQuotationPdf(id: string, quotationNumber: string): Promise<void> {
+  const response = await api.get(`/quotations/${id}/pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${quotationNumber}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}

@@ -100,3 +100,20 @@ export async function rejectPublicQuotation(
   });
   return response.data.data;
 }
+
+export async function downloadPublicQuotationPdf(
+  token: string,
+  quotationNumber: string
+): Promise<void> {
+  const response = await publicApi.get(`/public/quotations/${token}/pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${quotationNumber}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}

@@ -133,6 +133,23 @@ const QuotationsList = () => {
     setPage(1);
   }, [accountIdFilter]);
 
+  // Refresh when the tab regains focus so public-link accept/reject flows
+  // surface in the admin list without a manual reload.
+  useEffect(() => {
+    const refresh = () =>
+      fetchQuotations(page, search, { status: statusFilter, includeArchived });
+    const onFocus = () => refresh();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [fetchQuotations, page, search, statusFilter, includeArchived]);
+
   const handleSearch = (value: string) => {
     setSearch(value);
     setPage(1);
