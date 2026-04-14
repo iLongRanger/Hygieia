@@ -9,7 +9,6 @@ const markBackgroundServiceRunStartMock = jest.fn();
 const markBackgroundServiceRunSuccessMock = jest.fn();
 const markBackgroundServiceRunFailureMock = jest.fn();
 const createBackgroundServiceRunLogMock = jest.fn();
-const getGlobalSettingsTimezoneMock = jest.fn();
 
 jest.mock('../jobService', () => ({
   runJobNearingEndNoCheckInAlertCycle: (...args: unknown[]) =>
@@ -38,11 +37,6 @@ jest.mock('../backgroundServiceSettingsService', () => ({
     createBackgroundServiceRunLogMock(...args),
 }));
 
-jest.mock('../globalSettingsService', () => ({
-  getGlobalSettingsTimezone: (...args: unknown[]) =>
-    getGlobalSettingsTimezoneMock(...args),
-}));
-
 const originalEnv = { ...process.env };
 
 describe('jobAlertScheduler', () => {
@@ -60,7 +54,6 @@ describe('jobAlertScheduler', () => {
     markBackgroundServiceRunSuccessMock.mockResolvedValue(undefined);
     markBackgroundServiceRunFailureMock.mockResolvedValue(undefined);
     createBackgroundServiceRunLogMock.mockResolvedValue(undefined);
-    getGlobalSettingsTimezoneMock.mockResolvedValue('UTC');
   });
 
   afterEach(() => {
@@ -73,7 +66,7 @@ describe('jobAlertScheduler', () => {
     process.env.NODE_ENV = 'development';
     getBackgroundServiceSettingMock.mockResolvedValue({
       enabled: false,
-      intervalMs: 25200000,
+      intervalMs: 900000,
     });
 
     const { startJobAlertScheduler } = await import('../jobAlertScheduler');
@@ -102,7 +95,7 @@ describe('jobAlertScheduler', () => {
     process.env.NODE_ENV = 'development';
     getBackgroundServiceSettingMock.mockResolvedValue({
       enabled: true,
-      intervalMs: 25200000, // 7 hours
+      intervalMs: 900000,
     });
 
     const { startJobAlertScheduler } = await import('../jobAlertScheduler');
@@ -121,7 +114,7 @@ describe('jobAlertScheduler', () => {
     expect(runJobNearingEndNoCheckInAlertCycleMock).not.toHaveBeenCalled();
 
     // Advance timers to trigger the scheduled run
-    jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+    jest.advanceTimersByTime(15 * 60 * 1000);
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();

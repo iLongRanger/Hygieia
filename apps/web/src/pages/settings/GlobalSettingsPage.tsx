@@ -3,6 +3,7 @@ import { Save, Upload, Trash2, Palette, Building2, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { extractApiErrorMessage } from '../../lib/api';
@@ -23,6 +24,12 @@ import type {
   BackgroundServiceSetting,
 } from '../../types/backgroundServiceSettings';
 
+interface BackgroundServiceGuidance {
+  label: string;
+  description: string;
+  recommendedValueLabel: string;
+}
+
 const DEFAULT_SETTINGS: GlobalSettings = {
   companyName: '',
   companyEmail: '',
@@ -39,41 +46,37 @@ const DEFAULT_SETTINGS: GlobalSettings = {
 
 const BACKGROUND_SERVICE_GUIDANCE: Record<
   BackgroundServiceKey,
-  {
-    label: string;
-    description: string;
-    recommendedTime: string;
-  }
+  BackgroundServiceGuidance
 > = {
   reminders: {
     label: 'Client Reminders',
     description:
       'Sends appointment and follow-up reminders at one scheduled time each day.',
-    recommendedTime: '08:00',
+    recommendedValueLabel: '08:00',
   },
   recurring_jobs_autogen: {
     label: 'Recurring Job Creation',
     description:
       'Creates upcoming recurring jobs from active contracts once per day.',
-    recommendedTime: '01:00',
+    recommendedValueLabel: '01:00',
   },
   job_alerts: {
     label: 'Job Alert Checks',
     description:
-      'Checks for jobs that need attention at one scheduled time each day.',
-    recommendedTime: '07:00',
+      'Checks for jobs that need attention on a recurring interval throughout the day.',
+    recommendedValueLabel: 'Every 15 minutes',
   },
   contract_assignment_overrides: {
     label: 'Contract Assignment Overrides',
     description:
       'Applies scheduled contract assignee overrides on their effectivity date once daily.',
-    recommendedTime: '00:00',
+    recommendedValueLabel: '00:00',
   },
   contract_amendment_auto_apply: {
     label: 'Contract Amendment Auto-Apply',
     description:
       'Applies approved contract amendments automatically on their effective date once daily.',
-    recommendedTime: '02:00',
+    recommendedValueLabel: '02:00',
   },
 };
 
@@ -86,6 +89,12 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
 ];
 
 const LOGS_PAGE_LIMIT = 9;
+const JOB_ALERT_INTERVAL_OPTIONS = [
+  { value: '900000', label: 'Every 15 minutes' },
+  { value: '1800000', label: 'Every 30 minutes' },
+  { value: '3600000', label: 'Every hour' },
+];
+const MIN_JOB_ALERT_INTERVAL_MS = 5 * 60 * 1000;
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -212,10 +221,24 @@ const GlobalSettingsPage: React.FC = () => {
     if (Number.isFinite(value) && value >= 0 && value <= 86_340_000) {
       return Math.floor(value);
     }
-    const [hours, minutes] = BACKGROUND_SERVICE_GUIDANCE[serviceKey].recommendedTime
+    const [hours, minutes] = BACKGROUND_SERVICE_GUIDANCE[serviceKey].recommendedValueLabel
       .split(':')
       .map((part) => Number(part));
     return (hours * 60 + minutes) * 60_000;
+  };
+
+  const isIntervalScheduledService = (serviceKey: BackgroundServiceKey): boolean => {
+    return serviceKey === 'job_alerts';
+  };
+
+  const getSanitizedIntervalMs = (serviceKey: BackgroundServiceKey, value: number): number => {
+    if (!isIntervalScheduledService(serviceKey)) {
+      return getSanitizedTimeOfDayMs(serviceKey, value);
+    }
+    if (Number.isFinite(value) && value >= MIN_JOB_ALERT_INTERVAL_MS) {
+      return Math.floor(value);
+    }
+    return 15 * 60 * 1000;
   };
 
   const timeToMs = (value: string): number => {
@@ -232,6 +255,16 @@ const GlobalSettingsPage: React.FC = () => {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
+  const formatIntervalLabel = (value: number): string => {
+    const safeValue = getSanitizedIntervalMs('job_alerts', value);
+    const totalMinutes = Math.floor(safeValue / 60_000);
+    if (totalMinutes % 60 === 0) {
+      const hours = totalMinutes / 60;
+      return hours === 1 ? 'Every hour' : `Every ${hours} hours`;
+    }
+    return `Every ${totalMinutes} minutes`;
+  };
+
   const updateServiceState = (
     serviceKey: BackgroundServiceKey,
     updater: (service: BackgroundServiceSetting) => BackgroundServiceSetting
@@ -244,7 +277,7 @@ const GlobalSettingsPage: React.FC = () => {
   const onSaveBackgroundService = async (service: BackgroundServiceSetting) => {
     try {
       setSavingServiceKey(service.serviceKey);
-      const sanitizedIntervalMs = getSanitizedTimeOfDayMs(service.serviceKey, service.intervalMs);
+      const sanitizedIntervalMs = getSanitizedIntervalMs(service.serviceKey, service.intervalMs);
       const updated = await updateBackgroundServiceSetting(service.serviceKey, {
         enabled: service.enabled,
         intervalMs: sanitizedIntervalMs,
@@ -496,8 +529,8 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Background Services</h2>
         <p className="mb-4 text-sm text-surface-500 dark:text-surface-400">
-          Configure each automatic job to run once per day at a specific company-local time. This keeps
-          scheduling predictable and easier to review.
+          Configure daily background jobs at a specific company-local time, and set job alerts to run
+          on a recurring frequency throughout the day.
         </p>
         <div className="space-y-4">
           {backgroundServices.map((service) => (
@@ -525,28 +558,48 @@ const GlobalSettingsPage: React.FC = () => {
                 </label>
               </div>
               <p className="mb-3 text-xs text-primary-300">
-                Recommended run time: {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedTime}{' '}
-                ({settings.companyTimezone || 'UTC'}).
+                Recommended{' '}
+                {isIntervalScheduledService(service.serviceKey) ? 'frequency' : 'run time'}:{' '}
+                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedValueLabel}
+                {!isIntervalScheduledService(service.serviceKey)
+                  ? ` (${settings.companyTimezone || 'UTC'})`
+                  : ''}
+                .
               </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                <Input
-                  label={`Run Time (${settings.companyTimezone || 'UTC'})`}
-                  type="time"
-                  value={msToTime(service.serviceKey, service.intervalMs)}
-                  onChange={(e) =>
-                    updateServiceState(service.serviceKey, (current) => ({
-                      ...current,
-                      intervalMs: timeToMs(e.target.value),
-                    }))
-                  }
-                />
+                {isIntervalScheduledService(service.serviceKey) ? (
+                  <Select
+                    label="Run Frequency"
+                    options={JOB_ALERT_INTERVAL_OPTIONS}
+                    value={String(getSanitizedIntervalMs(service.serviceKey, service.intervalMs))}
+                    onChange={(value) =>
+                      updateServiceState(service.serviceKey, (current) => ({
+                        ...current,
+                        intervalMs: Number(value),
+                      }))
+                    }
+                  />
+                ) : (
+                  <Input
+                    label={`Run Time (${settings.companyTimezone || 'UTC'})`}
+                    type="time"
+                    value={msToTime(service.serviceKey, service.intervalMs)}
+                    onChange={(e) =>
+                      updateServiceState(service.serviceKey, (current) => ({
+                        ...current,
+                        intervalMs: timeToMs(e.target.value),
+                      }))
+                    }
+                  />
+                )}
                 <Input label="Last Run" value={formatDateTime(service.lastRunAt)} readOnly />
                 <Input label="Last Success" value={formatDateTime(service.lastSuccessAt)} readOnly />
                 <Input label="Last Error" value={service.lastError || 'None'} readOnly />
               </div>
               <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
-                Current run time: {msToTime(service.serviceKey, service.intervalMs)} (
-                {settings.companyTimezone || 'UTC'}).
+                {isIntervalScheduledService(service.serviceKey)
+                  ? `Current frequency: ${formatIntervalLabel(service.intervalMs)}.`
+                  : `Current run time: ${msToTime(service.serviceKey, service.intervalMs)} (${settings.companyTimezone || 'UTC'}).`}
               </p>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button

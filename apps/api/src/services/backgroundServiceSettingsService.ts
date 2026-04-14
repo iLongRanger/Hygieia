@@ -9,7 +9,8 @@ import type {
 export interface BackgroundServiceSettingView {
   serviceKey: BackgroundServiceKey;
   enabled: boolean;
-  // Stored as milliseconds from UTC midnight (00:00 = 0, 23:59 = 86_340_000).
+  // For daily schedulers this is milliseconds from UTC midnight.
+  // For interval schedulers this is the repeat interval in milliseconds.
   intervalMs: number;
   lastRunAt: Date | null;
   lastSuccessAt: Date | null;
@@ -43,7 +44,7 @@ export interface BackgroundServiceRunLogPageView {
 const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
   reminders: 8 * 60 * 60 * 1000,
   recurring_jobs_autogen: 1 * 60 * 60 * 1000,
-  job_alerts: 7 * 60 * 60 * 1000,
+  job_alerts: 15 * 60 * 1000,
   contract_assignment_overrides: 0,
   contract_amendment_auto_apply: 2 * 60 * 60 * 1000,
 };

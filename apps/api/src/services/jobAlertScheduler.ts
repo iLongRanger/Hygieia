@@ -7,15 +7,9 @@ import {
   markBackgroundServiceRunStart,
   markBackgroundServiceRunSuccess,
 } from './backgroundServiceSettingsService';
-import {
-  formatTimeOfDay,
-  getDelayUntilNextRunMs,
-  getNextRunAt,
-  sanitizeTimeOfDayMs,
-} from './backgroundSchedulerUtils';
-import { getGlobalSettingsTimezone } from './globalSettingsService';
 
-const DEFAULT_TIME_OF_DAY_MS = 7 * 60 * 60 * 1000;
+const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
+const MIN_INTERVAL_MS = 5 * 60 * 1000;
 let timeoutHandle: NodeJS.Timeout | null = null;
 let cycleRunning = false;
 const SERVICE_KEY = 'job_alerts';
@@ -68,22 +62,18 @@ async function configureJobAlertScheduler(): Promise<void> {
     return;
   }
 
-  const timeOfDayMs = sanitizeTimeOfDayMs(config.intervalMs, DEFAULT_TIME_OF_DAY_MS);
-  let companyTimezone = 'UTC';
-  try {
-    companyTimezone = await getGlobalSettingsTimezone();
-  } catch (error) {
-    logger.warn('Failed to load company timezone for job alerts scheduler, defaulting to UTC', error);
-  }
-  if (timeOfDayMs !== config.intervalMs) {
+  const intervalMs =
+    Number.isFinite(config.intervalMs) && config.intervalMs >= MIN_INTERVAL_MS
+      ? Math.floor(config.intervalMs)
+      : DEFAULT_INTERVAL_MS;
+  if (intervalMs !== config.intervalMs) {
     logger.warn(
-      `Invalid job alerts schedule time "${config.intervalMs}", falling back to ${DEFAULT_TIME_OF_DAY_MS}ms`
+      `Invalid job alerts interval "${config.intervalMs}", falling back to ${DEFAULT_INTERVAL_MS}ms`
     );
   }
-  const nextRunAt = getNextRunAt(timeOfDayMs, companyTimezone);
-  const delayMs = getDelayUntilNextRunMs(timeOfDayMs, companyTimezone);
+  const nextRunAt = new Date(Date.now() + intervalMs);
   logger.info(
-    `Starting job alert scheduler (dailyAt=${formatTimeOfDay(timeOfDayMs, companyTimezone)}, nextRunAt=${nextRunAt.toISOString()})`
+    `Starting job alert scheduler (every=${intervalMs}ms, nextRunAt=${nextRunAt.toISOString()})`
   );
 
   timeoutHandle = setTimeout(() => {
@@ -93,7 +83,7 @@ async function configureJobAlertScheduler(): Promise<void> {
       timeoutHandle = null;
       void configureJobAlertScheduler();
     });
-  }, delayMs);
+  }, intervalMs);
 }
 
 export function startJobAlertScheduler(): void {
