@@ -784,14 +784,14 @@ const JobsList = () => {
       {viewMode === 'table' ? (
         <Card noPadding>
           {!loading && unassignedJobs.length > 0 && (
-            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-900/50 dark:bg-warning-950/30">
+            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800/60 dark:bg-warning-900/20">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
                 <div>
-                  <p className="text-sm font-medium text-warning-900 dark:text-warning-100">
+                  <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
                     {unassignedJobs.length} unassigned job{unassignedJobs.length === 1 ? '' : 's'} in this table
                   </p>
-                  <p className="text-xs text-warning-800 dark:text-warning-200">
+                  <p className="text-xs text-warning-800 dark:text-surface-200">
                     Assign these jobs to avoid missed scheduling and ownership gaps.
                   </p>
                 </div>
