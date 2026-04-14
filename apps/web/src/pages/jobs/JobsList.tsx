@@ -32,7 +32,7 @@ import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import { getDateRange, getWeekRange, getDayRange } from '../../lib/calendar-utils';
 import { extractApiErrorMessage } from '../../lib/api';
-import type { Job, JobStatus } from '../../types/job';
+import type { Job, JobStatus, WorkforceAssignmentType } from '../../types/job';
 import type { Contract } from '../../types/contract';
 import type { Team } from '../../types/team';
 import type { User } from '../../types/user';
@@ -53,6 +53,12 @@ const JOB_STATUSES = [
   { value: 'completed', label: 'Completed' },
   { value: 'canceled', label: 'Canceled' },
   { value: 'missed', label: 'Missed' },
+];
+
+const JOB_ASSIGNMENTS = [
+  { value: '', label: 'All Assignments' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'unassigned', label: 'Unassigned' },
 ];
 
 const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
@@ -107,9 +113,7 @@ const getWorkforceIndicator = (job: Job): {
   label: string;
   badgeVariant: 'default' | 'info' | 'warning';
 } => {
-  const assignmentType =
-    job.workforceAssignmentType ||
-    (job.assignedToUser ? 'internal_employee' : job.assignedTeam ? 'subcontractor_team' : 'unassigned');
+  const assignmentType = getAssignmentType(job);
 
   if (assignmentType === 'internal_employee') {
     return { label: 'Internal Employee', badgeVariant: 'info' };
@@ -120,6 +124,10 @@ const getWorkforceIndicator = (job: Job): {
   return { label: 'Unassigned', badgeVariant: 'default' };
 };
 
+const getAssignmentType = (job: Job): WorkforceAssignmentType =>
+  job.workforceAssignmentType ??
+  (job.assignedToUser ? 'internal_employee' : job.assignedTeam ? 'subcontractor_team' : 'unassigned');
+
 const toDateInputValue = (date: Date): string => {
   const tzOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
@@ -129,6 +137,7 @@ type GenerateAssignmentMode = 'contract_default' | 'subcontractor_team' | 'inter
 type JobsViewMode = 'table' | 'schedule' | 'calendar';
 type CalendarView = 'month' | 'week' | 'day';
 type CalendarLayout = 'grid' | 'list';
+type AssignmentFilter = '' | 'assigned' | 'unassigned';
 
 const CALENDAR_VIEW_KEY = 'jobs_calendar_view';
 
@@ -242,6 +251,7 @@ const JobsList = () => {
   const viewMode: JobsViewMode = rawViewMode === 'table' ? 'table' : rawViewMode === 'calendar' ? 'calendar' : 'schedule';
   const jobTypeFilter = searchParams.get('jobType') || '';
   const statusFilter = searchParams.get('status') || '';
+  const assignmentFilter = (searchParams.get('assignment') || '') as AssignmentFilter;
   const dateFrom = searchParams.get('dateFrom') || '';
   const dateTo = searchParams.get('dateTo') || '';
 
@@ -286,9 +296,30 @@ const JobsList = () => {
   }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter]);
 
   const calendarAppointments = useMemo(
-    () => calendarJobs.map(jobToAppointment),
-    [calendarJobs],
+    () =>
+      calendarJobs
+        .filter((job) => {
+          const assignmentType = getAssignmentType(job);
+          if (assignmentFilter === 'assigned') return assignmentType !== 'unassigned';
+          if (assignmentFilter === 'unassigned') return assignmentType === 'unassigned';
+          return true;
+        })
+        .map(jobToAppointment),
+    [assignmentFilter, calendarJobs],
   );
+
+  const filteredJobs = useMemo(() => {
+    if (!assignmentFilter) {
+      return jobs;
+    }
+
+    return jobs.filter((job) => {
+      const assignmentType = getAssignmentType(job);
+      return assignmentFilter === 'assigned'
+        ? assignmentType !== 'unassigned'
+        : assignmentType === 'unassigned';
+    });
+  }, [assignmentFilter, jobs]);
 
   useEffect(() => {
     fetchJobs();
@@ -612,7 +643,7 @@ const JobsList = () => {
     },
   ];
 
-  const scheduledJobs = jobs.filter((job) => ['scheduled', 'in_progress'].includes(job.status));
+  const scheduledJobs = filteredJobs.filter((job) => ['scheduled', 'in_progress'].includes(job.status));
   const jobsByDate = scheduledJobs.reduce<Record<string, Job[]>>((acc, job) => {
     const dateKey = job.scheduledDate.slice(0, 10);
     if (!acc[dateKey]) acc[dateKey] = [];
@@ -620,6 +651,7 @@ const JobsList = () => {
     return acc;
   }, {});
   const scheduleDates = Object.keys(jobsByDate).sort((a, b) => a.localeCompare(b));
+  const unassignedJobs = filteredJobs.filter((job) => getAssignmentType(job) === 'unassigned');
 
   return (
     <div className="space-y-6">
@@ -710,6 +742,14 @@ const JobsList = () => {
                 onChange={(val) => updateFilter('status', val)}
               />
             </div>
+            <div className="w-full sm:w-48">
+              <Select
+                label="Assignment"
+                options={JOB_ASSIGNMENTS}
+                value={assignmentFilter}
+                onChange={(val) => updateFilter('assignment', val)}
+              />
+            </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-300">
                 From
@@ -743,13 +783,28 @@ const JobsList = () => {
       {/* Main view */}
       {viewMode === 'table' ? (
         <Card noPadding>
+          {!loading && unassignedJobs.length > 0 && (
+            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-900/50 dark:bg-warning-950/30">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
+                <div>
+                  <p className="text-sm font-medium text-warning-900 dark:text-warning-100">
+                    {unassignedJobs.length} unassigned job{unassignedJobs.length === 1 ? '' : 's'} in this table
+                  </p>
+                  <p className="text-xs text-warning-800 dark:text-warning-200">
+                    Assign these jobs to avoid missed scheduling and ownership gaps.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="space-y-1 p-2">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="h-14 w-full rounded-lg skeleton" />
               ))}
             </div>
-          ) : jobs.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
                 <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />
@@ -764,7 +819,7 @@ const JobsList = () => {
           ) : (
             <Table
               columns={columns}
-              data={jobs}
+              data={filteredJobs}
               onRowClick={(job) => navigate(`/jobs/${job.id}`, { state: { backLabel: 'Jobs', backPath: '/jobs' } })}
             />
           )}
@@ -803,7 +858,7 @@ const JobsList = () => {
                 <div key={i} className="h-44 rounded-xl skeleton" />
               ))}
             </div>
-          ) : jobs.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="rounded-full bg-surface-100 p-4 dark:bg-surface-800">
                 <Briefcase className="h-8 w-8 text-surface-400 dark:text-surface-500" />

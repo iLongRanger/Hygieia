@@ -287,4 +287,91 @@ describe('JobsList', () => {
     expect(screen.getByText('Sub Team A')).toBeInTheDocument();
     expect(screen.getByText('Team assignment')).toBeInTheDocument();
   });
+
+  it('filters the table to unassigned jobs', async () => {
+    const user = userEvent.setup();
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-unassigned',
+          jobNumber: 'JOB-UNASSIGNED',
+          assignedToUser: null,
+          assignedTeam: null,
+          workforceAssignmentType: 'unassigned',
+        }),
+        mockJob({
+          id: 'job-assigned',
+          jobNumber: 'JOB-ASSIGNED',
+          assignedToUser: { id: 'user-1', fullName: 'Alice Employee', email: 'alice@example.com' },
+          assignedTeam: null,
+          workforceAssignmentType: 'internal_employee',
+        }),
+      ])
+    );
+
+    render(<JobsList />);
+
+    expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
+    expect(screen.getByText('JOB-ASSIGNED')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.selectOptions(screen.getByLabelText(/assignment/i), 'unassigned');
+
+    expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
+    expect(screen.queryByText('JOB-ASSIGNED')).not.toBeInTheDocument();
+  });
+
+  it('shows an alert when unassigned jobs are visible in the table', async () => {
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-unassigned',
+          jobNumber: 'JOB-UNASSIGNED',
+          assignedToUser: null,
+          assignedTeam: null,
+          workforceAssignmentType: 'unassigned',
+        }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
+
+    expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
+    expect(screen.getByText(/1 unassigned job in this table/i)).toBeInTheDocument();
+  });
+
+  it('hides the unassigned alert when only assigned jobs are shown', async () => {
+    const user = userEvent.setup();
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-unassigned',
+          jobNumber: 'JOB-UNASSIGNED',
+          assignedToUser: null,
+          assignedTeam: null,
+          workforceAssignmentType: 'unassigned',
+        }),
+        mockJob({
+          id: 'job-assigned',
+          jobNumber: 'JOB-ASSIGNED',
+          assignedToUser: { id: 'user-1', fullName: 'Alice Employee', email: 'alice@example.com' },
+          assignedTeam: null,
+          workforceAssignmentType: 'internal_employee',
+        }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
+
+    expect(await screen.findByText(/1 unassigned job in this table/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.selectOptions(screen.getByLabelText(/assignment/i), 'assigned');
+
+    await waitFor(() => {
+      expect(screen.queryByText(/unassigned job in this table/i)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('JOB-ASSIGNED')).toBeInTheDocument();
+    expect(screen.queryByText('JOB-UNASSIGNED')).not.toBeInTheDocument();
+  });
 });
