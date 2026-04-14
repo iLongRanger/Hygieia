@@ -295,19 +295,6 @@ const JobsList = () => {
     }
   }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter]);
 
-  const calendarAppointments = useMemo(
-    () =>
-      calendarJobs
-        .filter((job) => {
-          const assignmentType = getAssignmentType(job);
-          if (assignmentFilter === 'assigned') return assignmentType !== 'unassigned';
-          if (assignmentFilter === 'unassigned') return assignmentType === 'unassigned';
-          return true;
-        })
-        .map(jobToAppointment),
-    [assignmentFilter, calendarJobs],
-  );
-
   const filteredJobs = useMemo(() => {
     if (!assignmentFilter) {
       return jobs;
@@ -320,6 +307,24 @@ const JobsList = () => {
         : assignmentType === 'unassigned';
     });
   }, [assignmentFilter, jobs]);
+
+  const filteredCalendarJobs = useMemo(() => {
+    if (!assignmentFilter) {
+      return calendarJobs;
+    }
+
+    return calendarJobs.filter((job) => {
+      const assignmentType = getAssignmentType(job);
+      return assignmentFilter === 'assigned'
+        ? assignmentType !== 'unassigned'
+        : assignmentType === 'unassigned';
+    });
+  }, [assignmentFilter, calendarJobs]);
+
+  const calendarAppointments = useMemo(
+    () => filteredCalendarJobs.map(jobToAppointment),
+    [filteredCalendarJobs],
+  );
 
   useEffect(() => {
     fetchJobs();
@@ -652,6 +657,8 @@ const JobsList = () => {
   }, {});
   const scheduleDates = Object.keys(jobsByDate).sort((a, b) => a.localeCompare(b));
   const unassignedJobs = filteredJobs.filter((job) => getAssignmentType(job) === 'unassigned');
+  const unassignedCalendarJobs = filteredCalendarJobs.filter((job) => getAssignmentType(job) === 'unassigned');
+  const visibleUnassignedJobs = viewMode === 'calendar' ? unassignedCalendarJobs : unassignedJobs;
 
   return (
     <div className="space-y-6">
@@ -780,24 +787,27 @@ const JobsList = () => {
         </Card>
       )}
 
+      {!loading && !(viewMode === 'calendar' && calendarLoading) && visibleUnassignedJobs.length > 0 && (
+        <Card>
+          <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800/60 dark:bg-warning-900/20">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
+              <div>
+                <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
+                  {visibleUnassignedJobs.length} unassigned job{visibleUnassignedJobs.length === 1 ? '' : 's'} in this {viewMode} view
+                </p>
+                <p className="text-xs text-warning-800 dark:text-surface-200">
+                  Assign these jobs to avoid missed scheduling and ownership gaps.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Main view */}
       {viewMode === 'table' ? (
         <Card noPadding>
-          {!loading && unassignedJobs.length > 0 && (
-            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800/60 dark:bg-warning-900/20">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-700 dark:text-warning-400" />
-                <div>
-                  <p className="text-sm font-medium text-warning-900 dark:text-surface-50">
-                    {unassignedJobs.length} unassigned job{unassignedJobs.length === 1 ? '' : 's'} in this table
-                  </p>
-                  <p className="text-xs text-warning-800 dark:text-surface-200">
-                    Assign these jobs to avoid missed scheduling and ownership gaps.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
           {loading ? (
             <div className="space-y-1 p-2">
               {[...Array(8)].map((_, i) => (

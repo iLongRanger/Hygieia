@@ -337,7 +337,47 @@ describe('JobsList', () => {
     render(<JobsList />, { initialRoute: '/jobs?view=table' });
 
     expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
-    expect(screen.getByText(/1 unassigned job in this table/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 unassigned job in this table view/i)).toBeInTheDocument();
+  });
+
+  it('shows an alert when unassigned jobs are visible in the schedule view', async () => {
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-unassigned',
+          jobNumber: 'JOB-UNASSIGNED',
+          assignedToUser: null,
+          assignedTeam: null,
+          workforceAssignmentType: 'unassigned',
+        }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=schedule' });
+
+    expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
+    expect(screen.getByText(/1 unassigned job in this schedule view/i)).toBeInTheDocument();
+  });
+
+  it('shows an alert when unassigned jobs are visible in the calendar view', async () => {
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-unassigned',
+          jobNumber: 'JOB-UNASSIGNED',
+          assignedToUser: null,
+          assignedTeam: null,
+          workforceAssignmentType: 'unassigned',
+        }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=calendar' });
+
+    await waitFor(() => {
+      expect(listJobsMock).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText(/1 unassigned job in this calendar view/i)).toBeInTheDocument();
   });
 
   it('hides the unassigned alert when only assigned jobs are shown', async () => {
@@ -363,13 +403,13 @@ describe('JobsList', () => {
 
     render(<JobsList />, { initialRoute: '/jobs?view=table' });
 
-    expect(await screen.findByText(/1 unassigned job in this table/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 unassigned job in this table view/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /filters/i }));
     await user.selectOptions(screen.getByLabelText(/assignment/i), 'assigned');
 
     await waitFor(() => {
-      expect(screen.queryByText(/unassigned job in this table/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/unassigned job in this table view/i)).not.toBeInTheDocument();
     });
     expect(screen.getByText('JOB-ASSIGNED')).toBeInTheDocument();
     expect(screen.queryByText('JOB-UNASSIGNED')).not.toBeInTheDocument();
