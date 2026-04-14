@@ -268,6 +268,28 @@ describe('JobDetail', () => {
     expect(screen.getByText('Visitor parking is on the east side.')).toBeInTheDocument();
   });
 
+  it('hides add task and add note controls for cleaner users', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'clean-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    render(<JobDetail />);
+    await screen.findByText('JOB-202602-0001');
+
+    expect(screen.queryByRole('button', { name: /add task/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
+  });
+
   it('shows initial clean action on the first eligible job', async () => {
     getJobMock.mockResolvedValue(
       mockJobDetail({

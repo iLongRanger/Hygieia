@@ -665,7 +665,7 @@ const JobDetail = () => {
                   </span>
                 )}
               </h3>
-              {!isSubcontractor && (
+              {!isFieldWorker && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -713,8 +713,8 @@ const JobDetail = () => {
                     className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
                   >
                     <button
-                      onClick={() => !isSubcontractor && handleToggleTask(task)}
-                      disabled={isSubcontractor}
+                      onClick={() => !isFieldWorker && handleToggleTask(task)}
+                      disabled={isFieldWorker}
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
                         task.status === 'completed'
                           ? 'border-success-500 bg-success-500 text-white'
@@ -739,7 +739,7 @@ const JobDetail = () => {
                         {task.estimatedMinutes}min
                       </span>
                     )}
-                    {!isSubcontractor && (
+                    {!isFieldWorker && (
                       <button
                         onClick={() => handleDeleteTask(task.id)}
                         className="text-surface-400 hover:text-danger-500"
@@ -759,7 +759,7 @@ const JobDetail = () => {
               <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100">
                 Notes
               </h3>
-              {!isSubcontractor && (
+              {!isFieldWorker && (
                 <Button
                   variant="ghost"
                   size="sm"
