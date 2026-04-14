@@ -87,6 +87,28 @@ const getAccountTypeBadge = (accountType?: string | null) => {
   return { label: 'Commercial', variant: 'info' as const };
 };
 
+const formatAddress = (address?: {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+} | null): string => {
+  if (!address) {
+    return '-';
+  }
+
+  const line1 = address.street?.trim() ?? '';
+  const locality = [address.city, address.state, address.postalCode]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(', ');
+  const country = address.country?.trim() ?? '';
+
+  return [line1, locality, country]
+    .filter((value) => value.length > 0)
+    .join('\n') || '-';
+};
+
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -313,6 +335,10 @@ const JobDetail = () => {
   const tasksTotal = job.tasks.length;
   const workforce = getWorkforceIndicator(job);
   const accountType = getAccountTypeBadge(job.account.type);
+  const primaryContact = job.account.contacts?.[0] ?? null;
+  const contactPhone = primaryContact?.mobile || primaryContact?.phone || job.account.billingPhone || null;
+  const serviceAddress = formatAddress(job.facility.address);
+  const showCommercialLinks = !isFieldWorker;
 
   return (
     <div className="space-y-6">
@@ -439,36 +465,50 @@ const JobDetail = () => {
                   })}
                 </p>
               </div>
-              <div>
-                <span className="text-surface-500 dark:text-surface-400">Contract</span>
-                <p className="font-medium text-surface-900 dark:text-surface-100">
-                  {job.contract ? (
-                    <button
-                      onClick={() => navigate(`/contracts/${job.contract!.id}`)}
-                      className="text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                      {job.contract.contractNumber}
-                    </button>
-                  ) : (
-                    '-'
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="text-surface-500 dark:text-surface-400">Quotation</span>
-                <p className="font-medium text-surface-900 dark:text-surface-100">
-                  {job.quotation ? (
-                    <button
-                      onClick={() => navigate(`/quotations/${job.quotation!.id}`)}
-                      className="text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                      {job.quotation.quotationNumber}
-                    </button>
-                  ) : (
-                    '-'
-                  )}
-                </p>
-              </div>
+              {showCommercialLinks && (
+                <div>
+                  <span className="text-surface-500 dark:text-surface-400">Contract</span>
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    {job.contract ? (
+                      <button
+                        onClick={() => navigate(`/contracts/${job.contract!.id}`)}
+                        className="text-primary-600 hover:underline dark:text-primary-400"
+                      >
+                        {job.contract.contractNumber}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
+              )}
+              {showCommercialLinks && (
+                <div>
+                  <span className="text-surface-500 dark:text-surface-400">Quotation</span>
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    {job.quotation ? (
+                      <button
+                        onClick={() => navigate(`/quotations/${job.quotation!.id}`)}
+                        className="text-primary-600 hover:underline dark:text-primary-400"
+                      >
+                        {job.quotation.quotationNumber}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
+              )}
+              {isFieldWorker && (
+                <div>
+                  <span className="text-surface-500 dark:text-surface-400">
+                    {job.account.type === 'residential' ? 'Property' : 'Facility'}
+                  </span>
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    {job.facility.name}
+                  </p>
+                </div>
+              )}
               <div>
                 <span className="text-surface-500 dark:text-surface-400">
                   {isSubcontractor ? 'Direct Employee Contact' : 'Internal Employee'}
@@ -498,6 +538,93 @@ const JobDetail = () => {
                 </p>
               </div>
             </div>
+            {isFieldWorker && (
+              <div className="mt-4 grid gap-4 rounded-xl border border-surface-200 bg-surface-50 p-4 text-sm dark:border-surface-700 dark:bg-surface-800/40 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-surface-900 dark:text-surface-100">
+                      Service Location
+                    </p>
+                    <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-200">
+                      {serviceAddress}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                      Account
+                    </p>
+                    <p className="mt-1 text-surface-900 dark:text-surface-100">{job.account.name}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-surface-900 dark:text-surface-100">
+                      Contact Person
+                    </p>
+                    <p className="mt-1 text-surface-900 dark:text-surface-100">
+                      {primaryContact?.name || 'No contact assigned'}
+                    </p>
+                    {primaryContact?.title && (
+                      <p className="text-surface-500 dark:text-surface-400">{primaryContact.title}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                      Phone
+                    </p>
+                    <p className="text-surface-900 dark:text-surface-100">
+                      {contactPhone ? (
+                        <a href={`tel:${contactPhone}`} className="text-primary-600 hover:underline dark:text-primary-400">
+                          {contactPhone}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                      Email
+                    </p>
+                    <p className="text-surface-900 dark:text-surface-100">
+                      {primaryContact?.email ?? job.account.billingEmail ?? '-'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Access Instructions
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-200">
+                    {job.facility.accessInstructions || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Parking
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-200">
+                    {job.facility.parkingInfo || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Special Requirements
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-200">
+                    {job.facility.specialRequirements || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                    Site Notes
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-surface-700 dark:text-surface-200">
+                    {job.facility.notes || '-'}
+                  </p>
+                </div>
+              </div>
+            )}
             {job.notes && (
               <div className="mt-4 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-800/50 dark:text-surface-300">
                 {job.notes}

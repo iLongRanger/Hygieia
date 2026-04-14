@@ -51,6 +51,39 @@ const scheduledJob = mockJobDetail({
   jobNumber: 'JOB-202602-0001',
   status: 'scheduled',
   scheduledDate: '2026-02-15',
+  facility: {
+    id: 'facility-1',
+    name: 'Main Office',
+    address: {
+      street: '123 Main St',
+      city: 'Springfield',
+      state: 'IL',
+      postalCode: '62701',
+      country: 'USA',
+    },
+    accessInstructions: 'Use the side entrance code 4582.',
+    parkingInfo: 'Visitor parking is on the east side.',
+    specialRequirements: 'Wear non-slip shoes in the kitchen.',
+    notes: 'Ask front desk to unlock the supply closet.',
+  },
+  account: {
+    id: 'account-1',
+    name: 'Acme Corporation',
+    type: 'commercial',
+    billingPhone: '(555) 0100',
+    billingEmail: 'ops@acme.com',
+    contacts: [
+      {
+        id: 'contact-1',
+        name: 'Jamie Client',
+        phone: '(555) 0200',
+        mobile: '(555) 0300',
+        email: 'jamie@acme.com',
+        title: 'Facility Coordinator',
+        isPrimary: true,
+      },
+    ],
+  },
   tasks: [mockJobTask({ id: 'task-1', taskName: 'Vacuum floors' })],
   notes_: [mockJobNote({ id: 'note-1', content: 'Test note' })],
   activities: [mockJobActivity({ id: 'act-1', action: 'job_created' })],
@@ -203,6 +236,36 @@ describe('JobDetail', () => {
     expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add task/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
+  });
+
+  it('shows service location and contact info instead of contract links for subcontractors', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+
+    render(<JobDetail />);
+
+    await screen.findByText('JOB-202602-0001');
+
+    expect(screen.queryByText('Contract')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quotation')).not.toBeInTheDocument();
+    expect(screen.getByText('Service Location')).toBeInTheDocument();
+    expect(screen.getByText(/123 Main St/i)).toBeInTheDocument();
+    expect(screen.getByText('Contact Person')).toBeInTheDocument();
+    expect(screen.getByText('Jamie Client')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '(555) 0300' })).toBeInTheDocument();
+    expect(screen.getByText('Use the side entrance code 4582.')).toBeInTheDocument();
+    expect(screen.getByText('Visitor parking is on the east side.')).toBeInTheDocument();
   });
 
   it('shows initial clean action on the first eligible job', async () => {

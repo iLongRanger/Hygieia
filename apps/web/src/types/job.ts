@@ -35,11 +35,34 @@ export interface Job {
   facility: {
     id: string;
     name: string;
+    address?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+      [key: string]: unknown;
+    };
+    accessInstructions?: string | null;
+    parkingInfo?: string | null;
+    specialRequirements?: string | null;
+    notes?: string | null;
   };
   account: {
     id: string;
     name: string;
     type?: 'commercial' | 'residential' | string;
+    billingPhone?: string | null;
+    billingEmail?: string | null;
+    contacts?: {
+      id: string;
+      name: string;
+      phone: string | null;
+      mobile: string | null;
+      email: string | null;
+      title: string | null;
+      isPrimary: boolean;
+    }[];
   };
   assignedTeam: {
     id: string;

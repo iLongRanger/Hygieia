@@ -353,6 +353,45 @@ const jobSelect = {
 
 const jobDetailSelect = {
   ...jobSelect,
+  facility: {
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      accessInstructions: true,
+      parkingInfo: true,
+      specialRequirements: true,
+      notes: true,
+    },
+  },
+  account: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      billingPhone: true,
+      billingEmail: true,
+      contacts: {
+        where: {
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          mobile: true,
+          email: true,
+          title: true,
+          isPrimary: true,
+        },
+        orderBy: [
+          { isPrimary: 'desc' as const },
+          { createdAt: 'asc' as const },
+        ],
+        take: 1,
+      },
+    },
+  },
   contract: {
     select: {
       id: true,
