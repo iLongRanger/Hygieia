@@ -31,30 +31,34 @@ async function runReminderCycle(): Promise<void> {
   try {
     const {
       sendAppointmentReminders,
+      sendUpcomingJobReminders,
       sendContractExpiryReminders,
       sendProposalFollowUpReminders,
       sendContractFollowUpReminders,
     } = await import('./reminderService');
     const [
       appointmentCount,
+      upcomingJobReminderCount,
       contractExpiryCount,
       proposalFollowUpCount,
       contractFollowUpCount,
     ] = await Promise.all([
       sendAppointmentReminders(),
+      sendUpcomingJobReminders(),
       sendContractExpiryReminders(),
       sendProposalFollowUpReminders(),
       sendContractFollowUpReminders(),
     ]);
 
     logger.info(
-      `Reminder cycle complete: appointmentReminders=${appointmentCount}, contractExpiryReminders=${contractExpiryCount}, proposalFollowUpReminders=${proposalFollowUpCount}, contractFollowUpReminders=${contractFollowUpCount}`
+      `Reminder cycle complete: appointmentReminders=${appointmentCount}, upcomingJobReminders=${upcomingJobReminderCount}, contractExpiryReminders=${contractExpiryCount}, proposalFollowUpReminders=${proposalFollowUpCount}, contractFollowUpReminders=${contractFollowUpCount}`
     );
     await createBackgroundServiceRunLog(SERVICE_KEY, {
       status: 'success',
-      summary: `Sent reminders - appointments: ${appointmentCount}, contract expiry: ${contractExpiryCount}, proposal follow-up: ${proposalFollowUpCount}, contract follow-up: ${contractFollowUpCount}`,
+      summary: `Sent reminders - appointments: ${appointmentCount}, upcoming jobs: ${upcomingJobReminderCount}, contract expiry: ${contractExpiryCount}, proposal follow-up: ${proposalFollowUpCount}, contract follow-up: ${contractFollowUpCount}`,
       details: {
         appointmentReminders: appointmentCount,
+        upcomingJobReminders: upcomingJobReminderCount,
         contractExpiryReminders: contractExpiryCount,
         proposalFollowUpReminders: proposalFollowUpCount,
         contractFollowUpReminders: contractFollowUpCount,
