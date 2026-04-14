@@ -107,6 +107,7 @@ model User {
   approvedPayrollRuns                  PayrollRun[]                 @relation("ApprovedPayrollRuns")
   payrollEntries                       PayrollEntry[]               @relation("UserPayrollEntries")
   adjustedPayrollEntries               PayrollEntry[]               @relation("AdjustedPayrollEntries")
+  reviewedJobSettlements               JobSettlementReview[]        @relation("ReviewedJobSettlements")
 
   @@index([email])
   @@index([status])
@@ -1470,9 +1471,12 @@ model Job {
   tasks       JobTask[]
   notes_      JobNote[]
   activities  JobActivity[]
-  inspections Inspection[]  @relation("JobInspections")
-  timeEntries TimeEntry[]   @relation("JobTimeEntries")
-  expenses    Expense[]     @relation("JobExpenses")
+  settlementReview   JobSettlementReview?
+  inspections        Inspection[]          @relation("JobInspections")
+  timeEntries        TimeEntry[]           @relation("JobTimeEntries")
+  expenses           Expense[]             @relation("JobExpenses")
+  invoiceAllocations InvoiceJobAllocation[]
+  payrollAllocations PayrollJobAllocation[]
 
   @@index([jobNumber])
   @@index([contractId])
@@ -1546,6 +1550,31 @@ model JobActivity {
   @@index([action])
   @@index([createdAt])
   @@map("job_activities")
+}
+
+model JobSettlementReview {
+  id                     String    @id @default(uuid()) @db.Uuid
+  jobId                  String    @unique @map("job_id") @db.Uuid
+  status                 String    @default("ready") @db.VarChar(30)
+  issueCode              String?   @map("issue_code") @db.VarChar(50)
+  issueSummary           String?   @map("issue_summary") @db.Text
+  workerExplanation      String?   @map("worker_explanation") @db.Text
+  workerRespondedAt      DateTime? @map("worker_responded_at") @db.Timestamptz(6)
+  reviewNotes            String?   @map("review_notes") @db.Text
+  reviewedByUserId       String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt             DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  lastWorkerReminderAt   DateTime? @map("last_worker_reminder_at") @db.Timestamptz(6)
+  lastManagerReminderAt  DateTime? @map("last_manager_reminder_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  job            Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reviewedByUser User? @relation("ReviewedJobSettlements", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([issueCode])
+  @@index([reviewedByUserId])
+  @@map("job_settlement_reviews")
 }
 
 // ============================================================
@@ -1828,10 +1857,11 @@ model Invoice {
   contract      Contract?         @relation("ContractInvoices", fields: [contractId], references: [id], onDelete: SetNull)
   account       Account           @relation("AccountInvoices", fields: [accountId], references: [id], onDelete: Restrict)
   facility      Facility?         @relation("FacilityInvoices", fields: [facilityId], references: [id], onDelete: SetNull)
-  createdByUser User              @relation("CreatedInvoices", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  items         InvoiceItem[]
-  payments      InvoicePayment[]
-  activities    InvoiceActivity[]
+    createdByUser User              @relation("CreatedInvoices", fields: [createdByUserId], references: [id], onDelete: Restrict)
+    items         InvoiceItem[]
+    payments      InvoicePayment[]
+    activities    InvoiceActivity[]
+    jobAllocations InvoiceJobAllocation[]
 
   @@index([invoiceNumber])
   @@index([contractId])
@@ -1853,10 +1883,28 @@ model InvoiceItem {
   totalPrice  Decimal @default(0) @map("total_price") @db.Decimal(12, 2)
   sortOrder   Int     @default(0) @map("sort_order")
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice         Invoice                @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  jobAllocations  InvoiceJobAllocation[]
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+model InvoiceJobAllocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  invoiceItemId   String?  @map("invoice_item_id") @db.Uuid
+  jobId           String   @unique @map("job_id") @db.Uuid
+  allocatedAmount Decimal  @map("allocated_amount") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceItem InvoiceItem? @relation(fields: [invoiceItemId], references: [id], onDelete: SetNull)
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([invoiceItemId])
+  @@map("invoice_job_allocations")
 }
 
 model InvoicePayment {
@@ -2205,12 +2253,28 @@ model PayrollEntry {
 
   payrollRun     PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
   user           User       @relation("UserPayrollEntries", fields: [userId], references: [id], onDelete: Restrict)
-  contract       Contract?  @relation("ContractPayrollEntries", fields: [contractId], references: [id], onDelete: SetNull)
-  adjustedByUser User?      @relation("AdjustedPayrollEntries", fields: [adjustedByUserId], references: [id], onDelete: SetNull)
+    contract       Contract?  @relation("ContractPayrollEntries", fields: [contractId], references: [id], onDelete: SetNull)
+    adjustedByUser User?      @relation("AdjustedPayrollEntries", fields: [adjustedByUserId], references: [id], onDelete: SetNull)
+    jobAllocations PayrollJobAllocation[]
 
   @@index([payrollRunId])
   @@index([userId])
   @@index([contractId])
   @@index([status])
   @@map("payroll_entries")
+}
+
+model PayrollJobAllocation {
+  id                String   @id @default(uuid()) @db.Uuid
+  payrollEntryId    String   @map("payroll_entry_id") @db.Uuid
+  jobId             String   @unique @map("job_id") @db.Uuid
+  allocatedHours    Decimal? @map("allocated_hours") @db.Decimal(8, 2)
+  allocatedGrossPay Decimal  @map("allocated_gross_pay") @db.Decimal(12, 2)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  payrollEntry PayrollEntry @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@index([payrollEntryId])
+  @@map("payroll_job_allocations")
 }
