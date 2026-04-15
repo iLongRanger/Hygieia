@@ -27,6 +27,16 @@ function isDirectDatabaseUrl(url?: string): boolean {
 export function getResolvedDatabaseUrl(): string | undefined {
   const processDatabaseUrl = process.env.DATABASE_URL;
   const fileDatabaseUrl = loadedEnv.DATABASE_URL;
+  const directProcessUrl = process.env.DIRECT_DATABASE_URL;
+  const directFileUrl = loadedEnv.DIRECT_DATABASE_URL;
+
+  if (isDirectDatabaseUrl(directProcessUrl)) {
+    return directProcessUrl;
+  }
+
+  if (isDirectDatabaseUrl(directFileUrl)) {
+    return directFileUrl;
+  }
 
   if (isDirectDatabaseUrl(processDatabaseUrl)) {
     return processDatabaseUrl;
@@ -35,6 +45,13 @@ export function getResolvedDatabaseUrl(): string | undefined {
   if (isPrismaProxyUrl(processDatabaseUrl) && isDirectDatabaseUrl(fileDatabaseUrl)) {
     console.warn(
       `[dotenv] DATABASE_URL is ${getProtocol(processDatabaseUrl)} in process env; using direct ${getProtocol(fileDatabaseUrl)} URL from ${envPath} for local Prisma runtime`
+    );
+    return fileDatabaseUrl;
+  }
+
+  if (!isDirectDatabaseUrl(processDatabaseUrl) && isDirectDatabaseUrl(fileDatabaseUrl)) {
+    console.warn(
+      `[dotenv] DATABASE_URL is ${getProtocol(processDatabaseUrl)} in process env; falling back to direct ${getProtocol(fileDatabaseUrl)} URL from ${envPath} for local Prisma runtime`
     );
     return fileDatabaseUrl;
   }
