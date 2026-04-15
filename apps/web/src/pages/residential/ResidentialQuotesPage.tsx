@@ -21,6 +21,7 @@ import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
 import { Textarea } from '../../components/ui/Textarea';
 import SendResidentialQuoteModal from '../../components/residential/SendResidentialQuoteModal';
+import ResidentialTaskBuilder from '../../components/residential/ResidentialTaskBuilder';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { listAccounts } from '../../lib/accounts';
@@ -50,7 +51,7 @@ import type {
   ResidentialServiceType,
 } from '../../types/residential';
 
-const STEP_TITLES = ['Home', 'Cleaning Type', 'Condition & Access', 'Add-Ons', 'Review'] as const;
+const STEP_TITLES = ['Home', 'Cleaning Type', 'Condition & Access', 'Tasks & Add-Ons', 'Review'] as const;
 
 const SERVICE_OPTIONS = [
   { value: 'recurring_standard', label: 'Recurring Standard' },
@@ -120,6 +121,7 @@ const DEFAULT_FORM: ResidentialQuoteFormInput = {
     specialInstructions: '',
     isFirstVisit: false,
   },
+  includedTasks: [],
   pricingPlanId: '',
   addOns: [],
   preferredStartDate: '',
@@ -212,6 +214,16 @@ function normalizeOptionalString(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeTaskList(value: string[] | null | undefined) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((task) => task.trim())
+    .filter((task, index, tasks) => task.length > 0 && tasks.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
+}
+
 function getApiErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message;
@@ -237,6 +249,7 @@ function buildQuotePayload(formData: ResidentialQuoteFormInput): ResidentialQuot
     pricingPlanId: normalizeOptionalString(formData.pricingPlanId),
     preferredStartDate: normalizeOptionalString(formData.preferredStartDate),
     notes: normalizeOptionalString(formData.notes),
+    includedTasks: normalizeTaskList(formData.includedTasks),
     addOns: (formData.addOns ?? []).map((addOn) => ({
       ...addOn,
       label: normalizeOptionalString(addOn.label) ?? undefined,
@@ -431,6 +444,10 @@ const ResidentialQuotesPage = () => {
         : selectedAccount.residentialProfile
           ? normalizeResidentialHomeProfile(selectedAccount.residentialProfile)
           : current.homeProfile,
+      includedTasks:
+        current.includedTasks && current.includedTasks.length > 0
+          ? current.includedTasks
+          : normalizeTaskList(nextProperty?.defaultTasks),
     }));
   }, [selectedAccount, formData.propertyId]);
 
@@ -443,6 +460,10 @@ const ResidentialQuotesPage = () => {
       homeProfile: selectedProperty.homeProfile
         ? normalizeResidentialHomeProfile(selectedProperty.homeProfile)
         : current.homeProfile,
+      includedTasks:
+        current.includedTasks && current.includedTasks.length > 0
+          ? current.includedTasks
+          : normalizeTaskList(selectedProperty.defaultTasks),
     }));
   }, [selectedProperty]);
 
@@ -506,6 +527,7 @@ const ResidentialQuotesPage = () => {
         : account?.residentialProfile
           ? normalizeResidentialHomeProfile(account.residentialProfile)
           : current.homeProfile,
+      includedTasks: normalizeTaskList(property?.defaultTasks),
     }));
   };
 
@@ -534,6 +556,7 @@ const ResidentialQuotesPage = () => {
         : defaultAccount?.residentialProfile
           ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
         : DEFAULT_FORM.homeProfile,
+      includedTasks: normalizeTaskList(defaultProperty?.defaultTasks),
       pricingPlanId: defaultPlan?.id ?? '',
     });
     setPreview(null);
@@ -554,6 +577,7 @@ const ResidentialQuotesPage = () => {
       customerPhone: quote.customerPhone ?? '',
       homeAddress: quote.homeAddress ?? quote.property?.serviceAddress ?? DEFAULT_FORM.homeAddress,
       homeProfile: quote.homeProfile ?? quote.property?.homeProfile ?? DEFAULT_FORM.homeProfile,
+      includedTasks: normalizeTaskList(quote.includedTasks ?? quote.property?.defaultTasks),
       pricingPlanId: quote.pricingPlan?.id ?? plans.find((plan) => plan.isDefault)?.id ?? '',
       addOns:
         quote.addOns?.map((addOn) => ({
@@ -1036,7 +1060,15 @@ const ResidentialQuotesPage = () => {
                       })) ?? []
                     }
                     onChange={(value) =>
-                      setFormData((current) => ({ ...current, propertyId: value }))
+                      setFormData((current) => {
+                        const nextProperty =
+                          selectedAccount?.residentialProperties?.find((property) => property.id === value) ?? null;
+                        return {
+                          ...current,
+                          propertyId: value,
+                          includedTasks: normalizeTaskList(nextProperty?.defaultTasks),
+                        };
+                      })
                     }
                     placeholder="Select a service location"
                   />
@@ -1331,11 +1363,20 @@ const ResidentialQuotesPage = () => {
             {step === 3 && (
               <Card className="space-y-4 p-4">
                 <div>
-                  <h3 className="font-semibold text-surface-900 dark:text-surface-100">Add-Ons</h3>
+                  <h3 className="font-semibold text-surface-900 dark:text-surface-100">Tasks and Add-Ons</h3>
                   <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                    Add-ons directly increase the quote and estimated time. Hygieia shows the exact impact in the review rail.
+                    Set the residential scope of work first, then add optional upsells that affect price and time.
                   </p>
                 </div>
+                <ResidentialTaskBuilder
+                  label="Included Tasks"
+                  hint="These tasks define what the cleaner should complete for this residential service and will flow into work orders."
+                  tasks={normalizeTaskList(formData.includedTasks)}
+                  onChange={(includedTasks) =>
+                    setFormData((current) => ({ ...current, includedTasks }))
+                  }
+                  placeholder="Example: Kitchen surfaces and sink"
+                />
                 <div className="grid gap-3">
                   {availableAddOns.map(([code, definition]) => {
                     const selected = selectedAddOnCodes.has(code);
@@ -1405,6 +1446,20 @@ const ResidentialQuotesPage = () => {
                     setFormData((current) => ({ ...current, notes: event.target.value }))
                   }
                 />
+                <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                  <div className="text-sm font-medium text-surface-900 dark:text-surface-100">Scope of work</div>
+                  {normalizeTaskList(formData.includedTasks).length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {normalizeTaskList(formData.includedTasks).map((task) => (
+                        <Badge key={task} variant="info">{task}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+                      No quote-specific tasks set. The work order will rely on any facility or property defaults available.
+                    </p>
+                  )}
+                </div>
                 {preview?.breakdown.manualReviewReasons?.length ? (
                   <Card className="p-4">
                     <div className="flex items-start gap-3">

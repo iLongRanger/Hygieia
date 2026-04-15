@@ -29,6 +29,7 @@ export interface ResidentialPropertySummary {
   name: string;
   serviceAddress: Address | null;
   homeProfile: ResidentialAccountProfile | null;
+  defaultTasks?: string[];
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;

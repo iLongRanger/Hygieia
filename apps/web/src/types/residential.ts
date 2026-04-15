@@ -134,6 +134,7 @@ export interface ResidentialQuoteFormInput {
   customerPhone?: string | null;
   homeAddress?: ResidentialAddress | null;
   homeProfile: ResidentialHomeProfile;
+  includedTasks?: string[];
   pricingPlanId?: string | null;
   addOns?: ResidentialQuoteAddOnInput[];
   preferredStartDate?: string | null;
@@ -196,6 +197,7 @@ export interface ResidentialQuote {
   customerPhone?: string | null;
   homeAddress?: ResidentialAddress | null;
   homeProfile?: ResidentialHomeProfile;
+  includedTasks?: string[];
   settingsSnapshot?: ResidentialPricingPlanSettings | null;
   priceBreakdown?: ResidentialQuotePreview['breakdown'] | null;
   subtotal: string;
@@ -244,6 +246,7 @@ export interface ResidentialQuote {
     name: string;
     serviceAddress: ResidentialAddress | null;
     homeProfile: ResidentialHomeProfile;
+    defaultTasks?: string[];
     accessNotes?: string | null;
     parkingAccess?: string | null;
     entryNotes?: string | null;
@@ -274,6 +277,7 @@ export interface ResidentialProperty {
   name: string;
   serviceAddress: ResidentialAddress;
   homeProfile: ResidentialHomeProfile;
+  defaultTasks?: string[];
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;

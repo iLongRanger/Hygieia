@@ -50,6 +50,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
+import ResidentialTaskBuilder from '../../components/residential/ResidentialTaskBuilder';
 import { AccountHero } from './AccountHero';
 import { AccountContacts } from './AccountContacts';
 import { AccountFacilities } from './AccountFacilities';
@@ -79,6 +80,7 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   name: string;
   serviceAddress: NonNullable<UpdateAccountInput['serviceAddress']>;
   homeProfile: ResidentialHomeProfile;
+  defaultTasks: string[];
   accessNotes: string;
   parkingAccess: string;
   entryNotes: string;
@@ -109,6 +111,7 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
     specialInstructions: '',
     isFirstVisit: false,
   },
+  defaultTasks: [],
   accessNotes: '',
   parkingAccess: '',
   entryNotes: '',
@@ -597,6 +600,7 @@ const AccountDetail = () => {
       accessNotes: property.accessNotes ?? '',
       parkingAccess: property.parkingAccess ?? '',
       entryNotes: property.entryNotes ?? '',
+      defaultTasks: property.defaultTasks ?? [],
       pets: Boolean(property.pets),
       isPrimary: property.isPrimary,
     });
@@ -616,6 +620,7 @@ const AccountDetail = () => {
           name: propertyFormData.name,
           serviceAddress: propertyFormData.serviceAddress,
           homeProfile: propertyFormData.homeProfile,
+          defaultTasks: propertyFormData.defaultTasks,
           accessNotes: propertyFormData.accessNotes,
           parkingAccess: propertyFormData.parkingAccess,
           entryNotes: propertyFormData.entryNotes,
@@ -630,6 +635,7 @@ const AccountDetail = () => {
           name: propertyFormData.name,
           serviceAddress: propertyFormData.serviceAddress,
           homeProfile: propertyFormData.homeProfile,
+          defaultTasks: propertyFormData.defaultTasks,
           accessNotes: propertyFormData.accessNotes,
           parkingAccess: propertyFormData.parkingAccess,
           entryNotes: propertyFormData.entryNotes,
@@ -1351,6 +1357,15 @@ const AccountDetail = () => {
               Pets at property
             </label>
           </div>
+          <ResidentialTaskBuilder
+            label="Default Cleaning Tasks"
+            hint="These tasks prefill new residential quotes for this property and can be adjusted per quote."
+            tasks={propertyFormData.defaultTasks}
+            onChange={(defaultTasks) =>
+              setPropertyFormData((current) => ({ ...current, defaultTasks }))
+            }
+            placeholder="Example: Vacuum floors"
+          />
           <Textarea
             label="Entry Notes"
             value={propertyFormData.entryNotes}
