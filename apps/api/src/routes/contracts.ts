@@ -104,6 +104,25 @@ type ContractRecord = Awaited<ReturnType<typeof getContractById>>;
 type ContractPayload = NonNullable<ContractRecord>;
 type FacilityTask = Awaited<ReturnType<typeof getFacilityTasksForContract>>[number];
 
+function canViewContractPricing(role?: string | null): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+function stripContractPricing<T extends Record<string, unknown>>(contract: T): Omit<
+  T,
+  'monthlyValue' | 'totalValue' | 'taxRate' | 'taxAmount'
+> {
+  const {
+    monthlyValue: _monthlyValue,
+    totalValue: _totalValue,
+    taxRate: _taxRate,
+    taxAmount: _taxAmount,
+    ...safeContract
+  } = contract;
+
+  return safeContract;
+}
+
 function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   if (!req.user) {
     throw new ValidationError('User not authenticated');
@@ -301,13 +320,17 @@ router.get(
         userId: req.user?.id,
       });
 
-      if (req.user?.role === 'subcontractor') {
+      if (!canViewContractPricing(req.user?.role)) {
         const safeContracts = result.data.map((contract) => {
-          const payout =
-            Number(contract.monthlyValue ?? 0) *
-            tierToPercentage(contract.subcontractorTier);
-          const { monthlyValue: _monthlyValue, totalValue: _totalValue, ...safeContract } = contract;
-          return { ...safeContract, subcontractorPayout: payout };
+          const safeContract = stripContractPricing(contract);
+          if (req.user?.role === 'subcontractor') {
+            const payout =
+              Number(contract.monthlyValue ?? 0) *
+              tierToPercentage(contract.subcontractorTier);
+            return { ...safeContract, subcontractorPayout: payout };
+          }
+
+          return safeContract;
         });
 
         return res.json({ data: safeContracts, pagination: result.pagination });
@@ -427,7 +450,7 @@ router.get(
         throw new NotFoundError('Contract not found');
       }
 
-      if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
+      if (!canViewContractPricing(req.user?.role)) {
         const facilityId = contract.facility?.id;
         const [facilityAreas, facilityTasks] = facilityId
           ? await Promise.all([
@@ -457,9 +480,7 @@ router.get(
 
         const isSubcontractor = req.user?.role === 'subcontractor';
         const payout = Number(contract.monthlyValue ?? 0) * tierToPercentage(contract.subcontractorTier);
-        const safeContract = isSubcontractor
-          ? (({ monthlyValue: _monthlyValue, totalValue: _totalValue, ...rest }) => rest)(contract)
-          : contract;
+        const safeContract = stripContractPricing(contract);
         const safeFacility = safeContract.facility
           ? {
               ...safeContract.facility,

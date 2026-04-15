@@ -997,6 +997,7 @@ const ContractDetail = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
+  const canViewContractPricing = userRole === 'owner' || userRole === 'admin';
   const isSubcontractor = userRole === 'subcontractor';
   const isLimitedContractViewer = userRole === 'subcontractor' || userRole === 'cleaner';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
@@ -2614,7 +2615,7 @@ const ContractDetail = () => {
               </div>
             </div>
           </Card>
-        ) : !isLimitedContractViewer ? (
+        ) : canViewContractPricing ? (
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-green-400" />

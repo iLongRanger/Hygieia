@@ -125,6 +125,7 @@ const ContractsList = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
   const isSubcontractor = userRole === 'subcontractor';
+  const canViewContractPricing = userRole === 'owner' || userRole === 'admin';
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canUseNeedsAttention = userRole === 'owner' || userRole === 'admin';
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
@@ -368,20 +369,22 @@ const ContractsList = () => {
         <span className="text-surface-600 dark:text-surface-400">{formatDate(contract.endDate)}</span>
       ),
     },
-    {
-      header: isSubcontractor ? 'Monthly Payout' : 'Monthly Value',
-      cell: (contract: Contract) => {
-        const rawValue = isSubcontractor ? contract.subcontractorPayout : contract.monthlyValue;
-        const numericValue = Number(rawValue);
-        const valueLabel = Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-';
-        return (
-          <div className="flex items-center text-surface-600 dark:text-surface-400">
-            <DollarSign className="mr-1 h-4 w-4 text-green-400" />
-            {valueLabel}
-          </div>
-        );
-      },
-    },
+    ...((isSubcontractor || canViewContractPricing)
+      ? [{
+          header: isSubcontractor ? 'Monthly Payout' : 'Monthly Value',
+          cell: (contract: Contract) => {
+            const rawValue = isSubcontractor ? contract.subcontractorPayout : contract.monthlyValue;
+            const numericValue = Number(rawValue);
+            const valueLabel = Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-';
+            return (
+              <div className="flex items-center text-surface-600 dark:text-surface-400">
+                <DollarSign className="mr-1 h-4 w-4 text-green-400" />
+                {valueLabel}
+              </div>
+            );
+          },
+        }]
+      : []),
     {
       header: 'Actions',
       cell: (contract: Contract) => (
