@@ -323,6 +323,10 @@ export const residentialQuoteAddOnInputSchema = z.object({
   label: z.string().max(100).optional(),
 });
 
+export const residentialTaskListSchema = z.array(
+  z.string().trim().min(1).max(255)
+).max(100).default([]);
+
 export const residentialHomeProfileSchema = z.object({
   homeType: residentialHomeTypeSchema,
   squareFeet: z.coerce.number().int().positive(),
@@ -351,6 +355,7 @@ export const createResidentialQuoteSchema = z.object({
   customerPhone: z.string().max(20).optional().nullable(),
   homeAddress: addressSchema.optional().nullable(),
   homeProfile: residentialHomeProfileSchema,
+  includedTasks: residentialTaskListSchema.optional().default([]),
   pricingPlanId: z.string().uuid().optional().nullable(),
   addOns: z.array(residentialQuoteAddOnInputSchema).optional().default([]),
   preferredStartDate: z.coerce.date().optional().nullable(),
@@ -392,6 +397,7 @@ export const residentialPropertySchema = z.object({
   name: z.string().min(1).max(255),
   serviceAddress: addressSchema,
   homeProfile: residentialHomeProfileSchema,
+  defaultTasks: residentialTaskListSchema.optional().default([]),
   accessNotes: z.string().max(2000).optional().nullable(),
   parkingAccess: z.string().max(255).optional().nullable(),
   entryNotes: z.string().max(1000).optional().nullable(),

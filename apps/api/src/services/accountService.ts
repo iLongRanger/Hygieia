@@ -102,6 +102,7 @@ const accountSelect = {
       name: true,
       serviceAddress: true,
       homeProfile: true,
+      defaultTasks: true,
       accessNotes: true,
       parkingAccess: true,
       entryNotes: true,

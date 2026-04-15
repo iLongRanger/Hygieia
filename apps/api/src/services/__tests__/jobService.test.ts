@@ -39,6 +39,12 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
+    residentialQuote: {
+      findUnique: jest.fn(),
+    },
+    residentialProperty: {
+      findUnique: jest.fn(),
+    },
     user: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -245,6 +251,216 @@ describe('jobService', () => {
           description: 'Do it carefully',
           status: 'pending',
           estimatedMinutes: 25,
+        },
+      ],
+    });
+  });
+
+  it('createJob falls back to proposal service tasks when facility tasks are empty', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
+      if (select?.status) {
+        return Promise.resolve({
+          id: 'contract-1',
+          status: 'active',
+        });
+      }
+
+      return Promise.resolve({
+        proposal: {
+          proposalServices: [
+            {
+              id: 'service-1',
+              serviceName: 'Recurring Standard Cleaning',
+              includedTasks: ['Kitchen: counters, sink', 'Bathrooms: mirrors', 'Kitchen: sink'],
+            },
+            {
+              id: 'service-2',
+              serviceName: 'Final Touch',
+              includedTasks: [],
+            },
+          ],
+        },
+      });
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0010`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-2',
+      jobNumber: `WO-${year}-0011`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-02T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-2',
+          facilityTaskId: null,
+          taskName: 'Kitchen: counters, sink',
+          description: 'Recurring Standard Cleaning',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-2',
+          facilityTaskId: null,
+          taskName: 'Bathrooms: mirrors',
+          description: 'Recurring Standard Cleaning',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-2',
+          facilityTaskId: null,
+          taskName: 'Kitchen: sink',
+          description: 'Recurring Standard Cleaning',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-2',
+          facilityTaskId: null,
+          taskName: 'Final Touch',
+          description: null,
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+      ],
+    });
+  });
+
+  it('createJob falls back to residential quote tasks when no facility or proposal tasks exist', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
+      if (select?.status) {
+        return Promise.resolve({
+          id: 'contract-1',
+          status: 'active',
+        });
+      }
+
+      return Promise.resolve({
+        quoteSourceType: 'residential_quote',
+        quoteSourceId: 'quote-1',
+        residentialPropertyId: 'property-1',
+        proposal: {
+          proposalServices: [],
+        },
+      });
+    });
+    (prisma.residentialQuote.findUnique as jest.Mock).mockResolvedValue({
+      includedTasks: ['Kitchen wipe down', 'Bathrooms sanitized'],
+    });
+    (prisma.residentialProperty.findUnique as jest.Mock).mockResolvedValue({
+      defaultTasks: ['This should not be used'],
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0010`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-3',
+      jobNumber: `WO-${year}-0011`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-03T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-3',
+          facilityTaskId: null,
+          taskName: 'Kitchen wipe down',
+          description: 'Residential quote scope',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-3',
+          facilityTaskId: null,
+          taskName: 'Bathrooms sanitized',
+          description: 'Residential quote scope',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+      ],
+    });
+  });
+
+  it('createJob falls back to residential property tasks when quote tasks are empty', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
+      if (select?.status) {
+        return Promise.resolve({
+          id: 'contract-1',
+          status: 'active',
+        });
+      }
+
+      return Promise.resolve({
+        quoteSourceType: 'residential_quote',
+        quoteSourceId: 'quote-1',
+        residentialPropertyId: 'property-1',
+        proposal: {
+          proposalServices: [],
+        },
+      });
+    });
+    (prisma.residentialQuote.findUnique as jest.Mock).mockResolvedValue({
+      includedTasks: [],
+    });
+    (prisma.residentialProperty.findUnique as jest.Mock).mockResolvedValue({
+      defaultTasks: ['Vacuum floors', 'Dust reachable surfaces'],
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0012`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-4',
+      jobNumber: `WO-${year}-0013`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-04T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-4',
+          facilityTaskId: null,
+          taskName: 'Vacuum floors',
+          description: 'Residential property scope',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-4',
+          facilityTaskId: null,
+          taskName: 'Dust reachable surfaces',
+          description: 'Residential property scope',
+          status: 'pending',
+          estimatedMinutes: null,
         },
       ],
     });

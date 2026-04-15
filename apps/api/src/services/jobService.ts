@@ -546,7 +546,19 @@ async function assertNoDirectJobConflict(input: {
   }
 }
 
-async function buildJobTaskSeedData(facilityId: string, jobId: string) {
+function normalizeSeedTaskName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.replace(/^[\s*-•]+/, '').trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeFallbackSeedTaskName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.replace(/^[\s*-]+/, '').trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+async function buildJobTaskSeedData(facilityId: string, jobId: string, contractId?: string) {
   const facilityTasks = await prisma.facilityTask.findMany({
     where: {
       facilityId,
@@ -567,7 +579,7 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string) {
     orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }],
   });
 
-  return facilityTasks
+  const seededFacilityTasks = facilityTasks
     .map((task) => {
       const taskName = task.customName ?? task.taskTemplate?.name;
       if (!taskName) return null;
@@ -582,6 +594,124 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string) {
       };
     })
     .filter((task): task is NonNullable<typeof task> => task !== null);
+
+  if (seededFacilityTasks.length > 0) {
+    return seededFacilityTasks;
+  }
+
+  if (!contractId) {
+    return [];
+  }
+
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      quoteSourceType: true,
+      quoteSourceId: true,
+      residentialPropertyId: true,
+      proposal: {
+        select: {
+          proposalServices: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              id: true,
+              serviceName: true,
+              includedTasks: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  const fallbackTasks = (contract?.proposal?.proposalServices ?? []).flatMap((service) => {
+    const includedTasks = Array.isArray(service.includedTasks) ? service.includedTasks : [];
+    const normalizedIncludedTasks = includedTasks
+      .map((task) => normalizeFallbackSeedTaskName(task))
+      .filter((task): task is string => Boolean(task));
+
+    if (normalizedIncludedTasks.length > 0) {
+      return normalizedIncludedTasks.map((taskName) => ({
+        jobId,
+        facilityTaskId: null,
+        taskName,
+        description: service.serviceName || null,
+        status: 'pending',
+        estimatedMinutes: null,
+      }));
+    }
+
+    const serviceName = normalizeFallbackSeedTaskName(service.serviceName);
+    return serviceName
+      ? [{
+          jobId,
+          facilityTaskId: null,
+          taskName: serviceName,
+          description: null,
+          status: 'pending',
+          estimatedMinutes: null,
+        }]
+      : [];
+  });
+
+  const uniqueTasks = new Map<string, (typeof fallbackTasks)[number]>();
+  for (const task of fallbackTasks) {
+    const key = `${task.taskName}::${task.description ?? ''}`;
+    if (!uniqueTasks.has(key)) {
+      uniqueTasks.set(key, task);
+    }
+  }
+
+  if (uniqueTasks.size > 0) {
+    return [...uniqueTasks.values()];
+  }
+
+  if (contract?.quoteSourceType === 'residential_quote' && contract.quoteSourceId) {
+    const residentialQuote = await prisma.residentialQuote.findUnique({
+      where: { id: contract.quoteSourceId },
+      select: {
+        includedTasks: true,
+      },
+    });
+
+    const residentialQuoteTasks = (Array.isArray(residentialQuote?.includedTasks) ? residentialQuote.includedTasks : [])
+      .map((task) => normalizeFallbackSeedTaskName(task))
+      .filter((task): task is string => Boolean(task))
+      .map((taskName) => ({
+        jobId,
+        facilityTaskId: null,
+        taskName,
+        description: 'Residential quote scope',
+        status: 'pending',
+        estimatedMinutes: null,
+      }));
+
+    if (residentialQuoteTasks.length > 0) {
+      return residentialQuoteTasks;
+    }
+  }
+
+  if (!contract?.residentialPropertyId) {
+    return [];
+  }
+
+  const residentialProperty = await prisma.residentialProperty.findUnique({
+    where: { id: contract.residentialPropertyId },
+    select: {
+      defaultTasks: true,
+    },
+  });
+
+  return (Array.isArray(residentialProperty?.defaultTasks) ? residentialProperty.defaultTasks : [])
+    .map((task) => normalizeFallbackSeedTaskName(task))
+    .filter((task): task is string => Boolean(task))
+    .map((taskName) => ({
+      jobId,
+      facilityTaskId: null,
+      taskName,
+      description: 'Residential property scope',
+      status: 'pending',
+      estimatedMinutes: null,
+    }));
 }
 
 function deriveWorkforceAssignmentType(job: {
@@ -872,7 +1002,7 @@ export async function createJob(input: JobCreateInput) {
       select: jobSelect,
     });
 
-    const seededTasks = await buildJobTaskSeedData(input.facilityId, job.id);
+    const seededTasks = await buildJobTaskSeedData(input.facilityId, job.id, input.contractId);
     if (seededTasks.length > 0) {
       await tx.jobTask.createMany({
         data: seededTasks,
@@ -1669,7 +1799,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
 
   // Batch create jobs
   const jobs = [];
-  const seededFacilityTasks = await buildJobTaskSeedData(contract.facilityId, '');
+  const seededFacilityTasks = await buildJobTaskSeedData(contract.facilityId, '', input.contractId);
   for (const dateIso of newDates) {
     try {
       const jobNumber = await generateJobNumber();

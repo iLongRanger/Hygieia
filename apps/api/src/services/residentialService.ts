@@ -47,6 +47,7 @@ const residentialPropertySelect = {
   name: true,
   serviceAddress: true,
   homeProfile: true,
+  defaultTasks: true,
   accessNotes: true,
   parkingAccess: true,
   entryNotes: true,
@@ -95,6 +96,7 @@ const residentialQuoteListSelect = {
   frequency: true,
   customerName: true,
   customerEmail: true,
+  includedTasks: true,
   totalAmount: true,
   estimatedHours: true,
   confidenceLevel: true,
@@ -131,6 +133,7 @@ const residentialQuoteListSelect = {
       name: true,
       serviceAddress: true,
       homeProfile: true,
+      defaultTasks: true,
       accessNotes: true,
       parkingAccess: true,
       entryNotes: true,
@@ -155,6 +158,7 @@ const residentialQuoteDetailSelect = {
   customerPhone: true,
   homeAddress: true,
   homeProfile: true,
+  includedTasks: true,
   settingsSnapshot: true,
   priceBreakdown: true,
   subtotal: true,
@@ -209,6 +213,7 @@ const residentialQuoteDetailSelect = {
       name: true,
       serviceAddress: true,
       homeProfile: true,
+      defaultTasks: true,
       accessNotes: true,
       parkingAccess: true,
       entryNotes: true,
@@ -275,6 +280,7 @@ const publicResidentialQuoteSelect = {
       name: true,
       serviceAddress: true,
       homeProfile: true,
+      defaultTasks: true,
       accessNotes: true,
       parkingAccess: true,
       entryNotes: true,
@@ -285,6 +291,7 @@ const publicResidentialQuoteSelect = {
   },
   homeAddress: true,
   homeProfile: true,
+  includedTasks: true,
   subtotal: true,
   addOnTotal: true,
   recurringDiscount: true,
@@ -352,6 +359,16 @@ function toNullableString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry): entry is string => entry.length > 0);
 }
 
 function toAddressJsonValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
@@ -755,6 +772,7 @@ export async function createResidentialProperty(
         name: input.name.trim(),
         serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
         homeProfile: input.homeProfile as Prisma.InputJsonValue,
+        defaultTasks: input.defaultTasks as Prisma.InputJsonValue,
         accessNotes: toNullableString(input.accessNotes),
         parkingAccess: toNullableString(input.parkingAccess),
         entryNotes: toNullableString(input.entryNotes),
@@ -800,6 +818,9 @@ export async function updateResidentialProperty(id: string, input: UpdateResiden
           : {}),
         ...(input.homeProfile !== undefined
           ? { homeProfile: input.homeProfile as Prisma.InputJsonValue }
+          : {}),
+        ...(input.defaultTasks !== undefined
+          ? { defaultTasks: input.defaultTasks as Prisma.InputJsonValue }
           : {}),
         ...(input.accessNotes !== undefined ? { accessNotes: toNullableString(input.accessNotes) } : {}),
         ...(input.parkingAccess !== undefined ? { parkingAccess: toNullableString(input.parkingAccess) } : {}),
@@ -1227,6 +1248,7 @@ function buildResidentialQuoteUpsertData(
     customerPhone: toNullableString(input.customerPhone),
     homeAddress: input.homeAddress ?? Prisma.JsonNull,
     homeProfile: input.homeProfile as Prisma.InputJsonValue,
+    includedTasks: input.includedTasks as Prisma.InputJsonValue,
     pricingPlanId,
     settingsSnapshot: preview.settingsSnapshot as Prisma.InputJsonValue,
     priceBreakdown: preview.breakdown as Prisma.InputJsonValue,
@@ -1268,6 +1290,7 @@ async function syncResidentialPropertyProfileFromQuote(
       data: {
         serviceAddress: (input.homeAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
         homeProfile: input.homeProfile as Prisma.InputJsonValue,
+        defaultTasks: input.includedTasks as Prisma.InputJsonValue,
         parkingAccess: toNullableString(input.homeProfile.parkingAccess),
         entryNotes: toNullableString(input.homeProfile.entryNotes),
         pets: input.homeProfile.hasPets ?? null,
@@ -1347,6 +1370,12 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
     homeProfile:
       (input.homeProfile ??
         (existing.homeProfile as CreateResidentialQuoteInput['homeProfile'])),
+    includedTasks:
+      input.includedTasks
+      ?? (() => {
+        const existingTasks = toStringArray(existing.includedTasks);
+        return existingTasks.length > 0 ? existingTasks : toStringArray(existing.property?.defaultTasks);
+      })(),
     pricingPlanId: input.pricingPlanId ?? existing.pricingPlan?.id ?? null,
     addOns:
       input.addOns ??
