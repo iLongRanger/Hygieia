@@ -408,6 +408,7 @@ model ResidentialProperty {
   name              String    @db.VarChar(255)
   serviceAddress    Json      @map("service_address") @db.JsonB
   homeProfile       Json      @map("home_profile") @db.JsonB
+  defaultTasks      Json      @default("[]") @map("default_tasks") @db.JsonB
   accessNotes       String?   @map("access_notes") @db.Text
   parkingAccess     String?   @map("parking_access") @db.Text
   entryNotes        String?   @map("entry_notes") @db.Text
@@ -799,6 +800,7 @@ model ResidentialQuote {
   customerPhone        String?   @map("customer_phone") @db.VarChar(20)
   homeAddress          Json?     @map("home_address") @db.JsonB
   homeProfile          Json      @map("home_profile") @db.JsonB
+  includedTasks        Json      @default("[]") @map("included_tasks") @db.JsonB
   pricingPlanId        String?   @map("pricing_plan_id") @db.Uuid
   settingsSnapshot     Json?     @map("settings_snapshot") @db.JsonB
   priceBreakdown       Json?     @map("price_breakdown") @db.JsonB
