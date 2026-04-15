@@ -45,6 +45,9 @@ jest.mock('../../lib/prisma', () => ({
     residentialProperty: {
       findUnique: jest.fn(),
     },
+    account: {
+      findUnique: jest.fn(),
+    },
     user: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -459,6 +462,122 @@ describe('jobService', () => {
           facilityTaskId: null,
           taskName: 'Dust reachable surfaces',
           description: 'Residential property scope',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+      ],
+    });
+  });
+
+  it('createJob uses contract scope snapshot before other residential fallbacks', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
+      if (select?.status) {
+        return Promise.resolve({ id: 'contract-1', status: 'active' });
+      }
+
+      return Promise.resolve({
+        scopeTasksSnapshot: ['Snapshot task one', 'Snapshot task two'],
+        quoteSourceType: 'residential_quote',
+        quoteSourceId: 'quote-1',
+        residentialPropertyId: 'property-1',
+        accountId: 'account-1',
+        proposal: { proposalServices: [] },
+      });
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0014`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-5',
+      jobNumber: `WO-${year}-0015`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-05T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-5',
+          facilityTaskId: null,
+          taskName: 'Snapshot task one',
+          description: 'Contract scope snapshot',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-5',
+          facilityTaskId: null,
+          taskName: 'Snapshot task two',
+          description: 'Contract scope snapshot',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+      ],
+    });
+  });
+
+  it('createJob falls back to residential account task library when quote and property tasks are empty', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
+      if (select?.status) {
+        return Promise.resolve({ id: 'contract-1', status: 'active' });
+      }
+
+      return Promise.resolve({
+        scopeTasksSnapshot: [],
+        quoteSourceType: 'residential_quote',
+        quoteSourceId: 'quote-1',
+        residentialPropertyId: null,
+        accountId: 'account-1',
+        proposal: { proposalServices: [] },
+      });
+    });
+    (prisma.residentialQuote.findUnique as jest.Mock).mockResolvedValue({
+      includedTasks: [],
+    });
+    (prisma.account.findUnique as jest.Mock).mockResolvedValue({
+      residentialTaskLibrary: ['Change linens', 'Use unscented products'],
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0016`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-6',
+      jobNumber: `WO-${year}-0017`,
+    });
+    (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-06T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.jobTask.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          jobId: 'job-6',
+          facilityTaskId: null,
+          taskName: 'Change linens',
+          description: 'Residential account scope',
+          status: 'pending',
+          estimatedMinutes: null,
+        },
+        {
+          jobId: 'job-6',
+          facilityTaskId: null,
+          taskName: 'Use unscented products',
+          description: 'Residential account scope',
           status: 'pending',
           estimatedMinutes: null,
         },

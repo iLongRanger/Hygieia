@@ -272,6 +272,7 @@ export interface Account {
   paymentTerms: string;
   creditLimit: string | null;
   residentialProfile?: ResidentialAccountProfile | null;
+  residentialTaskLibrary?: string[];
   residentialProperties?: ResidentialPropertySummary[];
   notes: string | null;
   createdAt: string;
@@ -327,6 +328,7 @@ export interface CreateAccountInput {
   creditLimit?: number | null;
   accountManagerId?: string | null;
   residentialProfile?: ResidentialAccountProfile | null;
+  residentialTaskLibrary?: string[];
   notes?: string | null;
 }
 
@@ -345,6 +347,7 @@ export interface UpdateAccountInput {
   creditLimit?: number | null;
   accountManagerId?: string | null;
   residentialProfile?: ResidentialAccountProfile | null;
+  residentialTaskLibrary?: string[];
   notes?: string | null;
 }
 

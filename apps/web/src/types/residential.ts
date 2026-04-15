@@ -240,6 +240,7 @@ export interface ResidentialQuote {
     billingAddress?: ResidentialAddress | null;
     serviceAddress?: ResidentialAddress | null;
     residentialProfile?: ResidentialHomeProfile | null;
+    residentialTaskLibrary?: string[];
   } | null;
   property?: {
     id: string;

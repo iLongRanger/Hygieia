@@ -606,9 +606,11 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string, contractI
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     select: {
+      scopeTasksSnapshot: true,
       quoteSourceType: true,
       quoteSourceId: true,
       residentialPropertyId: true,
+      accountId: true,
       proposal: {
         select: {
           proposalServices: {
@@ -623,6 +625,22 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string, contractI
       },
     },
   });
+
+  const scopeSnapshotTasks = (Array.isArray(contract?.scopeTasksSnapshot) ? contract.scopeTasksSnapshot : [])
+    .map((task) => normalizeFallbackSeedTaskName(task))
+    .filter((task): task is string => Boolean(task))
+    .map((taskName) => ({
+      jobId,
+      facilityTaskId: null,
+      taskName,
+      description: 'Contract scope snapshot',
+      status: 'pending',
+      estimatedMinutes: null,
+    }));
+
+  if (scopeSnapshotTasks.length > 0) {
+    return scopeSnapshotTasks;
+  }
   const fallbackTasks = (contract?.proposal?.proposalServices ?? []).flatMap((service) => {
     const includedTasks = Array.isArray(service.includedTasks) ? service.includedTasks : [];
     const normalizedIncludedTasks = includedTasks
@@ -691,7 +709,26 @@ async function buildJobTaskSeedData(facilityId: string, jobId: string, contractI
   }
 
   if (!contract?.residentialPropertyId) {
-    return [];
+    if (!contract?.accountId) {
+      return [];
+    }
+    const account = await prisma.account.findUnique({
+      where: { id: contract.accountId },
+      select: {
+        residentialTaskLibrary: true,
+      },
+    });
+    return (Array.isArray(account?.residentialTaskLibrary) ? account.residentialTaskLibrary : [])
+      .map((task) => normalizeFallbackSeedTaskName(task))
+      .filter((task): task is string => Boolean(task))
+      .map((taskName) => ({
+        jobId,
+        facilityTaskId: null,
+        taskName,
+        description: 'Residential account scope',
+        status: 'pending',
+        estimatedMinutes: null,
+      }));
   }
 
   const residentialProperty = await prisma.residentialProperty.findUnique({

@@ -54,6 +54,12 @@ export const residentialAccountProfileSchema = z
   .optional()
   .nullable();
 
+export const residentialTaskListSchema = z
+  .array(z.string().trim().min(1).max(255))
+  .max(100)
+  .optional()
+  .default([]);
+
 export const createAccountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   type: accountTypeSchema,
@@ -68,6 +74,7 @@ export const createAccountSchema = z.object({
   creditLimit: z.coerce.number().min(0).optional().nullable(),
   accountManagerId: z.string().uuid().optional().nullable(),
   residentialProfile: residentialAccountProfileSchema,
+  residentialTaskLibrary: residentialTaskListSchema,
   notes: z.string().max(10000).optional().nullable(),
 });
 
@@ -85,6 +92,7 @@ export const updateAccountSchema = z.object({
   creditLimit: z.coerce.number().min(0).optional().nullable(),
   accountManagerId: z.string().uuid().optional().nullable(),
   residentialProfile: residentialAccountProfileSchema,
+  residentialTaskLibrary: residentialTaskListSchema,
   notes: z.string().max(10000).optional().nullable(),
 });
 

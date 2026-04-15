@@ -125,6 +125,7 @@ const residentialQuoteListSelect = {
       billingAddress: true,
       serviceAddress: true,
       residentialProfile: true,
+      residentialTaskLibrary: true,
     },
   },
   property: {
@@ -205,6 +206,7 @@ const residentialQuoteDetailSelect = {
       billingAddress: true,
       serviceAddress: true,
       residentialProfile: true,
+      residentialTaskLibrary: true,
     },
   },
   property: {
@@ -272,6 +274,7 @@ const publicResidentialQuoteSelect = {
       billingAddress: true,
       serviceAddress: true,
       residentialProfile: true,
+      residentialTaskLibrary: true,
     },
   },
   property: {
@@ -880,6 +883,7 @@ async function resolveResidentialAccount(accountId: string) {
       billingAddress: true,
       serviceAddress: true,
       residentialProfile: true,
+      residentialTaskLibrary: true,
       archivedAt: true,
     },
   });
@@ -1374,7 +1378,11 @@ export async function updateResidentialQuote(id: string, input: UpdateResidentia
       input.includedTasks
       ?? (() => {
         const existingTasks = toStringArray(existing.includedTasks);
-        return existingTasks.length > 0 ? existingTasks : toStringArray(existing.property?.defaultTasks);
+        if (existingTasks.length > 0) {
+          return existingTasks;
+        }
+        const propertyTasks = toStringArray(existing.property?.defaultTasks);
+        return propertyTasks.length > 0 ? propertyTasks : toStringArray(existing.account?.residentialTaskLibrary);
       })(),
     pricingPlanId: input.pricingPlanId ?? existing.pricingPlan?.id ?? null,
     addOns:
@@ -1804,6 +1812,7 @@ export async function convertResidentialQuoteToContract(
             type: true,
             serviceAddress: true,
             residentialProfile: true,
+            residentialTaskLibrary: true,
           },
         })
       : null;
@@ -1819,6 +1828,7 @@ export async function convertResidentialQuoteToContract(
         billingAddress: toAddressJsonValue(quote.homeAddress),
         serviceAddress: toAddressJsonValue(quote.homeAddress),
         residentialProfile: (quote.homeProfile as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        residentialTaskLibrary: (quote.includedTasks as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         paymentTerms: input.paymentTerms,
         createdByUserId: userId,
       },
@@ -1828,6 +1838,7 @@ export async function convertResidentialQuoteToContract(
         type: true,
         serviceAddress: true,
         residentialProfile: true,
+        residentialTaskLibrary: true,
       },
     });
   }
@@ -1848,6 +1859,13 @@ export async function convertResidentialQuoteToContract(
     quote.homeAddress ?? property.serviceAddress ?? account.serviceAddress ?? null;
   const resolvedHomeProfile =
     quote.homeProfile ?? property.homeProfile ?? account.residentialProfile ?? null;
+  const resolvedScopeTasks = (() => {
+    const quoteTasks = toStringArray(quote.includedTasks);
+    if (quoteTasks.length > 0) return quoteTasks;
+    const propertyTasks = toStringArray(property.defaultTasks);
+    if (propertyTasks.length > 0) return propertyTasks;
+    return toStringArray(account.residentialTaskLibrary);
+  })();
   const facility = await ensureResidentialFacility({
     accountId: account.id,
     propertyId: property.id,
@@ -1944,6 +1962,7 @@ export async function convertResidentialQuoteToContract(
       residentialServiceType: quote.serviceType,
       residentialFrequency: quote.frequency,
       homeProfileSnapshot: (quote.homeProfile as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+      scopeTasksSnapshot: resolvedScopeTasks as Prisma.InputJsonValue,
       quoteSourceType: 'residential_quote',
       quoteSourceId: quote.id,
       specialInstructions: quote.notes,

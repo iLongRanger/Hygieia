@@ -368,6 +368,7 @@ model Account {
   creditLimit      Decimal?  @map("credit_limit") @db.Decimal(12, 2)
   accountManagerId String?   @map("account_manager_id") @db.Uuid
   residentialProfile Json?   @map("residential_profile") @db.JsonB
+  residentialTaskLibrary Json @default("[]") @map("residential_task_library") @db.JsonB
   notes            String?   @db.Text
   createdByUserId  String    @map("created_by_user_id") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1184,6 +1185,7 @@ model Contract {
   residentialServiceType          String?   @map("residential_service_type") @db.VarChar(40)
   residentialFrequency            String?   @map("residential_frequency") @db.VarChar(30)
   homeProfileSnapshot             Json?     @map("home_profile_snapshot") @db.JsonB
+  scopeTasksSnapshot              Json?     @map("scope_tasks_snapshot") @db.JsonB
   quoteSourceType                 String?   @map("quote_source_type") @db.VarChar(30)
   quoteSourceId                   String?   @map("quote_source_id") @db.Uuid
   assignedTeamId                  String?   @map("assigned_team_id") @db.Uuid

@@ -41,6 +41,7 @@ export interface AccountCreateInput {
   creditLimit?: number | null;
   accountManagerId?: string | null;
   residentialProfile?: Record<string, unknown> | null;
+  residentialTaskLibrary?: string[];
   notes?: string | null;
   createdByUserId: string;
 }
@@ -59,6 +60,7 @@ export interface AccountUpdateInput {
   creditLimit?: number | null;
   accountManagerId?: string | null;
   residentialProfile?: Record<string, unknown> | null;
+  residentialTaskLibrary?: string[];
   notes?: string | null;
 }
 
@@ -87,6 +89,7 @@ const accountSelect = {
   paymentTerms: true,
   creditLimit: true,
   residentialProfile: true,
+  residentialTaskLibrary: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
@@ -303,6 +306,7 @@ export async function createAccount(input: AccountCreateInput) {
       creditLimit: input.creditLimit,
       accountManagerId: input.accountManagerId,
       residentialProfile: input.residentialProfile as Prisma.InputJsonValue,
+      residentialTaskLibrary: (input.residentialTaskLibrary ?? []) as Prisma.InputJsonValue,
       notes: input.notes,
       createdByUserId: input.createdByUserId,
     },
@@ -389,6 +393,9 @@ export async function updateAccount(id: string, input: AccountUpdateInput) {
   }
   if (input.residentialProfile !== undefined) {
     updateData.residentialProfile = input.residentialProfile as Prisma.InputJsonValue;
+  }
+  if (input.residentialTaskLibrary !== undefined) {
+    updateData.residentialTaskLibrary = input.residentialTaskLibrary as Prisma.InputJsonValue;
   }
   if (input.notes !== undefined) updateData.notes = input.notes;
 

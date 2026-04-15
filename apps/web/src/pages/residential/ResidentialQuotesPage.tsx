@@ -224,6 +224,10 @@ function normalizeTaskList(value: string[] | null | undefined) {
     .filter((task, index, tasks) => task.length > 0 && tasks.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
 }
 
+function canEditResidentialQuote(quote: ResidentialQuote) {
+  return quote.status !== 'accepted' && quote.status !== 'converted';
+}
+
 function getApiErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message;
@@ -447,7 +451,10 @@ const ResidentialQuotesPage = () => {
       includedTasks:
         current.includedTasks && current.includedTasks.length > 0
           ? current.includedTasks
-          : normalizeTaskList(nextProperty?.defaultTasks),
+          : (() => {
+            const propertyTasks = normalizeTaskList(nextProperty?.defaultTasks);
+            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount.residentialTaskLibrary);
+          })(),
     }));
   }, [selectedAccount, formData.propertyId]);
 
@@ -463,9 +470,12 @@ const ResidentialQuotesPage = () => {
       includedTasks:
         current.includedTasks && current.includedTasks.length > 0
           ? current.includedTasks
-          : normalizeTaskList(selectedProperty.defaultTasks),
+          : (() => {
+            const propertyTasks = normalizeTaskList(selectedProperty.defaultTasks);
+            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount?.residentialTaskLibrary);
+          })(),
     }));
-  }, [selectedProperty]);
+  }, [selectedProperty, selectedAccount]);
 
   useEffect(() => {
     const hasCoreFields =
@@ -527,7 +537,10 @@ const ResidentialQuotesPage = () => {
         : account?.residentialProfile
           ? normalizeResidentialHomeProfile(account.residentialProfile)
           : current.homeProfile,
-      includedTasks: normalizeTaskList(property?.defaultTasks),
+      includedTasks: (() => {
+        const propertyTasks = normalizeTaskList(property?.defaultTasks);
+        return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(account?.residentialTaskLibrary);
+      })(),
     }));
   };
 
@@ -556,7 +569,10 @@ const ResidentialQuotesPage = () => {
         : defaultAccount?.residentialProfile
           ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
         : DEFAULT_FORM.homeProfile,
-      includedTasks: normalizeTaskList(defaultProperty?.defaultTasks),
+      includedTasks: (() => {
+        const propertyTasks = normalizeTaskList(defaultProperty?.defaultTasks);
+        return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(defaultAccount?.residentialTaskLibrary);
+      })(),
       pricingPlanId: defaultPlan?.id ?? '',
     });
     setPreview(null);
@@ -577,7 +593,13 @@ const ResidentialQuotesPage = () => {
       customerPhone: quote.customerPhone ?? '',
       homeAddress: quote.homeAddress ?? quote.property?.serviceAddress ?? DEFAULT_FORM.homeAddress,
       homeProfile: quote.homeProfile ?? quote.property?.homeProfile ?? DEFAULT_FORM.homeProfile,
-      includedTasks: normalizeTaskList(quote.includedTasks ?? quote.property?.defaultTasks),
+      includedTasks: (() => {
+        const quoteTasks = normalizeTaskList(quote.includedTasks);
+        if (quoteTasks.length > 0) return quoteTasks;
+        const propertyTasks = normalizeTaskList(quote.property?.defaultTasks);
+        if (propertyTasks.length > 0) return propertyTasks;
+        return normalizeTaskList(quote.account?.residentialTaskLibrary);
+      })(),
       pricingPlanId: quote.pricingPlan?.id ?? plans.find((plan) => plan.isDefault)?.id ?? '',
       addOns:
         quote.addOns?.map((addOn) => ({
@@ -746,13 +768,17 @@ const ResidentialQuotesPage = () => {
     {
       header: 'Quote',
       cell: (quote: ResidentialQuote) => (
-        <button
-          type="button"
-          onClick={() => openEditModal(quote)}
-          className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-        >
-          {quote.quoteNumber}
-        </button>
+        canEditResidentialQuote(quote) ? (
+          <button
+            type="button"
+            onClick={() => openEditModal(quote)}
+            className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+          >
+            {quote.quoteNumber}
+          </button>
+        ) : (
+          <span className="font-medium text-surface-900 dark:text-surface-100">{quote.quoteNumber}</span>
+        )
       ),
     },
     {
@@ -821,7 +847,7 @@ const ResidentialQuotesPage = () => {
       cell: (quote: ResidentialQuote) => {
         const items: ActionMenuItem[] = [];
 
-        if (canWrite && quote.status !== 'accepted' && quote.status !== 'converted') {
+        if (canWrite && canEditResidentialQuote(quote)) {
           items.push({
             label: 'Edit Quote',
             onClick: () => { setOpenMenuQuoteId(null); openEditModal(quote); },
@@ -1066,7 +1092,10 @@ const ResidentialQuotesPage = () => {
                         return {
                           ...current,
                           propertyId: value,
-                          includedTasks: normalizeTaskList(nextProperty?.defaultTasks),
+                          includedTasks: (() => {
+                            const propertyTasks = normalizeTaskList(nextProperty?.defaultTasks);
+                            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount?.residentialTaskLibrary);
+                          })(),
                         };
                       })
                     }

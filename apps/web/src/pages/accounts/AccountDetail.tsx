@@ -119,6 +119,16 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   isPrimary: false,
 };
 
+function normalizeResidentialTaskList(tasks: string[] | null | undefined) {
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+
+  return tasks
+    .map((task) => task.trim())
+    .filter((task, index, list) => task.length > 0 && list.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
+}
+
 function formatCalendarDate(value: string | null | undefined) {
   if (!value) return 'Not scheduled';
   const date = new Date(value);
@@ -293,6 +303,7 @@ const AccountDetail = () => {
     creditLimit: null,
     accountManagerId: null,
     residentialProfile: null,
+    residentialTaskLibrary: [],
     notes: null,
   });
 
@@ -329,6 +340,7 @@ const AccountDetail = () => {
           creditLimit: data.creditLimit ? Number(data.creditLimit) : null,
           accountManagerId: data.accountManager?.id || null,
           residentialProfile: data.residentialProfile,
+          residentialTaskLibrary: normalizeResidentialTaskList(data.residentialTaskLibrary),
           notes: data.notes,
         });
       }
@@ -513,6 +525,23 @@ const AccountDetail = () => {
     }
   };
 
+  const handleSaveResidentialTaskLibrary = async (tasks: string[]) => {
+    if (!id || !account) return;
+    try {
+      setSaving(true);
+      const nextTasks = normalizeResidentialTaskList(tasks);
+      const updated = await updateAccount(id, { residentialTaskLibrary: nextTasks });
+      setAccount(updated);
+      setFormData((current) => ({ ...current, residentialTaskLibrary: nextTasks }));
+      toast.success('Residential task library updated');
+    } catch (error) {
+      console.error('Failed to update residential task library:', error);
+      toast.error('Failed to update residential task library');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleArchive = async () => {
     if (!id) return;
     try {
@@ -568,6 +597,7 @@ const AccountDetail = () => {
     setEditingProperty(null);
     setPropertyFormData({
       ...DEFAULT_RESIDENTIAL_PROPERTY_FORM,
+      defaultTasks: normalizeResidentialTaskList(account?.residentialTaskLibrary),
       isPrimary: !(account?.residentialProperties?.length ?? 0),
     });
     setShowPropertyModal(true);
@@ -962,6 +992,39 @@ const AccountDetail = () => {
               {/* Type-specific content */}
               {isResidentialAccount ? (
                 <>
+                  <Card className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Task Manager</h3>
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Master residential task library for this customer. New properties and quotes can inherit from it.
+                        </p>
+                      </div>
+                      <Badge variant="info">{normalizeResidentialTaskList(account.residentialTaskLibrary).length} tasks</Badge>
+                    </div>
+                    <ResidentialTaskBuilder
+                      label="Residential Account Task Library"
+                      hint="Use this as the baseline scope for all properties under this residential account."
+                      tasks={normalizeResidentialTaskList(account.residentialTaskLibrary)}
+                      onChange={(tasks) => {
+                        setAccount((current) => (current ? { ...current, residentialTaskLibrary: tasks } : current));
+                        setFormData((current) => ({ ...current, residentialTaskLibrary: tasks }));
+                      }}
+                      placeholder="Example: Sanitize kitchen counters"
+                    />
+                    {canAdminAccounts ? (
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveResidentialTaskLibrary(account.residentialTaskLibrary ?? [])}
+                          disabled={saving}
+                        >
+                          {saving ? 'Saving...' : 'Save Task Library'}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </Card>
+
                   {/* Properties */}
                   <Card className="space-y-4">
                     <div className="flex items-center justify-between">
