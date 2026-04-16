@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
+import type { ResidentialProperty } from '../../types/residential';
 
 let mockParams: { id?: string } = { id: 'facility-1' };
 const navigateMock = vi.fn();
@@ -34,6 +35,7 @@ const deleteFacilityTaskMock = vi.fn();
 const listTaskTemplatesMock = vi.fn();
 const bulkCreateFacilityTasksMock = vi.fn();
 const submitFacilityForProposalMock = vi.fn();
+const getResidentialPropertyMock = vi.fn();
 
 vi.mock('../../lib/facilities', () => ({
   getFacility: (...args: unknown[]) => getFacilityMock(...args),
@@ -57,6 +59,10 @@ vi.mock('../../lib/tasks', () => ({
   listFacilityTasks: (...args: unknown[]) => listFacilityTasksMock(...args),
   listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
   bulkCreateFacilityTasks: (...args: unknown[]) => bulkCreateFacilityTasksMock(...args),
+}));
+
+vi.mock('../../lib/residential', () => ({
+  getResidentialProperty: (...args: unknown[]) => getResidentialPropertyMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -185,6 +191,57 @@ const areaSpecificTemplate: TaskTemplate = {
   },
 };
 
+const residentialProperty: ResidentialProperty = {
+  id: 'property-1',
+  accountId: 'account-1',
+  name: 'Maple Residence',
+  serviceAddress: {
+    street: '10 Maple St',
+    city: 'Vancouver',
+    state: 'BC',
+    postalCode: 'V6B 1A1',
+    country: 'Canada',
+  },
+  homeProfile: {
+    homeType: 'single_family',
+    squareFeet: 1800,
+    bedrooms: 3,
+    fullBathrooms: 2,
+    halfBathrooms: 1,
+    levels: 2,
+    occupiedStatus: 'occupied',
+    condition: 'standard',
+    hasPets: false,
+    lastProfessionalCleaning: null,
+    parkingAccess: null,
+    entryNotes: null,
+    specialInstructions: null,
+    isFirstVisit: false,
+  },
+  defaultTasks: [],
+  accessNotes: null,
+  parkingAccess: null,
+  entryNotes: null,
+  pets: false,
+  isPrimary: true,
+  status: 'active',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  account: {
+    id: 'account-1',
+    name: 'Acme Corp',
+    type: 'residential',
+    billingEmail: null,
+    billingPhone: null,
+    billingAddress: null,
+    serviceAddress: null,
+    residentialProfile: null,
+    residentialTaskLibrary: [],
+  },
+  facility,
+};
+
 describe('FacilityDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'facility-1' };
@@ -196,6 +253,7 @@ describe('FacilityDetail', () => {
     listFixtureTypesMock.mockResolvedValue({ data: [] as FixtureType[] });
     listFacilityTasksMock.mockResolvedValue({ data: [] as FacilityTask[] });
     listTaskTemplatesMock.mockResolvedValue({ data: [] as TaskTemplate[] });
+    getResidentialPropertyMock.mockResolvedValue(residentialProperty);
     getAreaTemplateByAreaTypeMock.mockResolvedValue({
       defaultSquareFeet: null,
       items: [],
@@ -221,6 +279,25 @@ describe('FacilityDetail', () => {
 
     expect(await screen.findByText('Main Facility')).toBeInTheDocument();
     expect(await screen.findByText(/areas \(\d+\)/i)).toBeInTheDocument();
+  });
+
+  it('opens walkthroughs for residential properties through the linked facility', async () => {
+    const user = userEvent.setup();
+    mockParams = { id: 'property-1' };
+
+    render(<FacilityDetail mode="property" />);
+
+    await user.click(await screen.findByRole('button', { name: /open walkthroughs/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith(
+      '/appointments?facilityId=facility-1&accountId=account-1&type=walk_through',
+      {
+        state: {
+          backLabel: 'Main Facility',
+          backPath: '/properties/property-1',
+        },
+      }
+    );
   });
 
   it('creates a new area from the modal', async () => {

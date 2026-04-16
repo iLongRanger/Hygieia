@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Calendar, CalendarPlus, Filter, LayoutGrid, List, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -98,6 +98,7 @@ const combineLocalDateAndTime = (date: string, time: string): string => `${date}
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [walkthroughAppointments, setWalkthroughAppointments] = useState<Appointment[]>([]);
@@ -133,11 +134,17 @@ const AppointmentsPage = () => {
   const [calendarAppointments, setCalendarAppointments] = useState<Appointment[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
 
-  const [typeFilter, setTypeFilter] = useState<AppointmentType | ''>('');
+  const [typeFilter, setTypeFilter] = useState<AppointmentType | ''>(() => {
+    const param = searchParams.get('type');
+    return param === 'walk_through' || param === 'inspection' || param === 'visit'
+      ? param
+      : '';
+  });
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | ''>('');
   const [assignedFilter, setAssignedFilter] = useState('');
   const [leadFilter, setLeadFilter] = useState('');
-  const [accountFilter, setAccountFilter] = useState('');
+  const [accountFilter, setAccountFilter] = useState(searchParams.get('accountId') || '');
+  const [facilityFilter, setFacilityFilter] = useState(searchParams.get('facilityId') || '');
   const [includePast, setIncludePast] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -166,6 +173,7 @@ const AppointmentsPage = () => {
       const data = await listAppointments({
         leadId: leadFilter || undefined,
         accountId: accountFilter || undefined,
+        facilityId: facilityFilter || undefined,
         assignedToUserId: assignedFilter || undefined,
         type: typeFilter || undefined,
         status: statusFilter || undefined,
@@ -179,7 +187,7 @@ const AppointmentsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [accountFilter, assignedFilter, includePast, leadFilter, statusFilter, typeFilter]);
+  }, [accountFilter, assignedFilter, facilityFilter, includePast, leadFilter, statusFilter, typeFilter]);
 
   const fetchWalkthroughAppointments = useCallback(async () => {
     try {
@@ -208,6 +216,7 @@ const AppointmentsPage = () => {
         dateTo,
         leadId: leadFilter || undefined,
         accountId: accountFilter || undefined,
+        facilityId: facilityFilter || undefined,
         assignedToUserId: assignedFilter || undefined,
         type: typeFilter || undefined,
         status: statusFilter || undefined,
@@ -228,6 +237,7 @@ const AppointmentsPage = () => {
     calendarDate,
     leadFilter,
     accountFilter,
+    facilityFilter,
     assignedFilter,
     typeFilter,
     statusFilter,
@@ -280,14 +290,6 @@ const AppointmentsPage = () => {
       fetchCalendarAppointments();
     }
   }, [fetchCalendarAppointments, viewMode]);
-
-  useEffect(() => {
-    if (typeFilter === 'walk_through') {
-      setAccountFilter('');
-    } else if (typeFilter) {
-      setLeadFilter('');
-    }
-  }, [typeFilter]);
 
   useEffect(() => {
     fetchLeads();
@@ -400,11 +402,12 @@ const AppointmentsPage = () => {
     setAssignedFilter('');
     setLeadFilter('');
     setAccountFilter('');
+    setFacilityFilter('');
     setIncludePast(false);
   };
 
   const hasActiveFilters =
-    typeFilter || statusFilter || assignedFilter || leadFilter || accountFilter || includePast;
+    typeFilter || statusFilter || assignedFilter || leadFilter || accountFilter || facilityFilter || includePast;
 
   const handleCreate = async () => {
     if (!canWriteAppointments) {
@@ -786,7 +789,7 @@ const AppointmentsPage = () => {
             </div>
 
             {showFilterPanel && (
-              <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800 sm:grid-cols-2 lg:grid-cols-5">
                 <Select
                   label="Type"
                   placeholder="All Types"
@@ -838,6 +841,18 @@ const AppointmentsPage = () => {
                     }}
                   />
                 ) : null}
+                <Select
+                  label="Facility"
+                  placeholder="All Facilities"
+                  options={facilities
+                    .filter((facility) => !accountFilter || facility.account?.id === accountFilter)
+                    .map((facility) => ({
+                      value: facility.id,
+                      label: facility.name,
+                    }))}
+                  value={facilityFilter}
+                  onChange={setFacilityFilter}
+                />
                 <div className="flex items-end gap-2">
                   <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
                     <input

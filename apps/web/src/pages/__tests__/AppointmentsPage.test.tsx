@@ -66,8 +66,8 @@ const mockAppointment = {
   },
 };
 
-const renderAppointmentsPage = async () => {
-  render(<AppointmentsPage />);
+const renderAppointmentsPage = async (initialRoute = '/') => {
+  render(<AppointmentsPage />, { initialRoute });
   await waitFor(() => {
     expect(listAppointmentsMock).toHaveBeenCalled();
     expect(listLeadsMock).toHaveBeenCalled();
@@ -119,11 +119,25 @@ describe('AppointmentsPage', () => {
       expect(listAppointmentsMock).toHaveBeenCalledWith({
         leadId: undefined,
         accountId: undefined,
+        facilityId: undefined,
         assignedToUserId: undefined,
         type: undefined,
         status: undefined,
         includePast: false,
       });
+    });
+
+    it('applies facility and type filters from the route query string', async () => {
+      await renderAppointmentsPage('/appointments?facilityId=facility-1&type=walk_through');
+
+      expect(
+        listAppointmentsMock.mock.calls.some(
+          ([params]) =>
+            params?.facilityId === 'facility-1'
+            && params?.type === 'walk_through'
+            && params?.includePast === false
+        )
+      ).toBe(true);
     });
 
     it('shows table view by default', async () => {

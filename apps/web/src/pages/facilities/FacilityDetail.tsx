@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractApiErrorMessage } from '../../lib/api';
@@ -58,6 +58,7 @@ interface FacilityDetailProps {
 
 const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const isPropertyMode = mode === 'property';
   const locationLabel = isPropertyMode ? 'Property' : 'Facility';
   const locationLabelLower = locationLabel.toLowerCase();
@@ -188,6 +189,24 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const hasExistingProposalOrContract =
     (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
   const hasSubmittedForProposal = Boolean(facility?.submittedForProposal);
+  const openAppointmentsForLocation = () => {
+    if (!facility) return;
+    const params = new URLSearchParams({
+      facilityId: facility.id,
+      accountId: facility.account.id,
+    });
+
+    if (isPropertyMode) {
+      params.set('type', 'walk_through');
+    }
+
+    navigate(`/appointments?${params.toString()}`, {
+      state: {
+        backLabel: facility.name,
+        backPath: isPropertyMode ? `/properties/${id}` : `/facilities/${id}`,
+      },
+    });
+  };
 
   // --- Effects ---
   useEffect(() => {
@@ -1185,6 +1204,9 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           <p className="text-surface-500 dark:text-surface-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={openAppointmentsForLocation}>
+            {isPropertyMode ? 'Open Walkthroughs' : 'Open Appointments'}
+          </Button>
           {!hasExistingProposalOrContract && !hasSubmittedForProposal && (
             <Button
               onClick={() => setShowSubmitProposalModal(true)}
