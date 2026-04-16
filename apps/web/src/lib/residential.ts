@@ -34,7 +34,13 @@ export async function listResidentialPricingPlans(params?: {
   includeArchived?: boolean;
   search?: string;
 }): Promise<PaginatedResponse<ResidentialPricingPlan>> {
-  const response = await api.get('/residential/pricing-plans', { params });
+  const response = await api.get('/residential/pricing-plans', {
+    params: {
+      ...params,
+      includeArchived:
+        params?.includeArchived !== undefined ? String(params.includeArchived) : undefined,
+    },
+  });
   return response.data;
 }
 
@@ -82,7 +88,13 @@ export async function listResidentialQuotes(params?: {
   includeArchived?: boolean;
   search?: string;
 }): Promise<PaginatedResponse<ResidentialQuote>> {
-  const response = await api.get('/residential/quotes', { params });
+  const response = await api.get('/residential/quotes', {
+    params: {
+      ...params,
+      includeArchived:
+        params?.includeArchived !== undefined ? String(params.includeArchived) : undefined,
+    },
+  });
   return response.data;
 }
 
@@ -94,7 +106,13 @@ export async function listResidentialProperties(params?: {
   search?: string;
   status?: ResidentialProperty['status'];
 }): Promise<PaginatedResponse<ResidentialProperty>> {
-  const response = await api.get('/residential/properties', { params });
+  const response = await api.get('/residential/properties', {
+    params: {
+      ...params,
+      includeArchived:
+        params?.includeArchived !== undefined ? String(params.includeArchived) : undefined,
+    },
+  });
   return response.data;
 }
 

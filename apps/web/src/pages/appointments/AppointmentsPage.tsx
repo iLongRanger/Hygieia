@@ -97,6 +97,8 @@ const canBeAppointmentRep = (user: User): boolean => {
 };
 
 const combineLocalDateAndTime = (date: string, time: string): string => `${date}T${time}`;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
@@ -353,17 +355,19 @@ const AppointmentsPage = () => {
 
   const appointmentAccountId =
     formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
+  const scopedAppointmentAccountId =
+    appointmentAccountId && UUID_PATTERN.test(appointmentAccountId) ? appointmentAccountId : '';
 
   useEffect(() => {
-    if (!appointmentAccountId) {
+    if (!scopedAppointmentAccountId) {
       return;
     }
 
     const loadScopedLocations = async () => {
       try {
         const [facilityResponse, propertyResponse] = await Promise.all([
-          listFacilities({ limit: 200, includeArchived: false, accountId: appointmentAccountId }),
-          listResidentialProperties({ limit: 200, includeArchived: false, accountId: appointmentAccountId }),
+          listFacilities({ limit: 200, includeArchived: false, accountId: scopedAppointmentAccountId }),
+          listResidentialProperties({ limit: 200, includeArchived: false, accountId: scopedAppointmentAccountId }),
         ]);
 
         setFacilities((previous) => {
@@ -387,7 +391,7 @@ const AppointmentsPage = () => {
     };
 
     void loadScopedLocations();
-  }, [appointmentAccountId]);
+  }, [scopedAppointmentAccountId]);
 
   const walkthroughBookedFacilityIds = useMemo(() => {
     const selectedFacilityId = formData.type === 'walk_through' ? formData.facilityId : '';

@@ -269,6 +269,7 @@ describe('AppointmentsPage', () => {
 
     it('shows properties for residential walkthroughs and submits the linked facility id', async () => {
       const user = userEvent.setup();
+      const residentialAccountId = '11111111-1111-4111-8111-111111111111';
       listLeadsMock.mockResolvedValue({
         data: [
           {
@@ -276,9 +277,9 @@ describe('AppointmentsPage', () => {
             type: 'residential',
             contactName: 'Jane Doe',
             companyName: null,
-            convertedToAccountId: 'account-res-1',
+            convertedToAccountId: residentialAccountId,
             convertedToAccount: {
-              id: 'account-res-1',
+              id: residentialAccountId,
               name: 'Jane Doe Residence',
               type: 'residential',
             },
@@ -289,7 +290,7 @@ describe('AppointmentsPage', () => {
         data: [
           {
             id: 'property-1',
-            accountId: 'account-res-1',
+            accountId: residentialAccountId,
             name: 'Maple Street Home',
             facility: { id: 'facility-property-1' },
             serviceAddress: null,
@@ -322,7 +323,7 @@ describe('AppointmentsPage', () => {
       await waitFor(() => {
         expect(listResidentialPropertiesMock).toHaveBeenCalledWith(
           expect.objectContaining({
-            accountId: 'account-res-1',
+            accountId: residentialAccountId,
             includeArchived: false,
             limit: 200,
           })
