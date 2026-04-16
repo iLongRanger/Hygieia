@@ -3,3 +3,7 @@ export function getAccountDetailPath(account: { id: string; type?: string | null
     ? `/residential/accounts/${account.id}`
     : `/accounts/${account.id}`;
 }
+
+export function getPropertyDetailPath(property: { id: string }) {
+  return `/properties/${property.id}`;
+}

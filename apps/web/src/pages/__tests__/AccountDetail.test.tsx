@@ -910,4 +910,103 @@ describe('AccountDetail', () => {
       expect(navigateMock).toHaveBeenCalledWith('/residential/accounts/account-res-3', { replace: true });
     });
   });
+
+  it('navigates residential property cards to the property detail flow', async () => {
+    mockParams = { id: 'account-res-4' };
+    mockPathname = '/residential/accounts/account-res-4';
+
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-4',
+      name: 'Birch Residence',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '44 Birch Lane',
+        city: 'Seattle',
+        state: 'WA',
+        postalCode: '98101',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 1900,
+        bedrooms: 3,
+        fullBathrooms: 2,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: false,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Driveway',
+        entryNotes: 'Front door keypad',
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      residentialProperties: [
+        {
+          id: 'property-1',
+          accountId: 'account-res-4',
+          name: 'Birch Main Home',
+          serviceAddress: {
+            street: '44 Birch Lane',
+            city: 'Seattle',
+            state: 'WA',
+            postalCode: '98101',
+          },
+          homeProfile: {
+            homeType: 'single_family',
+            squareFeet: 1900,
+            bedrooms: 3,
+            fullBathrooms: 2,
+            halfBathrooms: 1,
+            levels: 2,
+            occupiedStatus: 'occupied',
+            condition: 'standard',
+            hasPets: false,
+            lastProfessionalCleaning: null,
+            parkingAccess: 'Driveway',
+            entryNotes: 'Front door keypad',
+            specialInstructions: null,
+            isFirstVisit: false,
+          },
+          defaultTasks: ['Vacuum floors'],
+          accessNotes: 'Alarm code in CRM',
+          parkingAccess: 'Driveway',
+          entryNotes: 'Front door keypad',
+          pets: false,
+          isPrimary: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+        },
+      ],
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listContractsMock
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Birch Residence' });
+    await userEventInstance.click(screen.getAllByRole('button', { name: /^open$/i })[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith('/properties/property-1', {
+      state: {
+        backLabel: 'Birch Residence',
+        backPath: '/residential/accounts/account-res-4',
+      },
+    });
+  });
 });

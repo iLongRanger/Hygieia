@@ -19,7 +19,7 @@ import { listUsers } from '../../lib/users';
 import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
 import { createResidentialProperty, listResidentialQuotes, updateResidentialProperty } from '../../lib/residential';
-import { getAccountDetailPath } from '../../lib/accountRoutes';
+import { getAccountDetailPath, getPropertyDetailPath } from '../../lib/accountRoutes';
 import {
   COMMERCIAL_ACCOUNT_PIPELINE_STAGES,
   RESIDENTIAL_ACCOUNT_PIPELINE_STAGES,
@@ -783,6 +783,8 @@ const AccountDetail = () => {
   };
 
   const navigateFromAccount = (path: string) => navigate(path, accountBackState);
+  const navigateToPropertyDetail = (property: ResidentialPropertySummary) =>
+    navigate(getPropertyDetailPath(property), accountBackState);
 
   const bookingsSection = (
     <Card className="space-y-4">
@@ -954,6 +956,15 @@ const AccountDetail = () => {
                 <div className="flex flex-wrap gap-2">
                   {isResidentialAccount ? (
                     <>
+                      {focusedResidentialPropertyJourney ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigateToPropertyDetail(focusedResidentialPropertyJourney.property)}
+                        >
+                          Open Property
+                        </Button>
+                      ) : null}
                       <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
                         Open Residential Quotes
                       </Button>
@@ -1064,9 +1075,14 @@ const AccountDetail = () => {
                                   ].filter(Boolean).join(', ') || 'No service address set'}
                                 </div>
                               </div>
-                              <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
-                                Edit
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => navigateToPropertyDetail(property)}>
+                                  Open
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
+                                  Edit
+                                </Button>
+                              </div>
                             </div>
                             <div className="mt-3 grid gap-3 sm:grid-cols-3">
                               <div>

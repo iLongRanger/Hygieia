@@ -20,6 +20,7 @@ import UsersList from './pages/users/UsersList';
 import UserDetail from './pages/users/UserDetail';
 import FacilitiesList from './pages/facilities/FacilitiesList';
 import FacilityDetail from './pages/facilities/FacilityDetail';
+import PropertyDetail from './pages/properties/PropertyDetail';
 import TaskTemplatesList from './pages/tasks/TaskTemplatesList';
 import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
 import AreaTemplatesPage from './pages/areas/AreaTemplatesPage';
@@ -142,6 +143,7 @@ function App() {
             <Route path="/contacts/:id" element={withRouteGuard('/contacts', <ContactDetail />)} />
             <Route path="/facilities" element={withRouteGuard('/facilities', <FacilitiesList />)} />
             <Route path="/facilities/:id" element={withRouteGuard('/facilities', <FacilityDetail />)} />
+            <Route path="/properties/:id" element={withRouteGuard('/properties/:id', <PropertyDetail />)} />
             <Route path="/tasks" element={withRouteGuard('/tasks', <TaskTemplatesList />)} />
             <Route path="/tasks/:id" element={withRouteGuard('/tasks', <TaskTemplateDetail />)} />
             <Route
