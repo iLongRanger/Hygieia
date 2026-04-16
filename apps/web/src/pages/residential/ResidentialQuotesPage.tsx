@@ -25,6 +25,8 @@ import ResidentialTaskBuilder from '../../components/residential/ResidentialTask
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { listAccounts } from '../../lib/accounts';
+import { listAreas } from '../../lib/facilities';
+import { listFacilityTasks } from '../../lib/tasks';
 import {
   acceptResidentialQuote,
   approveResidentialQuoteReview,
@@ -224,6 +226,36 @@ function normalizeTaskList(value: string[] | null | undefined) {
     .filter((task, index, tasks) => task.length > 0 && tasks.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
 }
 
+function taskListsMatch(left: string[] | null | undefined, right: string[] | null | undefined) {
+  const normalizedLeft = normalizeTaskList(left);
+  const normalizedRight = normalizeTaskList(right);
+  return normalizedLeft.length === normalizedRight.length
+    && normalizedLeft.every((task, index) => task === normalizedRight[index]);
+}
+
+function getFallbackPropertyTasks(
+  property: Account['residentialProperties'] extends Array<infer T> ? T | null | undefined : never,
+  account: Account | null | undefined
+) {
+  const propertyTasks = normalizeTaskList(property?.defaultTasks);
+  return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(account?.residentialTaskLibrary);
+}
+
+function getPreferredPropertyTasks(
+  property: Account['residentialProperties'] extends Array<infer T> ? T | null | undefined : never,
+  account: Account | null | undefined,
+  structuredTasksByPropertyId: Record<string, string[]>
+) {
+  if (property?.id) {
+    const structuredTasks = normalizeTaskList(structuredTasksByPropertyId[property.id]);
+    if (structuredTasks.length > 0) {
+      return structuredTasks;
+    }
+  }
+
+  return getFallbackPropertyTasks(property, account);
+}
+
 function canEditResidentialQuote(quote: ResidentialQuote) {
   return quote.status !== 'accepted' && quote.status !== 'converted';
 }
@@ -363,6 +395,11 @@ const ResidentialQuotesPage = () => {
   const [formData, setFormData] = useState<ResidentialQuoteFormInput>(DEFAULT_FORM);
   const [preview, setPreview] = useState<ResidentialQuotePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [propertyScopeTasksById, setPropertyScopeTasksById] = useState<Record<string, string[]>>({});
+  const [propertyScopeReadinessById, setPropertyScopeReadinessById] = useState<
+    Record<string, { areas: number; tasks: number }>
+  >({});
+  const [propertyScopeLoadingById, setPropertyScopeLoadingById] = useState<Record<string, boolean>>({});
 
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === formData.pricingPlanId) ?? plans.find((plan) => plan.isDefault) ?? null,
@@ -377,6 +414,7 @@ const ResidentialQuotesPage = () => {
       selectedAccount?.residentialProperties?.find((property) => property.id === formData.propertyId) ?? null,
     [selectedAccount, formData.propertyId]
   );
+  const selectedPropertyScope = selectedProperty ? propertyScopeReadinessById[selectedProperty.id] ?? null : null;
 
   const availableAddOns = selectedPlan ? Object.entries(selectedPlan.settings.addOnPrices) : [];
   const summaryCounts = useMemo(() => {
@@ -424,6 +462,67 @@ const ResidentialQuotesPage = () => {
   }, [plans, formData.pricingPlanId]);
 
   useEffect(() => {
+    const facilityId = selectedProperty?.facility?.id;
+    if (!selectedProperty?.id || !facilityId || propertyScopeReadinessById[selectedProperty.id]) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPropertyScope = async () => {
+      try {
+        setPropertyScopeLoadingById((current) => ({ ...current, [selectedProperty.id]: true }));
+        const [areasResponse, tasksResponse] = await Promise.all([
+          listAreas({ facilityId, limit: 200, includeArchived: false }),
+          listFacilityTasks({ facilityId, limit: 200, includeArchived: false }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const structuredTasks = normalizeTaskList(
+          (tasksResponse.data ?? []).map((task) => task.customName || task.taskTemplate?.name || '')
+        );
+
+        setPropertyScopeTasksById((current) => ({
+          ...current,
+          [selectedProperty.id]: structuredTasks,
+        }));
+        setPropertyScopeReadinessById((current) => ({
+          ...current,
+          [selectedProperty.id]: {
+            areas: areasResponse.data?.length ?? 0,
+            tasks: structuredTasks.length,
+          },
+        }));
+      } catch (error) {
+        console.error('Failed to load residential property scope', error);
+        if (!cancelled) {
+          setPropertyScopeTasksById((current) => ({
+            ...current,
+            [selectedProperty.id]: [],
+          }));
+          setPropertyScopeReadinessById((current) => ({
+            ...current,
+            [selectedProperty.id]: { areas: 0, tasks: 0 },
+          }));
+        }
+      } finally {
+        if (!cancelled) {
+          setPropertyScopeLoadingById((current) => ({ ...current, [selectedProperty.id]: false }));
+        }
+      }
+    };
+
+    void loadPropertyScope();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProperty, propertyScopeReadinessById]);
+
+  useEffect(() => {
     if (!selectedAccount) return;
 
     const nextProperty =
@@ -451,12 +550,9 @@ const ResidentialQuotesPage = () => {
       includedTasks:
         current.includedTasks && current.includedTasks.length > 0
           ? current.includedTasks
-          : (() => {
-            const propertyTasks = normalizeTaskList(nextProperty?.defaultTasks);
-            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount.residentialTaskLibrary);
-          })(),
+          : getPreferredPropertyTasks(nextProperty, selectedAccount, propertyScopeTasksById),
     }));
-  }, [selectedAccount, formData.propertyId]);
+  }, [selectedAccount, formData.propertyId, propertyScopeTasksById]);
 
   useEffect(() => {
     if (!selectedProperty) return;
@@ -468,14 +564,18 @@ const ResidentialQuotesPage = () => {
         ? normalizeResidentialHomeProfile(selectedProperty.homeProfile)
         : current.homeProfile,
       includedTasks:
-        current.includedTasks && current.includedTasks.length > 0
-          ? current.includedTasks
-          : (() => {
-            const propertyTasks = normalizeTaskList(selectedProperty.defaultTasks);
-            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount?.residentialTaskLibrary);
-          })(),
+        (() => {
+          const fallbackTasks = getFallbackPropertyTasks(selectedProperty, selectedAccount);
+          const preferredTasks = getPreferredPropertyTasks(selectedProperty, selectedAccount, propertyScopeTasksById);
+
+          if (current.includedTasks.length === 0 || taskListsMatch(current.includedTasks, fallbackTasks)) {
+            return preferredTasks;
+          }
+
+          return current.includedTasks;
+        })(),
     }));
-  }, [selectedProperty, selectedAccount]);
+  }, [selectedProperty, selectedAccount, propertyScopeTasksById]);
 
   useEffect(() => {
     const hasCoreFields =
@@ -537,10 +637,7 @@ const ResidentialQuotesPage = () => {
         : account?.residentialProfile
           ? normalizeResidentialHomeProfile(account.residentialProfile)
           : current.homeProfile,
-      includedTasks: (() => {
-        const propertyTasks = normalizeTaskList(property?.defaultTasks);
-        return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(account?.residentialTaskLibrary);
-      })(),
+      includedTasks: getPreferredPropertyTasks(property, account, propertyScopeTasksById),
     }));
   };
 
@@ -569,10 +666,7 @@ const ResidentialQuotesPage = () => {
         : defaultAccount?.residentialProfile
           ? normalizeResidentialHomeProfile(defaultAccount.residentialProfile)
         : DEFAULT_FORM.homeProfile,
-      includedTasks: (() => {
-        const propertyTasks = normalizeTaskList(defaultProperty?.defaultTasks);
-        return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(defaultAccount?.residentialTaskLibrary);
-      })(),
+      includedTasks: getPreferredPropertyTasks(defaultProperty, defaultAccount ?? null, propertyScopeTasksById),
       pricingPlanId: defaultPlan?.id ?? '',
     });
     setPreview(null);
@@ -596,9 +690,7 @@ const ResidentialQuotesPage = () => {
       includedTasks: (() => {
         const quoteTasks = normalizeTaskList(quote.includedTasks);
         if (quoteTasks.length > 0) return quoteTasks;
-        const propertyTasks = normalizeTaskList(quote.property?.defaultTasks);
-        if (propertyTasks.length > 0) return propertyTasks;
-        return normalizeTaskList(quote.account?.residentialTaskLibrary);
+        return getPreferredPropertyTasks(quote.property, quote.account, propertyScopeTasksById);
       })(),
       pricingPlanId: quote.pricingPlan?.id ?? plans.find((plan) => plan.isDefault)?.id ?? '',
       addOns:
@@ -1092,10 +1184,11 @@ const ResidentialQuotesPage = () => {
                         return {
                           ...current,
                           propertyId: value,
-                          includedTasks: (() => {
-                            const propertyTasks = normalizeTaskList(nextProperty?.defaultTasks);
-                            return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(selectedAccount?.residentialTaskLibrary);
-                          })(),
+                          includedTasks: getPreferredPropertyTasks(
+                            nextProperty,
+                            selectedAccount ?? null,
+                            propertyScopeTasksById
+                          ),
                         };
                       })
                     }
@@ -1161,6 +1254,29 @@ const ResidentialQuotesPage = () => {
                     }
                   />
                 </div>
+                {selectedProperty ? (
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-medium text-surface-900 dark:text-surface-100">Property Scope Readiness</div>
+                      {selectedPropertyScope ? (
+                        <Badge variant={selectedPropertyScope.tasks > 0 ? 'success' : 'warning'}>
+                          {selectedPropertyScope.areas} areas • {selectedPropertyScope.tasks} tasks
+                        </Badge>
+                      ) : propertyScopeLoadingById[selectedProperty.id] ? (
+                        <Badge variant="info">Loading scope</Badge>
+                      ) : selectedProperty.facility?.id ? (
+                        <Badge variant="warning">Scope not loaded</Badge>
+                      ) : (
+                        <Badge variant="error">No linked property scope</Badge>
+                      )}
+                    </div>
+                    <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+                      {selectedPropertyScope?.tasks
+                        ? 'This quote will use the structured property tasks from areas and task setup before falling back to legacy task lists.'
+                        : 'No structured property tasks were found yet, so this quote will fall back to the saved property or account task list.'}
+                    </p>
+                  </div>
+                ) : null}
                 {selectedAccount && (!selectedAccount.residentialProperties || selectedAccount.residentialProperties.length === 0) ? (
                   <Card className="p-4">
                     <div className="text-sm text-warning-700 dark:text-warning-300">
