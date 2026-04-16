@@ -417,7 +417,15 @@ export const listResidentialPropertiesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   accountId: z.string().uuid().optional(),
   status: residentialPropertyStatusSchema.optional(),
-  includeArchived: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  includeArchived: z.preprocess(
+    (value) => {
+      if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+      }
+      return value;
+    },
+    z.enum(['true', 'false']).transform((value) => value === 'true').optional()
+  ),
   search: z.string().max(100).optional(),
 });
 

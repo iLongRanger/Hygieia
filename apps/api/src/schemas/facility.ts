@@ -185,14 +185,24 @@ export const listFacilitiesQuerySchema = z.object({
   search: z.string().max(100).optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'name', 'squareFeet']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
-  includeArchived: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
-  includeResidentialLinked: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
+  includeArchived: z.preprocess(
+    (value) => {
+      if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+      }
+      return value;
+    },
+    z.enum(['true', 'false']).transform((v) => v === 'true').optional()
+  ),
+  includeResidentialLinked: z.preprocess(
+    (value) => {
+      if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+      }
+      return value;
+    },
+    z.enum(['true', 'false']).transform((v) => v === 'true').optional()
+  ),
 });
 
 export const submitFacilityForProposalSchema = z.object({
