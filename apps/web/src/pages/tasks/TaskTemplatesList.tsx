@@ -27,7 +27,11 @@ import {
   restoreTaskTemplate,
 } from '../../lib/tasks';
 import { listAreaTypes, listFixtureTypes } from '../../lib/facilities';
-import type { TaskTemplate, CreateTaskTemplateInput } from '../../types/task';
+import type {
+  TaskTemplate,
+  TaskTemplateScope,
+  CreateTaskTemplateInput,
+} from '../../types/task';
 import type { AreaType, FixtureType } from '../../types/facility';
 
 const CLEANING_TYPES = [
@@ -50,6 +54,24 @@ const DIFFICULTY_LEVELS = [
   { value: '5', label: '5 - Very Hard' },
 ];
 
+const TEMPLATE_SCOPE_OPTIONS = [
+  { value: 'residential', label: 'Residential Only' },
+  { value: 'commercial', label: 'Commercial Only' },
+  { value: 'both', label: 'Residential + Commercial' },
+];
+
+const getTemplateScopeLabel = (scope?: TaskTemplateScope) => {
+  switch (scope) {
+    case 'residential':
+      return 'Residential';
+    case 'commercial':
+      return 'Commercial';
+    case 'both':
+    default:
+      return 'Both';
+  }
+};
+
 const TaskTemplatesList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -68,6 +90,7 @@ const TaskTemplatesList = () => {
   // Filter states
   const [cleaningTypeFilter, setCleaningTypeFilter] = useState<string>('');
   const [areaTypeFilter, setAreaTypeFilter] = useState<string>('');
+  const [taskScopeFilter, setTaskScopeFilter] = useState<string>('');
   const [isGlobalFilter, setIsGlobalFilter] = useState<string>('');
   const [isActiveFilter, setIsActiveFilter] = useState<string>('');
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -75,6 +98,7 @@ const TaskTemplatesList = () => {
   const [formData, setFormData] = useState<CreateTaskTemplateInput>({
     name: '',
     description: null,
+    scope: 'both',
     cleaningType: 'daily',
     areaTypeId: null,
     estimatedMinutes: 30,
@@ -93,6 +117,7 @@ const TaskTemplatesList = () => {
 
   const fetchTemplates = useCallback(
     async (currentPage: number, currentSearch: string, filters?: {
+      scope?: TaskTemplateScope;
       cleaningType?: string;
       areaTypeId?: string;
       isGlobal?: boolean;
@@ -104,6 +129,7 @@ const TaskTemplatesList = () => {
         const response = await listTaskTemplates({
           search: currentSearch || undefined,
           page: currentPage,
+          scope: filters?.scope,
           cleaningType: filters?.cleaningType || undefined,
           areaTypeId: filters?.areaTypeId || undefined,
           isGlobal: filters?.isGlobal,
@@ -146,13 +172,14 @@ const TaskTemplatesList = () => {
 
   useEffect(() => {
     fetchTemplates(page, search, {
+      scope: taskScopeFilter ? taskScopeFilter as TaskTemplateScope : undefined,
       cleaningType: cleaningTypeFilter,
       areaTypeId: areaTypeFilter,
       isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
       isActive: isActiveFilter ? isActiveFilter === 'true' : undefined,
       includeArchived,
     });
-  }, [fetchTemplates, page, search, cleaningTypeFilter, areaTypeFilter, isGlobalFilter, isActiveFilter, includeArchived]);
+  }, [fetchTemplates, page, search, taskScopeFilter, cleaningTypeFilter, areaTypeFilter, isGlobalFilter, isActiveFilter, includeArchived]);
 
   useEffect(() => {
     fetchAreaTypes();
@@ -172,6 +199,7 @@ const TaskTemplatesList = () => {
       setShowCreateModal(false);
       resetForm();
       fetchTemplates(page, search, {
+        scope: taskScopeFilter ? taskScopeFilter as TaskTemplateScope : undefined,
         cleaningType: cleaningTypeFilter,
         areaTypeId: areaTypeFilter,
         isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
@@ -190,6 +218,7 @@ const TaskTemplatesList = () => {
     setFormData({
       name: '',
       description: null,
+      scope: 'both',
       cleaningType: 'daily',
       areaTypeId: null,
       estimatedMinutes: 30,
@@ -229,19 +258,21 @@ const TaskTemplatesList = () => {
   const clearFilters = () => {
     setCleaningTypeFilter('');
     setAreaTypeFilter('');
+    setTaskScopeFilter('');
     setIsGlobalFilter('');
     setIsActiveFilter('');
     setIncludeArchived(false);
     setPage(1);
   };
 
-  const hasActiveFilters = cleaningTypeFilter || areaTypeFilter || isGlobalFilter || isActiveFilter || includeArchived;
+  const hasActiveFilters = taskScopeFilter || cleaningTypeFilter || areaTypeFilter || isGlobalFilter || isActiveFilter || includeArchived;
 
   const handleArchive = async (id: string) => {
     try {
       await archiveTaskTemplate(id);
       toast.success('Task template archived successfully');
       fetchTemplates(page, search, {
+        scope: taskScopeFilter ? taskScopeFilter as TaskTemplateScope : undefined,
         cleaningType: cleaningTypeFilter,
         areaTypeId: areaTypeFilter,
         isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
@@ -259,6 +290,7 @@ const TaskTemplatesList = () => {
       await restoreTaskTemplate(id);
       toast.success('Task template restored successfully');
       fetchTemplates(page, search, {
+        scope: taskScopeFilter ? taskScopeFilter as TaskTemplateScope : undefined,
         cleaningType: cleaningTypeFilter,
         areaTypeId: areaTypeFilter,
         isGlobal: isGlobalFilter ? isGlobalFilter === 'true' : undefined,
@@ -308,10 +340,26 @@ const TaskTemplatesList = () => {
       ),
     },
     {
-      header: 'Scope',
+      header: 'Template Scope',
+      cell: (item: TaskTemplate) => (
+        <Badge
+          variant={
+            item.scope === 'residential'
+              ? 'warning'
+              : item.scope === 'commercial'
+                ? 'info'
+                : 'success'
+          }
+        >
+          {getTemplateScopeLabel(item.scope)}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Availability',
       cell: (item: TaskTemplate) => (
         <Badge variant={item.isGlobal ? 'success' : 'default'}>
-          {item.isGlobal ? 'Global' : 'Facility'}
+          {item.isGlobal ? 'Global' : 'Facility Only'}
         </Badge>
       ),
     },
@@ -418,13 +466,20 @@ const TaskTemplatesList = () => {
           </div>
 
           {showFilterPanel && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-200 dark:bg-surface-900/50 p-4 sm:grid-cols-2 lg:grid-cols-5">
               <Select
                 label="Cleaning Type"
                 placeholder="All Types"
                 options={CLEANING_TYPES}
                 value={cleaningTypeFilter}
                 onChange={setCleaningTypeFilter}
+              />
+              <Select
+                label="Template Scope"
+                placeholder="All Scopes"
+                options={TEMPLATE_SCOPE_OPTIONS}
+                value={taskScopeFilter}
+                onChange={setTaskScopeFilter}
               />
               <Select
                 label="Area Type"
@@ -456,7 +511,7 @@ const TaskTemplatesList = () => {
                 value={isActiveFilter}
                 onChange={setIsActiveFilter}
               />
-              <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+              <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-5">
                 <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
@@ -543,6 +598,17 @@ const TaskTemplatesList = () => {
                 setFormData({ ...formData, cleaningType: value })
               }
             />
+            <Select
+              label="Template Scope"
+              options={TEMPLATE_SCOPE_OPTIONS}
+              value={formData.scope || 'both'}
+              onChange={(value) =>
+                setFormData({ ...formData, scope: value as TaskTemplateScope })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Area Type (optional)"
               placeholder="All areas"
@@ -695,4 +761,3 @@ const TaskTemplatesList = () => {
 };
 
 export default TaskTemplatesList;
-

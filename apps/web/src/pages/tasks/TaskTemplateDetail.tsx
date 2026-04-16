@@ -24,7 +24,11 @@ import {
   restoreTaskTemplate,
 } from '../../lib/tasks';
 import { listAreaTypes, listFixtureTypes } from '../../lib/facilities';
-import type { TaskTemplate, UpdateTaskTemplateInput } from '../../types/task';
+import type {
+  TaskTemplate,
+  TaskTemplateScope,
+  UpdateTaskTemplateInput,
+} from '../../types/task';
 import type { AreaType, FixtureType } from '../../types/facility';
 
 const CLEANING_TYPES = [
@@ -47,6 +51,24 @@ const DIFFICULTY_LEVELS = [
   { value: '5', label: '5 - Very Hard' },
 ];
 
+const TEMPLATE_SCOPE_OPTIONS = [
+  { value: 'residential', label: 'Residential Only' },
+  { value: 'commercial', label: 'Commercial Only' },
+  { value: 'both', label: 'Residential + Commercial' },
+];
+
+const getTemplateScopeLabel = (scope?: TaskTemplateScope) => {
+  switch (scope) {
+    case 'residential':
+      return 'Residential';
+    case 'commercial':
+      return 'Commercial';
+    case 'both':
+    default:
+      return 'Both';
+  }
+};
+
 const TaskTemplateDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
@@ -60,6 +82,7 @@ const TaskTemplateDetail = () => {
   const [formData, setFormData] = useState<UpdateTaskTemplateInput>({
     name: '',
     description: null,
+    scope: 'both',
     cleaningType: 'daily',
     areaTypeId: null,
     estimatedMinutes: 30,
@@ -86,6 +109,7 @@ const TaskTemplateDetail = () => {
         setFormData({
           name: data.name,
           description: data.description,
+          scope: data.scope || 'both',
           cleaningType: data.cleaningType,
           areaTypeId: data.areaType?.id || null,
           estimatedMinutes: data.estimatedMinutes,
@@ -261,11 +285,24 @@ const TaskTemplateDetail = () => {
                 <div className="text-lg font-semibold text-surface-900 dark:text-white">
                   {template.name}
                 </div>
-                <Badge
-                  variant={template.isActive ? 'success' : 'error'}
-                >
-                  {template.isActive ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge
+                    variant={template.isActive ? 'success' : 'error'}
+                  >
+                    {template.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                  <Badge
+                    variant={
+                      template.scope === 'residential'
+                        ? 'warning'
+                        : template.scope === 'commercial'
+                          ? 'info'
+                          : 'success'
+                    }
+                  >
+                    {getTemplateScopeLabel(template.scope)}
+                  </Badge>
+                </div>
               </div>
             </div>
 
@@ -302,6 +339,14 @@ const TaskTemplateDetail = () => {
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Difficulty Level</div>
                   <div className="text-surface-900 dark:text-white">Level {template.difficultyLevel}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                <div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Template Scope</div>
+                  <div className="text-surface-900 dark:text-white">{getTemplateScopeLabel(template.scope)}</div>
                 </div>
               </div>
 
@@ -420,6 +465,17 @@ const TaskTemplateDetail = () => {
                 setFormData({ ...formData, cleaningType: value })
               }
             />
+            <Select
+              label="Template Scope"
+              options={TEMPLATE_SCOPE_OPTIONS}
+              value={formData.scope || 'both'}
+              onChange={(value) =>
+                setFormData({ ...formData, scope: value as TaskTemplateScope })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Area Type"
               placeholder="Select area type"

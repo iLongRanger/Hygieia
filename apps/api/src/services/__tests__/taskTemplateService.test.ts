@@ -61,6 +61,23 @@ describe('taskTemplateService', () => {
       );
     });
 
+    it('should filter by scope', async () => {
+      const mockTemplates = [createTestTaskTemplate()];
+
+      (prisma.taskTemplate.findMany as jest.Mock).mockResolvedValue(mockTemplates);
+      (prisma.taskTemplate.count as jest.Mock).mockResolvedValue(1);
+
+      await taskTemplateService.listTaskTemplates({ scope: 'residential' });
+
+      expect(prisma.taskTemplate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            scope: 'residential',
+          }),
+        })
+      );
+    });
+
     it('should filter by areaTypeId', async () => {
       const mockTemplates = [createTestTaskTemplate()];
 
