@@ -13,6 +13,7 @@ const listLeadsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listContractsMock = vi.fn();
 const listFacilitiesMock = vi.fn();
+const listResidentialPropertiesMock = vi.fn();
 
 vi.mock('../../lib/appointments', () => ({
   listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
@@ -35,6 +36,10 @@ vi.mock('../../lib/contracts', () => ({
 
 vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
+}));
+
+vi.mock('../../lib/residential', () => ({
+  listResidentialProperties: (...args: unknown[]) => listResidentialPropertiesMock(...args),
 }));
 
 const mockAppointment = {
@@ -74,6 +79,7 @@ const renderAppointmentsPage = async (initialRoute = '/') => {
     expect(listUsersMock).toHaveBeenCalled();
     expect(listContractsMock).toHaveBeenCalled();
     expect(listFacilitiesMock).toHaveBeenCalled();
+    expect(listResidentialPropertiesMock).toHaveBeenCalled();
   });
 };
 
@@ -95,6 +101,7 @@ describe('AppointmentsPage', () => {
     listUsersMock.mockReset();
     listContractsMock.mockReset();
     listFacilitiesMock.mockReset();
+    listResidentialPropertiesMock.mockReset();
 
     // Default mock responses
     listAppointmentsMock.mockResolvedValue([]);
@@ -102,6 +109,7 @@ describe('AppointmentsPage', () => {
     listUsersMock.mockResolvedValue({ data: [] });
     listContractsMock.mockResolvedValue({ data: [] });
     listFacilitiesMock.mockResolvedValue({ data: [] });
+    listResidentialPropertiesMock.mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -257,6 +265,75 @@ describe('AppointmentsPage', () => {
 
       expect(await screen.findByText('Open Facility')).toBeInTheDocument();
       expect(screen.queryByText('Booked Facility')).not.toBeInTheDocument();
+    });
+
+    it('shows properties for residential walkthroughs and submits the linked facility id', async () => {
+      const user = userEvent.setup();
+      listLeadsMock.mockResolvedValue({
+        data: [
+          {
+            id: 'lead-res-1',
+            type: 'residential',
+            contactName: 'Jane Doe',
+            companyName: null,
+            convertedToAccountId: 'account-res-1',
+          },
+        ],
+      });
+      listResidentialPropertiesMock.mockResolvedValue({
+        data: [
+          {
+            id: 'property-1',
+            accountId: 'account-res-1',
+            name: 'Maple Street Home',
+            facility: { id: 'facility-property-1' },
+            serviceAddress: null,
+            homeProfile: null,
+            isPrimary: true,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            archivedAt: null,
+          },
+        ],
+      });
+      listUsersMock.mockResolvedValue({
+        data: [
+          {
+            id: 'manager-1',
+            fullName: 'Manager User',
+            email: 'manager@example.com',
+            roles: [{ role: { key: 'manager' } }],
+          },
+        ],
+      });
+      createAppointmentMock.mockResolvedValue({ id: 'appt-new' });
+
+      await renderAppointmentsPage();
+
+      await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
+      await user.selectOptions(await screen.findByLabelText(/^lead$/i), 'lead-res-1');
+
+      expect(await screen.findByLabelText(/^property$/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^facility$/i)).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText(/^property$/i), 'facility-property-1');
+      await user.selectOptions(screen.getByLabelText(/assigned rep/i), 'manager-1');
+      await user.type(screen.getByLabelText(/start date/i), '2026-04-20');
+      await user.selectOptions(screen.getByLabelText(/start time/i), '09:00');
+      await user.selectOptions(screen.getByLabelText(/end time/i), '10:00');
+
+      await user.click(screen.getByRole('button', { name: /^schedule$/i }));
+
+      await waitFor(() => {
+        expect(createAppointmentMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            leadId: 'lead-res-1',
+            facilityId: 'facility-property-1',
+            type: 'walk_through',
+          })
+        );
+      });
     });
   });
 

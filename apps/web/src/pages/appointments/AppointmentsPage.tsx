@@ -18,6 +18,7 @@ import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
 import { listFacilities } from '../../lib/facilities';
+import { listResidentialProperties } from '../../lib/residential';
 
 void React;
 import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
@@ -26,6 +27,7 @@ import type { Appointment, AppointmentStatus, AppointmentType, Lead } from '../.
 import type { User } from '../../types/user';
 import type { Contract } from '../../types/contract';
 import type { Facility } from '../../types/facility';
+import type { ResidentialProperty } from '../../types/residential';
 import { useAuthStore } from '../../stores/authStore';
 
 type ViewMode = 'table' | 'calendar';
@@ -106,6 +108,7 @@ const AppointmentsPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [activeContracts, setActiveContracts] = useState<Contract[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [properties, setProperties] = useState<ResidentialProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -279,6 +282,15 @@ const AppointmentsPage = () => {
     }
   }, []);
 
+  const fetchProperties = useCallback(async () => {
+    try {
+      const response = await listResidentialProperties({ limit: 200, includeArchived: false });
+      setProperties(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch residential properties:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (viewMode === 'table') {
       fetchAppointments();
@@ -296,8 +308,9 @@ const AppointmentsPage = () => {
     fetchUsers();
     fetchActiveContracts();
     fetchFacilities();
+    fetchProperties();
     fetchWalkthroughAppointments();
-  }, [fetchLeads, fetchUsers, fetchActiveContracts, fetchFacilities, fetchWalkthroughAppointments]);
+  }, [fetchLeads, fetchUsers, fetchActiveContracts, fetchFacilities, fetchProperties, fetchWalkthroughAppointments]);
 
   // Save view mode preference
   useEffect(() => {
@@ -330,6 +343,8 @@ const AppointmentsPage = () => {
     [formData.leadId, leads]
   );
 
+  const isResidentialWalkthrough = formData.type === 'walk_through' && selectedLead?.type === 'residential';
+
   const appointmentAccountId =
     formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
 
@@ -358,6 +373,44 @@ const AppointmentsPage = () => {
       }),
     [appointmentAccountId, facilities, formData.type, walkthroughBookedFacilityIds]
   );
+
+  const filteredProperties = useMemo(
+    () =>
+      properties.filter((property) => {
+        if (property.accountId !== appointmentAccountId) {
+          return false;
+        }
+
+        const linkedFacilityId = property.facility?.id;
+        if (!linkedFacilityId) {
+          return false;
+        }
+
+        if (formData.type !== 'walk_through') {
+          return true;
+        }
+
+        return !walkthroughBookedFacilityIds.has(linkedFacilityId);
+      }),
+    [appointmentAccountId, formData.type, properties, walkthroughBookedFacilityIds]
+  );
+
+  const selectedProperty = useMemo(
+    () => properties.find((property) => property.facility?.id === formData.facilityId) || null,
+    [formData.facilityId, properties]
+  );
+
+  const locationFieldLabel = isResidentialWalkthrough ? 'Property' : 'Facility';
+  const locationFieldPlaceholder = isResidentialWalkthrough ? 'Select property' : 'Select facility';
+  const locationFieldOptions = isResidentialWalkthrough
+    ? filteredProperties.map((property) => ({
+      value: property.facility!.id,
+      label: property.name,
+    }))
+    : filteredFacilities.map((facility) => ({
+      value: facility.id,
+      label: facility.name,
+    }));
 
   const convertedLeads = useMemo(
     () => leads.filter((lead) => Boolean(lead.convertedToAccountId)),
@@ -431,7 +484,7 @@ const AppointmentsPage = () => {
     }
 
     if (!formData.facilityId) {
-      toast.error('Please select a facility');
+      toast.error(`Please select a ${isResidentialWalkthrough ? 'property' : 'facility'}`);
       return;
     }
 
@@ -1034,14 +1087,14 @@ const AppointmentsPage = () => {
           )}
 
           <Select
-            label="Facility"
-            placeholder="Select facility"
-            options={filteredFacilities.map((facility) => ({
-              value: facility.id,
-              label: facility.name,
-            }))}
+            label={locationFieldLabel}
+            placeholder={locationFieldPlaceholder}
+            options={locationFieldOptions}
             value={formData.facilityId}
             onChange={(value) => setFormData({ ...formData, facilityId: value })}
+            hint={isResidentialWalkthrough && selectedProperty
+              ? `Walkthrough will be saved to the linked operational scope for ${selectedProperty.name}.`
+              : undefined}
           />
 
           <Select
@@ -1164,14 +1217,14 @@ const AppointmentsPage = () => {
           )}
 
           <Select
-            label="Facility"
-            placeholder="Select facility"
-            options={filteredFacilities.map((facility) => ({
-              value: facility.id,
-              label: facility.name,
-            }))}
+            label={locationFieldLabel}
+            placeholder={locationFieldPlaceholder}
+            options={locationFieldOptions}
             value={formData.facilityId}
             onChange={(value) => setFormData({ ...formData, facilityId: value })}
+            hint={isResidentialWalkthrough && selectedProperty
+              ? `Editing the walkthrough for ${selectedProperty.name} updates its linked operational scope.`
+              : undefined}
           />
 
           <Select

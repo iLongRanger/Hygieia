@@ -86,6 +86,18 @@ export async function listResidentialQuotes(params?: {
   return response.data;
 }
 
+export async function listResidentialProperties(params?: {
+  page?: number;
+  limit?: number;
+  accountId?: string;
+  includeArchived?: boolean;
+  search?: string;
+  status?: ResidentialProperty['status'];
+}): Promise<PaginatedResponse<ResidentialProperty>> {
+  const response = await api.get('/residential/properties', { params });
+  return response.data;
+}
+
 export async function getResidentialQuote(id: string): Promise<ResidentialQuote> {
   const response = await api.get(`/residential/quotes/${id}`);
   return response.data.data;
