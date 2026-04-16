@@ -277,7 +277,7 @@ const AppointmentsPage = () => {
 
   const fetchFacilities = useCallback(async () => {
     try {
-      const response = await listFacilities({ limit: 200, includeArchived: false });
+      const response = await listFacilities({ limit: 100, includeArchived: false });
       setFacilities(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch facilities:', error);
@@ -286,7 +286,7 @@ const AppointmentsPage = () => {
 
   const fetchProperties = useCallback(async () => {
     try {
-      const response = await listResidentialProperties({ limit: 200, includeArchived: false });
+      const response = await listResidentialProperties({ limit: 100, includeArchived: false });
       setProperties(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch residential properties:', error);
@@ -366,8 +366,8 @@ const AppointmentsPage = () => {
     const loadScopedLocations = async () => {
       try {
         const [facilityResponse, propertyResponse] = await Promise.all([
-          listFacilities({ limit: 200, includeArchived: false, accountId: scopedAppointmentAccountId }),
-          listResidentialProperties({ limit: 200, includeArchived: false, accountId: scopedAppointmentAccountId }),
+          listFacilities({ limit: 100, includeArchived: false, accountId: scopedAppointmentAccountId }),
+          listResidentialProperties({ limit: 100, includeArchived: false, accountId: scopedAppointmentAccountId }),
         ]);
 
         setFacilities((previous) => {

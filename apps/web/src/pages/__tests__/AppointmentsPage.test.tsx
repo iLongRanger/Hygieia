@@ -325,7 +325,7 @@ describe('AppointmentsPage', () => {
           expect.objectContaining({
             accountId: residentialAccountId,
             includeArchived: false,
-            limit: 200,
+            limit: 100,
           })
         );
       });
