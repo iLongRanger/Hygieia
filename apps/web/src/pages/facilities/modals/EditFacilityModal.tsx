@@ -14,6 +14,7 @@ interface EditFacilityModalProps {
   setFacilityForm: React.Dispatch<React.SetStateAction<UpdateFacilityInput>>;
   onSave: () => void;
   saving: boolean;
+  locationLabel?: string;
 }
 
 export function EditFacilityModal({
@@ -23,17 +24,18 @@ export function EditFacilityModal({
   setFacilityForm,
   onSave,
   saving,
+  locationLabel = 'Facility',
 }: EditFacilityModalProps): React.JSX.Element {
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit Facility"
+      title={`Edit ${locationLabel}`}
       size="lg"
     >
       <div className="space-y-4">
         <Input
-          label="Facility Name"
+          label={`${locationLabel} Name`}
           value={facilityForm.name || ''}
           onChange={(e) =>
             setFacilityForm({ ...facilityForm, name: e.target.value })

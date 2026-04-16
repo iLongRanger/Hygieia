@@ -22,6 +22,7 @@ import {
   submitFacilityForProposal,
 } from '../../lib/facilities';
 import { listFacilityTasks, listTaskTemplates } from '../../lib/tasks';
+import { getResidentialProperty } from '../../lib/residential';
 import type {
   Facility,
   Area,
@@ -36,6 +37,7 @@ import type {
   CleaningFrequency,
   FixtureType,
 } from '../../types/facility';
+import type { ResidentialProperty } from '../../types/residential';
 import { FacilityOverview } from './FacilityOverview';
 import { FacilityAreas } from './FacilityAreas';
 import { FacilityAreaDetail } from './FacilityAreaDetail';
@@ -50,8 +52,15 @@ import {
 } from './facility-constants';
 import type { AreaTemplateTaskSelection, AreaItemInput } from './facility-constants';
 
-const FacilityDetail = () => {
+interface FacilityDetailProps {
+  mode?: 'facility' | 'property';
+}
+
+const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const { id } = useParams<{ id: string }>();
+  const isPropertyMode = mode === 'property';
+  const locationLabel = isPropertyMode ? 'Property' : 'Facility';
+  const locationLabelLower = locationLabel.toLowerCase();
 
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'area-detail'>('overview');
@@ -59,6 +68,10 @@ const FacilityDetail = () => {
 
   // --- Data state ---
   const [loading, setLoading] = useState(true);
+  const [property, setProperty] = useState<ResidentialProperty | null>(null);
+  const [resolvedFacilityId, setResolvedFacilityId] = useState<string | null>(
+    isPropertyMode ? null : (id || null)
+  );
   const [facility, setFacility] = useState<Facility | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
@@ -110,7 +123,7 @@ const FacilityDetail = () => {
   // --- Form state ---
   const [facilityForm, setFacilityForm] = useState<UpdateFacilityInput>({});
   const [areaForm, setAreaForm] = useState<CreateAreaInput | UpdateAreaInput>({
-    facilityId: id || '',
+    facilityId: resolvedFacilityId || '',
     areaTypeId: '',
     name: '',
     length: null,
@@ -127,7 +140,7 @@ const FacilityDetail = () => {
   const [taskForm, setTaskForm] = useState<
     CreateFacilityTaskInput | UpdateFacilityTaskInput
   >({
-    facilityId: id || '',
+    facilityId: resolvedFacilityId || '',
     areaId: null,
     taskTemplateId: null,
     customName: '',
@@ -191,11 +204,18 @@ const FacilityDetail = () => {
   }, [filteredTaskTemplates, taskForm.taskTemplateId]);
 
   // --- Data fetching ---
-  const fetchFacility = useCallback(async () => {
-    if (!id) return;
+  const fetchProperty = useCallback(async () => {
+    if (!id || !isPropertyMode) return null;
+    const data = await getResidentialProperty(id);
+    setProperty(data);
+    const nextFacilityId = data.facility?.id ?? null;
+    setResolvedFacilityId(nextFacilityId);
+    return data;
+  }, [id, isPropertyMode]);
+
+  const fetchFacility = useCallback(async (facilityId: string) => {
     try {
-      setLoading(true);
-      const data = await getFacility(id);
+      const data = await getFacility(facilityId);
       if (data) {
         setFacility(data);
         setFacilityForm({
@@ -212,16 +232,14 @@ const FacilityDetail = () => {
     } catch (error) {
       console.error('Failed to fetch facility:', error);
       setFacility(null);
-    } finally {
-      setLoading(false);
     }
-  }, [id]);
+  }, []);
 
   const fetchAreas = useCallback(async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
     try {
       const response = await listAreas({
-        facilityId: id,
+        facilityId: resolvedFacilityId,
         includeArchived: true,
       });
       setAreas(response?.data || []);
@@ -229,7 +247,7 @@ const FacilityDetail = () => {
       console.error('Failed to fetch areas:', error);
       setAreas([]);
     }
-  }, [id]);
+  }, [resolvedFacilityId]);
 
   const fetchAreaTypes = useCallback(async () => {
     try {
@@ -242,10 +260,10 @@ const FacilityDetail = () => {
   }, []);
 
   const fetchTasks = useCallback(async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
     try {
       const response = await listFacilityTasks({
-        facilityId: id,
+        facilityId: resolvedFacilityId,
         limit: 100,
       });
       setTasks(response?.data || []);
@@ -253,12 +271,16 @@ const FacilityDetail = () => {
       console.error('Failed to fetch tasks:', error);
       setTasks([]);
     }
-  }, [id]);
+  }, [resolvedFacilityId]);
 
-  const fetchTaskTemplates = useCallback(async () => {
+  const fetchTaskTemplates = useCallback(async (isResidentialScope: boolean) => {
     try {
       const response = await listTaskTemplates({ isActive: true, limit: 100 });
-      setTaskTemplates(response?.data || []);
+      const filteredTemplates = (response?.data || []).filter((template) => {
+        const scope = template.scope ?? 'both';
+        return isResidentialScope ? scope !== 'commercial' : scope !== 'residential';
+      });
+      setTaskTemplates(filteredTemplates);
     } catch (error) {
       console.error('Failed to fetch task templates:', error);
       setTaskTemplates([]);
@@ -368,20 +390,76 @@ const FacilityDetail = () => {
   }, [areaTypes, editingArea, buildFallbackTemplateTasks]);
 
   useEffect(() => {
-    fetchFacility();
+    let cancelled = false;
+
+    const load = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        let nextFacilityId = isPropertyMode ? null : id;
+
+        if (isPropertyMode) {
+          const propertyData = await fetchProperty();
+          nextFacilityId = propertyData?.facility?.id ?? null;
+        } else {
+          setResolvedFacilityId(id);
+        }
+
+        if (!nextFacilityId) {
+          if (!cancelled) {
+            setFacility(null);
+            setAreas([]);
+            setTasks([]);
+          }
+          return;
+        }
+
+        await Promise.all([
+          fetchFacility(nextFacilityId),
+          fetchAreaTypes(),
+          fetchFixtureTypes(),
+        ]);
+      } catch (error) {
+        console.error(`Failed to load ${locationLabelLower}:`, error);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isPropertyMode, fetchProperty, fetchFacility, fetchAreaTypes, fetchFixtureTypes, locationLabelLower]);
+
+  useEffect(() => {
+    if (!resolvedFacilityId) return;
     fetchAreas();
-    fetchAreaTypes();
     fetchTasks();
-    fetchTaskTemplates();
-    fetchFixtureTypes();
-  }, [
-    fetchFacility,
-    fetchAreas,
-    fetchAreaTypes,
-    fetchTasks,
-    fetchTaskTemplates,
-    fetchFixtureTypes,
-  ]);
+  }, [resolvedFacilityId, fetchAreas, fetchTasks]);
+
+  useEffect(() => {
+    if (!facility) return;
+    fetchTaskTemplates(Boolean(facility.residentialPropertyId));
+  }, [facility, fetchTaskTemplates]);
+
+  useEffect(() => {
+    setAreaForm((current) => ({
+      ...current,
+      facilityId: resolvedFacilityId || '',
+    }));
+    setTaskForm((current) => ({
+      ...current,
+      facilityId: resolvedFacilityId || '',
+    }));
+  }, [resolvedFacilityId]);
 
   // --- Computed values ---
   const totalSquareFeetFromAreas = areas
@@ -455,7 +533,7 @@ const FacilityDetail = () => {
   // --- Form resets ---
   const resetAreaForm = () => {
     setAreaForm({
-      facilityId: id || '',
+      facilityId: resolvedFacilityId || '',
       areaTypeId: '',
       name: '',
       length: null,
@@ -478,7 +556,7 @@ const FacilityDetail = () => {
 
   const resetTaskForm = () => {
     setTaskForm({
-      facilityId: id || '',
+      facilityId: resolvedFacilityId || '',
       areaId: null,
       taskTemplateId: null,
       customName: '',
@@ -501,12 +579,12 @@ const FacilityDetail = () => {
 
   // --- Handlers ---
   const handleUpdateFacility = async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
     try {
       setSaving(true);
-      await updateFacility(id, facilityForm);
+      await updateFacility(resolvedFacilityId, facilityForm);
       setShowEditModal(false);
-      fetchFacility();
+      await fetchFacility(resolvedFacilityId);
     } catch (error) {
       console.error('Failed to update facility:', error);
     } finally {
@@ -515,7 +593,7 @@ const FacilityDetail = () => {
   };
 
   const handleSaveArea = async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
     try {
       setSaving(true);
       if (editingArea) {
@@ -527,7 +605,7 @@ const FacilityDetail = () => {
 
         const createdArea = await createArea({
           ...areaForm,
-          facilityId: id,
+          facilityId: resolvedFacilityId,
           applyTemplate: true,
           excludeTaskTemplateIds,
         } as CreateAreaInput);
@@ -540,7 +618,7 @@ const FacilityDetail = () => {
             await Promise.all(
               selectedTemplateTasks.map((task) =>
                 createFacilityTask({
-                  facilityId: id,
+                  facilityId: resolvedFacilityId,
                   areaId: createdArea.id,
                   taskTemplateId: task.taskTemplateId,
                   cleaningFrequency: isCleaningFrequency(task.cleaningType)
@@ -560,7 +638,7 @@ const FacilityDetail = () => {
           await Promise.all(
             selectedLegacyTasks.map((task) =>
               createFacilityTask({
-                facilityId: id,
+                facilityId: resolvedFacilityId,
                 areaId: createdArea.id,
                 taskTemplateId: null,
                 customName: task.name,
@@ -619,7 +697,7 @@ const FacilityDetail = () => {
   };
 
   const handleSaveTask = async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
 
     const selectedAreaId = taskForm.areaId ?? selectedAreaForTask?.id ?? null;
     const duplicateTask = findDuplicateTask({
@@ -650,7 +728,7 @@ const FacilityDetail = () => {
       } else {
         await createFacilityTask({
           ...taskForm,
-          facilityId: id,
+          facilityId: resolvedFacilityId,
           areaId: selectedAreaId,
         } as CreateFacilityTaskInput);
         toast.success('Task added');
@@ -681,7 +759,7 @@ const FacilityDetail = () => {
   };
 
   const handleSaveSelectedTasks = async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
 
     const selectedAreaId = selectedAreaForTask?.id || null;
     const includedTasks = taskSelectionTasks.filter((task) => task.include);
@@ -718,7 +796,7 @@ const FacilityDetail = () => {
       await Promise.all(
         tasksToCreate.map((task) =>
           createFacilityTask({
-            facilityId: id,
+            facilityId: resolvedFacilityId,
             areaId: selectedAreaId,
             taskTemplateId: task.taskTemplateId,
             customName: task.taskTemplateId ? null : task.name,
@@ -750,10 +828,10 @@ const FacilityDetail = () => {
   };
 
   const handleSubmitForProposal = async () => {
-    if (!id) return;
+    if (!resolvedFacilityId) return;
     try {
       setSubmittingForProposal(true);
-      await submitFacilityForProposal(id, submitProposalNotes || null);
+      await submitFacilityForProposal(resolvedFacilityId, submitProposalNotes || null);
       setFacility((prev) => (
         prev
           ? {
@@ -764,10 +842,10 @@ const FacilityDetail = () => {
       ));
       setShowSubmitProposalModal(false);
       setSubmitProposalNotes('');
-      toast.success('Facility submitted. Walkthrough marked completed and pipeline updated.');
+      toast.success(`${locationLabel} submitted. Walkthrough marked completed and pipeline updated.`);
     } catch (error) {
       console.error('Failed to submit facility for proposal:', error);
-      toast.error(extractApiErrorMessage(error, 'Failed to submit facility for proposal'));
+      toast.error(extractApiErrorMessage(error, `Failed to submit ${locationLabelLower} for proposal`));
     } finally {
       setSubmittingForProposal(false);
     }
@@ -775,7 +853,7 @@ const FacilityDetail = () => {
 
   const handleSaveFacilityDraft = () => {
     setShowSubmitProposalModal(false);
-    toast.success('Facility details saved as draft. Walkthrough remains in progress.');
+    toast.success(`${locationLabel} details saved as draft. Walkthrough remains in progress.`);
   };
 
   const buildTaskSelectionsForArea = (area: Area) => {
@@ -1088,7 +1166,13 @@ const FacilityDetail = () => {
   }
 
   if (!facility) {
-    return <div className="text-center text-surface-500 dark:text-surface-400">Facility not found</div>;
+    return (
+      <div className="text-center text-surface-500 dark:text-surface-400">
+        {isPropertyMode && property && !property.facility
+          ? 'Property is not linked to an operational scope yet.'
+          : `${locationLabel} not found`}
+      </div>
+    );
   }
 
   // --- Render ---
@@ -1112,7 +1196,7 @@ const FacilityDetail = () => {
           )}
           <Button variant="secondary" onClick={() => setShowEditModal(true)}>
             <Edit2 className="mr-2 h-4 w-4" />
-            Edit Facility
+            {`Edit ${locationLabel}`}
           </Button>
         </div>
       </div>
@@ -1124,7 +1208,7 @@ const FacilityDetail = () => {
             <div>
               <div className="font-medium text-amber-200">Submitted for Proposal</div>
               <div className="mt-1 text-amber-100/90">
-                This facility has already been submitted for proposal preparation. A second submission is blocked.
+                {`This ${locationLabelLower} has already been submitted for proposal preparation. A second submission is blocked.`}
               </div>
             </div>
           </div>
@@ -1224,6 +1308,7 @@ const FacilityDetail = () => {
         setFacilityForm={setFacilityForm}
         onSave={handleUpdateFacility}
         saving={saving}
+        locationLabel={locationLabel}
       />
       <AreaModal
         isOpen={showAreaModal}
@@ -1318,6 +1403,7 @@ const FacilityDetail = () => {
         onCompleteWalkthrough={handleSubmitForProposal}
         onSaveDraft={handleSaveFacilityDraft}
         submitting={submittingForProposal}
+        locationLabel={locationLabel}
       />
     </div>
   );

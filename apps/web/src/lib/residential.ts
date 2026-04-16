@@ -125,6 +125,11 @@ export async function createResidentialProperty(
   return response.data.data;
 }
 
+export async function getResidentialProperty(id: string): Promise<ResidentialProperty> {
+  const response = await api.get(`/residential/properties/${id}`);
+  return response.data.data;
+}
+
 export async function updateResidentialProperty(
   id: string,
   data: UpdateResidentialPropertyInput

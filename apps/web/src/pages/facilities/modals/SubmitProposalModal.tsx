@@ -18,6 +18,7 @@ interface SubmitProposalModalProps {
   onCompleteWalkthrough: () => void;
   onSaveDraft: () => void;
   submitting: boolean;
+  locationLabel?: string;
 }
 
 export function SubmitProposalModal({
@@ -35,6 +36,7 @@ export function SubmitProposalModal({
   onCompleteWalkthrough,
   onSaveDraft,
   submitting,
+  locationLabel = 'Facility',
 }: SubmitProposalModalProps): React.JSX.Element {
   const activeAreas = areas.filter((area) => !area.archivedAt);
   const activeTasks = tasks.filter((task) => !task.archivedAt);
@@ -55,7 +57,7 @@ export function SubmitProposalModal({
         if (submitting) return;
         onClose();
       }}
-      title="Submit Facility for Proposal"
+      title={`Submit ${locationLabel} for Proposal`}
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-900/40 p-4">
@@ -117,7 +119,7 @@ export function SubmitProposalModal({
             )}
           </div>
           <div className="mt-3 text-sm text-surface-600 dark:text-surface-400">
-            Choose whether to keep working on this facility later or finish the walkthrough now.
+            {`Choose whether to keep working on this ${locationLabel.toLowerCase()} later or finish the walkthrough now.`}
             Completing the walkthrough will mark it complete and move the pipeline forward to proposal-ready.
           </div>
         </div>

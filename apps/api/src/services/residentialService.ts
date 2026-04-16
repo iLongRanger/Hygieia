@@ -775,6 +775,10 @@ export async function listResidentialProperties(
   };
 }
 
+export async function getResidentialPropertyById(id: string, accountId?: string) {
+  return resolveResidentialProperty(id, accountId);
+}
+
 export async function createResidentialProperty(
   input: CreateResidentialPropertyInput,
   createdByUserId: string

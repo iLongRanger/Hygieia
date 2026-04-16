@@ -24,6 +24,7 @@ import {
   createResidentialQuote,
   declineResidentialQuote,
   getDefaultResidentialPricingPlan,
+  getResidentialPropertyById,
   getResidentialPricingPlanById,
   getResidentialQuoteById,
   generateResidentialQuotePublicToken,
@@ -307,6 +308,29 @@ router.post(
       const user = requireAuthenticatedUser(req);
       const property = await createResidentialProperty(parsed.data, user.id);
       res.status(201).json({ data: property });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/properties/:id',
+  authenticate,
+  requirePermission(PERMISSIONS.ACCOUNTS_READ),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const property = await getResidentialPropertyById(req.params.id);
+      if (!property) {
+        throw new NotFoundError('Residential property not found');
+      }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'account',
+        resourceId: property.accountId,
+        path: req.path,
+        method: req.method,
+      });
+      res.json({ data: property });
     } catch (error) {
       next(error);
     }
