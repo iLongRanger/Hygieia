@@ -277,6 +277,11 @@ describe('AppointmentsPage', () => {
             contactName: 'Jane Doe',
             companyName: null,
             convertedToAccountId: 'account-res-1',
+            convertedToAccount: {
+              id: 'account-res-1',
+              name: 'Jane Doe Residence',
+              type: 'residential',
+            },
           },
         ],
       });
@@ -313,6 +318,16 @@ describe('AppointmentsPage', () => {
 
       await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
       await user.selectOptions(await screen.findByLabelText(/^lead$/i), 'lead-res-1');
+
+      await waitFor(() => {
+        expect(listResidentialPropertiesMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            accountId: 'account-res-1',
+            includeArchived: false,
+            limit: 200,
+          })
+        );
+      });
 
       expect(await screen.findByLabelText(/^property$/i)).toBeInTheDocument();
       expect(screen.queryByLabelText(/^facility$/i)).not.toBeInTheDocument();

@@ -98,6 +98,7 @@ export interface Lead {
   convertedToAccount: {
     id: string;
     name: string;
+    type?: string | null;
   } | null;
   convertedByUser: {
     id: string;

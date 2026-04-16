@@ -343,10 +343,51 @@ const AppointmentsPage = () => {
     [formData.leadId, leads]
   );
 
-  const isResidentialWalkthrough = formData.type === 'walk_through' && selectedLead?.type === 'residential';
+  const selectedWalkthroughAccountType =
+    formData.type === 'walk_through'
+      ? selectedLead?.convertedToAccount?.type ?? selectedLead?.type ?? null
+      : null;
+
+  const isResidentialWalkthrough =
+    formData.type === 'walk_through' && selectedWalkthroughAccountType === 'residential';
 
   const appointmentAccountId =
     formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
+
+  useEffect(() => {
+    if (!appointmentAccountId) {
+      return;
+    }
+
+    const loadScopedLocations = async () => {
+      try {
+        const [facilityResponse, propertyResponse] = await Promise.all([
+          listFacilities({ limit: 200, includeArchived: false, accountId: appointmentAccountId }),
+          listResidentialProperties({ limit: 200, includeArchived: false, accountId: appointmentAccountId }),
+        ]);
+
+        setFacilities((previous) => {
+          const merged = new Map(previous.map((facility) => [facility.id, facility]));
+          for (const facility of facilityResponse?.data || []) {
+            merged.set(facility.id, facility);
+          }
+          return Array.from(merged.values());
+        });
+
+        setProperties((previous) => {
+          const merged = new Map(previous.map((property) => [property.id, property]));
+          for (const property of propertyResponse?.data || []) {
+            merged.set(property.id, property);
+          }
+          return Array.from(merged.values());
+        });
+      } catch (error) {
+        console.error('Failed to fetch scoped appointment locations:', error);
+      }
+    };
+
+    void loadScopedLocations();
+  }, [appointmentAccountId]);
 
   const walkthroughBookedFacilityIds = useMemo(() => {
     const selectedFacilityId = formData.type === 'walk_through' ? formData.facilityId : '';

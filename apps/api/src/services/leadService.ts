@@ -149,6 +149,7 @@ const leadSelect = {
     select: {
       id: true,
       name: true,
+      type: true,
     },
   },
   convertedByUser: {
