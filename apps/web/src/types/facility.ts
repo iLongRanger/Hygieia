@@ -99,6 +99,7 @@ export interface AreaType {
   id: string;
   name: string;
   description: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   defaultSquareFeet: string | null;
   baseCleaningTimeMinutes: number | null;
   createdAt: string;
@@ -112,6 +113,7 @@ export interface AreaType {
 export interface CreateAreaTypeInput {
   name: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   defaultSquareFeet?: number | null;
   baseCleaningTimeMinutes?: number | null;
 }
@@ -119,6 +121,7 @@ export interface CreateAreaTypeInput {
 export interface UpdateAreaTypeInput {
   name?: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   defaultSquareFeet?: number | null;
   baseCleaningTimeMinutes?: number | null;
 }

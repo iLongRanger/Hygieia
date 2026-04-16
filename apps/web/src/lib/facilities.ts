@@ -90,6 +90,7 @@ export async function listAreaTypes(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  scope?: 'residential' | 'commercial' | 'both';
 }): Promise<PaginatedResponse<AreaType>> {
   const response = await api.get('/area-types', { params });
   return response.data;

@@ -93,6 +93,7 @@ const AreaTemplatesPage = () => {
     id: '',
     name: '',
     description: '',
+    scope: 'both' as 'residential' | 'commercial' | 'both',
     defaultSquareFeet: 0,
     baseCleaningTimeMinutes: 0,
   });
@@ -252,6 +253,7 @@ const AreaTemplatesPage = () => {
       id: '',
       name: '',
       description: '',
+      scope: 'both',
       defaultSquareFeet: 0,
       baseCleaningTimeMinutes: 0,
     });
@@ -264,6 +266,7 @@ const AreaTemplatesPage = () => {
       id: areaType.id,
       name: areaType.name,
       description: areaType.description || '',
+      scope: areaType.scope || 'both',
       defaultSquareFeet: areaType.defaultSquareFeet ? Number(areaType.defaultSquareFeet) : 0,
       baseCleaningTimeMinutes: areaType.baseCleaningTimeMinutes || 0,
     });
@@ -283,6 +286,7 @@ const AreaTemplatesPage = () => {
         await updateAreaType(areaTypeForm.id, {
           name: areaTypeForm.name.trim(),
           description: areaTypeForm.description || null,
+          scope: areaTypeForm.scope,
           defaultSquareFeet: areaTypeForm.defaultSquareFeet || null,
           baseCleaningTimeMinutes: areaTypeForm.baseCleaningTimeMinutes || null,
         });
@@ -291,6 +295,7 @@ const AreaTemplatesPage = () => {
         const created = await createAreaType({
           name: areaTypeForm.name.trim(),
           description: areaTypeForm.description || null,
+          scope: areaTypeForm.scope,
           defaultSquareFeet: areaTypeForm.defaultSquareFeet || null,
           baseCleaningTimeMinutes: areaTypeForm.baseCleaningTimeMinutes || null,
         });
@@ -1264,6 +1269,21 @@ const AreaTemplatesPage = () => {
             placeholder="Optional notes"
             value={areaTypeForm.description}
             onChange={(e) => setAreaTypeForm({ ...areaTypeForm, description: e.target.value })}
+          />
+          <Select
+            label="Scope"
+            value={areaTypeForm.scope}
+            options={[
+              { value: 'residential', label: 'Residential Only' },
+              { value: 'commercial', label: 'Commercial Only' },
+              { value: 'both', label: 'Residential + Commercial' },
+            ]}
+            onChange={(value) =>
+              setAreaTypeForm({
+                ...areaTypeForm,
+                scope: value as 'residential' | 'commercial' | 'both',
+              })
+            }
           />
           <Input
             label="Default Square Feet"

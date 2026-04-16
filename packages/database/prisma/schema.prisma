@@ -526,10 +526,17 @@ model Opportunity {
 // FACILITY MANAGEMENT TABLES
 // ============================================================
 
+enum AreaTypeScope {
+  residential
+  commercial
+  both
+}
+
 model AreaType {
   id                      String   @id @default(uuid()) @db.Uuid
   name                    String   @unique @db.VarChar(100)
   description             String?  @db.Text
+  scope                   AreaTypeScope @default(both)
   defaultSquareFeet       Decimal? @map("default_square_feet") @db.Decimal(10, 2)
   baseCleaningTimeMinutes Int?     @map("base_cleaning_time_minutes")
   guidanceItems           Json?    @map("guidance_items") @db.JsonB
@@ -540,6 +547,7 @@ model AreaType {
   taskTemplates TaskTemplate[]
   areaTemplate  AreaTemplate?
 
+  @@index([scope])
   @@index([name])
   @@map("area_types")
 }

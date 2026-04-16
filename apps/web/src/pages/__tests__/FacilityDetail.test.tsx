@@ -111,6 +111,7 @@ const areaTypes: AreaType[] = [
     id: 'area-type-1',
     name: 'Office',
     description: null,
+    scope: 'commercial',
     defaultSquareFeet: null,
     baseCleaningTimeMinutes: null,
     createdAt: new Date().toISOString(),
@@ -297,6 +298,21 @@ describe('FacilityDetail', () => {
           backPath: '/properties/property-1',
         },
       }
+    );
+  });
+
+  it('requests residential area types in property mode', async () => {
+    mockParams = { id: 'property-1' };
+
+    render(<FacilityDetail mode="property" />);
+
+    await screen.findByText('Main Facility');
+
+    expect(listAreaTypesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 100,
+        scope: 'residential',
+      })
     );
   });
 

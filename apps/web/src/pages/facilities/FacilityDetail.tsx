@@ -270,13 +270,16 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
   const fetchAreaTypes = useCallback(async () => {
     try {
-      const response = await listAreaTypes({ limit: 100 });
+      const response = await listAreaTypes({
+        limit: 100,
+        scope: isPropertyMode ? 'residential' : 'commercial',
+      });
       setAreaTypes(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch area types:', error);
       setAreaTypes([]);
     }
-  }, []);
+  }, [isPropertyMode]);
 
   const fetchTasks = useCallback(async () => {
     if (!resolvedFacilityId) return;

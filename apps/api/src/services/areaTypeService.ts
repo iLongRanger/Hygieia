@@ -5,6 +5,7 @@ export interface AreaTypeListParams {
   page?: number;
   limit?: number;
   search?: string;
+  scope?: 'residential' | 'commercial' | 'both';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -12,6 +13,7 @@ export interface AreaTypeListParams {
 export interface AreaTypeCreateInput {
   name: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   defaultSquareFeet?: number | null;
   baseCleaningTimeMinutes?: number | null;
 }
@@ -19,6 +21,7 @@ export interface AreaTypeCreateInput {
 export interface AreaTypeUpdateInput {
   name?: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   defaultSquareFeet?: number | null;
   baseCleaningTimeMinutes?: number | null;
 }
@@ -37,6 +40,7 @@ const areaTypeSelect = {
   id: true,
   name: true,
   description: true,
+  scope: true,
   defaultSquareFeet: true,
   baseCleaningTimeMinutes: true,
   createdAt: true,
@@ -58,6 +62,7 @@ export async function listAreaTypes(
     page = 1,
     limit = 50,
     search,
+    scope,
     sortBy = 'name',
     sortOrder = 'asc',
   } = params;
@@ -69,6 +74,12 @@ export async function listAreaTypes(
       { name: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
     ];
+  }
+
+  if (scope === 'both') {
+    where.scope = 'both';
+  } else if (scope) {
+    where.scope = { in: [scope, 'both'] };
   }
 
   const validSortFields = ['createdAt', 'name'];
@@ -115,6 +126,7 @@ export async function createAreaType(input: AreaTypeCreateInput) {
     data: {
       name: input.name,
       description: input.description,
+      scope: input.scope ?? 'both',
       defaultSquareFeet: input.defaultSquareFeet,
       baseCleaningTimeMinutes: input.baseCleaningTimeMinutes,
     },
@@ -128,6 +140,7 @@ export async function updateAreaType(id: string, input: AreaTypeUpdateInput) {
   if (input.name !== undefined) updateData.name = input.name;
   if (input.description !== undefined)
     updateData.description = input.description;
+  if (input.scope !== undefined) updateData.scope = input.scope;
   if (input.defaultSquareFeet !== undefined)
     updateData.defaultSquareFeet = input.defaultSquareFeet;
   if (input.baseCleaningTimeMinutes !== undefined)

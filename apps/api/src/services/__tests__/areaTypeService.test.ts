@@ -19,6 +19,7 @@ const createTestAreaType = (overrides?: Partial<any>) => ({
   id: 'area-type-123',
   name: 'Office',
   description: 'Standard office space',
+  scope: 'both',
   defaultSquareFeet: 200,
   baseCleaningTimeMinutes: 15,
   createdAt: new Date('2024-01-01'),
@@ -67,6 +68,23 @@ describe('areaTypeService', () => {
         })
       );
     });
+
+    it('should include shared area types when filtering by residential scope', async () => {
+      const mockAreaTypes = [createTestAreaType({ scope: 'residential' })];
+
+      (prisma.areaType.findMany as jest.Mock).mockResolvedValue(mockAreaTypes);
+      (prisma.areaType.count as jest.Mock).mockResolvedValue(1);
+
+      await areaTypeService.listAreaTypes({ scope: 'residential' });
+
+      expect(prisma.areaType.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            scope: { in: ['residential', 'both'] },
+          }),
+        })
+      );
+    });
   });
 
   describe('getAreaTypeById', () => {
@@ -98,6 +116,7 @@ describe('areaTypeService', () => {
       const input: areaTypeService.AreaTypeCreateInput = {
         name: 'Lobby',
         description: 'Main entrance',
+        scope: 'commercial',
         defaultSquareFeet: 500,
         baseCleaningTimeMinutes: 30,
       };
