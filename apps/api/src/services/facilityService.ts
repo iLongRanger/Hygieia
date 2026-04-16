@@ -58,6 +58,7 @@ export interface PaginatedResult<T> {
 const facilitySelect = {
   id: true,
   name: true,
+  residentialPropertyId: true,
   address: true,
   squareFeet: true,
   buildingType: true,

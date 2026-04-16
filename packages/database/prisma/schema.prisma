@@ -423,7 +423,7 @@ model ResidentialProperty {
 
   account       Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
   createdByUser User                @relation("CreatedResidentialProperties", fields: [createdByUserId], references: [id])
-  facilities    Facility[]
+  facility      Facility?
   quotes        ResidentialQuote[]
   contracts     Contract[]
 
@@ -547,7 +547,7 @@ model AreaType {
 model Facility {
   id                  String    @id @default(uuid()) @db.Uuid
   accountId           String    @map("account_id") @db.Uuid
-  residentialPropertyId String? @map("residential_property_id") @db.Uuid
+  residentialPropertyId String? @unique @map("residential_property_id") @db.Uuid
   name                String    @db.VarChar(255)
   address             Json      @db.JsonB
   squareFeet          Decimal?  @map("square_feet") @db.Decimal(10, 2)
@@ -587,7 +587,6 @@ model Facility {
 
   @@unique([accountId, name])
   @@index([accountId])
-  @@index([residentialPropertyId])
   @@index([status])
   @@index([facilityManagerId])
   @@index([defaultPricingPlanId])
@@ -633,10 +632,17 @@ model Area {
 // TASK MANAGEMENT TABLES
 // ============================================================
 
+enum TaskTemplateScope {
+  residential
+  commercial
+  both
+}
+
 model TaskTemplate {
   id                String    @id @default(uuid()) @db.Uuid
   name              String    @db.VarChar(255)
   description       String?   @db.Text
+  scope             TaskTemplateScope @default(both)
   cleaningType      String    @map("cleaning_type") @db.VarChar(50)
   areaTypeId        String?   @map("area_type_id") @db.Uuid
   estimatedMinutes  Int       @map("estimated_minutes")
@@ -664,6 +670,7 @@ model TaskTemplate {
   areaTemplateTasks AreaTemplateTask[]
   createdByUser     User                 @relation("CreatedTaskTemplates", fields: [createdByUserId], references: [id])
 
+  @@index([scope])
   @@index([cleaningType])
   @@index([areaTypeId])
   @@index([facilityId])

@@ -12,9 +12,16 @@ export const cleaningTypeSchema = z.enum([
   'post_construction',
 ]);
 
+export const taskTemplateScopeSchema = z.enum([
+  'residential',
+  'commercial',
+  'both',
+]);
+
 export const createTaskTemplateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   description: z.string().max(10000).optional().nullable(),
+  scope: taskTemplateScopeSchema.optional().default('both'),
   cleaningType: cleaningTypeSchema,
   areaTypeId: z.string().uuid().optional().nullable(),
   estimatedMinutes: z.coerce.number().int().min(0).optional().nullable(), // Optional for sqft-based pricing
@@ -40,6 +47,7 @@ export const createTaskTemplateSchema = z.object({
 export const updateTaskTemplateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(10000).optional().nullable(),
+  scope: taskTemplateScopeSchema.optional(),
   cleaningType: cleaningTypeSchema.optional(),
   areaTypeId: z.string().uuid().optional().nullable(),
   estimatedMinutes: z.coerce.number().int().min(0).optional(),
@@ -72,6 +80,7 @@ const booleanQueryParam = z.preprocess((value) => {
 export const listTaskTemplatesQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  scope: taskTemplateScopeSchema.optional(),
   cleaningType: cleaningTypeSchema.optional(),
   areaTypeId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),

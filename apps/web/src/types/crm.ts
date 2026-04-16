@@ -27,6 +27,9 @@ export interface ResidentialPropertySummary {
   id: string;
   accountId: string;
   name: string;
+  facility?: {
+    id: string;
+  } | null;
   serviceAddress: Address | null;
   homeProfile: ResidentialAccountProfile | null;
   defaultTasks?: string[];

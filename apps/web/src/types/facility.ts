@@ -33,6 +33,7 @@ export interface Address {
 export interface Facility {
   id: string;
   name: string;
+  residentialPropertyId?: string | null;
   address: Address;
   squareFeet: string | null;
   buildingType: string | null;
@@ -306,6 +307,7 @@ export interface TaskTemplate {
   id: string;
   name: string;
   description: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   cleaningType: string;
   estimatedMinutes: number | null;
   baseMinutes: string;

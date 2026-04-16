@@ -45,6 +45,11 @@ const residentialPropertySelect = {
   id: true,
   accountId: true,
   name: true,
+  facility: {
+    select: {
+      id: true,
+    },
+  },
   serviceAddress: true,
   homeProfile: true,
   defaultTasks: true,
@@ -132,6 +137,11 @@ const residentialQuoteListSelect = {
     select: {
       id: true,
       name: true,
+      facility: {
+        select: {
+          id: true,
+        },
+      },
       serviceAddress: true,
       homeProfile: true,
       defaultTasks: true,
@@ -213,6 +223,11 @@ const residentialQuoteDetailSelect = {
     select: {
       id: true,
       name: true,
+      facility: {
+        select: {
+          id: true,
+        },
+      },
       serviceAddress: true,
       homeProfile: true,
       defaultTasks: true,
@@ -281,6 +296,11 @@ const publicResidentialQuoteSelect = {
     select: {
       id: true,
       name: true,
+      facility: {
+        select: {
+          id: true,
+        },
+      },
       serviceAddress: true,
       homeProfile: true,
       defaultTasks: true,

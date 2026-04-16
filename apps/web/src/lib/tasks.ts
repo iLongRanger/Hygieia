@@ -13,6 +13,7 @@ import type {
 export async function listTaskTemplates(params?: {
   page?: number;
   limit?: number;
+  scope?: 'residential' | 'commercial' | 'both';
   cleaningType?: string;
   areaTypeId?: string;
   facilityId?: string;

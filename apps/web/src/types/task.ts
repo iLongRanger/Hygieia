@@ -1,7 +1,10 @@
+export type TaskTemplateScope = 'residential' | 'commercial' | 'both';
+
 export interface TaskTemplate {
   id: string;
   name: string;
   description: string | null;
+  scope?: TaskTemplateScope;
   cleaningType: string;
   estimatedMinutes: number;
   baseMinutes: string;
@@ -47,6 +50,7 @@ export interface TaskTemplate {
 export interface CreateTaskTemplateInput {
   name: string;
   description?: string | null;
+  scope?: TaskTemplateScope;
   cleaningType: string;
   areaTypeId?: string | null;
   estimatedMinutes: number;
@@ -67,6 +71,7 @@ export interface CreateTaskTemplateInput {
 export interface UpdateTaskTemplateInput {
   name?: string;
   description?: string | null;
+  scope?: TaskTemplateScope;
   cleaningType?: string;
   areaTypeId?: string | null;
   estimatedMinutes?: number;

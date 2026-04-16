@@ -245,6 +245,9 @@ export interface ResidentialQuote {
   property?: {
     id: string;
     name: string;
+    facility?: {
+      id: string;
+    } | null;
     serviceAddress: ResidentialAddress | null;
     homeProfile: ResidentialHomeProfile;
     defaultTasks?: string[];
@@ -276,6 +279,9 @@ export interface ResidentialProperty {
   id: string;
   accountId: string;
   name: string;
+  facility?: {
+    id: string;
+  } | null;
   serviceAddress: ResidentialAddress;
   homeProfile: ResidentialHomeProfile;
   defaultTasks?: string[];

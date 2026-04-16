@@ -103,6 +103,11 @@ const accountSelect = {
       id: true,
       accountId: true,
       name: true,
+      facility: {
+        select: {
+          id: true,
+        },
+      },
       serviceAddress: true,
       homeProfile: true,
       defaultTasks: true,

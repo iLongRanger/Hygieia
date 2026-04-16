@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 export interface TaskTemplateListParams {
   page?: number;
   limit?: number;
+  scope?: 'residential' | 'commercial' | 'both';
   cleaningType?: string;
   areaTypeId?: string;
   facilityId?: string;
@@ -18,6 +19,7 @@ export interface TaskTemplateListParams {
 export interface TaskTemplateCreateInput {
   name: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   cleaningType: string;
   areaTypeId?: string | null;
   estimatedMinutes?: number | null;
@@ -39,6 +41,7 @@ export interface TaskTemplateCreateInput {
 export interface TaskTemplateUpdateInput {
   name?: string;
   description?: string | null;
+  scope?: 'residential' | 'commercial' | 'both';
   cleaningType?: string;
   areaTypeId?: string | null;
   estimatedMinutes?: number;
@@ -70,6 +73,7 @@ const taskTemplateSelect = {
   id: true,
   name: true,
   description: true,
+  scope: true,
   cleaningType: true,
   estimatedMinutes: true,
   baseMinutes: true,
@@ -134,6 +138,7 @@ export async function listTaskTemplates(
   const {
     page = 1,
     limit = 20,
+    scope,
     cleaningType,
     areaTypeId,
     facilityId,
@@ -153,6 +158,10 @@ export async function listTaskTemplates(
 
   if (cleaningType) {
     where.cleaningType = cleaningType;
+  }
+
+  if (scope) {
+    where.scope = scope;
   }
 
   if (areaTypeId) {
@@ -215,6 +224,7 @@ export async function createTaskTemplate(input: TaskTemplateCreateInput) {
     data: {
       name: input.name,
       description: input.description,
+      scope: input.scope ?? 'both',
       cleaningType: input.cleaningType,
       areaTypeId: input.areaTypeId,
       estimatedMinutes: input.estimatedMinutes ?? 0,
@@ -250,6 +260,7 @@ export async function updateTaskTemplate(
   if (input.name !== undefined) updateData.name = input.name;
   if (input.description !== undefined)
     updateData.description = input.description;
+  if (input.scope !== undefined) updateData.scope = input.scope;
   if (input.cleaningType !== undefined)
     updateData.cleaningType = input.cleaningType;
   if (input.areaTypeId !== undefined) {
