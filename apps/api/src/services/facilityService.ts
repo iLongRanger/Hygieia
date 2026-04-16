@@ -17,6 +17,7 @@ export interface FacilityListParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeArchived?: boolean;
+  includeResidentialLinked?: boolean;
 }
 
 export interface FacilityCreateInput {
@@ -159,12 +160,17 @@ export async function listFacilities(
     sortBy = 'createdAt',
     sortOrder = 'desc',
     includeArchived = false,
+    includeResidentialLinked = false,
   } = params;
 
   const where: Prisma.FacilityWhereInput = {};
 
   if (!includeArchived) {
     where.archivedAt = null;
+  }
+
+  if (!includeResidentialLinked) {
+    where.residentialPropertyId = null;
   }
 
   if (accountId) {

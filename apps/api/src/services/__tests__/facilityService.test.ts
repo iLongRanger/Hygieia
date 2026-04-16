@@ -66,6 +66,14 @@ describe('facilityService', () => {
 
       expect(result.data).toEqual(mockFacilities);
       expect(result.pagination.total).toBe(2);
+      expect(prisma.facility.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            archivedAt: null,
+            residentialPropertyId: null,
+          }),
+        })
+      );
     });
 
     it('should filter by accountId', async () => {
@@ -114,10 +122,26 @@ describe('facilityService', () => {
       expect(prisma.facility.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
+            residentialPropertyId: null,
             OR: [
               { name: { contains: 'warehouse', mode: 'insensitive' } },
               { account: { name: { contains: 'warehouse', mode: 'insensitive' } } },
             ],
+          }),
+        })
+      );
+    });
+
+    it('should include residential-linked facilities when explicitly requested', async () => {
+      (prisma.facility.findMany as jest.Mock).mockResolvedValue([createTestFacility()]);
+      (prisma.facility.count as jest.Mock).mockResolvedValue(1);
+
+      await facilityService.listFacilities({ includeResidentialLinked: true });
+
+      expect(prisma.facility.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            residentialPropertyId: null,
           }),
         })
       );

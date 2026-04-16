@@ -189,6 +189,10 @@ export const listFacilitiesQuerySchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  includeResidentialLinked: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
 
 export const submitFacilityForProposalSchema = z.object({
