@@ -780,6 +780,9 @@ export async function createResidentialProperty(
   createdByUserId: string
 ) {
   const account = await resolveResidentialAccount(input.accountId);
+  const normalizedName = input.name.trim();
+  const normalizedAddress = input.serviceAddress ?? {};
+  const normalizedHomeProfile = input.homeProfile;
 
   return prisma.$transaction(async (tx) => {
     if (input.isPrimary) {
@@ -792,7 +795,7 @@ export async function createResidentialProperty(
     const property = await tx.residentialProperty.create({
       data: {
         accountId: input.accountId,
-        name: input.name.trim(),
+        name: normalizedName,
         serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
         homeProfile: input.homeProfile as Prisma.InputJsonValue,
         defaultTasks: input.defaultTasks as Prisma.InputJsonValue,
@@ -805,6 +808,17 @@ export async function createResidentialProperty(
         createdByUserId,
       },
       select: residentialPropertySelect,
+    });
+
+    await syncResidentialFacility(tx, {
+      accountId: input.accountId,
+      propertyId: property.id,
+      propertyName: normalizedName,
+      accountName: account.name,
+      createdByUserId,
+      homeAddress: normalizedAddress,
+      homeProfile: normalizedHomeProfile,
+      archive: property.status === 'archived',
     });
 
     if (property.isPrimary) {
@@ -823,6 +837,11 @@ export async function createResidentialProperty(
 
 export async function updateResidentialProperty(id: string, input: UpdateResidentialPropertyInput) {
   const existing = await resolveResidentialProperty(id);
+  const nextName = input.name !== undefined ? input.name.trim() : existing.name;
+  const nextServiceAddress =
+    input.serviceAddress !== undefined ? input.serviceAddress ?? {} : existing.serviceAddress ?? {};
+  const nextHomeProfile = input.homeProfile !== undefined ? input.homeProfile : existing.homeProfile;
+  const nextStatus = input.status ?? existing.status;
 
   return prisma.$transaction(async (tx) => {
     if (input.isPrimary) {
@@ -855,6 +874,17 @@ export async function updateResidentialProperty(id: string, input: UpdateResiden
         ...(input.status === 'active' ? { archivedAt: null } : {}),
       },
       select: residentialPropertySelect,
+    });
+
+    await syncResidentialFacility(tx, {
+      accountId: property.accountId,
+      propertyId: property.id,
+      propertyName: nextName,
+      accountName: existing.account.name,
+      createdByUserId: existing.createdByUser.id,
+      homeAddress: nextServiceAddress,
+      homeProfile: nextHomeProfile,
+      archive: nextStatus === 'archived',
     });
 
     if (property.isPrimary) {
@@ -939,18 +969,23 @@ async function resolveResidentialProperty(propertyId: string, accountId?: string
   return property;
 }
 
-async function ensureResidentialFacility(input: {
-  accountId: string;
-  propertyId: string;
-  propertyName: string;
-  accountName: string;
-  createdByUserId: string;
-  homeAddress: unknown;
-  homeProfile: unknown;
-}) {
-  if (!isAddressPopulated(input.homeAddress)) {
-    throw new BadRequestError('Residential service address is required before contract conversion');
+async function syncResidentialFacility(
+  tx: Prisma.TransactionClient,
+  input: {
+    accountId: string;
+    propertyId: string;
+    propertyName: string;
+    accountName: string;
+    createdByUserId: string;
+    homeAddress: unknown;
+    homeProfile: unknown;
+    archive?: boolean;
   }
+) {
+  const normalizedAddress =
+    input.homeAddress == null
+      ? {}
+      : ((input.homeAddress as Prisma.InputJsonValue) ?? {});
 
   const homeProfile =
     input.homeProfile && typeof input.homeProfile === 'object' && !Array.isArray(input.homeProfile)
@@ -958,7 +993,7 @@ async function ensureResidentialFacility(input: {
       : {};
   const facilityName = input.propertyName.trim() || `${input.accountName} Residence`;
 
-  const existingFacility = await prisma.facility.findFirst({
+  const existingFacility = await tx.facility.findFirst({
     where: {
       OR: [
         { residentialPropertyId: input.propertyId },
@@ -973,45 +1008,56 @@ async function ensureResidentialFacility(input: {
     },
   });
 
+  const facilityData = {
+    name: facilityName,
+    residentialPropertyId: input.propertyId,
+    address: normalizedAddress as Prisma.InputJsonValue,
+    buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
+    accessInstructions: toNullableString(homeProfile.entryNotes),
+    parkingInfo: toNullableString(homeProfile.parkingAccess),
+    specialRequirements: toNullableString(homeProfile.specialInstructions),
+    archivedAt: input.archive ? new Date() : null,
+  } satisfies Prisma.FacilityUncheckedUpdateInput;
+
   if (existingFacility) {
-    const updated = await prisma.facility.update({
+    return tx.facility.update({
       where: { id: existingFacility.id },
-      data: {
-        name: facilityName,
-        residentialPropertyId: input.propertyId,
-        address: input.homeAddress as Prisma.InputJsonValue,
-        buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
-        accessInstructions: toNullableString(homeProfile.entryNotes),
-        parkingInfo: toNullableString(homeProfile.parkingAccess),
-        specialRequirements: toNullableString(homeProfile.specialInstructions),
-        archivedAt: null,
-      },
+      data: facilityData,
       select: {
         id: true,
         name: true,
       },
     });
-
-    return updated;
   }
 
-  return prisma.facility.create({
+  return tx.facility.create({
     data: {
       accountId: input.accountId,
-      residentialPropertyId: input.propertyId,
-      name: facilityName,
-      address: input.homeAddress as Prisma.InputJsonValue,
-      buildingType: toNullableString(homeProfile.homeType) ?? 'residential',
-      accessInstructions: toNullableString(homeProfile.entryNotes),
-      parkingInfo: toNullableString(homeProfile.parkingAccess),
-      specialRequirements: toNullableString(homeProfile.specialInstructions),
       createdByUserId: input.createdByUserId,
+      status: 'active',
+      ...facilityData,
     },
     select: {
       id: true,
       name: true,
     },
   });
+}
+
+async function ensureResidentialFacility(input: {
+  accountId: string;
+  propertyId: string;
+  propertyName: string;
+  accountName: string;
+  createdByUserId: string;
+  homeAddress: unknown;
+  homeProfile: unknown;
+}) {
+  if (!isAddressPopulated(input.homeAddress)) {
+    throw new BadRequestError('Residential service address is required before contract conversion');
+  }
+
+  return syncResidentialFacility(prisma, input);
 }
 
 function applyResidentialQuoteAccessWhere(
