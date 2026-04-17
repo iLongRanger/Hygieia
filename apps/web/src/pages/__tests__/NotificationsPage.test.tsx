@@ -179,4 +179,31 @@ describe('NotificationsPage', () => {
       expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-2');
     });
   });
+
+  it('prefers the appointment record when appointment notifications also include lead and facility metadata', async () => {
+    const user = userEvent.setup();
+    listNotificationsMock.mockResolvedValueOnce([
+      {
+        id: 'n-appointment-1',
+        type: 'appointment_updated',
+        title: 'Appointment updated',
+        body: 'Your walkthrough appointment was updated',
+        metadata: {
+          appointmentId: 'appt-42',
+          leadId: 'lead-5',
+          facilityId: 'facility-7',
+        },
+        readAt: null,
+        emailSent: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    render(<NotificationsPage />);
+    await user.click(await screen.findByText('Appointment updated'));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/appointments/appt-42');
+    });
+  });
 });

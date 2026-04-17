@@ -65,6 +65,9 @@ export function getNotificationRoute(notification: Notification): string | null 
   const quotationId = getStringDeep(meta, ['quotationId', 'quotation_id']);
   if (quotationId) return `/quotations/${quotationId}`;
 
+  const appointmentId = getStringDeep(meta, ['appointmentId', 'appointment_id']);
+  if (appointmentId) return `/appointments/${appointmentId}`;
+
   const leadId = getStringDeep(meta, ['leadId', 'lead_id']);
   if (leadId) return `/leads/${leadId}`;
 
@@ -73,9 +76,6 @@ export function getNotificationRoute(notification: Notification): string | null 
 
   const facilityId = getStringDeep(meta, ['facilityId', 'facility_id']);
   if (facilityId) return `/facilities/${facilityId}`;
-
-  const appointmentId = getStringDeep(meta, ['appointmentId', 'appointment_id']);
-  if (appointmentId) return `/appointments/${appointmentId}`;
 
   return null;
 }
