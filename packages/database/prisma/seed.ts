@@ -1,5 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 import * as bcrypt from 'bcrypt'
+import {
+  RESIDENTIAL_AREA_TEMPLATE_FIXTURES,
+  RESIDENTIAL_AREA_TYPES,
+  RESIDENTIAL_FIXTURE_TYPES,
+  RESIDENTIAL_TASK_TEMPLATE_SEEDS,
+} from './seeds/residentialCleaning'
 
 const prisma = new PrismaClient()
 
@@ -59,58 +65,90 @@ async function main() {
   console.log(`Created ${roles.count} system roles`)
 
   // Seed commercial area types
+  const sharedAreaTypeNames = new Set(['Hallway', 'Kitchen'])
+  const commercialAreaTypeSeeds: { name: string; scope: 'commercial' | 'both' }[] = [
+    'Break Room',
+    'Cafeteria',
+    'Changing Room',
+    'Classroom',
+    'Clinic Room',
+    'Conference Room',
+    'Copy Room',
+    'Corridor',
+    'Cubicle Area',
+    'Dining Area',
+    'Electrical Room',
+    'Elevator Lobby',
+    'Exam Room',
+    'Gym',
+    'Hallway',
+    'Janitor Closet',
+    'Kitchen',
+    'Lab',
+    'Loading Dock',
+    'Locker Room',
+    'Lobby',
+    'Lounge',
+    'Mail Room',
+    'Manufacturing Floor',
+    'Mechanical Room',
+    'Meeting Room',
+    'Office',
+    'Open Workspace',
+    'Pantry',
+    'Private Office',
+    'Reception',
+    'Retail Floor',
+    'Security Room',
+    'Server Room',
+    'Shower Room',
+    'Showroom',
+    'Stairwell',
+    'Storage Room',
+    'Stockroom',
+    'Supply Closet',
+    'Training Room',
+    'Waiting Area',
+    'Warehouse',
+    'Washroom',
+    'Workshop',
+  ].map((name) => ({
+    name,
+    scope: sharedAreaTypeNames.has(name) ? 'both' : 'commercial',
+  }))
+
   const areaTypes = await prisma.areaType.createMany({
-    data: [
-      { name: 'Break Room' },
-      { name: 'Cafeteria' },
-      { name: 'Changing Room' },
-      { name: 'Classroom' },
-      { name: 'Clinic Room' },
-      { name: 'Conference Room' },
-      { name: 'Copy Room' },
-      { name: 'Corridor' },
-      { name: 'Cubicle Area' },
-      { name: 'Dining Area' },
-      { name: 'Electrical Room' },
-      { name: 'Elevator Lobby' },
-      { name: 'Exam Room' },
-      { name: 'Gym' },
-      { name: 'Hallway' },
-      { name: 'Janitor Closet' },
-      { name: 'Kitchen' },
-      { name: 'Lab' },
-      { name: 'Loading Dock' },
-      { name: 'Locker Room' },
-      { name: 'Lobby' },
-      { name: 'Lounge' },
-      { name: 'Mail Room' },
-      { name: 'Manufacturing Floor' },
-      { name: 'Mechanical Room' },
-      { name: 'Meeting Room' },
-      { name: 'Office' },
-      { name: 'Open Workspace' },
-      { name: 'Pantry' },
-      { name: 'Private Office' },
-      { name: 'Reception' },
-      { name: 'Retail Floor' },
-      { name: 'Security Room' },
-      { name: 'Server Room' },
-      { name: 'Shower Room' },
-      { name: 'Showroom' },
-      { name: 'Stairwell' },
-      { name: 'Storage Room' },
-      { name: 'Stockroom' },
-      { name: 'Supply Closet' },
-      { name: 'Training Room' },
-      { name: 'Waiting Area' },
-      { name: 'Warehouse' },
-      { name: 'Washroom' },
-      { name: 'Workshop' }
-    ],
+    data: commercialAreaTypeSeeds,
     skipDuplicates: true
   })
 
   console.log(`Created ${areaTypes.count} commercial area types`)
+
+  for (const areaType of commercialAreaTypeSeeds) {
+    await prisma.areaType.updateMany({
+      where: { name: areaType.name },
+      data: { scope: areaType.scope },
+    })
+  }
+
+  for (const areaType of RESIDENTIAL_AREA_TYPES) {
+    await prisma.areaType.upsert({
+      where: { name: areaType.name },
+      update: {
+        description: areaType.description,
+        scope: areaType.scope,
+        guidanceItems: areaType.guidanceItems,
+      },
+      create: {
+        name: areaType.name,
+        description: areaType.description,
+        scope: areaType.scope,
+        guidanceItems: areaType.guidanceItems,
+      },
+    })
+  }
+
+  console.log(`Ensured ${RESIDENTIAL_AREA_TYPES.length} residential area types`)
 
   // Seed inspector guidance checklists per area type
   const areaTypeGuidance: Record<string, string[]> = {
@@ -193,6 +231,9 @@ async function main() {
       'Trash emptied and liners replaced',
       'Dispensers stocked (wipes, sanitizer)',
     ],
+    ...Object.fromEntries(
+      RESIDENTIAL_AREA_TYPES.map((areaType) => [areaType.name, areaType.guidanceItems])
+    ),
   }
 
   // Generic guidance for all remaining area types
@@ -219,7 +260,7 @@ async function main() {
 
   console.log(`Updated guidance items for ${allAreaTypeRows.length} area types`)
 
-  // Seed commercial fixture and furniture types
+  // Seed fixture and furniture types
   const fixtureTypes = await prisma.fixtureType.createMany({
     data: [
       // Furniture
@@ -265,12 +306,13 @@ async function main() {
       { name: 'Wall Mounted TV', category: 'fixture' },
       { name: 'Water Fountain', category: 'fixture' },
       { name: 'Whiteboard', category: 'fixture' },
-      { name: 'Window', category: 'fixture' }
+      { name: 'Window', category: 'fixture' },
+      ...RESIDENTIAL_FIXTURE_TYPES
     ],
     skipDuplicates: true
   })
 
-  console.log(`Created ${fixtureTypes.count} commercial fixture types`)
+  console.log(`Created ${fixtureTypes.count} fixture types`)
 
   // Seed common lead sources
   const leadSources = await prisma.leadSource.createMany({
@@ -466,7 +508,7 @@ async function main() {
 
   console.log('Ensured Standard Residential pricing plan exists')
 
-  const taskTemplateSeeds = [
+  const commercialTaskTemplateSeeds = [
     // Daily
     {
       name: 'Disinfect High-Touch Surfaces',
@@ -991,6 +1033,17 @@ async function main() {
     }
   ]
 
+  const taskTemplateSeeds = [
+    ...commercialTaskTemplateSeeds.map((task) => ({
+      ...task,
+      scope:
+        task.areaTypeName && sharedAreaTypeNames.has(task.areaTypeName)
+          ? ('both' as const)
+          : ('commercial' as const),
+    })),
+    ...RESIDENTIAL_TASK_TEMPLATE_SEEDS,
+  ]
+
   const areaTypeNames = Array.from(
     new Set(
       taskTemplateSeeds
@@ -1018,6 +1071,7 @@ async function main() {
 
   const taskTemplatesData = taskTemplateSeeds.map((task) => ({
     name: task.name,
+    scope: task.scope,
     cleaningType: task.cleaningType,
     areaTypeId: task.areaTypeName
       ? (areaTypeMap.get(task.areaTypeName) ?? null)
@@ -1060,42 +1114,38 @@ async function main() {
       data: newTaskTemplates
     })
 
-    console.log(`Created ${createdTasks.count} commercial task templates`)
+    console.log(`Created ${createdTasks.count} global task templates`)
   } else {
-    console.log('No new commercial task templates to create')
+    console.log('No new global task templates to create')
   }
 
-  // Update existing global templates that still have all-zero time values
-  let updatedTimeCount = 0
+  // Sync existing global templates to the current seed definition
+  let syncedTaskTemplateCount = 0
   for (const task of taskTemplateSeeds) {
-    if (task.baseMinutes || task.perSqftMinutes || task.perUnitMinutes || task.perRoomMinutes) {
-      const areaTypeId = task.areaTypeName
-        ? (areaTypeMap.get(task.areaTypeName) ?? null)
-        : null
-      const result = await prisma.taskTemplate.updateMany({
-        where: {
-          name: task.name,
-          cleaningType: task.cleaningType,
-          isGlobal: true,
-          areaTypeId: areaTypeId,
-          baseMinutes: { lte: 0 },
-          perSqftMinutes: { lte: 0 },
-          perUnitMinutes: { lte: 0 },
-          perRoomMinutes: { lte: 0 },
-        },
-        data: {
-          baseMinutes: task.baseMinutes ?? 0,
-          perSqftMinutes: task.perSqftMinutes ?? 0,
-          perUnitMinutes: task.perUnitMinutes ?? 0,
-          perRoomMinutes: task.perRoomMinutes ?? 0,
-        },
-      })
-      updatedTimeCount += result.count
-    }
+    const areaTypeId = task.areaTypeName
+      ? (areaTypeMap.get(task.areaTypeName) ?? null)
+      : null
+    const result = await prisma.taskTemplate.updateMany({
+      where: {
+        name: task.name,
+        cleaningType: task.cleaningType,
+        isGlobal: true,
+        areaTypeId: areaTypeId,
+      },
+      data: {
+        scope: task.scope,
+        baseMinutes: task.baseMinutes ?? 0,
+        perSqftMinutes: task.perSqftMinutes ?? 0,
+        perUnitMinutes: task.perUnitMinutes ?? 0,
+        perRoomMinutes: task.perRoomMinutes ?? 0,
+        instructions: task.instructions,
+      },
+    })
+    syncedTaskTemplateCount += result.count
   }
 
-  if (updatedTimeCount > 0) {
-    console.log(`Updated ISSA cleaning times on ${updatedTimeCount} existing task templates`)
+  if (syncedTaskTemplateCount > 0) {
+    console.log(`Synced ${syncedTaskTemplateCount} existing global task templates`)
   }
 
   const areaTemplateFixtureMap: Record<string, string[]> = {
@@ -1322,11 +1372,12 @@ async function main() {
       'Trash Can',
       'Light Fixture',
       'Fire Extinguisher'
-    ]
+    ],
+    ...RESIDENTIAL_AREA_TEMPLATE_FIXTURES
   }
 
   const areaTypesForTemplates = await prisma.areaType.findMany({
-    select: { id: true, name: true }
+    select: { id: true, name: true, scope: true }
   })
 
   const existingTemplates = await prisma.areaTemplate.findMany({
@@ -1362,7 +1413,7 @@ async function main() {
       facilityId: null,
       isActive: true
     },
-    select: { id: true, name: true, cleaningType: true, areaTypeId: true }
+    select: { id: true, name: true, cleaningType: true, areaTypeId: true, scope: true }
   })
 
   const generalTaskTemplates = taskTemplateRows.filter(
@@ -1402,6 +1453,17 @@ async function main() {
     return a.name.localeCompare(b.name)
   }
 
+  const taskScopeMatchesAreaScope = (
+    areaScope: 'residential' | 'commercial' | 'both',
+    taskScope: 'residential' | 'commercial' | 'both'
+  ) => {
+    if (areaScope === 'both') {
+      return taskScope === 'both'
+    }
+
+    return taskScope === areaScope || taskScope === 'both'
+  }
+
   let createdAreaTemplates = 0
   let backfilledAreaTemplateItems = 0
   let backfilledAreaTemplateTasks = 0
@@ -1423,12 +1485,17 @@ async function main() {
       sortOrder: index
     }))
 
-    const areaSpecificTasks = tasksByAreaTypeId.get(areaType.id) || []
+    const areaSpecificTasks = (tasksByAreaTypeId.get(areaType.id) || []).filter((task) =>
+      taskScopeMatchesAreaScope(areaType.scope, task.scope)
+    )
     const taskNameSet = new Set(
       areaSpecificTasks.map((task) => task.name.toLowerCase())
     )
     const combinedTasks = [...areaSpecificTasks]
     for (const task of generalTaskTemplates) {
+      if (!taskScopeMatchesAreaScope(areaType.scope, task.scope)) {
+        continue
+      }
       const key = task.name.toLowerCase()
       if (taskNameSet.has(key)) continue
       combinedTasks.push(task)
