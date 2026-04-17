@@ -106,6 +106,10 @@ const combineLocalDateAndTime = (date: string, time: string): string => `${date}
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function getAppointmentLocationLabel(item: Appointment): 'Property' | 'Facility' {
+  return item.account?.type === 'residential' && item.type === 'walk_through' ? 'Property' : 'Facility';
+}
+
 const AppointmentsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -499,10 +503,12 @@ const AppointmentsPage = () => {
       const leadName = appointment.lead?.companyName || appointment.lead?.contactName || '';
       const accountName = appointment.account?.name || '';
       const assignee = appointment.assignedToUser.fullName || '';
+      const appointmentLocation = appointment.facility?.name || '';
       return (
         leadName.toLowerCase().includes(term) ||
         accountName.toLowerCase().includes(term) ||
-        assignee.toLowerCase().includes(term)
+        assignee.toLowerCase().includes(term) ||
+        appointmentLocation.toLowerCase().includes(term)
       );
     });
   }, [appointments, search]);
@@ -776,6 +782,19 @@ const AppointmentsPage = () => {
         <span className="text-surface-700 dark:text-surface-300">
           {item.type.replace('_', ' ')}
         </span>
+      ),
+    },
+    {
+      header: 'Location',
+      cell: (item: Appointment) => (
+        <div className="text-surface-700 dark:text-surface-300">
+          <div className="font-medium">
+            {item.facility?.name || '—'}
+          </div>
+          <div className="text-sm text-surface-500 dark:text-surface-400">
+            {getAppointmentLocationLabel(item)}
+          </div>
+        </div>
       ),
     },
     {

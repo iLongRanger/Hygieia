@@ -51,6 +51,12 @@ const getTypeVariant = (type: string): 'default' | 'success' | 'warning' | 'erro
   }
 };
 
+const getAppointmentLocationLabel = (appointment: Appointment): 'Property' | 'Facility' => (
+  appointment.account?.type === 'residential' && appointment.type === 'walk_through'
+    ? 'Property'
+    : 'Facility'
+);
+
 const AppointmentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -100,6 +106,7 @@ const AppointmentDetail = () => {
     appointment.lead?.contactName ||
     appointment.account?.name ||
     'Unknown';
+  const locationLabel = getAppointmentLocationLabel(appointment);
 
   return (
     <div className="space-y-6">
@@ -167,6 +174,15 @@ const AppointmentDetail = () => {
                   </span>
                 </div>
               )}
+              {appointment.facility && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="h-4 w-4 text-surface-400" />
+                  <span className="text-surface-500 dark:text-surface-400">{locationLabel}: </span>
+                  <span className="text-surface-700 dark:text-surface-300">
+                    {appointment.facility.name}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-surface-400" />
                 <span className="text-surface-500 dark:text-surface-400">Assigned to: </span>
@@ -221,6 +237,15 @@ const AppointmentDetail = () => {
                     {appointment.account.name}
                   </button>
                   <Badge variant="default" size="sm">{appointment.account.type}</Badge>
+                </div>
+              )}
+              {appointment.facility && (
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-surface-400" />
+                  <span className="text-surface-500 dark:text-surface-400">{locationLabel}: </span>
+                  <span className="text-surface-700 dark:text-surface-300">
+                    {appointment.facility.name}
+                  </span>
                 </div>
               )}
               {appointment.inspection && (

@@ -124,6 +124,7 @@ describe('AppointmentsPage', () => {
 
       expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
       expect(screen.getByText('Rep One')).toBeInTheDocument();
+      expect(screen.getByText('Facility')).toBeInTheDocument();
       expect(listAppointmentsMock).toHaveBeenCalledWith({
         leadId: undefined,
         accountId: undefined,
@@ -261,10 +262,13 @@ describe('AppointmentsPage', () => {
 
       await user.click(screen.getByRole('button', { name: /schedule appointment/i }));
       await user.selectOptions(await screen.findByLabelText(/^lead$/i), 'lead-1');
-      await user.click(screen.getByLabelText(/facility/i));
+      const facilitySelect = screen.getByLabelText(/facility/i);
 
-      expect(await screen.findByText('Open Facility')).toBeInTheDocument();
-      expect(screen.queryByText('Booked Facility')).not.toBeInTheDocument();
+      expect(await screen.findByRole('option', { name: 'Open Facility' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('option', { name: 'Booked Facility' })
+      ).not.toBeInTheDocument();
+      expect(facilitySelect).toBeInTheDocument();
     });
 
     it('shows properties for residential walkthroughs and submits the linked facility id', async () => {
@@ -350,6 +354,21 @@ describe('AppointmentsPage', () => {
           })
         );
       });
+    });
+
+    it('marks residential walkthrough locations as properties in the table', async () => {
+      listAppointmentsMock.mockResolvedValue([
+        {
+          ...mockAppointment,
+          account: { id: 'account-1', name: 'Jane Doe Residence', type: 'residential' },
+          facility: { id: 'facility-property-1', name: 'Maple Street Home' },
+        },
+      ]);
+
+      await renderAppointmentsPage();
+
+      expect(await screen.findByText('Maple Street Home')).toBeInTheDocument();
+      expect(screen.getByText('Property')).toBeInTheDocument();
     });
   });
 
