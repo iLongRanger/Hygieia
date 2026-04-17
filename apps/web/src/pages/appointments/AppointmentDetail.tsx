@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-
   Calendar,
   Clock,
   MapPin,
@@ -10,14 +9,17 @@ import {
   Building2,
   FileText,
   Link2,
+  Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
+import { PERMISSIONS } from '../../lib/permissions';
 import { getAppointment } from '../../lib/appointments';
 import type { Appointment, AppointmentStatus } from '../../types/crm';
+import { useAuthStore } from '../../stores/authStore';
 
 const getStatusVariant = (status: AppointmentStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   switch (status) {
@@ -60,8 +62,10 @@ const getAppointmentLocationLabel = (appointment: Appointment): 'Property' | 'Fa
 const AppointmentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
+  const canWriteAppointments = hasPermission(PERMISSIONS.APPOINTMENTS_WRITE);
 
   const fetchAppointment = useCallback(async () => {
     if (!id) return;
@@ -138,6 +142,15 @@ const AppointmentDetail = () => {
             </p>
           </div>
         </div>
+        {canWriteAppointments ? (
+          <Button
+            variant="secondary"
+            onClick={() => navigate(`/appointments?edit=${appointment.id}`)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Appointment
+          </Button>
+        ) : null}
       </div>
 
       {/* Info cards */}

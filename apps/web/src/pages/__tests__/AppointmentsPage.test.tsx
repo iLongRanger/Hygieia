@@ -7,6 +7,7 @@ import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-util
 
 const navigateMock = vi.fn();
 const listAppointmentsMock = vi.fn();
+const getAppointmentMock = vi.fn();
 const createAppointmentMock = vi.fn();
 const updateAppointmentMock = vi.fn();
 const deleteAppointmentMock = vi.fn();
@@ -18,6 +19,7 @@ const listResidentialPropertiesMock = vi.fn();
 
 vi.mock('../../lib/appointments', () => ({
   listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
+  getAppointment: (...args: unknown[]) => getAppointmentMock(...args),
   createAppointment: (...args: unknown[]) => createAppointmentMock(...args),
   updateAppointment: (...args: unknown[]) => updateAppointmentMock(...args),
   deleteAppointment: (...args: unknown[]) => deleteAppointmentMock(...args),
@@ -104,6 +106,7 @@ describe('AppointmentsPage', () => {
     });
     listAppointmentsMock.mockReset();
     createAppointmentMock.mockReset();
+    getAppointmentMock.mockReset();
     updateAppointmentMock.mockReset();
     deleteAppointmentMock.mockReset();
     listLeadsMock.mockReset();
@@ -115,6 +118,7 @@ describe('AppointmentsPage', () => {
 
     // Default mock responses
     listAppointmentsMock.mockResolvedValue([]);
+    getAppointmentMock.mockResolvedValue(mockAppointment);
     listLeadsMock.mockResolvedValue({ data: [] });
     listUsersMock.mockResolvedValue({ data: [] });
     listContractsMock.mockResolvedValue({ data: [] });
@@ -185,6 +189,18 @@ describe('AppointmentsPage', () => {
       await renderAppointmentsPage();
 
       expect(screen.queryByRole('button', { name: /schedule appointment/i })).not.toBeInTheDocument();
+    });
+
+    it('opens the edit modal when the route includes an edit appointment query', async () => {
+      await renderAppointmentsPage('/appointments?edit=appt-1');
+
+      await waitFor(() => {
+        expect(getAppointmentMock).toHaveBeenCalledWith('appt-1');
+      });
+
+      expect(await screen.findByText('Edit Appointment')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/assigned rep/i)).toBeInTheDocument();
     });
 
     it('only shows owner admin and manager users in assigned rep options', async () => {

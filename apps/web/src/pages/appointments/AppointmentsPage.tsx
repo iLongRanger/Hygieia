@@ -13,7 +13,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { DayCalendar, MonthCalendar, WeekCalendar } from '../../components/calendar';
 import { ClientProfileModal } from '../../components/appointments/ClientProfileModal';
-import { listAppointments, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
+import { listAppointments, getAppointment, createAppointment, updateAppointment, deleteAppointment } from '../../lib/appointments';
 import { listLeads } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
 import { listContracts } from '../../lib/contracts';
@@ -112,7 +112,7 @@ function getAppointmentLocationLabel(item: Appointment): 'Property' | 'Facility'
 
 const AppointmentsPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [walkthroughAppointments, setWalkthroughAppointments] = useState<Appointment[]>([]);
@@ -595,7 +595,7 @@ const AppointmentsPage = () => {
     }
   };
 
-  const openEditModal = (appointment: Appointment) => {
+  const openEditModal = useCallback((appointment: Appointment) => {
     if (!canWriteAppointments) {
       navigate(`/appointments/${appointment.id}`);
       return;
@@ -618,11 +618,45 @@ const AppointmentsPage = () => {
       notes: appointment.notes || '',
     });
     setShowEditModal(true);
-  };
+  }, [canWriteAppointments, navigate]);
 
   const handleCalendarEdit = (appointment: Appointment) => {
     navigate(`/appointments/${appointment.id}`);
   };
+
+  useEffect(() => {
+    const editAppointmentId = searchParams.get('edit');
+    if (!editAppointmentId || !canWriteAppointments) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const openRequestedAppointment = async () => {
+      try {
+        const appointment = await getAppointment(editAppointmentId);
+        if (cancelled) {
+          return;
+        }
+
+        openEditModal(appointment);
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('edit');
+        setSearchParams(nextParams, { replace: true });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load appointment for editing:', error);
+          toast.error('Failed to open appointment editor');
+        }
+      }
+    };
+
+    void openRequestedAppointment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canWriteAppointments, openEditModal, searchParams, setSearchParams]);
 
   const handleUpdate = async () => {
     if (!canWriteAppointments) {
