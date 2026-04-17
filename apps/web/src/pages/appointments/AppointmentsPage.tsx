@@ -621,12 +621,7 @@ const AppointmentsPage = () => {
   };
 
   const handleCalendarEdit = (appointment: Appointment) => {
-    const linkedInspectionId = appointment.inspection?.id || appointment.inspectionId;
-    if (appointment.type === 'inspection' && linkedInspectionId) {
-      navigate(`/inspections/${linkedInspectionId}`);
-      return;
-    }
-    openEditModal(appointment);
+    navigate(`/appointments/${appointment.id}`);
   };
 
   const handleUpdate = async () => {

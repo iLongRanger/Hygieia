@@ -5,6 +5,7 @@ import AppointmentsPage from '../appointments/AppointmentsPage';
 import { useAuthStore } from '../../stores/authStore';
 import { getDateRange, getDayRange, getWeekRange } from '../../lib/calendar-utils';
 
+const navigateMock = vi.fn();
 const listAppointmentsMock = vi.fn();
 const createAppointmentMock = vi.fn();
 const updateAppointmentMock = vi.fn();
@@ -41,6 +42,14 @@ vi.mock('../../lib/facilities', () => ({
 vi.mock('../../lib/residential', () => ({
   listResidentialProperties: (...args: unknown[]) => listResidentialPropertiesMock(...args),
 }));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 const mockAppointment = {
   id: 'appt-1',
@@ -102,6 +111,7 @@ describe('AppointmentsPage', () => {
     listContractsMock.mockReset();
     listFacilitiesMock.mockReset();
     listResidentialPropertiesMock.mockReset();
+    navigateMock.mockReset();
 
     // Default mock responses
     listAppointmentsMock.mockResolvedValue([]);
@@ -485,6 +495,25 @@ describe('AppointmentsPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Acme Corp')).toBeInTheDocument();
       });
+    });
+
+    it('navigates to the appointment record when a calendar appointment is clicked', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('appointments_view_mode', 'calendar');
+      const today = new Date();
+      const appointmentForCurrentMonth = {
+        ...mockAppointment,
+        scheduledStart: new Date(today.getFullYear(), today.getMonth(), 15, 10, 0).toISOString(),
+        scheduledEnd: new Date(today.getFullYear(), today.getMonth(), 15, 11, 0).toISOString(),
+      };
+      listAppointmentsMock.mockResolvedValue([appointmentForCurrentMonth]);
+
+      await renderAppointmentsPage();
+
+      const appointmentButton = await screen.findByRole('button', { name: /10:00 am/i });
+      await user.click(appointmentButton);
+
+      expect(navigateMock).toHaveBeenCalledWith('/appointments/appt-1');
     });
 
     it('fetches appointments with date range for calendar view', async () => {
