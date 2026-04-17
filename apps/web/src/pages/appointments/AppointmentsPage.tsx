@@ -33,6 +33,12 @@ import { useAuthStore } from '../../stores/authStore';
 type ViewMode = 'table' | 'calendar';
 type CalendarView = 'month' | 'week' | 'day';
 type CalendarLayout = 'grid' | 'list';
+type AppointmentLocationKind = 'facility' | 'property';
+interface AppointmentLocationOption {
+  value: string;
+  label: string;
+  kind: AppointmentLocationKind;
+}
 
 const VIEW_MODE_KEY = 'appointments_view_mode';
 const CALENDAR_VIEW_KEY = 'appointments_calendar_view';
@@ -345,18 +351,16 @@ const AppointmentsPage = () => {
     [formData.leadId, leads]
   );
 
-  const selectedWalkthroughAccountType =
+  const selectedAccountId =
+    formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
+  const selectedAccountType =
     formData.type === 'walk_through'
       ? selectedLead?.convertedToAccount?.type ?? selectedLead?.type ?? null
-      : null;
-
-  const isResidentialWalkthrough =
-    formData.type === 'walk_through' && selectedWalkthroughAccountType === 'residential';
-
-  const appointmentAccountId =
-    formData.type === 'walk_through' ? selectedLead?.convertedToAccountId || '' : formData.accountId;
+      : activeAccounts.find((account) => account.id === formData.accountId)?.type ?? null;
+  const selectedLocationKind: AppointmentLocationKind =
+    selectedAccountType === 'residential' ? 'property' : 'facility';
   const scopedAppointmentAccountId =
-    appointmentAccountId && UUID_PATTERN.test(appointmentAccountId) ? appointmentAccountId : '';
+    selectedAccountId && UUID_PATTERN.test(selectedAccountId) ? selectedAccountId : '';
 
   useEffect(() => {
     if (!scopedAppointmentAccountId) {
@@ -403,10 +407,39 @@ const AppointmentsPage = () => {
     );
   }, [formData.facilityId, formData.type, walkthroughAppointments]);
 
-  const filteredFacilities = useMemo(
-    () =>
-      facilities.filter((facility) => {
-        if (facility.account?.id !== appointmentAccountId) {
+  const availableLocationOptions = useMemo<AppointmentLocationOption[]>(() => {
+    if (!selectedAccountId) {
+      return [];
+    }
+
+    if (selectedLocationKind === 'property') {
+      return properties
+        .filter((property) => {
+          if (property.accountId !== selectedAccountId) {
+            return false;
+          }
+
+          const linkedFacilityId = property.facility?.id;
+          if (!linkedFacilityId) {
+            return false;
+          }
+
+          if (formData.type !== 'walk_through') {
+            return true;
+          }
+
+          return !walkthroughBookedFacilityIds.has(linkedFacilityId);
+        })
+        .map((property) => ({
+          value: property.facility!.id,
+          label: property.name,
+          kind: 'property',
+        }));
+    }
+
+    return facilities
+      .filter((facility) => {
+        if (facility.account?.id !== selectedAccountId) {
           return false;
         }
 
@@ -415,47 +448,27 @@ const AppointmentsPage = () => {
         }
 
         return !walkthroughBookedFacilityIds.has(facility.id);
-      }),
-    [appointmentAccountId, facilities, formData.type, walkthroughBookedFacilityIds]
+      })
+      .map((facility) => ({
+        value: facility.id,
+        label: facility.name,
+        kind: 'facility',
+      }));
+  }, [
+    facilities,
+    formData.type,
+    properties,
+    selectedAccountId,
+    selectedLocationKind,
+    walkthroughBookedFacilityIds,
+  ]);
+
+  const selectedLocationOption = useMemo(
+    () => availableLocationOptions.find((option) => option.value === formData.facilityId) || null,
+    [availableLocationOptions, formData.facilityId]
   );
-
-  const filteredProperties = useMemo(
-    () =>
-      properties.filter((property) => {
-        if (property.accountId !== appointmentAccountId) {
-          return false;
-        }
-
-        const linkedFacilityId = property.facility?.id;
-        if (!linkedFacilityId) {
-          return false;
-        }
-
-        if (formData.type !== 'walk_through') {
-          return true;
-        }
-
-        return !walkthroughBookedFacilityIds.has(linkedFacilityId);
-      }),
-    [appointmentAccountId, formData.type, properties, walkthroughBookedFacilityIds]
-  );
-
-  const selectedProperty = useMemo(
-    () => properties.find((property) => property.facility?.id === formData.facilityId) || null,
-    [formData.facilityId, properties]
-  );
-
-  const locationFieldLabel = isResidentialWalkthrough ? 'Property' : 'Facility';
-  const locationFieldPlaceholder = isResidentialWalkthrough ? 'Select property' : 'Select facility';
-  const locationFieldOptions = isResidentialWalkthrough
-    ? filteredProperties.map((property) => ({
-      value: property.facility!.id,
-      label: property.name,
-    }))
-    : filteredFacilities.map((facility) => ({
-      value: facility.id,
-      label: facility.name,
-    }));
+  const locationFieldLabel = selectedLocationKind === 'property' ? 'Property' : 'Facility';
+  const locationFieldPlaceholder = selectedLocationKind === 'property' ? 'Select property' : 'Select facility';
 
   const convertedLeads = useMemo(
     () => leads.filter((lead) => Boolean(lead.convertedToAccountId)),
@@ -529,7 +542,7 @@ const AppointmentsPage = () => {
     }
 
     if (!formData.facilityId) {
-      toast.error(`Please select a ${isResidentialWalkthrough ? 'property' : 'facility'}`);
+      toast.error(`Please select a ${locationFieldLabel.toLowerCase()}`);
       return;
     }
 
@@ -1131,16 +1144,16 @@ const AppointmentsPage = () => {
             />
           )}
 
-          <Select
-            label={locationFieldLabel}
-            placeholder={locationFieldPlaceholder}
-            options={locationFieldOptions}
-            value={formData.facilityId}
-            onChange={(value) => setFormData({ ...formData, facilityId: value })}
-            hint={isResidentialWalkthrough && selectedProperty
-              ? `Walkthrough will be saved to the linked operational scope for ${selectedProperty.name}.`
-              : undefined}
-          />
+            <Select
+              label={locationFieldLabel}
+              placeholder={locationFieldPlaceholder}
+              options={availableLocationOptions}
+              value={formData.facilityId}
+              onChange={(value) => setFormData({ ...formData, facilityId: value })}
+              hint={selectedLocationKind === 'property' && selectedLocationOption
+                ? `Walkthrough will be saved to the linked operational scope for ${selectedLocationOption.label}.`
+                : undefined}
+            />
 
           <Select
             label="Assigned Rep"
@@ -1264,11 +1277,11 @@ const AppointmentsPage = () => {
           <Select
             label={locationFieldLabel}
             placeholder={locationFieldPlaceholder}
-            options={locationFieldOptions}
+            options={availableLocationOptions}
             value={formData.facilityId}
             onChange={(value) => setFormData({ ...formData, facilityId: value })}
-            hint={isResidentialWalkthrough && selectedProperty
-              ? `Editing the walkthrough for ${selectedProperty.name} updates its linked operational scope.`
+            hint={selectedLocationKind === 'property' && selectedLocationOption
+              ? `Editing the walkthrough for ${selectedLocationOption.label} updates its linked operational scope.`
               : undefined}
           />
 
