@@ -1015,7 +1015,7 @@ describe('AccountDetail', () => {
     expect(screen.queryByRole('heading', { name: /task manager/i })).not.toBeInTheDocument();
     await userEventInstance.click(screen.getByRole('button', { name: /open facility/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/facilities/facility-1', {
+    expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
       state: {
         backLabel: 'Birch Residence',
         backPath: '/residential/accounts/account-res-4',

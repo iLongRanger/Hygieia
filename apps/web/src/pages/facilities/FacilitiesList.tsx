@@ -294,7 +294,9 @@ const FacilitiesList = () => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/facilities/${item.id}`, { state: { backLabel: 'Facilities', backPath: '/facilities' } });
+              navigate(`/service-locations/${item.id}`, {
+                state: { backLabel: 'Service Locations', backPath: '/service-locations' },
+              });
             }}
           >
             View
@@ -330,10 +332,10 @@ const FacilitiesList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Facilities</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Service Locations</h1>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Facility
+          Add Service Location
         </Button>
       </div>
 
@@ -342,7 +344,7 @@ const FacilitiesList = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="w-full max-w-sm">
               <Input
-                placeholder="Search facilities..."
+                placeholder="Search service locations..."
                 icon={<Search className="h-4 w-4" />}
                 value={search}
                 onChange={(e) => {
@@ -417,13 +419,16 @@ const FacilitiesList = () => {
           data={facilities}
           columns={columns}
           isLoading={loading}
-          onRowClick={(item) => navigate(`/facilities/${item.id}`, { state: { backLabel: 'Facilities', backPath: '/facilities' } })}
+          onRowClick={(item) =>
+            navigate(`/service-locations/${item.id}`, {
+              state: { backLabel: 'Service Locations', backPath: '/service-locations' },
+            })}
         />
 
         <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
           <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
-              Showing {facilities.length} of {total} facilities
+              Showing {facilities.length} of {total} service locations
             </span>
             <div className="flex gap-2">
               <Button
@@ -450,7 +455,7 @@ const FacilitiesList = () => {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Add New Facility"
+        title="Add New Service Location"
         size="lg"
       >
         <div className="space-y-4">
@@ -463,8 +468,8 @@ const FacilitiesList = () => {
           />
 
           <Input
-            label="Facility Name"
-            placeholder="Enter facility name"
+            label="Service Location Name"
+            placeholder="Enter service location name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             maxLength={maxLengths.name}
@@ -562,7 +567,7 @@ const FacilitiesList = () => {
 
           <Textarea
             label="Notes"
-            placeholder="Additional notes about this facility..."
+            placeholder="Additional notes about this service location..."
             value={formData.notes || ''}
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value || null })
@@ -583,7 +588,7 @@ const FacilitiesList = () => {
               isLoading={creating}
               disabled={!formData.accountId || !formData.name}
             >
-              Create Facility
+              Create Service Location
             </Button>
           </div>
         </div>
@@ -593,4 +598,3 @@ const FacilitiesList = () => {
 };
 
 export default FacilitiesList;
-

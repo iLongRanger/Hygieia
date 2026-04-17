@@ -75,7 +75,7 @@ export function getNotificationRoute(notification: Notification): string | null 
   if (jobId) return `/jobs/${jobId}`;
 
   const facilityId = getStringDeep(meta, ['facilityId', 'facility_id']);
-  if (facilityId) return `/facilities/${facilityId}`;
+  if (facilityId) return `/service-locations/${facilityId}`;
 
   return null;
 }

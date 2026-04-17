@@ -92,6 +92,14 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.FACILITIES_READ],
   },
   {
+    path: '/service-locations',
+    requiredPermissions: [PERMISSIONS.FACILITIES_READ],
+  },
+  {
+    path: '/service-locations/:id',
+    requiredPermissions: [PERMISSIONS.FACILITIES_READ],
+  },
+  {
     path: '/contacts',
     requiredPermissions: [PERMISSIONS.CONTACTS_READ],
   },
@@ -129,6 +137,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
   },
   {
     path: '/facilities',
+    requiredPermissions: [PERMISSIONS.FACILITIES_READ],
+  },
+  {
+    path: '/facilities/:id',
     requiredPermissions: [PERMISSIONS.FACILITIES_READ],
   },
   {

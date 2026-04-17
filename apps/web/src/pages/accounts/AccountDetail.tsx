@@ -778,7 +778,7 @@ const AccountDetail = () => {
   const navigateToPropertyDetail = (property: ResidentialPropertySummary) =>
     navigate(getPropertyDetailPath(property), accountBackState);
   const navigateToFacilityDetail = (facilityId: string) =>
-    navigate(`/facilities/${facilityId}`, accountBackState);
+    navigate(`/service-locations/${facilityId}`, accountBackState);
 
   const bookingsSection = (
     <Card className="space-y-4">
@@ -975,7 +975,7 @@ const AccountDetail = () => {
                     </>
                   ) : (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount(`/accounts/${account.id}/facilities`)}>
+                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/service-locations')}>
                         Open Service Locations
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>

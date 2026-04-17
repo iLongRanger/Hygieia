@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useParams,
 } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -87,6 +88,11 @@ function withRouteGuard(path: string, element: ReactNode) {
   );
 }
 
+function LegacyFacilityDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/service-locations/${id}` : '/service-locations'} replace />;
+}
+
 function App() {
   return (
     <>
@@ -142,8 +148,10 @@ function App() {
             <Route path="/residential/accounts/:id" element={withRouteGuard('/residential/accounts/:id', <AccountDetail />)} />
             <Route path="/contacts" element={withRouteGuard('/contacts', <ContactsList />)} />
             <Route path="/contacts/:id" element={withRouteGuard('/contacts', <ContactDetail />)} />
-            <Route path="/facilities" element={withRouteGuard('/facilities', <FacilitiesList />)} />
-            <Route path="/facilities/:id" element={withRouteGuard('/facilities', <FacilityDetail />)} />
+            <Route path="/service-locations" element={withRouteGuard('/service-locations', <FacilitiesList />)} />
+            <Route path="/service-locations/:id" element={withRouteGuard('/service-locations/:id', <FacilityDetail />)} />
+            <Route path="/facilities" element={<Navigate to="/service-locations" replace />} />
+            <Route path="/facilities/:id" element={<LegacyFacilityDetailRedirect />} />
             <Route path="/properties" element={withRouteGuard('/properties', <PropertiesList />)} />
             <Route path="/properties/:id" element={withRouteGuard('/properties/:id', <PropertyDetail />)} />
             <Route path="/tasks" element={withRouteGuard('/tasks', <TaskTemplatesList />)} />

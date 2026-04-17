@@ -1341,7 +1341,7 @@ const ProposalForm = () => {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        onClick={() => navigate(`/facilities/${formData.facilityId}`, { state: { backLabel: isEditMode ? 'Edit Proposal' : 'New Proposal', backPath: isEditMode ? `/proposals/${id}/edit` : '/proposals/new' } })}
+                        onClick={() => navigate(`/service-locations/${formData.facilityId}`, { state: { backLabel: isEditMode ? 'Edit Proposal' : 'New Proposal', backPath: isEditMode ? `/proposals/${id}/edit` : '/proposals/new' } })}
                       >
                         Review Facility Details
                       </Button>

@@ -89,15 +89,15 @@ describe('FacilitiesList', () => {
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
   });
 
-  it('creates a facility from the modal', async () => {
+  it('creates a service location from the modal', async () => {
     const user = userEvent.setup();
     render(<FacilitiesList />);
 
-    await user.click(screen.getByRole('button', { name: /add facility/i }));
+    await user.click(screen.getByRole('button', { name: /add service location/i }));
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
-    await user.type(screen.getByLabelText(/facility name/i), 'New Facility');
+    await user.type(screen.getByLabelText(/service location name/i), 'New Facility');
 
-    await user.click(screen.getByRole('button', { name: /create facility/i }));
+    await user.click(screen.getByRole('button', { name: /create service location/i }));
 
     expect(createFacilityMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -111,7 +111,7 @@ describe('FacilitiesList', () => {
     const user = userEvent.setup();
     render(<FacilitiesList />);
 
-    await user.click(screen.getByRole('button', { name: /add facility/i }));
+    await user.click(screen.getByRole('button', { name: /add service location/i }));
 
     expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
     expect(
@@ -123,7 +123,7 @@ describe('FacilitiesList', () => {
     const user = userEvent.setup();
     render(<FacilitiesList />);
 
-    await user.click(screen.getByRole('button', { name: /add facility/i }));
+    await user.click(screen.getByRole('button', { name: /add service location/i }));
     await user.selectOptions(await screen.findByLabelText(/service frequency/i), '3x_week');
 
     const monday = screen.getByLabelText(/mon/i) as HTMLInputElement;

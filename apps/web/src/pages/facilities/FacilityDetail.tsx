@@ -205,7 +205,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     navigate(`/appointments?${params.toString()}`, {
       state: {
         backLabel: facility.name,
-        backPath: isPropertyMode ? `/properties/${id}` : `/facilities/${id}`,
+        backPath: isPropertyMode ? `/properties/${id}` : `/service-locations/${id}`,
       },
     });
   };

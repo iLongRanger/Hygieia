@@ -58,7 +58,7 @@ export function AccountFacilities({
               <div
                 key={facility.id}
                 className="cursor-pointer rounded-lg bg-surface-100 dark:bg-surface-800/10 p-3 transition-colors hover:bg-surface-100 dark:bg-surface-800/20"
-                onClick={() => onNavigate(`/facilities/${facility.id}`)}
+                onClick={() => onNavigate(`/service-locations/${facility.id}`)}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <span className="text-sm font-medium text-surface-900 dark:text-white">

@@ -1341,7 +1341,7 @@ const LeadDetail = () => {
                           variant="secondary"
                           onClick={() => {
                             setShowCompleteModal(false);
-                            navigate(`/facilities/${selectedFacility.id}`, { state: { backLabel: lead.contactName, backPath: `/leads/${lead.id}` } });
+                            navigate(`/service-locations/${selectedFacility.id}`, { state: { backLabel: lead.contactName, backPath: `/leads/${lead.id}` } });
                           }}
                         >
                           Open Facility

@@ -70,7 +70,7 @@ const navSections: NavSection[] = [
       { to: '/leads', icon: Users, label: 'Leads' },
       { to: '/accounts', icon: Building2, label: 'Accounts' },
       { to: '/contacts', icon: Contact, label: 'Contacts' },
-      { to: '/facilities', icon: Warehouse, label: 'Facilities' },
+      { to: '/service-locations', icon: Warehouse, label: 'Service Locations' },
       { to: '/properties', icon: Home, label: 'Properties' },
     ],
   },

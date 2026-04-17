@@ -194,12 +194,12 @@ export function AccountHero({
           className={`!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30${isResidentialAccount ? '' : ' cursor-pointer'}`}
           noPadding
           hover={!isResidentialAccount}
-          onClick={isResidentialAccount ? undefined : () => onNavigate(`/accounts/${account.id}/facilities`)}
+          onClick={isResidentialAccount ? undefined : () => onNavigate('/service-locations')}
         >
           <div className="p-4">
             <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
               <Building className="h-4 w-4 text-gold-400" />
-              <span className="text-xs font-medium">{isResidentialAccount ? 'Service Location' : 'Facilities'}</span>
+              <span className="text-xs font-medium">{isResidentialAccount ? 'Service Location' : 'Service Locations'}</span>
             </div>
             <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
               {isResidentialAccount ? (account.serviceAddress ? '1' : '0') : account._count.facilities}
