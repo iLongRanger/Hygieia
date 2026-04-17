@@ -337,6 +337,57 @@ describe('FacilityDetail', () => {
     );
   });
 
+  it('uses residential area types and task templates for residential accounts on facility routes', async () => {
+    const user = userEvent.setup();
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      account: {
+        ...facility.account,
+        type: 'residential',
+      },
+    });
+    listTaskTemplatesMock.mockResolvedValue({
+      data: [
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-residential',
+          name: 'Wipe nightstands',
+          scope: 'residential',
+        },
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-shared',
+          name: 'Dust baseboards',
+          scope: 'both',
+        },
+        {
+          ...areaSpecificTemplate,
+          id: 'task-template-commercial',
+          name: 'Sanitize cubicles',
+          scope: 'commercial',
+        },
+      ],
+    });
+
+    render(<FacilityDetail />);
+
+    await screen.findByText('Main Facility');
+
+    expect(listAreaTypesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 100,
+        scope: 'residential',
+      })
+    );
+
+    await user.click(screen.getByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add task/i }));
+
+    expect(await screen.findByText('Wipe nightstands')).toBeInTheDocument();
+    expect(screen.getByText('Dust baseboards')).toBeInTheDocument();
+    expect(screen.queryByText('Sanitize cubicles')).not.toBeInTheDocument();
+  });
+
   it('creates a new area from the modal', async () => {
     const user = userEvent.setup();
     render(<FacilityDetail />);

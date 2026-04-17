@@ -105,6 +105,8 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
   const [submittingForProposal, setSubmittingForProposal] = useState(false);
+  const accountType = facility?.account.type ?? property?.account.type ?? null;
+  const isResidentialAccount = accountType === 'residential';
 
   const getPreferredTaskFrequency = useCallback(
     (preferred?: string | null): CleaningFrequency => {
@@ -268,18 +270,19 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     }
   }, [resolvedFacilityId]);
 
-  const fetchAreaTypes = useCallback(async () => {
+  const fetchAreaTypes = useCallback(async (nextAccountType: string | null) => {
+    if (!nextAccountType) return;
     try {
       const response = await listAreaTypes({
         limit: 100,
-        scope: isPropertyMode ? 'residential' : 'commercial',
+        scope: nextAccountType === 'residential' ? 'residential' : 'commercial',
       });
       setAreaTypes(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch area types:', error);
       setAreaTypes([]);
     }
-  }, [isPropertyMode]);
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     if (!resolvedFacilityId) return;
@@ -295,12 +298,15 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     }
   }, [resolvedFacilityId]);
 
-  const fetchTaskTemplates = useCallback(async (isResidentialScope: boolean) => {
+  const fetchTaskTemplates = useCallback(async (nextAccountType: string | null) => {
+    if (!nextAccountType) return;
     try {
       const response = await listTaskTemplates({ isActive: true, limit: 100 });
       const filteredTemplates = (response?.data || []).filter((template) => {
         const scope = template.scope ?? 'both';
-        return isResidentialScope ? scope !== 'commercial' : scope !== 'residential';
+        return nextAccountType === 'residential'
+          ? scope !== 'commercial'
+          : scope !== 'residential';
       });
       setTaskTemplates(filteredTemplates);
     } catch (error) {
@@ -442,7 +448,6 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
         await Promise.all([
           fetchFacility(nextFacilityId),
-          fetchAreaTypes(),
           fetchFixtureTypes(),
         ]);
       } catch (error) {
@@ -459,7 +464,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     return () => {
       cancelled = true;
     };
-  }, [id, isPropertyMode, fetchProperty, fetchFacility, fetchAreaTypes, fetchFixtureTypes, locationLabelLower]);
+  }, [id, isPropertyMode, fetchProperty, fetchFacility, fetchFixtureTypes, locationLabelLower]);
 
   useEffect(() => {
     if (!resolvedFacilityId) return;
@@ -468,9 +473,10 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   }, [resolvedFacilityId, fetchAreas, fetchTasks]);
 
   useEffect(() => {
-    if (!facility) return;
-    fetchTaskTemplates(Boolean(facility.residentialPropertyId));
-  }, [facility, fetchTaskTemplates]);
+    if (!accountType) return;
+    fetchAreaTypes(accountType);
+    fetchTaskTemplates(accountType);
+  }, [accountType, fetchAreaTypes, fetchTaskTemplates]);
 
   useEffect(() => {
     setAreaForm((current) => ({
