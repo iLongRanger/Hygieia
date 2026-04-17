@@ -950,6 +950,7 @@ describe('AccountDetail', () => {
           id: 'property-1',
           accountId: 'account-res-4',
           name: 'Birch Main Home',
+          facility: { id: 'facility-1' },
           serviceAddress: {
             street: '44 Birch Lane',
             city: 'Seattle',
@@ -990,7 +991,18 @@ describe('AccountDetail', () => {
     };
 
     getAccountMock.mockResolvedValue(residentialAccount);
-    listFacilitiesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } });
+    listFacilitiesMock.mockResolvedValue({ data: [{
+      ...facility,
+      id: 'facility-1',
+      name: 'Birch Main Home',
+      buildingType: 'single_family',
+      account: {
+        id: 'account-res-4',
+        name: 'Birch Residence',
+        type: 'residential',
+      },
+      residentialPropertyId: 'property-1',
+    }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     listContractsMock
       .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
       .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
@@ -1000,9 +1012,10 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Birch Residence' });
-    await userEventInstance.click(screen.getAllByRole('button', { name: /^open$/i })[0]);
+    expect(screen.queryByRole('heading', { name: /task manager/i })).not.toBeInTheDocument();
+    await userEventInstance.click(screen.getByRole('button', { name: /open facility/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/properties/property-1', {
+    expect(navigateMock).toHaveBeenCalledWith('/facilities/facility-1', {
       state: {
         backLabel: 'Birch Residence',
         backPath: '/residential/accounts/account-res-4',

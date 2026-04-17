@@ -365,7 +365,11 @@ const AccountDetail = () => {
   const fetchFacilities = useCallback(async () => {
     if (!id) return;
     try {
-      const response = await listFacilities({ accountId: id, limit: 100 });
+      const response = await listFacilities({
+        accountId: id,
+        limit: 100,
+        includeResidentialLinked: true,
+      });
       setFacilities(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch facilities:', error);
@@ -525,23 +529,6 @@ const AccountDetail = () => {
     }
   };
 
-  const handleSaveResidentialTaskLibrary = async (tasks: string[]) => {
-    if (!id || !account) return;
-    try {
-      setSaving(true);
-      const nextTasks = normalizeResidentialTaskList(tasks);
-      const updated = await updateAccount(id, { residentialTaskLibrary: nextTasks });
-      setAccount(updated);
-      setFormData((current) => ({ ...current, residentialTaskLibrary: nextTasks }));
-      toast.success('Residential task library updated');
-    } catch (error) {
-      console.error('Failed to update residential task library:', error);
-      toast.error('Failed to update residential task library');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleArchive = async () => {
     if (!id) return;
     try {
@@ -597,7 +584,7 @@ const AccountDetail = () => {
     setEditingProperty(null);
     setPropertyFormData({
       ...DEFAULT_RESIDENTIAL_PROPERTY_FORM,
-      defaultTasks: normalizeResidentialTaskList(account?.residentialTaskLibrary),
+      defaultTasks: [],
       isPrimary: !(account?.residentialProperties?.length ?? 0),
     });
     setShowPropertyModal(true);
@@ -724,6 +711,11 @@ const AccountDetail = () => {
 
   const isResidentialAccount = account.type === 'residential';
   const residentialProperties = account.residentialProperties ?? [];
+  const residentialPropertiesByFacilityId = new Map(
+    residentialProperties
+      .filter((property) => property.facility?.id)
+      .map((property) => [property.facility!.id, property])
+  );
   const residentialPropertyJourneys = residentialProperties.map((property) => ({
     property,
     journey: getResidentialPropertyJourneyState({
@@ -785,6 +777,8 @@ const AccountDetail = () => {
   const navigateFromAccount = (path: string) => navigate(path, accountBackState);
   const navigateToPropertyDetail = (property: ResidentialPropertySummary) =>
     navigate(getPropertyDetailPath(property), accountBackState);
+  const navigateToFacilityDetail = (facilityId: string) =>
+    navigate(`/facilities/${facilityId}`, accountBackState);
 
   const bookingsSection = (
     <Card className="space-y-4">
@@ -1003,83 +997,68 @@ const AccountDetail = () => {
               {/* Type-specific content */}
               {isResidentialAccount ? (
                 <>
-                  <Card className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Task Manager</h3>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Master residential task library for this customer. New properties and quotes can inherit from it.
-                        </p>
-                      </div>
-                      <Badge variant="info">{normalizeResidentialTaskList(account.residentialTaskLibrary).length} tasks</Badge>
-                    </div>
-                    <ResidentialTaskBuilder
-                      label="Residential Account Task Library"
-                      hint="Use this as the baseline scope for all properties under this residential account."
-                      tasks={normalizeResidentialTaskList(account.residentialTaskLibrary)}
-                      onChange={(tasks) => {
-                        setAccount((current) => (current ? { ...current, residentialTaskLibrary: tasks } : current));
-                        setFormData((current) => ({ ...current, residentialTaskLibrary: tasks }));
-                      }}
-                      placeholder="Example: Sanitize kitchen counters"
-                    />
-                    {canAdminAccounts ? (
-                      <div className="flex justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveResidentialTaskLibrary(account.residentialTaskLibrary ?? [])}
-                          disabled={saving}
-                        >
-                          {saving ? 'Saving...' : 'Save Task Library'}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </Card>
-
                   {/* Properties */}
                   <Card className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Properties</h3>
                         <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Service locations under this residential customer.
+                          Operational locations linked to this residential account.
                         </p>
                       </div>
                       <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
                         Add Property
                       </Button>
                     </div>
-                    {residentialProperties.length === 0 ? (
+                    {facilities.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
-                        No residential properties yet. Add the first service location before creating a quote.
+                        No linked property facilities yet. Add the first property to create its operational location.
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {residentialPropertyJourneys.map(({ property, journey: propertyJourney }) => (
-                          <div key={property.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                        {facilities.map((linkedFacility) => {
+                          const linkedProperty = residentialPropertiesByFacilityId.get(linkedFacility.id) ?? null;
+                          const propertyJourney = linkedProperty
+                            ? residentialPropertyJourneys.find(({ property }) => property.id === linkedProperty.id)?.journey
+                            : null;
+
+                          return (
+                          <div key={linkedFacility.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <div className="font-medium text-surface-900 dark:text-surface-100">{property.name}</div>
-                                  {property.isPrimary ? <Badge variant="success">Primary</Badge> : null}
-                                  <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
-                                    {propertyJourney.currentStage}
-                                  </Badge>
+                                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                                    {linkedProperty?.name || linkedFacility.name}
+                                  </div>
+                                  {linkedProperty?.isPrimary ? <Badge variant="success">Primary</Badge> : null}
+                                  {propertyJourney ? (
+                                    <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
+                                      {propertyJourney.currentStage}
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <div className="mt-1 text-xs uppercase tracking-wide text-surface-500">
+                                  Facility: {linkedFacility.name}
                                 </div>
                                 <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
                                   {[
-                                    property.serviceAddress?.street,
-                                    property.serviceAddress?.city,
-                                    property.serviceAddress?.state,
-                                    property.serviceAddress?.postalCode,
+                                    linkedFacility.address?.street,
+                                    linkedFacility.address?.city,
+                                    linkedFacility.address?.state,
+                                    linkedFacility.address?.postalCode,
                                   ].filter(Boolean).join(', ') || 'No service address set'}
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => navigateToPropertyDetail(property)}>
-                                  Open
+                                <Button size="sm" variant="outline" onClick={() => navigateToFacilityDetail(linkedFacility.id)}>
+                                  Open Facility
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => openEditPropertyModal(property)}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => linkedProperty && openEditPropertyModal(linkedProperty)}
+                                  disabled={!linkedProperty}
+                                >
                                   Edit
                                 </Button>
                               </div>
@@ -1088,29 +1067,31 @@ const AccountDetail = () => {
                               <div>
                                 <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
                                 <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {property.homeProfile?.homeType ? property.homeProfile.homeType.replace('_', ' ') : 'No home type set'}
-                                  {property.homeProfile?.squareFeet ? `, ${property.homeProfile.squareFeet} sq ft` : ''}
+                                  {linkedProperty?.homeProfile?.homeType ? linkedProperty.homeProfile.homeType.replace('_', ' ') : linkedFacility.buildingType ? linkedFacility.buildingType.replace('_', ' ') : 'No home type set'}
+                                  {linkedProperty?.homeProfile?.squareFeet ? `, ${linkedProperty.homeProfile.squareFeet} sq ft` : ''}
                                 </div>
                               </div>
                               <div>
                                 <div className="text-xs uppercase tracking-wide text-surface-500">Bedrooms / Baths</div>
                                 <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {property.homeProfile?.bedrooms ?? 0} bed / {property.homeProfile?.fullBathrooms ?? 0} bath
+                                  {linkedProperty?.homeProfile?.bedrooms ?? 0} bed / {linkedProperty?.homeProfile?.fullBathrooms ?? 0} bath
                                 </div>
                               </div>
                               <div>
                                 <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
                                 <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {property.entryNotes || property.parkingAccess || property.accessNotes || 'No access notes set'}
+                                  {linkedProperty?.entryNotes || linkedProperty?.parkingAccess || linkedProperty?.accessNotes || linkedFacility.accessInstructions || 'No access notes set'}
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
-                              <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
-                              {propertyJourney.nextStep}
-                            </div>
+                            {propertyJourney ? (
+                              <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
+                                <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
+                                {propertyJourney.nextStep}
+                              </div>
+                            ) : null}
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </Card>
