@@ -111,6 +111,9 @@ const AppointmentDetail = () => {
     appointment.account?.name ||
     'Unknown';
   const locationLabel = getAppointmentLocationLabel(appointment);
+  const createdAt = new Date(appointment.createdAt);
+  const updatedAt = new Date(appointment.updatedAt);
+  const hasBeenUpdated = updatedAt.getTime() > createdAt.getTime() + 1000;
 
   return (
     <div className="space-y-6">
@@ -347,8 +350,13 @@ const AppointmentDetail = () => {
         <div className="p-4 space-y-2">
           <h3 className="text-sm font-medium text-surface-500 dark:text-surface-400">Activity</h3>
           <div className="text-sm text-surface-500 dark:text-surface-400">
-            Created {new Date(appointment.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+            Created {createdAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
           </div>
+          {hasBeenUpdated ? (
+            <div className="text-sm text-surface-500 dark:text-surface-400">
+              Last updated {updatedAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+            </div>
+          ) : null}
         </div>
       </Card>
     </div>
