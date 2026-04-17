@@ -123,6 +123,34 @@ function stripContractPricing<T extends Record<string, unknown>>(contract: T): O
   return safeContract;
 }
 
+function stripProposalServicePricing<T extends { proposal?: Record<string, unknown> | null }>(
+  contract: T
+): T {
+  const proposal = contract.proposal;
+  if (!proposal || !Array.isArray((proposal as { proposalServices?: unknown[] }).proposalServices)) {
+    return contract;
+  }
+
+  const safeProposalServices = (
+    (proposal as { proposalServices: Record<string, unknown>[] }).proposalServices ?? []
+  ).map((service) => {
+    const {
+      monthlyPrice: _monthlyPrice,
+      hourlyRate: _hourlyRate,
+      ...safeService
+    } = service;
+    return safeService;
+  });
+
+  return {
+    ...contract,
+    proposal: {
+      ...proposal,
+      proposalServices: safeProposalServices,
+    },
+  };
+}
+
 function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   if (!req.user) {
     throw new ValidationError('User not authenticated');
@@ -322,7 +350,7 @@ router.get(
 
       if (!canViewContractPricing(req.user?.role)) {
         const safeContracts = result.data.map((contract) => {
-          const safeContract = stripContractPricing(contract);
+          const safeContract = stripProposalServicePricing(stripContractPricing(contract));
           if (req.user?.role === 'subcontractor') {
             const payout =
               Number(contract.monthlyValue ?? 0) *
@@ -480,7 +508,7 @@ router.get(
 
         const isSubcontractor = req.user?.role === 'subcontractor';
         const payout = Number(contract.monthlyValue ?? 0) * tierToPercentage(contract.subcontractorTier);
-        const safeContract = stripContractPricing(contract);
+        const safeContract = stripProposalServicePricing(stripContractPricing(contract));
         const safeFacility = safeContract.facility
           ? {
               ...safeContract.facility,

@@ -1000,6 +1000,9 @@ const ContractDetail = () => {
   const canViewContractPricing = userRole === 'owner' || userRole === 'admin';
   const isSubcontractor = userRole === 'subcontractor';
   const isLimitedContractViewer = userRole === 'subcontractor' || userRole === 'cleaner';
+  const proposalServices = (contract?.proposal?.proposalServices ?? []).filter(
+    (service) => Boolean(service?.id) && Boolean(service?.serviceName)
+  );
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canAdminContracts = hasPermission(PERMISSIONS.CONTRACTS_ADMIN);
 
@@ -2767,14 +2770,14 @@ const ContractDetail = () => {
           </Card>
         )}
 
-        {contract.proposal?.proposalServices && contract.proposal.proposalServices.length > 0 && (
+        {proposalServices.length > 0 && (
           <Card className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-gold" />
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Services</h2>
             </div>
             <div className="space-y-5">
-              {contract.proposal.proposalServices.map((service) => {
+              {proposalServices.map((service) => {
                 const { areaSummary, groups } = buildServiceTaskGroups(
                   service.description,
                   service.includedTasks
@@ -2794,11 +2797,6 @@ const ContractDetail = () => {
                       </div>
                       <div className="text-sm text-surface-500 dark:text-surface-400">
                         {formatFrequency(service.frequency)}
-                        {service.monthlyPrice != null && (
-                          <span className="ml-2 font-medium text-emerald-300">
-                            {formatCurrency(Number(service.monthlyPrice))}/month
-                          </span>
-                        )}
                       </div>
                     </div>
                     <ServiceTaskStepper serviceId={service.id} groups={groups} />

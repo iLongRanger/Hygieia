@@ -329,6 +329,9 @@ const PublicContractView: React.FC = () => {
     (contract.facility?.address?.timezone as string | undefined) ||
     (contract.facility?.address?.timeZone as string | undefined) ||
     null;
+  const proposalServices = (contract.proposal?.proposalServices ?? []).filter(
+    (service) => Boolean(service?.id) && Boolean(service?.serviceName)
+  );
 
   const primaryColor = branding?.themePrimaryColor || '#1a1a2e';
   const accentColor = branding?.themeAccentColor || '#d4af37';
@@ -531,11 +534,11 @@ const PublicContractView: React.FC = () => {
           </div>
         )}
 
-        {contract.proposal?.proposalServices && contract.proposal.proposalServices.length > 0 && (
+        {proposalServices.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-surface-900 mb-3">Services</h3>
             <div className="space-y-4">
-              {contract.proposal.proposalServices.map((service) => {
+              {proposalServices.map((service) => {
                 const { areaSummary, groups } = buildServiceTaskGroups(
                   service.description,
                   service.includedTasks
