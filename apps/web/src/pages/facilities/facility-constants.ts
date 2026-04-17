@@ -15,6 +15,26 @@ export const BUILDING_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
+export const RESIDENTIAL_BUILDING_TYPES = [
+  { value: 'apartment', label: 'Apartment' },
+  { value: 'condo', label: 'Condo' },
+  { value: 'townhouse', label: 'Townhouse' },
+  { value: 'single_family', label: 'House / Single Family' },
+  { value: 'other', label: 'Other' },
+];
+
+const BUILDING_TYPE_LABELS = new Map(
+  [...BUILDING_TYPES, ...RESIDENTIAL_BUILDING_TYPES].map((option) => [
+    option.value,
+    option.label,
+  ])
+);
+
+export function formatBuildingTypeLabel(value: string | null | undefined): string {
+  if (!value) return 'Not specified';
+  return BUILDING_TYPE_LABELS.get(value) || value.replace(/_/g, ' ');
+}
+
 export const CONDITION_LEVELS = [
   { value: 'standard', label: 'Standard' },
   { value: 'medium', label: 'Medium Difficulty' },

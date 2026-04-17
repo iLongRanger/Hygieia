@@ -1334,6 +1334,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         onSave={handleUpdateFacility}
         saving={saving}
         locationLabel={locationLabel}
+        accountType={facility.account.type}
       />
       <AreaModal
         isOpen={showAreaModal}

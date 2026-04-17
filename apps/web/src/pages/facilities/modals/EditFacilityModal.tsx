@@ -4,7 +4,7 @@ import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
-import { BUILDING_TYPES } from '../facility-constants';
+import { BUILDING_TYPES, RESIDENTIAL_BUILDING_TYPES } from '../facility-constants';
 import { FacilityServiceScheduleFields } from './FacilityServiceScheduleFields';
 
 interface EditFacilityModalProps {
@@ -15,6 +15,7 @@ interface EditFacilityModalProps {
   onSave: () => void;
   saving: boolean;
   locationLabel?: string;
+  accountType?: 'commercial' | 'residential' | 'government' | 'strata' | 'industrial';
 }
 
 export function EditFacilityModal({
@@ -25,7 +26,13 @@ export function EditFacilityModal({
   onSave,
   saving,
   locationLabel = 'Facility',
+  accountType,
 }: EditFacilityModalProps): React.JSX.Element {
+  const isResidentialAccount = accountType === 'residential';
+  const buildingTypeOptions = isResidentialAccount
+    ? RESIDENTIAL_BUILDING_TYPES
+    : BUILDING_TYPES;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -102,14 +109,19 @@ export function EditFacilityModal({
         </div>
 
         <Select
-          label="Building Type"
-          options={BUILDING_TYPES}
+          label={isResidentialAccount ? 'Home Type' : 'Building Type'}
+          options={buildingTypeOptions}
           value={facilityForm.buildingType || ''}
           onChange={(value) =>
             setFacilityForm({
               ...facilityForm,
               buildingType: value || null,
             })
+          }
+          hint={
+            isResidentialAccount
+              ? 'Choose the residential building style for this property.'
+              : undefined
           }
         />
 

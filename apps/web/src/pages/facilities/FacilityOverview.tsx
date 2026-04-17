@@ -3,6 +3,7 @@ import { Building2, CalendarClock, MapPin } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import type { Facility } from '../../types/facility';
+import { formatBuildingTypeLabel } from './facility-constants';
 
 interface FacilityOverviewProps {
   facility: Facility;
@@ -26,6 +27,7 @@ export function FacilityOverview({
   activeAreasCount,
   activeTasksCount,
 }: FacilityOverviewProps): React.JSX.Element {
+  const isResidentialAccount = facility.account.type === 'residential';
   const DEFAULT_GEOFENCE_RADIUS_METERS = 100;
   const addressRecord = (facility.address || {}) as Record<string, unknown>;
   const scheduleRecord =
@@ -138,9 +140,11 @@ export function FacilityOverview({
               <Building2 className="h-6 w-6 text-emerald" />
             </div>
             <div>
-              <div className="text-sm text-surface-500 dark:text-surface-400">Building Type</div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">
+                {isResidentialAccount ? 'Home Type' : 'Building Type'}
+              </div>
               <div className="font-medium capitalize text-surface-900 dark:text-white">
-                {facility.buildingType || 'Not specified'}
+                {formatBuildingTypeLabel(facility.buildingType)}
               </div>
             </div>
           </div>

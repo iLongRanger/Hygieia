@@ -282,6 +282,27 @@ describe('FacilityDetail', () => {
     expect(await screen.findByText(/areas \(\d+\)/i)).toBeInTheDocument();
   });
 
+  it('shows a residential home type selector when the linked account is residential', async () => {
+    const user = userEvent.setup();
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      buildingType: 'single_family',
+      account: {
+        ...facility.account,
+        type: 'residential',
+      },
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /edit facility/i }));
+
+    expect(await screen.findByLabelText(/home type/i)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Condo' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'House / Single Family' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Office' })).not.toBeInTheDocument();
+  });
+
   it('opens walkthroughs for residential properties through the linked facility', async () => {
     const user = userEvent.setup();
     mockParams = { id: 'property-1' };
