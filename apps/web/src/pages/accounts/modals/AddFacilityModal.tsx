@@ -26,7 +26,7 @@ export function AddFacilityModal({
   saving,
 }: AddFacilityModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Facility" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Service Location" size="lg">
       <div className="space-y-4">
         <Input
           label="Facility Name"

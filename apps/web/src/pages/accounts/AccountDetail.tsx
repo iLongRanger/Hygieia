@@ -976,7 +976,7 @@ const AccountDetail = () => {
                   ) : (
                     <>
                       <Button size="sm" variant="outline" onClick={() => navigateFromAccount(`/accounts/${account.id}/facilities`)}>
-                        Open Facilities
+                        Open Service Locations
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
                         Open Appointments
@@ -997,22 +997,22 @@ const AccountDetail = () => {
               {/* Type-specific content */}
               {isResidentialAccount ? (
                 <>
-                  {/* Properties */}
+                  {/* Service Locations */}
                   <Card className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Properties</h3>
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Service Locations</h3>
                         <p className="text-sm text-surface-500 dark:text-surface-400">
                           Operational locations linked to this residential account.
                         </p>
                       </div>
                       <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
-                        Add Property
+                        Add Service Location
                       </Button>
                     </div>
                     {facilities.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
-                        No linked property facilities yet. Add the first property to create its operational location.
+                        No service locations yet. Add the first service location to create its operational scope.
                       </div>
                     ) : (
                       <div className="space-y-3">

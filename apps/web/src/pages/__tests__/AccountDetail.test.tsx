@@ -451,7 +451,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /add facility/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /add service location/i }));
 
     expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
     expect(
@@ -464,7 +464,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /add facility/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /add service location/i }));
     await userEventInstance.selectOptions(await screen.findByLabelText(/service frequency/i), '3x_week');
 
     const monday = screen.getByLabelText(/mon/i) as HTMLInputElement;

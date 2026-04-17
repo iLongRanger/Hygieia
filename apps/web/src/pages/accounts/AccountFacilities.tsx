@@ -36,11 +36,11 @@ export function AccountFacilities({
   return (
     <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Facilities</h3>
+        <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Service Locations</h3>
         {canWriteFacilities && (
           <Button variant="ghost" size="sm" onClick={onAddFacility}>
             <Plus className="h-4 w-4" />
-            Add Facility
+            Add Service Location
           </Button>
         )}
       </div>
@@ -48,7 +48,7 @@ export function AccountFacilities({
       {facilities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Building className="mb-2 h-8 w-8 text-surface-500" />
-          <p className="text-sm text-surface-500 dark:text-surface-400">No facilities yet</p>
+          <p className="text-sm text-surface-500 dark:text-surface-400">No service locations yet</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
