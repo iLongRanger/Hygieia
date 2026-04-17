@@ -173,7 +173,7 @@ describe('appointmentService', () => {
     expect(prisma.$transaction).toHaveBeenCalled();
   });
 
-  it('createAppointment should reject a second scheduled walkthrough for the same lead', async () => {
+  it('createAppointment should reject a second scheduled walkthrough for the same lead and location', async () => {
     (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
       id: 'lead-1',
       archivedAt: null,
@@ -205,7 +205,64 @@ describe('appointmentService', () => {
         createdByUserId: 'admin-1',
       })
     ).rejects.toThrow(
-      'A walkthrough is already booked for this lead. Reschedule the existing appointment instead.'
+      'A walkthrough is already booked for this location. Reschedule the existing appointment instead.'
+    );
+  });
+
+  it('createAppointment should allow a second scheduled walkthrough for the same lead on a different location', async () => {
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      archivedAt: null,
+      convertedToAccountId: 'account-1',
+      companyName: 'Acme Corp',
+      contactName: 'Jane Doe',
+      estimatedValue: null,
+      probability: 0,
+      expectedCloseDate: null,
+      lostReason: null,
+      assignedToUserId: null,
+      createdByUserId: 'admin-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-2' });
+    (prisma.appointment.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    (prisma.appointment.create as jest.Mock).mockResolvedValue({
+      id: 'appt-2',
+      type: 'walk_through',
+      lead: { id: 'lead-1' },
+      account: { id: 'account-1' },
+      facility: { id: 'facility-2' },
+      scheduledStart: new Date('2026-02-02T10:00:00.000Z'),
+    });
+
+    await expect(
+      appointmentService.createAppointment({
+        leadId: 'lead-1',
+        facilityId: 'facility-2',
+        assignedToUserId: 'user-1',
+        type: 'walk_through',
+        status: 'scheduled',
+        scheduledStart: new Date('2026-02-02T10:00:00.000Z'),
+        scheduledEnd: new Date('2026-02-02T11:00:00.000Z'),
+        timezone: 'America/New_York',
+        createdByUserId: 'admin-1',
+      })
+    ).resolves.toMatchObject({
+      id: 'appt-2',
+      facility: { id: 'facility-2' },
+    });
+
+    expect(prisma.appointment.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          leadId: 'lead-1',
+          facilityId: 'facility-2',
+          type: 'walk_through',
+          status: 'scheduled',
+        }),
+      })
     );
   });
 

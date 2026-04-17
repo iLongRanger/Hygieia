@@ -332,6 +332,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
     const existingWalkthrough = await prisma.appointment.findFirst({
       where: {
         leadId: input.leadId,
+        facilityId: input.facilityId,
         type: 'walk_through',
         status: 'scheduled',
       },
@@ -342,7 +343,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     if (existingWalkthrough) {
       throw new BadRequestError(
-        'A walkthrough is already booked for this lead. Reschedule the existing appointment instead.'
+        'A walkthrough is already booked for this location. Reschedule the existing appointment instead.'
       );
     }
   } else {
