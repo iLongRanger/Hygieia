@@ -19,7 +19,7 @@ import { listUsers } from '../../lib/users';
 import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
 import { createResidentialProperty, listResidentialQuotes, updateResidentialProperty } from '../../lib/residential';
-import { getAccountDetailPath, getPropertyDetailPath } from '../../lib/accountRoutes';
+import { getAccountDetailPath } from '../../lib/accountRoutes';
 import {
   COMMERCIAL_ACCOUNT_PIPELINE_STAGES,
   RESIDENTIAL_ACCOUNT_PIPELINE_STAGES,
@@ -775,8 +775,6 @@ const AccountDetail = () => {
   };
 
   const navigateFromAccount = (path: string) => navigate(path, accountBackState);
-  const navigateToPropertyDetail = (property: ResidentialPropertySummary) =>
-    navigate(getPropertyDetailPath(property), accountBackState);
   const navigateToFacilityDetail = (facilityId: string) =>
     navigate(`/service-locations/${facilityId}`, accountBackState);
 
@@ -954,9 +952,14 @@ const AccountDetail = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => navigateToPropertyDetail(focusedResidentialPropertyJourney.property)}
+                          onClick={() => {
+                            const linkedFacilityId = focusedResidentialPropertyJourney.property.facility?.id;
+                            if (!linkedFacilityId) return;
+                            navigateToFacilityDetail(linkedFacilityId);
+                          }}
+                          disabled={!focusedResidentialPropertyJourney.property.facility?.id}
                         >
-                          Open Property
+                          Open Service Location
                         </Button>
                       ) : null}
                       <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>

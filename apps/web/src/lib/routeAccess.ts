@@ -84,10 +84,6 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.ACCOUNTS_READ],
   },
   {
-    path: '/properties',
-    requiredPermissions: [PERMISSIONS.ACCOUNTS_READ],
-  },
-  {
     path: '/properties/:id',
     requiredPermissions: [PERMISSIONS.FACILITIES_READ],
   },
