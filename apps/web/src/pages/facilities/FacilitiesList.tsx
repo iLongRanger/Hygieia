@@ -27,6 +27,7 @@ import {
   restoreFacility,
 } from '../../lib/facilities';
 import { listAccounts } from '../../lib/accounts';
+import { RESIDENTIAL_BUILDING_TYPES } from './facility-constants';
 import type {
   Facility,
   Account,
@@ -77,6 +78,12 @@ const FacilitiesList = () => {
     buildingType: null,
     notes: null,
   });
+  const selectedAccountType =
+    accounts.find((account) => account.id === formData.accountId)?.type ?? null;
+  const isResidentialAccount = selectedAccountType === 'residential';
+  const locationTypeOptions = isResidentialAccount
+    ? RESIDENTIAL_BUILDING_TYPES
+    : BUILDING_TYPES;
 
   const fetchFacilities = useCallback(
     async (currentPage: number, currentSearch: string, filters?: {
@@ -469,7 +476,7 @@ const FacilitiesList = () => {
 
           <Input
             label="Service Location Name"
-            placeholder="Enter service location name"
+            placeholder={isResidentialAccount ? 'Enter residential service location name' : 'Enter service location name'}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             maxLength={maxLengths.name}
@@ -543,9 +550,9 @@ const FacilitiesList = () => {
           </div>
 
           <Select
-            label="Building Type"
+            label={isResidentialAccount ? 'Home Type' : 'Building Type'}
             placeholder="Select type"
-            options={BUILDING_TYPES}
+            options={locationTypeOptions}
             value={formData.buildingType || ''}
             onChange={(value) =>
               setFormData({ ...formData, buildingType: value || null })

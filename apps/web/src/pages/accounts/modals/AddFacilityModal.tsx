@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { BUILDING_TYPES, FACILITY_STATUSES } from '../account-constants';
 import type { CreateFacilityInput } from '../../../types/facility';
 import { FacilityServiceScheduleFields } from '../../facilities/modals/FacilityServiceScheduleFields';
+import { RESIDENTIAL_BUILDING_TYPES } from '../../facilities/facility-constants';
 
 interface AddFacilityModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface AddFacilityModalProps {
   setFacilityFormData: React.Dispatch<React.SetStateAction<Omit<CreateFacilityInput, 'accountId'>>>;
   onSave: () => void;
   saving: boolean;
+  accountType?: string | null;
 }
 
 export function AddFacilityModal({
@@ -24,22 +26,28 @@ export function AddFacilityModal({
   setFacilityFormData,
   onSave,
   saving,
+  accountType,
 }: AddFacilityModalProps) {
+  const isResidentialAccount = accountType === 'residential';
+  const locationTypeOptions = isResidentialAccount
+    ? RESIDENTIAL_BUILDING_TYPES
+    : BUILDING_TYPES;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Service Location" size="lg">
       <div className="space-y-4">
         <Input
-          label="Facility Name"
+          label="Service Location Name"
           required
-          placeholder="Main Office Building"
+          placeholder={isResidentialAccount ? 'Maple Family Home' : 'Main Office Building'}
           value={facilityFormData.name}
           onChange={(e) => setFacilityFormData({ ...facilityFormData, name: e.target.value })}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
-            label="Building Type"
+            label={isResidentialAccount ? 'Home Type' : 'Building Type'}
             placeholder="Select type"
-            options={BUILDING_TYPES}
+            options={locationTypeOptions}
             value={facilityFormData.buildingType || ''}
             onChange={(value) => setFacilityFormData({ ...facilityFormData, buildingType: value || null })}
           />
@@ -56,7 +64,7 @@ export function AddFacilityModal({
           />
         </div>
         <p className="text-xs text-surface-500 dark:text-surface-400">
-          Total square feet will be auto-calculated from the areas added to this facility.
+          Total square feet will be auto-calculated from the areas added to this service location.
         </p>
         <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
           <h4 className="text-sm font-medium text-surface-900 dark:text-white mb-3">Address</h4>
@@ -136,7 +144,7 @@ export function AddFacilityModal({
         />
         <Textarea
           label="Notes"
-          placeholder="Additional notes about this facility..."
+          placeholder="Additional notes about this service location..."
           value={facilityFormData.notes || ''}
           onChange={(e) =>
             setFacilityFormData({ ...facilityFormData, notes: e.target.value || null })
@@ -147,7 +155,7 @@ export function AddFacilityModal({
             Cancel
           </Button>
           <Button onClick={onSave} isLoading={saving} disabled={!facilityFormData.name}>
-            Create Facility
+            Create Service Location
           </Button>
         </div>
       </div>

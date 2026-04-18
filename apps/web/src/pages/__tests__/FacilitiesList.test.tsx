@@ -139,4 +139,29 @@ describe('FacilitiesList', () => {
     await user.click(friday);
     expect(sunday.disabled).toBe(false);
   });
+
+  it('switches to residential home types when the selected account is residential', async () => {
+    const user = userEvent.setup();
+    listAccountsMock.mockResolvedValueOnce({
+      data: [
+        account,
+        {
+          id: 'account-2',
+          name: 'Maple Family',
+          type: 'residential',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 2, totalPages: 1 },
+    });
+
+    render(<FacilitiesList />);
+
+    await user.click(screen.getByRole('button', { name: /add service location/i }));
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-2');
+
+    expect(await screen.findByLabelText(/home type/i)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Condo' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'House / Single Family' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Office' })).not.toBeInTheDocument();
+  });
 });

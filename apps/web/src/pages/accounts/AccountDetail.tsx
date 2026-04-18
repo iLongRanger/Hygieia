@@ -1263,6 +1263,7 @@ const AccountDetail = () => {
         setFacilityFormData={setFacilityFormData}
         onSave={handleCreateFacility}
         saving={creatingFacility}
+        accountType={account.type}
       />
       <Modal
         isOpen={showPropertyModal && isResidentialAccount}
