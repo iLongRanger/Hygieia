@@ -1975,17 +1975,15 @@ const ProposalForm = () => {
               )}
 
               {/* Auto-populate from facility */}
-              {formData.facilityId && (
+              {!isResidentialAccount && formData.facilityId && (
                 <div className="md:col-span-2 mt-2">
                   <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">
-                          {isResidentialAccount ? 'Auto-Populate from Residential Quote Engine' : 'Auto-Populate from Facility'}
-                        </span>
+                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Facility</span>
                       </div>
-                      {!isResidentialAccount && pricingReadiness && (
+                      {pricingReadiness && (
                         <div className="flex items-center gap-2">
                           {pricingReadiness.isReady ? (
                             <span className="flex items-center gap-1 text-sm text-emerald">
@@ -2002,11 +2000,7 @@ const ProposalForm = () => {
                       )}
                     </div>
 
-                    {isResidentialAccount ? (
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Residential proposals use the live pricing preview automatically when you save.
-                      </p>
-                    ) : pricingReadiness?.isReady ? (
+                    {pricingReadiness?.isReady ? (
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex flex-col">
                           <Select
@@ -2049,7 +2043,7 @@ const ProposalForm = () => {
                   )}
 
                   {/* Internal pricing breakdown (shown after calculation) */}
-                  {pricingBreakdown && !isResidentialAccount && (
+                  {pricingBreakdown && (
                     <div className="mt-4">
                       <PricingBreakdownPanel pricing={pricingBreakdown} />
                     </div>
