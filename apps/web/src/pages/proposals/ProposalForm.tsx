@@ -470,24 +470,65 @@ const defaultCommercialProposalTitle = (
 const getResidentialFrequencyLabel = (frequency: ResidentialFrequency) =>
   RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label || frequency;
 
+interface ResidentialScopeGroup {
+  label: string;
+  tasks: string[];
+}
+
+const buildResidentialScopeGroups = (
+  areas: Area[],
+  tasks: FacilityTask[]
+): ResidentialScopeGroup[] => {
+  const grouped = new Map<string, string[]>();
+
+  areas
+    .filter((area) => !area.archivedAt)
+    .forEach((area) => {
+      const label = area.name || area.areaType.name;
+      if (!grouped.has(label)) grouped.set(label, []);
+    });
+
+  tasks
+    .filter((task) => !task.archivedAt)
+    .forEach((task) => {
+      const label = task.area?.name || task.area?.areaType.name || 'General';
+      const taskName = task.customName || task.taskTemplate?.name || 'Task';
+      if (!grouped.has(label)) grouped.set(label, []);
+      const existing = grouped.get(label)!;
+      if (!existing.some((entry) => entry.toLowerCase() === taskName.toLowerCase())) {
+        existing.push(taskName);
+      }
+    });
+
+  return Array.from(grouped.entries())
+    .map(([label, groupedTasks]) => ({ label, tasks: groupedTasks }))
+    .filter((group) => group.tasks.length > 0);
+};
+
 const buildResidentialProposalServices = ({
   preview,
   propertyName,
   serviceType,
   frequency,
-  tasks,
+  scopeGroups,
 }: {
   preview: ResidentialQuotePreview;
   propertyName: string;
   serviceType: ResidentialServiceType;
   frequency: ResidentialFrequency;
-  tasks: string[];
+  scopeGroups: ResidentialScopeGroup[];
 }): ProposalService[] => {
   const mappedServiceType = mapResidentialServiceTypeToProposalServiceType(serviceType);
   const mappedFrequency = mapResidentialFrequencyToProposalServiceFrequency(frequency);
   const serviceLabel =
     RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === serviceType)?.label
     || 'Residential Cleaning';
+  const includedTasks = scopeGroups.flatMap((group) =>
+    group.tasks.map((task) => `${group.label}: ${task}`)
+  );
+  const areaSummary = scopeGroups.length > 0
+    ? `${scopeGroups.length} area${scopeGroups.length === 1 ? '' : 's'} scoped`
+    : propertyName;
 
   return [{
     serviceName: serviceLabel,
@@ -497,13 +538,13 @@ const buildResidentialProposalServices = ({
     hourlyRate: null,
     monthlyPrice: preview.breakdown.finalTotal,
     description: [
-      propertyName,
-      tasks.length > 0 ? `Tasks: ${tasks.join(', ')}` : null,
+      areaSummary,
+      ...scopeGroups.map((group) => `${group.label}: ${group.tasks.join(', ')}`),
       preview.breakdown.guidance.length > 0
         ? `Guidance: ${preview.breakdown.guidance.join(' | ')}`
         : null,
     ].filter(Boolean).join('\n'),
-    includedTasks: tasks,
+    includedTasks,
     sortOrder: 0,
   }];
 };
@@ -716,6 +757,10 @@ const ProposalForm = () => {
   const residentialScheduleOptions = useMemo(
     () => [{ value: residentialScheduleFrequency, label: getResidentialFrequencyLabel(residentialFrequency) }],
     [residentialFrequency, residentialScheduleFrequency]
+  );
+  const residentialScopeGroups = useMemo(
+    () => buildResidentialScopeGroups(facilityAreas, facilityTasks),
+    [facilityAreas, facilityTasks]
   );
   const suggestedProposalTitle = useMemo(() => {
     if (!formData.facilityId) {
@@ -1020,15 +1065,12 @@ const ProposalForm = () => {
       return;
     }
 
-    const derivedTasks = normalizeTaskList(
-      facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
-    );
     const derivedServices = buildResidentialProposalServices({
       preview: residentialPreview,
       propertyName: selectedResidentialProperty.name,
       serviceType: residentialServiceType,
       frequency: residentialFrequency,
-      tasks: derivedTasks,
+      scopeGroups: residentialScopeGroups,
     });
     const derivedItems = buildResidentialProposalItems(residentialPreview);
 
@@ -1057,6 +1099,7 @@ const ProposalForm = () => {
   }, [
     facilityTasks,
     isResidentialAccount,
+    residentialScopeGroups,
     residentialFrequency,
     residentialPreview,
     residentialServiceType,
@@ -1546,11 +1589,6 @@ const ProposalForm = () => {
 
     setSaving(true);
     try {
-      const residentialTasks = isResidentialAccount
-        ? normalizeTaskList(
-            facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
-          )
-        : [];
       const derivedResidentialItems = isResidentialAccount && residentialPreview
         ? buildResidentialProposalItems(residentialPreview)
         : [];
@@ -1560,7 +1598,7 @@ const ProposalForm = () => {
             propertyName: selectedResidentialProperty.name,
             serviceType: residentialServiceType,
             frequency: residentialFrequency,
-            tasks: residentialTasks,
+            scopeGroups: isResidentialAccount ? residentialScopeGroups : [],
           })
         : [];
       const effectiveProposalItems = isResidentialAccount
@@ -1909,6 +1947,31 @@ const ProposalForm = () => {
                     {residentialPreview?.breakdown.guidance.length ? (
                       <div className="rounded-lg border border-surface-200 bg-white px-3 py-3 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
                         {residentialPreview.breakdown.guidance.join(' ')}
+                      </div>
+                    ) : null}
+
+                    {residentialScopeGroups.length > 0 ? (
+                      <div className="rounded-lg border border-surface-200 bg-white px-4 py-3 dark:border-surface-700 dark:bg-surface-900/40">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="text-sm font-medium text-surface-900 dark:text-white">Areas & Tasks</div>
+                          <div className="text-xs text-surface-500 dark:text-surface-400">
+                            Included in proposal and PDF
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          {residentialScopeGroups.map((group) => (
+                            <div key={group.label}>
+                              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
+                                {group.label}
+                              </div>
+                              <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+                                {group.tasks.map((task) => (
+                                  <li key={`${group.label}-${task}`}>{task}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : null}
                   </div>

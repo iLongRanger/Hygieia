@@ -649,6 +649,9 @@ describe('ProposalForm', () => {
     await user.click(screen.getByRole('button', { name: /^thu$/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Recurring Standard').length).toBeGreaterThan(1);
+      expect(screen.getByText('Areas & Tasks')).toBeInTheDocument();
+      expect(screen.getByText('Lobby')).toBeInTheDocument();
+      expect(screen.getByText('Wipe Surfaces')).toBeInTheDocument();
     });
 
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
