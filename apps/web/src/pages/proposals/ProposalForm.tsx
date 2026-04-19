@@ -581,6 +581,47 @@ const buildResidentialProposalItems = (
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
+const applyResidentialAutoPopulate = ({
+  current,
+  preview,
+  propertyName,
+  serviceType,
+  frequency,
+  scopeGroups,
+}: {
+  current: CreateProposalInput;
+  preview: ResidentialQuotePreview;
+  propertyName: string;
+  serviceType: ResidentialServiceType;
+  frequency: ResidentialFrequency;
+  scopeGroups: ResidentialScopeGroup[];
+}): CreateProposalInput => {
+  const scheduleFrequency = mapResidentialFrequencyToProposalSchedule(frequency);
+  const currentSchedule = current.serviceSchedule || createDefaultSchedule(scheduleFrequency);
+
+  return {
+    ...current,
+    proposalServices: buildResidentialProposalServices({
+      preview,
+      propertyName,
+      serviceType,
+      frequency,
+      scopeGroups,
+    }),
+    proposalItems: buildResidentialProposalItems(preview),
+    pricingPlanId: null,
+    serviceFrequency: scheduleFrequency,
+    serviceSchedule: {
+      ...currentSchedule,
+      days: normalizeScheduleDays(currentSchedule.days || [], scheduleFrequency),
+      allowedWindowStart: currentSchedule.allowedWindowStart || '18:00',
+      allowedWindowEnd: currentSchedule.allowedWindowEnd || '06:00',
+      windowAnchor: 'start_day',
+      timezoneSource: 'facility',
+    },
+  };
+};
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -1306,7 +1347,17 @@ const ProposalForm = () => {
         toast.error('Residential pricing preview is not ready yet');
         return;
       }
-      toast.success('Residential pricing preview is ready');
+      setFormData((prev) =>
+        applyResidentialAutoPopulate({
+          current: prev,
+          preview: residentialPreview,
+          propertyName: selectedResidentialProperty.name,
+          serviceType: residentialServiceType,
+          frequency: residentialFrequency,
+          scopeGroups: residentialScopeGroups,
+        })
+      );
+      toast.success('Auto-populated proposal from residential pricing');
       return;
     }
     if (!selectedPricingPlanId) {
@@ -2006,6 +2057,46 @@ const ProposalForm = () => {
                     ) : (
                       <div className="px-4 py-3 text-sm text-surface-300">
                         Residential pricing preview is unavailable right now.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isResidentialAccount && formData.facilityId && (
+                <div className="md:col-span-2 mt-2">
+                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-gold" />
+                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Residential Pricing</span>
+                      </div>
+                    </div>
+
+                    {!hasResidentialServiceType ? (
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Select a residential service type to populate the proposal.
+                      </p>
+                    ) : !selectedResidentialPricingPlanId ? (
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Select a residential pricing plan to calculate and populate the proposal.
+                      </p>
+                    ) : (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAutoPopulateFromFacility}
+                          isLoading={loadingResidentialPreview}
+                          disabled={!residentialPreview}
+                          className="whitespace-nowrap"
+                        >
+                          <Calculator className="w-4 h-4 mr-2" />
+                          Calculate & Populate
+                        </Button>
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Uses the residential pricing engine and residential scope to populate services and line items.
+                        </p>
                       </div>
                     )}
                   </div>
