@@ -1892,7 +1892,7 @@ const ProposalForm = () => {
                 </div>
               )}
 
-              {isResidentialAccount && residentialPreview && hasResidentialServiceType && (
+              {isResidentialAccount && formData.facilityId && (
                 <div className="md:col-span-2">
                   <div className="bg-surface-800 rounded-xl border border-amber-500/20 overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10">
@@ -1902,94 +1902,112 @@ const ProposalForm = () => {
                       </div>
                       <span className="text-xs text-amber-400/70 uppercase tracking-wider">Not visible to client</span>
                     </div>
-                    <div className="divide-y divide-surface-700">
-                      <div className="px-4 py-3 space-y-1.5 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-surface-500 dark:text-surface-400">Service Location:</span>
-                          <span className="text-surface-900 dark:text-white font-medium">{selectedResidentialProperty?.name || selectedFacility?.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-surface-500 dark:text-surface-400">Service Type:</span>
-                          <span className="text-surface-900 dark:text-white">
-                            {RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === residentialServiceType)?.label}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-surface-500 dark:text-surface-400">Frequency:</span>
-                          <span className="text-surface-900 dark:text-white">{getResidentialFrequencyLabel(residentialFrequency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-surface-500 dark:text-surface-400">Pricing Source:</span>
-                          <span className="text-surface-600 dark:text-surface-400 text-xs">{selectedResidentialPricingPlan?.name}</span>
-                        </div>
+                    {!hasResidentialServiceType ? (
+                      <div className="px-4 py-3 text-sm text-surface-300">
+                        Select a residential service type to generate the internal pricing breakdown.
                       </div>
-
-                      <div className="px-4 py-3">
-                        <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
-                          Calculation
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Base Home Price:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.baseHomePrice)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Square Footage Adjustment:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.sqftAdjustment)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Bedroom Adjustment:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bedroomAdjustment)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Bathroom Adjustment:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bathroomAdjustment)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Condition Multiplier:</span>
-                            <span className="font-mono">{formatPercent(residentialPreview.breakdown.conditionMultiplier - 1)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Service Multiplier:</span>
-                            <span className="font-mono">{formatPercent(residentialPreview.breakdown.serviceMultiplier - 1)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Recurring Discount:</span>
-                            <span className="font-mono">-{formatCurrency(residentialPreview.breakdown.recurringDiscount)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>First Clean Surcharge:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.firstCleanSurcharge)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Add-Ons:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.addOnTotal)}</span>
-                          </div>
-                          <div className="flex justify-between text-surface-900 dark:text-white font-medium pt-1 border-t border-surface-700">
-                            <span>Final Total:</span>
-                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.finalTotal)}</span>
-                          </div>
-                        </div>
+                    ) : loadingResidentialPreview ? (
+                      <div className="px-4 py-3 text-sm text-surface-300">
+                        Calculating residential pricing breakdown...
                       </div>
-
-                      <div className="px-4 py-3">
-                        <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
-                          Ops
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Estimated Hours:</span>
-                            <span className="font-mono">{residentialPreview.breakdown.estimatedHours.toFixed(1)}</span>
+                    ) : !selectedResidentialPricingPlanId ? (
+                      <div className="px-4 py-3 text-sm text-surface-300">
+                        Select a residential pricing plan to generate the internal pricing breakdown.
+                      </div>
+                    ) : residentialPreview ? (
+                      <div className="divide-y divide-surface-700">
+                        <div className="px-4 py-3 space-y-1.5 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-surface-500 dark:text-surface-400">Service Location:</span>
+                            <span className="text-surface-900 dark:text-white font-medium">{selectedResidentialProperty?.name || selectedFacility?.name}</span>
                           </div>
-                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                            <span>Review Status:</span>
-                            <span className="font-mono">
-                              {residentialPreview.breakdown.manualReviewRequired ? 'Manual review required' : 'Ready to quote'}
+                          <div className="flex justify-between">
+                            <span className="text-surface-500 dark:text-surface-400">Service Type:</span>
+                            <span className="text-surface-900 dark:text-white">
+                              {RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === residentialServiceType)?.label}
                             </span>
                           </div>
+                          <div className="flex justify-between">
+                            <span className="text-surface-500 dark:text-surface-400">Frequency:</span>
+                            <span className="text-surface-900 dark:text-white">{getResidentialFrequencyLabel(residentialFrequency)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-surface-500 dark:text-surface-400">Pricing Source:</span>
+                            <span className="text-surface-600 dark:text-surface-400 text-xs">{selectedResidentialPricingPlan?.name}</span>
+                          </div>
+                        </div>
+
+                        <div className="px-4 py-3">
+                          <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+                            Calculation
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Base Home Price:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.baseHomePrice)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Square Footage Adjustment:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.sqftAdjustment)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Bedroom Adjustment:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bedroomAdjustment)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Bathroom Adjustment:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bathroomAdjustment)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Condition Multiplier:</span>
+                              <span className="font-mono">{formatPercent(residentialPreview.breakdown.conditionMultiplier - 1)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Service Multiplier:</span>
+                              <span className="font-mono">{formatPercent(residentialPreview.breakdown.serviceMultiplier - 1)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Recurring Discount:</span>
+                              <span className="font-mono">-{formatCurrency(residentialPreview.breakdown.recurringDiscount)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>First Clean Surcharge:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.firstCleanSurcharge)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Add-Ons:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.addOnTotal)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-900 dark:text-white font-medium pt-1 border-t border-surface-700">
+                              <span>Final Total:</span>
+                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.finalTotal)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="px-4 py-3">
+                          <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+                            Ops
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Estimated Hours:</span>
+                              <span className="font-mono">{residentialPreview.breakdown.estimatedHours.toFixed(1)}</span>
+                            </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Review Status:</span>
+                              <span className="font-mono">
+                                {residentialPreview.breakdown.manualReviewRequired ? 'Manual review required' : 'Ready to quote'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-surface-300">
+                        Residential pricing preview is unavailable right now.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

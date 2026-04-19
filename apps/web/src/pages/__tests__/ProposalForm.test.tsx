@@ -598,6 +598,9 @@ describe('ProposalForm', () => {
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
 
+    expect(screen.getByText('Internal Pricing Breakdown')).toBeInTheDocument();
+    expect(screen.getByText(/select a residential service type to generate the internal pricing breakdown/i)).toBeInTheDocument();
+
     expect(screen.getByLabelText(/proposal title/i)).toHaveValue('');
 
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
