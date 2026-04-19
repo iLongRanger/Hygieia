@@ -1075,14 +1075,10 @@ const ProposalForm = () => {
     const derivedItems = buildResidentialProposalItems(residentialPreview);
 
     setFormData((prev) => {
-      const nextDescription =
-        prev.description
-        || `Residential proposal built from the scoped service location for ${selectedResidentialProperty.name}.`;
       const hasChanges =
         JSON.stringify(prev.proposalServices || []) !== JSON.stringify(derivedServices)
         || JSON.stringify(prev.proposalItems || []) !== JSON.stringify(derivedItems)
-        || prev.pricingPlanId !== null
-        || prev.description !== nextDescription;
+        || prev.pricingPlanId !== null;
 
       if (!hasChanges) {
         return prev;
@@ -1093,7 +1089,6 @@ const ProposalForm = () => {
         proposalServices: derivedServices,
         proposalItems: derivedItems,
         pricingPlanId: null,
-        description: nextDescription,
       };
     });
   }, [
@@ -1950,30 +1945,6 @@ const ProposalForm = () => {
                       </div>
                     ) : null}
 
-                    {residentialScopeGroups.length > 0 ? (
-                      <div className="rounded-lg border border-surface-200 bg-white px-4 py-3 dark:border-surface-700 dark:bg-surface-900/40">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <div className="text-sm font-medium text-surface-900 dark:text-white">Areas & Tasks</div>
-                          <div className="text-xs text-surface-500 dark:text-surface-400">
-                            Included in proposal and PDF
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          {residentialScopeGroups.map((group) => (
-                            <div key={group.label}>
-                              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
-                                {group.label}
-                              </div>
-                              <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
-                                {group.tasks.map((task) => (
-                                  <li key={`${group.label}-${task}`}>{task}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               )}
@@ -2365,6 +2336,36 @@ const ProposalForm = () => {
                         </Button>
                       </div>
 
+                      {(parsedDescription.areaSummary || parsedDescription.groups.length > 0) && (
+                        <div className="border-t border-surface-200 dark:border-surface-700 px-4 py-3">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium text-surface-900 dark:text-white">Service Scope</div>
+                            <div className="text-xs text-surface-500 dark:text-surface-400">Included in proposal and PDF</div>
+                          </div>
+                          {parsedDescription.areaSummary && (
+                            <div className="mb-3 text-sm text-surface-600 dark:text-surface-400">
+                              {parsedDescription.areaSummary}
+                            </div>
+                          )}
+                          {parsedDescription.groups.length > 0 ? (
+                            <div className="space-y-3">
+                              {parsedDescription.groups.map((group) => (
+                                <div key={`${service.id || index}-summary-${group.label}`}>
+                                  <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
+                                    {group.label}
+                                  </div>
+                                  <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+                                    {group.tasks.map((task) => (
+                                      <li key={`${service.id || index}-summary-${group.label}-${task}`}>{task}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
                       {/* Expanded Detail Panel */}
                       {isExpanded && (
                         <div className="px-4 pb-4 pt-1 border-t border-surface-200 dark:border-surface-700 space-y-3">
@@ -2423,39 +2424,6 @@ const ProposalForm = () => {
                               }
                             />
                           </div>
-                          {(parsedDescription.areaSummary || parsedDescription.groups.length > 0) && (
-                            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.03] p-4">
-                              <div className="mb-2 flex items-center justify-between gap-2">
-                                <div className="text-sm font-medium text-surface-900 dark:text-white">Service Scope</div>
-                                <div className="text-xs text-surface-500 dark:text-surface-400">Generated from facility scope and tasks</div>
-                              </div>
-                              {parsedDescription.areaSummary && (
-                                <div className="mb-3 text-sm text-surface-600 dark:text-surface-400">
-                                  {parsedDescription.areaSummary}
-                                </div>
-                              )}
-                              {parsedDescription.groups.length > 0 ? (
-                                <div className="space-y-3">
-                                  {parsedDescription.groups.map((group) => (
-                                    <div key={`${service.id || index}-${group.label}`}>
-                                      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gold">
-                                        {group.label}
-                                      </div>
-                                      <ul className="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
-                                        {group.tasks.map((task) => (
-                                          <li key={`${service.id || index}-${group.label}-${task}`}>{task}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-sm text-surface-500 dark:text-surface-400">
-                                  Scope summary only.
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
