@@ -591,12 +591,16 @@ describe('ProposalForm', () => {
     });
   });
 
-  it('auto-fills the proposal title when a residential service location is selected', async () => {
+  it('auto-fills the residential proposal title after service type is selected', async () => {
     const user = userEvent.setup();
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+
+    expect(screen.getByLabelText(/proposal title/i)).toHaveValue('');
+
+    await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
 
     await waitFor(() => {
       expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Recurring Standard - Willow Main Home');
@@ -637,6 +641,7 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+    await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
     await user.selectOptions(await screen.findByLabelText(/residential frequency/i), 'every_4_weeks');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
@@ -651,6 +656,8 @@ describe('ProposalForm', () => {
       expect(screen.getByText('Service Scope')).toBeInTheDocument();
       expect(screen.getByText('Lobby')).toBeInTheDocument();
       expect(screen.getByText('Wipe Surfaces')).toBeInTheDocument();
+      expect(screen.getByText('Internal Pricing Breakdown')).toBeInTheDocument();
+      expect(screen.getByText('Base Home Price:')).toBeInTheDocument();
     });
 
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));

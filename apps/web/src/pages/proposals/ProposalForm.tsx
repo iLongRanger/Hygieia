@@ -16,6 +16,7 @@ import {
   CircleCheck,
   CircleAlert,
   ClipboardCheck,
+  TrendingUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -578,6 +579,8 @@ const buildResidentialProposalItems = (
   return items;
 };
 
+const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -703,7 +706,7 @@ const ProposalForm = () => {
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
   const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
   const [selectedResidentialPricingPlanId, setSelectedResidentialPricingPlanId] = useState<string>('');
-  const [residentialServiceType, setResidentialServiceType] = useState<ResidentialServiceType>('recurring_standard');
+  const [residentialServiceType, setResidentialServiceType] = useState<ResidentialServiceType | ''>('');
   const [residentialFrequency, setResidentialFrequency] = useState<ResidentialFrequency>('weekly');
   const [residentialAddOns, setResidentialAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
   const [workerCount, setWorkerCount] = useState<number>(1);
@@ -761,18 +764,23 @@ const ProposalForm = () => {
     () => buildResidentialScopeGroups(facilityAreas, facilityTasks),
     [facilityAreas, facilityTasks]
   );
+  const hasResidentialServiceType = residentialServiceType.length > 0;
   const suggestedProposalTitle = useMemo(() => {
     if (!formData.facilityId) {
       return '';
     }
 
     if (isResidentialAccount) {
+      if (!hasResidentialServiceType) {
+        return '';
+      }
       return defaultResidentialProposalTitle(residentialServiceType, selectedResidentialProperty?.name || selectedFacility?.name);
     }
 
     return defaultCommercialProposalTitle(selectedFacility?.name);
   }, [
     formData.facilityId,
+    hasResidentialServiceType,
     isResidentialAccount,
     residentialServiceType,
     selectedFacility?.name,
@@ -1003,7 +1011,7 @@ const ProposalForm = () => {
   }, [isResidentialAccount, residentialScheduleFrequency]);
 
   useEffect(() => {
-    if (!isResidentialAccount || !selectedResidentialProperty) {
+    if (!isResidentialAccount || !selectedResidentialProperty || !hasResidentialServiceType) {
       setResidentialPreview(null);
       return;
     }
@@ -1051,6 +1059,7 @@ const ProposalForm = () => {
 
     return () => window.clearTimeout(timeout);
   }, [
+    hasResidentialServiceType,
     isResidentialAccount,
     residentialAddOns,
     residentialFrequency,
@@ -1060,7 +1069,7 @@ const ProposalForm = () => {
   ]);
 
   useEffect(() => {
-    if (!isResidentialAccount || !selectedResidentialProperty || !residentialPreview) {
+    if (!isResidentialAccount || !selectedResidentialProperty || !residentialPreview || !hasResidentialServiceType) {
       return;
     }
 
@@ -1092,6 +1101,7 @@ const ProposalForm = () => {
     });
   }, [
     facilityTasks,
+    hasResidentialServiceType,
     isResidentialAccount,
     residentialScopeGroups,
     residentialFrequency,
@@ -1536,6 +1546,10 @@ const ProposalForm = () => {
       toast.error(`Please select a ${isResidentialAccount ? 'residential pricing plan' : 'pricing plan'}`);
       return;
     }
+    if (isResidentialAccount && !hasResidentialServiceType) {
+      toast.error('Please select a residential service type');
+      return;
+    }
     if (Number(formData.taxRate || 0) <= 0) {
       toast.error('Please set a tax rate greater than 0%');
       return;
@@ -1563,7 +1577,7 @@ const ProposalForm = () => {
       toast.error('Select a facility before creating the proposal');
       return;
     }
-    if (isResidentialAccount && (!selectedResidentialProperty || !selectedResidentialPricingPlanId || !residentialPreview)) {
+    if (isResidentialAccount && (!selectedResidentialProperty || !selectedResidentialPricingPlanId || !hasResidentialServiceType || !residentialPreview)) {
       toast.error('Wait for the residential pricing preview before creating the proposal');
       return;
     }
@@ -1586,7 +1600,7 @@ const ProposalForm = () => {
       const derivedResidentialItems = isResidentialAccount && residentialPreview
         ? buildResidentialProposalItems(residentialPreview)
         : [];
-      const derivedResidentialServices = isResidentialAccount && residentialPreview && selectedResidentialProperty
+      const derivedResidentialServices = isResidentialAccount && residentialPreview && selectedResidentialProperty && hasResidentialServiceType
         ? buildResidentialProposalServices({
             preview: residentialPreview,
             propertyName: selectedResidentialProperty.name,
@@ -1875,6 +1889,108 @@ const ProposalForm = () => {
                     }
                     onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
                   />
+                </div>
+              )}
+
+              {isResidentialAccount && residentialPreview && hasResidentialServiceType && (
+                <div className="md:col-span-2">
+                  <div className="bg-surface-800 rounded-xl border border-amber-500/20 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-amber-400" />
+                        <span className="font-semibold text-amber-300 text-sm">Internal Pricing Breakdown</span>
+                      </div>
+                      <span className="text-xs text-amber-400/70 uppercase tracking-wider">Not visible to client</span>
+                    </div>
+                    <div className="divide-y divide-surface-700">
+                      <div className="px-4 py-3 space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-surface-500 dark:text-surface-400">Service Location:</span>
+                          <span className="text-surface-900 dark:text-white font-medium">{selectedResidentialProperty?.name || selectedFacility?.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-surface-500 dark:text-surface-400">Service Type:</span>
+                          <span className="text-surface-900 dark:text-white">
+                            {RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === residentialServiceType)?.label}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-surface-500 dark:text-surface-400">Frequency:</span>
+                          <span className="text-surface-900 dark:text-white">{getResidentialFrequencyLabel(residentialFrequency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-surface-500 dark:text-surface-400">Pricing Source:</span>
+                          <span className="text-surface-600 dark:text-surface-400 text-xs">{selectedResidentialPricingPlan?.name}</span>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3">
+                        <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+                          Calculation
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Base Home Price:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.baseHomePrice)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Square Footage Adjustment:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.sqftAdjustment)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Bedroom Adjustment:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bedroomAdjustment)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Bathroom Adjustment:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bathroomAdjustment)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Condition Multiplier:</span>
+                            <span className="font-mono">{formatPercent(residentialPreview.breakdown.conditionMultiplier - 1)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Service Multiplier:</span>
+                            <span className="font-mono">{formatPercent(residentialPreview.breakdown.serviceMultiplier - 1)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Recurring Discount:</span>
+                            <span className="font-mono">-{formatCurrency(residentialPreview.breakdown.recurringDiscount)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>First Clean Surcharge:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.firstCleanSurcharge)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Add-Ons:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.addOnTotal)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-900 dark:text-white font-medium pt-1 border-t border-surface-700">
+                            <span>Final Total:</span>
+                            <span className="font-mono">{formatCurrency(residentialPreview.breakdown.finalTotal)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3">
+                        <div className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+                          Ops
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Estimated Hours:</span>
+                            <span className="font-mono">{residentialPreview.breakdown.estimatedHours.toFixed(1)}</span>
+                          </div>
+                          <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                            <span>Review Status:</span>
+                            <span className="font-mono">
+                              {residentialPreview.breakdown.manualReviewRequired ? 'Manual review required' : 'Ready to quote'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
