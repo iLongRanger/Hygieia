@@ -29,6 +29,8 @@ const createProposalMock = vi.fn();
 const updateProposalMock = vi.fn();
 const getFacilityPricingReadinessMock = vi.fn();
 const getFacilityProposalTemplateMock = vi.fn();
+const listResidentialPricingPlansMock = vi.fn();
+const previewResidentialQuoteMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
@@ -54,6 +56,11 @@ vi.mock('../../lib/pricing', () => ({
   listPricingSettings: (...args: unknown[]) => listPricingSettingsMock(...args),
   getFacilityPricingReadiness: (...args: unknown[]) => getFacilityPricingReadinessMock(...args),
   getFacilityProposalTemplate: (...args: unknown[]) => getFacilityProposalTemplateMock(...args),
+}));
+
+vi.mock('../../lib/residential', () => ({
+  listResidentialPricingPlans: (...args: unknown[]) => listResidentialPricingPlansMock(...args),
+  previewResidentialQuote: (...args: unknown[]) => previewResidentialQuoteMock(...args),
 }));
 
 vi.mock('../../lib/proposalTemplates', () => ({
@@ -89,6 +96,63 @@ const account: Account = {
   _count: { contacts: 0, facilities: 1 },
 };
 
+const residentialAccount: Account = {
+  id: 'account-res-1',
+  name: 'Willow Residence',
+  type: 'residential',
+  industry: null,
+  website: null,
+  billingEmail: 'willow@example.com',
+  billingPhone: '555-0101',
+  billingAddress: null,
+  qboCustomerId: null,
+  taxId: null,
+  paymentTerms: 'NET30',
+  creditLimit: null,
+  notes: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  accountManager: null,
+  createdByUser: { id: 'user-1', fullName: 'Admin User' },
+  residentialProperties: [
+    {
+      id: 'property-1',
+      accountId: 'account-res-1',
+      name: 'Willow Main Home',
+      facility: { id: 'facility-res-1' },
+      serviceAddress: { city: 'Seattle', state: 'WA' },
+      homeProfile: {
+        homeType: 'single_family',
+        squareFeet: 1800,
+        bedrooms: 3,
+        fullBathrooms: 2,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: false,
+        lastProfessionalCleaning: null,
+        parkingAccess: null,
+        entryNotes: null,
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      defaultTasks: ['Vacuum floors', 'Dust surfaces'],
+      accessNotes: null,
+      parkingAccess: null,
+      entryNotes: null,
+      pets: false,
+      isPrimary: true,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      archivedAt: null,
+    },
+  ],
+  _count: { contacts: 0, facilities: 1 },
+};
+
 const facility: Facility = {
   id: 'facility-1',
   name: 'Main Facility',
@@ -112,6 +176,19 @@ const facility: Facility = {
   createdByUser: { id: 'user-1', fullName: 'Admin User' },
   areas: [],
   _count: { areas: 2, facilityTasks: 10 },
+};
+
+const residentialFacility: Facility = {
+  ...facility,
+  id: 'facility-res-1',
+  name: 'Willow Main Home',
+  buildingType: 'single_family',
+  account: {
+    id: 'account-res-1',
+    name: 'Willow Residence',
+    type: 'residential',
+  },
+  residentialPropertyId: 'property-1',
 };
 
 const pricingBreakdown = {
@@ -159,9 +236,11 @@ describe('ProposalForm', () => {
     updateProposalMock.mockReset();
     getFacilityPricingReadinessMock.mockReset();
     getFacilityProposalTemplateMock.mockReset();
+    listResidentialPricingPlansMock.mockReset();
+    previewResidentialQuoteMock.mockReset();
 
-    listAccountsMock.mockResolvedValue({ data: [account] });
-    listFacilitiesMock.mockResolvedValue({ data: [facility] });
+    listAccountsMock.mockResolvedValue({ data: [account, residentialAccount] });
+    listFacilitiesMock.mockResolvedValue({ data: [facility, residentialFacility] });
     listAreasMock.mockResolvedValue({
       data: [
         {
@@ -246,6 +325,115 @@ describe('ProposalForm', () => {
           archivedAt: null,
         },
       ],
+    });
+    listResidentialPricingPlansMock.mockResolvedValue({
+      data: [
+        {
+          id: 'res-plan-1',
+          name: 'Residential Standard',
+          strategyKey: 'residential_flat_v1',
+          settings: {
+            strategyKey: 'residential_flat_v1',
+            homeTypeBasePrices: { apartment: 100, condo: 110, townhouse: 120, single_family: 140 },
+            sqftBrackets: [],
+            bedroomAdjustments: {},
+            bathroomAdjustments: { fullBath: 10, halfBath: 5 },
+            levelAdjustments: {},
+            conditionMultipliers: { light: 1, standard: 1, heavy: 1.2 },
+            serviceTypeMultipliers: {
+              recurring_standard: 1,
+              one_time_standard: 1,
+              deep_clean: 1.2,
+              move_in_out: 1.3,
+              turnover: 1.1,
+              post_construction: 1.4,
+            },
+            frequencyDiscounts: { weekly: 0, biweekly: 0.05, every_4_weeks: 0.1, one_time: 0 },
+            firstCleanSurcharge: { enabled: true, type: 'flat', value: 25, appliesTo: ['recurring_standard'] },
+            addOnPrices: {
+              inside_fridge: {
+                pricingType: 'flat',
+                unitPrice: 20,
+                estimatedMinutes: 15,
+                description: 'Inside fridge clean',
+              },
+            },
+            minimumPrice: 100,
+            estimatedHours: {
+              baseHoursByHomeType: { apartment: 2, condo: 2.5, townhouse: 3, single_family: 3.5 },
+              minutesPerBedroom: 15,
+              minutesPerFullBath: 10,
+              minutesPerHalfBath: 5,
+              minutesPer1000SqFt: 20,
+              conditionMultipliers: { light: 1, standard: 1, heavy: 1.2 },
+              serviceTypeMultipliers: {
+                recurring_standard: 1,
+                one_time_standard: 1,
+                deep_clean: 1.2,
+                move_in_out: 1.3,
+                turnover: 1.1,
+                post_construction: 1.4,
+              },
+              addOnMinutes: { inside_fridge: 15 },
+            },
+            manualReviewRules: {
+              maxAutoSqft: 5000,
+              heavyConditionRequiresReview: true,
+              postConstructionRequiresReview: true,
+              maxAddOnsBeforeReview: 4,
+            },
+          },
+          isActive: true,
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+          createdByUser: { id: 'user-1', fullName: 'Admin User', email: 'admin@example.com' },
+        },
+      ],
+    });
+    previewResidentialQuoteMock.mockResolvedValue({
+      pricingPlan: {
+        id: 'res-plan-1',
+        name: 'Residential Standard',
+        strategyKey: 'residential_flat_v1',
+      },
+      breakdown: {
+        baseHomePrice: 140,
+        sqftAdjustment: 0,
+        bedroomAdjustment: 0,
+        bathroomAdjustment: 0,
+        levelAdjustment: 0,
+        baseSubtotal: 140,
+        conditionMultiplier: 1,
+        serviceMultiplier: 1,
+        serviceSubtotal: 140,
+        recurringDiscount: 0,
+        firstCleanSurcharge: 25,
+        addOnTotal: 20,
+        minimumApplied: false,
+        minimumPrice: 100,
+        totalBeforeMinimum: 185,
+        finalTotal: 185,
+        estimatedHours: 3.5,
+        confidenceLevel: 'high',
+        manualReviewRequired: false,
+        manualReviewReasons: [],
+        addOns: [
+          {
+            code: 'inside_fridge',
+            label: 'inside_fridge',
+            pricingType: 'flat',
+            quantity: 1,
+            unitLabel: null,
+            unitPrice: 20,
+            estimatedMinutes: 15,
+            lineTotal: 20,
+          },
+        ],
+        guidance: ['Residential scope is ready for pricing.'],
+      },
+      settingsSnapshot: {} as never,
     });
     getFacilityPricingReadinessMock.mockResolvedValue({
       isReady: true,
@@ -347,7 +535,7 @@ describe('ProposalForm', () => {
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
     await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Cleaning Proposal');
-    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
@@ -397,7 +585,7 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Facility Proposal');
-    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
     await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
@@ -419,6 +607,60 @@ describe('ProposalForm', () => {
     });
   });
 
+  it('uses the residential quote engine for residential proposals', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+    await user.type(screen.getByLabelText(/proposal title/i), 'Willow Residential Proposal');
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
+
+    expect(await screen.findByLabelText(/residential pricing plan/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/residential quote engine/i)).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('checkbox'));
+    const populateButton = await screen.findByRole('button', { name: /populate from residential pricing/i });
+    await user.click(populateButton);
+
+    expect((await screen.findAllByText('Recurring Standard')).length).toBeGreaterThan(0);
+
+    await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
+    await user.click(await screen.findByRole('button', { name: /confirm tasks accuracy/i }));
+    await user.click(screen.getAllByRole('button', { name: /create proposal/i })[0]);
+
+    await waitFor(() => {
+      expect(previewResidentialQuoteMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          propertyId: 'property-1',
+          serviceType: 'recurring_standard',
+          frequency: 'weekly',
+          pricingPlanId: 'res-plan-1',
+        })
+      );
+      expect(createProposalMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: 'account-res-1',
+          facilityId: 'facility-res-1',
+          pricingPlanId: null,
+          proposalItems: expect.arrayContaining([
+            expect.objectContaining({
+              description: 'inside_fridge',
+            }),
+          ]),
+          pricingSnapshot: expect.objectContaining({
+            engine: 'residential_quote_preview_v1',
+            residentialPricingPlanId: 'res-plan-1',
+            residentialServiceType: 'recurring_standard',
+            residentialFrequency: 'weekly',
+          }),
+        })
+      );
+    });
+  });
+
   it('updates a proposal in edit mode', async () => {
     mockParams = { id: 'proposal-1' };
     const user = userEvent.setup();
@@ -428,7 +670,7 @@ describe('ProposalForm', () => {
     await screen.findByDisplayValue('Existing Proposal');
     await user.clear(screen.getByLabelText(/proposal title/i));
     await user.type(screen.getByLabelText(/proposal title/i), 'Updated Proposal');
-    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
@@ -497,7 +739,7 @@ describe('ProposalForm', () => {
 
     await user.clear(screen.getByLabelText(/proposal title/i));
     await user.type(screen.getByLabelText(/proposal title/i), 'Revised Proposal');
-    const taxRateInput = screen.getByRole('spinbutton', { name: /tax rate/i });
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));

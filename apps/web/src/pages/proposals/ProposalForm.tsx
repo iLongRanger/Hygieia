@@ -11,6 +11,7 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  Home,
   ChevronDown,
   ChevronRight,
   CircleCheck,
@@ -63,6 +64,17 @@ import ClientServiceScheduleCard from '../../components/proposals/ClientServiceS
 import { listTemplates } from '../../lib/proposalTemplates';
 import type { ProposalTemplate } from '../../types/proposalTemplate';
 import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
+import {
+  listResidentialPricingPlans,
+  previewResidentialQuote,
+} from '../../lib/residential';
+import type {
+  ResidentialPricingPlan,
+  ResidentialQuotePreview,
+  ResidentialServiceType,
+  ResidentialFrequency,
+  ResidentialQuoteAddOnInput,
+} from '../../types/residential';
 
 interface SuggestedProposalItem {
   itemType?: ProposalItemType;
@@ -367,6 +379,90 @@ const SUBCONTRACTOR_TIERS = [
   ...SUBCONTRACTOR_TIER_OPTIONS,
 ];
 
+const RESIDENTIAL_SERVICE_OPTIONS: { value: ResidentialServiceType; label: string }[] = [
+  { value: 'recurring_standard', label: 'Recurring Standard' },
+  { value: 'one_time_standard', label: 'One-Time Standard' },
+  { value: 'deep_clean', label: 'Deep Clean' },
+  { value: 'move_in_out', label: 'Move In / Out' },
+  { value: 'turnover', label: 'Vacation Rental Turnover' },
+  { value: 'post_construction', label: 'Post Construction' },
+];
+
+const RESIDENTIAL_FREQUENCY_OPTIONS: { value: ResidentialFrequency; label: string }[] = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Biweekly' },
+  { value: 'every_4_weeks', label: 'Every 4 Weeks' },
+  { value: 'one_time', label: 'One Time' },
+];
+
+const normalizeOptionalString = (value: string | null | undefined) => {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeTaskList = (tasks: string[] | null | undefined) =>
+  (tasks || [])
+    .map((task) => task.trim())
+    .filter((task, index, all) => task.length > 0 && all.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
+
+const mapResidentialFrequencyToProposalSchedule = (
+  frequency: ResidentialFrequency
+): ProposalScheduleFrequency => {
+  switch (frequency) {
+    case 'weekly':
+      return 'weekly';
+    case 'biweekly':
+      return 'biweekly';
+    case 'every_4_weeks':
+      return 'monthly';
+    case 'one_time':
+    default:
+      return 'monthly';
+  }
+};
+
+const mapResidentialFrequencyToProposalServiceFrequency = (
+  frequency: ResidentialFrequency
+): ServiceFrequency => {
+  switch (frequency) {
+    case 'weekly':
+      return 'weekly';
+    case 'biweekly':
+      return 'biweekly';
+    case 'every_4_weeks':
+      return 'monthly';
+    case 'one_time':
+    default:
+      return 'monthly';
+  }
+};
+
+const mapResidentialServiceTypeToProposalServiceType = (
+  serviceType: ResidentialServiceType
+): ServiceType => {
+  switch (serviceType) {
+    case 'recurring_standard':
+      return 'weekly';
+    case 'one_time_standard':
+    case 'deep_clean':
+    case 'move_in_out':
+    case 'turnover':
+    case 'post_construction':
+    default:
+      return 'one_time';
+  }
+};
+
+const defaultResidentialProposalTitle = (
+  serviceType: ResidentialServiceType,
+  locationName: string | null | undefined
+) => {
+  const serviceLabel =
+    RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === serviceType)?.label || 'Residential Cleaning';
+  return locationName ? `${serviceLabel} - ${locationName}` : serviceLabel;
+};
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -426,6 +522,7 @@ const ProposalForm = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [, setTermsTemplates] = useState<ProposalTemplate[]>([]);
+  const [residentialPricingPlans, setResidentialPricingPlans] = useState<ResidentialPricingPlan[]>([]);
 
   // Form data
   const [formData, setFormData] = useState<CreateProposalInput>({
@@ -482,20 +579,59 @@ const ProposalForm = () => {
   const [pricingReadiness, setPricingReadiness] = useState<FacilityPricingReadiness | null>(null);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
+  const [residentialPreview, setResidentialPreview] = useState<ResidentialQuotePreview | null>(null);
+  const [loadingResidentialPreview, setLoadingResidentialPreview] = useState(false);
   const [scheduleTouchedByUser, setScheduleTouchedByUser] = useState(false);
 
   // Pricing plan states
   const [pricingPlans, setPricingPlans] = useState<PricingSettings[]>([]);
   const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
+  const [selectedResidentialPricingPlanId, setSelectedResidentialPricingPlanId] = useState<string>('');
+  const [residentialServiceType, setResidentialServiceType] = useState<ResidentialServiceType>('recurring_standard');
+  const [residentialFrequency, setResidentialFrequency] = useState<ResidentialFrequency>('weekly');
+  const [residentialAddOns, setResidentialAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
   const [workerCount, setWorkerCount] = useState<number>(1);
   const [selectedSubcontractorTier, setSelectedSubcontractorTier] = useState<string>('');
 
   const selectedPricingPlan = pricingPlans.find((plan) => plan.id === selectedPricingPlanId);
   const isHourlyPlan = selectedPricingPlan?.pricingType === 'hourly';
   const isRejectedRevision = isEditMode && originalStatus === 'rejected';
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === formData.accountId),
+    [accounts, formData.accountId]
+  );
+  const isResidentialAccount = selectedAccount?.type === 'residential';
   const selectedFacility = useMemo(
     () => facilities.find((facility) => facility.id === formData.facilityId),
     [facilities, formData.facilityId]
+  );
+  const selectedResidentialProperty = useMemo(() => {
+    if (!selectedAccount || selectedAccount.type !== 'residential') {
+      return null;
+    }
+
+    const linkedProperty = selectedAccount.residentialProperties?.find(
+      (property) => property.facility?.id === formData.facilityId
+    );
+
+    return (
+      linkedProperty
+      || selectedAccount.residentialProperties?.find((property) => property.isPrimary)
+      || selectedAccount.residentialProperties?.[0]
+      || null
+    );
+  }, [selectedAccount, formData.facilityId]);
+  const selectedResidentialPricingPlan = useMemo(
+    () =>
+      residentialPricingPlans.find((plan) => plan.id === selectedResidentialPricingPlanId)
+      || residentialPricingPlans.find((plan) => plan.isDefault)
+      || residentialPricingPlans[0]
+      || null,
+    [residentialPricingPlans, selectedResidentialPricingPlanId]
+  );
+  const availableResidentialAddOns = useMemo(
+    () => Object.entries(selectedResidentialPricingPlan?.settings.addOnPrices || {}),
+    [selectedResidentialPricingPlan]
   );
 
   // Calculate totals whenever items, services, or tax rate change
@@ -561,10 +697,11 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, plansRes, templatesRes] = await Promise.all([
+      const [accountsRes, facilitiesRes, plansRes, residentialPlansRes, templatesRes] = await Promise.all([
         listAccounts({ limit: 100, readyForProposal: true }),
         listFacilities({ limit: 100 }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
+        listResidentialPricingPlans({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
       ]);
       const readyAccounts = accountsRes?.data || [];
@@ -575,6 +712,8 @@ const ProposalForm = () => {
       setAccounts(readyAccounts);
       setFacilities(facilitiesForReadyAccounts);
       setTermsTemplates(templatesRes || []);
+      const residentialPlans = residentialPlansRes?.data || [];
+      setResidentialPricingPlans(residentialPlans);
       const plans = plansRes?.data || [];
       setPricingPlans(plans);
       // Set default plan if available
@@ -585,6 +724,10 @@ const ProposalForm = () => {
           ...prev,
           pricingPlanId: defaultPlan.id,
         }));
+      }
+      const defaultResidentialPlan = residentialPlans.find((plan) => plan.isDefault) || residentialPlans[0];
+      if (defaultResidentialPlan) {
+        setSelectedResidentialPricingPlanId(defaultResidentialPlan.id);
       }
       // Set default template terms for new proposals
       if (!isEditMode) {
@@ -634,6 +777,24 @@ const ProposalForm = () => {
       if (proposal.pricingPlanId) {
         setSelectedPricingPlanId(proposal.pricingPlanId);
       }
+      const snapshot = proposal.pricingSnapshot as Record<string, unknown> | null;
+      if (proposal.account.type === 'residential' && snapshot?.engine === 'residential_quote_preview_v1') {
+        if (typeof snapshot.residentialPricingPlanId === 'string') {
+          setSelectedResidentialPricingPlanId(snapshot.residentialPricingPlanId);
+        }
+        if (typeof snapshot.residentialServiceType === 'string') {
+          setResidentialServiceType(snapshot.residentialServiceType as ResidentialServiceType);
+        }
+        if (typeof snapshot.residentialFrequency === 'string') {
+          setResidentialFrequency(snapshot.residentialFrequency as ResidentialFrequency);
+        }
+        if (Array.isArray(snapshot.residentialAddOns)) {
+          setResidentialAddOns(snapshot.residentialAddOns as ResidentialQuoteAddOnInput[]);
+        }
+        if (snapshot.preview && typeof snapshot.preview === 'object') {
+          setResidentialPreview(snapshot.preview as ResidentialQuotePreview);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch proposal:', error);
       toast.error('Failed to load proposal');
@@ -658,6 +819,78 @@ const ProposalForm = () => {
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
     : [];
+
+  useEffect(() => {
+    if (!isResidentialAccount) {
+      setResidentialPreview(null);
+      setResidentialAddOns([]);
+      return;
+    }
+
+    if (!selectedResidentialPricingPlanId && residentialPricingPlans.length > 0) {
+      const defaultPlan = residentialPricingPlans.find((plan) => plan.isDefault) || residentialPricingPlans[0];
+      if (defaultPlan) {
+        setSelectedResidentialPricingPlanId(defaultPlan.id);
+      }
+    }
+  }, [isResidentialAccount, residentialPricingPlans, selectedResidentialPricingPlanId]);
+
+  useEffect(() => {
+    if (!isResidentialAccount || !selectedResidentialProperty) {
+      setResidentialPreview(null);
+      return;
+    }
+
+    if (!selectedResidentialPricingPlanId) {
+      setResidentialPreview(null);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        setLoadingResidentialPreview(true);
+        const preview = await previewResidentialQuote({
+          propertyId: selectedResidentialProperty.id,
+          serviceType: residentialServiceType,
+          frequency: residentialFrequency,
+          homeAddress: selectedResidentialProperty.serviceAddress,
+          homeProfile: {
+            homeType: selectedResidentialProperty.homeProfile?.homeType || 'single_family',
+            squareFeet: selectedResidentialProperty.homeProfile?.squareFeet || 0,
+            bedrooms: selectedResidentialProperty.homeProfile?.bedrooms || 0,
+            fullBathrooms: selectedResidentialProperty.homeProfile?.fullBathrooms || 0,
+            halfBathrooms: selectedResidentialProperty.homeProfile?.halfBathrooms || 0,
+            levels: selectedResidentialProperty.homeProfile?.levels || 1,
+            occupiedStatus: selectedResidentialProperty.homeProfile?.occupiedStatus || 'occupied',
+            condition: selectedResidentialProperty.homeProfile?.condition || 'standard',
+            hasPets: selectedResidentialProperty.homeProfile?.hasPets || false,
+            lastProfessionalCleaning: selectedResidentialProperty.homeProfile?.lastProfessionalCleaning || '',
+            parkingAccess: selectedResidentialProperty.homeProfile?.parkingAccess || '',
+            entryNotes: selectedResidentialProperty.homeProfile?.entryNotes || '',
+            specialInstructions: selectedResidentialProperty.homeProfile?.specialInstructions || '',
+            isFirstVisit: selectedResidentialProperty.homeProfile?.isFirstVisit || false,
+          },
+          pricingPlanId: selectedResidentialPricingPlanId,
+          addOns: residentialAddOns,
+        });
+        setResidentialPreview(preview);
+      } catch (error) {
+        console.error('Failed to preview residential proposal pricing:', error);
+        setResidentialPreview(null);
+      } finally {
+        setLoadingResidentialPreview(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    isResidentialAccount,
+    residentialAddOns,
+    residentialFrequency,
+    residentialServiceType,
+    selectedResidentialPricingPlanId,
+    selectedResidentialProperty,
+  ]);
 
   useEffect(() => {
     const facilityId = formData.facilityId;
@@ -794,10 +1027,110 @@ const ProposalForm = () => {
     [formData.facilityId, isEditMode, scheduleTouchedByUser, selectedFacility]
   );
 
+  const toggleResidentialAddOn = (code: string) => {
+    setResidentialAddOns((current) => {
+      const existing = current.find((addOn) => addOn.code === code);
+      if (existing) {
+        return current.filter((addOn) => addOn.code !== code);
+      }
+      return [...current, { code, quantity: 1 }];
+    });
+  };
+
+  const updateResidentialAddOnQuantity = (code: string, quantity: number) => {
+    setResidentialAddOns((current) =>
+      current.map((addOn) =>
+        addOn.code === code ? { ...addOn, quantity: Math.max(1, quantity) } : addOn
+      )
+    );
+  };
+
   // Auto-populate services from facility pricing
   const handleAutoPopulateFromFacility = async () => {
     if (!formData.facilityId) {
       toast.error('Please select a facility first');
+      return;
+    }
+    if (isResidentialAccount) {
+      if (!selectedResidentialProperty) {
+        toast.error('Select a residential service location first');
+        return;
+      }
+      if (!selectedResidentialPricingPlanId) {
+        toast.error('Please select a residential pricing plan first');
+        return;
+      }
+      if (!residentialPreview) {
+        toast.error('Residential pricing preview is not ready yet');
+        return;
+      }
+
+      const residentialTasks = normalizeTaskList(
+        facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
+      );
+      const serviceType = mapResidentialServiceTypeToProposalServiceType(residentialServiceType);
+      const frequency = mapResidentialFrequencyToProposalServiceFrequency(residentialFrequency);
+      const scheduleFrequency = mapResidentialFrequencyToProposalSchedule(residentialFrequency);
+      const residentialPlan = selectedResidentialPricingPlan;
+      const serviceLabel =
+        RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === residentialServiceType)?.label
+        || 'Residential Cleaning';
+
+      const services: ProposalService[] = [{
+        serviceName: serviceLabel,
+        serviceType,
+        frequency,
+        estimatedHours: residentialPreview.breakdown.estimatedHours,
+        hourlyRate: null,
+        monthlyPrice: residentialPreview.breakdown.finalTotal,
+        description: [
+          selectedResidentialProperty.name,
+          residentialTasks.length > 0 ? `Tasks: ${residentialTasks.join(', ')}` : null,
+          residentialPreview.breakdown.guidance.length > 0
+            ? `Guidance: ${residentialPreview.breakdown.guidance.join(' | ')}`
+            : null,
+        ].filter(Boolean).join('\n'),
+        includedTasks: residentialTasks,
+        sortOrder: 0,
+      }];
+
+      const items: ProposalItem[] = [];
+      if (residentialPreview.breakdown.firstCleanSurcharge > 0) {
+        items.push({
+          itemType: 'labor',
+          description: 'First Clean Surcharge',
+          quantity: 1,
+          unitPrice: residentialPreview.breakdown.firstCleanSurcharge,
+          totalPrice: residentialPreview.breakdown.firstCleanSurcharge,
+          sortOrder: items.length,
+        });
+      }
+      residentialPreview.breakdown.addOns.forEach((addOn) => {
+        items.push({
+          itemType: 'other',
+          description: addOn.label,
+          quantity: addOn.quantity,
+          unitPrice: addOn.unitPrice,
+          totalPrice: addOn.lineTotal,
+          sortOrder: items.length,
+        });
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        title: prev.title || defaultResidentialProposalTitle(residentialServiceType, selectedResidentialProperty.name),
+        description:
+          prev.description
+          || `Residential proposal built from the scoped service location for ${selectedResidentialProperty.name}.`,
+        proposalServices: services,
+        proposalItems: items,
+        pricingPlanId: null,
+        serviceFrequency: scheduleFrequency,
+        serviceSchedule: createDefaultSchedule(scheduleFrequency),
+      }));
+      setPricingBreakdown(null);
+      setScheduleTouchedByUser(false);
+      toast.success('Populated proposal from residential quote engine');
       return;
     }
     if (!selectedPricingPlanId) {
@@ -1027,8 +1360,8 @@ const ProposalForm = () => {
       toast.error('Please enter a proposal title');
       return;
     }
-    if (!formData.pricingPlanId) {
-      toast.error('Please select a pricing plan');
+    if (isResidentialAccount ? !selectedResidentialPricingPlanId : !formData.pricingPlanId) {
+      toast.error(`Please select a ${isResidentialAccount ? 'residential pricing plan' : 'pricing plan'}`);
       return;
     }
     if (Number(formData.taxRate || 0) <= 0) {
@@ -1075,26 +1408,46 @@ const ProposalForm = () => {
     setSaving(true);
     try {
       const nonZeroItems = removeZeroValueProposalItems(formData.proposalItems);
+      const residentialPricingSnapshot = isResidentialAccount
+        ? {
+            engine: 'residential_quote_preview_v1',
+            residentialPricingPlanId: selectedResidentialPricingPlan?.id ?? selectedResidentialPricingPlanId ?? null,
+            residentialPricingPlanName: selectedResidentialPricingPlan?.name ?? null,
+            residentialServiceType,
+            residentialFrequency,
+            residentialAddOns,
+            propertyId: selectedResidentialProperty?.id ?? null,
+            preview: residentialPreview,
+          }
+        : undefined;
+      const effectivePricingSnapshot = isResidentialAccount
+        ? residentialPricingSnapshot
+        : (pricingBreakdown?.settingsSnapshot ?? undefined);
+      const effectivePricingPlanId = isResidentialAccount
+        ? null
+        : (formData.pricingPlanId ?? null);
       if (isEditMode) {
         const updateData: UpdateProposalInput = {
           ...formData,
+          pricingPlanId: effectivePricingPlanId,
           notes: formData.notes,
           proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
           validUntil: formData.validUntil || null,
-          pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
+          pricingSnapshot: effectivePricingSnapshot,
         };
         await updateProposal(id, updateData);
         toast.success(isRejectedRevision ? 'Proposal revised successfully' : 'Proposal updated successfully');
       } else {
         await createProposal({
           ...formData,
+          pricingPlanId: effectivePricingPlanId,
           notes: formData.notes,
           proposalItems: nonZeroItems,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
-          pricingSnapshot: pricingBreakdown?.settingsSnapshot ?? undefined,
+          pricingSnapshot: effectivePricingSnapshot,
         });
         toast.success('Proposal created successfully');
       }
@@ -1179,7 +1532,7 @@ const ProposalForm = () => {
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
               />
               <Select
-                label="Facility *"
+                label={isResidentialAccount ? 'Service Location *' : 'Facility *'}
                 placeholder="Select a facility"
                 value={formData.facilityId || ''}
                 onChange={(value) => handleChange('facilityId', value)}
@@ -1188,35 +1541,73 @@ const ProposalForm = () => {
                   label: f.name,
                 }))}
               />
-              <div className="flex flex-col gap-1">
-                <Select
-                  label="Pricing Plan"
-                  placeholder="Select pricing plan"
-                  value={selectedPricingPlanId}
-                  onChange={(value) => {
-                    setSelectedPricingPlanId(value);
-                    handleChange('pricingPlanId', value || null);
-                  }}
-                  options={pricingPlans.map((plan) => ({
-                    value: plan.id,
-                    label: `${plan.name}${plan.isDefault ? ' (Default)' : ''}`,
-                  }))}
-                />
-                {selectedPricingPlan && (
-                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
-                    Type: {selectedPricingPlan.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
-                  </p>
-                )}
-              </div>
-              {isHourlyPlan && (
-                <Input
-                  label="Worker Count"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={workerCount}
-                  onChange={(e) => setWorkerCount(Math.max(1, Number(e.target.value) || 1))}
-                />
+              {isResidentialAccount ? (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <Select
+                      label="Residential Pricing Plan"
+                      placeholder="Select residential pricing plan"
+                      value={selectedResidentialPricingPlanId}
+                      onChange={(value) => setSelectedResidentialPricingPlanId(value)}
+                      options={residentialPricingPlans.map((plan) => ({
+                        value: plan.id,
+                        label: `${plan.name}${plan.isDefault ? ' (Default)' : ''}`,
+                      }))}
+                    />
+                    {selectedResidentialPricingPlan ? (
+                      <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
+                        Engine: {selectedResidentialPricingPlan.strategyKey}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Select
+                    label="Residential Service Type"
+                    placeholder="Select service type"
+                    value={residentialServiceType}
+                    onChange={(value) => setResidentialServiceType(value as ResidentialServiceType)}
+                    options={RESIDENTIAL_SERVICE_OPTIONS}
+                  />
+                  <Select
+                    label="Residential Frequency"
+                    placeholder="Select frequency"
+                    value={residentialFrequency}
+                    onChange={(value) => setResidentialFrequency(value as ResidentialFrequency)}
+                    options={RESIDENTIAL_FREQUENCY_OPTIONS}
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <Select
+                      label="Pricing Plan"
+                      placeholder="Select pricing plan"
+                      value={selectedPricingPlanId}
+                      onChange={(value) => {
+                        setSelectedPricingPlanId(value);
+                        handleChange('pricingPlanId', value || null);
+                      }}
+                      options={pricingPlans.map((plan) => ({
+                        value: plan.id,
+                        label: `${plan.name}${plan.isDefault ? ' (Default)' : ''}`,
+                      }))}
+                    />
+                    {selectedPricingPlan && (
+                      <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
+                        Type: {selectedPricingPlan.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
+                      </p>
+                    )}
+                  </div>
+                  {isHourlyPlan && (
+                    <Input
+                      label="Worker Count"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={workerCount}
+                      onChange={(e) => setWorkerCount(Math.max(1, Number(e.target.value) || 1))}
+                    />
+                  )}
+                </>
               )}
               <Input
                 label="Valid Until"
@@ -1225,32 +1616,140 @@ const ProposalForm = () => {
                 onChange={(e) => handleChange('validUntil', e.target.value || null)}
               />
 
-              <div className="md:col-span-2">
-                <ClientServiceScheduleCard
-                  frequencyValue={formData.serviceFrequency || '5x_week'}
-                  frequencyOptions={SCHEDULE_FREQUENCIES}
-                  allowedWindowStart={formData.serviceSchedule?.allowedWindowStart || '18:00'}
-                  allowedWindowEnd={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
-                  dayOptions={SCHEDULE_DAY_OPTIONS}
-                  selectedDays={
-                    formData.serviceSchedule?.days ||
-                    defaultDaysForFrequency(
-                      (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
-                    )
-                  }
-                  requiredDays={expectedDaysForFrequency(
-                    (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
-                  )}
-                  onFrequencyChange={handleScheduleFrequencyChange}
-                  onAllowedWindowStartChange={(value) =>
-                    updateServiceSchedule({ allowedWindowStart: value || '00:00' })
-                  }
-                  onAllowedWindowEndChange={(value) =>
-                    updateServiceSchedule({ allowedWindowEnd: value || '23:59' })
-                  }
-                  onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
+              {!isResidentialAccount && (
+                <Input
+                  label="Tax Rate (%)"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={Number(formData.taxRate || 0) * 100}
+                  onChange={(e) => handleChange('taxRate', (Number(e.target.value) || 0) / 100)}
                 />
-              </div>
+              )}
+
+              {!isResidentialAccount && (
+                <div className="md:col-span-2">
+                  <ClientServiceScheduleCard
+                    frequencyValue={formData.serviceFrequency || '5x_week'}
+                    frequencyOptions={SCHEDULE_FREQUENCIES}
+                    allowedWindowStart={formData.serviceSchedule?.allowedWindowStart || '18:00'}
+                    allowedWindowEnd={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
+                    dayOptions={SCHEDULE_DAY_OPTIONS}
+                    selectedDays={
+                      formData.serviceSchedule?.days ||
+                      defaultDaysForFrequency(
+                        (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
+                      )
+                    }
+                    requiredDays={expectedDaysForFrequency(
+                      (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency
+                    )}
+                    onFrequencyChange={handleScheduleFrequencyChange}
+                    onAllowedWindowStartChange={(value) =>
+                      updateServiceSchedule({ allowedWindowStart: value || '00:00' })
+                    }
+                    onAllowedWindowEndChange={(value) =>
+                      updateServiceSchedule({ allowedWindowEnd: value || '23:59' })
+                    }
+                    onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
+                  />
+                </div>
+              )}
+
+              {isResidentialAccount && formData.facilityId && (
+                <div className="md:col-span-2">
+                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5 text-gold" />
+                        <span className="font-medium text-surface-900 dark:text-white">Residential Quote Engine</span>
+                      </div>
+                      {selectedResidentialProperty ? (
+                        <Badge variant="info" size="sm">{selectedResidentialProperty.name}</Badge>
+                      ) : null}
+                    </div>
+
+                    {availableResidentialAddOns.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-surface-900 dark:text-white">Add-Ons</p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {availableResidentialAddOns.map(([code, definition]) => {
+                            const selectedAddOn = residentialAddOns.find((addOn) => addOn.code === code);
+                            return (
+                              <label
+                                key={code}
+                                className="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm dark:border-surface-700 dark:bg-surface-900/40"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-start gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(selectedAddOn)}
+                                      onChange={() => toggleResidentialAddOn(code)}
+                                      className="mt-1"
+                                    />
+                                    <div>
+                                      <div className="font-medium text-surface-900 dark:text-white">{code}</div>
+                                      <div className="text-xs text-surface-500 dark:text-surface-400">
+                                        {definition.description || `${definition.pricingType} add-on`}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {selectedAddOn ? (
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      value={selectedAddOn.quantity}
+                                      onChange={(e) => updateResidentialAddOnQuantity(code, Number(e.target.value) || 1)}
+                                    />
+                                  ) : null}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {loadingResidentialPreview ? (
+                      <p className="text-sm text-surface-500 dark:text-surface-400">Calculating residential pricing preview...</p>
+                    ) : residentialPreview ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Monthly Total</div>
+                          <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
+                            {formatCurrency(residentialPreview.breakdown.finalTotal)}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Estimated Hours</div>
+                          <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
+                            {residentialPreview.breakdown.estimatedHours.toFixed(1)}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
+                          <div className="text-xs uppercase tracking-wide text-surface-500">Review</div>
+                          <div className="mt-1 text-sm font-semibold text-surface-900 dark:text-white">
+                            {residentialPreview.breakdown.manualReviewRequired ? 'Manual review required' : 'Ready to quote'}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Select a residential service location and pricing plan to calculate the quote-engine preview.
+                      </p>
+                    )}
+
+                    {residentialPreview?.breakdown.guidance.length ? (
+                      <div className="rounded-lg border border-surface-200 bg-white px-3 py-3 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
+                        {residentialPreview.breakdown.guidance.join(' ')}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
 
               {/* Auto-populate from facility */}
               {formData.facilityId && (
@@ -1259,9 +1758,11 @@ const ProposalForm = () => {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Facility</span>
+                        <span className="font-medium text-surface-900 dark:text-white">
+                          {isResidentialAccount ? 'Auto-Populate from Residential Quote Engine' : 'Auto-Populate from Facility'}
+                        </span>
                       </div>
-                      {pricingReadiness && (
+                      {!isResidentialAccount && pricingReadiness && (
                         <div className="flex items-center gap-2">
                           {pricingReadiness.isReady ? (
                             <span className="flex items-center gap-1 text-sm text-emerald">
@@ -1278,7 +1779,20 @@ const ProposalForm = () => {
                       )}
                     </div>
 
-                    {pricingReadiness?.isReady ? (
+                    {isResidentialAccount ? (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAutoPopulateFromFacility}
+                          isLoading={loadingPricing || loadingResidentialPreview}
+                          className="whitespace-nowrap"
+                        >
+                          <Calculator className="w-4 h-4 mr-2" />
+                          Populate from Residential Pricing
+                        </Button>
+                      </div>
+                    ) : pricingReadiness?.isReady ? (
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex flex-col">
                           <Select
@@ -1321,7 +1835,7 @@ const ProposalForm = () => {
                   )}
 
                   {/* Internal pricing breakdown (shown after calculation) */}
-                  {pricingBreakdown && (
+                  {pricingBreakdown && !isResidentialAccount && (
                     <div className="mt-4">
                       <PricingBreakdownPanel pricing={pricingBreakdown} />
                     </div>
