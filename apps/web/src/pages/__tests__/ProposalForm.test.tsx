@@ -550,6 +550,18 @@ describe('ProposalForm', () => {
     });
   });
 
+  it('auto-fills the proposal title when a commercial facility is selected', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
+    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Cleaning Services - Main Facility');
+    });
+  });
+
   it('auto-populates services from facility pricing using client schedule frequency', async () => {
     const user = userEvent.setup();
     render(<ProposalForm />);
@@ -576,6 +588,18 @@ describe('ProposalForm', () => {
         undefined,
         undefined
       );
+    });
+  });
+
+  it('auto-fills the proposal title when a residential service location is selected', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Recurring Standard - Willow Main Home');
     });
   });
 
