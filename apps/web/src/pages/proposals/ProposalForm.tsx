@@ -11,7 +11,6 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  Home,
   ChevronDown,
   ChevronRight,
   CircleCheck,
@@ -1851,101 +1850,6 @@ const ProposalForm = () => {
                     }
                     onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
                   />
-                </div>
-              )}
-
-              {isResidentialAccount && formData.facilityId && (
-                <div className="md:col-span-2">
-                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Home className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">Residential Quote Engine</span>
-                      </div>
-                      {selectedResidentialProperty ? (
-                        <Badge variant="info" size="sm">{selectedResidentialProperty.name}</Badge>
-                      ) : null}
-                    </div>
-
-                    {availableResidentialAddOns.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-surface-900 dark:text-white">Add-Ons</p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {availableResidentialAddOns.map(([code, definition]) => {
-                            const selectedAddOn = residentialAddOns.find((addOn) => addOn.code === code);
-                            return (
-                              <label
-                                key={code}
-                                className="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm dark:border-surface-700 dark:bg-surface-900/40"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex items-start gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={Boolean(selectedAddOn)}
-                                      onChange={() => toggleResidentialAddOn(code)}
-                                      className="mt-1"
-                                    />
-                                    <div>
-                                      <div className="font-medium text-surface-900 dark:text-white">{code}</div>
-                                      <div className="text-xs text-surface-500 dark:text-surface-400">
-                                        {definition.description || `${definition.pricingType} add-on`}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {selectedAddOn ? (
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      step="1"
-                                      value={selectedAddOn.quantity}
-                                      onChange={(e) => updateResidentialAddOnQuantity(code, Number(e.target.value) || 1)}
-                                    />
-                                  ) : null}
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {loadingResidentialPreview ? (
-                      <p className="text-sm text-surface-500 dark:text-surface-400">Calculating residential pricing preview...</p>
-                    ) : residentialPreview ? (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Monthly Total</div>
-                          <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
-                            {formatCurrency(residentialPreview.breakdown.finalTotal)}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Estimated Hours</div>
-                          <div className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
-                            {residentialPreview.breakdown.estimatedHours.toFixed(1)}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-surface-50 px-3 py-3 dark:bg-surface-900/40">
-                          <div className="text-xs uppercase tracking-wide text-surface-500">Review</div>
-                          <div className="mt-1 text-sm font-semibold text-surface-900 dark:text-white">
-                            {residentialPreview.breakdown.manualReviewRequired ? 'Manual review required' : 'Ready to quote'}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Select a residential service location and pricing plan to calculate the quote-engine preview.
-                      </p>
-                    )}
-
-                    {residentialPreview?.breakdown.guidance.length ? (
-                      <div className="rounded-lg border border-surface-200 bg-white px-3 py-3 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
-                        {residentialPreview.breakdown.guidance.join(' ')}
-                      </div>
-                    ) : null}
-
-                  </div>
                 </div>
               )}
 

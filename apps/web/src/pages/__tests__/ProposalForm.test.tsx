@@ -643,9 +643,8 @@ describe('ProposalForm', () => {
     await user.type(taxRateInput, '5');
 
     expect(await screen.findByLabelText(/residential pricing plan/i)).toBeInTheDocument();
-    expect((await screen.findAllByText(/residential quote engine/i)).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/residential frequency/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: /^thu$/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Recurring Standard').length).toBeGreaterThan(1);
@@ -679,11 +678,6 @@ describe('ProposalForm', () => {
           proposalServices: expect.arrayContaining([
             expect.objectContaining({
               serviceName: 'Recurring Standard',
-            }),
-          ]),
-          proposalItems: expect.arrayContaining([
-            expect.objectContaining({
-              description: 'inside_fridge',
             }),
           ]),
           pricingSnapshot: expect.objectContaining({
