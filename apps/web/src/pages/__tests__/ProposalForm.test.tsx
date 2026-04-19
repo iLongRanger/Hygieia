@@ -647,7 +647,9 @@ describe('ProposalForm', () => {
 
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: /^thu$/i }));
-    expect((await screen.findAllByText('Recurring Standard')).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText('Recurring Standard').length).toBeGreaterThan(1);
+    });
 
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
     await user.click(await screen.findByRole('button', { name: /confirm tasks accuracy/i }));

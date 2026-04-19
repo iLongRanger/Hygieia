@@ -1016,6 +1016,54 @@ const ProposalForm = () => {
   ]);
 
   useEffect(() => {
+    if (!isResidentialAccount || !selectedResidentialProperty || !residentialPreview) {
+      return;
+    }
+
+    const derivedTasks = normalizeTaskList(
+      facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
+    );
+    const derivedServices = buildResidentialProposalServices({
+      preview: residentialPreview,
+      propertyName: selectedResidentialProperty.name,
+      serviceType: residentialServiceType,
+      frequency: residentialFrequency,
+      tasks: derivedTasks,
+    });
+    const derivedItems = buildResidentialProposalItems(residentialPreview);
+
+    setFormData((prev) => {
+      const nextDescription =
+        prev.description
+        || `Residential proposal built from the scoped service location for ${selectedResidentialProperty.name}.`;
+      const hasChanges =
+        JSON.stringify(prev.proposalServices || []) !== JSON.stringify(derivedServices)
+        || JSON.stringify(prev.proposalItems || []) !== JSON.stringify(derivedItems)
+        || prev.pricingPlanId !== null
+        || prev.description !== nextDescription;
+
+      if (!hasChanges) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        proposalServices: derivedServices,
+        proposalItems: derivedItems,
+        pricingPlanId: null,
+        description: nextDescription,
+      };
+    });
+  }, [
+    facilityTasks,
+    isResidentialAccount,
+    residentialFrequency,
+    residentialPreview,
+    residentialServiceType,
+    selectedResidentialProperty,
+  ]);
+
+  useEffect(() => {
     if (isEditMode || !suggestedProposalTitle) {
       return;
     }
