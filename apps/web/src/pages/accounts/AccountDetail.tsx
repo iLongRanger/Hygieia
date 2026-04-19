@@ -752,6 +752,16 @@ const AccountDetail = () => {
     recentJobs,
   });
   const residentialJourneyPropertyLabel = focusedResidentialPropertyJourney?.property.name ?? null;
+  const focusedResidentialFacilityId = focusedResidentialPropertyJourney?.property.facility?.id ?? null;
+  const focusedResidentialProposal = focusedResidentialFacilityId
+    ? [...proposals]
+        .filter((proposal) => proposal.facility?.id === focusedResidentialFacilityId)
+        .sort((left, right) => {
+          const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
+          const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
+          return rightTime - leftTime;
+        })[0] ?? null
+    : null;
   const commercialJourney = getCommercialJourneyState({
     facilities,
     appointments,
@@ -777,6 +787,8 @@ const AccountDetail = () => {
   const navigateFromAccount = (path: string) => navigate(path, accountBackState);
   const navigateToFacilityDetail = (facilityId: string) =>
     navigate(`/service-locations/${facilityId}`, accountBackState);
+  const navigateToProposalDetail = (proposalId: string) =>
+    navigate(`/proposals/${proposalId}`, accountBackState);
 
   const bookingsSection = (
     <Card className="space-y-4">
@@ -953,17 +965,22 @@ const AccountDetail = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            const linkedFacilityId = focusedResidentialPropertyJourney.property.facility?.id;
+                            const linkedFacilityId = focusedResidentialFacilityId;
                             if (!linkedFacilityId) return;
                             navigateToFacilityDetail(linkedFacilityId);
                           }}
-                          disabled={!focusedResidentialPropertyJourney.property.facility?.id}
+                          disabled={!focusedResidentialFacilityId}
                         >
                           Open Service Location
                         </Button>
                       ) : null}
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
-                        Open Residential Quotes
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => focusedResidentialProposal && navigateToProposalDetail(focusedResidentialProposal.id)}
+                        disabled={!focusedResidentialProposal}
+                      >
+                        Open Proposal
                       </Button>
                       {activeContract ? (
                         <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
@@ -1099,39 +1116,49 @@ const AccountDetail = () => {
                     )}
                   </Card>
 
-                  {/* Quotes */}
+                  {/* Proposals */}
                   <Card className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Quotes</h3>
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Proposals</h3>
                         <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Quotes linked to this residential account.
+                          Proposals linked to this residential account and its service locations.
                         </p>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/residential/quotes')}>
-                        Open Quotes
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => focusedResidentialProposal && navigateToProposalDetail(focusedResidentialProposal.id)}
+                        disabled={!focusedResidentialProposal}
+                      >
+                        Open Proposal
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      {residentialQuotes.length === 0 ? (
-                        <div className="text-sm text-surface-500 dark:text-surface-400">No residential quotes yet.</div>
+                      {proposals.length === 0 ? (
+                        <div className="text-sm text-surface-500 dark:text-surface-400">No proposals yet.</div>
                       ) : (
-                        residentialQuotes.map((quote) => (
+                        proposals.map((proposal) => (
                           <button
-                            key={quote.id}
+                            key={proposal.id}
                             type="button"
-                            onClick={() => navigateFromAccount('/residential/quotes')}
+                            onClick={() => navigateToProposalDetail(proposal.id)}
                             className="w-full rounded-xl border border-surface-200 p-3 text-left transition-colors hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600"
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <div className="font-medium text-surface-900 dark:text-surface-100">{quote.title}</div>
-                                <div className="text-xs text-surface-500">{quote.quoteNumber}</div>
+                                <div className="font-medium text-surface-900 dark:text-surface-100">{proposal.title}</div>
+                                <div className="text-xs text-surface-500">{proposal.proposalNumber}</div>
                               </div>
-                              <Badge variant={quote.status === 'accepted' || quote.status === 'converted' ? 'success' : quote.status === 'declined' ? 'error' : 'warning'}>
-                                {quote.status}
+                              <Badge variant={proposal.status === 'accepted' ? 'success' : proposal.status === 'rejected' || proposal.status === 'expired' ? 'error' : 'warning'}>
+                                {proposal.status}
                               </Badge>
                             </div>
+                            {proposal.facility?.name ? (
+                              <div className="mt-1 text-xs text-surface-500">
+                                Service Location: {proposal.facility.name}
+                              </div>
+                            ) : null}
                           </button>
                         ))
                       )}

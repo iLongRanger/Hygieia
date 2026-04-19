@@ -455,7 +455,7 @@ describe('AccountDetail', () => {
 
     expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/total square feet will be auto-calculated from the areas added to this facility/i)
+      screen.getByText(/total square feet will be auto-calculated from the areas added to this service location/i)
     ).toBeInTheDocument();
   });
 
@@ -1019,6 +1019,136 @@ describe('AccountDetail', () => {
       state: {
         backLabel: 'Birch Residence',
         backPath: '/residential/accounts/account-res-4',
+      },
+    });
+  });
+
+  it('opens the proposal linked to the focused residential service location', async () => {
+    mockParams = { id: 'account-res-5' };
+    mockPathname = '/residential/accounts/account-res-5';
+
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-5',
+      name: 'Maple Residence',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '88 Maple Drive',
+        city: 'Seattle',
+        state: 'WA',
+        postalCode: '98109',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 2100,
+        bedrooms: 4,
+        fullBathrooms: 2,
+        halfBathrooms: 1,
+        levels: 2,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: false,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Driveway',
+        entryNotes: 'Call on arrival',
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      residentialProperties: [
+        {
+          id: 'property-5',
+          accountId: 'account-res-5',
+          name: 'Maple Main Home',
+          facility: { id: 'facility-res-5' },
+          serviceAddress: {
+            street: '88 Maple Drive',
+            city: 'Seattle',
+            state: 'WA',
+            postalCode: '98109',
+          },
+          homeProfile: {
+            homeType: 'single_family',
+            squareFeet: 2100,
+            bedrooms: 4,
+            fullBathrooms: 2,
+            halfBathrooms: 1,
+            levels: 2,
+            occupiedStatus: 'occupied',
+            condition: 'standard',
+            hasPets: false,
+            lastProfessionalCleaning: null,
+            parkingAccess: 'Driveway',
+            entryNotes: 'Call on arrival',
+            specialInstructions: null,
+            isFirstVisit: false,
+          },
+          defaultTasks: ['Vacuum floors'],
+          accessNotes: '',
+          parkingAccess: 'Driveway',
+          entryNotes: 'Call on arrival',
+          pets: false,
+          isPrimary: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+        },
+      ],
+      _count: {
+        contacts: 1,
+        facilities: 0,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({ data: [{
+      ...facility,
+      id: 'facility-res-5',
+      name: 'Maple Main Home',
+      buildingType: 'single_family',
+      account: {
+        id: 'account-res-5',
+        name: 'Maple Residence',
+        type: 'residential',
+      },
+      residentialPropertyId: 'property-5',
+    }], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
+    listProposalsMock.mockResolvedValue({
+      data: [{
+        ...proposal,
+        id: 'proposal-res-5',
+        proposalNumber: 'PROP-RES-005',
+        title: 'Maple Main Home Weekly Cleaning',
+        account: {
+          id: 'account-res-5',
+          name: 'Maple Residence',
+          type: 'residential',
+        },
+        facility: {
+          id: 'facility-res-5',
+          name: 'Maple Main Home',
+          address: {},
+        },
+      }],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+    });
+    listContractsMock
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Maple Residence' });
+    await userEventInstance.click(screen.getAllByRole('button', { name: /open proposal/i })[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-res-5', {
+      state: {
+        backLabel: 'Maple Residence',
+        backPath: '/residential/accounts/account-res-5',
       },
     });
   });
