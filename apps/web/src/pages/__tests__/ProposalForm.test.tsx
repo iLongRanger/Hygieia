@@ -647,9 +647,6 @@ describe('ProposalForm', () => {
 
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: /^thu$/i }));
-    const populateButton = await screen.findByRole('button', { name: /populate from residential pricing/i });
-    await user.click(populateButton);
-
     expect((await screen.findAllByText('Recurring Standard')).length).toBeGreaterThan(0);
 
     await user.click(await screen.findByRole('button', { name: /confirm areas accuracy/i }));
@@ -674,6 +671,16 @@ describe('ProposalForm', () => {
           serviceSchedule: expect.objectContaining({
             days: ['thursday'],
           }),
+          proposalServices: expect.arrayContaining([
+            expect.objectContaining({
+              serviceName: 'Recurring Standard',
+            }),
+          ]),
+          proposalItems: expect.arrayContaining([
+            expect.objectContaining({
+              description: 'inside_fridge',
+            }),
+          ]),
           pricingSnapshot: expect.objectContaining({
             engine: 'residential_quote_preview_v1',
             residentialPricingPlanId: 'res-plan-1',

@@ -470,6 +470,74 @@ const defaultCommercialProposalTitle = (
 const getResidentialFrequencyLabel = (frequency: ResidentialFrequency) =>
   RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label || frequency;
 
+const buildResidentialProposalServices = ({
+  preview,
+  propertyName,
+  serviceType,
+  frequency,
+  tasks,
+}: {
+  preview: ResidentialQuotePreview;
+  propertyName: string;
+  serviceType: ResidentialServiceType;
+  frequency: ResidentialFrequency;
+  tasks: string[];
+}): ProposalService[] => {
+  const mappedServiceType = mapResidentialServiceTypeToProposalServiceType(serviceType);
+  const mappedFrequency = mapResidentialFrequencyToProposalServiceFrequency(frequency);
+  const serviceLabel =
+    RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === serviceType)?.label
+    || 'Residential Cleaning';
+
+  return [{
+    serviceName: serviceLabel,
+    serviceType: mappedServiceType,
+    frequency: mappedFrequency,
+    estimatedHours: preview.breakdown.estimatedHours,
+    hourlyRate: null,
+    monthlyPrice: preview.breakdown.finalTotal,
+    description: [
+      propertyName,
+      tasks.length > 0 ? `Tasks: ${tasks.join(', ')}` : null,
+      preview.breakdown.guidance.length > 0
+        ? `Guidance: ${preview.breakdown.guidance.join(' | ')}`
+        : null,
+    ].filter(Boolean).join('\n'),
+    includedTasks: tasks,
+    sortOrder: 0,
+  }];
+};
+
+const buildResidentialProposalItems = (
+  preview: ResidentialQuotePreview
+): ProposalItem[] => {
+  const items: ProposalItem[] = [];
+
+  if (preview.breakdown.firstCleanSurcharge > 0) {
+    items.push({
+      itemType: 'labor',
+      description: 'First Clean Surcharge',
+      quantity: 1,
+      unitPrice: preview.breakdown.firstCleanSurcharge,
+      totalPrice: preview.breakdown.firstCleanSurcharge,
+      sortOrder: items.length,
+    });
+  }
+
+  preview.breakdown.addOns.forEach((addOn) => {
+    items.push({
+      itemType: 'other',
+      description: addOn.label,
+      quantity: addOn.quantity,
+      unitPrice: addOn.unitPrice,
+      totalPrice: addOn.lineTotal,
+      sortOrder: items.length,
+    });
+  });
+
+  return items;
+};
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -1143,83 +1211,7 @@ const ProposalForm = () => {
         toast.error('Residential pricing preview is not ready yet');
         return;
       }
-
-      const residentialTasks = normalizeTaskList(
-        facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
-      );
-      const serviceType = mapResidentialServiceTypeToProposalServiceType(residentialServiceType);
-      const frequency = mapResidentialFrequencyToProposalServiceFrequency(residentialFrequency);
-      const scheduleFrequency = mapResidentialFrequencyToProposalSchedule(residentialFrequency);
-      const residentialPlan = selectedResidentialPricingPlan;
-      const serviceLabel =
-        RESIDENTIAL_SERVICE_OPTIONS.find((option) => option.value === residentialServiceType)?.label
-        || 'Residential Cleaning';
-
-      const services: ProposalService[] = [{
-        serviceName: serviceLabel,
-        serviceType,
-        frequency,
-        estimatedHours: residentialPreview.breakdown.estimatedHours,
-        hourlyRate: null,
-        monthlyPrice: residentialPreview.breakdown.finalTotal,
-        description: [
-          selectedResidentialProperty.name,
-          residentialTasks.length > 0 ? `Tasks: ${residentialTasks.join(', ')}` : null,
-          residentialPreview.breakdown.guidance.length > 0
-            ? `Guidance: ${residentialPreview.breakdown.guidance.join(' | ')}`
-            : null,
-        ].filter(Boolean).join('\n'),
-        includedTasks: residentialTasks,
-        sortOrder: 0,
-      }];
-
-      const items: ProposalItem[] = [];
-      if (residentialPreview.breakdown.firstCleanSurcharge > 0) {
-        items.push({
-          itemType: 'labor',
-          description: 'First Clean Surcharge',
-          quantity: 1,
-          unitPrice: residentialPreview.breakdown.firstCleanSurcharge,
-          totalPrice: residentialPreview.breakdown.firstCleanSurcharge,
-          sortOrder: items.length,
-        });
-      }
-      residentialPreview.breakdown.addOns.forEach((addOn) => {
-        items.push({
-          itemType: 'other',
-          description: addOn.label,
-          quantity: addOn.quantity,
-          unitPrice: addOn.unitPrice,
-          totalPrice: addOn.lineTotal,
-          sortOrder: items.length,
-        });
-      });
-
-      setFormData((prev) => ({
-        ...prev,
-        title: prev.title || defaultResidentialProposalTitle(residentialServiceType, selectedResidentialProperty.name),
-        description:
-          prev.description
-          || `Residential proposal built from the scoped service location for ${selectedResidentialProperty.name}.`,
-        proposalServices: services,
-        proposalItems: items,
-        pricingPlanId: null,
-        serviceFrequency: scheduleFrequency,
-        serviceSchedule: {
-          ...(prev.serviceSchedule || createDefaultSchedule(scheduleFrequency)),
-          days: normalizeScheduleDays(
-            prev.serviceSchedule?.days || defaultDaysForFrequency(scheduleFrequency),
-            scheduleFrequency
-          ),
-          allowedWindowStart: prev.serviceSchedule?.allowedWindowStart || '18:00',
-          allowedWindowEnd: prev.serviceSchedule?.allowedWindowEnd || '06:00',
-          windowAnchor: 'start_day',
-          timezoneSource: 'facility',
-        },
-      }));
-      setPricingBreakdown(null);
-      setScheduleTouchedByUser(false);
-      toast.success('Populated proposal from residential quote engine');
+      toast.success('Residential pricing preview is ready');
       return;
     }
     if (!selectedPricingPlanId) {
@@ -1486,6 +1478,10 @@ const ProposalForm = () => {
       toast.error('Select a facility before creating the proposal');
       return;
     }
+    if (isResidentialAccount && (!selectedResidentialProperty || !selectedResidentialPricingPlanId || !residentialPreview)) {
+      toast.error('Wait for the residential pricing preview before creating the proposal');
+      return;
+    }
 
     if (requiresFacilityReview && loadingFacilityReview) {
       toast.error('Please wait for facility review checks to finish');
@@ -1502,7 +1498,30 @@ const ProposalForm = () => {
 
     setSaving(true);
     try {
-      const nonZeroItems = removeZeroValueProposalItems(formData.proposalItems);
+      const residentialTasks = isResidentialAccount
+        ? normalizeTaskList(
+            facilityTasks.map((task) => task.customName || task.taskTemplate?.name || '')
+          )
+        : [];
+      const derivedResidentialItems = isResidentialAccount && residentialPreview
+        ? buildResidentialProposalItems(residentialPreview)
+        : [];
+      const derivedResidentialServices = isResidentialAccount && residentialPreview && selectedResidentialProperty
+        ? buildResidentialProposalServices({
+            preview: residentialPreview,
+            propertyName: selectedResidentialProperty.name,
+            serviceType: residentialServiceType,
+            frequency: residentialFrequency,
+            tasks: residentialTasks,
+          })
+        : [];
+      const effectiveProposalItems = isResidentialAccount
+        ? derivedResidentialItems
+        : (formData.proposalItems || []);
+      const effectiveProposalServices = isResidentialAccount
+        ? derivedResidentialServices
+        : (formData.proposalServices || []);
+      const nonZeroItems = removeZeroValueProposalItems(effectiveProposalItems);
       const residentialPricingSnapshot = isResidentialAccount
         ? {
             engine: 'residential_quote_preview_v1',
@@ -1527,6 +1546,7 @@ const ProposalForm = () => {
           pricingPlanId: effectivePricingPlanId,
           notes: formData.notes,
           proposalItems: nonZeroItems,
+          proposalServices: effectiveProposalServices,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
           validUntil: formData.validUntil || null,
@@ -1540,6 +1560,7 @@ const ProposalForm = () => {
           pricingPlanId: effectivePricingPlanId,
           notes: formData.notes,
           proposalItems: nonZeroItems,
+          proposalServices: effectiveProposalServices,
           serviceFrequency: scheduleFrequency,
           serviceSchedule,
           pricingSnapshot: effectivePricingSnapshot,
@@ -1900,18 +1921,9 @@ const ProposalForm = () => {
                     </div>
 
                     {isResidentialAccount ? (
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={handleAutoPopulateFromFacility}
-                          isLoading={loadingPricing || loadingResidentialPreview}
-                          className="whitespace-nowrap"
-                        >
-                          <Calculator className="w-4 h-4 mr-2" />
-                          Populate from Residential Pricing
-                        </Button>
-                      </div>
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Residential proposals use the live pricing preview automatically when you save.
+                      </p>
                     ) : pricingReadiness?.isReady ? (
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex flex-col">
