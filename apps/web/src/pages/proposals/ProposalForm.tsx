@@ -467,6 +467,9 @@ const defaultCommercialProposalTitle = (
   locationName: string | null | undefined
 ) => (locationName ? `Cleaning Services - ${locationName}` : 'Cleaning Services Proposal');
 
+const getResidentialFrequencyLabel = (frequency: ResidentialFrequency) =>
+  RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label || frequency;
+
 // Helper to format currency
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -637,6 +640,14 @@ const ProposalForm = () => {
   const availableResidentialAddOns = useMemo(
     () => Object.entries(selectedResidentialPricingPlan?.settings.addOnPrices || {}),
     [selectedResidentialPricingPlan]
+  );
+  const residentialScheduleFrequency = useMemo(
+    () => mapResidentialFrequencyToProposalSchedule(residentialFrequency),
+    [residentialFrequency]
+  );
+  const residentialScheduleOptions = useMemo(
+    () => [{ value: residentialScheduleFrequency, label: getResidentialFrequencyLabel(residentialFrequency) }],
+    [residentialFrequency, residentialScheduleFrequency]
   );
   const suggestedProposalTitle = useMemo(() => {
     if (!formData.facilityId) {
@@ -856,6 +867,28 @@ const ProposalForm = () => {
       }
     }
   }, [isResidentialAccount, residentialPricingPlans, selectedResidentialPricingPlanId]);
+
+  useEffect(() => {
+    if (!isResidentialAccount) {
+      return;
+    }
+
+    setFormData((prev) => {
+      const currentSchedule = prev.serviceSchedule || createDefaultSchedule(residentialScheduleFrequency);
+      return {
+        ...prev,
+        serviceFrequency: residentialScheduleFrequency,
+        serviceSchedule: {
+          ...currentSchedule,
+          days: normalizeScheduleDays(currentSchedule.days || [], residentialScheduleFrequency),
+          allowedWindowStart: currentSchedule.allowedWindowStart || '18:00',
+          allowedWindowEnd: currentSchedule.allowedWindowEnd || '06:00',
+          windowAnchor: 'start_day',
+          timezoneSource: 'facility',
+        },
+      };
+    });
+  }, [isResidentialAccount, residentialScheduleFrequency]);
 
   useEffect(() => {
     if (!isResidentialAccount || !selectedResidentialProperty) {
@@ -1172,7 +1205,17 @@ const ProposalForm = () => {
         proposalItems: items,
         pricingPlanId: null,
         serviceFrequency: scheduleFrequency,
-        serviceSchedule: createDefaultSchedule(scheduleFrequency),
+        serviceSchedule: {
+          ...(prev.serviceSchedule || createDefaultSchedule(scheduleFrequency)),
+          days: normalizeScheduleDays(
+            prev.serviceSchedule?.days || defaultDaysForFrequency(scheduleFrequency),
+            scheduleFrequency
+          ),
+          allowedWindowStart: prev.serviceSchedule?.allowedWindowStart || '18:00',
+          allowedWindowEnd: prev.serviceSchedule?.allowedWindowEnd || '06:00',
+          windowAnchor: 'start_day',
+          timezoneSource: 'facility',
+        },
       }));
       setPricingBreakdown(null);
       setScheduleTouchedByUser(false);
@@ -1800,6 +1843,31 @@ const ProposalForm = () => {
                       </div>
                     ) : null}
                   </div>
+                </div>
+              )}
+
+              {isResidentialAccount && formData.facilityId && (
+                <div className="md:col-span-2">
+                  <ClientServiceScheduleCard
+                    frequencyValue={residentialScheduleFrequency}
+                    frequencyOptions={residentialScheduleOptions}
+                    allowedWindowStart={formData.serviceSchedule?.allowedWindowStart || '18:00'}
+                    allowedWindowEnd={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
+                    dayOptions={SCHEDULE_DAY_OPTIONS}
+                    selectedDays={
+                      formData.serviceSchedule?.days ||
+                      defaultDaysForFrequency(residentialScheduleFrequency)
+                    }
+                    requiredDays={expectedDaysForFrequency(residentialScheduleFrequency)}
+                    onFrequencyChange={() => {}}
+                    onAllowedWindowStartChange={(value) =>
+                      updateServiceSchedule({ allowedWindowStart: value || '00:00' })
+                    }
+                    onAllowedWindowEndChange={(value) =>
+                      updateServiceSchedule({ allowedWindowEnd: value || '23:59' })
+                    }
+                    onToggleDay={(day) => toggleScheduleDay(day as ServiceScheduleDay)}
+                  />
                 </div>
               )}
 

@@ -637,7 +637,7 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
-    await user.type(screen.getByLabelText(/proposal title/i), 'Willow Residential Proposal');
+    await user.selectOptions(await screen.findByLabelText(/residential frequency/i), 'every_4_weeks');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
@@ -646,6 +646,7 @@ describe('ProposalForm', () => {
     expect((await screen.findAllByText(/residential quote engine/i)).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: /^thu$/i }));
     const populateButton = await screen.findByRole('button', { name: /populate from residential pricing/i });
     await user.click(populateButton);
 
@@ -660,7 +661,7 @@ describe('ProposalForm', () => {
         expect.objectContaining({
           propertyId: 'property-1',
           serviceType: 'recurring_standard',
-          frequency: 'weekly',
+          frequency: 'every_4_weeks',
           pricingPlanId: 'res-plan-1',
         })
       );
@@ -669,16 +670,15 @@ describe('ProposalForm', () => {
           accountId: 'account-res-1',
           facilityId: 'facility-res-1',
           pricingPlanId: null,
-          proposalItems: expect.arrayContaining([
-            expect.objectContaining({
-              description: 'inside_fridge',
-            }),
-          ]),
+          serviceFrequency: 'monthly',
+          serviceSchedule: expect.objectContaining({
+            days: ['thursday'],
+          }),
           pricingSnapshot: expect.objectContaining({
             engine: 'residential_quote_preview_v1',
             residentialPricingPlanId: 'res-plan-1',
             residentialServiceType: 'recurring_standard',
-            residentialFrequency: 'weekly',
+            residentialFrequency: 'every_4_weeks',
           }),
         })
       );
