@@ -31,6 +31,8 @@ const getFacilityPricingReadinessMock = vi.fn();
 const getFacilityProposalTemplateMock = vi.fn();
 const listResidentialPricingPlansMock = vi.fn();
 const previewResidentialQuoteMock = vi.fn();
+const getFacilityMock = vi.fn();
+const getResidentialPropertyMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
@@ -38,6 +40,7 @@ vi.mock('../../lib/accounts', () => ({
 
 vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
+  getFacility: (...args: unknown[]) => getFacilityMock(...args),
   listAreas: (...args: unknown[]) => listAreasMock(...args),
   listAreaTypes: (...args: unknown[]) => listAreaTypesMock(...args),
 }));
@@ -61,6 +64,7 @@ vi.mock('../../lib/pricing', () => ({
 vi.mock('../../lib/residential', () => ({
   listResidentialPricingPlans: (...args: unknown[]) => listResidentialPricingPlansMock(...args),
   previewResidentialQuote: (...args: unknown[]) => previewResidentialQuoteMock(...args),
+  getResidentialProperty: (...args: unknown[]) => getResidentialPropertyMock(...args),
 }));
 
 vi.mock('../../lib/proposalTemplates', () => ({
@@ -238,9 +242,13 @@ describe('ProposalForm', () => {
     getFacilityProposalTemplateMock.mockReset();
     listResidentialPricingPlansMock.mockReset();
     previewResidentialQuoteMock.mockReset();
+    getFacilityMock.mockReset();
+    getResidentialPropertyMock.mockReset();
 
     listAccountsMock.mockResolvedValue({ data: [account, residentialAccount] });
     listFacilitiesMock.mockResolvedValue({ data: [facility, residentialFacility] });
+    getFacilityMock.mockResolvedValue(residentialFacility);
+    getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
     listAreasMock.mockResolvedValue({
       data: [
         {
@@ -707,6 +715,50 @@ describe('ProposalForm', () => {
             residentialServiceType: 'recurring_standard',
             residentialFrequency: 'every_4_weeks',
           }),
+        })
+      );
+    });
+  });
+
+  it('resolves residential service location from live facility data when preload data is incomplete', async () => {
+    const user = userEvent.setup();
+    listAccountsMock.mockResolvedValue({
+      data: [
+        account,
+        {
+          ...residentialAccount,
+          residentialProperties: [],
+        },
+      ],
+    });
+    listFacilitiesMock.mockResolvedValue({
+      data: [
+        facility,
+        {
+          ...residentialFacility,
+          residentialPropertyId: null,
+        },
+      ],
+    });
+    getFacilityMock.mockResolvedValue(residentialFacility);
+    getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
+
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+    await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
+
+    const calculateButton = screen.getByRole('button', { name: /calculate & populate/i });
+    await user.click(calculateButton);
+
+    await waitFor(() => {
+      expect(getFacilityMock).toHaveBeenCalledWith('facility-res-1');
+      expect(getResidentialPropertyMock).toHaveBeenCalledWith('property-1');
+      expect(previewResidentialQuoteMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          propertyId: 'property-1',
+          serviceType: 'recurring_standard',
         })
       );
     });

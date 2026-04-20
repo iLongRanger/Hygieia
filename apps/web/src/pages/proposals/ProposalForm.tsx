@@ -31,7 +31,7 @@ import {
   updateProposal,
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
-import { listFacilities, listAreas } from '../../lib/facilities';
+import { listFacilities, listAreas, getFacility } from '../../lib/facilities';
 import { listFacilityTasks } from '../../lib/tasks';
 import {
   getFacilityPricingReadiness,
@@ -67,6 +67,7 @@ import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
 import {
   listResidentialPricingPlans,
   previewResidentialQuote,
+  getResidentialProperty,
 } from '../../lib/residential';
 import type {
   ResidentialPricingPlan,
@@ -82,6 +83,15 @@ interface SuggestedProposalItem {
   quantity?: number;
   unitPrice?: number;
   totalPrice?: number;
+}
+
+interface ResidentialPreviewContext {
+  accountId: string;
+  facilityId: string;
+  propertyId: string;
+  propertyName: string;
+  homeAddress: Record<string, unknown> | null;
+  homeProfile: Record<string, unknown> | null;
 }
 
 // Constants for dropdown options
@@ -742,6 +752,7 @@ const ProposalForm = () => {
   const [residentialPreview, setResidentialPreview] = useState<ResidentialQuotePreview | null>(null);
   const [loadingResidentialPreview, setLoadingResidentialPreview] = useState(false);
   const [residentialBreakdownVisible, setResidentialBreakdownVisible] = useState(false);
+  const [resolvedResidentialContext, setResolvedResidentialContext] = useState<ResidentialPreviewContext | null>(null);
   const [scheduleTouchedByUser, setScheduleTouchedByUser] = useState(false);
 
   // Pricing plan states
@@ -787,18 +798,36 @@ const ProposalForm = () => {
       return null;
     }
 
+    if (
+      resolvedResidentialContext
+      && resolvedResidentialContext.accountId === formData.accountId
+      && resolvedResidentialContext.facilityId === formData.facilityId
+    ) {
+      return resolvedResidentialContext;
+    }
+
     const propertyId = selectedResidentialProperty?.id || selectedFacility?.residentialPropertyId || null;
     if (!propertyId) {
       return null;
     }
 
     return {
+      accountId: formData.accountId,
+      facilityId: formData.facilityId,
       propertyId,
       propertyName: selectedResidentialProperty?.name || selectedFacility?.name || selectedAccount?.name || 'Residential Service Location',
       homeAddress: selectedResidentialProperty?.serviceAddress || selectedAccount?.serviceAddress || selectedFacility?.address || null,
       homeProfile: selectedResidentialProperty?.homeProfile || selectedAccount?.residentialProfile || null,
     };
-  }, [isResidentialAccount, selectedAccount, selectedFacility, selectedResidentialProperty]);
+  }, [
+    formData.accountId,
+    formData.facilityId,
+    isResidentialAccount,
+    resolvedResidentialContext,
+    selectedAccount,
+    selectedFacility,
+    selectedResidentialProperty,
+  ]);
   const selectedResidentialPricingPlan = useMemo(
     () =>
       residentialPricingPlans.find((plan) => plan.id === selectedResidentialPricingPlanId)
@@ -1353,6 +1382,49 @@ const ProposalForm = () => {
     );
   };
 
+  const resolveResidentialPreviewContext = useCallback(async (): Promise<ResidentialPreviewContext | null> => {
+    if (!isResidentialAccount || !formData.accountId || !formData.facilityId) {
+      return null;
+    }
+
+    if (residentialPreviewContext) {
+      return residentialPreviewContext;
+    }
+
+    try {
+      const liveFacility = await getFacility(formData.facilityId);
+      const propertyId = liveFacility.residentialPropertyId
+        || selectedAccount?.residentialProperties?.find((property) => property.facility?.id === formData.facilityId)?.id
+        || (selectedAccount?.residentialProperties?.length === 1 ? selectedAccount.residentialProperties[0].id : null);
+
+      if (!propertyId) {
+        return null;
+      }
+
+      const liveProperty = await getResidentialProperty(propertyId);
+      const resolvedContext: ResidentialPreviewContext = {
+        accountId: formData.accountId,
+        facilityId: formData.facilityId,
+        propertyId: liveProperty.id,
+        propertyName: liveProperty.name || liveFacility.name || selectedAccount?.name || 'Residential Service Location',
+        homeAddress: liveProperty.serviceAddress || selectedAccount?.serviceAddress || liveFacility.address || null,
+        homeProfile: liveProperty.homeProfile || selectedAccount?.residentialProfile || null,
+      };
+
+      setResolvedResidentialContext(resolvedContext);
+      return resolvedContext;
+    } catch (error) {
+      console.error('Failed to resolve residential service location context:', error);
+      return null;
+    }
+  }, [
+    formData.accountId,
+    formData.facilityId,
+    isResidentialAccount,
+    residentialPreviewContext,
+    selectedAccount,
+  ]);
+
   // Auto-populate services from facility pricing
   const handleAutoPopulateFromFacility = async () => {
     if (!formData.facilityId) {
@@ -1360,7 +1432,8 @@ const ProposalForm = () => {
       return;
     }
     if (isResidentialAccount) {
-      if (!residentialPreviewContext) {
+      const context = await resolveResidentialPreviewContext();
+      if (!context) {
         toast.error('Select a residential service location first');
         return;
       }
@@ -1376,25 +1449,25 @@ const ProposalForm = () => {
       try {
         setLoadingResidentialPreview(true);
         const preview = await previewResidentialQuote({
-          propertyId: residentialPreviewContext.propertyId,
+          propertyId: context.propertyId,
           serviceType: residentialServiceType,
           frequency: residentialFrequency,
-          homeAddress: residentialPreviewContext.homeAddress,
+          homeAddress: context.homeAddress,
           homeProfile: {
-            homeType: residentialPreviewContext.homeProfile?.homeType || 'single_family',
-            squareFeet: residentialPreviewContext.homeProfile?.squareFeet || 0,
-            bedrooms: residentialPreviewContext.homeProfile?.bedrooms || 0,
-            fullBathrooms: residentialPreviewContext.homeProfile?.fullBathrooms || 0,
-            halfBathrooms: residentialPreviewContext.homeProfile?.halfBathrooms || 0,
-            levels: residentialPreviewContext.homeProfile?.levels || 1,
-            occupiedStatus: residentialPreviewContext.homeProfile?.occupiedStatus || 'occupied',
-            condition: residentialPreviewContext.homeProfile?.condition || 'standard',
-            hasPets: residentialPreviewContext.homeProfile?.hasPets || false,
-            lastProfessionalCleaning: residentialPreviewContext.homeProfile?.lastProfessionalCleaning || '',
-            parkingAccess: residentialPreviewContext.homeProfile?.parkingAccess || '',
-            entryNotes: residentialPreviewContext.homeProfile?.entryNotes || '',
-            specialInstructions: residentialPreviewContext.homeProfile?.specialInstructions || '',
-            isFirstVisit: residentialPreviewContext.homeProfile?.isFirstVisit || false,
+            homeType: context.homeProfile?.homeType || 'single_family',
+            squareFeet: context.homeProfile?.squareFeet || 0,
+            bedrooms: context.homeProfile?.bedrooms || 0,
+            fullBathrooms: context.homeProfile?.fullBathrooms || 0,
+            halfBathrooms: context.homeProfile?.halfBathrooms || 0,
+            levels: context.homeProfile?.levels || 1,
+            occupiedStatus: context.homeProfile?.occupiedStatus || 'occupied',
+            condition: context.homeProfile?.condition || 'standard',
+            hasPets: context.homeProfile?.hasPets || false,
+            lastProfessionalCleaning: context.homeProfile?.lastProfessionalCleaning || '',
+            parkingAccess: context.homeProfile?.parkingAccess || '',
+            entryNotes: context.homeProfile?.entryNotes || '',
+            specialInstructions: context.homeProfile?.specialInstructions || '',
+            isFirstVisit: context.homeProfile?.isFirstVisit || false,
           },
           pricingPlanId: selectedResidentialPricingPlanId,
           addOns: residentialAddOns,
@@ -1405,7 +1478,7 @@ const ProposalForm = () => {
           applyResidentialAutoPopulate({
             current: prev,
             preview,
-            propertyName: residentialPreviewContext.propertyName,
+            propertyName: context.propertyName,
             serviceType: residentialServiceType,
             frequency: residentialFrequency,
             scopeGroups: residentialScopeGroups,
@@ -1511,11 +1584,13 @@ const ProposalForm = () => {
       if (field === 'accountId') {
         updated.facilityId = '';
         setPricingBreakdown(null);
+        setResolvedResidentialContext(null);
         setScheduleTouchedByUser(false);
       }
       // Clear breakdown when facility changes
       if (field === 'facilityId') {
         setPricingBreakdown(null);
+        setResolvedResidentialContext(null);
         setScheduleTouchedByUser(false);
       }
       return updated;
