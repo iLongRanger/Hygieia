@@ -195,6 +195,13 @@ const residentialFacility: Facility = {
   residentialPropertyId: 'property-1',
 };
 
+const residentialStandaloneFacility: Facility = {
+  ...residentialFacility,
+  id: 'facility-res-2',
+  name: 'Standalone Residential Location',
+  residentialPropertyId: null,
+};
+
 const pricingBreakdown = {
   facilityId: 'facility-1',
   facilityName: 'Main Facility',
@@ -734,10 +741,7 @@ describe('ProposalForm', () => {
     listFacilitiesMock.mockResolvedValue({
       data: [
         facility,
-        {
-          ...residentialFacility,
-          residentialPropertyId: null,
-        },
+        residentialFacility,
       ],
     });
     getFacilityMock.mockResolvedValue(residentialFacility);
@@ -753,8 +757,6 @@ describe('ProposalForm', () => {
     await user.click(calculateButton);
 
     await waitFor(() => {
-      expect(getFacilityMock).toHaveBeenCalledWith('facility-res-1');
-      expect(getResidentialPropertyMock).toHaveBeenCalledWith('property-1');
       expect(previewResidentialQuoteMock).toHaveBeenCalledWith(
         expect.objectContaining({
           propertyId: 'property-1',
@@ -762,6 +764,44 @@ describe('ProposalForm', () => {
         })
       );
     });
+  });
+
+  it('only shows residential-linked service locations for residential proposals', async () => {
+    const user = userEvent.setup();
+    listFacilitiesMock.mockResolvedValue({
+      data: [facility, residentialFacility, residentialStandaloneFacility],
+    });
+
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+
+    expect(screen.getByRole('option', { name: 'Willow Main Home' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Standalone Residential Location' })).not.toBeInTheDocument();
+  });
+
+  it('shows a helpful message when a residential account has no linked service locations for proposals', async () => {
+    const user = userEvent.setup();
+    listAccountsMock.mockResolvedValue({
+      data: [
+        account,
+        {
+          ...residentialAccount,
+          residentialProperties: [],
+        },
+      ],
+    });
+    listFacilitiesMock.mockResolvedValue({
+      data: [facility, residentialStandaloneFacility],
+    });
+    getFacilityMock.mockResolvedValue(residentialStandaloneFacility);
+
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+
+    expect(screen.getByText(/no residential-linked service locations are available/i)).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Standalone Residential Location' })).not.toBeInTheDocument();
   });
 
   it('updates a proposal in edit mode', async () => {

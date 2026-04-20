@@ -1063,6 +1063,24 @@ const ProposalForm = () => {
   const filteredFacilities = formData.accountId
     ? facilities.filter((f) => f.account?.id === formData.accountId)
     : [];
+  const residentialLinkedFacilityIds = useMemo(
+    () =>
+      new Set(
+        (selectedAccount?.residentialProperties || [])
+          .map((property) => property.facility?.id)
+          .filter((value): value is string => Boolean(value))
+      ),
+    [selectedAccount]
+  );
+  const availableProposalFacilities = useMemo(() => {
+    if (!isResidentialAccount) {
+      return filteredFacilities;
+    }
+
+    return filteredFacilities.filter(
+      (facility) => Boolean(facility.residentialPropertyId) || residentialLinkedFacilityIds.has(facility.id)
+    );
+  }, [filteredFacilities, isResidentialAccount, residentialLinkedFacilityIds]);
 
   useEffect(() => {
     if (!isResidentialAccount) {
@@ -1434,7 +1452,7 @@ const ProposalForm = () => {
     if (isResidentialAccount) {
       const context = await resolveResidentialPreviewContext();
       if (!context) {
-        toast.error('Select a residential service location first');
+        toast.error('Selected service location is not linked to a residential property');
         return;
       }
       if (!selectedResidentialPricingPlanId) {
@@ -1935,11 +1953,16 @@ const ProposalForm = () => {
                 placeholder="Select a facility"
                 value={formData.facilityId || ''}
                 onChange={(value) => handleChange('facilityId', value)}
-                options={filteredFacilities.map((f) => ({
+                options={availableProposalFacilities.map((f) => ({
                   value: f.id,
                   label: f.name,
                 }))}
               />
+              {isResidentialAccount && formData.accountId && availableProposalFacilities.length === 0 ? (
+                <p className="md:col-span-2 -mt-2 text-sm text-amber-600 dark:text-amber-400">
+                  No residential-linked service locations are available for this account yet.
+                </p>
+              ) : null}
               {isResidentialAccount ? (
                 <>
                   <div className="flex flex-col gap-1">
