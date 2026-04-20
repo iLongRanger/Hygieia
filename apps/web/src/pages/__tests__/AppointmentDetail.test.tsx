@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '../../test/test-utils';
+import userEvent from '@testing-library/user-event';
 import AppointmentDetail from '../appointments/AppointmentDetail';
 
 let mockParams: { id?: string } = { id: 'appt-1' };
@@ -99,5 +100,19 @@ describe('AppointmentDetail', () => {
     expect(activityCard).not.toBeNull();
     expect(within(activityCard as HTMLElement).getByText(/^Created /i)).toBeInTheDocument();
     expect(within(activityCard as HTMLElement).getByText(/^Last updated /i)).toBeInTheDocument();
+  });
+
+  it('routes directly to the service location manager from the appointment', async () => {
+    const user = userEvent.setup();
+    render(<AppointmentDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /open service location manager/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
+      state: {
+        backLabel: 'Appointment',
+        backPath: '/appointments/appt-1',
+      },
+    });
   });
 });

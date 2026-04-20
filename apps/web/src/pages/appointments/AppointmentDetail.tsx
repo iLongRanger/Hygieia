@@ -264,6 +264,24 @@ const AppointmentDetail = () => {
                   </span>
                 </div>
               )}
+              {appointment.facility && (
+                <div className="pt-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/service-locations/${appointment.facility!.id}`, {
+                        state: {
+                          backLabel: 'Appointment',
+                          backPath: `/appointments/${appointment.id}`,
+                        },
+                      })
+                    }
+                  >
+                    Open Service Location Manager
+                  </Button>
+                </div>
+              )}
               {appointment.inspection && (
                 <div className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-surface-400" />
