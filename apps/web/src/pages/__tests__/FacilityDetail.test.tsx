@@ -310,7 +310,7 @@ describe('FacilityDetail', () => {
 
     render(<FacilityDetail mode="property" />);
 
-    await user.click(await screen.findByRole('button', { name: /open walkthroughs/i }));
+    await user.click(await screen.findByRole('button', { name: /book an appointment/i }));
 
     expect(navigateMock).toHaveBeenCalledWith(
       '/appointments?facilityId=facility-1&accountId=account-1&type=walk_through',

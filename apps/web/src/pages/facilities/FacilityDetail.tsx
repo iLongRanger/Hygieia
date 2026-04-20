@@ -1221,7 +1221,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={openAppointmentsForLocation}>
-            {isPropertyMode ? 'Open Walkthroughs' : 'Open Appointments'}
+            Book an Appointment
           </Button>
           {canManageOperationalScope && !hasExistingProposalOrContract && !hasSubmittedForProposal && (
             <Button
