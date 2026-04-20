@@ -598,8 +598,6 @@ describe('ProposalForm', () => {
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
 
-    expect(screen.getByText('Internal Pricing Breakdown')).toBeInTheDocument();
-    expect(screen.getByText(/select a residential service type to generate the internal pricing breakdown/i)).toBeInTheDocument();
     expect(screen.getByText('Auto-Populate from Residential Pricing')).toBeInTheDocument();
 
     expect(screen.getByLabelText(/proposal title/i)).toHaveValue('');
@@ -654,9 +652,7 @@ describe('ProposalForm', () => {
     expect(await screen.findByLabelText(/residential pricing plan/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/residential frequency/i)).toBeInTheDocument();
     const calculateButton = screen.getByRole('button', { name: /calculate & populate/i });
-    await waitFor(() => {
-      expect(calculateButton).toBeEnabled();
-    });
+    expect(calculateButton).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: /^thu$/i }));
     await user.click(calculateButton);

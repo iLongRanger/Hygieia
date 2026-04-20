@@ -741,6 +741,7 @@ const ProposalForm = () => {
   const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
   const [residentialPreview, setResidentialPreview] = useState<ResidentialQuotePreview | null>(null);
   const [loadingResidentialPreview, setLoadingResidentialPreview] = useState(false);
+  const [residentialBreakdownVisible, setResidentialBreakdownVisible] = useState(false);
   const [scheduleTouchedByUser, setScheduleTouchedByUser] = useState(false);
 
   // Pricing plan states
@@ -1018,6 +1019,7 @@ const ProposalForm = () => {
     if (!isResidentialAccount) {
       setResidentialPreview(null);
       setResidentialAddOns([]);
+      setResidentialBreakdownVisible(false);
       return;
     }
 
@@ -1054,11 +1056,13 @@ const ProposalForm = () => {
   useEffect(() => {
     if (!isResidentialAccount || !selectedResidentialProperty || !hasResidentialServiceType) {
       setResidentialPreview(null);
+      setResidentialBreakdownVisible(false);
       return;
     }
 
     if (!selectedResidentialPricingPlanId) {
       setResidentialPreview(null);
+      setResidentialBreakdownVisible(false);
       return;
     }
 
@@ -1093,6 +1097,7 @@ const ProposalForm = () => {
       } catch (error) {
         console.error('Failed to preview residential proposal pricing:', error);
         setResidentialPreview(null);
+        setResidentialBreakdownVisible(false);
       } finally {
         setLoadingResidentialPreview(false);
       }
@@ -1343,21 +1348,59 @@ const ProposalForm = () => {
         toast.error('Please select a residential pricing plan first');
         return;
       }
-      if (!residentialPreview) {
-        toast.error('Residential pricing preview is not ready yet');
+      if (!hasResidentialServiceType) {
+        toast.error('Please select a residential service type first');
         return;
       }
-      setFormData((prev) =>
-        applyResidentialAutoPopulate({
-          current: prev,
-          preview: residentialPreview,
-          propertyName: selectedResidentialProperty.name,
+
+      try {
+        setLoadingResidentialPreview(true);
+        const preview = await previewResidentialQuote({
+          propertyId: selectedResidentialProperty.id,
           serviceType: residentialServiceType,
           frequency: residentialFrequency,
-          scopeGroups: residentialScopeGroups,
-        })
-      );
-      toast.success('Auto-populated proposal from residential pricing');
+          homeAddress: selectedResidentialProperty.serviceAddress,
+          homeProfile: {
+            homeType: selectedResidentialProperty.homeProfile?.homeType || 'single_family',
+            squareFeet: selectedResidentialProperty.homeProfile?.squareFeet || 0,
+            bedrooms: selectedResidentialProperty.homeProfile?.bedrooms || 0,
+            fullBathrooms: selectedResidentialProperty.homeProfile?.fullBathrooms || 0,
+            halfBathrooms: selectedResidentialProperty.homeProfile?.halfBathrooms || 0,
+            levels: selectedResidentialProperty.homeProfile?.levels || 1,
+            occupiedStatus: selectedResidentialProperty.homeProfile?.occupiedStatus || 'occupied',
+            condition: selectedResidentialProperty.homeProfile?.condition || 'standard',
+            hasPets: selectedResidentialProperty.homeProfile?.hasPets || false,
+            lastProfessionalCleaning: selectedResidentialProperty.homeProfile?.lastProfessionalCleaning || '',
+            parkingAccess: selectedResidentialProperty.homeProfile?.parkingAccess || '',
+            entryNotes: selectedResidentialProperty.homeProfile?.entryNotes || '',
+            specialInstructions: selectedResidentialProperty.homeProfile?.specialInstructions || '',
+            isFirstVisit: selectedResidentialProperty.homeProfile?.isFirstVisit || false,
+          },
+          pricingPlanId: selectedResidentialPricingPlanId,
+          addOns: residentialAddOns,
+        });
+
+        setResidentialPreview(preview);
+        setFormData((prev) =>
+          applyResidentialAutoPopulate({
+            current: prev,
+            preview,
+            propertyName: selectedResidentialProperty.name,
+            serviceType: residentialServiceType,
+            frequency: residentialFrequency,
+            scopeGroups: residentialScopeGroups,
+          })
+        );
+        setResidentialBreakdownVisible(true);
+        toast.success('Auto-populated proposal from residential pricing');
+      } catch (error) {
+        console.error('Failed to auto-populate from residential pricing:', error);
+        setResidentialPreview(null);
+        setResidentialBreakdownVisible(false);
+        toast.error(extractApiErrorMessage(error, 'Failed to calculate pricing from residential scope'));
+      } finally {
+        setLoadingResidentialPreview(false);
+      }
       return;
     }
     if (!selectedPricingPlanId) {
@@ -1944,28 +1987,52 @@ const ProposalForm = () => {
               )}
 
               {isResidentialAccount && formData.facilityId && (
-                <div className="md:col-span-2">
-                  <div className="bg-surface-800 rounded-xl border border-amber-500/20 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10">
+                <div className="md:col-span-2 mt-2">
+                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-amber-400" />
-                        <span className="font-semibold text-amber-300 text-sm">Internal Pricing Breakdown</span>
+                        <Sparkles className="w-5 h-5 text-gold" />
+                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Residential Pricing</span>
                       </div>
-                      <span className="text-xs text-amber-400/70 uppercase tracking-wider">Not visible to client</span>
                     </div>
+
                     {!hasResidentialServiceType ? (
-                      <div className="px-4 py-3 text-sm text-surface-300">
-                        Select a residential service type to generate the internal pricing breakdown.
-                      </div>
-                    ) : loadingResidentialPreview ? (
-                      <div className="px-4 py-3 text-sm text-surface-300">
-                        Calculating residential pricing breakdown...
-                      </div>
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Select a residential service type to populate the proposal.
+                      </p>
                     ) : !selectedResidentialPricingPlanId ? (
-                      <div className="px-4 py-3 text-sm text-surface-300">
-                        Select a residential pricing plan to generate the internal pricing breakdown.
+                      <p className="text-sm text-surface-500 dark:text-surface-400">
+                        Select a residential pricing plan to calculate and populate the proposal.
+                      </p>
+                    ) : (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAutoPopulateFromFacility}
+                          isLoading={loadingResidentialPreview}
+                          disabled={!hasResidentialServiceType || !selectedResidentialPricingPlanId}
+                          className="whitespace-nowrap"
+                        >
+                          <Calculator className="w-4 h-4 mr-2" />
+                          Calculate & Populate
+                        </Button>
+                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                          Uses the residential pricing engine and residential scope to populate services and line items.
+                        </p>
                       </div>
-                    ) : residentialPreview ? (
+                    )}
+                  </div>
+
+                  {residentialBreakdownVisible && residentialPreview && (
+                    <div className="mt-4 bg-surface-800 rounded-xl border border-amber-500/20 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-amber-400" />
+                          <span className="font-semibold text-amber-300 text-sm">Internal Pricing Breakdown</span>
+                        </div>
+                        <span className="text-xs text-amber-400/70 uppercase tracking-wider">Not visible to client</span>
+                      </div>
                       <div className="divide-y divide-surface-700">
                         <div className="px-4 py-3 space-y-1.5 text-sm">
                           <div className="flex justify-between">
@@ -2054,52 +2121,8 @@ const ProposalForm = () => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="px-4 py-3 text-sm text-surface-300">
-                        Residential pricing preview is unavailable right now.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {isResidentialAccount && formData.facilityId && (
-                <div className="md:col-span-2 mt-2">
-                  <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Residential Pricing</span>
-                      </div>
                     </div>
-
-                    {!hasResidentialServiceType ? (
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Select a residential service type to populate the proposal.
-                      </p>
-                    ) : !selectedResidentialPricingPlanId ? (
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Select a residential pricing plan to calculate and populate the proposal.
-                      </p>
-                    ) : (
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={handleAutoPopulateFromFacility}
-                          isLoading={loadingResidentialPreview}
-                          disabled={!residentialPreview}
-                          className="whitespace-nowrap"
-                        >
-                          <Calculator className="w-4 h-4 mr-2" />
-                          Calculate & Populate
-                        </Button>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Uses the residential pricing engine and residential scope to populate services and line items.
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
 
