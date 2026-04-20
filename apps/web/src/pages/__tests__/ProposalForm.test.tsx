@@ -25,6 +25,7 @@ const listAreaTypesMock = vi.fn();
 const listFacilityTasksMock = vi.fn();
 const listPricingSettingsMock = vi.fn();
 const getProposalMock = vi.fn();
+const listProposalsMock = vi.fn();
 const createProposalMock = vi.fn();
 const updateProposalMock = vi.fn();
 const getFacilityPricingReadinessMock = vi.fn();
@@ -50,6 +51,7 @@ vi.mock('../../lib/tasks', () => ({
 }));
 
 vi.mock('../../lib/proposals', () => ({
+  listProposals: (...args: unknown[]) => listProposalsMock(...args),
   getProposal: (...args: unknown[]) => getProposalMock(...args),
   createProposal: (...args: unknown[]) => createProposalMock(...args),
   updateProposal: (...args: unknown[]) => updateProposalMock(...args),
@@ -232,6 +234,62 @@ const pricingBreakdown = {
   pricingSettingsName: 'Standard',
 };
 
+const activeProposal: Proposal = {
+  id: 'proposal-active-1',
+  proposalNumber: 'PROP-001',
+  title: 'Active Proposal',
+  status: 'draft',
+  description: null,
+  subtotal: 100,
+  taxRate: 0.05,
+  taxAmount: 5,
+  totalAmount: 105,
+  validUntil: null,
+  sentAt: null,
+  viewedAt: null,
+  acceptedAt: null,
+  rejectedAt: null,
+  rejectionReason: null,
+  notes: null,
+  termsAndConditions: null,
+  serviceFrequency: 'weekly',
+  serviceSchedule: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  pricingStrategyKey: null,
+  pricingStrategyVersion: null,
+  pricingPlanId: 'pricing-1',
+  pricingSnapshot: null,
+  pricingLocked: false,
+  pricingLockedAt: null,
+  publicToken: null,
+  publicTokenExpiresAt: null,
+  signatureName: null,
+  signatureDate: null,
+  signatureIp: null,
+  account: {
+    id: 'account-1',
+    name: 'Acme Corp',
+    type: 'commercial',
+    defaultPricingPlanId: null,
+    contacts: [],
+  },
+  facility: {
+    id: 'facility-1',
+    name: 'Main Facility',
+    address: { city: 'Vancouver', state: 'BC' },
+    defaultPricingPlanId: null,
+  },
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Admin User',
+    email: 'admin@example.com',
+  },
+  proposalItems: [],
+  proposalServices: [],
+};
+
 describe('ProposalForm', () => {
   beforeEach(() => {
     mockParams = {};
@@ -243,6 +301,7 @@ describe('ProposalForm', () => {
     listFacilityTasksMock.mockReset();
     listPricingSettingsMock.mockReset();
     getProposalMock.mockReset();
+    listProposalsMock.mockReset();
     createProposalMock.mockReset();
     updateProposalMock.mockReset();
     getFacilityPricingReadinessMock.mockReset();
@@ -254,6 +313,7 @@ describe('ProposalForm', () => {
 
     listAccountsMock.mockResolvedValue({ data: [account, residentialAccount] });
     listFacilitiesMock.mockResolvedValue({ data: [facility, residentialFacility] });
+    listProposalsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 1 } });
     getFacilityMock.mockResolvedValue(residentialFacility);
     getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
     listAreasMock.mockResolvedValue({
@@ -650,6 +710,34 @@ describe('ProposalForm', () => {
       expect(createProposalMock).toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith('/proposals');
     });
+  });
+
+  it('hides commercial service locations that already have an active proposal', async () => {
+    const user = userEvent.setup();
+    listProposalsMock.mockResolvedValue({
+      data: [activeProposal],
+      pagination: { page: 1, limit: 200, total: 1, totalPages: 1 },
+    });
+
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
+
+    expect(screen.queryByRole('option', { name: 'Main Facility' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no service locations are available without an active proposal/i)).toBeInTheDocument();
+  });
+
+  it('keeps the current service location selectable when editing an active proposal', async () => {
+    mockParams = { id: 'proposal-1' };
+    listProposalsMock.mockResolvedValue({
+      data: [activeProposal],
+      pagination: { page: 1, limit: 200, total: 1, totalPages: 1 },
+    });
+
+    render(<ProposalForm />);
+
+    expect(await screen.findByDisplayValue('Existing Proposal')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Main Facility', selected: true })).toBeInTheDocument();
   });
 
   it('uses the residential quote engine for residential proposals', async () => {

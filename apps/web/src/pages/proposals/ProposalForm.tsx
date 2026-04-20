@@ -29,6 +29,7 @@ import {
   getProposal,
   createProposal,
   updateProposal,
+  listProposals,
 } from '../../lib/proposals';
 import { listAccounts } from '../../lib/accounts';
 import { listFacilities, listAreas, getFacility } from '../../lib/facilities';
@@ -93,6 +94,8 @@ interface ResidentialPreviewContext {
   homeAddress: Record<string, unknown> | null;
   homeProfile: Record<string, unknown> | null;
 }
+
+const ACTIVE_PROPOSAL_STATUSES: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted'];
 
 // Constants for dropdown options
 const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
@@ -729,6 +732,7 @@ const ProposalForm = () => {
   const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set());
   const [facilityAreas, setFacilityAreas] = useState<Area[]>([]);
   const [facilityTasks, setFacilityTasks] = useState<FacilityTask[]>([]);
+  const [activeProposalFacilityIds, setActiveProposalFacilityIds] = useState<Set<string>>(new Set());
   const [loadingFacilityReview, setLoadingFacilityReview] = useState(false);
   const [areasReviewed, setAreasReviewed] = useState(false);
   const [tasksReviewed, setTasksReviewed] = useState(false);
@@ -941,12 +945,13 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, plansRes, residentialPlansRes, templatesRes] = await Promise.all([
+      const [accountsRes, facilitiesRes, plansRes, residentialPlansRes, templatesRes, proposalsRes] = await Promise.all([
         listAccounts({ limit: 100, readyForProposal: true }),
         listFacilities({ limit: 100, includeResidentialLinked: true }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
         listResidentialPricingPlans({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
+        listProposals({ limit: 200, includeArchived: false }),
       ]);
       const readyAccounts = accountsRes?.data || [];
       const readyAccountIds = new Set(readyAccounts.map((account) => account.id));
@@ -955,6 +960,14 @@ const ProposalForm = () => {
       );
       setAccounts(readyAccounts);
       setFacilities(facilitiesForReadyAccounts);
+      setActiveProposalFacilityIds(
+        new Set(
+          (proposalsRes?.data || [])
+            .filter((proposal) => ACTIVE_PROPOSAL_STATUSES.includes(proposal.status))
+            .map((proposal) => proposal.facility?.id)
+            .filter((value): value is string => Boolean(value))
+        )
+      );
       setTermsTemplates(templatesRes || []);
       const residentialPlans = residentialPlansRes?.data || [];
       setResidentialPricingPlans(residentialPlans);
@@ -1073,14 +1086,25 @@ const ProposalForm = () => {
     [selectedAccount]
   );
   const availableProposalFacilities = useMemo(() => {
-    if (!isResidentialAccount) {
-      return filteredFacilities;
-    }
+    const accountScopedFacilities = isResidentialAccount
+      ? filteredFacilities.filter(
+          (facility) => Boolean(facility.residentialPropertyId) || residentialLinkedFacilityIds.has(facility.id)
+        )
+      : filteredFacilities;
 
-    return filteredFacilities.filter(
-      (facility) => Boolean(facility.residentialPropertyId) || residentialLinkedFacilityIds.has(facility.id)
-    );
-  }, [filteredFacilities, isResidentialAccount, residentialLinkedFacilityIds]);
+    return accountScopedFacilities.filter((facility) => {
+      if (facility.id === formData.facilityId) {
+        return true;
+      }
+      return !activeProposalFacilityIds.has(facility.id);
+    });
+  }, [
+    activeProposalFacilityIds,
+    filteredFacilities,
+    formData.facilityId,
+    isResidentialAccount,
+    residentialLinkedFacilityIds,
+  ]);
 
   useEffect(() => {
     if (!isResidentialAccount) {
@@ -1958,9 +1982,15 @@ const ProposalForm = () => {
                   label: f.name,
                 }))}
               />
-              {isResidentialAccount && formData.accountId && availableProposalFacilities.length === 0 ? (
+              {formData.accountId && availableProposalFacilities.length === 0 ? (
                 <p className="md:col-span-2 -mt-2 text-sm text-amber-600 dark:text-amber-400">
-                  No residential-linked service locations are available for this account yet.
+                  {isResidentialAccount
+                    ? (filteredFacilities.length > 0
+                        ? 'No residential-linked service locations are available without an active proposal.'
+                        : 'No residential-linked service locations are available for this account yet.')
+                    : (filteredFacilities.length > 0
+                        ? 'No service locations are available without an active proposal.'
+                        : 'No service locations are available for this account yet.')}
                 </p>
               ) : null}
               {isResidentialAccount ? (
