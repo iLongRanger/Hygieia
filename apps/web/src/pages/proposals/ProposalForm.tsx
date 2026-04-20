@@ -951,7 +951,7 @@ const ProposalForm = () => {
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
         listResidentialPricingPlans({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
-        listProposals({ limit: 200, includeArchived: false }),
+        listProposals({ limit: 100, includeArchived: false }),
       ]);
       const readyAccounts = accountsRes?.data || [];
       const readyAccountIds = new Set(readyAccounts.map((account) => account.id));
