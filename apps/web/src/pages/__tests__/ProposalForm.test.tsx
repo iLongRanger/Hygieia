@@ -189,6 +189,7 @@ const residentialFacility: Facility = {
   id: 'facility-res-1',
   name: 'Willow Main Home',
   buildingType: 'single_family',
+  submittedForProposal: true,
   account: {
     id: 'account-res-1',
     name: 'Willow Residence',
@@ -201,6 +202,7 @@ const residentialStandaloneFacility: Facility = {
   ...residentialFacility,
   id: 'facility-res-2',
   name: 'Standalone Residential Location',
+  submittedForProposal: false,
   residentialPropertyId: null,
 };
 
@@ -866,6 +868,23 @@ describe('ProposalForm', () => {
 
     expect(screen.getByRole('option', { name: 'Willow Main Home' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Standalone Residential Location' })).not.toBeInTheDocument();
+  });
+
+  it('requires residential service locations to be submitted for proposal', async () => {
+    const user = userEvent.setup();
+    listFacilitiesMock.mockResolvedValue({
+      data: [
+        facility,
+        { ...residentialFacility, submittedForProposal: false },
+      ],
+    });
+
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+
+    expect(screen.queryByRole('option', { name: 'Willow Main Home' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no residential-linked service locations are available without an active proposal and proposal submission/i)).toBeInTheDocument();
   });
 
   it('shows a helpful message when a residential account has no linked service locations for proposals', async () => {

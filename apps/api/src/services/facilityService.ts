@@ -108,6 +108,17 @@ const facilitySelect = {
   },
 } satisfies Prisma.FacilitySelect;
 
+const SUBMITTED_FOR_PROPOSAL_STATUSES = new Set([
+  'walk_through_completed',
+  'proposal_sent',
+  'negotiation',
+  'won',
+]);
+
+function hasSubmittedForProposalStatus(status: string | null | undefined) {
+  return Boolean(status && SUBMITTED_FOR_PROPOSAL_STATUSES.has(status));
+}
+
 async function assertNoDuplicateFacility(
   input: {
     accountId: string;
@@ -219,8 +230,53 @@ export async function listFacilities(
     prisma.facility.count({ where }),
   ]);
 
+  const facilityIds = facilities.map((facility) => facility.id);
+  const accountIds = [
+    ...new Set(
+      facilities
+        .map((facility) => facility.account?.id)
+        .filter((value): value is string => Boolean(value))
+    ),
+  ];
+  const opportunities = facilityIds.length === 0
+    || accountIds.length === 0
+    ? []
+    : await prisma.opportunity.findMany({
+        where: {
+          accountId: { in: accountIds },
+          facilityId: { in: facilityIds },
+          archivedAt: null,
+          leadId: { not: null },
+        },
+        select: {
+          id: true,
+          accountId: true,
+          facilityId: true,
+          leadId: true,
+          status: true,
+          updatedAt: true,
+          createdAt: true,
+        },
+      });
+
+  const opportunityByFacilityId = new Map<string, string>();
+  for (const opportunity of opportunities) {
+    if (!opportunity.facilityId) {
+      continue;
+    }
+    const existingStatus = opportunityByFacilityId.get(opportunity.facilityId);
+    if (!existingStatus || hasSubmittedForProposalStatus(opportunity.status)) {
+      opportunityByFacilityId.set(opportunity.facilityId, opportunity.status);
+    }
+  }
+
+  const facilitiesWithProposalStatus = facilities.map((facility) => ({
+    ...facility,
+    submittedForProposal: hasSubmittedForProposalStatus(opportunityByFacilityId.get(facility.id)),
+  }));
+
   return {
-    data: facilities,
+    data: facilitiesWithProposalStatus,
     pagination: {
       page,
       limit,
@@ -247,11 +303,7 @@ export async function getFacilityById(id: string) {
 
   return {
     ...facility,
-    submittedForProposal:
-      opportunity?.status === 'walk_through_completed'
-      || opportunity?.status === 'proposal_sent'
-      || opportunity?.status === 'negotiation'
-      || opportunity?.status === 'won',
+    submittedForProposal: hasSubmittedForProposalStatus(opportunity?.status),
   };
 }
 

@@ -1088,7 +1088,9 @@ const ProposalForm = () => {
   const availableProposalFacilities = useMemo(() => {
     const accountScopedFacilities = isResidentialAccount
       ? filteredFacilities.filter(
-          (facility) => Boolean(facility.residentialPropertyId) || residentialLinkedFacilityIds.has(facility.id)
+          (facility) =>
+            (Boolean(facility.residentialPropertyId) || residentialLinkedFacilityIds.has(facility.id))
+            && facility.submittedForProposal
         )
       : filteredFacilities;
 
@@ -1986,7 +1988,7 @@ const ProposalForm = () => {
                 <p className="md:col-span-2 -mt-2 text-sm text-amber-600 dark:text-amber-400">
                   {isResidentialAccount
                     ? (filteredFacilities.length > 0
-                        ? 'No residential-linked service locations are available without an active proposal.'
+                        ? 'No residential-linked service locations are available without an active proposal and proposal submission.'
                         : 'No residential-linked service locations are available for this account yet.')
                     : (filteredFacilities.length > 0
                         ? 'No service locations are available without an active proposal.'

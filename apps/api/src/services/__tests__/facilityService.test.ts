@@ -64,7 +64,10 @@ describe('facilityService', () => {
 
       const result = await facilityService.listFacilities({});
 
-      expect(result.data).toEqual(mockFacilities);
+      expect(result.data).toEqual([
+        expect.objectContaining({ ...mockFacilities[0], submittedForProposal: false }),
+        expect.objectContaining({ ...mockFacilities[1], submittedForProposal: false }),
+      ]);
       expect(result.pagination.total).toBe(2);
       expect(prisma.facility.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -145,6 +148,40 @@ describe('facilityService', () => {
           }),
         })
       );
+    });
+
+    it('should include submittedForProposal on listed facilities', async () => {
+      const mockFacility = createTestFacility({
+        id: 'facility-123',
+        account: {
+          id: 'account-123',
+          name: 'Acme Corp',
+          type: 'commercial',
+        },
+      });
+
+      (prisma.facility.findMany as jest.Mock).mockResolvedValue([mockFacility]);
+      (prisma.facility.count as jest.Mock).mockResolvedValue(1);
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-1',
+          accountId: 'account-123',
+          facilityId: 'facility-123',
+          leadId: 'lead-1',
+          status: 'walk_through_completed',
+          updatedAt: new Date('2026-03-13T10:00:00.000Z'),
+          createdAt: new Date('2026-03-13T09:00:00.000Z'),
+        },
+      ]);
+
+      const result = await facilityService.listFacilities({});
+
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          ...mockFacility,
+          submittedForProposal: true,
+        }),
+      ]);
     });
   });
 
