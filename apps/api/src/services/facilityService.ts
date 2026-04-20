@@ -115,8 +115,25 @@ const SUBMITTED_FOR_PROPOSAL_STATUSES = new Set([
   'won',
 ]);
 
+const OPPORTUNITY_STATUS_PRIORITY: Record<string, number> = {
+  negotiation: 60,
+  proposal_sent: 50,
+  walk_through_completed: 40,
+  walk_through_booked: 30,
+  lead: 20,
+  won: 10,
+  lost: 0,
+};
+
 function hasSubmittedForProposalStatus(status: string | null | undefined) {
   return Boolean(status && SUBMITTED_FOR_PROPOSAL_STATUSES.has(status));
+}
+
+function getOpportunityPriority(status: string | null | undefined) {
+  if (!status) {
+    return -1;
+  }
+  return OPPORTUNITY_STATUS_PRIORITY[status] ?? -1;
 }
 
 async function assertNoDuplicateFacility(
@@ -259,20 +276,44 @@ export async function listFacilities(
         },
       });
 
-  const opportunityByFacilityId = new Map<string, string>();
+  const opportunityByFacilityId = new Map<
+    string,
+    { status: string; updatedAt: Date; createdAt: Date }
+  >();
   for (const opportunity of opportunities) {
     if (!opportunity.facilityId) {
       continue;
     }
-    const existingStatus = opportunityByFacilityId.get(opportunity.facilityId);
-    if (!existingStatus || hasSubmittedForProposalStatus(opportunity.status)) {
-      opportunityByFacilityId.set(opportunity.facilityId, opportunity.status);
+
+    const existing = opportunityByFacilityId.get(opportunity.facilityId);
+    const shouldReplace =
+      !existing
+      || getOpportunityPriority(opportunity.status) > getOpportunityPriority(existing.status)
+      || (
+        getOpportunityPriority(opportunity.status) === getOpportunityPriority(existing.status)
+        && opportunity.updatedAt.getTime() > existing.updatedAt.getTime()
+      )
+      || (
+        getOpportunityPriority(opportunity.status) === getOpportunityPriority(existing.status)
+        && opportunity.updatedAt.getTime() === existing.updatedAt.getTime()
+        && opportunity.createdAt.getTime() > existing.createdAt.getTime()
+      );
+
+    if (shouldReplace) {
+      opportunityByFacilityId.set(opportunity.facilityId, {
+        status: opportunity.status,
+        updatedAt: opportunity.updatedAt,
+        createdAt: opportunity.createdAt,
+      });
     }
   }
 
   const facilitiesWithProposalStatus = facilities.map((facility) => ({
     ...facility,
-    submittedForProposal: hasSubmittedForProposalStatus(opportunityByFacilityId.get(facility.id)),
+    opportunityStatus: opportunityByFacilityId.get(facility.id)?.status ?? null,
+    submittedForProposal: hasSubmittedForProposalStatus(
+      opportunityByFacilityId.get(facility.id)?.status
+    ),
   }));
 
   return {
@@ -303,6 +344,7 @@ export async function getFacilityById(id: string) {
 
   return {
     ...facility,
+    opportunityStatus: opportunity?.status ?? null,
     submittedForProposal: hasSubmittedForProposalStatus(opportunity?.status),
   };
 }

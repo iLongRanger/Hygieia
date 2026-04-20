@@ -69,6 +69,7 @@ export interface Facility {
     proposals?: number;
     contracts?: number;
   };
+  opportunityStatus?: string | null;
   submittedForProposal?: boolean;
 }
 

@@ -65,8 +65,8 @@ describe('facilityService', () => {
       const result = await facilityService.listFacilities({});
 
       expect(result.data).toEqual([
-        expect.objectContaining({ ...mockFacilities[0], submittedForProposal: false }),
-        expect.objectContaining({ ...mockFacilities[1], submittedForProposal: false }),
+        expect.objectContaining({ ...mockFacilities[0], opportunityStatus: null, submittedForProposal: false }),
+        expect.objectContaining({ ...mockFacilities[1], opportunityStatus: null, submittedForProposal: false }),
       ]);
       expect(result.pagination.total).toBe(2);
       expect(prisma.facility.findMany).toHaveBeenCalledWith(
@@ -179,6 +179,7 @@ describe('facilityService', () => {
       expect(result.data).toEqual([
         expect.objectContaining({
           ...mockFacility,
+          opportunityStatus: 'walk_through_completed',
           submittedForProposal: true,
         }),
       ]);
@@ -214,6 +215,7 @@ describe('facilityService', () => {
       expect(result).toEqual(
         expect.objectContaining({
           ...mockFacility,
+          opportunityStatus: 'walk_through_completed',
           submittedForProposal: true,
         })
       );

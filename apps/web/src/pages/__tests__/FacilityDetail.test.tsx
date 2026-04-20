@@ -103,6 +103,7 @@ const facility: Facility = {
     proposals: 0,
     contracts: 0,
   },
+  opportunityStatus: 'walk_through_booked',
   submittedForProposal: false,
 };
 
@@ -612,6 +613,21 @@ describe('FacilityDetail', () => {
     expect(
       screen.getByText(/already been submitted for proposal preparation/i)
     ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
+  });
+
+  it('blocks area and task management until a walkthrough is booked', async () => {
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      opportunityStatus: 'lead',
+      submittedForProposal: false,
+    });
+
+    render(<FacilityDetail />);
+
+    expect(await screen.findByText('Walkthrough Required')).toBeInTheDocument();
+    expect(screen.getByText(/book a walkthrough before managing facility areas and tasks/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /areas \(/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
   });
 });

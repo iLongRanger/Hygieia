@@ -191,6 +191,13 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const hasExistingProposalOrContract =
     (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
   const hasSubmittedForProposal = Boolean(facility?.submittedForProposal);
+  const canManageOperationalScope = [
+    'walk_through_booked',
+    'walk_through_completed',
+    'proposal_sent',
+    'negotiation',
+    'won',
+  ].includes(facility?.opportunityStatus ?? '');
   const openAppointmentsForLocation = () => {
     if (!facility) return;
     const params = new URLSearchParams({
@@ -1216,7 +1223,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           <Button variant="secondary" onClick={openAppointmentsForLocation}>
             {isPropertyMode ? 'Open Walkthroughs' : 'Open Appointments'}
           </Button>
-          {!hasExistingProposalOrContract && !hasSubmittedForProposal && (
+          {canManageOperationalScope && !hasExistingProposalOrContract && !hasSubmittedForProposal && (
             <Button
               onClick={() => setShowSubmitProposalModal(true)}
               disabled={activeAreasCount === 0 || activeTasksCount === 0}
@@ -1246,6 +1253,20 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         </div>
       )}
 
+      {!canManageOperationalScope && (
+        <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+          <div className="flex items-start gap-3">
+            <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
+            <div>
+              <div className="font-medium text-sky-200">Walkthrough Required</div>
+              <div className="mt-1 text-sky-100/90">
+                {`Book a walkthrough before managing ${locationLabelLower} areas and tasks.`}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tab Bar */}
       <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
         <button
@@ -1261,20 +1282,22 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
           )}
         </button>
-        <button
-          className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-            activeTab === 'areas'
-              ? 'text-surface-900 dark:text-white'
-              : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
-          }`}
-          onClick={() => setActiveTab('areas')}
-        >
-          Areas ({activeAreasCount})
-          {activeTab === 'areas' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
-          )}
-        </button>
-        {selectedArea && (
+        {canManageOperationalScope && (
+          <button
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === 'areas'
+                ? 'text-surface-900 dark:text-white'
+                : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
+            }`}
+            onClick={() => setActiveTab('areas')}
+          >
+            Areas ({activeAreasCount})
+            {activeTab === 'areas' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+            )}
+          </button>
+        )}
+        {canManageOperationalScope && selectedArea && (
           <button
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
               activeTab === 'area-detail'
@@ -1300,7 +1323,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           activeTasksCount={activeTasksCount}
         />
       )}
-      {activeTab === 'areas' && (
+      {canManageOperationalScope && activeTab === 'areas' && (
         <FacilityAreas
           areas={areas}
           tasks={tasks}
@@ -1318,7 +1341,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           totalSquareFeet={totalSquareFeetFromAreas}
         />
       )}
-      {activeTab === 'area-detail' && selectedArea && (
+      {canManageOperationalScope && activeTab === 'area-detail' && selectedArea && (
         <FacilityAreaDetail
           area={selectedArea}
           tasks={getTasksForArea(selectedArea.id)}
