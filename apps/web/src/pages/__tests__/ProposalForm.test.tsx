@@ -641,6 +641,15 @@ describe('ProposalForm', () => {
     const user = userEvent.setup();
     render(<ProposalForm />);
 
+    await waitFor(() => {
+      expect(listFacilitiesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 100,
+          includeResidentialLinked: true,
+        })
+      );
+    });
+
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
