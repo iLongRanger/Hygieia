@@ -782,6 +782,23 @@ const ProposalForm = () => {
       || null
     );
   }, [selectedAccount, formData.facilityId]);
+  const residentialPreviewContext = useMemo(() => {
+    if (!isResidentialAccount) {
+      return null;
+    }
+
+    const propertyId = selectedResidentialProperty?.id || selectedFacility?.residentialPropertyId || null;
+    if (!propertyId) {
+      return null;
+    }
+
+    return {
+      propertyId,
+      propertyName: selectedResidentialProperty?.name || selectedFacility?.name || selectedAccount?.name || 'Residential Service Location',
+      homeAddress: selectedResidentialProperty?.serviceAddress || selectedAccount?.serviceAddress || selectedFacility?.address || null,
+      homeProfile: selectedResidentialProperty?.homeProfile || selectedAccount?.residentialProfile || null,
+    };
+  }, [isResidentialAccount, selectedAccount, selectedFacility, selectedResidentialProperty]);
   const selectedResidentialPricingPlan = useMemo(
     () =>
       residentialPricingPlans.find((plan) => plan.id === selectedResidentialPricingPlanId)
@@ -816,7 +833,10 @@ const ProposalForm = () => {
       if (!hasResidentialServiceType) {
         return '';
       }
-      return defaultResidentialProposalTitle(residentialServiceType, selectedResidentialProperty?.name || selectedFacility?.name);
+      return defaultResidentialProposalTitle(
+        residentialServiceType,
+        residentialPreviewContext?.propertyName || selectedFacility?.name
+      );
     }
 
     return defaultCommercialProposalTitle(selectedFacility?.name);
@@ -825,8 +845,8 @@ const ProposalForm = () => {
     hasResidentialServiceType,
     isResidentialAccount,
     residentialServiceType,
+    residentialPreviewContext?.propertyName,
     selectedFacility?.name,
-    selectedResidentialProperty?.name,
   ]);
 
   // Calculate totals whenever items, services, or tax rate change
@@ -1054,7 +1074,7 @@ const ProposalForm = () => {
   }, [isResidentialAccount, residentialScheduleFrequency]);
 
   useEffect(() => {
-    if (!isResidentialAccount || !selectedResidentialProperty || !hasResidentialServiceType) {
+    if (!isResidentialAccount || !residentialPreviewContext || !hasResidentialServiceType) {
       setResidentialPreview(null);
       setResidentialBreakdownVisible(false);
       return;
@@ -1070,25 +1090,25 @@ const ProposalForm = () => {
       try {
         setLoadingResidentialPreview(true);
         const preview = await previewResidentialQuote({
-          propertyId: selectedResidentialProperty.id,
+          propertyId: residentialPreviewContext.propertyId,
           serviceType: residentialServiceType,
           frequency: residentialFrequency,
-          homeAddress: selectedResidentialProperty.serviceAddress,
+          homeAddress: residentialPreviewContext.homeAddress,
           homeProfile: {
-            homeType: selectedResidentialProperty.homeProfile?.homeType || 'single_family',
-            squareFeet: selectedResidentialProperty.homeProfile?.squareFeet || 0,
-            bedrooms: selectedResidentialProperty.homeProfile?.bedrooms || 0,
-            fullBathrooms: selectedResidentialProperty.homeProfile?.fullBathrooms || 0,
-            halfBathrooms: selectedResidentialProperty.homeProfile?.halfBathrooms || 0,
-            levels: selectedResidentialProperty.homeProfile?.levels || 1,
-            occupiedStatus: selectedResidentialProperty.homeProfile?.occupiedStatus || 'occupied',
-            condition: selectedResidentialProperty.homeProfile?.condition || 'standard',
-            hasPets: selectedResidentialProperty.homeProfile?.hasPets || false,
-            lastProfessionalCleaning: selectedResidentialProperty.homeProfile?.lastProfessionalCleaning || '',
-            parkingAccess: selectedResidentialProperty.homeProfile?.parkingAccess || '',
-            entryNotes: selectedResidentialProperty.homeProfile?.entryNotes || '',
-            specialInstructions: selectedResidentialProperty.homeProfile?.specialInstructions || '',
-            isFirstVisit: selectedResidentialProperty.homeProfile?.isFirstVisit || false,
+            homeType: residentialPreviewContext.homeProfile?.homeType || 'single_family',
+            squareFeet: residentialPreviewContext.homeProfile?.squareFeet || 0,
+            bedrooms: residentialPreviewContext.homeProfile?.bedrooms || 0,
+            fullBathrooms: residentialPreviewContext.homeProfile?.fullBathrooms || 0,
+            halfBathrooms: residentialPreviewContext.homeProfile?.halfBathrooms || 0,
+            levels: residentialPreviewContext.homeProfile?.levels || 1,
+            occupiedStatus: residentialPreviewContext.homeProfile?.occupiedStatus || 'occupied',
+            condition: residentialPreviewContext.homeProfile?.condition || 'standard',
+            hasPets: residentialPreviewContext.homeProfile?.hasPets || false,
+            lastProfessionalCleaning: residentialPreviewContext.homeProfile?.lastProfessionalCleaning || '',
+            parkingAccess: residentialPreviewContext.homeProfile?.parkingAccess || '',
+            entryNotes: residentialPreviewContext.homeProfile?.entryNotes || '',
+            specialInstructions: residentialPreviewContext.homeProfile?.specialInstructions || '',
+            isFirstVisit: residentialPreviewContext.homeProfile?.isFirstVisit || false,
           },
           pricingPlanId: selectedResidentialPricingPlanId,
           addOns: residentialAddOns,
@@ -1110,18 +1130,18 @@ const ProposalForm = () => {
     residentialAddOns,
     residentialFrequency,
     residentialServiceType,
+    residentialPreviewContext,
     selectedResidentialPricingPlanId,
-    selectedResidentialProperty,
   ]);
 
   useEffect(() => {
-    if (!isResidentialAccount || !selectedResidentialProperty || !residentialPreview || !hasResidentialServiceType) {
+    if (!isResidentialAccount || !residentialPreviewContext || !residentialPreview || !hasResidentialServiceType) {
       return;
     }
 
     const derivedServices = buildResidentialProposalServices({
       preview: residentialPreview,
-      propertyName: selectedResidentialProperty.name,
+      propertyName: residentialPreviewContext.propertyName,
       serviceType: residentialServiceType,
       frequency: residentialFrequency,
       scopeGroups: residentialScopeGroups,
@@ -1152,8 +1172,8 @@ const ProposalForm = () => {
     residentialScopeGroups,
     residentialFrequency,
     residentialPreview,
+    residentialPreviewContext,
     residentialServiceType,
-    selectedResidentialProperty,
   ]);
 
   useEffect(() => {
@@ -1340,7 +1360,7 @@ const ProposalForm = () => {
       return;
     }
     if (isResidentialAccount) {
-      if (!selectedResidentialProperty) {
+      if (!residentialPreviewContext) {
         toast.error('Select a residential service location first');
         return;
       }
@@ -1356,25 +1376,25 @@ const ProposalForm = () => {
       try {
         setLoadingResidentialPreview(true);
         const preview = await previewResidentialQuote({
-          propertyId: selectedResidentialProperty.id,
+          propertyId: residentialPreviewContext.propertyId,
           serviceType: residentialServiceType,
           frequency: residentialFrequency,
-          homeAddress: selectedResidentialProperty.serviceAddress,
+          homeAddress: residentialPreviewContext.homeAddress,
           homeProfile: {
-            homeType: selectedResidentialProperty.homeProfile?.homeType || 'single_family',
-            squareFeet: selectedResidentialProperty.homeProfile?.squareFeet || 0,
-            bedrooms: selectedResidentialProperty.homeProfile?.bedrooms || 0,
-            fullBathrooms: selectedResidentialProperty.homeProfile?.fullBathrooms || 0,
-            halfBathrooms: selectedResidentialProperty.homeProfile?.halfBathrooms || 0,
-            levels: selectedResidentialProperty.homeProfile?.levels || 1,
-            occupiedStatus: selectedResidentialProperty.homeProfile?.occupiedStatus || 'occupied',
-            condition: selectedResidentialProperty.homeProfile?.condition || 'standard',
-            hasPets: selectedResidentialProperty.homeProfile?.hasPets || false,
-            lastProfessionalCleaning: selectedResidentialProperty.homeProfile?.lastProfessionalCleaning || '',
-            parkingAccess: selectedResidentialProperty.homeProfile?.parkingAccess || '',
-            entryNotes: selectedResidentialProperty.homeProfile?.entryNotes || '',
-            specialInstructions: selectedResidentialProperty.homeProfile?.specialInstructions || '',
-            isFirstVisit: selectedResidentialProperty.homeProfile?.isFirstVisit || false,
+            homeType: residentialPreviewContext.homeProfile?.homeType || 'single_family',
+            squareFeet: residentialPreviewContext.homeProfile?.squareFeet || 0,
+            bedrooms: residentialPreviewContext.homeProfile?.bedrooms || 0,
+            fullBathrooms: residentialPreviewContext.homeProfile?.fullBathrooms || 0,
+            halfBathrooms: residentialPreviewContext.homeProfile?.halfBathrooms || 0,
+            levels: residentialPreviewContext.homeProfile?.levels || 1,
+            occupiedStatus: residentialPreviewContext.homeProfile?.occupiedStatus || 'occupied',
+            condition: residentialPreviewContext.homeProfile?.condition || 'standard',
+            hasPets: residentialPreviewContext.homeProfile?.hasPets || false,
+            lastProfessionalCleaning: residentialPreviewContext.homeProfile?.lastProfessionalCleaning || '',
+            parkingAccess: residentialPreviewContext.homeProfile?.parkingAccess || '',
+            entryNotes: residentialPreviewContext.homeProfile?.entryNotes || '',
+            specialInstructions: residentialPreviewContext.homeProfile?.specialInstructions || '',
+            isFirstVisit: residentialPreviewContext.homeProfile?.isFirstVisit || false,
           },
           pricingPlanId: selectedResidentialPricingPlanId,
           addOns: residentialAddOns,
@@ -1385,7 +1405,7 @@ const ProposalForm = () => {
           applyResidentialAutoPopulate({
             current: prev,
             preview,
-            propertyName: selectedResidentialProperty.name,
+            propertyName: residentialPreviewContext.propertyName,
             serviceType: residentialServiceType,
             frequency: residentialFrequency,
             scopeGroups: residentialScopeGroups,
@@ -1671,7 +1691,7 @@ const ProposalForm = () => {
       toast.error('Select a facility before creating the proposal');
       return;
     }
-    if (isResidentialAccount && (!selectedResidentialProperty || !selectedResidentialPricingPlanId || !hasResidentialServiceType || !residentialPreview)) {
+    if (isResidentialAccount && (!residentialPreviewContext || !selectedResidentialPricingPlanId || !hasResidentialServiceType || !residentialPreview)) {
       toast.error('Wait for the residential pricing preview before creating the proposal');
       return;
     }
@@ -1694,10 +1714,10 @@ const ProposalForm = () => {
       const derivedResidentialItems = isResidentialAccount && residentialPreview
         ? buildResidentialProposalItems(residentialPreview)
         : [];
-      const derivedResidentialServices = isResidentialAccount && residentialPreview && selectedResidentialProperty && hasResidentialServiceType
+      const derivedResidentialServices = isResidentialAccount && residentialPreview && residentialPreviewContext && hasResidentialServiceType
         ? buildResidentialProposalServices({
             preview: residentialPreview,
-            propertyName: selectedResidentialProperty.name,
+            propertyName: residentialPreviewContext.propertyName,
             serviceType: residentialServiceType,
             frequency: residentialFrequency,
             scopeGroups: isResidentialAccount ? residentialScopeGroups : [],
@@ -1718,7 +1738,7 @@ const ProposalForm = () => {
             residentialServiceType,
             residentialFrequency,
             residentialAddOns,
-            propertyId: selectedResidentialProperty?.id ?? null,
+            propertyId: residentialPreviewContext?.propertyId ?? null,
             preview: residentialPreview,
           }
         : undefined;
@@ -2037,7 +2057,9 @@ const ProposalForm = () => {
                         <div className="px-4 py-3 space-y-1.5 text-sm">
                           <div className="flex justify-between">
                             <span className="text-surface-500 dark:text-surface-400">Service Location:</span>
-                            <span className="text-surface-900 dark:text-white font-medium">{selectedResidentialProperty?.name || selectedFacility?.name}</span>
+                            <span className="text-surface-900 dark:text-white font-medium">
+                              {residentialPreviewContext?.propertyName || selectedFacility?.name}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-surface-500 dark:text-surface-400">Service Type:</span>
