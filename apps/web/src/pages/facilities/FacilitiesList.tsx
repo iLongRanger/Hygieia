@@ -101,6 +101,7 @@ const FacilitiesList = () => {
           status: filters?.status || undefined,
           buildingType: filters?.buildingType || undefined,
           includeArchived: filters?.includeArchived,
+          includeResidentialLinked: true,
         });
         setFacilities(response?.data || []);
         if (response?.pagination) {

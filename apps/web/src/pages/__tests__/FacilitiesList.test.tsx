@@ -89,6 +89,18 @@ describe('FacilitiesList', () => {
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
   });
 
+  it('includes residential-linked service locations in the list request', async () => {
+    render(<FacilitiesList />);
+
+    await screen.findByText('Main Facility');
+
+    expect(listFacilitiesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeResidentialLinked: true,
+      })
+    );
+  });
+
   it('creates a service location from the modal', async () => {
     const user = userEvent.setup();
     render(<FacilitiesList />);
