@@ -93,6 +93,7 @@ interface ResidentialPreviewContext {
   propertyName: string;
   homeAddress: Record<string, unknown> | null;
   homeProfile: Record<string, unknown> | null;
+  defaultAddOns: ResidentialQuoteAddOnInput[];
 }
 
 const ACTIVE_PROPOSAL_STATUSES: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted'];
@@ -822,6 +823,7 @@ const ProposalForm = () => {
       propertyName: selectedResidentialProperty?.name || selectedFacility?.name || selectedAccount?.name || 'Residential Service Location',
       homeAddress: selectedResidentialProperty?.serviceAddress || selectedAccount?.serviceAddress || selectedFacility?.address || null,
       homeProfile: selectedResidentialProperty?.homeProfile || selectedAccount?.residentialProfile || null,
+      defaultAddOns: selectedResidentialProperty?.defaultAddOns || [],
     };
   }, [
     formData.accountId,
@@ -1123,6 +1125,13 @@ const ProposalForm = () => {
       }
     }
   }, [isResidentialAccount, residentialPricingPlans, selectedResidentialPricingPlanId]);
+
+  useEffect(() => {
+    if (!isResidentialAccount) {
+      return;
+    }
+    setResidentialAddOns(residentialPreviewContext?.defaultAddOns || []);
+  }, [isResidentialAccount, residentialPreviewContext?.propertyId]);
 
   useEffect(() => {
     if (!isResidentialAccount) {
@@ -1453,6 +1462,7 @@ const ProposalForm = () => {
         propertyName: liveProperty.name || liveFacility.name || selectedAccount?.name || 'Residential Service Location',
         homeAddress: liveProperty.serviceAddress || selectedAccount?.serviceAddress || liveFacility.address || null,
         homeProfile: liveProperty.homeProfile || selectedAccount?.residentialProfile || null,
+        defaultAddOns: liveProperty.defaultAddOns || [],
       };
 
       setResolvedResidentialContext(resolvedContext);

@@ -410,6 +410,7 @@ model ResidentialProperty {
   serviceAddress    Json      @map("service_address") @db.JsonB
   homeProfile       Json      @map("home_profile") @db.JsonB
   defaultTasks      Json      @default("[]") @map("default_tasks") @db.JsonB
+  defaultAddOns     Json      @default("[]") @map("default_add_ons") @db.JsonB
   accessNotes       String?   @map("access_notes") @db.Text
   parkingAccess     String?   @map("parking_access") @db.Text
   entryNotes        String?   @map("entry_notes") @db.Text

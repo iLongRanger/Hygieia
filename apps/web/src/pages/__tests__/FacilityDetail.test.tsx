@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '../../test/test-utils';
+import { fireEvent, render, screen, waitFor } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
-import type { ResidentialProperty } from '../../types/residential';
+import type { ResidentialPricingPlan, ResidentialProperty } from '../../types/residential';
 
 let mockParams: { id?: string } = { id: 'facility-1' };
 const navigateMock = vi.fn();
@@ -36,6 +36,8 @@ const listTaskTemplatesMock = vi.fn();
 const bulkCreateFacilityTasksMock = vi.fn();
 const submitFacilityForProposalMock = vi.fn();
 const getResidentialPropertyMock = vi.fn();
+const listResidentialPricingPlansMock = vi.fn();
+const updateResidentialPropertyMock = vi.fn();
 
 vi.mock('../../lib/facilities', () => ({
   getFacility: (...args: unknown[]) => getFacilityMock(...args),
@@ -63,6 +65,8 @@ vi.mock('../../lib/tasks', () => ({
 
 vi.mock('../../lib/residential', () => ({
   getResidentialProperty: (...args: unknown[]) => getResidentialPropertyMock(...args),
+  listResidentialPricingPlans: (...args: unknown[]) => listResidentialPricingPlansMock(...args),
+  updateResidentialProperty: (...args: unknown[]) => updateResidentialPropertyMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -221,6 +225,7 @@ const residentialProperty: ResidentialProperty = {
     isFirstVisit: false,
   },
   defaultTasks: [],
+  defaultAddOns: [{ code: 'inside_fridge', quantity: 1 }],
   accessNotes: null,
   parkingAccess: null,
   entryNotes: null,
@@ -244,11 +249,118 @@ const residentialProperty: ResidentialProperty = {
   facility,
 };
 
+const residentialPricingPlan: ResidentialPricingPlan = {
+  id: 'pricing-plan-1',
+  name: 'Residential Standard',
+  strategyKey: 'residential_flat_v1',
+  settings: {
+    strategyKey: 'residential_flat_v1',
+    homeTypeBasePrices: {
+      apartment: 120,
+      condo: 130,
+      townhouse: 150,
+      single_family: 180,
+    },
+    sqftBrackets: [],
+    bedroomAdjustments: {},
+    bathroomAdjustments: {
+      fullBath: 25,
+      halfBath: 15,
+    },
+    levelAdjustments: {},
+    conditionMultipliers: {
+      light: 0.9,
+      standard: 1,
+      heavy: 1.25,
+    },
+    serviceTypeMultipliers: {
+      recurring_standard: 1,
+      one_time_standard: 1,
+      deep_clean: 1.4,
+      move_in_out: 1.5,
+      turnover: 1.25,
+      post_construction: 1.75,
+    },
+    frequencyDiscounts: {
+      weekly: 0.15,
+      biweekly: 0.1,
+      every_4_weeks: 0.05,
+      one_time: 0,
+    },
+    firstCleanSurcharge: {
+      enabled: false,
+      type: 'flat',
+      value: 0,
+      appliesTo: [],
+    },
+    addOnPrices: {
+      inside_fridge: {
+        pricingType: 'flat',
+        unitPrice: 25,
+        estimatedMinutes: 20,
+        description: 'Clean inside fridge',
+      },
+      interior_windows: {
+        pricingType: 'per_unit',
+        unitPrice: 5,
+        estimatedMinutes: 3,
+        unitLabel: 'window',
+        description: 'Interior windows',
+      },
+    },
+    minimumPrice: 120,
+    estimatedHours: {
+      baseHoursByHomeType: {
+        apartment: 2,
+        condo: 2,
+        townhouse: 3,
+        single_family: 4,
+      },
+      minutesPerBedroom: 20,
+      minutesPerFullBath: 30,
+      minutesPerHalfBath: 15,
+      minutesPer1000SqFt: 45,
+      conditionMultipliers: {
+        light: 0.9,
+        standard: 1,
+        heavy: 1.25,
+      },
+      serviceTypeMultipliers: {
+        recurring_standard: 1,
+        one_time_standard: 1,
+        deep_clean: 1.4,
+        move_in_out: 1.5,
+        turnover: 1.25,
+        post_construction: 1.75,
+      },
+      addOnMinutes: {},
+    },
+    manualReviewRules: {
+      maxAutoSqft: 5000,
+      heavyConditionRequiresReview: true,
+      postConstructionRequiresReview: true,
+      maxAddOnsBeforeReview: 5,
+    },
+  },
+  isActive: true,
+  isDefault: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Admin User',
+  },
+};
+
 describe('FacilityDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'facility-1' };
     navigateMock.mockReset();
     submitFacilityForProposalMock.mockReset();
+    getResidentialPropertyMock.mockReset();
+    listResidentialPricingPlansMock.mockReset();
+    updateResidentialPropertyMock.mockReset();
     getFacilityMock.mockResolvedValue(facility);
     listAreasMock.mockResolvedValue({ data: areas });
     listAreaTypesMock.mockResolvedValue({ data: areaTypes });
@@ -256,6 +368,8 @@ describe('FacilityDetail', () => {
     listFacilityTasksMock.mockResolvedValue({ data: [] as FacilityTask[] });
     listTaskTemplatesMock.mockResolvedValue({ data: [] as TaskTemplate[] });
     getResidentialPropertyMock.mockResolvedValue(residentialProperty);
+    listResidentialPricingPlansMock.mockResolvedValue({ data: [residentialPricingPlan] });
+    updateResidentialPropertyMock.mockResolvedValue(residentialProperty);
     getAreaTemplateByAreaTypeMock.mockResolvedValue({
       defaultSquareFeet: null,
       items: [],
@@ -387,6 +501,52 @@ describe('FacilityDetail', () => {
     expect(await screen.findByText('Wipe nightstands')).toBeInTheDocument();
     expect(screen.getByText('Dust baseboards')).toBeInTheDocument();
     expect(screen.queryByText('Sanitize cubicles')).not.toBeInTheDocument();
+  });
+
+  it('allows admins to manage default residential add-ons on service locations', async () => {
+    const user = userEvent.setup();
+    const residentialFacility: Facility = {
+      ...facility,
+      residentialPropertyId: 'property-1',
+      account: {
+        ...facility.account,
+        type: 'residential',
+      },
+    };
+    getFacilityMock.mockResolvedValue(residentialFacility);
+    getResidentialPropertyMock.mockResolvedValue({
+      ...residentialProperty,
+      facility: residentialFacility,
+      defaultAddOns: [{ code: 'inside_fridge', quantity: 1 }],
+    });
+    updateResidentialPropertyMock.mockResolvedValue({
+      ...residentialProperty,
+      facility: residentialFacility,
+      defaultAddOns: [
+        { code: 'inside_fridge', quantity: 1 },
+        { code: 'interior_windows', quantity: 3 },
+      ],
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /add-ons \(1\)/i }));
+
+    expect(await screen.findByText('Residential Add-ons')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /inside fridge/i })).toBeChecked();
+
+    await user.click(screen.getByRole('checkbox', { name: /interior windows/i }));
+    fireEvent.change(await screen.findByLabelText(/quantity/i), { target: { value: '3' } });
+    await user.click(screen.getByRole('button', { name: /save add-ons/i }));
+
+    await waitFor(() => {
+      expect(updateResidentialPropertyMock).toHaveBeenCalledWith('property-1', {
+        defaultAddOns: expect.arrayContaining([
+          { code: 'inside_fridge', quantity: 1 },
+          { code: 'interior_windows', quantity: 3 },
+        ]),
+      });
+    });
   });
 
   it('creates a new area from the modal', async () => {

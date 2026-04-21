@@ -285,6 +285,7 @@ export interface ResidentialProperty {
   serviceAddress: ResidentialAddress;
   homeProfile: ResidentialHomeProfile;
   defaultTasks?: string[];
+  defaultAddOns?: ResidentialQuoteAddOnInput[];
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;

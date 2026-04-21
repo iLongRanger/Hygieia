@@ -4,6 +4,8 @@ import { Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractApiErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
 import {
   getFacility,
   updateFacility,
@@ -22,7 +24,11 @@ import {
   submitFacilityForProposal,
 } from '../../lib/facilities';
 import { listFacilityTasks, listTaskTemplates } from '../../lib/tasks';
-import { getResidentialProperty } from '../../lib/residential';
+import {
+  getResidentialProperty,
+  listResidentialPricingPlans,
+  updateResidentialProperty,
+} from '../../lib/residential';
 import type {
   Facility,
   Area,
@@ -38,6 +44,10 @@ import type {
   FixtureType,
 } from '../../types/facility';
 import type { ResidentialProperty } from '../../types/residential';
+import type {
+  ResidentialPricingPlan,
+  ResidentialQuoteAddOnInput,
+} from '../../types/residential';
 import { FacilityOverview } from './FacilityOverview';
 import { FacilityAreas } from './FacilityAreas';
 import { FacilityAreaDetail } from './FacilityAreaDetail';
@@ -63,8 +73,14 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const locationLabel = isPropertyMode ? 'Property' : 'Facility';
   const locationLabelLower = locationLabel.toLowerCase();
 
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+
   // --- Tab state ---
-  const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'area-detail'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'add-ons' | 'area-detail'>('overview');
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
   // --- Data state ---
@@ -78,6 +94,8 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const [areaTypes, setAreaTypes] = useState<AreaType[]>([]);
   const [tasks, setTasks] = useState<FacilityTask[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+  const [residentialPricingPlans, setResidentialPricingPlans] = useState<ResidentialPricingPlan[]>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
   const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
@@ -102,6 +120,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     useState<Set<CleaningFrequency>>(new Set());
   const [newTaskSelectionCustomName, setNewTaskSelectionCustomName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingAddOns, setSavingAddOns] = useState(false);
   const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
   const [submittingForProposal, setSubmittingForProposal] = useState(false);
@@ -188,6 +207,13 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
   const hasSelectedTaskSelectionTasks = taskSelectionTasks.some((task) => task.include);
+  const selectedResidentialPricingPlan =
+    residentialPricingPlans.find((plan) => plan.isDefault)
+    || residentialPricingPlans[0]
+    || null;
+  const availableResidentialAddOns = Object.entries(
+    selectedResidentialPricingPlan?.settings.addOnPrices || {}
+  );
   const hasExistingProposalOrContract =
     (facility?._count?.proposals ?? 0) > 0 || (facility?._count?.contracts ?? 0) > 0;
   const hasSubmittedForProposal = Boolean(facility?.submittedForProposal);
@@ -198,6 +224,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     'negotiation',
     'won',
   ].includes(facility?.opportunityStatus ?? '');
+  const canManageResidentialAddOns = isResidentialAccount && Boolean(property) && canManageOperationalScope;
   const openAppointmentsForLocation = () => {
     if (!facility) return;
     const params = new URLSearchParams({
@@ -236,6 +263,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     if (!id || !isPropertyMode) return null;
     const data = await getResidentialProperty(id);
     setProperty(data);
+    setSelectedAddOns(data.defaultAddOns || []);
     const nextFacilityId = data.facility?.id ?? null;
     setResolvedFacilityId(nextFacilityId);
     return data;
@@ -256,10 +284,32 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           parkingInfo: data.parkingInfo,
           specialRequirements: data.specialRequirements,
         });
+        if (!isPropertyMode && data.residentialPropertyId) {
+          const propertyData = await getResidentialProperty(data.residentialPropertyId);
+          setProperty(propertyData);
+          setSelectedAddOns(propertyData.defaultAddOns || []);
+        } else if (!isPropertyMode) {
+          setProperty(null);
+          setSelectedAddOns([]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch facility:', error);
       setFacility(null);
+    }
+  }, [isPropertyMode]);
+
+  const fetchResidentialPricingPlans = useCallback(async () => {
+    try {
+      const response = await listResidentialPricingPlans({
+        limit: 100,
+        includeArchived: false,
+        isActive: true,
+      });
+      setResidentialPricingPlans(response?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch residential pricing plans:', error);
+      setResidentialPricingPlans([]);
     }
   }, []);
 
@@ -483,7 +533,22 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     if (!accountType) return;
     fetchAreaTypes(accountType);
     fetchTaskTemplates(accountType);
-  }, [accountType, fetchAreaTypes, fetchTaskTemplates]);
+    if (accountType === 'residential') {
+      fetchResidentialPricingPlans();
+    } else {
+      setResidentialPricingPlans([]);
+      setSelectedAddOns([]);
+    }
+  }, [accountType, fetchAreaTypes, fetchResidentialPricingPlans, fetchTaskTemplates]);
+
+  useEffect(() => {
+    if (!canManageOperationalScope && activeTab !== 'overview') {
+      setActiveTab('overview');
+    }
+    if (activeTab === 'add-ons' && !canManageResidentialAddOns) {
+      setActiveTab('overview');
+    }
+  }, [activeTab, canManageOperationalScope, canManageResidentialAddOns]);
 
   useEffect(() => {
     setAreaForm((current) => ({
@@ -1191,6 +1256,42 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     });
   };
 
+  const toggleResidentialAddOn = (code: string) => {
+    setSelectedAddOns((current) => {
+      const existing = current.find((addOn) => addOn.code === code);
+      if (existing) {
+        return current.filter((addOn) => addOn.code !== code);
+      }
+      return [...current, { code, quantity: 1 }];
+    });
+  };
+
+  const updateResidentialAddOnQuantity = (code: string, quantity: number) => {
+    setSelectedAddOns((current) =>
+      current.map((addOn) =>
+        addOn.code === code ? { ...addOn, quantity: Math.max(1, quantity) } : addOn
+      )
+    );
+  };
+
+  const handleSaveResidentialAddOns = async () => {
+    if (!property) return;
+    try {
+      setSavingAddOns(true);
+      const updated = await updateResidentialProperty(property.id, {
+        defaultAddOns: selectedAddOns,
+      });
+      setProperty(updated);
+      setSelectedAddOns(updated.defaultAddOns || []);
+      toast.success('Residential add-ons updated');
+    } catch (error) {
+      console.error('Failed to save residential add-ons:', error);
+      toast.error(extractApiErrorMessage(error, 'Failed to save residential add-ons'));
+    } finally {
+      setSavingAddOns(false);
+    }
+  };
+
   // --- Early returns ---
   if (loading) {
     return (
@@ -1297,6 +1398,21 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             )}
           </button>
         )}
+        {canManageResidentialAddOns && (
+          <button
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === 'add-ons'
+                ? 'text-surface-900 dark:text-white'
+                : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
+            }`}
+            onClick={() => setActiveTab('add-ons')}
+          >
+            Add-ons ({selectedAddOns.length})
+            {activeTab === 'add-ons' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+            )}
+          </button>
+        )}
         {canManageOperationalScope && selectedArea && (
           <button
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
@@ -1340,6 +1456,90 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           onDeleteArea={handleDeleteArea}
           totalSquareFeet={totalSquareFeetFromAreas}
         />
+      )}
+      {canManageResidentialAddOns && activeTab === 'add-ons' && (
+        <Card>
+          <div className="p-6 space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+                  Residential Add-ons
+                </h2>
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                  Select default add-ons for this service location. These are preselected when building residential proposals.
+                </p>
+                {selectedResidentialPricingPlan && (
+                  <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                    Source: {selectedResidentialPricingPlan.name}
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={handleSaveResidentialAddOns}
+                isLoading={savingAddOns}
+                disabled={!property || savingAddOns}
+              >
+                Save Add-ons
+              </Button>
+            </div>
+
+            {availableResidentialAddOns.length === 0 ? (
+              <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-500 dark:border-surface-700 dark:bg-surface-800/40 dark:text-surface-400">
+                No active residential pricing add-ons are configured yet.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {availableResidentialAddOns.map(([code, definition]) => {
+                  const selected = selectedAddOns.find((addOn) => addOn.code === code);
+                  return (
+                    <div
+                      key={code}
+                      className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <label className="flex flex-1 items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(selected)}
+                            onChange={() => toggleResidentialAddOn(code)}
+                            className="mt-1 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span>
+                            <span className="block font-medium text-surface-900 dark:text-white">
+                              {code.replace(/_/g, ' ')}
+                            </span>
+                            <span className="mt-1 block text-sm text-surface-500 dark:text-surface-400">
+                              {definition.description || 'Residential add-on'}
+                            </span>
+                            <span className="mt-1 block text-xs text-surface-500 dark:text-surface-400">
+                              {definition.pricingType === 'per_unit'
+                                ? `${formatCurrency(definition.unitPrice)} per ${definition.unitLabel || 'unit'}`
+                                : `${formatCurrency(definition.unitPrice)} flat`}
+                              {' '}- {definition.estimatedMinutes} estimated minutes
+                            </span>
+                          </span>
+                        </label>
+                        {definition.pricingType === 'per_unit' && selected && (
+                          <Input
+                            label="Quantity"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={selected.quantity}
+                            onChange={(event) =>
+                              updateResidentialAddOnQuantity(code, Number(event.target.value) || 1)
+                            }
+                            className="sm:w-28"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
       )}
       {canManageOperationalScope && activeTab === 'area-detail' && selectedArea && (
         <FacilityAreaDetail

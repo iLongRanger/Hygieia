@@ -398,6 +398,7 @@ export const residentialPropertySchema = z.object({
   serviceAddress: addressSchema,
   homeProfile: residentialHomeProfileSchema,
   defaultTasks: residentialTaskListSchema.optional().default([]),
+  defaultAddOns: z.array(residentialQuoteAddOnInputSchema).optional().default([]),
   accessNotes: z.string().max(2000).optional().nullable(),
   parkingAccess: z.string().max(255).optional().nullable(),
   entryNotes: z.string().max(1000).optional().nullable(),

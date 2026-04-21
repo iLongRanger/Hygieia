@@ -33,6 +33,11 @@ export interface ResidentialPropertySummary {
   serviceAddress: Address | null;
   homeProfile: ResidentialAccountProfile | null;
   defaultTasks?: string[];
+  defaultAddOns?: Array<{
+    code: string;
+    quantity: number;
+    label?: string;
+  }>;
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;

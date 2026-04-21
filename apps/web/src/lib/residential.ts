@@ -127,6 +127,7 @@ export interface CreateResidentialPropertyInput {
   serviceAddress?: ResidentialProperty['serviceAddress'] | null;
   homeProfile: ResidentialProperty['homeProfile'];
   defaultTasks?: string[];
+  defaultAddOns?: ResidentialProperty['defaultAddOns'];
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;
@@ -140,6 +141,7 @@ export interface UpdateResidentialPropertyInput {
   serviceAddress?: ResidentialProperty['serviceAddress'] | null;
   homeProfile?: ResidentialProperty['homeProfile'];
   defaultTasks?: string[];
+  defaultAddOns?: ResidentialProperty['defaultAddOns'];
   accessNotes?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;

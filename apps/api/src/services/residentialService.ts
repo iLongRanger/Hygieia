@@ -53,6 +53,7 @@ const residentialPropertySelect = {
   serviceAddress: true,
   homeProfile: true,
   defaultTasks: true,
+  defaultAddOns: true,
   accessNotes: true,
   parkingAccess: true,
   entryNotes: true,
@@ -67,6 +68,12 @@ const residentialPropertySelect = {
       id: true,
       name: true,
       type: true,
+    },
+  },
+  createdByUser: {
+    select: {
+      id: true,
+      fullName: true,
     },
   },
 } satisfies Prisma.ResidentialPropertySelect;
@@ -803,6 +810,7 @@ export async function createResidentialProperty(
         serviceAddress: (input.serviceAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
         homeProfile: input.homeProfile as Prisma.InputJsonValue,
         defaultTasks: input.defaultTasks as Prisma.InputJsonValue,
+        defaultAddOns: (input.defaultAddOns ?? []) as Prisma.InputJsonValue,
         accessNotes: toNullableString(input.accessNotes),
         parkingAccess: toNullableString(input.parkingAccess),
         entryNotes: toNullableString(input.entryNotes),
@@ -867,6 +875,9 @@ export async function updateResidentialProperty(id: string, input: UpdateResiden
           : {}),
         ...(input.defaultTasks !== undefined
           ? { defaultTasks: input.defaultTasks as Prisma.InputJsonValue }
+          : {}),
+        ...(input.defaultAddOns !== undefined
+          ? { defaultAddOns: input.defaultAddOns as Prisma.InputJsonValue }
           : {}),
         ...(input.accessNotes !== undefined ? { accessNotes: toNullableString(input.accessNotes) } : {}),
         ...(input.parkingAccess !== undefined ? { parkingAccess: toNullableString(input.parkingAccess) } : {}),
