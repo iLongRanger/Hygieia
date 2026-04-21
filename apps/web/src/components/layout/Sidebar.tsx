@@ -131,15 +131,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
-
-  const toggleSection = (key: string) => {
-    setOpenSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const [closedSections, setClosedSections] = useState<Set<string>>(() => new Set());
 
   const isFieldWorker = user?.role === 'subcontractor' || user?.role === 'cleaner';
   const isSubcontractor = user?.role === 'subcontractor';
@@ -178,6 +170,27 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
     return section.items.some((item) => {
       if (item.to === '/' || item.to === '/app') return location.pathname === item.to;
       return location.pathname.startsWith(item.to);
+    });
+  };
+
+  const toggleSection = (key: string) => {
+    const activeSection = visibleSections.find((section) => section.key === key);
+    const currentlyOpen =
+      Boolean(activeSection?.directLink)
+      || openSections.has(key)
+      || (activeSection ? isSectionActive(activeSection) && !closedSections.has(key) : false);
+
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (currentlyOpen) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setClosedSections((prev) => {
+      const next = new Set(prev);
+      if (currentlyOpen) next.add(key);
+      else next.delete(key);
+      return next;
     });
   };
 
@@ -237,7 +250,10 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
         <div className="space-y-1">
           {visibleSections.map((section) => {
             const active = isSectionActive(section);
-            const isOpen = section.directLink || openSections.has(section.key) || active;
+            const isOpen =
+              section.directLink
+              || openSections.has(section.key)
+              || (active && !closedSections.has(section.key));
 
             if (section.directLink) {
               return (
@@ -252,6 +268,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
                 <button
                   type="button"
                   onClick={() => toggleSection(section.key)}
+                  aria-expanded={isOpen}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
                     active
@@ -299,7 +316,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   // ── Desktop: Icon Rail + Flyout ──────────────────────────────
   const desktopRail = (
-    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col overflow-y-scroll border-r border-surface-700 bg-surface-900 lg:flex">
+    <aside className="fixed left-0 top-0 z-40 hidden h-full w-16 flex-col overflow-visible border-r border-surface-700 bg-surface-900 lg:flex">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-surface-700">
         <span className="text-xl font-bold tracking-tight text-surface-100">
@@ -308,7 +325,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
       </div>
 
       {/* Section icons */}
-      <nav className="flex min-h-0 flex-1 flex-col items-center gap-1 py-3">
+      <nav className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-visible py-3">
         {visibleSections.map((section) => {
           const SectionIcon = section.icon;
           const active = isSectionActive(section);
@@ -450,7 +467,10 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
         <div className="space-y-1">
           {visibleSections.map((section) => {
             const active = isSectionActive(section);
-            const isOpen = section.directLink || openSections.has(section.key) || active;
+            const isOpen =
+              section.directLink
+              || openSections.has(section.key)
+              || (active && !closedSections.has(section.key));
 
             if (section.directLink) {
               return (
@@ -465,6 +485,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
                 <button
                   type="button"
                   onClick={() => toggleSection(section.key)}
+                  aria-expanded={isOpen}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
                     active

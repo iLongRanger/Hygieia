@@ -77,4 +77,50 @@ describe('Sidebar RBAC', () => {
       initialDashboardLinks + 1
     );
   });
+
+  it('shows CRM links from the collapsed rail on hover', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    const initialLeadLinks = screen.getAllByRole('link', { name: 'Leads' }).length;
+
+    fireEvent.mouseEnter(screen.getAllByRole('button', { name: 'CRM' })[0]);
+
+    expect(screen.getAllByRole('link', { name: 'Leads' })).toHaveLength(
+      initialLeadLinks + 1
+    );
+  });
+
+  it('allows active expanded sections to be collapsed manually', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar expanded />, { initialRoute: '/leads' });
+
+    const crmButton = screen.getAllByRole('button', { name: /crm/i })[0];
+
+    expect(crmButton).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(crmButton);
+
+    expect(crmButton).toHaveAttribute('aria-expanded', 'false');
+  });
 });
