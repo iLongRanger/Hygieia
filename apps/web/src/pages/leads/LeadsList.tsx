@@ -26,7 +26,6 @@ import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
-import { listAccounts } from '../../lib/accounts';
 import {
   listLeads,
   createLead,
@@ -34,17 +33,10 @@ import {
   restoreLead,
   listLeadSources,
 } from '../../lib/leads';
-import { listContracts } from '../../lib/contracts';
-import { listJobs } from '../../lib/jobs';
 import { listOpportunities, updateOpportunity } from '../../lib/opportunities';
-import { getResidentialPropertyJourneyState } from '../../lib/accountPipeline';
-import { listResidentialQuotes, updateResidentialQuote } from '../../lib/residential';
 import { listUsers } from '../../lib/users';
 import { extractApiErrorMessage } from '../../lib/api';
-import type { Account, Lead, Opportunity, CreateLeadInput, LeadSource, ResidentialPropertySummary } from '../../types/crm';
-import type { Contract } from '../../types/contract';
-import type { Job } from '../../types/job';
-import type { ResidentialQuote } from '../../types/residential';
+import type { Lead, Opportunity, CreateLeadInput, LeadSource } from '../../types/crm';
 import type { User } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
 import { getLeadStatusLabel } from '../../lib/leadStatus';
@@ -130,11 +122,6 @@ const getOpportunitySecondaryLabel = (opportunity: Opportunity): string => {
   return opportunity.title;
 };
 
-type PipelineOpportunity = Opportunity & {
-  _residentialQuoteId?: string | null;
-  _residentialPropertyId?: string | null;
-};
-
 async function fetchAllPages<T>(
   fetchPage: (page: number, limit: number) => Promise<{ data: T[]; pagination?: { totalPages?: number } }>
 ): Promise<T[]> {
@@ -153,93 +140,8 @@ async function fetchAllPages<T>(
   return allItems;
 }
 
-function getResidentialPropertyEstimatedValue(
-  property: ResidentialPropertySummary,
-  residentialQuotes: ResidentialQuote[],
-  propertyContracts: Contract[]
-): string | null {
-  const latestQuote = [...residentialQuotes]
-    .filter((quote) => quote.propertyId === property.id)
-    .sort((left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime())[0];
+/*
 
-  const activeContract =
-    propertyContracts.find((contract) => contract.status === 'active')
-    ?? propertyContracts.find((contract) => contract.status !== 'terminated');
-
-  if (activeContract) {
-    return String(activeContract.monthlyValue ?? 0);
-  }
-
-  return latestQuote?.totalAmount ?? null;
-}
-
-function getResidentialPropertyProbability(canonicalStatus: string): number {
-  switch (canonicalStatus) {
-    case 'won':
-      return 100;
-    case 'negotiation':
-      return 75;
-    case 'proposal_sent':
-      return 55;
-    case 'walk_through_completed':
-      return 35;
-    case 'walk_through_booked':
-      return 25;
-    case 'lost':
-      return 0;
-    case 'lead':
-    default:
-      return 15;
-  }
-}
-
-function buildResidentialPipelineOpportunities(input: {
-  residentialAccounts: Account[];
-  residentialQuotes: ResidentialQuote[];
-  contracts: Contract[];
-  jobs: Job[];
-}): PipelineOpportunity[] {
-  const opportunities: PipelineOpportunity[] = [];
-  const residentialAccountIds = new Set(input.residentialAccounts.map((account) => account.id));
-  const residentialContracts = input.contracts.filter((contract) => {
-    return contract.account.type === 'residential' || Boolean(contract.residentialPropertyId);
-  });
-  const residentialJobs = input.jobs.filter((job) => residentialAccountIds.has(job.account.id));
-
-  for (const account of input.residentialAccounts) {
-    const accountQuotes = input.residentialQuotes.filter((quote) => quote.accountId === account.id && quote.archivedAt == null);
-    const accountContracts = residentialContracts.filter((contract) => contract.account.id === account.id);
-    const accountJobs = residentialJobs.filter((job) => job.account.id === account.id);
-    const accountOwner = account.accountManager;
-
-    for (const property of account.residentialProperties ?? []) {
-      const propertyQuotes = accountQuotes.filter((quote) => quote.propertyId === property.id);
-      const propertyContracts = accountContracts.filter((contract) => {
-        if (contract.residentialPropertyId) {
-          return contract.residentialPropertyId === property.id;
-        }
-        return contract.facility?.name === property.name;
-      });
-      const propertyJourney = getResidentialPropertyJourneyState({
-        property,
-        residentialQuotes: accountQuotes,
-        contracts: accountContracts,
-        recentJobs: accountJobs,
-      });
-      const latestQuote = [...propertyQuotes]
-        .sort((left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime())[0];
-      const mostRelevantDate =
-        latestQuote?.updatedAt
-        || propertyContracts[0]?.updatedAt
-        || property.updatedAt
-        || property.createdAt;
-
-      opportunities.push({
-        id: `residential-property-${property.id}`,
-        _residentialQuoteId: latestQuote?.id ?? null,
-        _residentialPropertyId: property.id,
-        title: property.name,
-        status: propertyJourney.canonicalStatus,
         source: `Residential Property · ${propertyJourney.currentStage}`,
         estimatedValue: getResidentialPropertyEstimatedValue(property, accountQuotes, propertyContracts),
         probability: getResidentialPropertyProbability(propertyJourney.canonicalStatus),
@@ -281,6 +183,7 @@ function buildResidentialPipelineOpportunities(input: {
   return opportunities;
 }
 
+*/
 const STAGE_COLORS: Record<string, { border: string; bg: string; text: string; dot: string }> = {
   lead: { border: 'border-t-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-400' },
   walk_through_booked: { border: 'border-t-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-400' },
@@ -407,33 +310,16 @@ const LeadsList = () => {
   const [savingOpportunity, setSavingOpportunity] = useState(false);
 
   // ── Residential opportunity edit modal ──
-  const [editingResOpp, setEditingResOpp] = useState<PipelineOpportunity | null>(null);
-  const [resOppFormData, setResOppFormData] = useState({
-    status: '' as string,
-    preferredStartDate: '',
-    notes: '',
-  });
-  const [savingResOpp, setSavingResOpp] = useState(false);
-
-  const openOppEdit = (opp: PipelineOpportunity) => {
-    if (opp.id.startsWith('residential-property-')) {
-      setResOppFormData({
-        status: opp.status || '',
-        preferredStartDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
-        notes: '',
-      });
-      setEditingResOpp(opp);
-    } else {
-      setOppFormData({
-        status: opp.status,
-        estimatedValue: opp.estimatedValue ? String(Number(opp.estimatedValue)) : '',
-        probability: opp.probability !== null ? String(opp.probability) : '',
-        expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
-        ownerUserId: opp.ownerUser?.id || '',
-        lostReason: opp.lostReason || '',
-      });
-      setEditingOpportunity(opp);
-    }
+  const openOppEdit = (opp: Opportunity) => {
+    setOppFormData({
+      status: opp.status,
+      estimatedValue: opp.estimatedValue ? String(Number(opp.estimatedValue)) : '',
+      probability: opp.probability !== null ? String(opp.probability) : '',
+      expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.split('T')[0] : '',
+      ownerUserId: opp.ownerUser?.id || '',
+      lostReason: opp.lostReason || '',
+    });
+    setEditingOpportunity(opp);
   };
 
   const handleOppSave = async () => {
@@ -455,25 +341,6 @@ const LeadsList = () => {
       toast.error(extractApiErrorMessage(err, 'Failed to update opportunity'));
     } finally {
       setSavingOpportunity(false);
-    }
-  };
-
-  const handleResOppSave = async () => {
-    if (!editingResOpp?._residentialQuoteId) return;
-    setSavingResOpp(true);
-    try {
-      await updateResidentialQuote(editingResOpp._residentialQuoteId, {
-        ...(resOppFormData.status ? { status: resOppFormData.status as ResidentialQuote['status'] } : {}),
-        preferredStartDate: resOppFormData.preferredStartDate || null,
-        notes: resOppFormData.notes || null,
-      });
-      toast.success('Residential quote updated');
-      setEditingResOpp(null);
-      fetchPipelineOpportunities();
-    } catch (err) {
-      toast.error(extractApiErrorMessage(err, 'Failed to update quote'));
-    } finally {
-      setSavingResOpp(false);
     }
   };
 
@@ -513,51 +380,15 @@ const LeadsList = () => {
   const fetchPipelineOpportunities = useCallback(async () => {
     try {
       setPipelineLoading(true);
-      const [
-        allOpportunities,
-        residentialAccounts,
-        residentialQuotes,
-        contracts,
-        jobs,
-      ] = await Promise.all([
-        fetchAllPages((page, limit) => listOpportunities({
+      const allOpportunities = await fetchAllPages((page, limit) =>
+        listOpportunities({
           page,
           limit,
           includeArchived: false,
-        })),
-        fetchAllPages((page, limit) => listAccounts({
-          page,
-          limit,
-          type: 'residential',
-          includeArchived: false,
-        })),
-        fetchAllPages((page, limit) => listResidentialQuotes({
-          page,
-          limit,
-          includeArchived: false,
-        })),
-        fetchAllPages((page, limit) => listContracts({
-          page,
-          limit,
-          includeArchived: false,
-        })),
-        fetchAllPages((page, limit) => listJobs({
-          page,
-          limit,
-        })),
-      ]);
+        })
+      );
 
-      const residentialPipelineOpportunities = buildResidentialPipelineOpportunities({
-        residentialAccounts,
-        residentialQuotes,
-        contracts,
-        jobs,
-      });
-
-      setPipelineOpportunities([
-        ...allOpportunities,
-        ...residentialPipelineOpportunities,
-      ]);
+      setPipelineOpportunities(allOpportunities);
     } catch (error) {
       console.error('Failed to fetch pipeline opportunities:', error);
       setPipelineOpportunities([]);
@@ -1513,7 +1344,8 @@ const LeadsList = () => {
         </div>
       </Modal>
 
-      {/* Residential Opportunity Edit Modal */}
+      {/*
+      Residential Opportunity Edit Modal
       <Modal
         isOpen={!!editingResOpp}
         onClose={() => setEditingResOpp(null)}
@@ -1604,6 +1436,7 @@ const LeadsList = () => {
         </div>
       </Modal>
 
+      */}
     </div>
   );
 };

@@ -416,7 +416,7 @@ describe('LeadsList', () => {
     });
   });
 
-  it('includes residential properties in the shared opportunity pipeline', async () => {
+  it('uses API opportunities only for the shared pipeline', async () => {
     listAccountsMock.mockResolvedValue({
       data: [residentialAccount],
       pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
@@ -436,11 +436,9 @@ describe('LeadsList', () => {
 
     render(<LeadsList />);
 
-    expect(await screen.findByText('2 active opportunities')).toBeInTheDocument();
-    expect(listAccountsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'residential' })
-    );
-    expect(listResidentialQuotesMock).toHaveBeenCalled();
+    expect(await screen.findByText('1 active opportunities')).toBeInTheDocument();
+    expect(listAccountsMock).not.toHaveBeenCalled();
+    expect(listResidentialQuotesMock).not.toHaveBeenCalled();
   });
 
   it('uses the user-facing label for multi-word statuses in the table', async () => {
