@@ -313,14 +313,22 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           const SectionIcon = section.icon;
           const active = isSectionActive(section);
           const isHovered = hoveredSection === section.key;
-          const hasFlyout = !section.directLink;
+          const flyoutItems = section.directLink
+            ? section.items.slice(0, 1)
+            : section.items;
 
           return (
             <div
               key={section.key}
               className="relative"
-              onMouseEnter={() => hasFlyout && setHoveredSection(section.key)}
-              onMouseLeave={() => hasFlyout && setHoveredSection(null)}
+              onMouseEnter={() => setHoveredSection(section.key)}
+              onMouseLeave={() => setHoveredSection(null)}
+              onFocus={() => setHoveredSection(section.key)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setHoveredSection(null);
+                }
+              }}
             >
               {/* Rail icon button */}
               <button
@@ -342,51 +350,51 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
               </button>
 
               {/* Flyout panel */}
-              {hasFlyout && (
-                <div
-                  className={cn(
-                    'absolute left-full top-0 z-50 ml-0 w-52 rounded-r-lg border border-l-0 border-surface-700 bg-surface-900 py-2 shadow-lg transition-all duration-150',
-                    isHovered
-                      ? 'pointer-events-auto translate-x-0 opacity-100'
-                      : 'pointer-events-none -translate-x-1 opacity-0'
-                  )}
-                >
-                  <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-surface-500">
-                    {section.title}
-                  </div>
-                  <ul className="space-y-0.5 px-1.5">
-                    {section.items.map((item) => (
-                      <li key={item.to}>
-                        <NavLink
-                          to={item.to}
-                          className={({ isActive: linkActive }) =>
-                            cn(
-                              'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150',
-                              linkActive
-                                ? 'bg-primary-900/30 font-medium text-primary-400'
-                                : 'text-surface-400 hover:bg-surface-800 hover:text-surface-100'
-                            )
-                          }
-                        >
-                          {({ isActive: linkActive }) => (
-                            <>
-                              <item.icon
-                                className={cn(
-                                  'h-4 w-4',
-                                  linkActive
-                                    ? 'text-primary-400'
-                                    : 'text-surface-500'
-                                )}
-                              />
-                              {item.label}
-                            </>
-                          )}
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
+              <div
+                aria-hidden={!isHovered}
+                className={cn(
+                  'absolute left-full top-0 z-50 ml-0 w-56 rounded-r-xl border border-l-0 border-surface-700 bg-surface-900 py-2 shadow-2xl shadow-surface-950/40 transition-all duration-150',
+                  isHovered
+                    ? 'pointer-events-auto translate-x-0 opacity-100'
+                    : 'pointer-events-none -translate-x-1 opacity-0'
+                )}
+              >
+                <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-surface-500">
+                  {section.title}
                 </div>
-              )}
+                <ul className="space-y-0.5 px-1.5">
+                  {flyoutItems.map((item) => (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        tabIndex={isHovered ? 0 : -1}
+                        className={({ isActive: linkActive }) =>
+                          cn(
+                            'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150',
+                            linkActive
+                              ? 'bg-primary-900/30 font-medium text-primary-400'
+                              : 'text-surface-400 hover:bg-surface-800 hover:text-surface-100'
+                          )
+                        }
+                      >
+                        {({ isActive: linkActive }) => (
+                          <>
+                            <item.icon
+                              className={cn(
+                                'h-4 w-4',
+                                linkActive
+                                  ? 'text-primary-400'
+                                  : 'text-surface-500'
+                              )}
+                            />
+                            {item.label}
+                          </>
+                        )}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           );
         })}

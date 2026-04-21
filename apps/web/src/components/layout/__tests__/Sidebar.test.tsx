@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '../../../test/test-utils';
+import { fireEvent, render, screen } from '../../../test/test-utils';
 import Sidebar from '../Sidebar';
 import { useAuthStore } from '../../../stores/authStore';
 
@@ -53,5 +53,28 @@ describe('Sidebar RBAC', () => {
     render(<Sidebar isOpen />);
 
     expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0);
+  });
+
+  it('shows direct dashboard link in the collapsed rail on hover', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    const initialDashboardLinks = screen.getAllByRole('link', { name: 'Dashboard' }).length;
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Dashboard' }));
+
+    expect(screen.getAllByRole('link', { name: 'Dashboard' })).toHaveLength(
+      initialDashboardLinks + 1
+    );
   });
 });
