@@ -63,7 +63,6 @@ export const sqftPerLaborHourSchema = z.object({
   retail: z.number().min(100).max(10000).default(2400),
   educational: z.number().min(100).max(10000).default(2000),
   warehouse: z.number().min(100).max(10000).default(3500),
-  residential: z.number().min(100).max(10000).default(2200),
   mixed: z.number().min(100).max(10000).default(2200),
   other: z.number().min(100).max(10000).default(2500),
 }).default({
@@ -73,7 +72,6 @@ export const sqftPerLaborHourSchema = z.object({
   retail: 2400,
   educational: 2000,
   warehouse: 3500,
-  residential: 2200,
   mixed: 2200,
   other: 2500,
 });

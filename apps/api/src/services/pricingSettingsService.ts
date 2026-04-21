@@ -257,7 +257,6 @@ export async function createPricingSettings(input: PricingSettingsCreateInput) {
     retail: 2400,
     educational: 2000,
     warehouse: 3500,
-    residential: 2200,
     mixed: 2200,
     other: 2500,
   };

@@ -226,9 +226,9 @@ const PricingSettingsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Pricing Plans</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100">Commercial Pricing Plans</h1>
           <p className="text-surface-600 dark:text-surface-400">
-            Build pricing plans the same way Hygieia would walk an estimator through the quote.
+            Build commercial pricing plans the same way Hygieia would walk an estimator through the quote.
           </p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
@@ -242,7 +242,7 @@ const PricingSettingsPage = () => {
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 text-sm uppercase tracking-[0.24em] text-cyan-200/80">
               <Sparkles className="h-4 w-4" />
-              Guided Pricing Builder
+              Guided Commercial Pricing Builder
             </div>
             <h2 className="mt-3 text-3xl font-semibold">Turn pricing assumptions into an explainable quote</h2>
             <p className="mt-3 text-sm text-surface-600 dark:text-surface-300/85">
@@ -468,7 +468,7 @@ const PricingSettingsPage = () => {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create Pricing Plan"
+        title="Create Commercial Pricing Plan"
         size="3xl"
       >
         <div className="space-y-6">

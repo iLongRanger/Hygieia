@@ -54,7 +54,6 @@ const basePlan = {
     retail: 2400,
     educational: 2000,
     warehouse: 3500,
-    residential: 2200,
     mixed: 2200,
     other: 2500,
   },
@@ -142,7 +141,7 @@ describe('PricingSettingsPage', () => {
   it('loads pricing plans and auto-selects default plan details', async () => {
     render(<PricingSettingsPage />);
 
-    expect(await screen.findByText('Pricing Plans')).toBeInTheDocument();
+    expect(await screen.findByText('Commercial Pricing Plans')).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: 'Standard Plan' })
     ).toBeInTheDocument();
@@ -156,7 +155,7 @@ describe('PricingSettingsPage', () => {
     const user = userEvent.setup();
     render(<PricingSettingsPage />);
 
-    await screen.findByText('Pricing Plans');
+    await screen.findByText('Commercial Pricing Plans');
     await user.click(screen.getByRole('button', { name: /new plan/i }));
 
     await user.type(screen.getByLabelText(/plan name/i), 'Night Shift Plan');

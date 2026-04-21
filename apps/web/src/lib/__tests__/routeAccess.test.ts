@@ -6,6 +6,7 @@ describe('routeAccess', () => {
   it('returns required permissions for restricted routes', () => {
     expect(getRequiredPermissions('/users')).toEqual([PERMISSIONS.USERS_READ]);
     expect(getRequiredPermissions('/appointments')).toEqual([PERMISSIONS.APPOINTMENTS_READ]);
+    expect(getRequiredPermissions('/commercial/pricing')).toEqual([PERMISSIONS.PRICING_READ]);
     expect(getRequiredPermissions('/settings/global')).toEqual([
       PERMISSIONS.SETTINGS_WRITE,
     ]);

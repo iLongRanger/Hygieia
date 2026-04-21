@@ -23,7 +23,7 @@ export const DEFAULT_FLOOR_TYPES = ['vct', 'carpet', 'hardwood', 'tile', 'concre
 export const DEFAULT_FREQUENCIES = ['1x_week', '2x_week', '3x_week', '4x_week', '5x_week', '7x_week', 'daily', 'monthly'];
 export const DEFAULT_CONDITIONS = ['standard', 'medium', 'hard'];
 export const DEFAULT_TRAFFIC_LEVELS = ['low', 'medium', 'high'];
-export const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'educational', 'warehouse', 'residential', 'mixed', 'other'];
+export const DEFAULT_BUILDING_TYPES = ['office', 'medical', 'industrial', 'retail', 'educational', 'warehouse', 'mixed', 'other'];
 export const DEFAULT_TASK_COMPLEXITIES = ['standard', 'sanitization', 'floor_care', 'window_cleaning'];
 
 export const FLOOR_TYPE_LABELS: Record<string, string> = {
@@ -65,7 +65,6 @@ export const BUILDING_TYPE_LABELS: Record<string, string> = {
   retail: 'Retail',
   educational: 'Education',
   warehouse: 'Warehouse',
-  residential: 'Residential',
   mixed: 'Mixed Use',
   other: 'Other',
 };
@@ -130,7 +129,7 @@ const MONTHLY_VISITS_BY_FREQUENCY: Record<string, number> = {
 
 const DEFAULT_SQFT_PER_LABOR_HOUR: Record<string, number> = {
   office: 2500, medical: 1500, industrial: 2200, retail: 2400,
-  educational: 2000, warehouse: 3500, residential: 2200, mixed: 2200, other: 2500,
+  educational: 2000, warehouse: 3500, mixed: 2200, other: 2500,
 };
 
 const PLAN_PRESETS = [

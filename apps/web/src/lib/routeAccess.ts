@@ -120,6 +120,10 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.PRICING_READ],
   },
   {
+    path: '/commercial/pricing',
+    requiredPermissions: [PERMISSIONS.PRICING_READ],
+  },
+  {
     path: '/residential/pricing',
     requiredPermissions: [PERMISSIONS.PRICING_READ],
   },

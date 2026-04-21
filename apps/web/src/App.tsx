@@ -158,8 +158,9 @@ function App() {
               path="/area-templates"
               element={withRouteGuard('/area-templates', <AreaTemplatesPage />)}
             />
-            <Route path="/pricing" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
-            <Route path="/pricing/settings" element={withRouteGuard('/pricing', <PricingSettingsPage />)} />
+            <Route path="/commercial/pricing" element={withRouteGuard('/commercial/pricing', <PricingSettingsPage />)} />
+            <Route path="/pricing" element={<Navigate to="/commercial/pricing" replace />} />
+            <Route path="/pricing/settings" element={<Navigate to="/commercial/pricing" replace />} />
             <Route path="/residential/pricing" element={withRouteGuard('/residential/pricing', <ResidentialPricingPlansPage />)} />
             <Route path="/residential/quotes" element={withRouteGuard('/residential/quotes', <ResidentialQuotesPage />)} />
             <Route path="/proposals" element={withRouteGuard('/proposals', <ProposalsList />)} />
