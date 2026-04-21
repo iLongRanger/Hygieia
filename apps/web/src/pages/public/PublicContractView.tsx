@@ -9,6 +9,9 @@ import {
   Calendar,
   DollarSign,
   MapPin,
+  Phone,
+  Mail,
+  Globe,
 } from 'lucide-react';
 import {
   getPublicContract,
@@ -81,7 +84,7 @@ const formatTime24h = (value: string): string => {
 };
 
 const normalizeServiceBullet = (value: string): string =>
-  value.replace(/^[\s*-•]+/, '').trim();
+  value.replace(/^[\s*-]+/, '').replace(/^\u2022+/, '').trim();
 
 interface ServiceTaskGroup {
   label: string;
@@ -91,7 +94,8 @@ interface ServiceTaskGroup {
 const ServiceTaskStepper: React.FC<{
   serviceId: string;
   groups: ServiceTaskGroup[];
-}> = ({ serviceId, groups }) => {
+  accentColor: string;
+}> = ({ serviceId, groups, accentColor }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -114,9 +118,10 @@ const ServiceTaskStepper: React.FC<{
             onClick={() => setActiveIndex(index)}
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               index === activeIndex
-                ? 'bg-surface-900 text-white'
+                ? 'text-white'
                 : 'border border-surface-300 dark:border-surface-600 bg-surface-50 text-surface-600 hover:border-surface-400 hover:text-surface-900'
             }`}
+            style={index === activeIndex ? { backgroundColor: accentColor } : undefined}
           >
             {group.label}
           </button>
@@ -130,9 +135,15 @@ const ServiceTaskStepper: React.FC<{
           {activeIndex + 1} of {groups.length}
         </div>
       </div>
-      <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-surface-700">
+      <ul className="mt-2 space-y-1 ml-1">
         {activeGroup.tasks.map((task) => (
-          <li key={`${serviceId}-${activeGroup.label}-${task}`}>{task}</li>
+          <li key={`${serviceId}-${activeGroup.label}-${task}`} className="flex items-start gap-2 text-sm text-surface-600">
+            <span
+              className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: accentColor }}
+            />
+            {task}
+          </li>
         ))}
       </ul>
       {groups.length > 1 && (
@@ -172,10 +183,10 @@ const serviceTaskGroupLabel = (value: string): string => {
 };
 
 const buildServiceTaskGroups = (
-  description: string | null | undefined,
-  includedTasks: string[] | undefined
+  description: unknown,
+  includedTasks: unknown
 ) => {
-  const lines = (description || '')
+  const lines = (typeof description === 'string' ? description : '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
@@ -204,7 +215,11 @@ const buildServiceTaskGroups = (
     addTask('Scope', line);
   }
 
-  for (const taskLine of includedTasks || []) {
+  const taskLines = Array.isArray(includedTasks)
+    ? includedTasks.filter((taskLine): taskLine is string => typeof taskLine === 'string')
+    : [];
+
+  for (const taskLine of taskLines) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
     if (match) {
       for (const task of match[2].split(',')) {
@@ -557,10 +572,15 @@ const PublicContractView: React.FC = () => {
                         )}
                       </div>
                       <div className="text-sm font-medium text-surface-700">
-                        {frequencyLabels[service.frequency || ''] || service.frequency || 'As scheduled'}
+                        <span
+                          className="inline-block rounded-full px-2.5 py-1 text-xs font-medium"
+                          style={{ backgroundColor: `${accentColor}20`, color: primaryColor }}
+                        >
+                          {frequencyLabels[service.frequency || ''] || service.frequency || 'As scheduled'}
+                        </span>
                       </div>
                     </div>
-                    <ServiceTaskStepper serviceId={service.id} groups={groups} />
+                    <ServiceTaskStepper serviceId={service.id} groups={groups} accentColor={accentColor} />
                   </div>
                 );
               })}
@@ -648,8 +668,35 @@ const PublicContractView: React.FC = () => {
 
       {/* Footer */}
       <footer className="bg-surface-100 border-t border-surface-200 mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 text-center text-sm text-surface-500 dark:text-surface-400">
-          <p>Powered by {branding?.companyName || 'Hygieia'}</p>
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="font-medium text-surface-700">{branding?.companyName || 'Hygieia'}</p>
+              {branding?.companyAddress && (
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">{branding.companyAddress}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-surface-500 dark:text-surface-400">
+              {branding?.companyPhone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" />
+                  {branding.companyPhone}
+                </span>
+              )}
+              {branding?.companyEmail && (
+                <a href={`mailto:${branding.companyEmail}`} className="flex items-center gap-1 hover:text-surface-600 transition-colors">
+                  <Mail className="h-3.5 w-3.5" />
+                  {branding.companyEmail}
+                </a>
+              )}
+              {branding?.companyWebsite && (
+                <a href={branding.companyWebsite.startsWith('http') ? branding.companyWebsite : `https://${branding.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-surface-600 transition-colors">
+                  <Globe className="h-3.5 w-3.5" />
+                  {branding.companyWebsite.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </footer>
     </div>

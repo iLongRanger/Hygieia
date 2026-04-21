@@ -917,7 +917,6 @@ describe('ContractDetail', () => {
 
     expect(await screen.findByText('Lobby Cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();

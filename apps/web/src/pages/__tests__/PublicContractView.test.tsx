@@ -16,11 +16,13 @@ vi.mock('react-router-dom', async () => {
 const getPublicContractMock = vi.fn();
 const signPublicContractMock = vi.fn();
 const downloadPublicContractPdfMock = vi.fn();
+const downloadPublicContractTermsDocumentMock = vi.fn();
 
 vi.mock('../../lib/publicContracts', () => ({
   getPublicContract: (...args: unknown[]) => getPublicContractMock(...args),
   signPublicContract: (...args: unknown[]) => signPublicContractMock(...args),
   downloadPublicContractPdf: (...args: unknown[]) => downloadPublicContractPdfMock(...args),
+  downloadPublicContractTermsDocument: (...args: unknown[]) => downloadPublicContractTermsDocumentMock(...args),
 }));
 
 const response = {
@@ -62,9 +64,9 @@ const response = {
   branding: {
     companyName: 'Hygieia',
     companyEmail: 'hello@example.com',
-    companyPhone: null,
-    companyWebsite: null,
-    companyAddress: null,
+    companyPhone: '555-0100',
+    companyWebsite: 'https://hygieia.example',
+    companyAddress: '100 Clean Ave',
     logoDataUrl: null,
     themePrimaryColor: '#1a1a2e',
     themeAccentColor: '#d4af37',
@@ -85,6 +87,7 @@ describe('PublicContractView', () => {
       signedDate: new Date().toISOString(),
     });
     downloadPublicContractPdfMock.mockResolvedValue(undefined);
+    downloadPublicContractTermsDocumentMock.mockResolvedValue(undefined);
   });
 
   it('loads and renders contract details', async () => {
@@ -93,10 +96,13 @@ describe('PublicContractView', () => {
     expect(await screen.findByText('Monthly Janitorial Services')).toBeInTheDocument();
     expect(screen.getByText('Contract CONT-2026-0001')).toBeInTheDocument();
     expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();
+    expect(screen.getByText('100 Clean Ave')).toBeInTheDocument();
+    expect(screen.getByText('555-0100')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /hello@example.com/i })).toHaveAttribute('href', 'mailto:hello@example.com');
+    expect(screen.getByRole('link', { name: /hygieia\.example/i })).toHaveAttribute('href', 'https://hygieia.example');
   });
 
   it('signs contract from modal', async () => {

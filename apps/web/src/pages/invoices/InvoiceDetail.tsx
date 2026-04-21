@@ -318,9 +318,9 @@ const InvoiceDetail = () => {
                         <Badge variant="default" size="sm" className="mr-2">{item.itemType}</Badge>
                         {item.description}
                       </div>
-                      {item.jobAllocations.length > 0 && (
+                      {(item.jobAllocations ?? []).length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {item.jobAllocations.map((allocation) => (
+                          {(item.jobAllocations ?? []).map((allocation) => (
                             <span
                               key={allocation.id}
                               className="inline-flex items-center rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300"
@@ -370,14 +370,14 @@ const InvoiceDetail = () => {
         </div>
       </Card>
 
-      {invoice.jobAllocations.length > 0 && (
+      {(invoice.jobAllocations ?? []).length > 0 && (
         <Card>
           <div className="p-4">
             <h3 className="mb-4 text-sm font-semibold text-surface-900 dark:text-surface-50">
               Linked Jobs
             </h3>
             <div className="space-y-2">
-              {invoice.jobAllocations.map((allocation) => (
+              {(invoice.jobAllocations ?? []).map((allocation) => (
                 <div
                   key={allocation.id}
                   className="flex flex-col gap-1 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700 sm:flex-row sm:items-center sm:justify-between"

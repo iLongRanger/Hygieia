@@ -218,6 +218,9 @@ const formatFrequency = (value: string | null | undefined) => {
 const normalizeServiceBullet = (value: string): string =>
   value.replace(/^[\s*-•]+/, '').trim();
 
+const normalizeServiceTaskText = (value: string): string =>
+  value.replace(/^[\s*-]+/, '').replace(/^\u2022+/, '').trim();
+
 interface ServiceTaskGroup {
   label: string;
   tasks: string[];
@@ -312,10 +315,10 @@ const serviceTaskGroupLabel = (value: string): string => {
 };
 
 const buildServiceTaskGroups = (
-  description: string | null | undefined,
-  includedTasks: string[] | undefined
+  description: unknown,
+  includedTasks: unknown
 ) => {
-  const lines = (description || '')
+  const lines = (typeof description === 'string' ? description : '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
@@ -324,7 +327,7 @@ const buildServiceTaskGroups = (
   const grouped = new Map<string, Set<string>>();
 
   const addTask = (label: string, value: string) => {
-    const normalized = normalizeServiceBullet(value);
+    const normalized = normalizeServiceTaskText(value);
     if (!normalized) return;
     const normalizedLabel = serviceTaskGroupLabel(label);
     if (!grouped.has(normalizedLabel)) {
@@ -344,7 +347,11 @@ const buildServiceTaskGroups = (
     addTask('Scope', line);
   }
 
-  for (const taskLine of includedTasks || []) {
+  const taskLines = Array.isArray(includedTasks)
+    ? includedTasks.filter((taskLine): taskLine is string => typeof taskLine === 'string')
+    : [];
+
+  for (const taskLine of taskLines) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
     if (match) {
       for (const task of match[2].split(',')) {
