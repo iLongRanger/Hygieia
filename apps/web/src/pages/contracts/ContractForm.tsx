@@ -349,7 +349,7 @@ const ContractForm = () => {
     }
 
     if (!isEditMode && activeFacilityContract) {
-      newErrors.proposalId = 'This facility already has an active contract';
+      newErrors.proposalId = 'This service location already has an active contract';
     }
 
     if (!formData.title.trim()) {
@@ -385,7 +385,7 @@ const ContractForm = () => {
     }
 
     if (!isEditMode && activeFacilityContract) {
-      toast.error('This facility already has an active contract');
+      toast.error('This service location already has an active contract');
       return;
     }
 
@@ -594,7 +594,7 @@ const ContractForm = () => {
                       </div>
                       {selectedProposal.facility && (
                         <div>
-                          <span className="text-surface-500 dark:text-surface-400">Facility:</span>
+                          <span className="text-surface-500 dark:text-surface-400">Service Location:</span>
                           <span className="ml-2 text-surface-900 dark:text-white">{selectedProposal.facility.name}</span>
                         </div>
                       )}
@@ -629,9 +629,9 @@ const ContractForm = () => {
                 <div className="flex gap-3">
                   <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-300" />
                   <div>
-                    <p className="font-medium text-red-100">Active contract already exists for this facility</p>
+                    <p className="font-medium text-red-100">Active contract already exists for this service location</p>
                     <p className="mt-1 text-sm text-red-100/80">
-                      {activeFacilityContract.contractNumber} is currently active. Archive, terminate, or replace that contract before creating another one for this facility.
+                      {activeFacilityContract.contractNumber} is currently active. Archive, terminate, or replace that contract before creating another one for this service location.
                     </p>
                   </div>
                 </div>
@@ -661,7 +661,7 @@ const ContractForm = () => {
                   />
                 </div>
 
-                {/* Show linked account/facility (readonly) */}
+                {/* Show linked account/service location (readonly) */}
                 {selectedProposal && (
                   <>
                     <div>
@@ -674,10 +674,10 @@ const ContractForm = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-surface-600 dark:text-surface-400 mb-1">
-                        Facility
+                        Service Location
                       </label>
                       <div className="px-3 py-2 rounded-lg bg-surface-200 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400">
-                        {selectedProposal.facility?.name || 'No specific facility'}
+                        {selectedProposal.facility?.name || 'No specific service location'}
                       </div>
                     </div>
                   </>
@@ -802,7 +802,7 @@ const ContractForm = () => {
                       <p className="text-blue-200 font-medium">Initial Clean Included</p>
                       <p className="text-blue-200/70 text-sm mt-1">
                         This contract includes a comprehensive initial deep clean on the first service visit.
-                        This is standard for all new contracts and ensures the facility starts at optimal cleanliness.
+                        This is standard for all new contracts and ensures the service location starts at optimal cleanliness.
                       </p>
                     </div>
                   </div>

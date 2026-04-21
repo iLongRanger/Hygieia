@@ -156,7 +156,7 @@ describe('ContractForm', () => {
     });
   });
 
-  it('blocks contract creation when the facility already has an active contract', async () => {
+  it('blocks contract creation when the service location already has an active contract', async () => {
     const user = userEvent.setup();
     listContractsMock.mockResolvedValue({
       data: [
@@ -179,7 +179,7 @@ describe('ContractForm', () => {
       'proposal-1'
     );
 
-    expect(await screen.findByText(/active contract already exists for this facility/i)).toBeInTheDocument();
+    expect(await screen.findByText(/active contract already exists for this service location/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create contract/i })).toBeDisabled();
     expect(createContractFromProposalMock).not.toHaveBeenCalled();
   });

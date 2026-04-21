@@ -708,7 +708,57 @@ interface ContractForPdf {
   createdAt: string | Date;
   account: { name: string };
   facility?: { name: string; address?: AddressLike | null } | null;
+  proposal?: {
+    proposalServices?: {
+      serviceName: string;
+      frequency?: string | null;
+      description?: string | null;
+      includedTasks?: unknown;
+    }[] | null;
+  } | null;
   createdByUser: { fullName: string; email: string };
+}
+
+function parseServiceTaskGroups(
+  description?: string | null,
+  includedTasks?: unknown
+): { areaInfo: string; groups: { label: string; tasks: string[] }[] } {
+  const explicitTasks = (Array.isArray(includedTasks) ? includedTasks : [])
+    .filter((task): task is string => typeof task === 'string')
+    .map((task) => task.trim())
+    .filter((task) => task && !isZeroQuantityTask(task));
+
+  if (explicitTasks.length > 0) {
+    return {
+      areaInfo: description?.split('\n')[0]?.trim() ?? '',
+      groups: [{ label: 'Included Tasks', tasks: explicitTasks }],
+    };
+  }
+
+  const lines = description?.split('\n') ?? [];
+  const groups: { label: string; tasks: string[] }[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const match = lines[i].match(/^(.+?):\s*(.+)$/);
+    if (!match) continue;
+
+    const tasks = match[2]
+      .split(',')
+      .map((task) => task.trim())
+      .filter((task) => task && !isZeroQuantityTask(task));
+
+    if (tasks.length > 0) {
+      groups.push({
+        label: match[1].trim(),
+        tasks,
+      });
+    }
+  }
+
+  return {
+    areaInfo: lines[0]?.trim() ?? '',
+    groups,
+  };
 }
 
 interface ResidentialQuoteForPdf {
@@ -1392,6 +1442,79 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     },
     margin: [0, 5, 0, 15] as [number, number, number, number],
   });
+
+  const contractServices = contract.proposal?.proposalServices ?? [];
+  if (contractServices.length > 0) {
+    content.push({ text: 'Service Scope', style: 'sectionHeader' });
+
+    for (const service of contractServices) {
+      const { areaInfo, groups } = parseServiceTaskGroups(
+        service.description,
+        service.includedTasks
+      );
+      const serviceStack: Content[] = [
+        {
+          columns: [
+            { text: service.serviceName, bold: true, fontSize: 11, color: COLORS.primary },
+            ...(service.frequency
+              ? [
+                  {
+                    text: service.frequency
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                    alignment: 'right' as const,
+                    fontSize: 9,
+                    color: COLORS.lightText,
+                  },
+                ]
+              : []),
+          ],
+          margin: [0, 0, 0, 3] as [number, number, number, number],
+        },
+      ];
+
+      if (areaInfo) {
+        serviceStack.push({
+          text: areaInfo,
+          fontSize: 9,
+          color: COLORS.lightText,
+          margin: [0, 0, 0, 4] as [number, number, number, number],
+        });
+      }
+
+      if (groups.length > 0) {
+        for (const group of groups) {
+          serviceStack.push({
+            text: group.label.toUpperCase(),
+            fontSize: 8,
+            bold: true,
+            color: COLORS.lightText,
+            margin: [0, 4, 0, 2] as [number, number, number, number],
+          });
+          serviceStack.push(
+            ...group.tasks.map((task) => ({
+              columns: [
+                { text: '\u2022', width: 10, fontSize: 9, color: COLORS.accent },
+                { text: task, fontSize: 9, color: COLORS.text },
+              ],
+              margin: [8, 0, 0, 1] as [number, number, number, number],
+            }))
+          );
+        }
+      } else if (service.description) {
+        serviceStack.push({
+          text: service.description,
+          style: 'bodyText',
+          margin: [0, 0, 0, 4] as [number, number, number, number],
+        });
+      }
+
+      content.push({
+        stack: serviceStack,
+        margin: [0, 6, 0, 8] as [number, number, number, number],
+      });
+    }
+  }
 
   // Financial Terms
   content.push({ text: 'Financial Terms', style: 'sectionHeader' });
