@@ -104,6 +104,25 @@ function formatWholeHours(hours: number | string | null | undefined): string {
   return `${Math.round(parsed)} hrs`;
 }
 
+function formatEstimatedTimeOnSite(hours: number | string | null | undefined): string {
+  const parsed = Number(hours);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 'To be confirmed';
+
+  const totalMinutes = Math.max(1, Math.round(parsed * 60));
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (wholeHours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${wholeHours} hr${wholeHours === 1 ? '' : 's'}`;
+  }
+
+  return `${wholeHours} hr${wholeHours === 1 ? '' : 's'} ${minutes} min`;
+}
+
 function isZeroQuantityTask(task: string): boolean {
   return /\bx\s*0(?:\.0+)?\b/i.test(task.trim());
 }
@@ -728,6 +747,7 @@ interface ResidentialQuoteForPdf {
     firstCleanSurcharge?: number | string;
     addOnTotal?: number | string;
     finalTotal?: number | string;
+    estimatedHours?: number | string;
     guidance?: string[];
     manualReviewReasons?: string[];
   } | null;
@@ -759,6 +779,9 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
 
   const propertyAddress = quote.property?.serviceAddress ?? quote.homeAddress ?? null;
   const homeProfile = quote.property?.homeProfile ?? quote.homeProfile ?? null;
+  const estimatedTimeOnSite = formatEstimatedTimeOnSite(
+    quote.estimatedHours ?? quote.priceBreakdown?.estimatedHours
+  );
   const addressLine = propertyAddress
     ? [propertyAddress.street, propertyAddress.city, propertyAddress.state, propertyAddress.postalCode]
         .filter(Boolean)
@@ -893,8 +916,8 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
       },
       {
         stack: [
-          { text: 'Estimated Hours', fontSize: 8, color: COLORS.lightText },
-          { text: formatWholeHours(quote.estimatedHours), fontSize: 10, bold: true },
+          { text: 'Estimated Time On Site', fontSize: 8, color: COLORS.lightText },
+          { text: estimatedTimeOnSite, fontSize: 10, bold: true },
         ],
         width: '*',
       },
@@ -1038,7 +1061,7 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
     ul: [
       `Service type: ${formatResidentialServiceType(quote.serviceType)}`,
       `Visit cadence: ${formatResidentialServiceType(quote.frequency)}`,
-      `Estimated on-site time: ${formatWholeHours(quote.estimatedHours)}`,
+      `Estimated time on site: ${estimatedTimeOnSite}`,
       ...(quote.addOns && quote.addOns.length > 0
         ? [`Selected add-ons: ${quote.addOns.map((addOn) => addOn.label).join(', ')}`]
         : ['Selected add-ons: none']),
