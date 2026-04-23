@@ -453,7 +453,7 @@ describe('FacilityDetail', () => {
 
     render(<FacilityDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /edit facility/i }));
+    await user.click(await screen.findByRole('button', { name: /edit service location/i }));
 
     expect(await screen.findByLabelText(/home type/i)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Condo' })).toBeInTheDocument();
@@ -744,7 +744,7 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
-    await screen.findByText(/submit facility for proposal/i);
+    await screen.findByText(/submit service location for proposal/i);
     await user.type(screen.getByLabelText(/review notes/i), 'Ready for proposal');
     await user.click(screen.getByRole('button', { name: /complete walkthrough/i }));
 
@@ -774,13 +774,13 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await user.click(await screen.findByRole('button', { name: /submit for proposal/i }));
-    await screen.findByText(/submit facility for proposal/i);
+    await screen.findByText(/submit service location for proposal/i);
     await user.click(screen.getByRole('button', { name: /save as draft/i }));
 
     await waitFor(() => {
       expect(submitFacilityForProposalMock).not.toHaveBeenCalled();
     });
-    expect(screen.queryByText(/submit facility for proposal/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/submit service location for proposal/i)).not.toBeInTheDocument();
   });
 
   it('hides submit for proposal when facility already has proposal or contract', async () => {
@@ -824,7 +824,7 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     expect(await screen.findByText('Walkthrough Required')).toBeInTheDocument();
-    expect(screen.getByText(/book a walkthrough before managing facility areas and tasks/i)).toBeInTheDocument();
+    expect(screen.getByText(/book a walkthrough before managing service location areas and tasks/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /areas \(/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit for proposal/i })).not.toBeInTheDocument();
   });

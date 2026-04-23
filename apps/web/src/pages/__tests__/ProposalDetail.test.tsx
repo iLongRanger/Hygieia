@@ -153,6 +153,7 @@ describe('ProposalDetail', () => {
   });
 
   it('renders tasks grouped by frequency category', async () => {
+    const user = userEvent.setup();
     getProposalMock.mockResolvedValueOnce({
       ...proposal,
       proposalServices: [
@@ -174,6 +175,7 @@ describe('ProposalDetail', () => {
 
     render(<ProposalDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^services$/i }));
     expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Weekly' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Manual' })).toBeInTheDocument();
@@ -182,6 +184,7 @@ describe('ProposalDetail', () => {
   });
 
   it('hides tasks with zero quantity suffix', async () => {
+    const user = userEvent.setup();
     getProposalMock.mockResolvedValueOnce({
       ...proposal,
       proposalServices: [
@@ -202,11 +205,13 @@ describe('ProposalDetail', () => {
 
     render(<ProposalDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^services$/i }));
     expect((await screen.findAllByText('Mop floors')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
   });
 
   it('uses proposal-level service frequency in services summary table', async () => {
+    const user = userEvent.setup();
     getProposalMock.mockResolvedValueOnce({
       ...proposal,
       serviceFrequency: '5x_week',
@@ -233,6 +238,7 @@ describe('ProposalDetail', () => {
 
     render(<ProposalDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^services$/i }));
     expect(await screen.findByText('5x Week')).toBeInTheDocument();
   });
 

@@ -68,6 +68,8 @@ interface AppliedAreaMultiplier {
   trafficMultiplier?: number;
 }
 
+type ProposalDetailTab = 'overview' | 'services' | 'activity';
+
 const getStatusVariant = (status: ProposalStatus) => {
   const variants: Record<ProposalStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
@@ -355,6 +357,7 @@ const ProposalDetail = () => {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [rateCardOpen, setRateCardOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProposalDetailTab>('overview');
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWriteProposals = hasPermission(PERMISSIONS.PROPOSALS_WRITE);
   const canAdminProposals = hasPermission(PERMISSIONS.PROPOSALS_ADMIN);
@@ -556,6 +559,11 @@ const ProposalDetail = () => {
   const visibleProposalItems = (proposal.proposalItems || []).filter(
     (item) => Number(item.totalPrice || 0) > 0
   );
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'services' as const, label: 'Services' },
+    { id: 'activity' as const, label: 'Activity' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -789,12 +797,29 @@ const ProposalDetail = () => {
         );
       })()}
 
+      <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
           {/* Description */}
-          {proposal.description && (
+          {activeTab === 'overview' && proposal.description && (
             <Card>
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Description</h2>
               <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.description}</p>
@@ -802,7 +827,7 @@ const ProposalDetail = () => {
           )}
 
           {/* Proposal Items */}
-          {visibleProposalItems.length > 0 && (
+          {activeTab === 'overview' && visibleProposalItems.length > 0 && (
             <Card noPadding>
               <div className="p-6 border-b border-surface-200 dark:border-surface-700">
                 <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Line Items</h2>
@@ -855,7 +880,7 @@ const ProposalDetail = () => {
           )}
 
           {/* Proposal Services (Areas) */}
-          {proposal.proposalServices && proposal.proposalServices.length > 0 && (
+          {activeTab === 'services' && proposal.proposalServices && proposal.proposalServices.length > 0 && (
             <Card>
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Services</h2>
               <div className="space-y-6">
@@ -920,7 +945,7 @@ const ProposalDetail = () => {
           )}
 
           {/* Pricing Breakdown */}
-          {proposal.pricingSnapshot && (() => {
+          {activeTab === 'overview' && proposal.pricingSnapshot && (() => {
             const pricingSnapshot = proposal.pricingSnapshot;
             return (
             <Card>
@@ -1174,7 +1199,7 @@ const ProposalDetail = () => {
           })()}
 
           {/* Facility & Areas */}
-          {proposal.facility && proposal.proposalServices && proposal.proposalServices.length > 0 && (
+          {activeTab === 'services' && proposal.facility && proposal.proposalServices && proposal.proposalServices.length > 0 && (
             <Card>
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Facility & Areas</h2>
 
@@ -1261,15 +1286,23 @@ const ProposalDetail = () => {
           )}
 
           {/* Notes */}
-          {proposal.notes && (
+          {activeTab === 'overview' && proposal.notes && (
             <Card>
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Internal Notes</h2>
               <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.notes}</p>
             </Card>
           )}
+
+          {activeTab === 'activity' && (
+            <>
+              <ProposalVersionHistory proposalId={proposal.id} refreshTrigger={activityRefresh} />
+              <ProposalTimeline proposalId={proposal.id} refreshTrigger={activityRefresh} />
+            </>
+          )}
         </div>
 
         {/* Right Column - Summary */}
+        {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Financial Summary */}
           <Card>
@@ -1315,7 +1348,7 @@ const ProposalDetail = () => {
                 <div className="flex items-start gap-3">
                   <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
                   <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
+                    <div className="text-sm text-surface-500 dark:text-surface-400">Service Location</div>
                     <div className="text-surface-900 dark:text-white">{proposal.facility.name}</div>
                   </div>
                 </div>
@@ -1402,13 +1435,8 @@ const ProposalDetail = () => {
               )}
             </div>
           </Card>
-
-          {/* Version History */}
-          <ProposalVersionHistory proposalId={proposal.id} refreshTrigger={activityRefresh} />
-
-          {/* Activity Timeline */}
-          <ProposalTimeline proposalId={proposal.id} refreshTrigger={activityRefresh} />
         </div>
+        )}
       </div>
 
       {/* Send Proposal Modal */}

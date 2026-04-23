@@ -25,7 +25,7 @@ export function EditFacilityModal({
   setFacilityForm,
   onSave,
   saving,
-  locationLabel = 'Facility',
+  locationLabel = 'Service Location',
   accountType,
 }: EditFacilityModalProps): React.JSX.Element {
   const isResidentialAccount = accountType === 'residential';

@@ -2876,7 +2876,7 @@ const ContractDetail = () => {
           </Card>
         )}
 
-        {activeTab === 'assignment' && !isLimitedContractViewer && <Card className="h-full">
+        {activeTab === 'assignment' && !isLimitedContractViewer && <Card className="h-full lg:col-span-2">
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
             <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Assignment</h2>
@@ -2999,7 +2999,7 @@ const ContractDetail = () => {
         </Card>}
 
         {/* Service Terms */}
-        {activeTab === 'services' && <Card className="h-full">
+        {activeTab === 'services' && <Card className="h-full lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-5 w-5 text-blue-400" />
             <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Terms</h2>

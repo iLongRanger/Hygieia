@@ -134,7 +134,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
   const canWriteAppointments = hasPermission(PERMISSIONS.APPOINTMENTS_WRITE);
   const isPropertyMode = mode === 'property';
-  const locationLabel = isPropertyMode ? 'Property' : 'Facility';
+  const locationLabel = isPropertyMode ? 'Property' : 'Service Location';
   const locationLabelLower = locationLabel.toLowerCase();
 
   const formatCurrency = (value: number) =>
@@ -150,7 +150,9 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const combineLocalDateAndTime = (date: string, time: string): string => `${date}T${time}`;
 
   // --- Tab state ---
-  const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'add-ons' | 'area-detail'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'areas' | 'assignment' | 'add-ons' | 'area-detail'
+  >('overview');
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
   // --- Data state ---
@@ -690,10 +692,13 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     if (!canManageOperationalScope && activeTab !== 'overview') {
       setActiveTab('overview');
     }
+    if (activeTab === 'assignment' && !activeContract) {
+      setActiveTab('overview');
+    }
     if (activeTab === 'add-ons' && !canManageResidentialAddOns) {
       setActiveTab('overview');
     }
-  }, [activeTab, canManageOperationalScope, canManageResidentialAddOns]);
+  }, [activeContract, activeTab, canManageOperationalScope, canManageResidentialAddOns]);
 
   useEffect(() => {
     setAreaForm((current) => ({
@@ -1609,6 +1614,21 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             )}
           </button>
         )}
+        {activeContract && (
+          <button
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === 'assignment'
+                ? 'text-surface-900 dark:text-white'
+                : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
+            }`}
+            onClick={() => setActiveTab('assignment')}
+          >
+            Assignment
+            {activeTab === 'assignment' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+            )}
+          </button>
+        )}
         {canManageOperationalScope && selectedArea && (
           <button
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
@@ -1635,27 +1655,27 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             activeAreasCount={activeAreasCount}
             activeTasksCount={activeTasksCount}
           />
-          {activeContract && (
-            <ServiceLocationAssignmentCard
-              activeContract={activeContract}
-              teams={teams}
-              users={users}
-              canEdit={canWriteContracts}
-              saving={savingAssignment}
-              assignmentMode={assignmentMode}
-              assignedTeamId={assignedTeamId}
-              assignedToUserId={assignedToUserId}
-              onAssignmentModeChange={(value) => {
-                setAssignmentMode(value);
-                setAssignedTeamId('');
-                setAssignedToUserId('');
-              }}
-              onAssignedTeamChange={setAssignedTeamId}
-              onAssignedToUserChange={setAssignedToUserId}
-              onSave={handleSaveAssignment}
-            />
-          )}
         </div>
+      )}
+      {activeTab === 'assignment' && activeContract && (
+        <ServiceLocationAssignmentCard
+          activeContract={activeContract}
+          teams={teams}
+          users={users}
+          canEdit={canWriteContracts}
+          saving={savingAssignment}
+          assignmentMode={assignmentMode}
+          assignedTeamId={assignedTeamId}
+          assignedToUserId={assignedToUserId}
+          onAssignmentModeChange={(value) => {
+            setAssignmentMode(value);
+            setAssignedTeamId('');
+            setAssignedToUserId('');
+          }}
+          onAssignedTeamChange={setAssignedTeamId}
+          onAssignedToUserChange={setAssignedToUserId}
+          onSave={handleSaveAssignment}
+        />
       )}
       {canManageOperationalScope && activeTab === 'areas' && (
         <FacilityAreas

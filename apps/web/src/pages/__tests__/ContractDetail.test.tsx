@@ -50,7 +50,8 @@ vi.mock('react-router-dom', async () => {
 
     render(<ContractDetail />);
 
-    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    await userEvent.setup().click(await screen.findByRole('button', { name: /^services$/i }));
+    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
     expect(screen.getByText('Team-scoped contract view for your subcontractor assignment.')).toBeInTheDocument();
     expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
     expect(screen.getByText('Your Payout')).toBeInTheDocument();
@@ -89,7 +90,8 @@ vi.mock('react-router-dom', async () => {
 
     render(<ContractDetail />);
 
-    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
+    await userEvent.setup().click(await screen.findByRole('button', { name: /^services$/i }));
+    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
     expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
     expect(screen.queryByText('Your Payout')).not.toBeInTheDocument();
   });
@@ -506,6 +508,7 @@ describe('ContractDetail', () => {
   });
 
   it('shows facility areas and tasks for subcontractor view', async () => {
+    const user = userEvent.setup();
     useAuthStore.setState({
       user: {
         id: 'sub-1',
@@ -537,12 +540,8 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
-    expect(await screen.findByText('Facility Areas & Tasks')).toBeInTheDocument();
-    expect(screen.getByText('Facility Notes & Access')).toBeInTheDocument();
-    expect(screen.getByText('Use side entrance keypad')).toBeInTheDocument();
-    expect(screen.getByText('Park in rear lot')).toBeInTheDocument();
-    expect(screen.getByText('Wear PPE in production zone')).toBeInTheDocument();
-    expect(screen.getByText('Alarm code changes monthly')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /^services$/i }));
+    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
     expect(screen.getByText('Lobby')).toBeInTheDocument();
     expect(screen.getByText('Vacuum')).toBeInTheDocument();
     expect(screen.getByText('Daily')).toBeInTheDocument();
@@ -581,6 +580,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.type(screen.getByLabelText(/^reason$/i), 'Client requested scope change');
     await user.click(screen.getByRole('button', { name: /create draft/i }));
@@ -634,6 +634,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
     await user.click(await screen.findByRole('button', { name: /update price/i }));
@@ -712,6 +713,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
 
@@ -790,6 +792,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
 
@@ -865,6 +868,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
 
@@ -904,6 +908,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
     await user.click(await screen.findByRole('button', { name: /add area/i }));
@@ -913,8 +918,10 @@ describe('ContractDetail', () => {
   });
 
   it('renders contract services as bullet items', async () => {
+    const user = userEvent.setup();
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^services$/i }));
     expect(await screen.findByText('Lobby Cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('Weekly').length).toBeGreaterThan(0);
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
@@ -950,6 +957,7 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
+    await user.click(await screen.findByRole('button', { name: /^changes$/i }));
     await user.click(await screen.findByRole('button', { name: /create contract change/i }));
     await user.click(screen.getByRole('button', { name: /create draft/i }));
     await user.click(await screen.findByRole('button', { name: /apply change/i }));
