@@ -129,12 +129,12 @@ const ProposalTimeline: React.FC<Props> = ({ proposalId, refreshTrigger }) => {
                     {' \u00b7 '}
                     {formatDateTime(activity.createdAt)}
                   </p>
-                  {activity.action === 'rejected' && activity.metadata?.rejectionReason && (
+                  {activity.action === 'rejected' && typeof activity.metadata?.rejectionReason === 'string' && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 italic">
                       &ldquo;{activity.metadata.rejectionReason}&rdquo;
                     </p>
                   )}
-                  {activity.action === 'sent' && activity.metadata?.emailTo && (
+                  {activity.action === 'sent' && typeof activity.metadata?.emailTo === 'string' && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       Sent to {activity.metadata.emailTo}
                     </p>

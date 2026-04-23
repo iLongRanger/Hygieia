@@ -268,7 +268,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
                 <button
                   type="button"
                   onClick={() => toggleSection(section.key)}
-                  aria-expanded={isOpen}
+                  aria-expanded={Boolean(isOpen)}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
                     active
@@ -485,7 +485,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
                 <button
                   type="button"
                   onClick={() => toggleSection(section.key)}
-                  aria-expanded={isOpen}
+                  aria-expanded={Boolean(isOpen)}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
                     active

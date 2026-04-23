@@ -41,6 +41,7 @@ import {
   type PricingSettings,
   type FacilityPricingReadiness,
   type PricingBreakdown,
+  type PricingSettingsSnapshot,
 } from '../../lib/pricing';
 import { extractApiErrorMessage } from '../../lib/api';
 import type {
@@ -76,6 +77,8 @@ import type {
   ResidentialServiceType,
   ResidentialFrequency,
   ResidentialQuoteAddOnInput,
+  ResidentialAddress,
+  ResidentialHomeProfile,
 } from '../../types/residential';
 
 interface SuggestedProposalItem {
@@ -91,8 +94,8 @@ interface ResidentialPreviewContext {
   facilityId: string;
   propertyId: string;
   propertyName: string;
-  homeAddress: Record<string, unknown> | null;
-  homeProfile: Record<string, unknown> | null;
+  homeAddress: ResidentialAddress | null;
+  homeProfile: ResidentialHomeProfile | null;
   defaultAddOns: ResidentialQuoteAddOnInput[];
 }
 
@@ -798,7 +801,7 @@ const ProposalForm = () => {
       || null
     );
   }, [selectedAccount, formData.facilityId]);
-  const residentialPreviewContext = useMemo(() => {
+  const residentialPreviewContext = useMemo((): ResidentialPreviewContext | null => {
     if (!isResidentialAccount) {
       return null;
     }
@@ -821,8 +824,8 @@ const ProposalForm = () => {
       facilityId: formData.facilityId,
       propertyId,
       propertyName: selectedResidentialProperty?.name || selectedFacility?.name || selectedAccount?.name || 'Residential Service Location',
-      homeAddress: selectedResidentialProperty?.serviceAddress || selectedAccount?.serviceAddress || selectedFacility?.address || null,
-      homeProfile: selectedResidentialProperty?.homeProfile || selectedAccount?.residentialProfile || null,
+      homeAddress: (selectedResidentialProperty?.serviceAddress || selectedAccount?.serviceAddress || selectedFacility?.address || null) as ResidentialAddress | null,
+      homeProfile: (selectedResidentialProperty?.homeProfile || selectedAccount?.residentialProfile || null) as ResidentialHomeProfile | null,
       defaultAddOns: selectedResidentialProperty?.defaultAddOns || [],
     };
   }, [
@@ -859,17 +862,20 @@ const ProposalForm = () => {
     [facilityAreas, facilityTasks]
   );
   const hasResidentialServiceType = residentialServiceType.length > 0;
+  const definedResidentialServiceType = hasResidentialServiceType
+    ? (residentialServiceType as ResidentialServiceType)
+    : null;
   const suggestedProposalTitle = useMemo(() => {
     if (!formData.facilityId) {
       return '';
     }
 
     if (isResidentialAccount) {
-      if (!hasResidentialServiceType) {
+      if (!definedResidentialServiceType) {
         return '';
       }
       return defaultResidentialProposalTitle(
-        residentialServiceType,
+        definedResidentialServiceType,
         residentialPreviewContext?.propertyName || selectedFacility?.name
       );
     }
@@ -1169,11 +1175,12 @@ const ProposalForm = () => {
     }
 
     const timeout = window.setTimeout(async () => {
+      if (!definedResidentialServiceType) return;
       try {
         setLoadingResidentialPreview(true);
         const preview = await previewResidentialQuote({
           propertyId: residentialPreviewContext.propertyId,
-          serviceType: residentialServiceType,
+          serviceType: definedResidentialServiceType,
           frequency: residentialFrequency,
           homeAddress: residentialPreviewContext.homeAddress,
           homeProfile: {
@@ -1217,14 +1224,14 @@ const ProposalForm = () => {
   ]);
 
   useEffect(() => {
-    if (!isResidentialAccount || !residentialPreviewContext || !residentialPreview || !hasResidentialServiceType) {
+    if (!isResidentialAccount || !residentialPreviewContext || !residentialPreview || !definedResidentialServiceType) {
       return;
     }
 
     const derivedServices = buildResidentialProposalServices({
       preview: residentialPreview,
       propertyName: residentialPreviewContext.propertyName,
-      serviceType: residentialServiceType,
+      serviceType: definedResidentialServiceType,
       frequency: residentialFrequency,
       scopeGroups: residentialScopeGroups,
     });
@@ -1495,7 +1502,7 @@ const ProposalForm = () => {
         toast.error('Please select a residential pricing plan first');
         return;
       }
-      if (!hasResidentialServiceType) {
+      if (!definedResidentialServiceType) {
         toast.error('Please select a residential service type first');
         return;
       }
@@ -1504,7 +1511,7 @@ const ProposalForm = () => {
         setLoadingResidentialPreview(true);
         const preview = await previewResidentialQuote({
           propertyId: context.propertyId,
-          serviceType: residentialServiceType,
+          serviceType: definedResidentialServiceType,
           frequency: residentialFrequency,
           homeAddress: context.homeAddress,
           homeProfile: {
@@ -1533,7 +1540,7 @@ const ProposalForm = () => {
             current: prev,
             preview,
             propertyName: context.propertyName,
-            serviceType: residentialServiceType,
+            serviceType: definedResidentialServiceType,
             frequency: residentialFrequency,
             scopeGroups: residentialScopeGroups,
           })
@@ -1581,14 +1588,17 @@ const ProposalForm = () => {
       }));
 
       // Convert suggested items to proposal items
-      const newItems: ProposalItem[] = template.suggestedItems.map((item: SuggestedProposalItem, index: number) => ({
-        itemType: (item.itemType as ProposalItemType) || 'other',
-        description: item.description,
-        quantity: item.quantity || 1,
-        unitPrice: item.unitPrice || 0,
-        totalPrice: item.totalPrice || 0,
-        sortOrder: index,
-      }));
+      const newItems: ProposalItem[] = template.suggestedItems.map((raw, index) => {
+        const item = raw as SuggestedProposalItem;
+        return {
+          itemType: (item.itemType as ProposalItemType) || 'other',
+          description: item.description,
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || 0,
+          totalPrice: item.totalPrice || 0,
+          sortOrder: index,
+        };
+      });
 
       // Update form with auto-populated data
       const scheduleFrequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
@@ -1843,11 +1853,11 @@ const ProposalForm = () => {
       const derivedResidentialItems = isResidentialAccount && residentialPreview
         ? buildResidentialProposalItems(residentialPreview)
         : [];
-      const derivedResidentialServices = isResidentialAccount && residentialPreview && residentialPreviewContext && hasResidentialServiceType
+      const derivedResidentialServices = isResidentialAccount && residentialPreview && residentialPreviewContext && definedResidentialServiceType
         ? buildResidentialProposalServices({
             preview: residentialPreview,
             propertyName: residentialPreviewContext.propertyName,
-            serviceType: residentialServiceType,
+            serviceType: definedResidentialServiceType,
             frequency: residentialFrequency,
             scopeGroups: isResidentialAccount ? residentialScopeGroups : [],
           })
@@ -1871,9 +1881,9 @@ const ProposalForm = () => {
             preview: residentialPreview,
           }
         : undefined;
-      const effectivePricingSnapshot = isResidentialAccount
+      const effectivePricingSnapshot = (isResidentialAccount
         ? residentialPricingSnapshot
-        : (pricingBreakdown?.settingsSnapshot ?? undefined);
+        : (pricingBreakdown?.settingsSnapshot ?? undefined)) as PricingSettingsSnapshot | null | undefined;
       const effectivePricingPlanId = isResidentialAccount
         ? null
         : (formData.pricingPlanId ?? null);

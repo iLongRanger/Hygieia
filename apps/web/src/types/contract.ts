@@ -1,3 +1,5 @@
+import type { PricingSettingsSnapshot } from '../lib/pricing';
+
 export type ContractStatus =
   | 'draft'
   | 'sent'
@@ -312,7 +314,7 @@ export interface ContractAmendment {
   newServiceFrequency?: ServiceFrequency | null;
   oldServiceSchedule?: ServiceSchedule | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
   approvedAt?: string | null;
   sentAt?: string | null;
   viewedAt?: string | null;
@@ -521,7 +523,7 @@ export interface CreateContractAmendmentInput {
   newMonthlyValue?: number | null;
   newServiceFrequency?: ServiceFrequency | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
   workingScope?: ContractAmendmentWorkingScope | null;
 }
 
@@ -535,7 +537,7 @@ export interface UpdateContractAmendmentInput {
   newMonthlyValue?: number | null;
   newServiceFrequency?: ServiceFrequency | null;
   newServiceSchedule?: ServiceSchedule | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
   workingScope?: ContractAmendmentWorkingScope | null;
   status?: Extract<ContractAmendmentStatus, 'draft' | 'submitted' | 'canceled'>;
 }

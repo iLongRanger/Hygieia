@@ -236,6 +236,18 @@ export interface PricingSettingsSnapshot {
     };
     variabilityPercentage: number;
   };
+  appliedAreaMultipliers?: {
+    areaId: string;
+    areaName: string;
+    squareFeet: number;
+    quantity: number;
+    floorType: string;
+    floorMultiplier: number;
+    conditionLevel: string;
+    conditionMultiplier: number;
+    trafficLevel?: string;
+    trafficMultiplier?: number;
+  }[];
 }
 
 // Aggregate cost breakdown per visit

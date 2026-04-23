@@ -920,7 +920,9 @@ const ProposalDetail = () => {
           )}
 
           {/* Pricing Breakdown */}
-          {proposal.pricingSnapshot && (
+          {proposal.pricingSnapshot && (() => {
+            const pricingSnapshot = proposal.pricingSnapshot;
+            return (
             <Card>
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Pricing Breakdown</h2>
 
@@ -929,53 +931,53 @@ const ProposalDetail = () => {
                 <div>
                   <div className="text-xs text-surface-500 dark:text-surface-400">Strategy</div>
                   <div className="text-sm font-medium text-surface-900 dark:text-white">
-                    {proposal.pricingSnapshot.pricingBasis === 'sqft_price_with_derived_hours'
+                    {pricingSnapshot.pricingBasis === 'sqft_price_with_derived_hours'
                       ? 'Per Sq Ft + Derived Hours'
-                      : proposal.pricingSnapshot.pricingType === 'hourly'
+                      : pricingSnapshot.pricingType === 'hourly'
                         ? 'Per Hour v1'
                         : 'Per Sq Ft v1'}
                   </div>
                 </div>
-                {proposal.pricingSnapshot.hourlyRate != null && (
+                {pricingSnapshot.hourlyRate != null && (
                   <div>
                     <div className="text-xs text-surface-500 dark:text-surface-400">Hourly Rate</div>
                     <div className="text-sm font-medium text-surface-900 dark:text-white">
-                      {formatCurrency(proposal.pricingSnapshot.hourlyRate)}
+                      {formatCurrency(pricingSnapshot.hourlyRate)}
                     </div>
                   </div>
                 )}
-                {proposal.pricingSnapshot.targetProfitMargin != null && (
+                {pricingSnapshot.targetProfitMargin != null && (
                   <div>
                     <div className="text-xs text-surface-500 dark:text-surface-400">Profit Margin</div>
                     <div className="text-sm font-medium text-surface-900 dark:text-white">
-                      {formatPercent(proposal.pricingSnapshot.targetProfitMargin)}
+                      {formatPercent(pricingSnapshot.targetProfitMargin)}
                     </div>
                   </div>
                 )}
               </div>
 
-              {proposal.pricingSnapshot.operationalEstimate && (
+              {pricingSnapshot.operationalEstimate && (
                 <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 mb-4">
                   <div className="text-sm font-semibold text-blue-200 mb-2">Client Service Time Estimate</div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                     <div>
                       <div className="text-xs text-blue-200/80">Estimated Time On Site</div>
                       <div className="text-surface-900 dark:text-white font-medium">
-                        {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.minHours)}
+                        {formatHours(pricingSnapshot.operationalEstimate.durationRangePerVisit?.minHours)}
                         {' - '}
-                        {formatHours(proposal.pricingSnapshot.operationalEstimate.durationRangePerVisit?.maxHours)}
+                        {formatHours(pricingSnapshot.operationalEstimate.durationRangePerVisit?.maxHours)}
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-blue-200/80">Crew Size Assumption</div>
                       <div className="text-surface-900 dark:text-white font-medium">
-                        {proposal.pricingSnapshot.operationalEstimate.recommendedCrewSize || 1} cleaners
+                        {pricingSnapshot.operationalEstimate.recommendedCrewSize || 1} cleaners
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-blue-200/80">Labor Hours / Visit</div>
                       <div className="text-surface-900 dark:text-white font-medium">
-                        {formatHours(proposal.pricingSnapshot.operationalEstimate.hoursPerVisit)}
+                        {formatHours(pricingSnapshot.operationalEstimate.hoursPerVisit)}
                       </div>
                     </div>
                   </div>
@@ -986,73 +988,77 @@ const ProposalDetail = () => {
               )}
 
               {/* Cost stack */}
-              {proposal.pricingSnapshot.pricingType === 'hourly' && (
+              {pricingSnapshot.pricingType === 'hourly' && (() => {
+                const laborCostPerHour = pricingSnapshot.laborCostPerHour ?? 0;
+                const hourlyRate = pricingSnapshot.hourlyRate ?? 0;
+                return (
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-surface-600 dark:text-surface-400 mb-2">Cost Stack (per labor hour)</h3>
                   <div className="space-y-1.5 text-sm">
-                    {proposal.pricingSnapshot.laborCostPerHour != null && (
+                    {pricingSnapshot.laborCostPerHour != null && (
                       <div className="flex justify-between">
                         <span className="text-surface-500 dark:text-surface-400">Labor Cost</span>
-                        <span className="text-surface-900 dark:text-white">{formatCurrency(proposal.pricingSnapshot.laborCostPerHour)}/hr</span>
+                        <span className="text-surface-900 dark:text-white">{formatCurrency(laborCostPerHour)}/hr</span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.laborBurdenPercentage != null && (
+                    {pricingSnapshot.laborBurdenPercentage != null && (
                       <div className="flex justify-between">
-                        <span className="text-surface-500 dark:text-surface-400">Labor Burden ({formatPercent(proposal.pricingSnapshot.laborBurdenPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Labor Burden ({formatPercent(pricingSnapshot.laborBurdenPercentage)})</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.laborBurdenPercentage)}/hr
+                          {formatCurrency(laborCostPerHour * pricingSnapshot.laborBurdenPercentage)}/hr
                         </span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.insurancePercentage != null && proposal.pricingSnapshot.insurancePercentage > 0 && (
+                    {pricingSnapshot.insurancePercentage != null && pricingSnapshot.insurancePercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-surface-500 dark:text-surface-400">Insurance ({formatPercent(proposal.pricingSnapshot.insurancePercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Insurance ({formatPercent(pricingSnapshot.insurancePercentage)})</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.insurancePercentage)}/hr
+                          {formatCurrency(laborCostPerHour * pricingSnapshot.insurancePercentage)}/hr
                         </span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.adminOverheadPercentage != null && proposal.pricingSnapshot.adminOverheadPercentage > 0 && (
+                    {pricingSnapshot.adminOverheadPercentage != null && pricingSnapshot.adminOverheadPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-surface-500 dark:text-surface-400">Admin Overhead ({formatPercent(proposal.pricingSnapshot.adminOverheadPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Admin Overhead ({formatPercent(pricingSnapshot.adminOverheadPercentage)})</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.adminOverheadPercentage)}/hr
+                          {formatCurrency(laborCostPerHour * pricingSnapshot.adminOverheadPercentage)}/hr
                         </span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.equipmentPercentage != null && proposal.pricingSnapshot.equipmentPercentage > 0 && (
+                    {pricingSnapshot.equipmentPercentage != null && pricingSnapshot.equipmentPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-surface-500 dark:text-surface-400">Equipment ({formatPercent(proposal.pricingSnapshot.equipmentPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Equipment ({formatPercent(pricingSnapshot.equipmentPercentage)})</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.equipmentPercentage)}/hr
+                          {formatCurrency(laborCostPerHour * pricingSnapshot.equipmentPercentage)}/hr
                         </span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.supplyCostPercentage != null && proposal.pricingSnapshot.supplyCostPercentage > 0 && (
+                    {pricingSnapshot.supplyCostPercentage != null && pricingSnapshot.supplyCostPercentage > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-surface-500 dark:text-surface-400">Supplies ({formatPercent(proposal.pricingSnapshot.supplyCostPercentage)})</span>
+                        <span className="text-surface-500 dark:text-surface-400">Supplies ({formatPercent(pricingSnapshot.supplyCostPercentage)})</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.laborCostPerHour * proposal.pricingSnapshot.supplyCostPercentage)}/hr
+                          {formatCurrency(laborCostPerHour * pricingSnapshot.supplyCostPercentage)}/hr
                         </span>
                       </div>
                     )}
-                    {proposal.pricingSnapshot.travelCostPerVisit != null && proposal.pricingSnapshot.travelCostPerVisit > 0 && (
+                    {pricingSnapshot.travelCostPerVisit != null && pricingSnapshot.travelCostPerVisit > 0 && (
                       <div className="flex justify-between">
                         <span className="text-surface-500 dark:text-surface-400">Travel (per visit)</span>
-                        <span className="text-surface-900 dark:text-white">{formatCurrency(proposal.pricingSnapshot.travelCostPerVisit)}</span>
+                        <span className="text-surface-900 dark:text-white">{formatCurrency(pricingSnapshot.travelCostPerVisit)}</span>
                       </div>
                     )}
                     <div className="border-t border-surface-200 dark:border-surface-700 pt-1.5 mt-1.5">
                       <div className="flex justify-between font-medium">
                         <span className="text-surface-600 dark:text-surface-400">Loaded Rate</span>
                         <span className="text-surface-900 dark:text-white">
-                          {formatCurrency(proposal.pricingSnapshot.hourlyRate)}/hr
+                          {formatCurrency(hourlyRate)}/hr
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Monthly summary */}
               {proposal.proposalServices && proposal.proposalServices.length > 0 && (
@@ -1061,10 +1067,10 @@ const ProposalDetail = () => {
                     <span className="text-surface-500 dark:text-surface-400">Monthly Subtotal</span>
                     <span className="text-surface-900 dark:text-white font-medium">{formatCurrency(Number(proposal.subtotal) || 0)}</span>
                   </div>
-                  {(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0) > 0 && (
+                  {(Number(pricingSnapshot.minimumMonthlyCharge) || 0) > 0 && (
                     <div className="flex justify-between text-sm mt-1">
                       <span className="text-surface-500 dark:text-surface-400">Minimum Monthly Charge</span>
-                      <span className="text-surface-900 dark:text-white">{formatCurrency(Number(proposal.pricingSnapshot.minimumMonthlyCharge) || 0)}</span>
+                      <span className="text-surface-900 dark:text-white">{formatCurrency(Number(pricingSnapshot.minimumMonthlyCharge) || 0)}</span>
                     </div>
                   )}
                 </div>
@@ -1158,13 +1164,14 @@ const ProposalDetail = () => {
               )}
 
               {/* Snapshot timestamp */}
-              {proposal.pricingSnapshot.capturedAt && (
+              {pricingSnapshot.capturedAt && (
                 <div className="mt-3 text-xs text-surface-500">
-                  Pricing snapshot captured {formatDate(proposal.pricingSnapshot.capturedAt)}
+                  Pricing snapshot captured {formatDate(pricingSnapshot.capturedAt)}
                 </div>
               )}
             </Card>
-          )}
+            );
+          })()}
 
           {/* Facility & Areas */}
           {proposal.facility && proposal.proposalServices && proposal.proposalServices.length > 0 && (

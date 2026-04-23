@@ -16,10 +16,9 @@ const apiBaseUrl = getApiBaseUrl();
 export function extractApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorPayload>(error)) {
     const apiError = error.response?.data?.error;
-    if (typeof apiError === 'string' && apiError) {
-      return apiError;
-    }
-    if (typeof apiError?.message === 'string' && apiError.message) {
+    if (typeof apiError === 'string') {
+      if (apiError) return apiError;
+    } else if (apiError && typeof apiError.message === 'string' && apiError.message) {
       return apiError.message;
     }
   }

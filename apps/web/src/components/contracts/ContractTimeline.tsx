@@ -131,17 +131,17 @@ const ContractTimeline: React.FC<Props> = ({ contractId, refreshTrigger }) => {
                     {' \u00b7 '}
                     {formatDateTime(activity.createdAt)}
                   </p>
-                  {activity.action === 'status_changed' && activity.metadata?.newStatus && (
+                  {activity.action === 'status_changed' && typeof activity.metadata?.newStatus === 'string' && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       New status: {activity.metadata.newStatus.replace('_', ' ')}
                     </p>
                   )}
-                  {activity.action === 'terminated' && activity.metadata?.reason && (
+                  {activity.action === 'terminated' && typeof activity.metadata?.reason === 'string' && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 italic">
                       &ldquo;{activity.metadata.reason}&rdquo;
                     </p>
                   )}
-                  {activity.action === 'signed' && activity.metadata?.signedByName && (
+                  {activity.action === 'signed' && typeof activity.metadata?.signedByName === 'string' && (
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
                       Signed by {activity.metadata.signedByName}
                     </p>

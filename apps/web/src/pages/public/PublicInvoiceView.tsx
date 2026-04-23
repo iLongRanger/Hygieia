@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Receipt, Calendar, Building2, Mail, Phone, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { getPublicInvoice } from '../../lib/invoices';
 import type { InvoiceDetail } from '../../types/invoice';
-import type { GlobalBranding } from '../../types/globalSettings';
+import type { PublicBranding } from '../../types/globalSettings';
 
 const formatCurrency = (amount: number | string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
@@ -31,7 +31,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
 const PublicInvoiceView = () => {
   const { token } = useParams<{ token: string }>();
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
-  const [branding, setBranding] = useState<GlobalBranding | null>(null);
+  const [branding, setBranding] = useState<PublicBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

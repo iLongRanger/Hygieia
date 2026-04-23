@@ -116,12 +116,14 @@ const formatAddress = (address: AddressValue): string => {
   if (typeof address === 'string') return address;
 
   const lines: string[] = [];
-  if (address.street) lines.push(address.street);
+  const street = typeof address.street === 'string' ? address.street : '';
+  if (street) lines.push(street);
   const cityLine = [address.city, address.state, address.postalCode]
-    .filter(Boolean)
+    .filter((part): part is string => typeof part === 'string' && part.length > 0)
     .join(', ');
   if (cityLine) lines.push(cityLine);
-  if (address.country) lines.push(address.country);
+  const country = typeof address.country === 'string' ? address.country : '';
+  if (country) lines.push(country);
   return lines.length > 0 ? lines.join(', ') : '';
 };
 
@@ -604,6 +606,7 @@ const CONTRACT_PIPELINE_STEPS = [
 ] as const;
 
 type AssignmentMode = 'subcontractor_team' | 'internal_employee';
+type ContractDetailTab = 'overview' | 'services' | 'assignment' | 'terms' | 'changes' | 'activity';
 type TermsDocumentAction = 'unchanged' | 'replace' | 'remove';
 
 const getDefaultAmendmentDate = () => {
@@ -785,7 +788,7 @@ const getWorkingScopeFromAmendment = (
   const workingSnapshot = [...(amendment?.snapshots || [])]
     .reverse()
     .find((snapshot) => snapshot.snapshotType === 'working');
-  const scope = (workingSnapshot?.scopeJson || {}) as ContractAmendmentWorkingScope;
+  const scope = (workingSnapshot?.scopeJson || {}) as unknown as ContractAmendmentWorkingScope;
   return {
     contract: scope.contract || null,
     facility: scope.facility || null,
@@ -982,6 +985,7 @@ const ContractDetail = () => {
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('subcontractor_team');
+  const [activeTab, setActiveTab] = useState<ContractDetailTab>('overview');
   const [assigningTeam, setAssigningTeam] = useState(false);
   const [selectedTier, setSelectedTier] = useState('premium');
   const [overrideEffectivityDate, setOverrideEffectivityDate] = useState('');
@@ -2265,7 +2269,32 @@ const ContractDetail = () => {
     return effective.getTime() > today.getTime();
   })();
   const latestAppliedActivity = getLatestAmendmentActivity(selectedAmendment, 'applied');
-  const latestApplySummary = latestAppliedActivity?.metadata || null;
+  const latestApplySummaryRaw = latestAppliedActivity?.metadata || null;
+  const toCount = (value: unknown): number => (typeof value === 'number' ? value : 0);
+  const latestApplySummary = latestApplySummaryRaw
+    ? {
+        updatedAreaCount: toCount(latestApplySummaryRaw.updatedAreaCount),
+        createdAreaCount: toCount(latestApplySummaryRaw.createdAreaCount),
+        removedAreaCount:
+          typeof latestApplySummaryRaw.removedAreaCount === 'number'
+            ? latestApplySummaryRaw.removedAreaCount
+            : typeof latestApplySummaryRaw.archivedAreaCount === 'number'
+              ? latestApplySummaryRaw.archivedAreaCount
+              : 0,
+        archivedAreaCount: toCount(latestApplySummaryRaw.archivedAreaCount),
+        updatedTaskCount: toCount(latestApplySummaryRaw.updatedTaskCount),
+        createdTaskCount: toCount(latestApplySummaryRaw.createdTaskCount),
+        removedTaskCount:
+          typeof latestApplySummaryRaw.removedTaskCount === 'number'
+            ? latestApplySummaryRaw.removedTaskCount
+            : typeof latestApplySummaryRaw.archivedTaskCount === 'number'
+              ? latestApplySummaryRaw.archivedTaskCount
+              : 0,
+        archivedTaskCount: toCount(latestApplySummaryRaw.archivedTaskCount),
+        activeAreaCount: toCount(latestApplySummaryRaw.activeAreaCount),
+        activeTaskCount: toCount(latestApplySummaryRaw.activeTaskCount),
+      }
+    : null;
   const facilityWideDraftTasks = amendmentWorkingScope.tasks.filter((task) => !task.areaId);
   const selectedAssignmentTeamId = assignmentMode === 'subcontractor_team' ? selectedTeamId || null : null;
   const selectedAssignmentUserId = assignmentMode === 'internal_employee' ? selectedUserId || null : null;
@@ -2274,6 +2303,18 @@ const ContractDetail = () => {
     selectedAssignmentUserId !== (contract.assignedToUser?.id || null);
   const hasNextAssignment = Boolean(selectedAssignmentTeamId || selectedAssignmentUserId);
   const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentWillChange;
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview' },
+    { id: 'services' as const, label: 'Services' },
+    ...(!isLimitedContractViewer
+      ? [
+          { id: 'assignment' as const, label: 'Assignment' },
+          { id: 'terms' as const, label: 'Terms' },
+          { id: 'changes' as const, label: 'Changes' },
+          { id: 'activity' as const, label: 'Activity' },
+        ]
+      : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -2504,12 +2545,32 @@ const ContractDetail = () => {
       </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Account & Facility Information */}
-        <Card>
+      <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {(activeTab === 'overview' || activeTab === 'services' || activeTab === 'assignment') && (
+      <>
+      <div className={`grid gap-6 ${activeTab === 'overview' ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
+        {/* Account & Service Location Information */}
+        {activeTab === 'overview' && (
+        <Card className="h-full">
           <div className="flex items-center gap-2 mb-4">
             <Building2 className="h-5 w-5 text-indigo-400" />
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Account & Facility</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Account & Service Location</h2>
           </div>
           <div className="space-y-4">
             <div>
@@ -2519,7 +2580,7 @@ const ContractDetail = () => {
             </div>
             {contract.facility && (
               <div>
-                <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400">Service Location</div>
                 <div className="text-surface-900 dark:text-white font-medium">{contract.facility.name}</div>
                 {contract.facility.address && (
                   <div className="flex items-start gap-1 text-sm text-surface-500 dark:text-surface-400">
@@ -2539,7 +2600,7 @@ const ContractDetail = () => {
                     contract.facility.notes) && (
                     <div className="mt-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3 space-y-2">
                       <div className="text-xs uppercase tracking-wide text-emerald-300">
-                        Facility Notes & Access
+                        Service Location Notes & Access
                       </div>
                       {contract.facility.accessInstructions && (
                         <div>
@@ -2567,7 +2628,7 @@ const ContractDetail = () => {
                       )}
                       {contract.facility.notes && (
                         <div>
-                          <div className="text-xs text-surface-500 dark:text-surface-400">Facility Notes</div>
+                          <div className="text-xs text-surface-500 dark:text-surface-400">Service Location Notes</div>
                           <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap">
                             {contract.facility.notes}
                           </div>
@@ -2596,10 +2657,11 @@ const ContractDetail = () => {
             )}
           </div>
         </Card>
+        )}
 
         {/* Financial Terms */}
-        {isSubcontractor ? (
-          <Card>
+        {activeTab === 'overview' && (isSubcontractor ? (
+          <Card className="h-full">
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-teal-400" />
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Your Payout</h2>
@@ -2626,7 +2688,7 @@ const ContractDetail = () => {
             </div>
           </Card>
         ) : canViewContractPricing ? (
-          <Card>
+          <Card className="h-full">
             <div className="flex items-center gap-2 mb-4">
               <DollarSign className="h-5 w-5 text-green-400" />
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Terms</h2>
@@ -2679,14 +2741,14 @@ const ContractDetail = () => {
               </div>
             </div>
           </Card>
-        ) : null}
+        ) : null)}
 
         {/* Assignment — hidden for subcontractors */}
-        {isLimitedContractViewer && contract.facility && (
-          <Card>
+        {activeTab === 'services' && isLimitedContractViewer && contract.facility && (
+          <Card className="h-full">
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="h-5 w-5 text-emerald-400" />
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Facility Areas & Tasks</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Location Areas & Tasks</h2>
             </div>
             <div className="space-y-5">
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
@@ -2746,7 +2808,7 @@ const ContractDetail = () => {
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-surface-500">No facility areas configured on this contract.</div>
+                <div className="text-sm text-surface-500">No service location areas configured on this contract.</div>
               )}
 
               {facilityTasks.some((task) => !task.areaName) && (
@@ -2777,8 +2839,8 @@ const ContractDetail = () => {
           </Card>
         )}
 
-        {proposalServices.length > 0 && (
-          <Card className="lg:col-span-2">
+        {activeTab === 'services' && proposalServices.length > 0 && (
+          <Card className="h-full lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-gold" />
               <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Services</h2>
@@ -2814,7 +2876,7 @@ const ContractDetail = () => {
           </Card>
         )}
 
-        {!isLimitedContractViewer && <Card>
+        {activeTab === 'assignment' && !isLimitedContractViewer && <Card className="h-full">
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-teal-400" />
             <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Assignment</h2>
@@ -2937,7 +2999,7 @@ const ContractDetail = () => {
         </Card>}
 
         {/* Service Terms */}
-        <Card>
+        {activeTab === 'services' && <Card className="h-full">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-5 w-5 text-blue-400" />
             <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Terms</h2>
@@ -2996,10 +3058,10 @@ const ContractDetail = () => {
               )}
             </div>
           </div>
-        </Card>
+        </Card>}
 
         {/* Workflow & Signatures — hidden for subcontractors */}
-        {!isLimitedContractViewer && <Card>
+        {activeTab === 'overview' && !isLimitedContractViewer && <Card className="h-full">
           <div className="flex items-center gap-2 mb-4">
             <FileSignature className="h-5 w-5 text-purple-400" />
             <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Workflow & Signatures</h2>
@@ -3085,7 +3147,9 @@ const ContractDetail = () => {
       </div>
 
       {/* Terms & Conditions — hidden for subcontractors */}
-      {!isLimitedContractViewer && <Card>
+      </>)}
+
+      {activeTab === 'terms' && !isLimitedContractViewer && <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Terms & Conditions</h2>
           {['draft', 'sent', 'viewed', 'pending_signature'].includes(contract.status) && !editingTerms && canWriteContracts && (
@@ -3246,7 +3310,7 @@ const ContractDetail = () => {
       </Card>}
 
       {/* Special Instructions */}
-      {contract.specialInstructions && (
+      {activeTab === 'terms' && contract.specialInstructions && (
         <Card>
           <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Special Instructions</h2>
           <div className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
@@ -3255,7 +3319,7 @@ const ContractDetail = () => {
         </Card>
       )}
 
-      {!isLimitedContractViewer && (
+      {activeTab === 'changes' && !isLimitedContractViewer && (
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -3334,7 +3398,7 @@ const ContractDetail = () => {
       )}
 
       {/* Activity Timeline — hidden for subcontractors */}
-      {contract && !isLimitedContractViewer && (
+      {activeTab === 'activity' && contract && !isLimitedContractViewer && (
         <ContractTimeline contractId={contract.id} refreshTrigger={activityRefresh} />
       )}
 

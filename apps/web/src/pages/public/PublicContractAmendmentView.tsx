@@ -17,7 +17,7 @@ import {
   signPublicContractAmendment,
 } from '../../lib/publicContractAmendments';
 import type { PublicContractAmendment } from '../../types/publicContractAmendment';
-import type { GlobalBranding } from '../../types/globalSettings';
+import type { PublicBranding } from '../../types/globalSettings';
 import { extractApiErrorMessage } from '../../lib/api';
 
 const formatCurrency = (amount: number | string | null | undefined) =>
@@ -53,8 +53,11 @@ const formatAddress = (address: AddressValue): string => {
   if (!address) return '';
   if (typeof address === 'string') return address;
   const lines: string[] = [];
-  if (address.street) lines.push(address.street);
-  const cityLine = [address.city, address.state, address.postalCode].filter(Boolean).join(', ');
+  const street = typeof address.street === 'string' ? address.street : '';
+  if (street) lines.push(street);
+  const cityLine = [address.city, address.state, address.postalCode]
+    .filter((part): part is string => typeof part === 'string' && part.length > 0)
+    .join(', ');
   if (cityLine) lines.push(cityLine);
   return lines.join(', ');
 };
@@ -237,7 +240,7 @@ const FrequencyTaskStepper = ({
 export default function PublicContractAmendmentView(): React.JSX.Element {
   const { token } = useParams();
   const [amendment, setAmendment] = useState<PublicContractAmendment | null>(null);
-  const [branding, setBranding] = useState<GlobalBranding | null>(null);
+  const [branding, setBranding] = useState<PublicBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [signedByName, setSignedByName] = useState('');
@@ -339,7 +342,7 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
           <div className="flex items-center justify-between">
             <div>
               {branding?.logoDataUrl && (
-                <img src={branding.logoDataUrl} alt={branding.companyName} className="mb-2 max-h-10 w-auto" />
+                <img src={branding.logoDataUrl} alt={branding.companyName ?? undefined} className="mb-2 max-h-10 w-auto" />
               )}
               <h1 className="text-xl font-bold" style={{ color: accentColor }}>
                 {branding?.companyName || amendment.contract.account.name}
@@ -489,8 +492,8 @@ export default function PublicContractAmendmentView(): React.JSX.Element {
                       <div>
                         <div className="font-medium text-surface-900">{getAreaDisplayName(area, areaIndex)}</div>
                         <div className="text-sm text-surface-500">
-                          {area.areaType?.name || area.type || 'Area'}
-                          {area.squareFeet ? ` • ${area.squareFeet} sqft` : ''}
+                          {area.areaType?.name || (typeof area.type === 'string' ? area.type : '') || 'Area'}
+                          {typeof area.squareFeet === 'number' && area.squareFeet > 0 ? ` • ${area.squareFeet} sqft` : ''}
                         </div>
                       </div>
                     </div>

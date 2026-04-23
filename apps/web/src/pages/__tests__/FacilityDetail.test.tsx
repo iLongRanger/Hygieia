@@ -262,12 +262,6 @@ const residentialProperty: ResidentialProperty = {
     id: 'account-1',
     name: 'Acme Corp',
     type: 'residential',
-    billingEmail: null,
-    billingPhone: null,
-    billingAddress: null,
-    serviceAddress: null,
-    residentialProfile: null,
-    residentialTaskLibrary: [],
   },
   facility,
 };
@@ -373,6 +367,7 @@ const residentialPricingPlan: ResidentialPricingPlan = {
   createdByUser: {
     id: 'user-1',
     fullName: 'Admin User',
+    email: 'admin@example.com',
   },
 };
 

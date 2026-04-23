@@ -7,7 +7,7 @@ import {
   getPublicResidentialQuote,
 } from '../../lib/residential';
 import { extractApiErrorMessage } from '../../lib/api';
-import type { GlobalBranding } from '../../types/globalSettings';
+import type { PublicBranding } from '../../types/globalSettings';
 import type { PublicResidentialQuote } from '../../types/residential';
 
 function formatCurrency(amount: number | string | null | undefined) {
@@ -42,7 +42,7 @@ const frequencyLabelMap: Record<string, string> = {
 export default function PublicResidentialQuoteView() {
   const { token } = useParams<{ token: string }>();
   const [quote, setQuote] = useState<PublicResidentialQuote | null>(null);
-  const [branding, setBranding] = useState<GlobalBranding | null>(null);
+  const [branding, setBranding] = useState<PublicBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [signatureName, setSignatureName] = useState('');

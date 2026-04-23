@@ -141,20 +141,20 @@ const ProposalVersionHistory: React.FC<Props> = ({ proposalId, refreshTrigger })
                     <div className="flex justify-between">
                       <span className="text-surface-500 dark:text-surface-400">Total</span>
                       <span className="text-surface-900 dark:text-white font-medium">
-                        {formatCurrency(snapshotData.totalAmount)}
+                        {formatCurrency(snapshotData.totalAmount ?? 0)}
                       </span>
                     </div>
-                    {snapshotData.proposalServices?.length > 0 && (
+                    {(snapshotData.proposalServices?.length ?? 0) > 0 && (
                       <div>
                         <span className="text-surface-500 dark:text-surface-400">
-                          {snapshotData.proposalServices.length} service(s)
+                          {snapshotData.proposalServices?.length} service(s)
                         </span>
                       </div>
                     )}
-                    {snapshotData.proposalItems?.length > 0 && (
+                    {(snapshotData.proposalItems?.length ?? 0) > 0 && (
                       <div>
                         <span className="text-surface-500 dark:text-surface-400">
-                          {snapshotData.proposalItems.length} line item(s)
+                          {snapshotData.proposalItems?.length} line item(s)
                         </span>
                       </div>
                     )}

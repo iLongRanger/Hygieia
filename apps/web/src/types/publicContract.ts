@@ -15,6 +15,8 @@ export interface PublicContract {
     timezoneSource?: string;
   } | null;
   monthlyValue: number;
+  taxRate?: number | null;
+  taxAmount?: number | null;
   billingCycle: string;
   paymentTerms: string;
   termsAndConditions?: string | null;

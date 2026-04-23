@@ -20,7 +20,7 @@ import {
   downloadPublicContractTermsDocument,
 } from '../../lib/publicContracts';
 import type { PublicContract } from '../../types/publicContract';
-import type { GlobalBranding } from '../../types/globalSettings';
+import type { PublicBranding } from '../../types/globalSettings';
 import { extractApiErrorMessage } from '../../lib/api';
 
 const formatCurrency = (amount: number | string) =>
@@ -55,9 +55,10 @@ const formatAddress = (address: string | Record<string, unknown> | null | undefi
   if (!address) return '';
   if (typeof address === 'string') return address;
   const lines: string[] = [];
-  if (address.street) lines.push(address.street);
+  const street = typeof address.street === 'string' ? address.street : '';
+  if (street) lines.push(street);
   const cityLine = [address.city, address.state, address.postalCode]
-    .filter(Boolean)
+    .filter((part): part is string => typeof part === 'string' && part.length > 0)
     .join(', ');
   if (cityLine) lines.push(cityLine);
   return lines.join(', ');
@@ -242,7 +243,7 @@ const buildServiceTaskGroups = (
 const PublicContractView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [contract, setContract] = useState<PublicContract | null>(null);
-  const [branding, setBranding] = useState<GlobalBranding | null>(null);
+  const [branding, setBranding] = useState<PublicBranding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -361,7 +362,7 @@ const PublicContractView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               {branding?.logoDataUrl && (
-                <img src={branding.logoDataUrl} alt={branding.companyName} className="mb-2 max-h-10 w-auto" />
+                <img src={branding.logoDataUrl} alt={branding.companyName ?? undefined} className="mb-2 max-h-10 w-auto" />
               )}
               <h1 className="text-xl font-bold" style={{ color: accentColor }}>
                 {branding?.companyName || contract.account.name}

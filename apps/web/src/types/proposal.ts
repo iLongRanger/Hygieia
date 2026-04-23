@@ -1,3 +1,5 @@
+import type { PricingSettingsSnapshot } from '../lib/pricing';
+
 export type ProposalStatus =
   | 'draft'
   | 'sent'
@@ -110,7 +112,7 @@ export interface Proposal {
   pricingStrategyVersion?: string | null;
   // Pricing plan fields
   pricingPlanId?: string | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
   pricingLocked?: boolean;
   pricingLockedAt?: string | null;
   // Public access fields
@@ -156,7 +158,7 @@ export interface CreateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan (optional - will use defaults if not provided)
   pricingPlanId?: string | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
 export interface UpdateProposalInput {
@@ -175,7 +177,7 @@ export interface UpdateProposalInput {
   proposalServices?: ProposalService[];
   // Pricing plan
   pricingPlanId?: string | null;
-  pricingSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: PricingSettingsSnapshot | null;
 }
 
 export interface ListProposalsParams {

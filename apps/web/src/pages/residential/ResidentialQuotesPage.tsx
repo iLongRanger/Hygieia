@@ -42,7 +42,7 @@ import {
   sendResidentialQuote,
   updateResidentialQuote,
 } from '../../lib/residential';
-import type { Account } from '../../types/crm';
+import type { Account, ResidentialPropertySummary } from '../../types/crm';
 import type {
   ResidentialFrequency,
   ResidentialHomeType,
@@ -233,17 +233,20 @@ function taskListsMatch(left: string[] | null | undefined, right: string[] | nul
     && normalizedLeft.every((task, index) => task === normalizedRight[index]);
 }
 
+type PropertyTaskSource = Pick<ResidentialPropertySummary, 'id' | 'defaultTasks'>;
+type AccountTaskSource = Pick<Account, 'residentialTaskLibrary'>;
+
 function getFallbackPropertyTasks(
-  property: Account['residentialProperties'] extends Array<infer T> ? T | null | undefined : never,
-  account: Account | null | undefined
+  property: PropertyTaskSource | null | undefined,
+  account: AccountTaskSource | null | undefined
 ) {
   const propertyTasks = normalizeTaskList(property?.defaultTasks);
   return propertyTasks.length > 0 ? propertyTasks : normalizeTaskList(account?.residentialTaskLibrary);
 }
 
 function getPreferredPropertyTasks(
-  property: Account['residentialProperties'] extends Array<infer T> ? T | null | undefined : never,
-  account: Account | null | undefined,
+  property: PropertyTaskSource | null | undefined,
+  account: AccountTaskSource | null | undefined,
   structuredTasksByPropertyId: Record<string, string[]>
 ) {
   if (property?.id) {
@@ -568,11 +571,12 @@ const ResidentialQuotesPage = () => {
           const fallbackTasks = getFallbackPropertyTasks(selectedProperty, selectedAccount);
           const preferredTasks = getPreferredPropertyTasks(selectedProperty, selectedAccount, propertyScopeTasksById);
 
-          if (current.includedTasks.length === 0 || taskListsMatch(current.includedTasks, fallbackTasks)) {
+          const currentTasks = current.includedTasks ?? [];
+          if (currentTasks.length === 0 || taskListsMatch(currentTasks, fallbackTasks)) {
             return preferredTasks;
           }
 
-          return current.includedTasks;
+          return currentTasks;
         })(),
     }));
   }, [selectedProperty, selectedAccount, propertyScopeTasksById]);
