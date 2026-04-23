@@ -27,7 +27,6 @@ import TaskTemplateDetail from './pages/tasks/TaskTemplateDetail';
 import AreaTemplatesPage from './pages/areas/AreaTemplatesPage';
 import PricingSettingsPage from './pages/pricing/PricingSettingsPage';
 import ResidentialPricingPlansPage from './pages/residential/ResidentialPricingPlansPage';
-import ResidentialQuotesPage from './pages/residential/ResidentialQuotesPage';
 import ProposalsList from './pages/proposals/ProposalsList';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import ProposalForm from './pages/proposals/ProposalForm';
@@ -162,7 +161,6 @@ function App() {
             <Route path="/pricing" element={<Navigate to="/commercial/pricing" replace />} />
             <Route path="/pricing/settings" element={<Navigate to="/commercial/pricing" replace />} />
             <Route path="/residential/pricing" element={withRouteGuard('/residential/pricing', <ResidentialPricingPlansPage />)} />
-            <Route path="/residential/quotes" element={withRouteGuard('/residential/quotes', <ResidentialQuotesPage />)} />
             <Route path="/proposals" element={withRouteGuard('/proposals', <ProposalsList />)} />
             <Route path="/proposals/new" element={withRouteGuard('/proposals', <ProposalForm />)} />
             <Route path="/proposals/:id" element={withRouteGuard('/proposals', <ProposalDetail />)} />

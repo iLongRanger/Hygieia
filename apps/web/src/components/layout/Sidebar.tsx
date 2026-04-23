@@ -80,7 +80,6 @@ const navSections: NavSection[] = [
     items: [
       { to: '/proposals', icon: FileText, label: 'Proposals' },
       { to: '/quotations', icon: FileText, label: 'Quotations' },
-      { to: '/residential/quotes', icon: Home, label: 'Residential Quotes' },
       { to: '/contracts', icon: FileSignature, label: 'Contracts' },
       { to: '/invoices', icon: Receipt, label: 'Invoices' },
     ],

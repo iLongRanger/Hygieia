@@ -818,65 +818,135 @@ const ProposalDetail = () => {
       <div className="grid grid-cols-1 gap-6">
         {/* Left Column */}
         <div className="space-y-6">
-          {/* Description */}
-          {activeTab === 'overview' && proposal.description && (
-            <Card>
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Description</h2>
-              <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.description}</p>
-            </Card>
-          )}
+          {activeTab === 'overview' && (
+            <>
+              <Card>
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Details</h2>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                    <div>
+                      <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
+                      <div className="text-surface-900 dark:text-white">{proposal.account.name}</div>
+                    </div>
+                  </div>
 
-          {/* Proposal Items */}
-          {activeTab === 'overview' && visibleProposalItems.length > 0 && (
-            <Card noPadding>
-              <div className="p-6 border-b border-surface-200 dark:border-surface-700">
-                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Line Items</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-surface-100 dark:bg-surface-800/10">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
-                        Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
-                        Qty
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
-                        Unit Price
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
-                    {visibleProposalItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
-                        <td className="px-6 py-4">
-                          <Badge variant="default">
-                            {item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1)}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{item.description}</td>
-                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">
-                          {item.quantity}
-                        </td>
-                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">
-                          {formatCurrency(item.unitPrice)}
-                        </td>
-                        <td className="px-6 py-4 text-right font-medium text-surface-900 dark:text-white">
-                          {formatCurrency(item.totalPrice)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                  {proposal.facility && (
+                    <div className="flex items-start gap-3">
+                      <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                      <div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">Service Location</div>
+                        <div className="text-surface-900 dark:text-white">{proposal.facility.name}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3">
+                    <User className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                    <div>
+                      <div className="text-sm text-surface-500 dark:text-surface-400">Created By</div>
+                      <div className="text-surface-900 dark:text-white">{proposal.createdByUser.fullName}</div>
+                      <div className="text-xs text-surface-500">
+                        {proposal.createdByUser.email}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                    <div>
+                      <div className="text-sm text-surface-500 dark:text-surface-400">Valid Until</div>
+                      <div className="text-surface-900 dark:text-white">{formatDate(proposal.validUntil)}</div>
+                    </div>
+                  </div>
+
+                  {proposal.pricingPlanId && (
+                    <div className="flex items-start gap-3">
+                      <Settings className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                      <div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">Pricing Plan</div>
+                        <div className="text-surface-900 dark:text-white flex items-center gap-2">
+                          {proposal.pricingSnapshot?.pricingPlanName || proposal.pricingPlanId}
+                          {proposal.pricingLocked && (
+                            <Badge variant="warning" className="flex items-center gap-1">
+                              <Lock className="h-3 w-3" />
+                              Locked
+                            </Badge>
+                          )}
+                        </div>
+                        {proposal.pricingSnapshot?.pricingType && (
+                          <div className="text-xs text-surface-500">
+                            Type: {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {proposal.signatureName && (
+                    <div className="flex items-start gap-3">
+                      <PenTool className="mt-1 h-4 w-4 text-green-400" />
+                      <div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">Signed By</div>
+                        <div className="text-surface-900 dark:text-white">{proposal.signatureName}</div>
+                        {proposal.signatureDate && (
+                          <div className="text-xs text-surface-500">
+                            {formatDate(proposal.signatureDate)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {['sent', 'viewed', 'accepted'].includes(proposal.status) && (
+                    <div className="flex items-start gap-3">
+                      <Link2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                      <div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">Public Link</div>
+                        <button
+                          onClick={handleCopyPublicLink}
+                          className="text-sm text-blue-400 hover:text-blue-300"
+                        >
+                          Click to copy
+                        </button>
+                        {proposal.publicTokenExpiresAt && (
+                          <div className="text-xs text-surface-500">
+                            Expires {formatDate(proposal.publicTokenExpiresAt)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <DollarSign className="h-5 w-5 text-gold" />
+                  <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Summary</h2>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-surface-500 dark:text-surface-400">Subtotal:</span>
+                    <span className="text-surface-900 dark:text-white font-medium">
+                      {formatCurrency(Number(proposal.subtotal) || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-surface-500 dark:text-surface-400">
+                      Tax ({((Number(proposal.taxRate) || 0) * 100).toFixed(1)}%):
+                    </span>
+                    <span className="text-surface-900 dark:text-white font-medium">
+                      {formatCurrency(Number(proposal.taxAmount) || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xl font-bold border-t border-surface-200 dark:border-surface-700 pt-3">
+                    <span className="text-surface-900 dark:text-white">Total:</span>
+                    <span className="text-emerald">{formatCurrency(Number(proposal.totalAmount) || 0)}</span>
+                  </div>
+                </div>
+              </Card>
+            </>
           )}
 
           {/* Proposal Services (Areas) */}
@@ -940,6 +1010,42 @@ const ProposalDetail = () => {
                     </div>
                   );
                 })}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'services' && visibleProposalItems.length > 0 && (
+            <Card noPadding>
+              <div className="p-6 border-b border-surface-200 dark:border-surface-700">
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Line Items</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-surface-100 dark:bg-surface-800/10">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Description</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Qty</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Unit Price</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
+                    {visibleProposalItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
+                        <td className="px-6 py-4">
+                          <Badge variant="default">
+                            {item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1)}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{item.description}</td>
+                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">{item.quantity}</td>
+                        <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">{formatCurrency(item.unitPrice)}</td>
+                        <td className="px-6 py-4 text-right font-medium text-surface-900 dark:text-white">{formatCurrency(item.totalPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </Card>
           )}
@@ -1198,6 +1304,13 @@ const ProposalDetail = () => {
             );
           })()}
 
+          {activeTab === 'overview' && proposal.description && (
+            <Card>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Description</h2>
+              <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">{proposal.description}</p>
+            </Card>
+          )}
+
           {/* Facility & Areas */}
           {activeTab === 'services' && proposal.facility && proposal.proposalServices && proposal.proposalServices.length > 0 && (
             <Card>
@@ -1301,142 +1414,6 @@ const ProposalDetail = () => {
           )}
         </div>
 
-        {/* Right Column - Summary */}
-        {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Financial Summary */}
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <DollarSign className="h-5 w-5 text-gold" />
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Financial Summary</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-500 dark:text-surface-400">Subtotal:</span>
-                <span className="text-surface-900 dark:text-white font-medium">
-                  {formatCurrency(Number(proposal.subtotal) || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-surface-500 dark:text-surface-400">
-                  Tax ({((Number(proposal.taxRate) || 0) * 100).toFixed(1)}%):
-                </span>
-                <span className="text-surface-900 dark:text-white font-medium">
-                  {formatCurrency(Number(proposal.taxAmount) || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between text-xl font-bold border-t border-surface-200 dark:border-surface-700 pt-3">
-                <span className="text-surface-900 dark:text-white">Total:</span>
-                <span className="text-emerald">{formatCurrency(Number(proposal.totalAmount) || 0)}</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Details */}
-          <Card>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Details</h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Account</div>
-                  <div className="text-surface-900 dark:text-white">{proposal.account.name}</div>
-                </div>
-              </div>
-
-              {proposal.facility && (
-                <div className="flex items-start gap-3">
-                  <Building2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                  <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">Service Location</div>
-                    <div className="text-surface-900 dark:text-white">{proposal.facility.name}</div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-start gap-3">
-                <User className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Created By</div>
-                  <div className="text-surface-900 dark:text-white">{proposal.createdByUser.fullName}</div>
-                  <div className="text-xs text-surface-500">
-                    {proposal.createdByUser.email}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Calendar className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Valid Until</div>
-                  <div className="text-surface-900 dark:text-white">{formatDate(proposal.validUntil)}</div>
-                </div>
-              </div>
-
-              {/* Pricing Plan Info */}
-              {proposal.pricingPlanId && (
-                <div className="flex items-start gap-3">
-                  <Settings className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                  <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">Pricing Plan</div>
-                    <div className="text-surface-900 dark:text-white flex items-center gap-2">
-                      {proposal.pricingSnapshot?.pricingPlanName || proposal.pricingPlanId}
-                      {proposal.pricingLocked && (
-                        <Badge variant="warning" className="flex items-center gap-1">
-                          <Lock className="h-3 w-3" />
-                          Locked
-                        </Badge>
-                      )}
-                    </div>
-                    {proposal.pricingSnapshot?.pricingType && (
-                      <div className="text-xs text-surface-500">
-                        Type: {proposal.pricingSnapshot.pricingType === 'hourly' ? 'Hourly' : 'Per Sq Ft'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Signature details for accepted proposals */}
-              {proposal.signatureName && (
-                <div className="flex items-start gap-3">
-                  <PenTool className="mt-1 h-4 w-4 text-green-400" />
-                  <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">Signed By</div>
-                    <div className="text-surface-900 dark:text-white">{proposal.signatureName}</div>
-                    {proposal.signatureDate && (
-                      <div className="text-xs text-surface-500">
-                        {formatDate(proposal.signatureDate)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Public link status */}
-              {['sent', 'viewed', 'accepted'].includes(proposal.status) && (
-                <div className="flex items-start gap-3">
-                  <Link2 className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
-                  <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400">Public Link</div>
-                    <button
-                      onClick={handleCopyPublicLink}
-                      className="text-sm text-blue-400 hover:text-blue-300"
-                    >
-                      Click to copy
-                    </button>
-                    {proposal.publicTokenExpiresAt && (
-                      <div className="text-xs text-surface-500">
-                        Expires {formatDate(proposal.publicTokenExpiresAt)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-        )}
       </div>
 
       {/* Send Proposal Modal */}

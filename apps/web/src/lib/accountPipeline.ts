@@ -48,12 +48,12 @@ export const COMMERCIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDe
 
 export const RESIDENTIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDefinition<ResidentialAccountPipelineStageId>[] = [
   { id: 'account_created', label: 'Account Created', canonicalStatus: 'lead' },
-  { id: 'quote_draft', label: 'Quote Draft', canonicalStatus: 'lead' },
+  { id: 'quote_draft', label: 'Proposal Draft', canonicalStatus: 'lead' },
   { id: 'review_required', label: 'Review Required', canonicalStatus: 'lead' },
   { id: 'review_approved', label: 'Review Approved', canonicalStatus: 'lead' },
-  { id: 'quote_sent', label: 'Quote Sent', canonicalStatus: 'proposal_sent' },
-  { id: 'quote_viewed', label: 'Quote Viewed', canonicalStatus: 'negotiation' },
-  { id: 'quote_accepted', label: 'Quote Accepted', canonicalStatus: 'negotiation' },
+  { id: 'quote_sent', label: 'Proposal Sent', canonicalStatus: 'proposal_sent' },
+  { id: 'quote_viewed', label: 'Proposal Viewed', canonicalStatus: 'negotiation' },
+  { id: 'quote_accepted', label: 'Proposal Accepted', canonicalStatus: 'negotiation' },
   { id: 'contract_ready', label: 'Contract Ready', canonicalStatus: 'negotiation' },
   { id: 'active_contract', label: 'Active Contract', canonicalStatus: 'won' },
   { id: 'scheduled_service', label: 'Scheduled Service', canonicalStatus: 'won' },
@@ -112,44 +112,44 @@ export function getResidentialJourneyState(input: {
     case 'review_required':
       return getResidentialJourneyStage(
         'review_required',
-        'Get internal approval before sending the residential quote to the client.'
+        'Get internal approval before sending the residential proposal to the client.'
       );
     case 'review_approved':
       return getResidentialJourneyStage(
         'review_approved',
-        'Send the approved residential quote to the client.'
+        'Send the approved residential proposal to the client.'
       );
     case 'accepted':
       return getResidentialJourneyStage(
         'quote_accepted',
-        'Convert the accepted quote into a residential contract.'
+        'Convert the accepted proposal into a residential contract.'
       );
     case 'viewed':
       return getResidentialJourneyStage(
         'quote_viewed',
-        'Follow up with the client while the residential quote is actively under review.'
+        'Follow up with the client while the residential proposal is actively under review.'
       );
     case 'sent':
       return getResidentialJourneyStage(
         'quote_sent',
-        'Follow up with the client or resend the quote if needed.'
+        'Follow up with the client or resend the proposal if needed.'
       );
     case 'declined':
       return {
-        currentStage: 'Quote Declined',
+        currentStage: 'Proposal Declined',
         canonicalStatus: 'lost',
-        nextStep: 'Revise the residential quote or close the opportunity.',
+        nextStep: 'Revise the residential proposal or close the opportunity.',
       };
     case 'draft':
     case 'quoted':
       return getResidentialJourneyStage(
         'quote_draft',
-        'Finish pricing details and send the residential quote to the client.'
+        'Finish pricing details and send the residential proposal to the client.'
       );
     default:
       return getResidentialJourneyStage(
         'account_created',
-        'Create the first residential quote for this household.'
+        'Create the first residential proposal for this household.'
       );
   }
 }

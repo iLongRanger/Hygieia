@@ -390,7 +390,7 @@ const AccountDetail = () => {
       });
       setResidentialQuotes(response?.data || []);
     } catch (error) {
-      console.error('Failed to fetch residential quotes:', error);
+      console.error('Failed to fetch residential proposal history:', error);
       setResidentialQuotes([]);
     }
   }, [id]);
@@ -1374,15 +1374,15 @@ function buildResidentialActions(input: {
   const openFacility: JourneyAction | undefined = input.focusedFacilityId
     ? { label: 'Open service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
     : undefined;
-  const openQuotes: JourneyAction = {
-    label: 'Open residential quotes',
-    onClick: () => input.onNavigate('/residential/quotes'),
+  const openProposals: JourneyAction = {
+    label: 'View proposals',
+    onClick: () => input.onNavigate('/proposals'),
   };
 
   if (input.isLost) {
     return {
-      primary: openFocusedProposal ?? openQuotes,
-      secondary: [openQuotes],
+      primary: openFocusedProposal ?? openProposals,
+      secondary: [openProposals],
     };
   }
 
@@ -1411,7 +1411,7 @@ function buildResidentialActions(input: {
     case 'account_created':
       return {
         primary: { label: 'Add service location', onClick: input.onAddProperty },
-        secondary: [openQuotes],
+        secondary: [openProposals],
       };
     case 'quote_draft':
     case 'review_required':
@@ -1420,9 +1420,9 @@ function buildResidentialActions(input: {
     case 'quote_viewed':
     case 'quote_accepted':
       return {
-        primary: openFocusedProposal ?? openQuotes,
+        primary: openFocusedProposal ?? openProposals,
         secondary: openFacility ? [openFacility] : [],
-        tertiary: openQuotes,
+        tertiary: openProposals,
       };
     case 'contract_ready':
       return {
@@ -1431,7 +1431,7 @@ function buildResidentialActions(input: {
       };
     default:
       return {
-        primary: openFocusedProposal ?? openQuotes,
+        primary: openFocusedProposal ?? openProposals,
         secondary: openFacility ? [openFacility] : [],
       };
   }

@@ -589,8 +589,8 @@ describe('AccountDetail', () => {
 
     expect(await screen.findByRole('heading', { name: 'Jane Doe Residence' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /residential journey/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Quote Accepted').length).toBeGreaterThan(0);
-    expect(screen.getByText(/convert the accepted quote into a residential contract/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Proposal Accepted').length).toBeGreaterThan(0);
+    expect(screen.getByText(/convert the accepted proposal into a residential contract/i)).toBeInTheDocument();
   });
 
   it('shows review-required residential journey stages when approval is needed', async () => {
@@ -702,7 +702,7 @@ describe('AccountDetail', () => {
 
     expect(await screen.findByRole('heading', { name: 'Review Household' })).toBeInTheDocument();
     expect(screen.getAllByText('Review Required').length).toBeGreaterThan(0);
-    expect(screen.getByText(/get internal approval before sending the residential quote to the client/i)).toBeInTheDocument();
+    expect(screen.getByText(/get internal approval before sending the residential proposal to the client/i)).toBeInTheDocument();
   });
 
   it('shows the commercial journey state for commercial accounts', async () => {

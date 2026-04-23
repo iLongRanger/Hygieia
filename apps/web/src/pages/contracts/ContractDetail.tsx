@@ -1311,7 +1311,7 @@ const ContractDetail = () => {
     }
 
     if (isResidentialContract && contract.residentialServiceType !== 'recurring_standard') {
-      toast.error('One-time residential services cannot be renewed. Create a new residential quote instead.');
+      toast.error('One-time residential services cannot be renewed. Create a new residential proposal instead.');
       return;
     }
 
@@ -2533,7 +2533,7 @@ const ContractDetail = () => {
             && ['active', 'expired'].includes(contract.status) && (
               <div className="rounded-md border border-surface-300/20 bg-surface-100/5 px-3 py-2 text-sm text-surface-300">
                 One-time residential services are not renewed. If the client wants another clean,
-                create a new residential quote for this property.
+                create a new residential proposal for this property.
               </div>
             )}
           {!contract.signedDate && ['sent', 'viewed', 'pending_signature'].includes(contract.status) && (

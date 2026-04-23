@@ -128,10 +128,6 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.PRICING_READ],
   },
   {
-    path: '/residential/quotes',
-    requiredPermissions: [PERMISSIONS.QUOTATIONS_READ],
-  },
-  {
     path: '/teams',
     requiredPermissions: [PERMISSIONS.TEAMS_READ],
   },

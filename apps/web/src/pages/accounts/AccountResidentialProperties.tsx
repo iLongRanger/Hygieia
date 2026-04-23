@@ -31,7 +31,7 @@ function homeTypeLabel(homeType: string | null | undefined): string {
 function stageVariant(stage: string): 'success' | 'warning' | 'info' | 'default' | 'error' {
   if (stage === 'Scheduled Service' || stage === 'Active Contract') return 'success';
   if (stage === 'Account Created') return 'info';
-  if (stage === 'Quote Declined') return 'error';
+  if (stage === 'Proposal Declined') return 'error';
   return 'warning';
 }
 
