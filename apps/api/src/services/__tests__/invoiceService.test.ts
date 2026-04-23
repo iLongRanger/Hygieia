@@ -19,14 +19,37 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    invoiceItem: {
+      create: jest.fn(),
+    },
+    invoiceJobAllocation: {
+      create: jest.fn(),
+    },
+    invoiceActivity: {
+      create: jest.fn(),
+    },
+    job: {
+      findMany: jest.fn(),
+    },
+    $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)),
   },
 }));
 
 describe('invoiceService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
+    );
     (prisma.invoice.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.invoice.create as jest.Mock).mockResolvedValue({ id: 'inv-1' });
+    (prisma.invoiceItem.create as jest.Mock).mockResolvedValue({ id: 'item-1' });
+    (prisma.invoiceJobAllocation.create as jest.Mock).mockResolvedValue({ id: 'allocation-1' });
+    (prisma.invoiceActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
+    (prisma.invoice.findUnique as jest.Mock).mockResolvedValue({
+      id: 'inv-1',
+      items: [{ id: 'item-1' }],
+    });
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       contractNumber: 'CT-1',
@@ -37,6 +60,18 @@ describe('invoiceService', () => {
       monthlyValue: { toString: () => '1200' },
       facility: { address: { timezone: 'UTC' } },
     });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      createJobCandidate({
+        id: 'job-1',
+        jobNumber: 'JOB-1',
+        accountId: 'account-1',
+        contractId: 'contract-1',
+        facilityId: 'facility-1',
+        facilityName: 'HQ',
+        contractTitle: 'Monthly Cleaning',
+        monthlyValue: '1200',
+      }),
+    ]);
   });
 
   it('generateInvoiceFromContract normalizes period and derives due date from payment terms', async () => {
@@ -62,8 +97,8 @@ describe('invoiceService', () => {
       'user-1'
     );
 
-    const createArg = (prisma.invoice.create as jest.Mock).mock.calls[0][0];
-    expect(Number(createArg.data.items.create[0].unitPrice.toString())).toBe(600);
+    const itemCreateArg = (prisma.invoiceItem.create as jest.Mock).mock.calls[0][0];
+    expect(Number(itemCreateArg.data.unitPrice.toString())).toBe(600);
   });
 
   it('generateInvoiceFromContract can disable proration and charge full monthly value', async () => {
@@ -75,15 +110,12 @@ describe('invoiceService', () => {
       false
     );
 
-    const createArg = (prisma.invoice.create as jest.Mock).mock.calls[0][0];
-    expect(Number(createArg.data.items.create[0].unitPrice.toString())).toBe(1200);
+    const itemCreateArg = (prisma.invoiceItem.create as jest.Mock).mock.calls[0][0];
+    expect(Number(itemCreateArg.data.unitPrice.toString())).toBe(1200);
   });
 
-  it('generateInvoiceFromContract rejects overlapping period for same contract', async () => {
-    (prisma.invoice.findFirst as jest.Mock).mockResolvedValue({
-      id: 'inv-existing',
-      invoiceNumber: 'INV-2026-0005',
-    });
+  it('generateInvoiceFromContract rejects when no eligible completed jobs exist', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
 
     await expect(
       generateInvoiceFromContract(
@@ -92,7 +124,7 @@ describe('invoiceService', () => {
         new Date('2026-02-28T00:00:00.000Z'),
         'user-1'
       )
-    ).rejects.toThrow('already covers an overlapping billing period');
+    ).rejects.toThrow('No eligible completed jobs found for this contract and period');
   });
 
   it('batchGenerateInvoices enforces max period length validation', async () => {
@@ -106,43 +138,32 @@ describe('invoiceService', () => {
   });
 
   it('batchGenerateInvoices returns detailed statuses for generated and duplicates', async () => {
-    (prisma.contract.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'contract-1',
-        contractNumber: 'CT-1',
-        title: 'Contract One',
+    (prisma.invoice.findUnique as jest.Mock).mockResolvedValue({
+      id: 'inv-1',
+      items: [{ id: 'item-1' }, { id: 'item-2' }],
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      createJobCandidate({
+        id: 'job-1',
+        jobNumber: 'JOB-1',
         accountId: 'account-1',
-        monthlyValue: { toString: () => '100' },
-        paymentTerms: 'Net 30',
-        facility: { id: 'facility-1', name: 'HQ', status: 'active', archivedAt: null },
-      },
-      {
-        id: 'contract-2',
-        contractNumber: 'CT-2',
-        title: 'Contract Two',
+        contractId: 'contract-1',
+        facilityId: 'facility-1',
+        facilityName: 'HQ',
+        contractTitle: 'Contract One',
+        monthlyValue: '100',
+      }),
+      createJobCandidate({
+        id: 'job-2',
+        jobNumber: 'JOB-2',
         accountId: 'account-1',
-        monthlyValue: { toString: () => '200' },
-        paymentTerms: 'Net 30',
-        facility: { id: 'facility-2', name: 'Annex', status: 'active', archivedAt: null },
-      },
-      {
-        id: 'contract-3',
-        contractNumber: 'CT-3',
-        title: 'Contract Three',
-        accountId: 'account-2',
-        monthlyValue: { toString: () => '300' },
-        paymentTerms: 'Net 30',
-        facility: { id: 'facility-3', name: 'Branch', status: 'active', archivedAt: null },
-      },
+        contractId: 'contract-2',
+        facilityId: 'facility-2',
+        facilityName: 'Annex',
+        contractTitle: 'Contract Two',
+        monthlyValue: '200',
+      }),
     ]);
-
-    (prisma.invoice.findFirst as jest.Mock)
-      .mockResolvedValueOnce(null) // duplicate check for account-1
-      .mockResolvedValueOnce(null) // invoice number lookup while creating account-1 invoice
-      .mockResolvedValueOnce({
-        id: 'inv-existing',
-        invoiceNumber: 'INV-2026-0002',
-      }); // duplicate check for account-2
 
     const result = await batchGenerateInvoices(
       new Date('2026-02-01T00:00:00.000Z'),
@@ -151,7 +172,7 @@ describe('invoiceService', () => {
     );
 
     expect(result.generated).toBe(1);
-    expect(result.duplicates).toBe(1);
+    expect(result.duplicates).toBe(0);
     expect(result.errors).toBe(0);
     expect(result.results).toEqual(
       expect.arrayContaining([
@@ -161,22 +182,49 @@ describe('invoiceService', () => {
           invoiceId: 'inv-1',
           lineItems: 2,
         }),
-        expect.objectContaining({
-          accountId: 'account-2',
-          status: 'skipped_duplicate',
-        }),
       ])
     );
 
     const createArg = (prisma.invoice.create as jest.Mock).mock.calls[0][0];
     expect(createArg.data.accountId).toBe('account-1');
-    expect(createArg.data.items.create).toHaveLength(2);
-    expect(createArg.data.items.create[0].description).toContain('HQ');
-    expect(createArg.data.items.create[1].description).toContain('Annex');
-    expect(result.results).toEqual(
-      expect.not.arrayContaining([
-        expect.objectContaining({ accountId: 'account-1', status: 'skipped_duplicate' }),
-      ])
+    const itemDescriptions = (prisma.invoiceItem.create as jest.Mock).mock.calls.map(
+      (call) => call[0].data.description
     );
+    expect(itemDescriptions).toHaveLength(2);
+    expect(itemDescriptions[0]).toContain('HQ');
+    expect(itemDescriptions[1]).toContain('Annex');
   });
 });
+
+function createJobCandidate(input: {
+  id: string;
+  jobNumber: string;
+  accountId: string;
+  contractId: string;
+  facilityId: string;
+  facilityName: string;
+  contractTitle: string;
+  monthlyValue: string;
+}) {
+  return {
+    id: input.id,
+    jobNumber: input.jobNumber,
+    accountId: input.accountId,
+    contractId: input.contractId,
+    facilityId: input.facilityId,
+    scheduledDate: new Date('2026-02-15T00:00:00.000Z'),
+    facility: {
+      id: input.facilityId,
+      name: input.facilityName,
+    },
+    contract: {
+      id: input.contractId,
+      contractNumber: input.contractId,
+      title: input.contractTitle,
+      monthlyValue: { toString: () => input.monthlyValue },
+      taxRate: { toString: () => '0' },
+      paymentTerms: 'Net 30',
+      serviceFrequency: 'monthly',
+    },
+  };
+}

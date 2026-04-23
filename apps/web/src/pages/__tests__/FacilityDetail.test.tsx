@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
 import type { ResidentialPricingPlan, ResidentialProperty } from '../../types/residential';
+import { useAuthStore } from '../../stores/authStore';
 
 let mockParams: { id?: string } = { id: 'facility-1' };
 const navigateMock = vi.fn();
@@ -38,6 +39,11 @@ const submitFacilityForProposalMock = vi.fn();
 const getResidentialPropertyMock = vi.fn();
 const listResidentialPricingPlansMock = vi.fn();
 const updateResidentialPropertyMock = vi.fn();
+const listUsersMock = vi.fn();
+const listTeamsMock = vi.fn();
+const listContractsMock = vi.fn();
+const assignContractTeamMock = vi.fn();
+const createAppointmentMock = vi.fn();
 
 vi.mock('../../lib/facilities', () => ({
   getFacility: (...args: unknown[]) => getFacilityMock(...args),
@@ -67,6 +73,23 @@ vi.mock('../../lib/residential', () => ({
   getResidentialProperty: (...args: unknown[]) => getResidentialPropertyMock(...args),
   listResidentialPricingPlans: (...args: unknown[]) => listResidentialPricingPlansMock(...args),
   updateResidentialProperty: (...args: unknown[]) => updateResidentialPropertyMock(...args),
+}));
+
+vi.mock('../../lib/users', () => ({
+  listUsers: (...args: unknown[]) => listUsersMock(...args),
+}));
+
+vi.mock('../../lib/teams', () => ({
+  listTeams: (...args: unknown[]) => listTeamsMock(...args),
+}));
+
+vi.mock('../../lib/contracts', () => ({
+  listContracts: (...args: unknown[]) => listContractsMock(...args),
+  assignContractTeam: (...args: unknown[]) => assignContractTeamMock(...args),
+}));
+
+vi.mock('../../lib/appointments', () => ({
+  createAppointment: (...args: unknown[]) => createAppointmentMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -357,10 +380,21 @@ describe('FacilityDetail', () => {
   beforeEach(() => {
     mockParams = { id: 'facility-1' };
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'owner-1', email: 'owner@example.com', fullName: 'Owner User', role: 'owner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+    });
     submitFacilityForProposalMock.mockReset();
     getResidentialPropertyMock.mockReset();
     listResidentialPricingPlansMock.mockReset();
     updateResidentialPropertyMock.mockReset();
+    listUsersMock.mockReset();
+    listTeamsMock.mockReset();
+    listContractsMock.mockReset();
+    assignContractTeamMock.mockReset();
+    createAppointmentMock.mockReset();
     getFacilityMock.mockResolvedValue(facility);
     listAreasMock.mockResolvedValue({ data: areas });
     listAreaTypesMock.mockResolvedValue({ data: areaTypes });
@@ -370,6 +404,20 @@ describe('FacilityDetail', () => {
     getResidentialPropertyMock.mockResolvedValue(residentialProperty);
     listResidentialPricingPlansMock.mockResolvedValue({ data: [residentialPricingPlan] });
     updateResidentialPropertyMock.mockResolvedValue(residentialProperty);
+    listUsersMock.mockResolvedValue({
+      data: [
+        {
+          id: 'user-1',
+          fullName: 'Admin User',
+          email: 'admin@example.com',
+          role: 'admin',
+          roles: [{ role: { key: 'admin' } }],
+        },
+      ],
+    });
+    listTeamsMock.mockResolvedValue({ data: [] });
+    listContractsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+    createAppointmentMock.mockResolvedValue({ id: 'appointment-1' });
     getAreaTemplateByAreaTypeMock.mockResolvedValue({
       defaultSquareFeet: null,
       items: [],
@@ -418,7 +466,7 @@ describe('FacilityDetail', () => {
     expect(screen.queryByRole('option', { name: 'Office' })).not.toBeInTheDocument();
   });
 
-  it('opens walkthroughs for residential properties through the linked facility', async () => {
+  it('opens the booking modal for residential properties through the linked facility', async () => {
     const user = userEvent.setup();
     mockParams = { id: 'property-1' };
 
@@ -426,15 +474,10 @@ describe('FacilityDetail', () => {
 
     await user.click(await screen.findByRole('button', { name: /book an appointment/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith(
-      '/appointments?facilityId=facility-1&accountId=account-1&type=walk_through',
-      {
-        state: {
-          backLabel: 'Main Facility',
-          backPath: '/properties/property-1',
-        },
-      }
-    );
+    expect(await screen.findByRole('heading', { name: /book an appointment/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Acme Corp')).toBeDisabled();
+    expect(screen.getByDisplayValue('Main Facility')).toBeDisabled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('requests residential area types in property mode', async () => {

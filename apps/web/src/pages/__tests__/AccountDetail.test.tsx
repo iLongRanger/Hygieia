@@ -259,8 +259,8 @@ const upcomingAppointment: Appointment = {
   id: 'appt-upcoming',
   type: 'walk_through',
   status: 'scheduled',
-  scheduledStart: '2026-04-18T16:00:00.000Z',
-  scheduledEnd: '2026-04-18T17:00:00.000Z',
+  scheduledStart: '2026-04-24T16:00:00.000Z',
+  scheduledEnd: '2026-04-24T17:00:00.000Z',
   timezone: 'America/Los_Angeles',
   location: null,
   notes: null,
@@ -363,11 +363,11 @@ describe('AccountDetail', () => {
     expect(screen.getByText('PROP-001')).toBeInTheDocument();
     expect(screen.getByText('CONT-001')).toBeInTheDocument();
 
-    // Service tab shows bookings
+    // Service tab shows scheduled work
     await userEventInstance.click(screen.getByRole('button', { name: /^service$/i }));
-    expect(screen.getByRole('heading', { name: /bookings/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /upcoming work/i })).toBeInTheDocument();
     expect(screen.getAllByText('Walkthrough').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Apr 18, 2026').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Apr 24').length).toBeGreaterThan(0);
 
     // History tab shows activities
     await userEventInstance.click(screen.getByRole('button', { name: /^history$/i }));
@@ -379,7 +379,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /^edit$/i }));
+    await userEventInstance.click(screen.getAllByRole('button', { name: /^edit$/i })[0]);
 
     const accountNameInput = await screen.findByLabelText(/account name/i);
     await userEventInstance.clear(accountNameInput);
@@ -439,11 +439,10 @@ describe('AccountDetail', () => {
 
     render(<AccountDetail />);
 
-    const alphaTeamElements = await screen.findAllByText('Alpha Team');
-    expect(alphaTeamElements.length).toBeGreaterThan(0);
-
-    await userEventInstance.click(screen.getByRole('button', { name: /^edit$/i }));
-    expect(await screen.findByLabelText(/assigned team/i)).toHaveValue('Alpha Team');
+    await screen.findByRole('heading', { name: 'Acme Corporation' });
+    await userEventInstance.click(screen.getByRole('button', { name: /^assignment$/i }));
+    expect(await screen.findByText('Assigned Team')).toBeInTheDocument();
+    expect(screen.getByText('Alpha Team')).toBeInTheDocument();
   });
 
   it('does not show a square feet field when adding a facility from the account page', async () => {
@@ -451,7 +450,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /add service location/i }));
+    await userEventInstance.click(await screen.findByRole('button', { name: /^add location$/i }));
 
     expect(screen.queryByLabelText(/square feet/i)).not.toBeInTheDocument();
     expect(
@@ -464,7 +463,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Acme Corporation' });
-    await userEventInstance.click(screen.getByRole('button', { name: /add service location/i }));
+    await userEventInstance.click(await screen.findByRole('button', { name: /^add location$/i }));
     await userEventInstance.selectOptions(await screen.findByLabelText(/service frequency/i), '3x_week');
 
     const monday = screen.getByLabelText(/mon/i) as HTMLInputElement;
@@ -854,12 +853,10 @@ describe('AccountDetail', () => {
     await screen.findByRole('heading', { name: 'Oak Household' });
     const userEventInstance = userEvent.setup();
     await userEventInstance.click(screen.getByRole('button', { name: /^service$/i }));
-    expect(await screen.findByRole('heading', { name: /service details/i })).toBeInTheDocument();
-    expect(screen.getByText('Recurring Standard')).toBeInTheDocument();
-    expect(screen.getByText('Weekly')).toBeInTheDocument();
-    expect(screen.getAllByText('Apr 15, 2026').length).toBeGreaterThan(0);
-    expect(screen.getByText('9:00 AM - 11:00 AM')).toBeInTheDocument();
-    expect(screen.getByText('Account Manager')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /upcoming work/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Apr 15').length).toBeGreaterThan(0);
+    expect(screen.getByText(/9:00 AM.*11:00 AM/)).toBeInTheDocument();
+    expect(screen.getAllByText('Account Manager').length).toBeGreaterThan(0);
   });
 
   it('redirects residential accounts to the residential account route', async () => {
@@ -1013,7 +1010,7 @@ describe('AccountDetail', () => {
 
     await screen.findByRole('heading', { name: 'Birch Residence' });
     expect(screen.queryByRole('heading', { name: /task manager/i })).not.toBeInTheDocument();
-    await userEventInstance.click(screen.getByRole('button', { name: /open facility/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /open service location/i }));
 
     expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
       state: {
@@ -1143,7 +1140,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Maple Residence' });
-    await userEventInstance.click(screen.getAllByRole('button', { name: /open proposal/i })[0]);
+    await userEventInstance.click(screen.getByRole('button', { name: /PROP-RES-005/i }));
 
     expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-res-5', {
       state: {
