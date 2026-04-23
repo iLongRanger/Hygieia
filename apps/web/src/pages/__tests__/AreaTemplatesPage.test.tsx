@@ -32,10 +32,10 @@ vi.mock('../../lib/facilities', () => ({
   createAreaTemplate: (...args: unknown[]) => createAreaTemplateMock(...args),
   updateAreaTemplate: (...args: unknown[]) => updateAreaTemplateMock(...args),
   deleteAreaTemplate: (...args: unknown[]) => deleteAreaTemplateMock(...args),
-  listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
 }));
 
 vi.mock('../../lib/tasks', () => ({
+  listTaskTemplates: (...args: unknown[]) => listTaskTemplatesMock(...args),
   createTaskTemplate: (...args: unknown[]) => createTaskTemplateMock(...args),
 }));
 

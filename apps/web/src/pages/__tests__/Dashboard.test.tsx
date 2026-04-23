@@ -45,6 +45,14 @@ describe('Dashboard', () => {
     getDashboardStatsMock.mockReset();
     listContractsMock.mockReset();
     listJobsMock.mockReset();
+    listContractsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+    });
+    listJobsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
   });
 
   it('shows upcoming appointments from the API', async () => {

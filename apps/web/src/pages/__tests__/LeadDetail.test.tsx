@@ -23,6 +23,7 @@ const getLeadMock = vi.fn();
 const listLeadSourcesMock = vi.fn();
 const updateLeadMock = vi.fn();
 const convertLeadMock = vi.fn();
+const listAccountsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listFacilitiesMock = vi.fn();
 const createAppointmentMock = vi.fn();
@@ -35,6 +36,10 @@ vi.mock('../../lib/leads', () => ({
   listLeadSources: (...args: unknown[]) => listLeadSourcesMock(...args),
   updateLead: (...args: unknown[]) => updateLeadMock(...args),
   convertLead: (...args: unknown[]) => convertLeadMock(...args),
+}));
+
+vi.mock('../../lib/accounts', () => ({
+  listAccounts: (...args: unknown[]) => listAccountsMock(...args),
 }));
 
 vi.mock('../../lib/users', () => ({
@@ -202,6 +207,10 @@ describe('LeadDetail', () => {
     navigateMock.mockReset();
     getLeadMock.mockResolvedValue(lead);
     listAppointmentsMock.mockResolvedValue([]);
+    listAccountsMock.mockResolvedValue({
+      data: [{ id: 'account-1', name: 'Acme Corporation', type: 'commercial' }],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
     listLeadSourcesMock.mockResolvedValue({ data: [leadSource] });
     listUsersMock.mockResolvedValue({
       data: [user, subcontractorUser],
