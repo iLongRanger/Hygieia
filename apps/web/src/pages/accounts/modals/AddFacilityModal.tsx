@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -34,7 +34,7 @@ export function AddFacilityModal({
     : BUILDING_TYPES;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Service Location" size="lg">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Add Service Location" size="lg">
       <div className="space-y-4">
         <Input
           label="Service Location Name"
@@ -159,6 +159,6 @@ export function AddFacilityModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -1878,7 +1878,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         submitting={submittingForProposal}
         locationLabel={locationLabel}
       />
-      <Modal
+      <Drawer
         isOpen={showAppointmentModal && canWriteAppointments}
         onClose={() => setShowAppointmentModal(false)}
         title="Book an Appointment"
@@ -1993,7 +1993,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

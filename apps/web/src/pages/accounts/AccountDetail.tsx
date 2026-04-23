@@ -49,7 +49,7 @@ import type { ResidentialHomeProfile } from '../../types/residential';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { AccountHero } from './AccountHero';
@@ -1119,7 +1119,7 @@ const AccountDetail = () => {
         saving={creatingFacility}
         accountType={account.type}
       />
-      <Modal
+      <Drawer
         isOpen={showPropertyModal && Boolean(isResidentialAccount)}
         onClose={() => setShowPropertyModal(false)}
         title={editingProperty ? 'Edit Residential Service Location' : 'Add Residential Service Location'}
@@ -1259,7 +1259,7 @@ const AccountDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

@@ -20,7 +20,7 @@ import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import {
   listExpenses,
   getExpense,
@@ -543,7 +543,7 @@ const ExpensesPage = () => {
             </div>
 
             {/* Reject modal */}
-            <Modal
+            <Drawer
               isOpen={showRejectModal}
               onClose={() => {
                 setShowRejectModal(false);
@@ -576,10 +576,10 @@ const ExpensesPage = () => {
                   </Button>
                 </div>
               </div>
-            </Modal>
+            </Drawer>
 
             {/* Edit modal (reuses create modal) */}
-            <Modal
+            <Drawer
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
               title={editingExpense ? 'Edit Expense' : 'Add Expense'}
@@ -593,7 +593,7 @@ const ExpensesPage = () => {
                 onSave={handleSave}
                 onCancel={() => setShowCreateModal(false)}
               />
-            </Modal>
+            </Drawer>
           </>
         ) : null}
       </div>
@@ -721,7 +721,7 @@ const ExpensesPage = () => {
       )}
 
       {/* Create modal */}
-      <Modal
+      <Drawer
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Add Expense"
@@ -735,7 +735,7 @@ const ExpensesPage = () => {
           onSave={handleSave}
           onCancel={() => setShowCreateModal(false)}
         />
-      </Modal>
+      </Drawer>
     </div>
   );
 };

@@ -15,7 +15,7 @@ import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -487,7 +487,7 @@ const AccountsList = () => {
         </div>
       </Card>
 
-      <Modal
+      <Drawer
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Add New Account"
@@ -789,7 +789,7 @@ const AccountsList = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

@@ -11,7 +11,7 @@ import {
   ExternalLink,
   Loader2,
 } from 'lucide-react';
-import { Modal } from '../ui/Modal';
+import { Drawer } from '../ui/Drawer';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -182,7 +182,7 @@ export const ClientProfileModal = ({
   const clientName = lead?.companyName || lead?.contactName || account?.name || 'Client';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={clientName} size="xl">
+    <Drawer isOpen={isOpen} onClose={onClose} title={clientName} size="xl">
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
@@ -453,6 +453,6 @@ export const ClientProfileModal = ({
           </div>
         </div>
       )}
-    </Modal>
+    </Drawer>
   );
 };

@@ -16,7 +16,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
 import { listUsers } from '../../lib/users';
 import {
@@ -616,7 +616,7 @@ const TimesheetsPage = () => {
       )}
 
       {/* Reject Modal */}
-      <Modal
+      <Drawer
         isOpen={!!rejectModalId}
         onClose={() => { setRejectModalId(null); setRejectNotes(''); }}
         title="Reject Timesheet"
@@ -642,10 +642,10 @@ const TimesheetsPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       {/* Delete Modal */}
-      <Modal
+      <Drawer
         isOpen={!!deleteModalId}
         onClose={() => setDeleteModalId(null)}
         title="Delete Timesheet"
@@ -663,7 +663,7 @@ const TimesheetsPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

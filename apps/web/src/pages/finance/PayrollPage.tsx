@@ -18,7 +18,7 @@ import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import {
   listPayrollRuns,
   getPayrollRun,
@@ -117,7 +117,7 @@ function GenerateModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Generate Payroll Run" size="sm">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Generate Payroll Run" size="sm">
       <div className="space-y-4">
         <Input
           label="Period Start"
@@ -140,7 +140,7 @@ function GenerateModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 
@@ -183,7 +183,7 @@ function AdjustModal({ isOpen, onClose, entry, onSave, saving }: AdjustModalProp
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Adjust Payroll Entry" size="sm">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Adjust Payroll Entry" size="sm">
       <div className="space-y-4">
         {entry && (
           <p className="text-sm text-surface-500 dark:text-surface-400">
@@ -225,7 +225,7 @@ function AdjustModal({ isOpen, onClose, entry, onSave, saving }: AdjustModalProp
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 

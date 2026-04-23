@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Can } from '../../components/auth/Can';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -259,7 +259,7 @@ const UsersList = () => {
       </Card>
 
       <Can permission={PERMISSIONS.USERS_WRITE}>
-        <Modal
+        <Drawer
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           title="Add New User"
@@ -346,7 +346,7 @@ const UsersList = () => {
             </Button>
           </div>
         </div>
-        </Modal>
+        </Drawer>
       </Can>
     </div>
   );

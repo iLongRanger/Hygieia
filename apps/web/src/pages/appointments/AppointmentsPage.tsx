@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -1146,7 +1146,7 @@ const AppointmentsPage = () => {
         </div>
       )}
 
-      <Modal
+      <Drawer
         isOpen={showCreateModal && canWriteAppointments}
         onClose={() => setShowCreateModal(false)}
         title="Schedule Appointment"
@@ -1287,9 +1287,9 @@ const AppointmentsPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showEditModal && canWriteAppointments}
         onClose={() => setShowEditModal(false)}
         title="Edit Appointment"
@@ -1450,7 +1450,7 @@ const AppointmentsPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       <ConfirmDialog
         isOpen={showDeleteDialog && canWriteAppointments}

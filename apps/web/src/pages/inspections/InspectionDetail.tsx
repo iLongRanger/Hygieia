@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import {
   getInspection,
   startInspection,
@@ -884,7 +884,7 @@ const InspectionDetail = () => {
       )}
 
       {/* Review modal */}
-      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Review Inspection" size="lg">
+      <Drawer isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Review Inspection" size="lg">
         {(() => {
           const areasWithoutNotes = Object.entries(groupedItems).filter(
             ([, items]) => !getAreaAggregate(items).notes
@@ -984,7 +984,7 @@ const InspectionDetail = () => {
             </div>
           );
         })()}
-      </Modal>
+      </Drawer>
     </div>
   );
 };

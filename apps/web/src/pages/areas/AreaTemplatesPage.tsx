@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import {
@@ -811,7 +811,7 @@ const AreaTemplatesPage = () => {
         </div>
       </Card>
 
-      <Modal
+      <Drawer
         isOpen={showTemplateViewModal}
         onClose={() => setShowTemplateViewModal(false)}
         title="Template Details"
@@ -890,9 +890,9 @@ const AreaTemplatesPage = () => {
             </div>
           </div>
         ) : null}
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showItemManagerModal}
         onClose={() => setShowItemManagerModal(false)}
         title="Item Types"
@@ -910,9 +910,9 @@ const AreaTemplatesPage = () => {
           </div>
           <Table data={fixtureTypes} columns={itemColumns} isLoading={loadingItems} />
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showAreaTypeManagerModal}
         onClose={() => setShowAreaTypeManagerModal(false)}
         title="Area Types"
@@ -930,9 +930,9 @@ const AreaTemplatesPage = () => {
           </div>
           <Table data={areaTypes} columns={areaTypeColumns} isLoading={areaTypesLoading} />
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showTemplateEditorModal}
         onClose={() => setShowTemplateEditorModal(false)}
         title={selectedTemplate ? 'Edit Template' : 'Create Template'}
@@ -1133,9 +1133,9 @@ const AreaTemplatesPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showTaskTemplateModal}
         onClose={() => setShowTaskTemplateModal(false)}
         title="Quick Create Task Template"
@@ -1194,9 +1194,9 @@ const AreaTemplatesPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showItemModal}
         onClose={() => setShowItemModal(false)}
         title={itemForm.id ? 'Edit Item Type' : 'Create Item Type'}
@@ -1249,9 +1249,9 @@ const AreaTemplatesPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showAreaTypeModal}
         onClose={() => setShowAreaTypeModal(false)}
         title={areaTypeForm.id ? 'Edit Area Type' : 'Create Area Type'}
@@ -1360,7 +1360,7 @@ const AreaTemplatesPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       <ConfirmDialog
         isOpen={Boolean(itemDeleteId)}

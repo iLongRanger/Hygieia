@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import type { CleaningFrequency } from '../../../types/facility';
 import type { AreaTemplateTaskSelection } from '../facility-constants';
 import {
@@ -55,7 +55,7 @@ export function TaskSelectionModal({
   hasSelectedTasks,
 }: TaskSelectionModalProps): React.JSX.Element {
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title={`Add Tasks${
@@ -215,6 +215,6 @@ export function TaskSelectionModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

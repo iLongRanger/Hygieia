@@ -19,7 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -373,7 +373,7 @@ const ContactDetail = () => {
         </Card>
       </div>
 
-      <Modal
+      <Drawer
         isOpen={showEditModal && canWriteContacts}
         onClose={() => setShowEditModal(false)}
         title="Edit Contact"
@@ -494,7 +494,7 @@ const ContactDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

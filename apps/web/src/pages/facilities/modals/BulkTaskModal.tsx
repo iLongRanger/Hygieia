@@ -2,7 +2,7 @@ import { CheckSquare, Square } from 'lucide-react';
 import type { Area, TaskTemplate } from '../../../types/facility';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Select } from '../../../components/ui/Select';
 import { CLEANING_FREQUENCIES } from '../facility-constants';
 
@@ -36,7 +36,7 @@ export function BulkTaskModal({
   saving,
 }: BulkTaskModalProps): React.JSX.Element {
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title={`Add Tasks${selectedAreaForTask ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType.name}` : ''}`}
@@ -133,6 +133,6 @@ export function BulkTaskModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

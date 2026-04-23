@@ -11,7 +11,7 @@ import type {
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import type { AreaItemInput, AreaTemplateTaskSelection } from '../facility-constants';
@@ -82,7 +82,7 @@ export function AreaModal({
   saving,
 }: AreaModalProps): React.JSX.Element {
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title={editingArea ? 'Edit Area' : 'Add Area'}
@@ -434,6 +434,6 @@ export function AreaModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

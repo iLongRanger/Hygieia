@@ -15,7 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import {
   archivePricingSettings,
   createPricingSettings,
@@ -465,7 +465,7 @@ const PricingSettingsPage = () => {
         )}
       </div>
 
-      <Modal
+      <Drawer
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create Commercial Pricing Plan"
@@ -491,7 +491,7 @@ const PricingSettingsPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       <ConfirmDialog
         isOpen={showArchiveConfirm}

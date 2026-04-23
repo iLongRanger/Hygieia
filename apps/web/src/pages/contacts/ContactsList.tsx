@@ -18,7 +18,7 @@ import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -428,7 +428,7 @@ const ContactsList = () => {
         </div>
       </Card>
 
-      <Modal
+      <Drawer
         isOpen={showCreateModal && canWriteContacts}
         onClose={() => setShowCreateModal(false)}
         title="Add New Contact"
@@ -565,7 +565,7 @@ const ContactsList = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

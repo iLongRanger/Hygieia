@@ -1,7 +1,7 @@
 import type { UpdateFacilityInput } from '../../../types/facility';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { BUILDING_TYPES, RESIDENTIAL_BUILDING_TYPES } from '../facility-constants';
@@ -34,7 +34,7 @@ export function EditFacilityModal({
     : BUILDING_TYPES;
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title={`Edit ${locationLabel}`}
@@ -188,6 +188,6 @@ export function EditFacilityModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

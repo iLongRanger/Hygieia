@@ -9,7 +9,7 @@ import type {
 } from '../../../types/facility';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { CLEANING_FREQUENCIES } from '../facility-constants';
@@ -44,7 +44,7 @@ export function TaskModal({
   saving,
 }: TaskModalProps): React.JSX.Element {
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title={
@@ -251,6 +251,6 @@ export function TaskModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

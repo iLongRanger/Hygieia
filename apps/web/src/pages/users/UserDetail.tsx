@@ -17,7 +17,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Can } from '../../components/auth/Can';
 import {
@@ -386,7 +386,7 @@ const UserDetail = () => {
 
       {/* Edit User Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
-        <Modal
+        <Drawer
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           title="Edit User"
@@ -447,12 +447,12 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-        </Modal>
+        </Drawer>
       </Can>
 
       {/* Delete Confirmation Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
-        <Modal
+        <Drawer
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
           title="Delete User"
@@ -483,12 +483,12 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-        </Modal>
+        </Drawer>
       </Can>
 
       {/* Add Role Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
-        <Modal
+        <Drawer
           isOpen={showAddRoleModal}
           onClose={() => {
             setShowAddRoleModal(false);
@@ -527,12 +527,12 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-        </Modal>
+        </Drawer>
       </Can>
 
       {/* Reset Password Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
-        <Modal
+        <Drawer
           isOpen={showPasswordModal}
           onClose={() => {
             setShowPasswordModal(false);
@@ -588,7 +588,7 @@ const UserDetail = () => {
             </Button>
           </div>
         </div>
-        </Modal>
+        </Drawer>
       </Can>
     </div>
   );

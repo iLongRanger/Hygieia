@@ -1,5 +1,5 @@
 import { Button } from '../../../components/ui/Button';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Textarea } from '../../../components/ui/Textarea';
 import type { Area, FacilityTask } from '../../../types/facility';
 
@@ -51,7 +51,7 @@ export function SubmitProposalModal({
   const unassignedTaskCount = activeTasks.filter((task) => !task.area?.id).length;
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={() => {
         if (submitting) return;
@@ -149,6 +149,6 @@ export function SubmitProposalModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

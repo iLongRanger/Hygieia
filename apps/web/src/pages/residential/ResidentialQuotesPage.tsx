@@ -16,7 +16,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
 import { Textarea } from '../../components/ui/Textarea';
@@ -1127,7 +1127,7 @@ const ResidentialQuotesPage = () => {
 
       <Table data={quotes} columns={columns} isLoading={loading} />
 
-      <Modal
+      <Drawer
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingQuote ? 'Edit Residential Quote' : 'New Residential Quote'}
@@ -1777,7 +1777,7 @@ const ResidentialQuotesPage = () => {
             </Card>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       {sendModalQuote && (
         <SendResidentialQuoteModal

@@ -37,7 +37,7 @@ import { PERMISSIONS } from '../../lib/permissions';
 import ProposalTimeline from '../../components/proposals/ProposalTimeline';
 import ProposalVersionHistory from '../../components/proposals/ProposalVersionHistory';
 import SendProposalModal from '../../components/proposals/SendProposalModal';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Input } from '../../components/ui/Input';
 import {
   getProposal,
@@ -1415,7 +1415,7 @@ const ProposalDetail = () => {
       )}
 
       {/* Task Quick-Edit Modal */}
-      <Modal
+      <Drawer
         isOpen={!!editingService}
         onClose={() => setEditingService(null)}
         title={`Edit Tasks - ${editingService?.serviceName || ''}`}
@@ -1457,7 +1457,7 @@ const ProposalDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

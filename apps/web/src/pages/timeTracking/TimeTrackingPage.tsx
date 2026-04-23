@@ -17,7 +17,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
 import {
   listTimeEntries,
@@ -825,7 +825,7 @@ const TimeTrackingPage = () => {
         </div>
       )}
 
-      <Modal
+      <Drawer
         isOpen={showClockInModal}
         onClose={() => setShowClockInModal(false)}
         title="Clock In"
@@ -867,9 +867,9 @@ const TimeTrackingPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showClockOutCompleteModal}
         onClose={() => setShowClockOutCompleteModal(false)}
         title="Complete Job Before Clock-Out"
@@ -905,7 +905,7 @@ const TimeTrackingPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

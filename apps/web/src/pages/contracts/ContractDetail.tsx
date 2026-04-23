@@ -33,7 +33,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
@@ -3349,7 +3349,7 @@ const ContractDetail = () => {
       )}
 
       {/* Renewal Modal */}
-      <Modal
+      <Drawer
         isOpen={showRenewModal}
         onClose={() => setShowRenewModal(false)}
         title={isResidentialContract ? 'Renew Residential Service' : 'Renew Contract'}
@@ -3516,9 +3516,9 @@ const ContractDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showAmendmentModal}
         onClose={() => setShowAmendmentModal(false)}
         title="Create Contract Change Draft"
@@ -3571,9 +3571,9 @@ const ContractDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showAmendmentDetailModal}
         onClose={() => {
           setAppliedRecurringJobsSummary(null);
@@ -4373,7 +4373,7 @@ const ContractDetail = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </Drawer>
 
       <AmendmentAreaSetupModal
         isOpen={showAmendmentAreaModal}

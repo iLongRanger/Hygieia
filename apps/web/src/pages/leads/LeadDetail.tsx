@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -973,7 +973,7 @@ const LeadDetail = () => {
         </Card>
       </div>
 
-      <Modal
+      <Drawer
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}
         title="Schedule Walkthrough"
@@ -1244,9 +1244,9 @@ const LeadDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showRescheduleModal}
         onClose={() => setShowRescheduleModal(false)}
         title="Reschedule Walkthrough"
@@ -1295,9 +1295,9 @@ const LeadDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showCompleteModal}
         onClose={() => setShowCompleteModal(false)}
         title="Complete Walkthrough"
@@ -1424,9 +1424,9 @@ const LeadDetail = () => {
             )}
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="Edit Lead"
@@ -1609,9 +1609,9 @@ const LeadDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         isOpen={showLostModal}
         onClose={() => setShowLostModal(false)}
         title="Mark Lead as Lost"
@@ -1638,7 +1638,7 @@ const LeadDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

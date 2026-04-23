@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import {
@@ -434,7 +434,7 @@ const TaskTemplateDetail = () => {
         </Card>
       </div>
 
-      <Modal
+      <Drawer
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="Edit Task Template"
@@ -640,7 +640,7 @@ const TaskTemplateDetail = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

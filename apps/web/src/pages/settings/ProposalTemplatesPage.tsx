@@ -16,7 +16,7 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { extractApiErrorMessage } from '../../lib/api';
 import {
   listTemplates,
@@ -250,7 +250,7 @@ const ProposalTemplatesPage: React.FC = () => {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal
+      <Drawer
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingTemplate ? 'Edit Template' : 'New Template'}
@@ -296,7 +296,7 @@ const ProposalTemplatesPage: React.FC = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

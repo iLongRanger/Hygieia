@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from '../../../components/ui/Modal';
+import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -64,7 +64,7 @@ export function EditAccountModal({
   const assignableAccountManagers = users.filter(canBeAccountManager);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Account" size="lg">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Edit Account" size="lg">
       <div className="space-y-4">
         <Input
           label="Account Name"
@@ -193,6 +193,6 @@ export function EditAccountModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }

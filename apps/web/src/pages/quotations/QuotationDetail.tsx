@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -711,7 +711,7 @@ const QuotationDetail = () => {
 
       {/* Send Modal */}
       {showSendModal && (
-        <Modal
+        <Drawer
           isOpen={showSendModal}
           title="Send Quotation"
           onClose={() => setShowSendModal(false)}
@@ -737,12 +737,12 @@ const QuotationDetail = () => {
               </Button>
             </div>
           </div>
-        </Modal>
+        </Drawer>
       )}
 
       {/* Reject Modal */}
       {showRejectModal && (
-        <Modal
+        <Drawer
           isOpen={showRejectModal}
           title="Reject Quotation"
           onClose={() => setShowRejectModal(false)}
@@ -767,7 +767,7 @@ const QuotationDetail = () => {
               </Button>
             </div>
           </div>
-        </Modal>
+        </Drawer>
       )}
     </div>
   );

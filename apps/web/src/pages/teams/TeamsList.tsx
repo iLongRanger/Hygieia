@@ -4,7 +4,7 @@ import { Plus, Users, Archive, RotateCcw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { extractApiErrorMessage } from '../../lib/api';
@@ -274,7 +274,7 @@ const TeamsList = () => {
         </div>
       </Card>
 
-      <Modal
+      <Drawer
         isOpen={showModal}
         onClose={() => {
           setShowModal(false);
@@ -358,7 +358,7 @@ const TeamsList = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

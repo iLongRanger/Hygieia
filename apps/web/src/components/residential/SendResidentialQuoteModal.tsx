@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, FileText, Send } from 'lucide-react';
-import { Modal } from '../ui/Modal';
+import { Drawer } from '../ui/Drawer';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
@@ -85,7 +85,7 @@ Thank you,`,
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Send Residential Quote" size="2xl">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Send Residential Quote" size="2xl">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="flex flex-col">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300">
@@ -169,7 +169,7 @@ Thank you,`,
           </div>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 };
 

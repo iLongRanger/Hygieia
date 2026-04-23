@@ -23,7 +23,7 @@ import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { MonthCalendar, WeekCalendar, DayCalendar } from '../../components/calendar';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { listJobs, startJob, completeJob, cancelJob, generateJobs } from '../../lib/jobs';
@@ -1234,7 +1234,7 @@ const JobsList = () => {
         </div>
       ) : null}
 
-      <Modal
+      <Drawer
         isOpen={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
         title="Generate Recurring Jobs"
@@ -1359,7 +1359,7 @@ const JobsList = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

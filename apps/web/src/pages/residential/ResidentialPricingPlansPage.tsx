@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { useAuthStore } from '../../stores/authStore';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -358,7 +358,7 @@ const ResidentialPricingPlansPage = () => {
         )}
       </div>
 
-      <Modal
+      <Drawer
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingPlan ? 'Edit Residential Pricing Plan' : 'New Residential Pricing Plan'}
@@ -564,7 +564,7 @@ const ResidentialPricingPlansPage = () => {
             </Button>
           </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 };

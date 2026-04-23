@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Send, FileText, AlertCircle } from 'lucide-react';
-import { Modal } from '../ui/Modal';
+import { Drawer } from '../ui/Drawer';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
@@ -121,7 +121,7 @@ ${contract.createdByUser.fullName}`;
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Send Contract" size="2xl">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Send Contract" size="2xl">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* PDF Preview */}
         <div className="flex flex-col">
@@ -215,7 +215,7 @@ ${contract.createdByUser.fullName}`;
           </div>
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 };
 

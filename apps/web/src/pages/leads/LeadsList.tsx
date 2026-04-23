@@ -20,7 +20,7 @@ import { Input } from '../../components/ui/Input';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Modal } from '../../components/ui/Modal';
+import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -1096,11 +1096,26 @@ const LeadsList = () => {
         </div>
       </Card>
 
-      <Modal
+      <Drawer
         isOpen={isCreateModalOpen}
         onClose={closeCreateModal}
         title="Add New Lead"
-        size="lg"
+        description="Capture the lead details below."
+        size="xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={closeCreateModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              isLoading={creating}
+              disabled={!formData.contactName || formData.type === 'unknown'}
+            >
+              Create Lead
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1239,31 +1254,26 @@ const LeadsList = () => {
             maxLength={maxLengths.notes}
             showCharacterCount
           />
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={closeCreateModal}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              isLoading={creating}
-              disabled={!formData.contactName || formData.type === 'unknown'}
-            >
-              Create Lead
-            </Button>
-          </div>
         </div>
-      </Modal>
+      </Drawer>
 
-      {/* Opportunity Edit Modal */}
-      <Modal
+      {/* Opportunity Edit Drawer */}
+      <Drawer
         isOpen={!!editingOpportunity}
         onClose={() => setEditingOpportunity(null)}
         title={`Edit Opportunity — ${editingOpportunity?.title || ''}`}
+        description="Update stage, value, owner, or close date."
         size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEditingOpportunity(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleOppSave} disabled={savingOpportunity}>
+              {savingOpportunity ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -1332,21 +1342,12 @@ const LeadsList = () => {
               />
             </div>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setEditingOpportunity(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleOppSave} disabled={savingOpportunity}>
-              {savingOpportunity ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
         </div>
-      </Modal>
+      </Drawer>
 
       {/*
-      Residential Opportunity Edit Modal
-      <Modal
+      Residential Opportunity Edit Drawer
+      <Drawer
         isOpen={!!editingResOpp}
         onClose={() => setEditingResOpp(null)}
         title={`Edit Residential — ${editingResOpp?.title || ''}`}
@@ -1434,7 +1435,7 @@ const LeadsList = () => {
             )}
           </div>
         </div>
-      </Modal>
+      </Drawer>
 
       */}
     </div>
