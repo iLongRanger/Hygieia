@@ -8,6 +8,11 @@ export type ProposalStatus =
   | 'rejected'
   | 'expired';
 
+export type ProposalType =
+  | 'recurring'
+  | 'one_time'
+  | 'specialized';
+
 export type ProposalItemType =
   | 'labor'
   | 'materials'
@@ -73,6 +78,7 @@ export interface ProposalItem {
 
 export interface ProposalService {
   id?: string;
+  catalogItemId?: string | null;
   serviceName: string;
   serviceType: ServiceType;
   frequency: ServiceFrequency;
@@ -81,6 +87,7 @@ export interface ProposalService {
   monthlyPrice: number;
   description?: string | null;
   includedTasks?: string[];
+  pricingMeta?: Record<string, unknown>;
   sortOrder?: number;
 }
 
@@ -89,12 +96,16 @@ export interface Proposal {
   proposalNumber: string;
   title: string;
   status: ProposalStatus;
+  proposalType?: ProposalType;
   description?: string | null;
   subtotal: number;
   taxRate: number;
   taxAmount: number;
   totalAmount: number;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   sentAt?: string | null;
   viewedAt?: string | null;
   acceptedAt?: string | null;
@@ -104,6 +115,11 @@ export interface Proposal {
   termsAndConditions?: string | null;
   serviceFrequency?: ProposalScheduleFrequency;
   serviceSchedule?: ProposalServiceSchedule | null;
+  pricingApprovalStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
+  pricingApprovalReason?: string | null;
+  pricingApprovalRequestedAt?: string | null;
+  pricingApprovedAt?: string | null;
+  pricingApprovalRejectedAt?: string | null;
 
   createdAt: string;
   updatedAt: string;
@@ -146,9 +162,13 @@ export interface Proposal {
 export interface CreateProposalInput {
   accountId: string;
   facilityId: string;
+  proposalType?: ProposalType;
   title: string;
   description?: string | null;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   taxRate?: number;
   notes?: string | null;
   serviceFrequency?: ProposalScheduleFrequency;
@@ -164,10 +184,14 @@ export interface CreateProposalInput {
 export interface UpdateProposalInput {
   accountId?: string;
   facilityId?: string | null;
+  proposalType?: ProposalType;
   title?: string;
   status?: ProposalStatus;
   description?: string | null;
   validUntil?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   taxRate?: number;
   notes?: string | null;
   serviceFrequency?: ProposalScheduleFrequency;
@@ -186,6 +210,7 @@ export interface ListProposalsParams {
   status?: ProposalStatus;
   accountId?: string;
   facilityId?: string;
+  proposalType?: ProposalType;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';

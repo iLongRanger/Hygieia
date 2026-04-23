@@ -22,6 +22,7 @@ export interface ProposalListParams {
   status?: string;
   accountId?: string;
   facilityId?: string;
+  proposalType?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -43,6 +44,7 @@ export interface ProposalItemInput {
 }
 
 export interface ProposalServiceInput {
+  catalogItemId?: string | null;
   serviceName: string;
   serviceType: string;
   frequency: string;
@@ -51,6 +53,7 @@ export interface ProposalServiceInput {
   monthlyPrice: number;
   description?: string | null;
   includedTasks?: string[];
+  pricingMeta?: Record<string, unknown>;
   sortOrder?: number;
 }
 
@@ -58,9 +61,13 @@ export interface ProposalCreateInput {
   accountId: string;
   facilityId: string;
   opportunityId?: string | null;
+  proposalType?: string;
   title: string;
   description?: string | null;
   validUntil?: Date | null;
+  scheduledDate?: Date | null;
+  scheduledStartTime?: Date | null;
+  scheduledEndTime?: Date | null;
   taxRate?: number;
   notes?: string | null;
   serviceFrequency?: string;
@@ -77,10 +84,14 @@ export interface ProposalUpdateInput {
   accountId?: string;
   facilityId?: string | null;
   opportunityId?: string | null;
+  proposalType?: string;
   title?: string;
   status?: string;
   description?: string | null;
   validUntil?: Date | null;
+  scheduledDate?: Date | null;
+  scheduledStartTime?: Date | null;
+  scheduledEndTime?: Date | null;
   taxRate?: number;
   notes?: string | null;
   serviceFrequency?: string;
@@ -90,6 +101,7 @@ export interface ProposalUpdateInput {
   // Pricing plan fields
   pricingPlanId?: string | null;
   pricingSnapshot?: PricingSettingsSnapshot | null;
+  updatedByUserId?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -108,18 +120,27 @@ const proposalSelect = {
   proposalNumber: true,
   title: true,
   status: true,
+  proposalType: true,
   description: true,
   subtotal: true,
   taxRate: true,
   taxAmount: true,
   totalAmount: true,
   validUntil: true,
+  scheduledDate: true,
+  scheduledStartTime: true,
+  scheduledEndTime: true,
   sentAt: true,
   viewedAt: true,
   acceptedAt: true,
   rejectedAt: true,
   rejectionReason: true,
   notes: true,
+  pricingApprovalStatus: true,
+  pricingApprovalReason: true,
+  pricingApprovalRequestedAt: true,
+  pricingApprovedAt: true,
+  pricingApprovalRejectedAt: true,
   serviceFrequency: true,
   serviceSchedule: true,
   createdAt: true,
@@ -187,6 +208,7 @@ const proposalSelect = {
   proposalServices: {
     select: {
       id: true,
+      catalogItemId: true,
       serviceName: true,
       serviceType: true,
       frequency: true,
@@ -195,6 +217,7 @@ const proposalSelect = {
       monthlyPrice: true,
       description: true,
       includedTasks: true,
+      pricingMeta: true,
       sortOrder: true,
     },
     orderBy: {
@@ -204,6 +227,12 @@ const proposalSelect = {
 } satisfies Prisma.ProposalSelect;
 
 const ACTIVE_PROPOSAL_STATUSES = ['draft', 'sent', 'viewed', 'accepted'] as const;
+const SPECIALIZED_PROPOSAL_TYPES = ['one_time', 'specialized'] as const;
+const DISCOUNT_APPROVAL_THRESHOLD_PERCENT = 10;
+
+function isSpecializedProposalType(value: string | null | undefined): boolean {
+  return SPECIALIZED_PROPOSAL_TYPES.includes(value as (typeof SPECIALIZED_PROPOSAL_TYPES)[number]);
+}
 
 async function ensureSingleActiveProposalForFacility(
   accountId: string,
@@ -287,6 +316,53 @@ function calculateTotals(
 
 function removeZeroValueItems(items: ProposalItemInput[]): ProposalItemInput[] {
   return items.filter((item) => Number(item.totalPrice) > 0);
+}
+
+function roundToCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function getPricingNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function derivePricingApproval(
+  services: ProposalServiceInput[]
+): { requiresApproval: boolean; reasonRequired: boolean } {
+  let requiresApproval = false;
+  let reasonRequired = false;
+
+  for (const service of services) {
+    const meta = service.pricingMeta ?? {};
+    const standardAmount = getPricingNumber(meta.standardAmount);
+    const price = roundToCurrency(Number(service.monthlyPrice) || 0);
+    const explicitDiscountPercent = getPricingNumber(meta.discountPercent);
+    const inferredDiscountPercent =
+      standardAmount && standardAmount > 0
+        ? ((standardAmount - price) / standardAmount) * 100
+        : 0;
+    const discountPercent = roundToCurrency(
+      Math.max(0, explicitDiscountPercent ?? inferredDiscountPercent)
+    );
+
+    if (discountPercent > 0) {
+      const overrideReason = meta.overrideReason;
+      if (!overrideReason || typeof overrideReason !== 'string' || !overrideReason.trim()) {
+        reasonRequired = true;
+      }
+    }
+
+    if (discountPercent > DISCOUNT_APPROVAL_THRESHOLD_PERCENT) {
+      requiresApproval = true;
+    }
+  }
+
+  return { requiresApproval, reasonRequired };
 }
 
 async function resolveOpportunityForAccount(
@@ -448,6 +524,7 @@ async function assertProposalCreateReadiness(
   input: ProposalCreateInput,
   options: { excludeProposalId?: string } = {}
 ): Promise<{ opportunityId: string | null }> {
+  const isSpecialized = isSpecializedProposalType(input.proposalType);
   const account = await prisma.account.findUnique({
     where: { id: input.accountId },
     select: {
@@ -458,6 +535,32 @@ async function assertProposalCreateReadiness(
 
   if (!account || account.archivedAt) {
     throw new BadRequestError('Account not found or archived');
+  }
+
+  const facility = await prisma.facility.findUnique({
+    where: { id: input.facilityId },
+    select: {
+      id: true,
+      accountId: true,
+      archivedAt: true,
+      status: true,
+    },
+  });
+
+  if (!facility || facility.archivedAt) {
+    throw new BadRequestError('Facility not found or archived');
+  }
+
+  if (facility.accountId !== input.accountId) {
+    throw new BadRequestError('Facility does not belong to the selected account');
+  }
+
+  if (facility.status !== 'active') {
+    throw new BadRequestError('Facility must be active before creating a proposal');
+  }
+
+  if (isSpecialized) {
+    return { opportunityId: input.opportunityId ?? null };
   }
 
   const opportunity = await resolveOpportunityForAccount(
@@ -488,28 +591,6 @@ async function assertProposalCreateReadiness(
     throw new BadRequestError(
       'Walkthrough must be completed for the selected facility before creating a proposal'
     );
-  }
-
-  const facility = await prisma.facility.findUnique({
-    where: { id: input.facilityId },
-    select: {
-      id: true,
-      accountId: true,
-      archivedAt: true,
-      status: true,
-    },
-  });
-
-  if (!facility || facility.archivedAt) {
-    throw new BadRequestError('Facility not found or archived');
-  }
-
-  if (facility.accountId !== input.accountId) {
-    throw new BadRequestError('Facility does not belong to the selected account');
-  }
-
-  if (facility.status !== 'active') {
-    throw new BadRequestError('Facility must be active before creating a proposal');
   }
 
   await ensureSingleActiveProposalForFacility(
@@ -556,6 +637,7 @@ export async function listProposals(
     status,
     accountId,
     facilityId,
+    proposalType,
     search,
     sortBy = 'createdAt',
     sortOrder = 'desc',
@@ -578,6 +660,10 @@ export async function listProposals(
 
   if (facilityId) {
     where.facilityId = facilityId;
+  }
+
+  if (proposalType) {
+    where.proposalType = proposalType;
   }
 
   if (search) {
@@ -648,6 +734,8 @@ export async function createProposal(input: ProposalCreateInput) {
 
   const proposalNumber = await generateProposalNumber();
   const taxRate = input.taxRate ?? 0;
+  const proposalType = input.proposalType ?? 'recurring';
+  const isSpecialized = isSpecializedProposalType(proposalType);
   const serviceFrequency = input.serviceFrequency ?? '5x_week';
   const serviceSchedule = normalizeServiceSchedule(
     input.serviceSchedule ?? null,
@@ -656,15 +744,23 @@ export async function createProposal(input: ProposalCreateInput) {
 
   const items = removeZeroValueItems(input.proposalItems ?? []);
   const services = input.proposalServices ?? [];
+  const pricingApproval = isSpecialized
+    ? derivePricingApproval(services)
+    : { requiresApproval: false, reasonRequired: false };
+  if (pricingApproval.reasonRequired) {
+    throw new BadRequestError('Override reason is required when discounting standardized one-time services');
+  }
   const totals = calculateTotals(items, services, taxRate);
 
-  const pricingPlan = await resolvePricingPlan({
-    pricingPlanId: input.pricingPlanId ?? undefined,
-    facilityId: input.facilityId ?? undefined,
-    accountId: input.accountId,
-  });
+  const pricingPlan = isSpecialized
+    ? null
+    : await resolvePricingPlan({
+        pricingPlanId: input.pricingPlanId ?? undefined,
+        facilityId: input.facilityId ?? undefined,
+        accountId: input.accountId,
+      });
 
-  if (!pricingPlan) {
+  if (!isSpecialized && !pricingPlan) {
     throw new Error('No pricing plan found. Please configure pricing plans first.');
   }
 
@@ -672,6 +768,7 @@ export async function createProposal(input: ProposalCreateInput) {
     data: {
       proposalNumber,
       title: input.title,
+      proposalType,
       description: input.description,
       status: 'draft',
       subtotal: totals.subtotal,
@@ -679,7 +776,13 @@ export async function createProposal(input: ProposalCreateInput) {
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
       validUntil: input.validUntil,
+      scheduledDate: input.scheduledDate,
+      scheduledStartTime: input.scheduledStartTime,
+      scheduledEndTime: input.scheduledEndTime,
       notes: input.notes,
+      pricingApprovalStatus: pricingApproval.requiresApproval ? 'pending' : 'not_required',
+      pricingApprovalRequestedByUserId: pricingApproval.requiresApproval ? input.createdByUserId : null,
+      pricingApprovalRequestedAt: pricingApproval.requiresApproval ? new Date() : null,
       serviceFrequency,
       serviceSchedule:
         (serviceSchedule as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
@@ -688,7 +791,7 @@ export async function createProposal(input: ProposalCreateInput) {
       opportunityId: readiness.opportunityId,
       createdByUserId: input.createdByUserId,
       // Pricing plan fields
-      pricingPlanId: pricingPlan.id,
+      pricingPlanId: pricingPlan?.id ?? null,
       pricingSnapshot:
         (input.pricingSnapshot as unknown as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       pricingLocked: false,
@@ -705,6 +808,7 @@ export async function createProposal(input: ProposalCreateInput) {
       proposalServices: {
         create: services.map((service, index) => ({
           serviceName: service.serviceName,
+          catalogItemId: service.catalogItemId ?? null,
           serviceType: service.serviceType,
           frequency: service.frequency,
           estimatedHours: service.estimatedHours,
@@ -712,6 +816,7 @@ export async function createProposal(input: ProposalCreateInput) {
           monthlyPrice: service.monthlyPrice,
           description: service.description,
           includedTasks: service.includedTasks ?? [],
+          pricingMeta: (service.pricingMeta as Prisma.InputJsonValue) ?? {},
           sortOrder: service.sortOrder ?? index,
         })),
       },
@@ -727,7 +832,8 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
         accountId: string;
         facilityId: string | null;
         opportunityId: string | null;
-        taxRate: Prisma.Decimal | number;
+      taxRate: Prisma.Decimal | number;
+      proposalType: string;
       }
     | null = null;
 
@@ -743,6 +849,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
         facilityId: true,
         opportunityId: true,
         taxRate: true,
+        proposalType: true,
       },
     });
 
@@ -764,6 +871,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       input.facilityId !== undefined ? input.facilityId : currentProposal.facilityId;
     const effectiveOpportunityId =
       input.opportunityId !== undefined ? input.opportunityId : currentProposal.opportunityId;
+    const effectiveProposalType = input.proposalType ?? currentProposal.proposalType;
 
     if (!effectiveFacilityId) {
       throw new BadRequestError('Facility is required for proposals');
@@ -780,6 +888,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
         accountId: effectiveAccountId,
         facilityId: effectiveFacilityId,
         opportunityId: effectiveOpportunityId,
+        proposalType: effectiveProposalType,
         title: input.title ?? 'Existing Proposal',
         createdByUserId: 'system',
       },
@@ -808,9 +917,13 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     updateData.rejectionReason = null;
   }
   if (input.title !== undefined) updateData.title = input.title;
+  if (input.proposalType !== undefined) updateData.proposalType = input.proposalType;
   if (input.status !== undefined) updateData.status = input.status;
   if (input.description !== undefined) updateData.description = input.description;
   if (input.validUntil !== undefined) updateData.validUntil = input.validUntil;
+  if (input.scheduledDate !== undefined) updateData.scheduledDate = input.scheduledDate;
+  if (input.scheduledStartTime !== undefined) updateData.scheduledStartTime = input.scheduledStartTime;
+  if (input.scheduledEndTime !== undefined) updateData.scheduledEndTime = input.scheduledEndTime;
   if (input.notes !== undefined) updateData.notes = input.notes;
   if (input.serviceFrequency !== undefined) updateData.serviceFrequency = input.serviceFrequency;
   if (input.serviceSchedule !== undefined || input.serviceFrequency !== undefined) {
@@ -861,6 +974,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
     const items = removeZeroValueItems(rawItems);
 
     const services = input.proposalServices ?? currentProposal.proposalServices.map(service => ({
+      catalogItemId: service.catalogItemId,
       serviceName: service.serviceName,
       serviceType: service.serviceType,
       frequency: service.frequency,
@@ -869,16 +983,35 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       monthlyPrice: Number(service.monthlyPrice),
       description: service.description,
       includedTasks: service.includedTasks as string[],
+      pricingMeta: service.pricingMeta as Record<string, unknown>,
       sortOrder: service.sortOrder,
     }));
 
     const taxRate = input.taxRate ?? Number(currentProposal.taxRate);
+    const proposalType = input.proposalType ?? currentProposal.proposalType;
+    const pricingApproval = isSpecializedProposalType(proposalType)
+      ? derivePricingApproval(services)
+      : { requiresApproval: false, reasonRequired: false };
+    if (pricingApproval.reasonRequired) {
+      throw new BadRequestError('Override reason is required when discounting standardized one-time services');
+    }
     const totals = calculateTotals(items, services, taxRate);
 
     updateData.subtotal = totals.subtotal;
     updateData.taxRate = taxRate;
     updateData.taxAmount = totals.taxAmount;
     updateData.totalAmount = totals.totalAmount;
+    if (input.proposalServices !== undefined || input.proposalType !== undefined) {
+      updateData.pricingApprovalStatus = pricingApproval.requiresApproval ? 'pending' : 'not_required';
+      updateData.pricingApprovalRequestedByUserId = pricingApproval.requiresApproval
+        ? input.updatedByUserId ?? null
+        : null;
+      updateData.pricingApprovalRequestedAt = pricingApproval.requiresApproval ? new Date() : null;
+      updateData.pricingApprovedByUserId = null;
+      updateData.pricingApprovedAt = null;
+      updateData.pricingApprovalRejectedAt = null;
+      updateData.pricingApprovalReason = null;
+    }
 
     // Update items if provided
     if (input.proposalItems) {
@@ -901,6 +1034,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
         deleteMany: {},
         create: services.map((service, index) => ({
           serviceName: service.serviceName,
+          catalogItemId: service.catalogItemId ?? null,
           serviceType: service.serviceType,
           frequency: service.frequency,
           estimatedHours: service.estimatedHours,
@@ -908,6 +1042,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
           monthlyPrice: service.monthlyPrice,
           description: service.description,
           includedTasks: service.includedTasks ?? [],
+          pricingMeta: (service.pricingMeta as Prisma.InputJsonValue) ?? {},
           sortOrder: service.sortOrder ?? index,
         })),
       };
@@ -967,6 +1102,36 @@ export async function markProposalAsViewed(id: string) {
 }
 
 export async function acceptProposal(id: string) {
+  const existing = await prisma.proposal.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      proposalType: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      pricingApprovalStatus: true,
+    },
+  });
+
+  if (!existing) {
+    throw new BadRequestError('Proposal not found');
+  }
+
+  if (isSpecializedProposalType(existing.proposalType)) {
+    if (['pending', 'rejected'].includes(existing.pricingApprovalStatus)) {
+      throw new BadRequestError('Pricing approval from owner/admin is required before accepting this proposal');
+    }
+    if (!existing.scheduledDate || !existing.scheduledStartTime || !existing.scheduledEndTime) {
+      throw new BadRequestError(
+        'Scheduled date, start time, and end time are required before accepting this proposal'
+      );
+    }
+    if (existing.scheduledEndTime <= existing.scheduledStartTime) {
+      throw new BadRequestError('Scheduled end time must be after scheduled start time');
+    }
+  }
+
   const proposal = await prisma.proposal.update({
     where: { id },
     data: {
@@ -983,7 +1148,219 @@ export async function acceptProposal(id: string) {
   } else {
     await autoAdvanceLeadStatusForAccount(proposal.account.id, 'negotiation');
   }
+  if (isSpecializedProposalType(proposal.proposalType)) {
+    await ensureOneTimeJobForAcceptedProposal(proposal.id);
+  }
   return proposal;
+}
+
+export async function ensureOneTimeJobForAcceptedProposal(proposalId: string): Promise<{
+  created: boolean;
+  jobId: string;
+  jobNumber: string;
+}> {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      id: true,
+      status: true,
+      proposalNumber: true,
+      proposalType: true,
+      title: true,
+      description: true,
+      accountId: true,
+      facilityId: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      createdByUserId: true,
+      generatedJob: {
+        select: {
+          id: true,
+          jobNumber: true,
+        },
+      },
+      proposalServices: {
+        select: {
+          serviceName: true,
+          description: true,
+          includedTasks: true,
+        },
+        orderBy: { sortOrder: 'asc' as const },
+      },
+      proposalItems: {
+        select: {
+          description: true,
+        },
+        orderBy: { sortOrder: 'asc' as const },
+      },
+    },
+  });
+
+  if (!proposal) throw new BadRequestError('Proposal not found');
+  if (!isSpecializedProposalType(proposal.proposalType)) {
+    throw new BadRequestError('Only one-time or specialized proposals can create one-time jobs');
+  }
+  if (proposal.status !== 'accepted') {
+    throw new BadRequestError('Proposal must be accepted before creating a one-time job');
+  }
+  if (!proposal.facilityId) {
+    throw new BadRequestError('Proposal must have a facility to create a one-time job');
+  }
+  if (!proposal.scheduledDate || !proposal.scheduledStartTime || !proposal.scheduledEndTime) {
+    throw new BadRequestError(
+      'Proposal must include scheduled date, start time, and end time before creating a one-time job'
+    );
+  }
+  if (proposal.scheduledEndTime <= proposal.scheduledStartTime) {
+    throw new BadRequestError('Scheduled end time must be after scheduled start time');
+  }
+
+  if (proposal.generatedJob) {
+    return {
+      created: false,
+      jobId: proposal.generatedJob.id,
+      jobNumber: proposal.generatedJob.jobNumber,
+    };
+  }
+
+  const notesLines = proposal.proposalServices.map((service, idx) => {
+    const line = `${idx + 1}. ${service.serviceName}`;
+    return service.description ? `${line} - ${service.description}` : line;
+  });
+  const scheduledDate = proposal.scheduledDate;
+  const scheduledStartTime = proposal.scheduledStartTime;
+  const scheduledEndTime = proposal.scheduledEndTime;
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const year = new Date().getFullYear();
+      const prefix = `WO-${year}-`;
+      const latest = await tx.job.findFirst({
+        where: { jobNumber: { startsWith: prefix } },
+        orderBy: { jobNumber: 'desc' },
+        select: { jobNumber: true },
+      });
+
+      let seq = 1;
+      if (latest) {
+        const parts = latest.jobNumber.split('-');
+        const lastSeq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(lastSeq)) seq = lastSeq + 1;
+      }
+      const jobNumber = `${prefix}${String(seq).padStart(4, '0')}`;
+
+      const job = await tx.job.create({
+        data: {
+          jobNumber,
+          contractId: null,
+          quotationId: null,
+          proposalId: proposal.id,
+          facilityId: proposal.facilityId!,
+          accountId: proposal.accountId,
+          jobType: 'special_job',
+          jobCategory: 'one_time',
+          status: 'scheduled',
+          scheduledDate,
+          scheduledStartTime,
+          scheduledEndTime,
+          notes:
+            notesLines.length > 0
+              ? `From proposal ${proposal.proposalNumber}\n${notesLines.join('\n')}`
+              : `From proposal ${proposal.proposalNumber}`,
+          createdByUserId: proposal.createdByUserId,
+        },
+        select: { id: true, jobNumber: true },
+      });
+
+      const tasks: {
+        taskName: string;
+        description: string | null;
+        status: string;
+      }[] = [];
+
+      for (const service of proposal.proposalServices) {
+        const includedTasks = Array.isArray(service.includedTasks)
+          ? (service.includedTasks as unknown[]).filter((task): task is string => typeof task === 'string')
+          : [];
+        if (includedTasks.length > 0) {
+          for (const taskName of includedTasks) {
+            tasks.push({
+              taskName,
+              description: service.serviceName,
+              status: 'pending',
+            });
+          }
+        } else {
+          tasks.push({
+            taskName: service.serviceName,
+            description: service.description ?? null,
+            status: 'pending',
+          });
+        }
+      }
+
+      if (tasks.length === 0) {
+        for (const item of proposal.proposalItems) {
+          tasks.push({
+            taskName: item.description,
+            description: null,
+            status: 'pending',
+          });
+        }
+      }
+
+      if (tasks.length > 0) {
+        await tx.jobTask.createMany({
+          data: tasks.map((task) => ({
+            jobId: job.id,
+            facilityTaskId: null,
+            taskName: task.taskName,
+            description: task.description,
+            status: task.status,
+            estimatedMinutes: null,
+            actualMinutes: null,
+            notes: null,
+            completedAt: null,
+            completedByUserId: null,
+          })),
+        });
+      }
+
+      await tx.jobActivity.create({
+        data: {
+          jobId: job.id,
+          action: 'created',
+          performedByUserId: proposal.createdByUserId,
+          metadata: {
+            source: 'proposal_accepted',
+            proposalId: proposal.id,
+            proposalNumber: proposal.proposalNumber,
+          },
+        },
+      });
+
+      return { created: true, jobId: job.id, jobNumber: job.jobNumber };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const existingJob = await prisma.job.findUnique({
+        where: { proposalId: proposal.id },
+        select: { id: true, jobNumber: true },
+      });
+      if (existingJob) {
+        return {
+          created: false,
+          jobId: existingJob.id,
+          jobNumber: existingJob.jobNumber,
+        };
+      }
+    }
+    throw error;
+  }
 }
 
 export async function rejectProposal(id: string, rejectionReason: string) {
@@ -1003,6 +1380,42 @@ export async function rejectProposal(id: string, rejectionReason: string) {
     await autoSetLeadStatusForAccount(proposal.account.id, 'lost');
   }
   return proposal;
+}
+
+export async function setProposalPricingApproval(params: {
+  proposalId: string;
+  action: 'approved' | 'rejected';
+  reason?: string | null;
+  performedByUserId: string;
+}) {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: params.proposalId },
+    select: {
+      id: true,
+      pricingApprovalStatus: true,
+    },
+  });
+  if (!proposal) throw new BadRequestError('Proposal not found');
+
+  if (proposal.pricingApprovalStatus !== 'pending') {
+    throw new BadRequestError('Proposal pricing is not awaiting approval');
+  }
+
+  if (params.action === 'rejected' && !params.reason?.trim()) {
+    throw new BadRequestError('Rejection reason is required');
+  }
+
+  return prisma.proposal.update({
+    where: { id: params.proposalId },
+    data: {
+      pricingApprovalStatus: params.action,
+      pricingApprovalReason: params.reason ?? null,
+      pricingApprovedByUserId: params.action === 'approved' ? params.performedByUserId : null,
+      pricingApprovedAt: params.action === 'approved' ? new Date() : null,
+      pricingApprovalRejectedAt: params.action === 'rejected' ? new Date() : null,
+    },
+    select: proposalSelect,
+  });
 }
 
 export async function archiveProposal(id: string) {
@@ -1038,6 +1451,7 @@ export async function getProposalsAvailableForContract(
 ) {
   const where: Prisma.ProposalWhereInput = {
     status: 'accepted',
+    proposalType: 'recurring',
     archivedAt: null,
     // Exclude proposals that already have contracts
     contracts: {

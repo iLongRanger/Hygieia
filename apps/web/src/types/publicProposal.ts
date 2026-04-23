@@ -5,12 +5,16 @@ export interface PublicProposal {
   proposalNumber: string;
   title: string;
   status: string;
+  proposalType?: string;
   description: string | null;
   subtotal: number;
   taxRate: number;
   taxAmount: number;
   totalAmount: number;
   serviceFrequency?: string | null;
+  scheduledDate?: string | null;
+  scheduledStartTime?: string | null;
+  scheduledEndTime?: string | null;
   validUntil: string | null;
   createdAt: string;
   sentAt: string | null;
@@ -49,6 +53,7 @@ export interface PublicProposal {
   }[];
   proposalServices: {
     serviceName: string;
+    catalogItemId?: string | null;
     serviceType: string;
     frequency: string;
     estimatedHours: number | null;
@@ -56,6 +61,7 @@ export interface PublicProposal {
     monthlyPrice: number;
     description: string | null;
     includedTasks: string[];
+    pricingMeta?: Record<string, unknown>;
     sortOrder: number;
   }[];
 }

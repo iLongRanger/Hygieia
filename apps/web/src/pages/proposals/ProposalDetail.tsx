@@ -51,6 +51,7 @@ import {
   downloadProposalPdf,
   issueProposalPublicLink,
   updateProposalServiceTasks,
+  setProposalPricingApproval,
 } from '../../lib/proposals';
 import { extractApiErrorMessage } from '../../lib/api';
 import type { Proposal, ProposalStatus } from '../../types/proposal';
@@ -115,6 +116,17 @@ const formatShortDate = (date: string | null | undefined) => {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
+  });
+};
+
+const toTimeString = (value: string | null | undefined) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 5);
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
   });
 };
 
@@ -463,6 +475,22 @@ const ProposalDetail = () => {
     }
   };
 
+  const handlePricingApproval = async (action: 'approved' | 'rejected') => {
+    if (!proposal) return;
+    const reason = action === 'rejected'
+      ? prompt('Please provide a pricing rejection reason:')
+      : null;
+    if (action === 'rejected' && !reason) return;
+
+    try {
+      await setProposalPricingApproval(proposal.id, { action, reason });
+      toast.success(action === 'approved' ? 'Pricing approved' : 'Pricing rejected');
+      fetchProposal(proposal.id);
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to update pricing approval'));
+    }
+  };
+
   const handleArchive = async () => {
     if (!proposal || !confirm('Archive this proposal?')) return;
 
@@ -559,6 +587,7 @@ const ProposalDetail = () => {
   const visibleProposalItems = (proposal.proposalItems || []).filter(
     (item) => Number(item.totalPrice || 0) > 0
   );
+  const isSpecializedProposal = ['one_time', 'specialized'].includes(proposal.proposalType || '');
   const tabs = [
     { id: 'overview' as const, label: 'Overview' },
     { id: 'services' as const, label: 'Services' },
@@ -576,6 +605,12 @@ const ProposalDetail = () => {
               <StatusIcon className="w-3 h-3 mr-1" />
               {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
             </Badge>
+            {isSpecializedProposal && (
+              <Badge variant="info">Specialized Job</Badge>
+            )}
+            {proposal.pricingApprovalStatus === 'pending' && (
+              <Badge variant="warning">Pricing Approval Required</Badge>
+            )}
           </div>
           <p className="text-surface-500 dark:text-surface-400">{proposal.proposalNumber}</p>
         </div>
@@ -595,6 +630,18 @@ const ProposalDetail = () => {
               <Send className="mr-2 h-4 w-4" />
               Send
             </Button>
+          )}
+          {proposal.pricingApprovalStatus === 'pending' && canAdminProposals && (
+            <>
+              <Button variant="secondary" onClick={() => handlePricingApproval('rejected')}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Reject Pricing
+              </Button>
+              <Button onClick={() => handlePricingApproval('approved')}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Approve Pricing
+              </Button>
+            </>
           )}
           {['sent', 'viewed'].includes(proposal.status) && canWriteProposals && (
             <Button
@@ -859,6 +906,20 @@ const ProposalDetail = () => {
                       <div className="text-surface-900 dark:text-white">{formatDate(proposal.validUntil)}</div>
                     </div>
                   </div>
+
+                  {isSpecializedProposal && (
+                    <div className="flex items-start gap-3">
+                      <Clock className="mt-1 h-4 w-4 text-surface-500 dark:text-surface-400" />
+                      <div>
+                        <div className="text-sm text-surface-500 dark:text-surface-400">Scheduled Job</div>
+                        <div className="text-surface-900 dark:text-white">
+                          {formatDate(proposal.scheduledDate)}{' '}
+                          {proposal.scheduledStartTime ? toTimeString(proposal.scheduledStartTime) : ''}
+                          {proposal.scheduledEndTime ? ` - ${toTimeString(proposal.scheduledEndTime)}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {proposal.pricingPlanId && (
                     <div className="flex items-start gap-3">

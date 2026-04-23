@@ -1059,6 +1059,14 @@ describe('proposalService', () => {
   describe('acceptProposal', () => {
     it('should mark proposal as accepted with timestamp', async () => {
       const mockProposal = createTestProposal({ status: 'accepted', acceptedAt: new Date() });
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+        id: 'proposal-1',
+        proposalType: 'recurring',
+        scheduledDate: null,
+        scheduledStartTime: null,
+        scheduledEndTime: null,
+        pricingApprovalStatus: 'not_required',
+      });
       (prisma.proposal.update as jest.Mock).mockResolvedValue(mockProposal);
 
       const result = await proposalService.acceptProposal('proposal-1');

@@ -76,6 +76,14 @@ export async function rejectProposal(
   return response.data.data;
 }
 
+export async function setProposalPricingApproval(
+  id: string,
+  data: { action: 'approved' | 'rejected'; reason?: string | null }
+): Promise<Proposal> {
+  const response = await api.post(`/proposals/${id}/pricing-approval`, data);
+  return response.data.data;
+}
+
 export async function archiveProposal(id: string): Promise<Proposal> {
   const response = await api.post(`/proposals/${id}/archive`);
   return response.data.data;

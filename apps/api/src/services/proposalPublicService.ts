@@ -5,6 +5,7 @@ import {
   autoSetLeadStatusForAccount,
   autoSetLeadStatusForOpportunity,
 } from './leadService';
+import { ensureOneTimeJobForAcceptedProposal } from './proposalService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
 
@@ -13,12 +14,16 @@ const publicProposalSelect = {
   proposalNumber: true,
   title: true,
   status: true,
+  proposalType: true,
   description: true,
   subtotal: true,
   taxRate: true,
   taxAmount: true,
   totalAmount: true,
   serviceFrequency: true,
+  scheduledDate: true,
+  scheduledStartTime: true,
+  scheduledEndTime: true,
   validUntil: true,
   createdAt: true,
   sentAt: true,
@@ -48,6 +53,7 @@ const publicProposalSelect = {
   proposalServices: {
     select: {
       serviceName: true,
+      catalogItemId: true,
       serviceType: true,
       frequency: true,
       estimatedHours: true,
@@ -55,6 +61,7 @@ const publicProposalSelect = {
       monthlyPrice: true,
       description: true,
       includedTasks: true,
+      pricingMeta: true,
       sortOrder: true,
     },
     orderBy: { sortOrder: 'asc' as const },
@@ -132,7 +139,18 @@ export async function acceptProposalPublic(
 ) {
   const proposal = await prisma.proposal.findUnique({
     where: { publicToken: hashPublicToken(token) },
-    select: { id: true, status: true, publicTokenExpiresAt: true, accountId: true, opportunityId: true },
+    select: {
+      id: true,
+      status: true,
+      publicTokenExpiresAt: true,
+      accountId: true,
+      opportunityId: true,
+      proposalType: true,
+      scheduledDate: true,
+      scheduledStartTime: true,
+      scheduledEndTime: true,
+      pricingApprovalStatus: true,
+    },
   });
 
   if (!proposal) {
@@ -149,6 +167,27 @@ export async function acceptProposalPublic(
 
   const acceptedNow = proposal.status !== 'accepted';
   if (acceptedNow) {
+    if (
+      ['one_time', 'specialized'].includes(proposal.proposalType)
+      && ['pending', 'rejected'].includes(proposal.pricingApprovalStatus)
+    ) {
+      throw new Error('Pricing approval is required before this proposal can be accepted');
+    }
+    if (
+      ['one_time', 'specialized'].includes(proposal.proposalType)
+      && (!proposal.scheduledDate || !proposal.scheduledStartTime || !proposal.scheduledEndTime)
+    ) {
+      throw new Error('This proposal must include a scheduled date and time before it can be accepted');
+    }
+    if (
+      ['one_time', 'specialized'].includes(proposal.proposalType)
+      && proposal.scheduledStartTime
+      && proposal.scheduledEndTime
+      && proposal.scheduledEndTime <= proposal.scheduledStartTime
+    ) {
+      throw new Error('Scheduled end time must be after scheduled start time');
+    }
+
     await prisma.proposal.update({
       where: { id: proposal.id },
       data: {
@@ -166,6 +205,10 @@ export async function acceptProposalPublic(
       });
     } else {
       await autoAdvanceLeadStatusForAccount(proposal.accountId, 'negotiation');
+    }
+
+    if (['one_time', 'specialized'].includes(proposal.proposalType)) {
+      await ensureOneTimeJobForAcceptedProposal(proposal.id);
     }
   }
 

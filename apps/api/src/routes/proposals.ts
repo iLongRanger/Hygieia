@@ -28,6 +28,7 @@ import {
   changeProposalPricingPlan,
   recalculateProposalPricing,
   getProposalPricingPreview,
+  setProposalPricingApproval,
 } from '../services/proposalService';
 import { logActivity, getProposalActivities } from '../services/proposalActivityService';
 import { createVersion, getVersions, getVersion } from '../services/proposalVersionService';
@@ -47,6 +48,7 @@ import {
   sendProposalSchema,
   acceptProposalSchema,
   rejectProposalSchema,
+  proposalPricingApprovalSchema,
   updateServiceTasksSchema,
   changePricingPlanSchema,
   recalculatePricingSchema,
@@ -201,8 +203,12 @@ router.post(
         accountId: parsed.data.accountId,
         title: parsed.data.title,
         facilityId: parsed.data.facilityId,
+        proposalType: parsed.data.proposalType,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
+        scheduledDate: parsed.data.scheduledDate,
+        scheduledStartTime: parsed.data.scheduledStartTime,
+        scheduledEndTime: parsed.data.scheduledEndTime,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
         serviceFrequency: parsed.data.serviceFrequency,
@@ -210,7 +216,7 @@ router.post(
         proposalItems: parsed.data.proposalItems,
         proposalServices: parsed.data.proposalServices,
         pricingPlanId: parsed.data.pricingPlanId,
-        pricingSnapshot: parsed.data.pricingSnapshot,
+        pricingSnapshot: parsed.data.pricingSnapshot as Parameters<typeof createProposal>[0]['pricingSnapshot'],
         createdByUserId: req.user.id,
       });
 
@@ -267,15 +273,20 @@ router.patch(
       const updateData: Parameters<typeof updateProposal>[1] = {
         accountId: parsed.data.accountId,
         facilityId: parsed.data.facilityId,
+        proposalType: parsed.data.proposalType,
         title: parsed.data.title,
         status: proposal.status === 'rejected' ? 'draft' : parsed.data.status,
         description: parsed.data.description,
         validUntil: parsed.data.validUntil,
+        scheduledDate: parsed.data.scheduledDate,
+        scheduledStartTime: parsed.data.scheduledStartTime,
+        scheduledEndTime: parsed.data.scheduledEndTime,
         taxRate: parsed.data.taxRate,
         notes: parsed.data.notes,
         serviceFrequency: parsed.data.serviceFrequency,
         serviceSchedule: parsed.data.serviceSchedule,
-        pricingSnapshot: parsed.data.pricingSnapshot,
+        pricingSnapshot: parsed.data.pricingSnapshot as Parameters<typeof updateProposal>[1]['pricingSnapshot'],
+        updatedByUserId: req.user?.id,
       };
 
       if (parsed.data.proposalItems !== undefined) {
@@ -333,6 +344,22 @@ router.post(
 
       if (proposal.status !== 'draft') {
         throw new ValidationError('Only draft proposals can be sent');
+      }
+
+      if (
+        ['one_time', 'specialized'].includes(proposal.proposalType ?? '')
+        && ['pending', 'rejected'].includes(proposal.pricingApprovalStatus ?? 'not_required')
+      ) {
+        throw new ValidationError('Pricing approval from owner/admin is required before sending this proposal');
+      }
+
+      if (
+        ['one_time', 'specialized'].includes(proposal.proposalType ?? '')
+        && (!proposal.scheduledDate || !proposal.scheduledStartTime || !proposal.scheduledEndTime)
+      ) {
+        throw new ValidationError(
+          'Scheduled date, start time, and end time are required before sending this proposal'
+        );
       }
 
       const frontendUrl = requireFrontendBaseUrl();
@@ -525,6 +552,42 @@ router.post(
       }
 
       res.json({ data: accepted, message: 'Proposal accepted successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Approve/reject specialized proposal pricing
+router.post(
+  '/:id/pricing-approval',
+  authenticate,
+  requirePermission(PERMISSIONS.PROPOSALS_ADMIN),
+  verifyOwnership({ resourceType: 'proposal' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = proposalPricingApprovalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw handleZodError(parsed.error);
+      }
+
+      const user = requireAuthenticatedUser(req);
+      const updated = await setProposalPricingApproval({
+        proposalId: req.params.id,
+        action: parsed.data.action,
+        reason: parsed.data.reason,
+        performedByUserId: user.id,
+      });
+
+      await logActivity({
+        proposalId: req.params.id,
+        action: `pricing_${parsed.data.action}`,
+        performedByUserId: user.id,
+        ipAddress: req.ip,
+        metadata: { reason: parsed.data.reason ?? null },
+      });
+
+      res.json({ data: updated });
     } catch (error) {
       next(error);
     }

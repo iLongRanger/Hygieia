@@ -14,6 +14,12 @@ export const proposalStatusSchema = z.enum([
   'expired',
 ]);
 
+export const proposalTypeSchema = z.enum([
+  'recurring',
+  'one_time',
+  'specialized',
+]);
+
 export const proposalItemTypeSchema = z.enum([
   'labor',
   'materials',
@@ -56,6 +62,7 @@ export const proposalItemUpdateSchema = proposalItemSchema.extend({
 
 // Proposal Service Schema
 export const proposalServiceSchema = z.object({
+  catalogItemId: z.string().uuid().optional().nullable(),
   serviceName: z.string().min(1, 'Service name is required').max(255),
   serviceType: serviceTypeSchema,
   frequency: serviceFrequencySchema,
@@ -64,6 +71,7 @@ export const proposalServiceSchema = z.object({
   monthlyPrice: z.coerce.number().nonnegative('Monthly price must be non-negative'),
   description: z.string().max(5000).optional().nullable(),
   includedTasks: z.array(z.string()).optional().default([]),
+  pricingMeta: z.record(z.any()).optional().default({}),
   sortOrder: z.coerce.number().int().nonnegative().optional().default(0),
 });
 
@@ -76,9 +84,13 @@ export const createProposalSchema = z
   .object({
     accountId: z.string().uuid(),
     facilityId: z.string().uuid(),
+    proposalType: proposalTypeSchema.optional().default('recurring'),
     title: z.string().min(1, 'Proposal title is required').max(255),
     description: z.string().max(10000).optional().nullable(),
     validUntil: z.coerce.date().optional().nullable(),
+    scheduledDate: z.coerce.date().optional().nullable(),
+    scheduledStartTime: z.coerce.date().optional().nullable(),
+    scheduledEndTime: z.coerce.date().optional().nullable(),
     taxRate: z.coerce.number().min(0).max(1).optional().default(0),
     notes: z.string().max(10000).optional().nullable(),
     serviceFrequency: proposalScheduleFrequencySchema.optional().default('5x_week'),
@@ -106,10 +118,14 @@ export const updateProposalSchema = z
   .object({
     accountId: z.string().uuid().optional(),
     facilityId: z.string().uuid().optional().nullable(),
+    proposalType: proposalTypeSchema.optional(),
     title: z.string().min(1).max(255).optional(),
     status: proposalStatusSchema.optional(),
     description: z.string().max(10000).optional().nullable(),
     validUntil: z.coerce.date().optional().nullable(),
+    scheduledDate: z.coerce.date().optional().nullable(),
+    scheduledStartTime: z.coerce.date().optional().nullable(),
+    scheduledEndTime: z.coerce.date().optional().nullable(),
     taxRate: z.coerce.number().min(0).max(1).optional(),
     notes: z.string().max(10000).optional().nullable(),
     serviceFrequency: proposalScheduleFrequencySchema.optional(),
@@ -139,6 +155,7 @@ export const listProposalsQuerySchema = z.object({
   status: proposalStatusSchema.optional(),
   accountId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
+  proposalType: proposalTypeSchema.optional(),
   search: z.string().max(100).optional(),
   sortBy: z
     .enum([
@@ -174,6 +191,11 @@ export const acceptProposalSchema = z.object({
 
 export const rejectProposalSchema = z.object({
   rejectionReason: z.string().min(1, 'Rejection reason is required').max(5000),
+});
+
+export const proposalPricingApprovalSchema = z.object({
+  action: z.enum(['approved', 'rejected']),
+  reason: z.string().max(5000).optional().nullable(),
 });
 
 // ============================================================
@@ -216,6 +238,7 @@ export type ListProposalsQuery = z.infer<typeof listProposalsQuerySchema>;
 export type SendProposalInput = z.infer<typeof sendProposalSchema>;
 export type AcceptProposalInput = z.infer<typeof acceptProposalSchema>;
 export type RejectProposalInput = z.infer<typeof rejectProposalSchema>;
+export type ProposalPricingApprovalInput = z.infer<typeof proposalPricingApprovalSchema>;
 export type ProposalItemInput = z.infer<typeof proposalItemSchema>;
 export type ProposalServiceInput = z.infer<typeof proposalServiceSchema>;
 export type ChangePricingPlanInput = z.infer<typeof changePricingPlanSchema>;

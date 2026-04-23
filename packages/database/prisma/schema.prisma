@@ -1035,6 +1035,7 @@ model Proposal {
   proposalNumber     String    @unique @map("proposal_number") @db.VarChar(50)
   title              String    @db.VarChar(255)
   status             String    @default("draft") @db.VarChar(20)
+  proposalType       String    @default("recurring") @map("proposal_type") @db.VarChar(30)
   description        String?   @db.Text
   subtotal           Decimal   @default(0) @map("subtotal") @db.Decimal(12, 2)
   taxRate            Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
@@ -1050,6 +1051,16 @@ model Proposal {
   termsAndConditions String?   @map("terms_and_conditions") @db.Text
   serviceFrequency   String?   @map("service_frequency") @db.VarChar(30)
   serviceSchedule    Json?     @map("service_schedule") @db.JsonB
+  scheduledDate      DateTime? @map("scheduled_date") @db.Date
+  scheduledStartTime DateTime? @map("scheduled_start_time") @db.Timestamptz(6)
+  scheduledEndTime   DateTime? @map("scheduled_end_time") @db.Timestamptz(6)
+  pricingApprovalStatus            String    @default("not_required") @map("pricing_approval_status") @db.VarChar(20)
+  pricingApprovalReason            String?   @map("pricing_approval_reason") @db.Text
+  pricingApprovalRequestedByUserId String?   @map("pricing_approval_requested_by_user_id") @db.Uuid
+  pricingApprovalRequestedAt       DateTime? @map("pricing_approval_requested_at") @db.Timestamptz(6)
+  pricingApprovedByUserId          String?   @map("pricing_approved_by_user_id") @db.Uuid
+  pricingApprovedAt                DateTime? @map("pricing_approved_at") @db.Timestamptz(6)
+  pricingApprovalRejectedAt        DateTime? @map("pricing_approval_rejected_at") @db.Timestamptz(6)
   createdByUserId    String    @map("created_by_user_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1076,6 +1087,7 @@ model Proposal {
   proposalItems    ProposalItem[]
   proposalServices ProposalService[]
   contracts        Contract[]
+  generatedJob     Job?               @relation("ProposalGeneratedJob")
   activities       ProposalActivity[]
   versions         ProposalVersion[]
 
@@ -1083,11 +1095,14 @@ model Proposal {
   @@index([facilityId])
   @@index([opportunityId])
   @@index([status])
+  @@index([proposalType])
   @@index([proposalNumber])
   @@index([validUntil])
+  @@index([scheduledDate])
   @@index([sentAt])
   @@index([pricingPlanId])
   @@index([pricingLocked])
+  @@index([pricingApprovalStatus])
   @@map("proposals")
 }
 
@@ -1113,6 +1128,7 @@ model ProposalItem {
 model ProposalService {
   id             String   @id @default(uuid()) @db.Uuid
   proposalId     String   @map("proposal_id") @db.Uuid
+  catalogItemId  String?  @map("catalog_item_id") @db.Uuid
   serviceName    String   @map("service_name") @db.VarChar(255)
   serviceType    String   @map("service_type") @db.VarChar(50)
   frequency      String   @db.VarChar(20)
@@ -1121,13 +1137,16 @@ model ProposalService {
   monthlyPrice   Decimal  @map("monthly_price") @db.Decimal(12, 2)
   description    String?  @db.Text
   includedTasks  Json     @default("[]") @map("included_tasks") @db.JsonB
+  pricingMeta    Json     @default("{}") @map("pricing_meta") @db.JsonB
   sortOrder      Int      @default(0) @map("sort_order")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  proposal    Proposal                   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  catalogItem OneTimeServiceCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
 
   @@index([proposalId])
+  @@index([catalogItemId])
   @@index([serviceType])
   @@map("proposal_services")
 }
@@ -1462,6 +1481,7 @@ model Job {
   jobNumber          String    @unique @map("job_number") @db.VarChar(50)
   contractId         String?   @map("contract_id") @db.Uuid
   quotationId        String?   @unique @map("quotation_id") @db.Uuid
+  proposalId         String?   @unique @map("proposal_id") @db.Uuid
   facilityId         String    @map("facility_id") @db.Uuid
   accountId          String    @map("account_id") @db.Uuid
   assignedTeamId     String?   @map("assigned_team_id") @db.Uuid
@@ -1484,6 +1504,7 @@ model Job {
 
   contract       Contract?  @relation("ContractJobs", fields: [contractId], references: [id], onDelete: SetNull)
   quotation      Quotation? @relation("QuotationGeneratedJob", fields: [quotationId], references: [id], onDelete: SetNull)
+  proposal       Proposal?  @relation("ProposalGeneratedJob", fields: [proposalId], references: [id], onDelete: SetNull)
   facility       Facility   @relation("FacilityJobs", fields: [facilityId], references: [id], onDelete: Restrict)
   account        Account    @relation("AccountJobs", fields: [accountId], references: [id], onDelete: Restrict)
   assignedTeam   Team?      @relation("AssignedTeamJobs", fields: [assignedTeamId], references: [id], onDelete: SetNull)
@@ -1503,6 +1524,7 @@ model Job {
   @@index([jobNumber])
   @@index([contractId])
   @@index([quotationId])
+  @@index([proposalId])
   @@index([facilityId])
   @@index([accountId])
   @@index([assignedTeamId])
@@ -2075,6 +2097,7 @@ model OneTimeServiceCatalogItem {
   createdByUser     User                         @relation("CreatedOneTimeServiceCatalogItems", fields: [createdByUserId], references: [id], onDelete: Restrict)
   addOns            OneTimeServiceCatalogAddon[]
   quotationServices QuotationService[]
+  proposalServices  ProposalService[]
 
   @@index([isActive])
   @@index([serviceType])

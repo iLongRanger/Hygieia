@@ -166,7 +166,7 @@ function App() {
             <Route path="/proposals/:id" element={withRouteGuard('/proposals', <ProposalDetail />)} />
             <Route path="/proposals/:id/edit" element={withRouteGuard('/proposals', <ProposalForm />)} />
             <Route path="/quotations" element={withRouteGuard('/quotations', <QuotationsList />)} />
-            <Route path="/quotations/new" element={withRouteGuard('/quotations', <QuotationForm />)} />
+            <Route path="/quotations/new" element={<Navigate to="/proposals/new?type=specialized" replace />} />
             <Route path="/quotations/:id" element={withRouteGuard('/quotations', <QuotationDetail />)} />
             <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
             <Route path="/quotations/catalog" element={withRouteGuard('/quotations', <OneTimeServiceCatalogPage />)} />
