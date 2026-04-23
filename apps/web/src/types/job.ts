@@ -59,6 +59,11 @@ export interface Job {
     quotationNumber: string;
     title: string;
   } | null;
+  proposal?: {
+    id: string;
+    proposalNumber: string;
+    title: string;
+  } | null;
   facility: {
     id: string;
     name: string;

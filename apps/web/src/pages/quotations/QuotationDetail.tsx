@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Edit2,
   Send,
   CheckCircle,
   XCircle,
@@ -120,7 +119,7 @@ const QuotationDetail = () => {
       setQuotation(data);
     } catch {
       toast.error('Failed to load quotation');
-      navigate('/quotations');
+      navigate('/proposals');
     } finally {
       setLoading(false);
     }
@@ -239,7 +238,7 @@ const QuotationDetail = () => {
     try {
       await deleteQuotation(quotation.id);
       toast.success('Quotation deleted');
-      navigate('/quotations');
+      navigate('/proposals');
     } catch {
       toast.error('Failed to delete quotation');
     }
@@ -295,7 +294,7 @@ const QuotationDetail = () => {
                 {quotation.quotationNumber}
               </h1>
               <Badge variant={getStatusVariant(quotation.status)} size="sm">
-                {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
+                Legacy {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
               </Badge>
               {quotation.pricingApprovalStatus && quotation.pricingApprovalStatus !== 'not_required' && (
                 <Badge
@@ -334,19 +333,13 @@ const QuotationDetail = () => {
             </Button>
           )}
           {canWrite && quotation.status === 'draft' && (
-            <>
-              <Button variant="secondary" size="sm" onClick={() => navigate(`/quotations/${quotation.id}/edit`)}>
-                <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <Button size="sm" onClick={() => {
-                setSendEmailTo(quotation.account.billingEmail || '');
-                setShowSendModal(true);
-              }}>
-                <Send className="mr-1.5 h-3.5 w-3.5" />
-                Send
-              </Button>
-            </>
+            <Button size="sm" onClick={() => {
+              setSendEmailTo(quotation.account.billingEmail || '');
+              setShowSendModal(true);
+            }}>
+              <Send className="mr-1.5 h-3.5 w-3.5" />
+              Send
+            </Button>
           )}
           {canAdmin && ['sent', 'viewed'].includes(quotation.status) && (
             <>
@@ -610,7 +603,7 @@ const QuotationDetail = () => {
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-surface-400" />
                     <div>
-                      <p className="text-xs text-surface-500">Facility</p>
+                      <p className="text-xs text-surface-500">Service Location</p>
                       <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
                         {quotation.facility.name}
                       </p>

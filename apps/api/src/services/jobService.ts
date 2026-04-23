@@ -323,6 +323,13 @@ const jobSelect = {
       title: true,
     },
   },
+  proposal: {
+    select: {
+      id: true,
+      proposalNumber: true,
+      title: true,
+    },
+  },
   facility: {
     select: {
       id: true,

@@ -596,7 +596,24 @@ const JobDetail = () => {
               )}
               {showCommercialLinks && (
                 <div>
-                  <span className="text-surface-500 dark:text-surface-400">Quotation</span>
+                  <span className="text-surface-500 dark:text-surface-400">Proposal</span>
+                  <p className="font-medium text-surface-900 dark:text-surface-100">
+                    {job.proposal ? (
+                      <button
+                        onClick={() => navigate(`/proposals/${job.proposal!.id}`)}
+                        className="text-primary-600 hover:underline dark:text-primary-400"
+                      >
+                        {job.proposal.proposalNumber}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
+              )}
+              {showCommercialLinks && (
+                <div>
+                  <span className="text-surface-500 dark:text-surface-400">Legacy Quotation</span>
                   <p className="font-medium text-surface-900 dark:text-surface-100">
                     {job.quotation ? (
                       <button

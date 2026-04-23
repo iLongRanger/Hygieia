@@ -49,9 +49,7 @@ import InvoicesList from './pages/invoices/InvoicesList';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import InvoiceForm from './pages/invoices/InvoiceForm';
 import NotificationsPage from './pages/notifications/NotificationsPage';
-import QuotationsList from './pages/quotations/QuotationsList';
 import QuotationDetail from './pages/quotations/QuotationDetail';
-import QuotationForm from './pages/quotations/QuotationForm';
 import OneTimeServiceCatalogPage from './pages/quotations/OneTimeServiceCatalogPage';
 import ExpensesPage from './pages/finance/ExpensesPage';
 import PayrollPage from './pages/finance/PayrollPage';
@@ -165,10 +163,10 @@ function App() {
             <Route path="/proposals/new" element={withRouteGuard('/proposals', <ProposalForm />)} />
             <Route path="/proposals/:id" element={withRouteGuard('/proposals', <ProposalDetail />)} />
             <Route path="/proposals/:id/edit" element={withRouteGuard('/proposals', <ProposalForm />)} />
-            <Route path="/quotations" element={withRouteGuard('/quotations', <QuotationsList />)} />
+            <Route path="/quotations" element={<Navigate to="/proposals" replace />} />
             <Route path="/quotations/new" element={<Navigate to="/proposals/new?type=specialized" replace />} />
             <Route path="/quotations/:id" element={withRouteGuard('/quotations', <QuotationDetail />)} />
-            <Route path="/quotations/:id/edit" element={withRouteGuard('/quotations', <QuotationForm />)} />
+            <Route path="/quotations/:id/edit" element={<Navigate to="/proposals/new?type=specialized" replace />} />
             <Route path="/quotations/catalog" element={withRouteGuard('/quotations', <OneTimeServiceCatalogPage />)} />
             <Route path="/contracts" element={withRouteGuard('/contracts', <ContractsList />)} />
             <Route path="/contracts/new" element={withRouteGuard('/contracts', <ContractForm />)} />
