@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
@@ -11,7 +11,7 @@ import {
   archiveAccount,
   restoreAccount,
 } from '../../lib/accounts';
-import { listAppointments } from '../../lib/appointments';
+import { listAppointments, updateAppointment } from '../../lib/appointments';
 import { listFacilities, createFacility } from '../../lib/facilities';
 import { listContacts } from '../../lib/contacts';
 import { listJobs } from '../../lib/jobs';
@@ -20,12 +20,15 @@ import { listProposals } from '../../lib/proposals';
 import { listContracts } from '../../lib/contracts';
 import { createResidentialProperty, listResidentialQuotes, updateResidentialProperty } from '../../lib/residential';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
+import { RESIDENTIAL_BUILDING_TYPES } from '../facilities/facility-constants';
+import { FacilityServiceScheduleFields } from '../facilities/modals/FacilityServiceScheduleFields';
 import {
   COMMERCIAL_ACCOUNT_PIPELINE_STAGES,
   RESIDENTIAL_ACCOUNT_PIPELINE_STAGES,
   getResidentialJourneyState,
   getResidentialPropertyJourneyState,
   type CommercialAccountPipelineStageId,
+  type ResidentialAccountPipelineStageId,
 } from '../../lib/accountPipeline';
 import type {
   Account,
@@ -33,9 +36,9 @@ import type {
   AccountActivityEntryType,
   ResidentialPropertySummary,
   UpdateAccountInput,
+  Appointment,
 } from '../../types/crm';
-import type { Appointment } from '../../types/crm';
-import type { Facility, CreateFacilityInput } from '../../types/facility';
+import type { Facility, CreateFacilityInput, Address as FacilityAddress } from '../../types/facility';
 import type { User } from '../../types/user';
 import type { Proposal } from '../../types/proposal';
 import type { Contract } from '../../types/contract';
@@ -43,38 +46,37 @@ import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
 import type { ResidentialQuote } from '../../types/residential';
 import type { ResidentialHomeProfile } from '../../types/residential';
-import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
-import ResidentialTaskBuilder from '../../components/residential/ResidentialTaskBuilder';
 import { AccountHero } from './AccountHero';
 import { AccountContacts } from './AccountContacts';
 import { AccountFacilities } from './AccountFacilities';
-import { AccountFinancials } from './AccountFinancials';
-import { AccountServiceOverview } from './AccountServiceOverview';
 import { AccountHistory } from './AccountHistory';
 import { EditAccountModal } from './modals/EditAccountModal';
 import { AddFacilityModal } from './modals/AddFacilityModal';
+import {
+  AccountJourneyStepper,
+  type JourneyAction,
+} from './AccountJourneyStepper';
+import { AccountAssignment } from './AccountAssignment';
+import { AccountDetailsSidebar } from './AccountDetailsSidebar';
+import { AccountProposalsContracts } from './AccountProposalsContracts';
+import { AccountResidentialProperties } from './AccountResidentialProperties';
+import { AccountServiceTab } from './AccountServiceTab';
+import { StickyNote } from 'lucide-react';
 
-const residentialServiceTypeLabels: Record<string, string> = {
-  recurring_standard: 'Recurring Standard',
-  one_time_standard: 'One-Time Standard',
-  deep_clean: 'Deep Clean',
-  move_in_out: 'Move-In / Move-Out',
-  turnover: 'Turnover',
-  post_construction: 'Post-Construction',
-};
+const RESIDENTIAL_PROPERTY_STATUSES = [
+  { value: 'active', label: 'Active' },
+  { value: 'archived', label: 'Archived' },
+];
 
-const residentialFrequencyLabels: Record<string, string> = {
-  weekly: 'Weekly',
-  biweekly: 'Biweekly',
-  every_4_weeks: 'Every 4 Weeks',
-  one_time: 'One-Time',
-};
+const RESIDENTIAL_SERVICE_LOCATION_TYPES = RESIDENTIAL_BUILDING_TYPES.filter(
+  (option) => option.value !== 'other'
+);
 
 const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   name: string;
@@ -86,6 +88,7 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   entryNotes: string;
   pets: boolean;
   isPrimary: boolean;
+  status: ResidentialPropertySummary['status'];
 } = {
   name: '',
   serviceAddress: {
@@ -117,77 +120,26 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   entryNotes: '',
   pets: false,
   isPrimary: false,
+  status: 'active',
 };
 
 function normalizeResidentialTaskList(tasks: string[] | null | undefined) {
-  if (!Array.isArray(tasks)) {
-    return [];
-  }
-
+  if (!Array.isArray(tasks)) return [];
   return tasks
     .map((task) => task.trim())
-    .filter((task, index, list) => task.length > 0 && list.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index);
+    .filter(
+      (task, index, list) =>
+        task.length > 0 &&
+        list.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index
+    );
 }
 
-function formatCalendarDate(value: string | null | undefined) {
-  if (!value) return 'Not scheduled';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Not scheduled';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-}
-
-function formatClockTime(value: string | null | undefined) {
-  if (!value) return null;
-  const [hoursString, minutesString = '0'] = value.split(':');
-  const hours = Number(hoursString);
-  const minutes = Number(minutesString);
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const normalizedHours = hours % 12 || 12;
-  return `${normalizedHours}:${String(minutes).padStart(2, '0')} ${period}`;
-}
-
-function getResidentialServiceSummary(input: {
-  activeContract: Contract | null;
-  recentJobs: Job[];
-}) {
-  const sortedJobs = [...input.recentJobs].sort((left, right) => {
-    return new Date(left.scheduledDate).getTime() - new Date(right.scheduledDate).getTime();
-  });
-  const now = Date.now();
-  const upcomingJob = sortedJobs.find((job) => {
-    return job.status !== 'completed' && job.status !== 'canceled' && new Date(job.scheduledDate).getTime() >= now;
-  }) || sortedJobs.find((job) => job.status !== 'completed' && job.status !== 'canceled') || null;
-  const lastCompletedJob = [...sortedJobs].reverse().find((job) => job.status === 'completed') || null;
-
-  const assignmentLabel = input.activeContract?.assignedToUser?.fullName
-    || input.activeContract?.assignedTeam?.name
-    || upcomingJob?.assignedToUser?.fullName
-    || upcomingJob?.assignedTeam?.name
-    || 'Unassigned';
-
-  const nextVisitWindow = upcomingJob
-    ? [formatClockTime(upcomingJob.scheduledStartTime), formatClockTime(upcomingJob.scheduledEndTime)]
-        .filter(Boolean)
-        .join(' - ') || 'Time not set'
-    : 'No visit scheduled yet';
-
-  return {
-    serviceType: input.activeContract?.residentialServiceType
-      ? residentialServiceTypeLabels[input.activeContract.residentialServiceType] || input.activeContract.residentialServiceType
-      : 'Not set',
-    frequency: input.activeContract?.residentialFrequency
-      ? residentialFrequencyLabels[input.activeContract.residentialFrequency] || input.activeContract.residentialFrequency
-      : input.activeContract?.serviceFrequency || 'Not set',
-    nextVisitDate: upcomingJob ? formatCalendarDate(upcomingJob.scheduledDate) : 'No visit scheduled yet',
-    nextVisitWindow,
-    assignmentLabel,
-    latestCompletedVisit: lastCompletedJob ? formatCalendarDate(lastCompletedJob.scheduledDate) : 'No completed visits yet',
-  };
+interface CommercialJourneyResult {
+  stageId: CommercialAccountPipelineStageId;
+  currentStage: string;
+  nextStep: string;
+  isLost: boolean;
+  lostLabel?: string;
 }
 
 function getCommercialJourneyState(input: {
@@ -196,10 +148,18 @@ function getCommercialJourneyState(input: {
   proposals: Proposal[];
   activeContract: Contract | null;
   recentJobs: Job[];
-}) {
-  const getStage = (stageId: CommercialAccountPipelineStageId, nextStep: string) => ({
-    currentStage: COMMERCIAL_ACCOUNT_PIPELINE_STAGES.find((stage) => stage.id === stageId)?.label || stageId,
+}): CommercialJourneyResult {
+  const stageLabel = (stageId: CommercialAccountPipelineStageId) =>
+    COMMERCIAL_ACCOUNT_PIPELINE_STAGES.find((stage) => stage.id === stageId)?.label || stageId;
+
+  const build = (
+    stageId: CommercialAccountPipelineStageId,
+    nextStep: string
+  ): CommercialJourneyResult => ({
+    stageId,
+    currentStage: stageLabel(stageId),
     nextStep,
+    isLost: false,
   });
 
   const latestProposal = [...input.proposals].sort((left, right) => {
@@ -208,51 +168,52 @@ function getCommercialJourneyState(input: {
     return rightTime - leftTime;
   })[0];
 
-  const walkthroughs = input.appointments.filter((appointment) => appointment.type === 'walk_through');
-  const hasCompletedWalkthrough = walkthroughs.some((appointment) => appointment.status === 'completed');
-  const hasBookedWalkthrough = walkthroughs.some((appointment) => appointment.status !== 'completed' && appointment.status !== 'canceled');
+  const walkthroughs = input.appointments.filter((a) => a.type === 'walk_through');
+  const hasCompletedWalkthrough = walkthroughs.some((a) => a.status === 'completed');
+  const hasBookedWalkthrough = walkthroughs.some(
+    (a) => a.status !== 'completed' && a.status !== 'canceled'
+  );
   const hasScheduledService = input.recentJobs.length > 0;
 
   if (hasScheduledService) {
-    return getStage('scheduled_service', 'Review the job schedule and confirm the field team is assigned correctly.');
+    return build('scheduled_service', 'Review the job schedule and confirm the field team is assigned.');
   }
-
   if (input.activeContract) {
-    return getStage('active_contract', 'Activate delivery by confirming the service calendar and first visit assignment.');
+    return build('active_contract', 'Activate delivery by confirming the service calendar and first visit assignment.');
   }
 
   switch (latestProposal?.status) {
     case 'accepted':
-      return getStage('contract_ready', 'Create or finalize the contract from the accepted proposal.');
+      return build('contract_ready', 'Create or finalize the contract from the accepted proposal.');
     case 'viewed':
-      return getStage('proposal_viewed', 'Follow up with the client while the proposal is under review.');
+      return build('proposal_viewed', 'Follow up with the client while the proposal is under review.');
     case 'sent':
-      return getStage('proposal_sent', 'Follow up with the client or resend the proposal if needed.');
+      return build('proposal_sent', 'Follow up with the client or resend the proposal if needed.');
     case 'rejected':
       return {
+        stageId: 'proposal_sent',
         currentStage: 'Proposal Rejected',
         nextStep: 'Revise the proposal or close out the opportunity.',
+        isLost: true,
+        lostLabel: 'Proposal Rejected',
       };
     case 'draft':
     case 'expired':
-      return getStage('proposal_draft', 'Finish pricing and send the proposal to the client.');
+      return build('proposal_draft', 'Finish pricing and send the proposal to the client.');
     default:
       break;
   }
 
   if (hasCompletedWalkthrough) {
-    return getStage('walkthrough_completed', 'Build the proposal using the completed walkthrough scope.');
+    return build('walkthrough_completed', 'Build the proposal using the completed walkthrough scope.');
   }
-
   if (hasBookedWalkthrough) {
-    return getStage('walkthrough_booked', 'Prepare the facility details before the walkthrough happens.');
+    return build('walkthrough_booked', 'Prepare the service location details before the walkthrough happens.');
   }
-
   if (input.facilities.length > 0) {
-    return getStage('facility_added', 'Book the first walkthrough for the service location.');
+    return build('facility_added', 'Book the first walkthrough for the service location.');
   }
-
-  return getStage('account_created', 'Add the first facility so walkthrough planning can begin.');
+  return build('account_created', 'Add the first service location so walkthrough planning can begin.');
 }
 
 const AccountDetail = () => {
@@ -271,7 +232,12 @@ const AccountDetail = () => {
   const [addingActivity, setAddingActivity] = useState(false);
   const [activityNote, setActivityNote] = useState('');
   const [activityType, setActivityType] = useState<AccountActivityEntryType>('note');
-  const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'history'>('overview');
+  const [appointmentNote, setAppointmentNote] = useState('');
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState('');
+  const [addingAppointmentNote, setAddingAppointmentNote] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'contacts' | 'assignment' | 'details' | 'service' | 'history'
+  >('overview');
   const [proposalTotal, setProposalTotal] = useState(0);
   const [contractTotal, setContractTotal] = useState(0);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -285,6 +251,10 @@ const AccountDetail = () => {
   const [saving, setSaving] = useState(false);
   const [creatingFacility, setCreatingFacility] = useState(false);
   const [savingProperty, setSavingProperty] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+  const locationsRef = useRef<HTMLDivElement | null>(null);
+
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canAdminAccounts = hasPermission(PERMISSIONS.ACCOUNTS_ADMIN);
   const canWriteAccounts = hasPermission(PERMISSIONS.ACCOUNTS_WRITE);
@@ -447,10 +417,7 @@ const AccountDetail = () => {
     if (!id) return;
     try {
       setActivitiesLoading(true);
-      const response = await listAccountActivities(id, {
-        page: 1,
-        limit: 50,
-      });
+      const response = await listAccountActivities(id, { page: 1, limit: 50 });
       setActivities(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch account activities:', error);
@@ -503,7 +470,19 @@ const AccountDetail = () => {
     fetchContacts();
     fetchRecentJobs();
     fetchAppointments();
-  }, [fetchAccount, fetchUsers, fetchFacilities, fetchProposals, fetchContracts, fetchResidentialQuotes, fetchActiveContract, fetchActivities, fetchContacts, fetchRecentJobs, fetchAppointments]);
+  }, [
+    fetchAccount,
+    fetchUsers,
+    fetchFacilities,
+    fetchProposals,
+    fetchContracts,
+    fetchResidentialQuotes,
+    fetchActiveContract,
+    fetchActivities,
+    fetchContacts,
+    fetchRecentJobs,
+    fetchAppointments,
+  ]);
 
   useEffect(() => {
     if (!account) return;
@@ -526,6 +505,26 @@ const AccountDetail = () => {
       toast.error('Failed to update account. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!id) return;
+    const nextAccountManagerId = formData.accountManagerId || null;
+
+    try {
+      setSavingAssignment(true);
+      await updateAccount(id, {
+        ...formData,
+        accountManagerId: nextAccountManagerId,
+      });
+      toast.success('Assignment updated');
+      await fetchAccount();
+    } catch (error) {
+      console.error('Failed to update assignment:', error);
+      toast.error('Failed to update assignment');
+    } finally {
+      setSavingAssignment(false);
     }
   };
 
@@ -558,7 +557,7 @@ const AccountDetail = () => {
     try {
       setCreatingFacility(true);
       await createFacility({ ...facilityFormData, accountId: id });
-      toast.success('Facility created successfully');
+      toast.success('Service location created successfully');
       setShowFacilityModal(false);
       setFacilityFormData({
         name: '',
@@ -573,8 +572,8 @@ const AccountDetail = () => {
       fetchFacilities();
       fetchAccount();
     } catch (error) {
-      console.error('Failed to create facility:', error);
-      toast.error('Failed to create facility');
+      console.error('Failed to create service location:', error);
+      toast.error('Failed to create service location');
     } finally {
       setCreatingFacility(false);
     }
@@ -586,6 +585,7 @@ const AccountDetail = () => {
       ...DEFAULT_RESIDENTIAL_PROPERTY_FORM,
       defaultTasks: [],
       isPrimary: !(account?.residentialProperties?.length ?? 0),
+      status: 'active',
     });
     setShowPropertyModal(true);
   };
@@ -620,16 +620,16 @@ const AccountDetail = () => {
       defaultTasks: property.defaultTasks ?? [],
       pets: Boolean(property.pets),
       isPrimary: property.isPrimary,
+      status: property.status,
     });
     setShowPropertyModal(true);
   };
 
   const handleSaveProperty = async () => {
     if (!id || !propertyFormData.name.trim()) {
-      toast.error('Property name is required');
+      toast.error('Service location name is required');
       return;
     }
-
     try {
       setSavingProperty(true);
       if (editingProperty) {
@@ -643,9 +643,9 @@ const AccountDetail = () => {
           entryNotes: propertyFormData.entryNotes,
           pets: propertyFormData.pets,
           isPrimary: propertyFormData.isPrimary,
-          status: 'active',
+          status: propertyFormData.status,
         });
-        toast.success('Residential property updated');
+        toast.success('Residential service location updated');
       } else {
         await createResidentialProperty({
           accountId: id,
@@ -658,15 +658,15 @@ const AccountDetail = () => {
           entryNotes: propertyFormData.entryNotes,
           pets: propertyFormData.pets,
           isPrimary: propertyFormData.isPrimary,
-          status: 'active',
+          status: propertyFormData.status,
         });
-        toast.success('Residential property created');
+        toast.success('Residential service location created');
       }
       setShowPropertyModal(false);
       await fetchAccount();
     } catch (error) {
-      console.error('Failed to save residential property:', error);
-      toast.error('Failed to save residential property');
+      console.error('Failed to save residential service location:', error);
+      toast.error('Failed to save residential service location');
     } finally {
       setSavingProperty(false);
     }
@@ -681,10 +681,7 @@ const AccountDetail = () => {
     }
     try {
       setAddingActivity(true);
-      await createAccountActivity(id, {
-        entryType: activityType,
-        note: trimmed,
-      });
+      await createAccountActivity(id, { entryType: activityType, note: trimmed });
       setActivityNote('');
       setActivityType('note');
       toast.success('Account history note added');
@@ -696,6 +693,128 @@ const AccountDetail = () => {
       setAddingActivity(false);
     }
   };
+
+  const handleAddAppointmentNote = async () => {
+    if (!selectedAppointmentId) {
+      toast.error('Please select an appointment');
+      return;
+    }
+
+    const trimmed = appointmentNote.trim();
+    if (!trimmed) {
+      toast.error('Please enter an appointment note');
+      return;
+    }
+
+    const selectedAppointment = appointments.find((appointment) => appointment.id === selectedAppointmentId);
+    if (!selectedAppointment) {
+      toast.error('Selected appointment was not found');
+      return;
+    }
+
+    const nextNotes = selectedAppointment.notes
+      ? `${selectedAppointment.notes.trim()}\n\n${trimmed}`
+      : trimmed;
+
+    try {
+      setAddingAppointmentNote(true);
+      await updateAppointment(selectedAppointmentId, {
+        notes: nextNotes,
+        accountHistoryNote: trimmed,
+      });
+      setAppointmentNote('');
+      toast.success('Appointment note added');
+      await Promise.all([fetchAppointments(), fetchActivities()]);
+    } catch (error) {
+      console.error('Failed to add appointment note:', error);
+      toast.error('Failed to add appointment note');
+    } finally {
+      setAddingAppointmentNote(false);
+    }
+  };
+
+  const isResidentialAccount = account?.type === 'residential';
+  const residentialProperties = useMemo(
+    () => account?.residentialProperties ?? [],
+    [account?.residentialProperties]
+  );
+
+  const residentialStageOrder = useMemo(
+    () => new Map(RESIDENTIAL_ACCOUNT_PIPELINE_STAGES.map((stage, index) => [stage.id, index])),
+    []
+  );
+
+  const residentialPropertyJourneys = useMemo(() => {
+    return residentialProperties.map((property) => ({
+      property,
+      journey: getResidentialPropertyJourneyState({
+        property,
+        residentialQuotes,
+        contracts,
+        recentJobs,
+      }),
+    }));
+  }, [residentialProperties, residentialQuotes, contracts, recentJobs]);
+
+  const defaultFocusedProperty = useMemo(() => {
+    return [...residentialPropertyJourneys].sort((left, right) => {
+      const leftIndex =
+        'stageId' in left.journey ? residentialStageOrder.get(left.journey.stageId) ?? -1 : -1;
+      const rightIndex =
+        'stageId' in right.journey ? residentialStageOrder.get(right.journey.stageId) ?? -1 : -1;
+      if (leftIndex !== rightIndex) return rightIndex - leftIndex;
+      if (left.property.isPrimary !== right.property.isPrimary)
+        return left.property.isPrimary ? -1 : 1;
+      return new Date(right.property.updatedAt).getTime() - new Date(left.property.updatedAt).getTime();
+    })[0] ?? null;
+  }, [residentialPropertyJourneys, residentialStageOrder]);
+
+  const effectivePropertyId = activePropertyId ?? defaultFocusedProperty?.property.id ?? null;
+  const selectedPropertyJourney =
+    residentialPropertyJourneys.find((entry) => entry.property.id === effectivePropertyId) ??
+    defaultFocusedProperty;
+
+  const fallbackResidentialJourney = getResidentialJourneyState({
+    residentialQuotes,
+    activeContract,
+    recentJobs,
+  });
+
+  const activeResidentialJourney = selectedPropertyJourney?.journey ?? fallbackResidentialJourney;
+
+  const focusedResidentialFacilityId =
+    selectedPropertyJourney?.property.facility?.id ?? null;
+  const focusedResidentialProposal = focusedResidentialFacilityId
+    ? [...proposals]
+        .filter((proposal) => proposal.facility?.id === focusedResidentialFacilityId)
+        .sort((left, right) => {
+          const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
+          const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
+          return rightTime - leftTime;
+        })[0] ?? null
+    : null;
+
+  const commercialJourney = useMemo(
+    () =>
+      getCommercialJourneyState({
+        facilities,
+        appointments,
+        proposals,
+        activeContract,
+        recentJobs,
+      }),
+    [facilities, appointments, proposals, activeContract, recentJobs]
+  );
+
+  const latestProposal = useMemo(
+    () =>
+      [...proposals].sort((l, r) => {
+        const lt = new Date(l.updatedAt || l.createdAt).getTime();
+        const rt = new Date(r.updatedAt || r.createdAt).getTime();
+        return rt - lt;
+      })[0] ?? null,
+    [proposals]
+  );
 
   if (loading) {
     return (
@@ -709,77 +828,6 @@ const AccountDetail = () => {
     return <div className="text-center text-surface-500 dark:text-surface-400">Account not found</div>;
   }
 
-  const isResidentialAccount = account.type === 'residential';
-  const residentialProperties = account.residentialProperties ?? [];
-  const residentialPropertiesByFacilityId = new Map(
-    residentialProperties
-      .filter((property) => property.facility?.id)
-      .map((property) => [property.facility!.id, property])
-  );
-  const residentialPropertyJourneys = residentialProperties.map((property) => ({
-    property,
-    journey: getResidentialPropertyJourneyState({
-      property,
-      residentialQuotes,
-      contracts,
-      recentJobs,
-    }),
-  }));
-  const residentialStageOrder = new Map(
-    RESIDENTIAL_ACCOUNT_PIPELINE_STAGES.map((stage, index) => [stage.id, index])
-  );
-  const focusedResidentialPropertyJourney = [...residentialPropertyJourneys].sort((left, right) => {
-    const leftStageIndex = 'stageId' in left.journey
-      ? (residentialStageOrder.get(left.journey.stageId) ?? -1)
-      : -1;
-    const rightStageIndex = 'stageId' in right.journey
-      ? (residentialStageOrder.get(right.journey.stageId) ?? -1)
-      : -1;
-
-    if (leftStageIndex !== rightStageIndex) {
-      return rightStageIndex - leftStageIndex;
-    }
-
-    if (left.property.isPrimary !== right.property.isPrimary) {
-      return left.property.isPrimary ? -1 : 1;
-    }
-
-    return new Date(right.property.updatedAt).getTime() - new Date(left.property.updatedAt).getTime();
-  })[0] ?? null;
-  const residentialJourney = focusedResidentialPropertyJourney?.journey ?? getResidentialJourneyState({
-    residentialQuotes,
-    activeContract,
-    recentJobs,
-  });
-  const residentialJourneyPropertyLabel = focusedResidentialPropertyJourney?.property.name ?? null;
-  const focusedResidentialFacilityId = focusedResidentialPropertyJourney?.property.facility?.id ?? null;
-  const focusedResidentialProposal = focusedResidentialFacilityId
-    ? [...proposals]
-        .filter((proposal) => proposal.facility?.id === focusedResidentialFacilityId)
-        .sort((left, right) => {
-          const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
-          const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
-          return rightTime - leftTime;
-        })[0] ?? null
-    : null;
-  const commercialJourney = getCommercialJourneyState({
-    facilities,
-    appointments,
-    proposals,
-    activeContract,
-    recentJobs,
-  });
-  const residentialServiceSummary = getResidentialServiceSummary({
-    activeContract,
-    recentJobs,
-  });
-  const upcomingAppointments = appointments
-    .filter((appointment) => appointment.status !== 'completed' && appointment.status !== 'canceled')
-    .sort((left, right) => new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime());
-  const recentAppointments = appointments
-    .filter((appointment) => appointment.status === 'completed' || appointment.status === 'rescheduled')
-    .sort((left, right) => new Date(right.scheduledStart).getTime() - new Date(left.scheduledStart).getTime());
-
   const accountBackState = {
     state: { backLabel: account.name, backPath: getAccountDetailPath(account) },
   };
@@ -790,489 +838,268 @@ const AccountDetail = () => {
   const navigateToProposalDetail = (proposalId: string) =>
     navigate(`/proposals/${proposalId}`, accountBackState);
 
-  const bookingsSection = (
-    <Card className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Bookings</h3>
-          <p className="text-sm text-surface-500 dark:text-surface-400">
-            Upcoming and recent walkthroughs or service appointments linked to this account.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
-          Open Appointments
-        </Button>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-          <div className="text-xs uppercase tracking-wide text-surface-500">Upcoming</div>
-          {upcomingAppointments.length === 0 ? (
-            <div className="mt-2 text-sm text-surface-500 dark:text-surface-400">
-              No upcoming bookings.
-            </div>
-          ) : (
-            <div className="mt-3 space-y-3">
-              {upcomingAppointments.slice(0, 3).map((appointment) => (
-                <div key={appointment.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium text-surface-900 dark:text-surface-100">
-                      {appointment.type === 'walk_through' ? 'Walkthrough' : 'Service Booking'}
-                    </div>
-                    <Badge variant={appointment.status === 'rescheduled' ? 'warning' : 'info'}>
-                      {appointment.status.replace(/_/g, ' ')}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
-                    {formatCalendarDate(appointment.scheduledStart)}
-                  </div>
-                  <div className="text-xs text-surface-500">
-                    {appointment.facility?.name || 'No facility'} · {appointment.assignedToUser?.fullName || appointment.assignedTeam?.name || 'Unassigned'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-          <div className="text-xs uppercase tracking-wide text-surface-500">Recent</div>
-          {recentAppointments.length === 0 ? (
-            <div className="mt-2 text-sm text-surface-500 dark:text-surface-400">
-              No recent bookings.
-            </div>
-          ) : (
-            <div className="mt-3 space-y-3">
-              {recentAppointments.slice(0, 3).map((appointment) => (
-                <div key={appointment.id} className="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium text-surface-900 dark:text-surface-100">
-                      {appointment.type === 'walk_through' ? 'Walkthrough' : 'Service Booking'}
-                    </div>
-                    <Badge variant={appointment.status === 'completed' ? 'success' : 'warning'}>
-                      {appointment.status.replace(/_/g, ' ')}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
-                    {formatCalendarDate(appointment.scheduledStart)}
-                  </div>
-                  <div className="text-xs text-surface-500">
-                    {appointment.facility?.name || 'No facility'} · {appointment.assignedToUser?.fullName || appointment.assignedTeam?.name || 'Unassigned'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </Card>
+  const scrollToLocations = () => {
+    if (locationsRef.current) {
+      locationsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const residentialLinkedFacilityIds = new Set(
+    residentialProperties.map((property) => property.facility?.id).filter(Boolean)
   );
+  const residentialServiceLocationCount =
+    residentialProperties.length +
+    facilities.filter((facility) => !residentialLinkedFacilityIds.has(facility.id)).length;
+  const facilitiesCount = isResidentialAccount
+    ? residentialServiceLocationCount || (account.serviceAddress ? 1 : 0)
+    : facilities.length;
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview' },
+    { id: 'contacts' as const, label: 'Contacts' },
+    { id: 'assignment' as const, label: 'Assignment' },
+    { id: 'details' as const, label: 'Account Details' },
     { id: 'service' as const, label: 'Service' },
     { id: 'history' as const, label: 'History' },
   ];
 
-  const journeyStage = isResidentialAccount ? residentialJourney.currentStage : commercialJourney.currentStage;
-  const journeyNextStep = isResidentialAccount ? residentialJourney.nextStep : commercialJourney.nextStep;
-  const journeyVariant = activeContract
-    ? 'success' as const
-    : isResidentialAccount
-      ? (residentialQuotes.length > 0 ? 'warning' as const : 'info' as const)
-      : (proposals.length > 0 || appointments.length > 0 ? 'warning' as const : 'info' as const);
+  const commercialActions = buildCommercialActions({
+    stageId: commercialJourney.stageId,
+    latestProposal,
+    activeContract,
+    canWriteFacilities,
+    onAddFacility: () => setShowFacilityModal(true),
+    onOpenProposal: navigateToProposalDetail,
+    onNavigate: navigateFromAccount,
+  });
+
+  const residentialActions = buildResidentialActions({
+    stageId: 'stageId' in activeResidentialJourney ? activeResidentialJourney.stageId : null,
+    isLost: 'canonicalStatus' in activeResidentialJourney && activeResidentialJourney.canonicalStatus === 'lost',
+    focusedProposal: focusedResidentialProposal,
+    focusedFacilityId: focusedResidentialFacilityId,
+    activeContract,
+    onAddProperty: openCreatePropertyModal,
+    onOpenProposal: navigateToProposalDetail,
+    onNavigate: navigateFromAccount,
+    onOpenFacility: navigateToFacilityDetail,
+  });
+
+  const journeyView = isResidentialAccount ? (
+    <AccountJourneyStepper
+      title="Residential Journey"
+      description={
+        selectedPropertyJourney
+          ? `Tracking ${selectedPropertyJourney.property.name} through the sales-to-service flow.`
+          : 'Track where this residential customer is in the sales-to-service flow.'
+      }
+      stages={RESIDENTIAL_ACCOUNT_PIPELINE_STAGES}
+      currentStageId={
+        'stageId' in activeResidentialJourney
+          ? activeResidentialJourney.stageId
+          : getResidentialLostStageId()
+      }
+      isLost={'canonicalStatus' in activeResidentialJourney && activeResidentialJourney.canonicalStatus === 'lost'}
+      lostLabel={
+        'canonicalStatus' in activeResidentialJourney && activeResidentialJourney.canonicalStatus === 'lost'
+          ? activeResidentialJourney.currentStage
+          : undefined
+      }
+      nextStep={activeResidentialJourney.nextStep}
+      primaryAction={residentialActions.primary}
+      secondaryActions={residentialActions.secondary}
+      tertiaryAction={residentialActions.tertiary}
+      propertySwitcher={
+        residentialProperties.length > 1 ? (
+          <Select
+            value={effectivePropertyId ?? ''}
+            onChange={(value) => setActivePropertyId(value || null)}
+            options={residentialProperties.map((property) => ({
+              value: property.id,
+              label: `${property.name}${property.isPrimary ? ' (Primary)' : ''}`,
+            }))}
+          />
+        ) : undefined
+      }
+    />
+  ) : (
+    <AccountJourneyStepper
+      title="Commercial Journey"
+      description="Track where this commercial account is in the sales-to-service pipeline."
+      stages={COMMERCIAL_ACCOUNT_PIPELINE_STAGES}
+      currentStageId={commercialJourney.stageId}
+      isLost={commercialJourney.isLost}
+      lostLabel={commercialJourney.lostLabel}
+      nextStep={commercialJourney.nextStep}
+      primaryAction={commercialActions.primary}
+      secondaryActions={commercialActions.secondary}
+      tertiaryAction={commercialActions.tertiary}
+    />
+  );
 
   return (
     <div className="space-y-6">
       <AccountHero
         account={account}
         activeContract={activeContract}
-        proposalTotal={proposalTotal}
         contractTotal={contractTotal}
-        contacts={contacts}
         recentJobs={recentJobs}
         canAdminAccounts={canAdminAccounts}
+        facilitiesCount={facilitiesCount}
         onEdit={() => setShowEditModal(true)}
         onArchive={handleArchive}
         onRestore={handleRestore}
         onNavigate={navigateFromAccount}
+        onScrollToLocations={scrollToLocations}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ── Main content ── */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Tab bar */}
-          <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Overview tab ── */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Journey card — shared structure */}
-              <Card className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                      {isResidentialAccount ? 'Residential Journey' : 'Commercial Journey'}
-                    </h3>
-                    <p className="text-sm text-surface-500 dark:text-surface-400">
-                      {isResidentialAccount
-                        ? 'Track where this residential customer is in the sales-to-service flow.'
-                        : 'Track where this commercial account is in the sales-to-service pipeline.'}
-                    </p>
-                  </div>
-                  <Badge variant={journeyVariant}>{journeyStage}</Badge>
-                </div>
-                <div className={`grid gap-3 ${isResidentialAccount ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-                  {isResidentialAccount && (
-                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                      <div className="text-xs uppercase tracking-wide text-surface-500">Property In Journey</div>
-                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                        {residentialJourneyPropertyLabel ?? 'All Properties'}
-                      </div>
-                    </div>
-                  )}
-                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                    <div className="text-xs uppercase tracking-wide text-surface-500">Current Stage</div>
-                    <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                      {journeyStage}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                    <div className="text-xs uppercase tracking-wide text-surface-500">Next Step</div>
-                    <div className="mt-2 text-sm text-surface-900 dark:text-surface-100">
-                      {journeyNextStep}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {isResidentialAccount ? (
-                    <>
-                      {focusedResidentialPropertyJourney ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const linkedFacilityId = focusedResidentialFacilityId;
-                            if (!linkedFacilityId) return;
-                            navigateToFacilityDetail(linkedFacilityId);
-                          }}
-                          disabled={!focusedResidentialFacilityId}
-                        >
-                          Open Service Location
-                        </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => focusedResidentialProposal && navigateToProposalDetail(focusedResidentialProposal.id)}
-                        disabled={!focusedResidentialProposal}
-                      >
-                        Open Proposal
-                      </Button>
-                      {activeContract ? (
-                        <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
-                          Open Active Contract
-                        </Button>
-                      ) : null}
-                      {!activeContract && recentJobs.length > 0 ? (
-                        <Button size="sm" onClick={() => navigateFromAccount('/jobs')}>
-                          View Jobs
-                        </Button>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/service-locations')}>
-                        Open Service Locations
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/appointments')}>
-                        Open Appointments
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigateFromAccount('/proposals')}>
-                        Open Proposals
-                      </Button>
-                      {activeContract ? (
-                        <Button size="sm" onClick={() => navigateFromAccount(`/contracts/${activeContract.id}`)}>
-                          Open Active Contract
-                        </Button>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </Card>
-
-              {/* Type-specific content */}
-              {isResidentialAccount ? (
-                <>
-                  {/* Service Locations */}
-                  <Card className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Service Locations</h3>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Operational locations linked to this residential account.
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={openCreatePropertyModal}>
-                        Add Service Location
-                      </Button>
-                    </div>
-                    {facilities.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
-                        No service locations yet. Add the first service location to create its operational scope.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {facilities.map((linkedFacility) => {
-                          const linkedProperty = residentialPropertiesByFacilityId.get(linkedFacility.id) ?? null;
-                          const propertyJourney = linkedProperty
-                            ? residentialPropertyJourneys.find(({ property }) => property.id === linkedProperty.id)?.journey
-                            : null;
-
-                          return (
-                          <div key={linkedFacility.id} className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <div className="font-medium text-surface-900 dark:text-surface-100">
-                                    {linkedProperty?.name || linkedFacility.name}
-                                  </div>
-                                  {linkedProperty?.isPrimary ? <Badge variant="success">Primary</Badge> : null}
-                                  {propertyJourney ? (
-                                    <Badge variant={propertyJourney.currentStage === 'Scheduled Service' || propertyJourney.currentStage === 'Active Contract' ? 'success' : propertyJourney.currentStage === 'Account Created' ? 'info' : 'warning'}>
-                                      {propertyJourney.currentStage}
-                                    </Badge>
-                                  ) : null}
-                                </div>
-                                <div className="mt-1 text-xs uppercase tracking-wide text-surface-500">
-                                  Facility: {linkedFacility.name}
-                                </div>
-                                <div className="mt-1 text-sm text-surface-600 dark:text-surface-300">
-                                  {[
-                                    linkedFacility.address?.street,
-                                    linkedFacility.address?.city,
-                                    linkedFacility.address?.state,
-                                    linkedFacility.address?.postalCode,
-                                  ].filter(Boolean).join(', ') || 'No service address set'}
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => navigateToFacilityDetail(linkedFacility.id)}>
-                                  Open Facility
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => linkedProperty && openEditPropertyModal(linkedProperty)}
-                                  disabled={!linkedProperty}
-                                >
-                                  Edit
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                              <div>
-                                <div className="text-xs uppercase tracking-wide text-surface-500">Home Profile</div>
-                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {linkedProperty?.homeProfile?.homeType ? linkedProperty.homeProfile.homeType.replace('_', ' ') : linkedFacility.buildingType ? linkedFacility.buildingType.replace('_', ' ') : 'No home type set'}
-                                  {linkedProperty?.homeProfile?.squareFeet ? `, ${linkedProperty.homeProfile.squareFeet} sq ft` : ''}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs uppercase tracking-wide text-surface-500">Bedrooms / Baths</div>
-                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {linkedProperty?.homeProfile?.bedrooms ?? 0} bed / {linkedProperty?.homeProfile?.fullBathrooms ?? 0} bath
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-xs uppercase tracking-wide text-surface-500">Access</div>
-                                <div className="mt-1 text-sm text-surface-900 dark:text-surface-100">
-                                  {linkedProperty?.entryNotes || linkedProperty?.parkingAccess || linkedProperty?.accessNotes || linkedFacility.accessInstructions || 'No access notes set'}
-                                </div>
-                              </div>
-                            </div>
-                            {propertyJourney ? (
-                              <div className="mt-3 rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-900/40 dark:text-surface-300">
-                                <span className="font-medium text-surface-900 dark:text-surface-100">Next step:</span>{' '}
-                                {propertyJourney.nextStep}
-                              </div>
-                            ) : null}
-                          </div>
-                        )})}
-                      </div>
-                    )}
-                  </Card>
-
-                  {/* Proposals */}
-                  <Card className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Proposals</h3>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
-                          Proposals linked to this residential account and its service locations.
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => focusedResidentialProposal && navigateToProposalDetail(focusedResidentialProposal.id)}
-                        disabled={!focusedResidentialProposal}
-                      >
-                        Open Proposal
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      {proposals.length === 0 ? (
-                        <div className="text-sm text-surface-500 dark:text-surface-400">No proposals yet.</div>
-                      ) : (
-                        proposals.map((proposal) => (
-                          <button
-                            key={proposal.id}
-                            type="button"
-                            onClick={() => navigateToProposalDetail(proposal.id)}
-                            className="w-full rounded-xl border border-surface-200 p-3 text-left transition-colors hover:border-surface-300 dark:border-surface-700 dark:hover:border-surface-600"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="font-medium text-surface-900 dark:text-surface-100">{proposal.title}</div>
-                                <div className="text-xs text-surface-500">{proposal.proposalNumber}</div>
-                              </div>
-                              <Badge variant={proposal.status === 'accepted' ? 'success' : proposal.status === 'rejected' || proposal.status === 'expired' ? 'error' : 'warning'}>
-                                {proposal.status}
-                              </Badge>
-                            </div>
-                            {proposal.facility?.name ? (
-                              <div className="mt-1 text-xs text-surface-500">
-                                Service Location: {proposal.facility.name}
-                              </div>
-                            ) : null}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                </>
-              ) : (
-                <>
-                  <AccountFacilities
-                    facilities={facilities}
-                    canWriteFacilities={canWriteFacilities}
-                    onAddFacility={() => setShowFacilityModal(true)}
-                    onNavigate={navigateFromAccount}
-                  />
-                  <AccountFinancials
-                    account={account}
-                    activeContract={activeContract}
-                    proposals={proposals}
-                    contracts={contracts}
-                    proposalTotal={proposalTotal}
-                    contractTotal={contractTotal}
-                    onNavigate={navigateFromAccount}
-                  />
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ── Service tab ── */}
-          {activeTab === 'service' && (
-            <div className="space-y-6">
-              {bookingsSection}
-
-              {isResidentialAccount && (
-                <Card className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Service Details</h3>
-                      <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Current service shape and next visit details.
-                      </p>
-                    </div>
-                    <Badge variant={activeContract ? 'success' : 'info'}>
-                      {activeContract ? 'Live Service' : 'Pre-Service'}
-                    </Badge>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                      <div className="text-xs uppercase tracking-wide text-surface-500">Service Type</div>
-                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                        {residentialServiceSummary.serviceType}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                      <div className="text-xs uppercase tracking-wide text-surface-500">Frequency</div>
-                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                        {residentialServiceSummary.frequency}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                      <div className="text-xs uppercase tracking-wide text-surface-500">Next Visit</div>
-                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                        {residentialServiceSummary.nextVisitDate}
-                      </div>
-                      <div className="mt-1 text-xs text-surface-500">{residentialServiceSummary.nextVisitWindow}</div>
-                    </div>
-                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
-                      <div className="text-xs uppercase tracking-wide text-surface-500">Assigned To</div>
-                      <div className="mt-2 text-base font-semibold text-surface-900 dark:text-surface-100">
-                        {residentialServiceSummary.assignmentLabel}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-dashed border-surface-200 p-4 text-sm text-surface-600 dark:border-surface-700 dark:text-surface-300">
-                    <span className="font-medium text-surface-900 dark:text-surface-100">Latest completed visit:</span>{' '}
-                    {residentialServiceSummary.latestCompletedVisit}
-                  </div>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {/* ── History tab ── */}
-          {activeTab === 'history' && (
-            <AccountHistory
-              activities={activities}
-              activitiesLoading={activitiesLoading}
-              canWriteAccounts={canWriteAccounts}
-              activityNote={activityNote}
-              setActivityNote={setActivityNote}
-              activityType={activityType}
-              setActivityType={setActivityType}
-              onAddActivity={handleAddActivity}
-              addingActivity={addingActivity}
-            />
-          )}
+      <div className="space-y-6">
+        <div className="flex gap-1 border-b border-surface-200 dark:border-surface-700">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── Sidebar ── */}
-        <div className="space-y-6">
-          <AccountContacts
-            contacts={contacts}
-            accountId={account.id}
-            onNavigate={navigateFromAccount}
-          />
-          <AccountServiceOverview
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {journeyView}
+
+            {isResidentialAccount ? (
+              <>
+                <AccountResidentialProperties
+                  ref={locationsRef}
+                  properties={residentialProperties}
+                  facilities={facilities}
+                  contracts={contracts}
+                  recentJobs={recentJobs}
+                  residentialQuotes={residentialQuotes}
+                  focusedPropertyId={effectivePropertyId}
+                  onAddProperty={openCreatePropertyModal}
+                  onEditProperty={openEditPropertyModal}
+                  onOpenFacility={navigateToFacilityDetail}
+                />
+
+                <AccountProposalsContracts
+                  accountId={account.id}
+                  proposals={proposals}
+                  contracts={contracts}
+                  proposalTotal={proposalTotal}
+                  contractTotal={contractTotal}
+                  activeContract={activeContract}
+                  onNavigate={navigateFromAccount}
+                />
+              </>
+            ) : (
+              <>
+                <AccountFacilities
+                  ref={locationsRef}
+                  facilities={facilities}
+                  recentJobs={recentJobs}
+                  canWriteFacilities={canWriteFacilities}
+                  onAddFacility={() => setShowFacilityModal(true)}
+                  onNavigate={navigateFromAccount}
+                />
+
+                <AccountProposalsContracts
+                  accountId={account.id}
+                  proposals={proposals}
+                  contracts={contracts}
+                  proposalTotal={proposalTotal}
+                  contractTotal={contractTotal}
+                  activeContract={activeContract}
+                  onNavigate={navigateFromAccount}
+                />
+              </>
+            )}
+
+            {account.notes ? (
+              <Card className="p-5">
+                <div className="mb-2 flex items-center gap-2">
+                  <StickyNote className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Notes</h3>
+                  {canAdminAccounts && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(true)}
+                      className="ml-auto text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-200">
+                  {account.notes}
+                </p>
+              </Card>
+            ) : null}
+          </div>
+        )}
+
+        {activeTab === 'contacts' && (
+          <AccountContacts contacts={contacts} accountId={account.id} onNavigate={navigateFromAccount} />
+        )}
+
+        {activeTab === 'assignment' && (
+          <AccountAssignment
+            account={account}
             activeContract={activeContract}
+            recentJobs={recentJobs}
+            users={users}
+            canEditAccountAssignment={canWriteAccounts}
+            saving={savingAssignment}
+            accountManagerId={formData.accountManagerId || ''}
+            onAccountManagerChange={(value) =>
+              setFormData((current) => ({ ...current, accountManagerId: value || null }))
+            }
+            onSave={handleSaveAssignment}
+          />
+        )}
+
+        {activeTab === 'details' && <AccountDetailsSidebar account={account} />}
+
+        {activeTab === 'service' && (
+          <AccountServiceTab
+            accountType={account.type}
+            activeContract={activeContract}
+            appointments={appointments}
             recentJobs={recentJobs}
             onNavigate={navigateFromAccount}
           />
-        </div>
+        )}
+
+        {activeTab === 'history' && (
+          <AccountHistory
+            activities={activities}
+            activitiesLoading={activitiesLoading}
+            canWriteAccounts={canWriteAccounts}
+            appointments={appointments}
+            activityNote={activityNote}
+            setActivityNote={setActivityNote}
+            activityType={activityType}
+            setActivityType={setActivityType}
+            onAddActivity={handleAddActivity}
+            addingActivity={addingActivity}
+            appointmentNote={appointmentNote}
+            setAppointmentNote={setAppointmentNote}
+            selectedAppointmentId={selectedAppointmentId}
+            setSelectedAppointmentId={setSelectedAppointmentId}
+            onAddAppointmentNote={handleAddAppointmentNote}
+            addingAppointmentNote={addingAppointmentNote}
+          />
+        )}
       </div>
 
-      {/* Modals */}
       <EditAccountModal
         isOpen={showEditModal && canAdminAccounts}
         onClose={() => setShowEditModal(false)}
@@ -1293,190 +1120,142 @@ const AccountDetail = () => {
         accountType={account.type}
       />
       <Modal
-        isOpen={showPropertyModal && isResidentialAccount}
+        isOpen={showPropertyModal && Boolean(isResidentialAccount)}
         onClose={() => setShowPropertyModal(false)}
-        title={editingProperty ? 'Edit Residential Property' : 'Add Residential Property'}
+        title={editingProperty ? 'Edit Residential Service Location' : 'Add Residential Service Location'}
         size="xl"
       >
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              label="Property Name"
-              value={propertyFormData.name}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({ ...current, name: event.target.value }))
-              }
-            />
+          <Input
+            label="Service Location Name"
+            required
+            placeholder="Maple Family Home"
+            value={propertyFormData.name}
+            onChange={(event) =>
+              setPropertyFormData((current) => ({ ...current, name: event.target.value }))
+            }
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label="Home Type"
+              placeholder="Select type"
               value={propertyFormData.homeProfile.homeType ?? ''}
-              options={[
-                { value: 'apartment', label: 'Apartment' },
-                { value: 'condo', label: 'Condo' },
-                { value: 'townhouse', label: 'Townhouse' },
-                { value: 'single_family', label: 'Single Family' },
-              ]}
+              options={RESIDENTIAL_SERVICE_LOCATION_TYPES}
               onChange={(value) =>
                 setPropertyFormData((current) => ({
                   ...current,
-                  homeProfile: { ...current.homeProfile, homeType: value as NonNullable<typeof current.homeProfile.homeType> },
+                  homeProfile: {
+                    ...current.homeProfile,
+                    homeType: value as NonNullable<typeof current.homeProfile.homeType>,
+                  },
                 }))
               }
             />
-            <Input
-              label="Street"
-              value={propertyFormData.serviceAddress.street ?? ''}
-              onChange={(event) =>
+            <Select
+              label="Status"
+              options={RESIDENTIAL_PROPERTY_STATUSES}
+              value={propertyFormData.status}
+              onChange={(value) =>
                 setPropertyFormData((current) => ({
                   ...current,
-                  serviceAddress: { ...current.serviceAddress, street: event.target.value },
+                  status: value as ResidentialPropertySummary['status'],
                 }))
               }
             />
-            <Input
-              label="City"
-              value={propertyFormData.serviceAddress.city ?? ''}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  serviceAddress: { ...current.serviceAddress, city: event.target.value },
-                }))
-              }
-            />
-            <Input
-              label="State"
-              value={propertyFormData.serviceAddress.state ?? ''}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  serviceAddress: { ...current.serviceAddress, state: event.target.value },
-                }))
-              }
-            />
-            <Input
-              label="Postal Code"
-              value={propertyFormData.serviceAddress.postalCode ?? ''}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  serviceAddress: { ...current.serviceAddress, postalCode: event.target.value },
-                }))
-              }
-            />
-            <Input
-              type="number"
-              label="Square Feet"
-              value={propertyFormData.homeProfile.squareFeet ?? ''}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  homeProfile: { ...current.homeProfile, squareFeet: Number(event.target.value) || 0 },
-                }))
-              }
-            />
-            <Input
-              type="number"
-              label="Bedrooms"
-              value={propertyFormData.homeProfile.bedrooms ?? 0}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  homeProfile: { ...current.homeProfile, bedrooms: Number(event.target.value) || 0 },
-                }))
-              }
-            />
-            <Input
-              type="number"
-              label="Full Bathrooms"
-              value={propertyFormData.homeProfile.fullBathrooms ?? 0}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  homeProfile: { ...current.homeProfile, fullBathrooms: Number(event.target.value) || 0 },
-                }))
-              }
-            />
-            <Input
-              type="number"
-              label="Half Bathrooms"
-              value={propertyFormData.homeProfile.halfBathrooms ?? 0}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  homeProfile: { ...current.homeProfile, halfBathrooms: Number(event.target.value) || 0 },
-                }))
-              }
-            />
-            <Input
-              type="number"
-              label="Levels"
-              value={propertyFormData.homeProfile.levels ?? 1}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({
-                  ...current,
-                  homeProfile: { ...current.homeProfile, levels: Number(event.target.value) || 1 },
-                }))
-              }
-            />
-            <label className="flex items-center gap-3 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
-              <input
-                type="checkbox"
-                checked={propertyFormData.isPrimary}
+          </div>
+          <p className="text-xs text-surface-500 dark:text-surface-400">
+            Total square feet will be auto-calculated from the areas added to this service location.
+          </p>
+          <div className="border-t border-surface-200 pt-4 dark:border-surface-700">
+            <h4 className="mb-3 text-sm font-medium text-surface-900 dark:text-white">Address</h4>
+            <div className="space-y-4">
+              <Input
+                label="Street Address"
+                placeholder="123 Main St"
+                value={propertyFormData.serviceAddress.street ?? ''}
                 onChange={(event) =>
-                  setPropertyFormData((current) => ({ ...current, isPrimary: event.target.checked }))
+                  setPropertyFormData((current) => ({
+                    ...current,
+                    serviceAddress: { ...current.serviceAddress, street: event.target.value || undefined },
+                  }))
                 }
               />
-              Primary residential property
-            </label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Input
+                  label="City"
+                  placeholder="New York"
+                  value={propertyFormData.serviceAddress.city ?? ''}
+                  onChange={(event) =>
+                    setPropertyFormData((current) => ({
+                      ...current,
+                      serviceAddress: { ...current.serviceAddress, city: event.target.value || undefined },
+                    }))
+                  }
+                />
+                <Input
+                  label="State"
+                  placeholder="NY"
+                  value={propertyFormData.serviceAddress.state ?? ''}
+                  onChange={(event) =>
+                    setPropertyFormData((current) => ({
+                      ...current,
+                      serviceAddress: { ...current.serviceAddress, state: event.target.value || undefined },
+                    }))
+                  }
+                />
+                <Input
+                  label="Postal Code"
+                  placeholder="10001"
+                  value={propertyFormData.serviceAddress.postalCode ?? ''}
+                  onChange={(event) =>
+                    setPropertyFormData((current) => ({
+                      ...current,
+                      serviceAddress: { ...current.serviceAddress, postalCode: event.target.value || undefined },
+                    }))
+                  }
+                />
+              </div>
+            </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              label="Parking Access"
-              value={propertyFormData.parkingAccess}
-              onChange={(event) =>
-                setPropertyFormData((current) => ({ ...current, parkingAccess: event.target.value }))
-              }
-            />
-            <label className="flex items-center gap-3 rounded-lg border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
-              <input
-                type="checkbox"
-                checked={propertyFormData.pets}
-                onChange={(event) =>
-                  setPropertyFormData((current) => ({ ...current, pets: event.target.checked }))
-                }
-              />
-              Pets at property
-            </label>
-          </div>
-          <ResidentialTaskBuilder
-            label="Default Cleaning Tasks"
-            hint="These tasks prefill new residential quotes for this property and can be adjusted per quote."
-            tasks={propertyFormData.defaultTasks}
-            onChange={(defaultTasks) =>
-              setPropertyFormData((current) => ({ ...current, defaultTasks }))
-            }
-            placeholder="Example: Vacuum floors"
-          />
-          <Textarea
-            label="Entry Notes"
-            value={propertyFormData.entryNotes}
-            onChange={(event) =>
-              setPropertyFormData((current) => ({ ...current, entryNotes: event.target.value }))
+          <FacilityServiceScheduleFields
+            address={propertyFormData.serviceAddress as FacilityAddress}
+            onChange={(nextAddress) =>
+              setPropertyFormData((current) => ({
+                ...current,
+                serviceAddress: nextAddress as NonNullable<UpdateAccountInput['serviceAddress']>,
+              }))
             }
           />
           <Textarea
-            label="Access Notes"
+            label="Access Instructions"
+            placeholder="Enter through the side door, gate code, lockbox details..."
             value={propertyFormData.accessNotes}
             onChange={(event) =>
               setPropertyFormData((current) => ({ ...current, accessNotes: event.target.value }))
             }
           />
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowPropertyModal(false)}>
+          <Textarea
+            label="Parking Info"
+            placeholder="Driveway, street parking, visitor stall..."
+            value={propertyFormData.parkingAccess}
+            onChange={(event) =>
+              setPropertyFormData((current) => ({ ...current, parkingAccess: event.target.value }))
+            }
+          />
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes about this service location..."
+            value={propertyFormData.entryNotes}
+            onChange={(event) =>
+              setPropertyFormData((current) => ({ ...current, entryNotes: event.target.value }))
+            }
+          />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowPropertyModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveProperty} disabled={savingProperty}>
-              {savingProperty ? 'Saving...' : editingProperty ? 'Save Property' : 'Create Property'}
+            <Button onClick={handleSaveProperty} isLoading={savingProperty} disabled={!propertyFormData.name}>
+              {savingProperty ? 'Saving...' : editingProperty ? 'Save Service Location' : 'Create Service Location'}
             </Button>
           </div>
         </div>
@@ -1484,5 +1263,178 @@ const AccountDetail = () => {
     </div>
   );
 };
+
+function getResidentialLostStageId(): ResidentialAccountPipelineStageId {
+  return 'quote_sent';
+}
+
+interface ActionsBundle {
+  primary?: JourneyAction;
+  secondary: JourneyAction[];
+  tertiary?: JourneyAction;
+}
+
+function buildCommercialActions(input: {
+  stageId: CommercialAccountPipelineStageId;
+  latestProposal: Proposal | null;
+  activeContract: Contract | null;
+  canWriteFacilities: boolean;
+  onAddFacility: () => void;
+  onOpenProposal: (id: string) => void;
+  onNavigate: (path: string) => void;
+}): ActionsBundle {
+  const { stageId, latestProposal, activeContract } = input;
+  const openLatestProposal: JourneyAction | undefined = latestProposal
+    ? {
+        label: 'Open proposal',
+        onClick: () => input.onOpenProposal(latestProposal.id),
+      }
+    : undefined;
+  const openAllProposals: JourneyAction = {
+    label: 'View all proposals',
+    onClick: () => input.onNavigate('/proposals'),
+  };
+
+  if (activeContract) {
+    if (stageId === 'scheduled_service') {
+      return {
+        primary: { label: 'View jobs', onClick: () => input.onNavigate('/jobs') },
+        secondary: [
+          { label: 'Open active contract', onClick: () => input.onNavigate(`/contracts/${activeContract.id}`) },
+        ],
+      };
+    }
+    return {
+      primary: { label: 'Open active contract', onClick: () => input.onNavigate(`/contracts/${activeContract.id}`) },
+      secondary: [{ label: 'View jobs', onClick: () => input.onNavigate('/jobs') }],
+    };
+  }
+
+  switch (stageId) {
+    case 'account_created':
+      return {
+        primary: input.canWriteFacilities
+          ? { label: 'Add service location', onClick: input.onAddFacility }
+          : undefined,
+        secondary: [{ label: 'View service locations', onClick: () => input.onNavigate('/service-locations') }],
+      };
+    case 'facility_added':
+      return {
+        primary: { label: 'Book walkthrough', onClick: () => input.onNavigate('/appointments') },
+        secondary: [{ label: 'View service locations', onClick: () => input.onNavigate('/service-locations') }],
+      };
+    case 'walkthrough_booked':
+      return {
+        primary: { label: 'Open appointments', onClick: () => input.onNavigate('/appointments') },
+        secondary: [],
+      };
+    case 'walkthrough_completed':
+      return {
+        primary: { label: 'Create proposal', onClick: () => input.onNavigate('/proposals') },
+        secondary: [{ label: 'View appointments', onClick: () => input.onNavigate('/appointments') }],
+      };
+    case 'proposal_draft':
+      return {
+        primary: openLatestProposal ?? { label: 'Create proposal', onClick: () => input.onNavigate('/proposals') },
+        secondary: [],
+        tertiary: openAllProposals,
+      };
+    case 'proposal_sent':
+    case 'proposal_viewed':
+      return {
+        primary: openLatestProposal,
+        secondary: [],
+        tertiary: openAllProposals,
+      };
+    case 'contract_ready':
+      return {
+        primary: openLatestProposal,
+        secondary: [{ label: 'View contracts', onClick: () => input.onNavigate('/contracts') }],
+        tertiary: openAllProposals,
+      };
+    default:
+      return { secondary: [] };
+  }
+}
+
+function buildResidentialActions(input: {
+  stageId: ResidentialAccountPipelineStageId | null;
+  isLost: boolean;
+  focusedProposal: Proposal | null;
+  focusedFacilityId: string | null;
+  activeContract: Contract | null;
+  onAddProperty: () => void;
+  onOpenProposal: (id: string) => void;
+  onNavigate: (path: string) => void;
+  onOpenFacility: (facilityId: string) => void;
+}): ActionsBundle {
+  const openFocusedProposal: JourneyAction | undefined = input.focusedProposal
+    ? { label: 'Open proposal', onClick: () => input.onOpenProposal(input.focusedProposal!.id) }
+    : undefined;
+  const openFacility: JourneyAction | undefined = input.focusedFacilityId
+    ? { label: 'Open service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
+    : undefined;
+  const openQuotes: JourneyAction = {
+    label: 'Open residential quotes',
+    onClick: () => input.onNavigate('/residential/quotes'),
+  };
+
+  if (input.isLost) {
+    return {
+      primary: openFocusedProposal ?? openQuotes,
+      secondary: [openQuotes],
+    };
+  }
+
+  if (input.activeContract) {
+    if (input.stageId === 'scheduled_service') {
+      return {
+        primary: { label: 'View jobs', onClick: () => input.onNavigate('/jobs') },
+        secondary: [
+          {
+            label: 'Open active contract',
+            onClick: () => input.onNavigate(`/contracts/${input.activeContract!.id}`),
+          },
+        ],
+      };
+    }
+    return {
+      primary: {
+        label: 'Open active contract',
+        onClick: () => input.onNavigate(`/contracts/${input.activeContract!.id}`),
+      },
+      secondary: [{ label: 'View jobs', onClick: () => input.onNavigate('/jobs') }],
+    };
+  }
+
+  switch (input.stageId) {
+    case 'account_created':
+      return {
+        primary: { label: 'Add service location', onClick: input.onAddProperty },
+        secondary: [openQuotes],
+      };
+    case 'quote_draft':
+    case 'review_required':
+    case 'review_approved':
+    case 'quote_sent':
+    case 'quote_viewed':
+    case 'quote_accepted':
+      return {
+        primary: openFocusedProposal ?? openQuotes,
+        secondary: openFacility ? [openFacility] : [],
+        tertiary: openQuotes,
+      };
+    case 'contract_ready':
+      return {
+        primary: openFocusedProposal,
+        secondary: [{ label: 'View contracts', onClick: () => input.onNavigate('/contracts') }],
+      };
+    default:
+      return {
+        primary: openFocusedProposal ?? openQuotes,
+        secondary: openFacility ? [openFacility] : [],
+      };
+  }
+}
 
 export default AccountDetail;

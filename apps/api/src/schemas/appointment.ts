@@ -51,6 +51,7 @@ export const updateAppointmentSchema = z.object({
   timezone: z.string().min(1).max(50).optional(),
   location: z.string().max(1000).optional().nullable(),
   notes: z.string().max(10000).optional().nullable(),
+  accountHistoryNote: z.string().max(10000).optional().nullable(),
 }).refine(
   (data) => {
     if (!data.scheduledStart || !data.scheduledEnd) return true;

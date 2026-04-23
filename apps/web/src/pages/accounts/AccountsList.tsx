@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -288,7 +288,13 @@ const AccountsList = () => {
             <Building className="h-5 w-5 text-gold" />
           </div>
           <div>
-            <div className="font-medium text-surface-900 dark:text-white">{item.name}</div>
+            <Link
+              to={getAccountDetailPath(item)}
+              state={{ backLabel: 'Accounts', backPath: '/accounts' }}
+              className="font-medium text-surface-900 underline-offset-4 transition-colors hover:text-primary-600 hover:underline dark:text-white dark:hover:text-primary-400"
+            >
+              {item.name}
+            </Link>
             <div className="text-sm text-surface-500 dark:text-surface-400">
               {item.industry || 'No industry'}
             </div>
@@ -313,7 +319,7 @@ const AccountsList = () => {
       ),
     },
     {
-      header: 'Facilities',
+      header: 'Service Locations',
       cell: (item: Account) => (
         <span className="text-surface-600 dark:text-surface-400">{item._count?.facilities ?? 0}</span>
       ),

@@ -1,35 +1,24 @@
 import type { Account } from '../../types/crm';
 import type { Contract } from '../../types/contract';
-import type { Contact } from '../../types/contact';
 import type { Job } from '../../types/job';
 import { formatCurrency, formatShortDate, getTypeVariant } from './account-constants';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import {
-
-  Edit2,
-  Archive,
-  RotateCcw,
-  DollarSign,
-  Building,
-  Calendar,
-  Activity,
-  ExternalLink,
-} from 'lucide-react';
+import { Edit2, Archive, RotateCcw, DollarSign, Building, Calendar, UserCircle2 } from 'lucide-react';
 
 interface AccountHeroProps {
   account: Account;
   activeContract: Contract | null;
-  proposalTotal: number;
   contractTotal: number;
-  contacts: Contact[];
   recentJobs: Job[];
   canAdminAccounts: boolean;
+  facilitiesCount: number;
   onEdit: () => void;
   onArchive: () => void;
   onRestore: () => void;
   onNavigate: (path: string) => void;
+  onScrollToLocations: () => void;
 }
 
 function getNextService(recentJobs: Job[]): string {
@@ -67,42 +56,61 @@ function getAccountHealth(
   return { label: 'Inactive', variant: 'default' };
 }
 
+function getShortLocation(account: Account): string | null {
+  const address = account.serviceAddress ?? account.billingAddress;
+  if (!address) return null;
+  const city = address.city?.trim();
+  const state = address.state?.trim();
+  if (city && state) return `${city}, ${state}`;
+  return city || state || null;
+}
+
 export function AccountHero({
   account,
   activeContract,
   contractTotal,
   recentJobs,
   canAdminAccounts,
+  facilitiesCount,
   onEdit,
   onArchive,
   onRestore,
   onNavigate,
+  onScrollToLocations,
 }: AccountHeroProps) {
   const isArchived = !!account.archivedAt;
-  const isResidentialAccount = account.type === 'residential';
   const nextService = getNextService(recentJobs);
   const health = getAccountHealth(activeContract, contractTotal);
+  const shortLocation = getShortLocation(account);
+  const accountManager = account.accountManager;
+
+  const metaParts = [account.industry, shortLocation].filter(Boolean) as string[];
 
   return (
-    <div className="space-y-6">
-      {/* Header row */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <h1 className="truncate text-2xl font-bold text-surface-900 dark:text-white">{account.name}</h1>
-              <Badge variant={getTypeVariant(account.type)} size="sm">
-                {account.type}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-2xl font-bold text-surface-900 dark:text-white">{account.name}</h1>
+            <Badge variant={getTypeVariant(account.type)} size="sm">
+              {account.type}
+            </Badge>
+            <Badge variant={health.variant} size="sm">
+              {health.label}
+            </Badge>
+            {isArchived ? (
+              <Badge variant="default" size="sm">
+                Archived
               </Badge>
-            </div>
-            {account.industry && (
-              <p className="mt-0.5 text-sm text-surface-500 dark:text-surface-400">{account.industry}</p>
-            )}
+            ) : null}
           </div>
+          {metaParts.length > 0 && (
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{metaParts.join(' · ')}</p>
+          )}
         </div>
 
         {canAdminAccounts && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             {!isArchived && (
               <Button variant="ghost" size="sm" onClick={onEdit}>
                 <Edit2 className="h-4 w-4" />
@@ -124,115 +132,67 @@ export function AccountHero({
         )}
       </div>
 
-      {/* Active Contract Banner */}
-      {activeContract ? (
-        <Card
-          className="!border-emerald-500/20 !bg-emerald-500/5"
-          noPadding
-        >
-          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-emerald-400">
-                Active Contract &middot; {activeContract.contractNumber}
-              </p>
-              <p className="text-2xl font-bold text-surface-900 dark:text-white">
-                {formatCurrency(activeContract.monthlyValue)}
-                <span className="text-sm font-normal text-surface-500 dark:text-surface-400">/mo</span>
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-surface-500 dark:text-surface-400">
-              {activeContract.assignedTeam && (
-                <div>
-                  <span className="text-surface-500">Team</span>{' '}
-                  <span className="text-surface-900 dark:text-white">{activeContract.assignedTeam.name}</span>
-                </div>
-              )}
-              {activeContract.endDate && (
-                <div>
-                  <span className="text-surface-500">Ends</span>{' '}
-                  <span className="text-surface-900 dark:text-white">{formatShortDate(activeContract.endDate)}</span>
-                </div>
-              )}
-              <button
-                onClick={() => onNavigate(`/contracts/${activeContract.id}`)}
-                className="inline-flex items-center gap-1 text-emerald-400 transition-colors hover:text-emerald-300"
-              >
-                View Contract
-                <ExternalLink className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <Card className="!border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
-          <div className="p-5">
-            <p className="text-sm font-medium text-surface-500 dark:text-surface-400">No active contract</p>
-            <p className="mt-0.5 text-xs text-surface-500">
-              Create a proposal or contract to get started.
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* KPI Strip */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {/* Monthly Value */}
-        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
-          <div className="p-4">
-            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
-              <DollarSign className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium">Monthly Value</span>
-            </div>
-            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
-              {activeContract ? formatCurrency(activeContract.monthlyValue) : '$0.00'}
-            </p>
-          </div>
-        </Card>
-
-        {/* Facilities */}
-        <Card
-          className={`!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30${isResidentialAccount ? '' : ' cursor-pointer'}`}
-          noPadding
-          hover={!isResidentialAccount}
-          onClick={isResidentialAccount ? undefined : () => onNavigate('/service-locations')}
-        >
-          <div className="p-4">
-            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
-              <Building className="h-4 w-4 text-gold-400" />
-              <span className="text-xs font-medium">{isResidentialAccount ? 'Service Location' : 'Service Locations'}</span>
-            </div>
-            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">
-              {isResidentialAccount ? (account.serviceAddress ? '1' : '0') : account._count.facilities}
-            </p>
-          </div>
-        </Card>
-
-        {/* Next Service */}
-        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
-          <div className="p-4">
-            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
-              <Calendar className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium">Next Service</span>
-            </div>
-            <p className="mt-2 text-lg font-semibold text-surface-900 dark:text-white">{nextService}</p>
-          </div>
-        </Card>
-
-        {/* Account Health */}
-        <Card className="!rounded-lg !border-surface-200 dark:!border-surface-700 !bg-surface-100 dark:!bg-surface-800/30" noPadding>
-          <div className="p-4">
-            <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
-              <Activity className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium">Account Health</span>
-            </div>
-            <div className="mt-2">
-              <Badge variant={health.variant} size="sm">
-                {health.label}
-              </Badge>
-            </div>
-          </div>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiTile
+          icon={<DollarSign className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />}
+          label="Monthly Value"
+          value={activeContract ? formatCurrency(activeContract.monthlyValue) : '—'}
+          subtitle={
+            activeContract ? `Active · ${activeContract.contractNumber}` : 'No active contract'
+          }
+          onClick={activeContract ? () => onNavigate(`/contracts/${activeContract.id}`) : undefined}
+        />
+        <KpiTile
+          icon={<Building className="h-4 w-4 text-amber-500 dark:text-amber-400" />}
+          label="Service Locations"
+          value={String(facilitiesCount)}
+          subtitle={facilitiesCount === 0 ? 'None yet' : 'Tap to view'}
+          onClick={onScrollToLocations}
+        />
+        <KpiTile
+          icon={<Calendar className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />}
+          label="Next Service"
+          value={nextService}
+          subtitle={nextService === 'None scheduled' ? undefined : 'Upcoming visit'}
+        />
+        <KpiTile
+          icon={<UserCircle2 className="h-4 w-4 text-primary-500 dark:text-primary-400" />}
+          label="Account Manager"
+          value={accountManager?.fullName || 'Unassigned'}
+          subtitle={accountManager?.email || undefined}
+        />
       </div>
     </div>
+  );
+}
+
+interface KpiTileProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  subtitle?: string;
+  onClick?: () => void;
+}
+
+function KpiTile({ icon, label, value, subtitle, onClick }: KpiTileProps) {
+  const interactive = Boolean(onClick);
+  return (
+    <Card
+      noPadding
+      hover={interactive}
+      onClick={onClick}
+      className={`!rounded-xl ${interactive ? 'cursor-pointer' : ''}`}
+    >
+      <div className="p-4">
+        <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+          {icon}
+          <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
+        </div>
+        <p className="mt-2 truncate text-lg font-semibold text-surface-900 dark:text-white">{value}</p>
+        {subtitle ? (
+          <p className="mt-0.5 truncate text-xs text-surface-500 dark:text-surface-400">{subtitle}</p>
+        ) : null}
+      </div>
+    </Card>
   );
 }

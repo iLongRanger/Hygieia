@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Edit2, Send, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { extractApiErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Modal } from '../../components/ui/Modal';
+import { Textarea } from '../../components/ui/Textarea';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import {
   getFacility,
   updateFacility,
@@ -24,6 +29,10 @@ import {
   submitFacilityForProposal,
 } from '../../lib/facilities';
 import { listFacilityTasks, listTaskTemplates } from '../../lib/tasks';
+import { createAppointment } from '../../lib/appointments';
+import { assignContractTeam, listContracts } from '../../lib/contracts';
+import { listTeams } from '../../lib/teams';
+import { listUsers } from '../../lib/users';
 import {
   getResidentialProperty,
   listResidentialPricingPlans,
@@ -48,6 +57,10 @@ import type {
   ResidentialPricingPlan,
   ResidentialQuoteAddOnInput,
 } from '../../types/residential';
+import type { Contract } from '../../types/contract';
+import type { Team } from '../../types/team';
+import type { User } from '../../types/user';
+import type { AppointmentType } from '../../types/crm';
 import { FacilityOverview } from './FacilityOverview';
 import { FacilityAreas } from './FacilityAreas';
 import { FacilityAreaDetail } from './FacilityAreaDetail';
@@ -66,9 +79,60 @@ interface FacilityDetailProps {
   mode?: 'facility' | 'property';
 }
 
+type FacilityAccountType = 'commercial' | 'residential' | 'government' | 'strata' | 'industrial';
+
+const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
+  { value: 'visit', label: 'Visit' },
+  { value: 'inspection', label: 'Inspection' },
+];
+
+const APPOINTMENT_ASSIGNABLE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
+const TIME_OPTIONS = Array.from({ length: 34 }, (_, index) => {
+  const totalMinutes = (6 * 60) + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const labelHour = hour % 12 || 12;
+  const labelPeriod = hour < 12 ? 'AM' : 'PM';
+  return { value, label: `${labelHour}:${String(minute).padStart(2, '0')} ${labelPeriod}` };
+});
+
+const canBeAppointmentRep = (user: User): boolean => {
+  const roleKeys = new Set<string>();
+  const primaryRole = (user as User & { role?: unknown }).role;
+
+  if (typeof primaryRole === 'string') {
+    roleKeys.add(primaryRole.toLowerCase());
+  } else if (
+    primaryRole &&
+    typeof primaryRole === 'object' &&
+    'key' in primaryRole &&
+    typeof (primaryRole as { key?: unknown }).key === 'string'
+  ) {
+    roleKeys.add((primaryRole as { key: string }).key.toLowerCase());
+  }
+
+  for (const userRole of user.roles ?? []) {
+    if (typeof userRole?.role?.key === 'string') {
+      roleKeys.add(userRole.role.key.toLowerCase());
+    }
+  }
+
+  for (const roleKey of roleKeys) {
+    if (APPOINTMENT_ASSIGNABLE_ROLE_KEYS.has(roleKey)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canWriteContracts = hasPermission(PERMISSIONS.CONTRACTS_WRITE);
+  const canWriteAppointments = hasPermission(PERMISSIONS.APPOINTMENTS_WRITE);
   const isPropertyMode = mode === 'property';
   const locationLabel = isPropertyMode ? 'Property' : 'Facility';
   const locationLabelLower = locationLabel.toLowerCase();
@@ -78,6 +142,12 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
       style: 'currency',
       currency: 'USD',
     }).format(value);
+
+  const toLocalDateTimeInputValue = (date: Date): string => (
+    new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
+
+  const combineLocalDateAndTime = (date: string, time: string): string => `${date}T${time}`;
 
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'add-ons' | 'area-detail'>('overview');
@@ -96,6 +166,9 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [residentialPricingPlans, setResidentialPricingPlans] = useState<ResidentialPricingPlan[]>([]);
   const [selectedAddOns, setSelectedAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
+  const [activeContract, setActiveContract] = useState<Contract | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([]);
   const [areaTemplateTasks, setAreaTemplateTasks] = useState<AreaTemplateTaskSelection[]>([]);
   const [areaTemplateLoading, setAreaTemplateLoading] = useState(false);
@@ -124,8 +197,29 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const [showSubmitProposalModal, setShowSubmitProposalModal] = useState(false);
   const [submitProposalNotes, setSubmitProposalNotes] = useState('');
   const [submittingForProposal, setSubmittingForProposal] = useState(false);
-  const accountType = facility?.account.type ?? property?.account.type ?? null;
+  const [assignmentMode, setAssignmentMode] = useState<'subcontractor_team' | 'internal_employee'>('subcontractor_team');
+  const [assignedTeamId, setAssignedTeamId] = useState('');
+  const [assignedToUserId, setAssignedToUserId] = useState('');
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [creatingAppointment, setCreatingAppointment] = useState(false);
+  const [appointmentForm, setAppointmentForm] = useState({
+    type: 'visit' as AppointmentType,
+    assignedToUserId: '',
+    scheduledStart: '',
+    scheduledEnd: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    location: '',
+    notes: '',
+  });
+  const accountType = facility?.account.type ?? property?.account?.type ?? null;
+  const editFacilityAccountType = (
+    ['commercial', 'residential', 'government', 'strata', 'industrial'].includes(facility?.account.type ?? '')
+      ? facility?.account.type
+      : undefined
+  ) as FacilityAccountType | undefined;
   const isResidentialAccount = accountType === 'residential';
+  const assignableAppointmentUsers = useMemo(() => users.filter(canBeAppointmentRep), [users]);
 
   const getPreferredTaskFrequency = useCallback(
     (preferred?: string | null): CleaningFrequency => {
@@ -225,23 +319,31 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     'won',
   ].includes(facility?.opportunityStatus ?? '');
   const canManageResidentialAddOns = isResidentialAccount && Boolean(property) && canManageOperationalScope;
-  const openAppointmentsForLocation = () => {
+
+  const getFacilityAddressLabel = () => {
+    if (!facility?.address) return '';
+    return [facility.address.street, facility.address.city, facility.address.state, facility.address.postalCode]
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const openAppointmentModal = () => {
     if (!facility) return;
-    const params = new URLSearchParams({
-      facilityId: facility.id,
-      accountId: facility.account.id,
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(9, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setHours(10, 0, 0, 0);
+    setAppointmentForm({
+      type: 'visit',
+      assignedToUserId: '',
+      scheduledStart: toLocalDateTimeInputValue(startDate),
+      scheduledEnd: toLocalDateTimeInputValue(endDate),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      location: getFacilityAddressLabel() || facility.name,
+      notes: '',
     });
-
-    if (isPropertyMode) {
-      params.set('type', 'walk_through');
-    }
-
-    navigate(`/appointments?${params.toString()}`, {
-      state: {
-        backLabel: facility.name,
-        backPath: isPropertyMode ? `/properties/${id}` : `/service-locations/${id}`,
-      },
-    });
+    setShowAppointmentModal(true);
   };
 
   // --- Effects ---
@@ -352,6 +454,39 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
       setTasks([]);
+    }
+  }, [resolvedFacilityId]);
+
+  const fetchAssignmentReferenceData = useCallback(async () => {
+    try {
+      const [teamsResponse, usersResponse] = await Promise.all([
+        listTeams({ limit: 100, isActive: true }),
+        listUsers({ limit: 100 }),
+      ]);
+      setTeams(teamsResponse?.data || []);
+      setUsers(usersResponse?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch assignment reference data:', error);
+      setTeams([]);
+      setUsers([]);
+    }
+  }, []);
+
+  const fetchActiveContract = useCallback(async () => {
+    if (!resolvedFacilityId) return;
+    try {
+      const response = await listContracts({
+        facilityId: resolvedFacilityId,
+        status: 'active',
+        limit: 1,
+        sortBy: 'startDate',
+        sortOrder: 'desc',
+        includeArchived: false,
+      });
+      setActiveContract(response?.data?.[0] || null);
+    } catch (error) {
+      console.error('Failed to fetch active service location contract:', error);
+      setActiveContract(null);
     }
   }, [resolvedFacilityId]);
 
@@ -527,7 +662,17 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     if (!resolvedFacilityId) return;
     fetchAreas();
     fetchTasks();
-  }, [resolvedFacilityId, fetchAreas, fetchTasks]);
+    fetchActiveContract();
+    fetchAssignmentReferenceData();
+  }, [resolvedFacilityId, fetchAreas, fetchTasks, fetchActiveContract, fetchAssignmentReferenceData]);
+
+  useEffect(() => {
+    const nextTeamId = activeContract?.assignedTeam?.id || '';
+    const nextUserId = activeContract?.assignedToUser?.id || '';
+    setAssignedTeamId(nextTeamId);
+    setAssignedToUserId(nextUserId);
+    setAssignmentMode(nextUserId ? 'internal_employee' : 'subcontractor_team');
+  }, [activeContract]);
 
   useEffect(() => {
     if (!accountType) return;
@@ -1292,6 +1437,57 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     }
   };
 
+  const handleSaveAssignment = async () => {
+    if (!activeContract) {
+      toast.error('An active contract is required before assigning a team or service lead');
+      return;
+    }
+    const teamId = assignmentMode === 'subcontractor_team' ? assignedTeamId || null : null;
+    const userId = assignmentMode === 'internal_employee' ? assignedToUserId || null : null;
+
+    try {
+      setSavingAssignment(true);
+      await assignContractTeam(activeContract.id, teamId, userId);
+      toast.success('Service location assignment updated');
+      await fetchActiveContract();
+    } catch (error) {
+      console.error('Failed to update service location assignment:', error);
+      toast.error(extractApiErrorMessage(error, 'Failed to update service location assignment'));
+    } finally {
+      setSavingAssignment(false);
+    }
+  };
+
+  const handleCreateAppointment = async () => {
+    if (!facility) return;
+    if (!appointmentForm.assignedToUserId || !appointmentForm.scheduledStart || !appointmentForm.scheduledEnd) {
+      toast.error('Assigned rep, start, and end time are required');
+      return;
+    }
+
+    try {
+      setCreatingAppointment(true);
+      await createAppointment({
+        accountId: facility.account.id,
+        facilityId: facility.id,
+        assignedToUserId: appointmentForm.assignedToUserId,
+        type: appointmentForm.type,
+        scheduledStart: appointmentForm.scheduledStart,
+        scheduledEnd: appointmentForm.scheduledEnd,
+        timezone: appointmentForm.timezone,
+        location: appointmentForm.location || null,
+        notes: appointmentForm.notes || null,
+      });
+      toast.success('Appointment scheduled');
+      setShowAppointmentModal(false);
+    } catch (error) {
+      console.error('Failed to create appointment:', error);
+      toast.error(extractApiErrorMessage(error, 'Failed to create appointment'));
+    } finally {
+      setCreatingAppointment(false);
+    }
+  };
+
   // --- Early returns ---
   if (loading) {
     return (
@@ -1321,7 +1517,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           <p className="text-surface-500 dark:text-surface-400">{facility.account.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={openAppointmentsForLocation}>
+          <Button variant="secondary" onClick={openAppointmentModal} disabled={!canWriteAppointments}>
             Book an Appointment
           </Button>
           {canManageOperationalScope && !hasExistingProposalOrContract && !hasSubmittedForProposal && (
@@ -1432,12 +1628,34 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <FacilityOverview
-          facility={facility}
-          totalSquareFeet={totalSquareFeetFromAreas}
-          activeAreasCount={activeAreasCount}
-          activeTasksCount={activeTasksCount}
-        />
+        <div className="space-y-6">
+          <FacilityOverview
+            facility={facility}
+            totalSquareFeet={totalSquareFeetFromAreas}
+            activeAreasCount={activeAreasCount}
+            activeTasksCount={activeTasksCount}
+          />
+          {activeContract && (
+            <ServiceLocationAssignmentCard
+              activeContract={activeContract}
+              teams={teams}
+              users={users}
+              canEdit={canWriteContracts}
+              saving={savingAssignment}
+              assignmentMode={assignmentMode}
+              assignedTeamId={assignedTeamId}
+              assignedToUserId={assignedToUserId}
+              onAssignmentModeChange={(value) => {
+                setAssignmentMode(value);
+                setAssignedTeamId('');
+                setAssignedToUserId('');
+              }}
+              onAssignedTeamChange={setAssignedTeamId}
+              onAssignedToUserChange={setAssignedToUserId}
+              onSave={handleSaveAssignment}
+            />
+          )}
+        </div>
       )}
       {canManageOperationalScope && activeTab === 'areas' && (
         <FacilityAreas
@@ -1563,7 +1781,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         onSave={handleUpdateFacility}
         saving={saving}
         locationLabel={locationLabel}
-        accountType={facility.account.type}
+        accountType={editFacilityAccountType}
       />
       <AreaModal
         isOpen={showAreaModal}
@@ -1660,8 +1878,231 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         submitting={submittingForProposal}
         locationLabel={locationLabel}
       />
+      <Modal
+        isOpen={showAppointmentModal && canWriteAppointments}
+        onClose={() => setShowAppointmentModal(false)}
+        title="Book an Appointment"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input label="Account" value={facility.account.name} disabled />
+            <Input label="Service Location" value={facility.name} disabled />
+          </div>
+
+          <Select
+            label="Appointment Type"
+            options={APPOINTMENT_TYPES}
+            value={appointmentForm.type}
+            onChange={(value) =>
+              setAppointmentForm((current) => ({ ...current, type: value as AppointmentType }))
+            }
+          />
+
+          <Select
+            label="Assigned Rep"
+            placeholder="Select rep"
+            options={assignableAppointmentUsers.map((user) => ({ value: user.id, label: user.fullName }))}
+            value={appointmentForm.assignedToUserId}
+            onChange={(value) =>
+              setAppointmentForm((current) => ({ ...current, assignedToUserId: value }))
+            }
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="Start Date"
+              type="date"
+              value={appointmentForm.scheduledStart?.split('T')[0] || ''}
+              onChange={(event) => {
+                const nextDate = event.target.value;
+                const startTime = appointmentForm.scheduledStart?.split('T')[1] || '09:00';
+                const endTime = appointmentForm.scheduledEnd?.split('T')[1] || '10:00';
+                setAppointmentForm((current) => ({
+                  ...current,
+                  scheduledStart: combineLocalDateAndTime(nextDate, startTime),
+                  scheduledEnd: combineLocalDateAndTime(nextDate, endTime),
+                }));
+              }}
+            />
+            <Select
+              label="Start Time"
+              options={TIME_OPTIONS}
+              value={appointmentForm.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
+              onChange={(value) => {
+                const date = appointmentForm.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+                setAppointmentForm((current) => ({
+                  ...current,
+                  scheduledStart: combineLocalDateAndTime(date, value),
+                }));
+              }}
+            />
+          </div>
+
+          <Select
+            label="End Time"
+            options={TIME_OPTIONS}
+            value={appointmentForm.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
+            onChange={(value) => {
+              const date = appointmentForm.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
+              setAppointmentForm((current) => ({
+                ...current,
+                scheduledEnd: combineLocalDateAndTime(date, value),
+              }));
+            }}
+          />
+
+          <Select
+            label="Timezone"
+            options={[
+              { value: 'America/New_York', label: 'Eastern (ET)' },
+              { value: 'America/Chicago', label: 'Central (CT)' },
+              { value: 'America/Denver', label: 'Mountain (MT)' },
+              { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
+              { value: 'America/Anchorage', label: 'Alaska (AKT)' },
+              { value: 'Pacific/Honolulu', label: 'Hawaii (HT)' },
+            ]}
+            value={appointmentForm.timezone}
+            onChange={(value) => setAppointmentForm((current) => ({ ...current, timezone: value }))}
+          />
+
+          <Input
+            label="Location"
+            placeholder="On-site"
+            value={appointmentForm.location}
+            onChange={(event) =>
+              setAppointmentForm((current) => ({ ...current, location: event.target.value }))
+            }
+          />
+
+          <Textarea
+            label="Notes"
+            placeholder="Add notes or instructions..."
+            value={appointmentForm.notes}
+            onChange={(event) =>
+              setAppointmentForm((current) => ({ ...current, notes: event.target.value }))
+            }
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowAppointmentModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAppointment} isLoading={creatingAppointment}>
+              Schedule
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
+
+interface ServiceLocationAssignmentCardProps {
+  activeContract: Contract | null;
+  teams: Team[];
+  users: User[];
+  canEdit: boolean;
+  saving: boolean;
+  assignmentMode: 'subcontractor_team' | 'internal_employee';
+  assignedTeamId: string;
+  assignedToUserId: string;
+  onAssignmentModeChange: (value: 'subcontractor_team' | 'internal_employee') => void;
+  onAssignedTeamChange: (value: string) => void;
+  onAssignedToUserChange: (value: string) => void;
+  onSave: () => void;
+}
+
+function ServiceLocationAssignmentCard({
+  activeContract,
+  teams,
+  users,
+  canEdit,
+  saving,
+  assignmentMode,
+  assignedTeamId,
+  assignedToUserId,
+  onAssignmentModeChange,
+  onAssignedTeamChange,
+  onAssignedToUserChange,
+  onSave,
+}: ServiceLocationAssignmentCardProps) {
+  const currentAssignee =
+    activeContract?.assignedTeam?.name || activeContract?.assignedToUser?.fullName || 'Unassigned';
+  const teamOptions = [
+    { value: '', label: 'Select subcontractor team' },
+    ...teams.map((team) => ({ value: team.id, label: team.name })),
+  ];
+  const userOptions = [
+    { value: '', label: 'Select internal employee' },
+    ...users.map((user) => ({ value: user.id, label: user.fullName })),
+  ];
+
+  return (
+    <Card>
+      <div className="p-6 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+              Service Location Assignment
+            </h2>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+              Assign the team or internal service lead responsible for this service location.
+            </p>
+            {activeContract ? (
+              <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                Active contract: {activeContract.contractNumber} · Current: {currentAssignee}
+              </p>
+            ) : null}
+          </div>
+          {activeContract && canEdit ? (
+            <Button onClick={onSave} isLoading={saving}>
+              Save Assignment
+            </Button>
+          ) : null}
+        </div>
+
+        {!activeContract ? (
+          <div className="rounded-lg border border-dashed border-surface-300 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+            Create or activate a contract for this service location before assigning a team or service lead.
+          </div>
+        ) : !canEdit ? (
+          <div className="rounded-lg border border-surface-200 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+            Current assignment: {currentAssignee}. Contract write permission is required to update it.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Select
+              label="Assignment Type"
+              options={[
+                { value: 'subcontractor_team', label: 'Subcontractor Team' },
+                { value: 'internal_employee', label: 'Internal Employee' },
+              ]}
+              value={assignmentMode}
+              onChange={(value) =>
+                onAssignmentModeChange(value as 'subcontractor_team' | 'internal_employee')
+              }
+            />
+            {assignmentMode === 'subcontractor_team' ? (
+              <Select
+                label="Assigned Team"
+                options={teamOptions}
+                value={assignedTeamId}
+                onChange={onAssignedTeamChange}
+              />
+            ) : (
+              <Select
+                label="Service Lead"
+                options={userOptions}
+                value={assignedToUserId}
+                onChange={onAssignedToUserChange}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 export default FacilityDetail;

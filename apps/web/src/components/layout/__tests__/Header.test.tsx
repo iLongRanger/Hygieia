@@ -113,15 +113,15 @@ describe('Header', () => {
     });
   });
 
-  it('navigates to contract detail for contract assignment notifications', async () => {
+  it('navigates to service location for contract assignment notifications', async () => {
     const user = userEvent.setup();
     listNotificationsMock.mockResolvedValue([
       {
         id: 'n-contract-1',
         type: 'contract_assignment_required',
-        title: 'Contract assigned to you',
-        body: null,
-        metadata: { contractId: 'contract-1' },
+          title: 'Contract assigned to you',
+          body: null,
+          metadata: { contractId: 'contract-1', facilityId: 'facility-1' },
         readAt: null,
         emailSent: false,
         createdAt: new Date().toISOString(),
@@ -131,12 +131,12 @@ describe('Header', () => {
     render(<Header />);
 
     await user.click(screen.getByRole('button', { name: /open notifications/i }));
-    await user.click(await screen.findByText('Contract assigned to you'));
+      await user.click(await screen.findByText('Contract assigned to you'));
 
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/contracts/contract-1');
+      await waitFor(() => {
+        expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1');
+      });
     });
-  });
 
   it('still navigates when marking notification read fails', async () => {
     const user = userEvent.setup();

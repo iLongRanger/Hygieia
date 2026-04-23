@@ -46,5 +46,19 @@ describe('getNotificationRoute', () => {
 
     expect(route).toBe('/contracts/contract-3');
   });
-});
 
+  it('returns service location route for assignment required notifications with facility metadata', () => {
+    const route = getNotificationRoute({
+      id: 'n-4',
+      type: 'contract_assignment_required',
+      title: 'Assignment required',
+      body: null,
+      metadata: { contractId: 'contract-4', facilityId: 'facility-4' },
+      readAt: null,
+      emailSent: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    expect(route).toBe('/service-locations/facility-4');
+  });
+});

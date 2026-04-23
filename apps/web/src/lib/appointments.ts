@@ -35,6 +35,7 @@ export interface UpdateAppointmentInput {
   timezone?: string;
   location?: string | null;
   notes?: string | null;
+  accountHistoryNote?: string | null;
 }
 
 export interface RescheduleAppointmentInput {

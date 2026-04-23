@@ -1,4 +1,4 @@
-import { Users, Star, CreditCard, Mail, Phone, ExternalLink } from 'lucide-react';
+import { Users, Star, CreditCard, Mail, Phone, ExternalLink, Plus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -15,38 +15,40 @@ export function AccountContacts({ contacts, accountId, onNavigate }: AccountCont
   const otherContacts = contacts.filter((c) => !c.isPrimary);
 
   return (
-    <Card className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+    <Card className="p-5">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-surface-900 dark:text-white font-semibold">Contacts</h3>
-          <span className="text-surface-500 dark:text-surface-400 text-sm">({contacts.length})</span>
+          <h3 className="font-semibold text-surface-900 dark:text-white">Contacts</h3>
+          <span className="text-sm text-surface-500 dark:text-surface-400">({contacts.length})</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onNavigate(`/contacts?accountId=${accountId}`)}
-          className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white gap-1"
-        >
-          View All
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Button>
+        {contacts.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate(`/contacts?accountId=${accountId}`)}
+          >
+            View All
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {contacts.length === 0 ? (
-        /* Empty state */
-        <div className="flex flex-col items-center justify-center py-8 text-surface-500 dark:text-surface-400">
-          <Users className="h-8 w-8 mb-2 opacity-50" />
+        <div className="flex flex-col items-center justify-center gap-3 py-6 text-surface-500 dark:text-surface-400">
+          <Users className="h-8 w-8 opacity-50" />
           <p className="text-sm">No contacts yet</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onNavigate(`/contacts/new?accountId=${accountId}`)}
+          >
+            <Plus className="h-4 w-4" />
+            Add contact
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Primary contact highlighted */}
-          {primaryContact && (
-            <ContactCard contact={primaryContact} isPrimaryHighlight />
-          )}
-
-          {/* Other contacts */}
+          {primaryContact && <ContactCard contact={primaryContact} isPrimaryHighlight />}
           {otherContacts.map((contact) => (
             <ContactCard key={contact.id} contact={contact} />
           ))}
@@ -67,16 +69,16 @@ function ContactCard({
     <div
       className={
         isPrimaryHighlight
-          ? 'bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3'
-          : 'rounded-lg p-3'
+          ? 'rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3'
+          : 'rounded-lg border border-surface-200 p-3 dark:border-surface-700'
       }
     >
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-surface-900 dark:text-white font-medium truncate">{contact.name}</span>
+            <span className="truncate font-medium text-surface-900 dark:text-white">{contact.name}</span>
             {contact.isPrimary && (
-              <Star className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" fill="currentColor" />
+              <Star className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" fill="currentColor" />
             )}
             {contact.isBilling && (
               <Badge variant="default" size="sm" className="flex-shrink-0 gap-1">
@@ -86,23 +88,29 @@ function ContactCard({
             )}
           </div>
           {contact.title && (
-            <p className="text-surface-500 dark:text-surface-400 text-sm mt-0.5 truncate">{contact.title}</p>
+            <p className="mt-0.5 truncate text-sm text-surface-500 dark:text-surface-400">{contact.title}</p>
           )}
         </div>
       </div>
 
       <div className="mt-2 space-y-1">
         {contact.email && (
-          <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400 text-sm">
+          <a
+            href={`mailto:${contact.email}`}
+            className="flex items-center gap-2 text-sm text-surface-600 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400"
+          >
             <Mail className="h-3.5 w-3.5 flex-shrink-0 text-surface-500 dark:text-surface-400" />
             <span className="truncate">{contact.email}</span>
-          </div>
+          </a>
         )}
         {contact.phone && (
-          <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400 text-sm">
+          <a
+            href={`tel:${contact.phone}`}
+            className="flex items-center gap-2 text-sm text-surface-600 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400"
+          >
             <Phone className="h-3.5 w-3.5 flex-shrink-0 text-surface-500 dark:text-surface-400" />
             <span className="truncate">{contact.phone}</span>
-          </div>
+          </a>
         )}
       </div>
     </div>

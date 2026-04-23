@@ -50,6 +50,9 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       count: jest.fn(),
     },
+    accountActivity: {
+      create: jest.fn(),
+    },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
 }));
@@ -81,6 +84,7 @@ describe('appointmentService', () => {
       roles: [{ role: { key: 'manager' } }],
     });
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
+    (prisma.accountActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
   });
 
@@ -153,10 +157,16 @@ describe('appointmentService', () => {
     (prisma.appointment.create as jest.Mock).mockResolvedValue({
       id: 'appt-1',
       type: 'walk_through',
+      status: 'scheduled',
       lead: { id: 'lead-1' },
-      account: { id: 'account-1' },
-      facility: { id: 'facility-1' },
+      account: { id: 'account-1', name: 'Acme Corp', type: 'commercial' },
+      facility: { id: 'facility-1', name: 'Main Office' },
+      assignedToUser: { id: 'user-1', fullName: 'Morgan Manager', email: 'morgan@example.com' },
       scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+      timezone: 'America/New_York',
+      location: null,
+      notes: null,
     });
 
     await appointmentService.createAppointment({
@@ -171,6 +181,16 @@ describe('appointmentService', () => {
       createdByUserId: 'admin-1',
     });
     expect(prisma.$transaction).toHaveBeenCalled();
+    expect(prisma.accountActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          accountId: 'account-1',
+          entryType: 'note',
+          note: expect.stringContaining('Appointment booked\nType: Walk Through\nService Location: Main Office'),
+          performedByUserId: 'admin-1',
+        }),
+      })
+    );
   });
 
   it('createAppointment should reject a second scheduled walkthrough for the same lead and location', async () => {

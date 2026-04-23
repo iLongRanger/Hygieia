@@ -4,6 +4,7 @@ import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import logger from '../lib/logger';
 import { findPreferredOpportunityForLead } from './opportunityResolver';
+import { createAccountActivity } from './accountActivityService';
 
 export interface AppointmentListParams {
   leadId?: string;
@@ -48,6 +49,8 @@ export interface AppointmentUpdateInput {
   timezone?: string;
   location?: string | null;
   notes?: string | null;
+  accountHistoryNote?: string | null;
+  performedByUserId?: string | null;
 }
 
 export interface AppointmentRescheduleInput {
@@ -65,6 +68,100 @@ export interface AppointmentCompleteInput {
 }
 
 const APPOINTMENT_ASSIGNEE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
+interface AppointmentActivityRecord {
+  id: string;
+  type: string;
+  status: string;
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  timezone: string;
+  location: string | null;
+  notes: string | null;
+  account: { id: string; name: string; type: string } | null;
+  facility: { id: string; name: string } | null;
+  assignedToUser: { id: string; fullName: string | null; email: string } | null;
+}
+
+function formatAppointmentType(type: string) {
+  return type
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function formatAppointmentDateTimeRange(appointment: {
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  timezone: string;
+}) {
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: appointment.timezone,
+  });
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: appointment.timezone,
+  });
+
+  return `${dateFormatter.format(appointment.scheduledStart)}, ${timeFormatter.format(
+    appointment.scheduledStart
+  )} - ${timeFormatter.format(appointment.scheduledEnd)} ${appointment.timezone}`;
+}
+
+function buildAppointmentActivityNote(
+  action: 'booked' | 'updated' | 'rescheduled' | 'completed' | 'canceled',
+  appointment: AppointmentActivityRecord,
+  extraNote?: string | null
+) {
+  const typeLabel = formatAppointmentType(appointment.type);
+  const locationLabel = appointment.facility?.name ?? appointment.location ?? 'Not specified';
+  const assigneeLabel = appointment.assignedToUser?.fullName ?? 'Unassigned';
+  const lines = [
+    `Appointment ${action}`,
+    `Type: ${typeLabel}`,
+    `Service Location: ${locationLabel}`,
+    `When: ${formatAppointmentDateTimeRange(appointment)}`,
+    `Status: ${appointment.status.replace(/_/g, ' ')}`,
+    `Assigned To: ${assigneeLabel}`,
+  ];
+
+  const trimmedNote = extraNote?.trim();
+  if (trimmedNote) {
+    lines.push('', `Note: ${trimmedNote}`);
+  }
+
+  return lines.join('\n');
+}
+
+async function recordAppointmentAccountActivity(input: {
+  action: 'booked' | 'updated' | 'rescheduled' | 'completed' | 'canceled';
+  appointment: AppointmentActivityRecord;
+  performedByUserId?: string | null;
+  note?: string | null;
+}) {
+  const accountId = input.appointment.account?.id;
+  if (!accountId) return;
+
+  try {
+    await createAccountActivity({
+      accountId,
+      entryType: 'note',
+      note: buildAppointmentActivityNote(input.action, input.appointment, input.note),
+      performedByUserId: input.performedByUserId ?? null,
+    });
+  } catch (error) {
+    logger.error('Failed to record appointment account activity', {
+      appointmentId: input.appointment.id,
+      accountId,
+      action: input.action,
+      error,
+    });
+  }
+}
 
 function deriveOpportunityTitle(lead: {
   companyName?: string | null;
@@ -555,6 +652,13 @@ export async function createAppointment(input: AppointmentCreateInput) {
     },
   });
 
+  await recordAppointmentAccountActivity({
+    action: 'booked',
+    appointment,
+    performedByUserId: input.createdByUserId,
+    note: input.notes,
+  });
+
   return appointment;
 }
 
@@ -686,6 +790,13 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
     });
   }
 
+  await recordAppointmentAccountActivity({
+    action: 'updated',
+    appointment,
+    performedByUserId: input.performedByUserId,
+    note: input.accountHistoryNote ?? input.notes,
+  });
+
   // Notify assigned user about the update
   if (appointment.assignedToUser?.id) {
     const assignmentChanged =
@@ -719,13 +830,13 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
   return appointment;
 }
 
-export async function deleteAppointment(id: string) {
+export async function deleteAppointment(
+  id: string,
+  performedByUserId?: string | null
+) {
   const existing = await prisma.appointment.findUnique({
     where: { id },
-    select: {
-      id: true,
-      status: true,
-    },
+    select: appointmentSelect,
   });
 
   if (!existing) {
@@ -740,11 +851,19 @@ export async function deleteAppointment(id: string) {
     throw new BadRequestError('Rescheduled appointments cannot be deleted');
   }
 
-  return prisma.appointment.update({
+  const appointment = await prisma.appointment.update({
     where: { id },
     data: { status: 'canceled' },
-    select: { id: true },
+    select: appointmentSelect,
   });
+
+  await recordAppointmentAccountActivity({
+    action: 'canceled',
+    appointment,
+    performedByUserId,
+  });
+
+  return appointment;
 }
 
 export async function rescheduleAppointment(
@@ -825,6 +944,13 @@ export async function rescheduleAppointment(
     }
 
     return appointment;
+  });
+
+  await recordAppointmentAccountActivity({
+    action: 'rescheduled',
+    appointment,
+    performedByUserId: userId,
+    note: input.notes,
   });
 
   await createNotification({
@@ -921,7 +1047,7 @@ export async function completeAppointment(
     throw new BadRequestError('Add at least one task before completing walkthrough');
   }
 
-  return prisma.$transaction(async (tx) => {
+  const completed = await prisma.$transaction(async (tx) => {
     const updated = await tx.appointment.update({
       where: { id },
       data: {
@@ -954,6 +1080,15 @@ export async function completeAppointment(
 
     return updated;
   });
+
+  await recordAppointmentAccountActivity({
+    action: 'completed',
+    appointment: completed,
+    performedByUserId: input.userId,
+    note: input.notes,
+  });
+
+  return completed;
 }
 
 export async function canMoveLeadToProposal(leadId: string): Promise<boolean> {

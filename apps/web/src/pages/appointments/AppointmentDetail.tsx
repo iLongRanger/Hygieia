@@ -53,11 +53,7 @@ const getTypeVariant = (type: string): 'default' | 'success' | 'warning' | 'erro
   }
 };
 
-const getAppointmentLocationLabel = (appointment: Appointment): 'Property' | 'Facility' => (
-  appointment.account?.type === 'residential' && appointment.type === 'walk_through'
-    ? 'Property'
-    : 'Facility'
-);
+const getAppointmentLocationLabel = (_appointment: Appointment): 'Service Location' => 'Service Location';
 
 const AppointmentDetail = () => {
   const { id } = useParams<{ id: string }>();

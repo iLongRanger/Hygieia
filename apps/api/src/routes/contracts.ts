@@ -759,6 +759,7 @@ router.patch(
                 'to start scheduled work.',
               metadata: {
                 contractId: contract.id,
+                facilityId: contract.facility?.id ?? null,
                 action: 'assign_team_or_employee',
               },
             });

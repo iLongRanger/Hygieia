@@ -125,7 +125,10 @@ describe('Appointments Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('appt-1');
-    expect(appointmentService.updateAppointment).toHaveBeenCalledWith('appt-1', { notes: 'Updated' });
+    expect(appointmentService.updateAppointment).toHaveBeenCalledWith('appt-1', {
+      notes: 'Updated',
+      performedByUserId: 'user-1',
+    });
   });
 
   it('POST /:id/reschedule should reschedule appointment', async () => {
@@ -171,6 +174,6 @@ describe('Appointments Routes', () => {
 
     await request(app).delete('/api/v1/appointments/appt-1').expect(204);
 
-    expect(appointmentService.deleteAppointment).toHaveBeenCalledWith('appt-1');
+    expect(appointmentService.deleteAppointment).toHaveBeenCalledWith('appt-1', 'user-1');
   });
 });

@@ -149,7 +149,10 @@ router.patch(
         throw handleZodError(parsed.error);
       }
 
-      const appointment = await updateAppointment(req.params.id, parsed.data);
+      const appointment = await updateAppointment(req.params.id, {
+        ...parsed.data,
+        performedByUserId: req.user?.id ?? null,
+      });
       res.json({ data: appointment });
     } catch (error) {
       next(error);
@@ -249,7 +252,7 @@ router.delete(
         method: req.method,
       });
 
-      await deleteAppointment(req.params.id);
+      await deleteAppointment(req.params.id, req.user?.id ?? null);
       res.status(204).send();
     } catch (error) {
       next(error);

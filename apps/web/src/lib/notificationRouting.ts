@@ -52,6 +52,11 @@ function getStringDeep(value: unknown, keys: string[]): string | null {
 
 export function getNotificationRoute(notification: Notification): string | null {
   const meta = toMetadata(notification.metadata);
+  const facilityId = getStringDeep(meta, ['facilityId', 'facility_id']);
+
+  if (notification.type === 'contract_assignment_required' && facilityId) {
+    return `/service-locations/${facilityId}`;
+  }
 
   const inspectionId = getStringDeep(meta, ['inspectionId', 'inspection_id']);
   if (inspectionId) return `/inspections/${inspectionId}`;
@@ -74,7 +79,6 @@ export function getNotificationRoute(notification: Notification): string | null 
   const jobId = getStringDeep(meta, ['jobId', 'job_id']);
   if (jobId) return `/jobs/${jobId}`;
 
-  const facilityId = getStringDeep(meta, ['facilityId', 'facility_id']);
   if (facilityId) return `/service-locations/${facilityId}`;
 
   return null;
