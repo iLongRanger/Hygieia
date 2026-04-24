@@ -108,7 +108,7 @@ export const ROUTE_ACCESS_CONFIG: RouteAccessConfig[] = [
     requiredPermissions: [PERMISSIONS.QUOTATIONS_READ],
   },
   {
-    path: '/quotations/catalog',
+    path: '/specialized/catalog',
     requiredPermissions: [PERMISSIONS.QUOTATIONS_ADMIN],
   },
   {
