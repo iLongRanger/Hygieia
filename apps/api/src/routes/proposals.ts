@@ -253,6 +253,29 @@ router.patch(
         throw new NotFoundError('Proposal not found');
       }
 
+      if (
+        parsed.data.accountId !== undefined
+        && parsed.data.accountId !== proposal.account.id
+      ) {
+        await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
+      }
+
+      if (
+        parsed.data.facilityId !== undefined
+        && parsed.data.facilityId !== null
+        && parsed.data.facilityId !== proposal.facility?.id
+      ) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'facility',
+          resourceId: parsed.data.facilityId,
+          path: req.path,
+          method: req.method,
+        });
+      }
+
       // Accepted proposals are terminal because they are contract-ready.
       if (proposal.status === 'accepted') {
         throw new ValidationError(
