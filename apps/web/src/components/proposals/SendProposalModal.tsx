@@ -104,15 +104,15 @@ ${proposal.createdByUser.fullName}`;
   };
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title="Send Proposal" size="2xl">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Send Proposal" size="7xl">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         {/* PDF Preview */}
         <div className="flex flex-col">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300">
             <FileText className="h-4 w-4" />
             PDF Preview
           </div>
-          <div className="relative flex-1 overflow-hidden rounded-lg border border-surface-200 bg-surface-100 dark:border-surface-700 dark:bg-surface-900" style={{ minHeight: '500px' }}>
+          <div className="relative flex-1 overflow-hidden rounded-lg border border-surface-200 bg-surface-100 min-h-[520px] dark:border-surface-700 dark:bg-surface-900 lg:min-h-[calc(100vh-10rem)]">
             {pdfLoading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
@@ -128,8 +128,7 @@ ${proposal.createdByUser.fullName}`;
             {pdfUrl && (
               <iframe
                 src={pdfUrl}
-                className="h-full w-full"
-                style={{ minHeight: '500px' }}
+                className="h-full min-h-[520px] w-full lg:min-h-[calc(100vh-10rem)]"
                 title="Proposal PDF Preview"
               />
             )}
