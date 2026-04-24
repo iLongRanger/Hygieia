@@ -302,7 +302,32 @@ describe('appointmentService', () => {
         createdByUserId: 'admin-1',
       })
     ).rejects.toThrow(
-      'A walkthrough is already booked for this location. Reschedule the existing appointment instead.'
+      'A walk through is already booked for this location. Reschedule the existing appointment instead.'
+    );
+  });
+
+  it('createAppointment should reject a second scheduled visit for the same account and location', async () => {
+    (prisma.account.findUnique as jest.Mock).mockResolvedValue({ id: 'account-1', archivedAt: null });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+    (prisma.appointment.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'appt-2' });
+
+    await expect(
+      appointmentService.createAppointment({
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        assignedToUserId: 'user-1',
+        type: 'visit',
+        status: 'scheduled',
+        scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+        scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+        timezone: 'America/New_York',
+        createdByUserId: 'admin-1',
+      })
+    ).rejects.toThrow(
+      'A visit is already booked for this location. Reschedule the existing appointment instead.'
     );
   });
 

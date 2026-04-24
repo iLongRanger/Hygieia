@@ -305,6 +305,32 @@ async function assertNoAppointmentConflict(input: {
   }
 }
 
+async function assertNoDuplicateScheduledAppointmentType(input: {
+  type: string;
+  facilityId: string;
+  leadId?: string | null;
+  accountId?: string | null;
+}) {
+  const existingAppointment = await prisma.appointment.findFirst({
+    where: {
+      facilityId: input.facilityId,
+      type: input.type,
+      status: 'scheduled',
+      ...(input.leadId ? { leadId: input.leadId } : {}),
+      ...(input.accountId ? { accountId: input.accountId } : {}),
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (existingAppointment) {
+    throw new BadRequestError(
+      `A ${formatAppointmentType(input.type).toLowerCase()} is already booked for this location. Reschedule the existing appointment instead.`
+    );
+  }
+}
+
 export async function listAppointments(
   params: AppointmentListParams,
   access: AppointmentAccessOptions = {}
@@ -440,23 +466,11 @@ export async function createAppointment(input: AppointmentCreateInput) {
       throw new BadRequestError('Facility not found for the selected lead account');
     }
 
-    const existingWalkthrough = await prisma.appointment.findFirst({
-      where: {
-        leadId: effectiveWalkthroughLeadId,
-        facilityId: input.facilityId,
-        type: 'walk_through',
-        status: 'scheduled',
-      },
-      select: {
-        id: true,
-      },
+    await assertNoDuplicateScheduledAppointmentType({
+      leadId: effectiveWalkthroughLeadId,
+      facilityId: input.facilityId,
+      type: input.type,
     });
-
-    if (existingWalkthrough) {
-      throw new BadRequestError(
-        'A walkthrough is already booked for this location. Reschedule the existing appointment instead.'
-      );
-    }
   } else {
     if (!input.accountId) {
       throw new BadRequestError('Account is required for visit or inspection appointments');
@@ -497,6 +511,12 @@ export async function createAppointment(input: AppointmentCreateInput) {
     if (!activeContract) {
       throw new BadRequestError('Account must have an active contract');
     }
+
+    await assertNoDuplicateScheduledAppointmentType({
+      accountId: input.accountId,
+      facilityId: input.facilityId,
+      type: input.type,
+    });
   }
 
   const appointment = await prisma.$transaction(async (tx) => {
