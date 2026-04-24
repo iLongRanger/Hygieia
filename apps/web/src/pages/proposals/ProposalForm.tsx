@@ -71,6 +71,7 @@ import {
   previewResidentialQuote,
   getResidentialProperty,
 } from '../../lib/residential';
+import { listOneTimeServiceCatalog } from '../../lib/oneTimeServiceCatalog';
 import type {
   ResidentialPricingPlan,
   ResidentialQuotePreview,
@@ -80,6 +81,7 @@ import type {
   ResidentialAddress,
   ResidentialHomeProfile,
 } from '../../types/residential';
+import type { OneTimeServiceCatalogItem } from '../../types/oneTimeServiceCatalog';
 
 interface SuggestedProposalItem {
   itemType?: ProposalItemType;
@@ -675,6 +677,27 @@ const createEmptyItem = (sortOrder: number): ProposalItem => ({
   sortOrder,
 });
 
+const createSpecializedCatalogItem = (
+  catalogItem: OneTimeServiceCatalogItem,
+  sortOrder: number
+): ProposalItem => {
+  const quantity = Number(catalogItem.defaultQuantity || 1);
+  const unitPrice = Number(catalogItem.baseRate || 0);
+  const calculatedTotal = quantity * unitPrice;
+  const minimumCharge = Number(catalogItem.minimumCharge || 0);
+
+  return {
+    itemType: 'other',
+    description: catalogItem.description
+      ? `${catalogItem.name} - ${catalogItem.description}`
+      : catalogItem.name,
+    quantity,
+    unitPrice,
+    totalPrice: Math.max(calculatedTotal, minimumCharge),
+    sortOrder,
+  };
+};
+
 // Empty service template
 const createEmptyService = (sortOrder: number): ProposalService => ({
   serviceName: '',
@@ -731,6 +754,7 @@ const ProposalForm = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [, setTermsTemplates] = useState<ProposalTemplate[]>([]);
   const [residentialPricingPlans, setResidentialPricingPlans] = useState<ResidentialPricingPlan[]>([]);
+  const [specializedCatalogItems, setSpecializedCatalogItems] = useState<OneTimeServiceCatalogItem[]>([]);
 
   // Form data
   const [proposalCategory, setProposalCategory] = useState<ProposalCategory>(initialProposalCategory);
@@ -806,6 +830,7 @@ const ProposalForm = () => {
   const [residentialServiceType, setResidentialServiceType] = useState<ResidentialServiceType | ''>('');
   const [residentialFrequency, setResidentialFrequency] = useState<ResidentialFrequency>('weekly');
   const [residentialAddOns, setResidentialAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
+  const [selectedSpecializedCatalogItemId, setSelectedSpecializedCatalogItemId] = useState('');
   const [workerCount, setWorkerCount] = useState<number>(1);
   const [selectedSubcontractorTier, setSelectedSubcontractorTier] = useState<string>('');
 
@@ -1002,13 +1027,22 @@ const ProposalForm = () => {
   // Fetch reference data
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [accountsRes, facilitiesRes, plansRes, residentialPlansRes, templatesRes, proposalsRes] = await Promise.all([
+      const [
+        accountsRes,
+        facilitiesRes,
+        plansRes,
+        residentialPlansRes,
+        templatesRes,
+        proposalsRes,
+        specializedCatalogRes,
+      ] = await Promise.all([
         listAccounts({ limit: 100, readyForProposal: true }),
         listFacilities({ limit: 100, includeResidentialLinked: true }),
         listPricingSettings({ limit: 100, includeArchived: false, isActive: true }),
         listResidentialPricingPlans({ limit: 100, includeArchived: false, isActive: true }),
         listTemplates(),
         listProposals({ limit: 100, includeArchived: false }),
+        listOneTimeServiceCatalog({ includeInactive: false }),
       ]);
       const readyAccounts = accountsRes?.data || [];
       const readyAccountIds = new Set(readyAccounts.map((account) => account.id));
@@ -1027,6 +1061,7 @@ const ProposalForm = () => {
         )
       );
       setTermsTemplates(templatesRes || []);
+      setSpecializedCatalogItems(specializedCatalogRes || []);
       const residentialPlans = residentialPlansRes?.data || [];
       setResidentialPricingPlans(residentialPlans);
       const plans = plansRes?.data || [];
@@ -1185,6 +1220,8 @@ const ProposalForm = () => {
       setPricingBreakdown(null);
       setResidentialPreview(null);
       setResidentialBreakdownVisible(false);
+    } else {
+      setSelectedSpecializedCatalogItemId('');
     }
   };
 
@@ -1798,6 +1835,21 @@ const ProposalForm = () => {
     }));
   };
 
+  const handleSpecializedCatalogItemChange = (catalogItemId: string) => {
+    setSelectedSpecializedCatalogItemId(catalogItemId);
+    const catalogItem = specializedCatalogItems.find((item) => item.id === catalogItemId);
+    if (!catalogItem) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      title: prev.title.trim() ? prev.title : catalogItem.name,
+      description: prev.description || catalogItem.description || null,
+      proposalItems: [createSpecializedCatalogItem(catalogItem, 0)],
+    }));
+  };
+
   const updateItem = (index: number, field: keyof ProposalItem, value: unknown) => {
     setFormData((prev) => {
       const items = [...(prev.proposalItems || [])];
@@ -1892,6 +1944,11 @@ const ProposalForm = () => {
 
     if (isSpecializedProposal && (!formData.scheduledDate || !formData.scheduledStartTime || !formData.scheduledEndTime)) {
       toast.error('Scheduled date, start time, and end time are required for specialized proposal types');
+      return;
+    }
+
+    if (isSpecializedProposal && !isEditMode && !selectedSpecializedCatalogItemId) {
+      toast.error('Please select the specialized job requested by the client');
       return;
     }
 
@@ -2135,6 +2192,24 @@ const ProposalForm = () => {
               ) : null}
               {isSpecializedProposal ? (
                 <>
+                  <div className="md:col-span-2">
+                    <Select
+                      label="Specialized Job Requested *"
+                      placeholder="Select a specialized job"
+                      value={selectedSpecializedCatalogItemId}
+                      onChange={handleSpecializedCatalogItemChange}
+                      options={specializedCatalogItems.map((item) => ({
+                        value: item.id,
+                        label: `${item.name} (${formatCurrency(Number(item.baseRate || 0))})`,
+                      }))}
+                      disabled={Boolean(isEditMode)}
+                    />
+                    {specializedCatalogItems.length === 0 ? (
+                      <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                        No active specialized jobs are available. Add them in Specialized Job Management first.
+                      </p>
+                    ) : null}
+                  </div>
                   <Input
                     label="Scheduled Date *"
                     type="date"

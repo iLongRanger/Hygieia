@@ -34,6 +34,7 @@ const listResidentialPricingPlansMock = vi.fn();
 const previewResidentialQuoteMock = vi.fn();
 const getFacilityMock = vi.fn();
 const getResidentialPropertyMock = vi.fn();
+const listOneTimeServiceCatalogMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
@@ -71,6 +72,10 @@ vi.mock('../../lib/residential', () => ({
 
 vi.mock('../../lib/proposalTemplates', () => ({
   listTemplates: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../lib/oneTimeServiceCatalog', () => ({
+  listOneTimeServiceCatalog: (...args: unknown[]) => listOneTimeServiceCatalogMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -312,10 +317,28 @@ describe('ProposalForm', () => {
     previewResidentialQuoteMock.mockReset();
     getFacilityMock.mockReset();
     getResidentialPropertyMock.mockReset();
+    listOneTimeServiceCatalogMock.mockReset();
 
     listAccountsMock.mockResolvedValue({ data: [account, residentialAccount] });
     listFacilitiesMock.mockResolvedValue({ data: [facility, residentialFacility] });
     listProposalsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 1 } });
+    listOneTimeServiceCatalogMock.mockResolvedValue([
+      {
+        id: 'specialized-1',
+        name: 'Window Cleaning',
+        code: 'WINDOW_CLEANING',
+        description: 'Interior and exterior window cleaning',
+        serviceType: 'window_cleaning',
+        unitType: 'fixed',
+        baseRate: 250,
+        defaultQuantity: 1,
+        minimumCharge: null,
+        maxDiscountPercent: 10,
+        requiresSchedule: true,
+        isActive: true,
+        addOns: [],
+      },
+    ]);
     getFacilityMock.mockResolvedValue(residentialFacility);
     getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
     listAreasMock.mockResolvedValue({
@@ -637,6 +660,23 @@ describe('ProposalForm', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Cleaning Services - Main Facility');
     });
+  });
+
+  it('shows specialized catalog jobs and populates the selected job as a line item', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'specialized');
+
+    await waitFor(() => {
+      expect(listOneTimeServiceCatalogMock).toHaveBeenCalledWith({ includeInactive: false });
+    });
+
+    await user.selectOptions(await screen.findByLabelText(/specialized job requested/i), 'specialized-1');
+
+    expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Window Cleaning');
+    expect(screen.getByDisplayValue('Window Cleaning - Interior and exterior window cleaning')).toBeInTheDocument();
+    expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
   });
 
   it('auto-populates services from facility pricing using client schedule frequency', async () => {
