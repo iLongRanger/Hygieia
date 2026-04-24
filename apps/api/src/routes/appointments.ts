@@ -149,6 +149,18 @@ router.patch(
         throw handleZodError(parsed.error);
       }
 
+      if (
+        parsed.data.facilityId !== undefined
+        && parsed.data.facilityId !== existing.facility?.id
+      ) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'facility',
+          resourceId: parsed.data.facilityId,
+          path: req.path,
+          method: req.method,
+        });
+      }
+
       const appointment = await updateAppointment(req.params.id, {
         ...parsed.data,
         performedByUserId: req.user?.id ?? null,
