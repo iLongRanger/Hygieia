@@ -610,7 +610,7 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
-    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-1');
     await user.type(screen.getByLabelText(/proposal title/i), 'Cleaning Proposal');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
@@ -632,7 +632,7 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
-    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-1');
 
     await waitFor(() => {
       expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Cleaning Services - Main Facility');
@@ -644,7 +644,7 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
-    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-1');
     await waitFor(() => {
       expect((screen.getByLabelText(/pricing plan/i) as HTMLSelectElement).value).toBe('pricing-1');
     });
@@ -696,7 +696,7 @@ describe('ProposalForm', () => {
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
-    await user.selectOptions(await screen.findByLabelText(/facility/i), 'facility-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-1');
 
     const createButtons = await screen.findAllByRole('button', { name: /create proposal/i });
     expect(createButtons[0]).toBeDisabled();

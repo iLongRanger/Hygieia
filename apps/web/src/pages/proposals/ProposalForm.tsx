@@ -1560,10 +1560,10 @@ const ProposalForm = () => {
     selectedAccount,
   ]);
 
-  // Auto-populate services from facility pricing
+  // Auto-populate services from service location pricing
   const handleAutoPopulateFromFacility = async () => {
     if (!formData.facilityId) {
-      toast.error('Please select a facility first');
+      toast.error('Please select a service location first');
       return;
     }
     if (isResidentialAccount) {
@@ -1698,11 +1698,11 @@ const ProposalForm = () => {
 
       // Store the full pricing breakdown for internal view
       setPricingBreakdown(template.pricing);
-      toast.success(`Auto-populated ${newServices.length} service(s) from adjusted facility scope`);
+      toast.success(`Auto-populated ${newServices.length} service(s) from adjusted service location scope`);
     } catch (error) {
-      console.error('Failed to auto-populate from facility:', error);
+      console.error('Failed to auto-populate from service location:', error);
       setPricingBreakdown(null);
-      toast.error(extractApiErrorMessage(error, 'Failed to calculate pricing from facility'));
+      toast.error(extractApiErrorMessage(error, 'Failed to calculate pricing from service location'));
     } finally {
       setLoadingPricing(false);
     }
@@ -1916,7 +1916,7 @@ const ProposalForm = () => {
     }
 
     if (!formData.facilityId) {
-      toast.error('Select a facility before creating the proposal');
+      toast.error('Select a service location before creating the proposal');
       return;
     }
     if (!isSpecializedProposal && isResidentialAccount && (!residentialPreviewContext || !selectedResidentialPricingPlanId || !hasResidentialServiceType || !residentialPreview)) {
@@ -1930,12 +1930,12 @@ const ProposalForm = () => {
     }
 
     if (requiresFacilityReview && loadingFacilityReview) {
-      toast.error('Please wait for facility review checks to finish');
+      toast.error('Please wait for service location review checks to finish');
       return;
     }
     if (requiresFacilityReview && !isFacilityReviewComplete) {
       if (facilityReview.hasBlockingIssues) {
-        toast.error('Resolve facility review issues before creating the proposal');
+        toast.error('Resolve service location review issues before creating the proposal');
         return;
       }
       toast.error('Please confirm area and task accuracy before creating the proposal');
@@ -2105,8 +2105,8 @@ const ProposalForm = () => {
                 options={availableAccounts.map((a) => ({ value: a.id, label: a.name }))}
               />
               <Select
-                label={isResidentialAccount ? 'Service Location *' : 'Facility *'}
-                placeholder="Select a facility"
+                label="Service Location *"
+                placeholder="Select a service location"
                 value={formData.facilityId || ''}
                 onChange={(value) => handleChange('facilityId', value)}
                 options={availableProposalFacilities.map((f) => ({
@@ -2429,14 +2429,14 @@ const ProposalForm = () => {
                 </div>
               )}
 
-              {/* Auto-populate from facility */}
+              {/* Auto-populate from service location */}
               {!isResidentialAccount && formData.facilityId && (
                 <div className="md:col-span-2 mt-2">
                   <div className="bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Facility</span>
+                        <span className="font-medium text-surface-900 dark:text-white">Auto-Populate from Service Location</span>
                       </div>
                       {pricingReadiness && (
                         <div className="flex items-center gap-2">
@@ -2481,7 +2481,7 @@ const ProposalForm = () => {
                       </div>
                     ) : (
                       <p className="text-sm text-surface-500 dark:text-surface-400">
-                        Complete the facility's area setup to enable automatic pricing calculation.
+                        Complete the service location's area setup to enable automatic pricing calculation.
                         Areas need square footage and floor type information.
                       </p>
                     )}
@@ -2512,7 +2512,7 @@ const ProposalForm = () => {
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
                         <ClipboardCheck className="w-5 h-5 text-gold" />
-                        <span className="font-medium text-surface-900 dark:text-white">Facility Review Before Proposal</span>
+                        <span className="font-medium text-surface-900 dark:text-white">Service Location Review Before Proposal</span>
                       </div>
                       <Button
                         type="button"
@@ -2520,7 +2520,7 @@ const ProposalForm = () => {
                         size="sm"
                         onClick={() => navigate(`/service-locations/${formData.facilityId}`, { state: { backLabel: isEditMode ? 'Edit Proposal' : 'New Proposal', backPath: isEditMode ? `/proposals/${id}/edit` : '/proposals/new' } })}
                       >
-                        Review Facility Details
+                        Review Service Location Details
                       </Button>
                     </div>
 
@@ -2558,7 +2558,7 @@ const ProposalForm = () => {
                               <span className="font-medium">Fix required before proposal submission</span>
                             </div>
                             <p>
-                              Each active area must have square footage and at least one task, and the facility must
+                              Each active area must have square footage and at least one task, and the service location must
                               include both areas and tasks.
                             </p>
                           </div>
@@ -2589,11 +2589,11 @@ const ProposalForm = () => {
                             {isFacilityReviewComplete ? (
                               <p className="text-sm text-emerald flex items-center gap-2">
                                 <CircleCheck className="w-4 h-4" />
-                                Facility review complete. Proposal can be submitted.
+                                Service location review complete. Proposal can be submitted.
                               </p>
                             ) : (
                               <p className="text-sm text-amber-300">
-                                Confirm both checks after reviewing the facility.
+                                Confirm both checks after reviewing the service location.
                               </p>
                             )}
                           </>
