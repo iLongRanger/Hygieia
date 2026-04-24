@@ -55,6 +55,7 @@ router.get(
       const appointments = await listAppointments(params, {
         userRole: req.user?.role,
         userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? null,
       });
       res.json({ data: appointments });
     } catch (error) {

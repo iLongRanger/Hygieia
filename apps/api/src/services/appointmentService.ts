@@ -21,6 +21,7 @@ export interface AppointmentListParams {
 interface AppointmentAccessOptions {
   userRole?: string;
   userId?: string;
+  userTeamId?: string | null;
 }
 
 export interface AppointmentCreateInput {
@@ -378,6 +379,18 @@ export async function listAppointments(
 
   if (access.userRole === 'manager' && access.userId) {
     where.account = { accountManagerId: access.userId };
+  }
+
+  // Subcontractors only see appointments tied to facilities their team services.
+  // GET /:id is blocked for subcontractors via ownership middleware, so the list
+  // must mirror that scoping rather than return the full company calendar.
+  if (access.userRole === 'subcontractor') {
+    if (!access.userTeamId) {
+      return [];
+    }
+    where.facility = {
+      contracts: { some: { assignedTeamId: access.userTeamId } },
+    };
   }
 
   return prisma.appointment.findMany({
