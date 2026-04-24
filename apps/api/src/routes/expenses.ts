@@ -2,7 +2,10 @@ import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { UnauthorizedError } from '../middleware/errorHandler';
+import { ForbiddenError, UnauthorizedError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
+import { prisma } from '../lib/prisma';
+import type { AuthenticatedUser } from '../types/express';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -35,6 +38,74 @@ function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
     throw new UnauthorizedError('Not authenticated');
   }
   return req.user;
+}
+
+interface ExpenseResourceRefs {
+  contractId?: string | null;
+  facilityId?: string | null;
+  jobId?: string | null;
+}
+
+async function assertExpenseResourceAccess(
+  user: AuthenticatedUser,
+  refs: ExpenseResourceRefs,
+  context: { path: string; method: string }
+): Promise<void> {
+  if (user.role === 'owner' || user.role === 'admin') return;
+
+  if (refs.contractId) {
+    await ensureOwnershipAccess(user, {
+      resourceType: 'contract',
+      resourceId: refs.contractId,
+      path: context.path,
+      method: context.method,
+    });
+  }
+
+  if (refs.facilityId) {
+    await ensureOwnershipAccess(user, {
+      resourceType: 'facility',
+      resourceId: refs.facilityId,
+      path: context.path,
+      method: context.method,
+    });
+  }
+
+  if (refs.jobId) {
+    const job = await prisma.job.findUnique({
+      where: { id: refs.jobId },
+      select: { accountId: true },
+    });
+    if (!job) throw new ForbiddenError('Access denied');
+    await ensureManagerAccountAccess(user, job.accountId, context);
+  }
+}
+
+async function assertExpenseMutationAccess(
+  user: AuthenticatedUser,
+  expenseId: string,
+  context: { path: string; method: string }
+): Promise<void> {
+  if (user.role === 'owner' || user.role === 'admin') return;
+
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId },
+    select: {
+      createdByUserId: true,
+      contractId: true,
+      facilityId: true,
+      jobId: true,
+    },
+  });
+  if (!expense) throw new ForbiddenError('Access denied');
+
+  if (expense.createdByUserId === user.id) return;
+
+  if (!expense.contractId && !expense.facilityId && !expense.jobId) {
+    throw new ForbiddenError('You do not have access to this expense');
+  }
+
+  await assertExpenseResourceAccess(user, expense, context);
 }
 
 // ==================== Categories (must come before /:id) ====================
@@ -150,6 +221,15 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = requireAuthenticatedUser(req);
+      await assertExpenseResourceAccess(
+        user,
+        {
+          contractId: req.body.contractId,
+          facilityId: req.body.facilityId,
+          jobId: req.body.jobId,
+        },
+        { path: req.path, method: req.method }
+      );
       const expense = await createExpense({
         ...req.body,
         date: new Date(req.body.date),
@@ -169,6 +249,20 @@ router.patch(
   validate(updateExpenseSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
+      await assertExpenseMutationAccess(user, req.params.id, {
+        path: req.path,
+        method: req.method,
+      });
+      await assertExpenseResourceAccess(
+        user,
+        {
+          contractId: req.body.contractId,
+          facilityId: req.body.facilityId,
+          jobId: req.body.jobId,
+        },
+        { path: req.path, method: req.method }
+      );
       const input = { ...req.body };
       if (input.date) input.date = new Date(input.date);
       const expense = await updateExpense(req.params.id, input);
@@ -185,6 +279,11 @@ router.delete(
   requirePermission(PERMISSIONS.EXPENSES_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
+      await assertExpenseMutationAccess(user, req.params.id, {
+        path: req.path,
+        method: req.method,
+      });
       await deleteExpense(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -200,6 +299,10 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = requireAuthenticatedUser(req);
+      await assertExpenseMutationAccess(user, req.params.id, {
+        path: req.path,
+        method: req.method,
+      });
       const expense = await approveExpense(req.params.id, user.id);
       res.json({ data: expense });
     } catch (error) {
@@ -214,6 +317,11 @@ router.post(
   requirePermission(PERMISSIONS.EXPENSES_APPROVE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const user = requireAuthenticatedUser(req);
+      await assertExpenseMutationAccess(user, req.params.id, {
+        path: req.path,
+        method: req.method,
+      });
       const expense = await rejectExpense(req.params.id, req.body.notes);
       res.json({ data: expense });
     } catch (error) {
