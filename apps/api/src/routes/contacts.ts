@@ -115,6 +115,10 @@ router.patch(
   verifyOwnership({ resourceType: 'contact' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
       const existing = await getContactById(req.params.id);
       if (!existing) {
         throw new NotFoundError('Contact not found');
@@ -123,6 +127,17 @@ router.patch(
       const parsed = updateContactSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
+      }
+
+      if (
+        parsed.data.accountId !== undefined
+        && parsed.data.accountId !== null
+        && parsed.data.accountId !== existing.account?.id
+      ) {
+        await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
       }
 
       const contact = await updateContact(req.params.id, parsed.data);
