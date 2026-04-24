@@ -676,7 +676,7 @@ describe('ProposalForm', () => {
 
     await user.selectOptions(await screen.findByLabelText(/specialized job requested/i), 'specialized-1');
 
-    expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Window Cleaning');
+    expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Cleaning Services - Main Facility - Window Cleaning');
     expect(screen.getByDisplayValue('Window Cleaning - Interior and exterior window cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
     expect(screen.queryByText(/service location review before proposal/i)).not.toBeInTheDocument();
