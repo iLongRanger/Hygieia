@@ -50,6 +50,7 @@ router.get(
         dateTo,
         userRole: req.user?.role,
         userTeamId: req.user?.teamId ?? undefined,
+        userId: req.user?.id,
       });
       res.json({ data: stats });
     } catch (error) {

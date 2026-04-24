@@ -8,6 +8,7 @@ export interface DashboardParams {
   dateTo?: Date;
   userRole?: string;
   userTeamId?: string;
+  userId?: string;
 }
 
 export interface PeriodComparison {
@@ -176,6 +177,138 @@ async function getComparisonData(
   };
 }
 
+function buildEmptyOperationsDashboard(operations: {
+  jobsScheduledToday?: number;
+  jobsInProgressToday?: number;
+  jobsCompletedToday?: number;
+  jobsCompletedInPeriod?: number;
+  jobsMissedInPeriod?: number;
+  inspectionAvgScore?: number | null;
+  inspectionsCompletedInPeriod?: number;
+  activeClockIns?: number;
+  pendingTimesheets?: number;
+} = {}): DashboardStats {
+  const emptyComparison: PeriodComparison = {
+    newLeads: 0, newLeadsPrev: 0, newLeadsChange: null,
+    newAccounts: 0, newAccountsPrev: 0, newAccountsChange: null,
+    proposalsSent: 0, proposalsSentPrev: 0, proposalsSentChange: null,
+    winRate: 0, winRatePrev: 0, winRateChange: null,
+    mrr: 0, mrrPrev: 0, mrrChange: null,
+  };
+
+  return {
+    totalLeads: 0,
+    newLeadsInPeriod: 0,
+    activeAccounts: 0,
+    newAccountsInPeriod: 0,
+    activeContracts: 0,
+    totalMRR: 0,
+    proposalsSentInPeriod: 0,
+    proposalWinRate: 0,
+    comparison: emptyComparison,
+    leadsByStatus: [],
+    pipelineValue: 0,
+    proposalsByStatus: [],
+    contractsByStatus: [],
+    expiringContracts: [],
+    revenueByMonth: [],
+    upcomingAppointments: [],
+    recentActivity: [],
+    jobsScheduledToday: operations.jobsScheduledToday ?? 0,
+    jobsTodayOverview: {
+      scheduled: operations.jobsScheduledToday ?? 0,
+      inProgress: operations.jobsInProgressToday ?? 0,
+      completed: operations.jobsCompletedToday ?? 0,
+      unassigned: 0,
+    },
+    jobsCompletedInPeriod: operations.jobsCompletedInPeriod ?? 0,
+    jobsMissedInPeriod: operations.jobsMissedInPeriod ?? 0,
+    inspectionAvgScore: operations.inspectionAvgScore ?? null,
+    inspectionsCompletedInPeriod: operations.inspectionsCompletedInPeriod ?? 0,
+    activeClockIns: operations.activeClockIns ?? 0,
+    pendingTimesheets: operations.pendingTimesheets ?? 0,
+    outstandingInvoiceAmount: 0,
+    overdueInvoiceCount: 0,
+    invoicesPaidInPeriod: 0,
+    activeUsers: 0,
+    activeTeams: 0,
+  };
+}
+
+async function getCleanerDashboard(
+  periodStart: Date,
+  periodEnd: Date,
+  userId: string
+): Promise<DashboardStats> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const userWhere = { assignedToUserId: userId };
+
+  const [
+    jobsScheduledToday,
+    jobsInProgressToday,
+    jobsCompletedToday,
+    jobsCompletedInPeriod,
+    jobsMissedInPeriod,
+    inspectionScoreAgg,
+    inspectionsCompletedInPeriod,
+    activeClockIns,
+    pendingTimesheets,
+  ] = await Promise.all([
+    prisma.job.count({
+      where: { ...userWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'scheduled' },
+    }),
+    prisma.job.count({
+      where: { ...userWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'in_progress' },
+    }),
+    prisma.job.count({
+      where: { ...userWhere, scheduledDate: { gte: todayStart, lt: todayEnd }, status: 'completed' },
+    }),
+    prisma.job.count({
+      where: { ...userWhere, status: 'completed', updatedAt: { gte: periodStart, lte: periodEnd } },
+    }),
+    prisma.job.count({
+      where: { ...userWhere, status: 'missed', updatedAt: { gte: periodStart, lte: periodEnd } },
+    }),
+    prisma.inspection.aggregate({
+      _avg: { overallScore: true },
+      where: {
+        status: 'completed',
+        completedAt: { gte: periodStart, lte: periodEnd },
+        job: userWhere,
+      },
+    }),
+    prisma.inspection.count({
+      where: {
+        status: 'completed',
+        completedAt: { gte: periodStart, lte: periodEnd },
+        job: userWhere,
+      },
+    }),
+    prisma.timeEntry.count({
+      where: { status: 'active', clockOut: null, userId },
+    }),
+    prisma.timesheet.count({
+      where: { status: { in: ['draft', 'submitted'] }, userId },
+    }),
+  ]);
+
+  return buildEmptyOperationsDashboard({
+    jobsScheduledToday,
+    jobsInProgressToday,
+    jobsCompletedToday,
+    jobsCompletedInPeriod,
+    jobsMissedInPeriod,
+    inspectionAvgScore: inspectionScoreAgg._avg.overallScore
+      ? Math.round(Number(inspectionScoreAgg._avg.overallScore) * 10) / 10
+      : null,
+    inspectionsCompletedInPeriod,
+    activeClockIns,
+    pendingTimesheets,
+  });
+}
+
 async function getSubcontractorDashboard(
   periodStart: Date,
   periodEnd: Date,
@@ -288,7 +421,7 @@ async function getSubcontractorDashboard(
 export async function getDashboardStats(
   params: DashboardParams = {}
 ): Promise<DashboardStats> {
-  const { period = 'month', dateFrom, dateTo, userRole, userTeamId } = params;
+  const { period = 'month', dateFrom, dateTo, userRole, userTeamId, userId } = params;
 
   let periodStart: Date;
   let periodEnd: Date;
@@ -302,8 +435,19 @@ export async function getDashboardStats(
     periodEnd = dates.end;
   }
 
+  // Cleaners get a per-user operations dashboard (no sales / company-wide data)
+  if (userRole === 'cleaner') {
+    if (!userId) {
+      return buildEmptyOperationsDashboard();
+    }
+    return getCleanerDashboard(periodStart, periodEnd, userId);
+  }
+
   // Subcontractors get a scoped dashboard with only operations data for their team
-  if (userRole === 'subcontractor' && userTeamId) {
+  if (userRole === 'subcontractor') {
+    if (!userTeamId) {
+      return buildEmptyOperationsDashboard();
+    }
     return getSubcontractorDashboard(periodStart, periodEnd, userTeamId);
   }
 
