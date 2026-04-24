@@ -606,7 +606,7 @@ const ProposalDetail = () => {
               {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
             </Badge>
             {isSpecializedProposal && (
-              <Badge variant="info">Specialized Job</Badge>
+              <Badge variant="info">Specialized</Badge>
             )}
             {proposal.pricingApprovalStatus === 'pending' && (
               <Badge variant="warning">Pricing Approval Required</Badge>

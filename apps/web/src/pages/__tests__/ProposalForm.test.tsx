@@ -672,6 +672,7 @@ describe('ProposalForm', () => {
     const user = userEvent.setup();
     render(<ProposalForm />);
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
 
@@ -755,6 +756,7 @@ describe('ProposalForm', () => {
       );
     });
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
@@ -839,6 +841,7 @@ describe('ProposalForm', () => {
 
     render(<ProposalForm />);
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
@@ -864,6 +867,7 @@ describe('ProposalForm', () => {
 
     render(<ProposalForm />);
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
 
     expect(screen.getByRole('option', { name: 'Willow Main Home' })).toBeInTheDocument();
@@ -881,6 +885,7 @@ describe('ProposalForm', () => {
 
     render(<ProposalForm />);
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
 
     expect(screen.queryByRole('option', { name: 'Willow Main Home' })).not.toBeInTheDocument();
@@ -905,6 +910,7 @@ describe('ProposalForm', () => {
 
     render(<ProposalForm />);
 
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
 
     expect(screen.getByText(/no residential-linked service locations are available/i)).toBeInTheDocument();
