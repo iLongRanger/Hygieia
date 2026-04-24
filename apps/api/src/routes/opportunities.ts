@@ -4,6 +4,7 @@ import type { ZodError } from 'zod';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { ValidationError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
 import { PERMISSIONS } from '../types';
 import {
   listOpportunities,
@@ -52,6 +53,13 @@ router.get(
   requirePermission(PERMISSIONS.LEADS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'opportunity',
+        resourceId: req.params.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const opportunity = await getOpportunityById(req.params.id);
       res.json({ data: opportunity });
     } catch (error) {
@@ -66,9 +74,36 @@ router.patch(
   requirePermission(PERMISSIONS.LEADS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.user) {
+        throw new ValidationError('User not authenticated');
+      }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'opportunity',
+        resourceId: req.params.id,
+        path: req.path,
+        method: req.method,
+      });
+
       const parsed = updateOpportunitySchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
+      }
+
+      if (parsed.data.accountId) {
+        await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
+      }
+
+      if (parsed.data.facilityId) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'facility',
+          resourceId: parsed.data.facilityId,
+          path: req.path,
+          method: req.method,
+        });
       }
 
       const opportunity = await updateOpportunity(req.params.id, parsed.data);
