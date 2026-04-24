@@ -1222,6 +1222,11 @@ const ProposalForm = () => {
 
     if (nextCategory === 'specialized') {
       handleChange('pricingPlanId', null);
+      setFormData((prev) => ({
+        ...prev,
+        proposalServices: [],
+      }));
+      setExpandedServices(new Set());
       setPricingBreakdown(null);
       setResidentialPreview(null);
       setResidentialBreakdownVisible(false);
@@ -1995,8 +2000,8 @@ const ProposalForm = () => {
       return;
     }
 
-    if (isSpecializedProposal && (formData.proposalItems || []).length === 0 && (formData.proposalServices || []).length === 0) {
-      toast.error('Add at least one service or line item');
+    if (isSpecializedProposal && (formData.proposalItems || []).length === 0) {
+      toast.error('Add at least one line item');
       return;
     }
 
@@ -2030,9 +2035,11 @@ const ProposalForm = () => {
       const effectiveProposalItems = !isSpecializedProposal && isResidentialAccount
         ? derivedResidentialItems
         : (formData.proposalItems || []);
-      const effectiveProposalServices = !isSpecializedProposal && isResidentialAccount
-        ? derivedResidentialServices
-        : (formData.proposalServices || []);
+      const effectiveProposalServices = isSpecializedProposal
+        ? []
+        : (isResidentialAccount
+            ? derivedResidentialServices
+            : (formData.proposalServices || []));
       const nonZeroItems = removeZeroValueProposalItems(effectiveProposalItems);
       const residentialPricingSnapshot = !isSpecializedProposal && isResidentialAccount
         ? {
@@ -2818,17 +2825,18 @@ const ProposalForm = () => {
           </Card>
 
           {/* Services */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-gold" />
-                Services
-              </h2>
-              <Button type="button" variant="secondary" size="sm" onClick={addService}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Service
-              </Button>
-            </div>
+          {!isSpecializedProposal && (
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-gold" />
+                  Services
+                </h2>
+                <Button type="button" variant="secondary" size="sm" onClick={addService}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Service
+                </Button>
+              </div>
 
             {(formData.proposalServices || []).length === 0 ? (
               <div className="text-center py-8 text-surface-500 dark:text-surface-400">
@@ -2997,7 +3005,8 @@ const ProposalForm = () => {
                 )}
               </div>
             )}
-          </Card>
+            </Card>
+          )}
 
           {/* Notes */}
           <Card>
@@ -3098,10 +3107,12 @@ const ProposalForm = () => {
                 <span className="text-surface-500 dark:text-surface-400">Line Items:</span>
                 <span className="text-surface-900 dark:text-white">{(formData.proposalItems || []).length}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-surface-500 dark:text-surface-400">Services:</span>
-                <span className="text-surface-900 dark:text-white">{(formData.proposalServices || []).length}</span>
-              </div>
+              {!isSpecializedProposal && (
+                <div className="flex justify-between">
+                  <span className="text-surface-500 dark:text-surface-400">Services:</span>
+                  <span className="text-surface-900 dark:text-white">{(formData.proposalServices || []).length}</span>
+                </div>
+              )}
             </div>
           </Card>
 

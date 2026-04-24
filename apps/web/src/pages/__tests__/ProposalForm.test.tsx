@@ -680,6 +680,8 @@ describe('ProposalForm', () => {
     expect(screen.getByDisplayValue('Window Cleaning - Interior and exterior window cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
     expect(screen.queryByText(/service location review before proposal/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^services$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add service/i })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/scheduled date/i), '2026-05-01');
     await user.type(screen.getByLabelText(/start time/i), '09:00');
@@ -697,6 +699,7 @@ describe('ProposalForm', () => {
           proposalType: 'specialized',
           accountId: 'account-1',
           facilityId: 'facility-1',
+          proposalServices: [],
           proposalItems: expect.arrayContaining([
             expect.objectContaining({
               description: 'Window Cleaning - Interior and exterior window cleaning',
