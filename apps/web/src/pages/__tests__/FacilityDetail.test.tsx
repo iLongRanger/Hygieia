@@ -475,6 +475,22 @@ describe('FacilityDetail', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
+  it('offers walk through in the service location booking modal and defaults to it before the walkthrough is booked', async () => {
+    const user = userEvent.setup();
+    getFacilityMock.mockResolvedValue({
+      ...facility,
+      opportunityStatus: 'lead',
+    });
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /book an appointment/i }));
+
+    const appointmentType = await screen.findByLabelText(/appointment type/i);
+    expect(screen.getByRole('option', { name: 'Walk Through' })).toBeInTheDocument();
+    expect(appointmentType).toHaveValue('walk_through');
+  });
+
   it('requests residential area types in property mode', async () => {
     mockParams = { id: 'property-1' };
 

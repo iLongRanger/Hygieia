@@ -82,6 +82,7 @@ interface FacilityDetailProps {
 type FacilityAccountType = 'commercial' | 'residential' | 'government' | 'strata' | 'industrial';
 
 const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
+  { value: 'walk_through', label: 'Walk Through' },
   { value: 'visit', label: 'Visit' },
   { value: 'inspection', label: 'Inspection' },
 ];
@@ -336,8 +337,15 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     startDate.setHours(9, 0, 0, 0);
     const endDate = new Date(startDate);
     endDate.setHours(10, 0, 0, 0);
+    const shouldDefaultToWalkthrough = ![
+      'walk_through_booked',
+      'walk_through_completed',
+      'proposal_sent',
+      'negotiation',
+      'won',
+    ].includes(facility.opportunityStatus ?? '');
     setAppointmentForm({
-      type: 'visit',
+      type: shouldDefaultToWalkthrough ? 'walk_through' : 'visit',
       assignedToUserId: '',
       scheduledStart: toLocalDateTimeInputValue(startDate),
       scheduledEnd: toLocalDateTimeInputValue(endDate),
