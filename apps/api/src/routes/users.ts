@@ -123,10 +123,14 @@ router.post(
   requirePermission(PERMISSIONS.USERS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const caller = requireAuthenticatedUser(req);
+
       const parsed = createUserSchema.safeParse(req.body);
       if (!parsed.success) {
         throw handleZodError(parsed.error);
       }
+
+      ensureCallerOutranksTarget(caller.role, parsed.data.role ?? 'cleaner');
 
       const existingUser = await getUserByEmail(parsed.data.email);
       if (existingUser) {
@@ -151,10 +155,15 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
+      const caller = requireAuthenticatedUser(req);
 
       const existingUser = await getUserById(id);
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
+      }
+
+      if (caller.id !== id) {
+        ensureCallerOutranksTarget(caller.role, existingUser.role?.key ?? 'cleaner');
       }
 
       const parsed = updateUserSchema.safeParse(req.body);
@@ -178,15 +187,18 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
+      const caller = requireAuthenticatedUser(req);
 
       const existingUser = await getUserById(id);
       if (!existingUser) {
         throw new NotFoundError('User not found', { userId: id });
       }
 
-      if (req.user?.id === id) {
+      if (caller.id === id) {
         throw new ValidationError('Cannot delete your own account');
       }
+
+      ensureCallerOutranksTarget(caller.role, existingUser.role?.key ?? 'cleaner');
 
       await deleteUser(id);
 
