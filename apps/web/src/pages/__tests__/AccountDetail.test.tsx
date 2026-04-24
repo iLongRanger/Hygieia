@@ -1151,4 +1151,146 @@ describe('AccountDetail', () => {
       },
     });
   });
+
+  it('routes active residential journey actions to the focused service location', async () => {
+    mockParams = { id: 'account-res-6' };
+    mockPathname = '/residential/accounts/account-res-6';
+
+    const residentialAccount: Account = {
+      ...account,
+      id: 'account-res-6',
+      name: 'Pine Residence',
+      type: 'residential',
+      industry: null,
+      website: null,
+      creditLimit: null,
+      serviceAddress: {
+        street: '42 Pine Lane',
+        city: 'Seattle',
+        state: 'WA',
+        postalCode: '98101',
+      },
+      residentialProfile: {
+        homeType: 'single_family',
+        squareFeet: 1800,
+        bedrooms: 3,
+        fullBathrooms: 2,
+        halfBathrooms: 0,
+        levels: 1,
+        occupiedStatus: 'occupied',
+        condition: 'standard',
+        hasPets: false,
+        lastProfessionalCleaning: null,
+        parkingAccess: 'Driveway',
+        entryNotes: 'Use front door',
+        specialInstructions: null,
+        isFirstVisit: false,
+      },
+      residentialProperties: [
+        {
+          id: 'property-6',
+          accountId: 'account-res-6',
+          name: 'Pine Main Home',
+          facility: { id: 'facility-res-6' },
+          serviceAddress: {
+            street: '42 Pine Lane',
+            city: 'Seattle',
+            state: 'WA',
+            postalCode: '98101',
+          },
+          homeProfile: null,
+          defaultTasks: [],
+          accessNotes: null,
+          parkingAccess: 'Driveway',
+          entryNotes: 'Use front door',
+          pets: false,
+          isPrimary: true,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          archivedAt: null,
+        },
+      ],
+      _count: {
+        contacts: 1,
+        facilities: 1,
+      },
+    };
+
+    getAccountMock.mockResolvedValue(residentialAccount);
+    listFacilitiesMock.mockResolvedValue({
+      data: [
+        {
+          ...facility,
+          id: 'facility-res-6',
+          name: 'Pine Main Home',
+          buildingType: 'single_family',
+          account: {
+            id: 'account-res-6',
+            name: 'Pine Residence',
+            type: 'residential',
+          },
+          residentialPropertyId: 'property-6',
+        },
+      ],
+      pagination: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+    listContractsMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            ...contract,
+            id: 'contract-res-6',
+            status: 'active',
+            account: {
+              id: 'account-res-6',
+              name: 'Pine Residence',
+              type: 'residential',
+            },
+            facility: {
+              id: 'facility-res-6',
+              name: 'Pine Main Home',
+            },
+          },
+        ],
+        pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            ...contract,
+            id: 'contract-res-6',
+            status: 'active',
+            account: {
+              id: 'account-res-6',
+              name: 'Pine Residence',
+              type: 'residential',
+            },
+            facility: {
+              id: 'facility-res-6',
+              name: 'Pine Main Home',
+            },
+          },
+        ],
+        pagination: { page: 1, limit: 1, total: 1, totalPages: 1 },
+      });
+    listProposalsMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } });
+    listResidentialQuotesMock.mockResolvedValue({ data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+
+    const userEventInstance = userEvent.setup();
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Pine Residence' });
+    expect(screen.queryByRole('button', { name: /open active contract/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view jobs/i })).not.toBeInTheDocument();
+
+    await userEventInstance.click(screen.getByRole('button', { name: /manage service location/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-res-6', {
+      state: {
+        backLabel: 'Pine Residence',
+        backPath: '/residential/accounts/account-res-6',
+      },
+    });
+  });
 });

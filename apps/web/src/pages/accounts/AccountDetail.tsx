@@ -1374,6 +1374,10 @@ function buildResidentialActions(input: {
   const openFacility: JourneyAction | undefined = input.focusedFacilityId
     ? { label: 'Open service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
     : undefined;
+  const viewServiceLocations: JourneyAction = {
+    label: 'View service locations',
+    onClick: () => input.onNavigate('/service-locations'),
+  };
   const openProposals: JourneyAction = {
     label: 'View proposals',
     onClick: () => input.onNavigate('/proposals'),
@@ -1389,21 +1393,17 @@ function buildResidentialActions(input: {
   if (input.activeContract) {
     if (input.stageId === 'scheduled_service') {
       return {
-        primary: { label: 'View jobs', onClick: () => input.onNavigate('/jobs') },
-        secondary: [
-          {
-            label: 'Open active contract',
-            onClick: () => input.onNavigate(`/contracts/${input.activeContract!.id}`),
-          },
-        ],
+        primary: input.focusedFacilityId
+          ? { label: 'Review service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
+          : viewServiceLocations,
+        secondary: [],
       };
     }
     return {
-      primary: {
-        label: 'Open active contract',
-        onClick: () => input.onNavigate(`/contracts/${input.activeContract!.id}`),
-      },
-      secondary: [{ label: 'View jobs', onClick: () => input.onNavigate('/jobs') }],
+      primary: input.focusedFacilityId
+        ? { label: 'Manage service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
+        : viewServiceLocations,
+      secondary: [],
     };
   }
 
