@@ -718,6 +718,58 @@ describe('AccountDetail', () => {
     expect(screen.getByText(/finish pricing and send the proposal to the client/i)).toBeInTheDocument();
   });
 
+  it('lets commercial accounts focus the journey by service location', async () => {
+    const userEventInstance = userEvent.setup();
+    const warehouseFacility: Facility = {
+      ...facility,
+      id: 'facility-2',
+      name: 'Warehouse Annex',
+      updatedAt: new Date(Date.now() + 1000).toISOString(),
+    };
+
+    listFacilitiesMock.mockResolvedValue({
+      data: [facility, warehouseFacility],
+      pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
+    });
+    listProposalsMock.mockResolvedValue({
+      data: [
+        {
+          ...proposal,
+          id: 'proposal-warehouse',
+          facility: {
+            id: 'facility-2',
+            name: 'Warehouse Annex',
+            address: {},
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+    });
+    listContractsMock
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 0 } })
+      .mockResolvedValueOnce({ data: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 0 } });
+
+    render(<AccountDetail />);
+
+    await screen.findByRole('heading', { name: 'Acme Corporation' });
+    expect(screen.getByText(/tracking warehouse annex through the sales-to-service pipeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/finish pricing and send the proposal to the client/i)).toBeInTheDocument();
+
+    await userEventInstance.selectOptions(screen.getByLabelText(/commercial service location/i), 'facility-1');
+
+    expect(screen.getByText(/tracking main office through the sales-to-service pipeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/book the first walkthrough for the service location/i)).toBeInTheDocument();
+
+    await userEventInstance.click(screen.getAllByRole('button', { name: /open service location/i })[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
+      state: {
+        backLabel: 'Acme Corporation',
+        backPath: '/accounts/account-1',
+      },
+    });
+  });
+
   it('shows the residential service summary for active residential accounts', async () => {
     mockPathname = '/residential/accounts/account-res-2';
     const residentialAccount: Account = {

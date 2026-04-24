@@ -253,6 +253,7 @@ const AccountDetail = () => {
   const [savingProperty, setSavingProperty] = useState(false);
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+  const [activeCommercialFacilityId, setActiveCommercialFacilityId] = useState<string | null>(null);
   const locationsRef = useRef<HTMLDivElement | null>(null);
 
   const hasPermission = useAuthStore((state) => state.hasPermission);
@@ -794,6 +795,16 @@ const AccountDetail = () => {
         })[0] ?? null
     : null;
 
+  const latestProposal = useMemo(
+    () =>
+      [...proposals].sort((l, r) => {
+        const lt = new Date(l.updatedAt || l.createdAt).getTime();
+        const rt = new Date(r.updatedAt || r.createdAt).getTime();
+        return rt - lt;
+      })[0] ?? null,
+    [proposals]
+  );
+
   const commercialJourney = useMemo(
     () =>
       getCommercialJourneyState({
@@ -806,15 +817,70 @@ const AccountDetail = () => {
     [facilities, appointments, proposals, activeContract, recentJobs]
   );
 
-  const latestProposal = useMemo(
-    () =>
-      [...proposals].sort((l, r) => {
-        const lt = new Date(l.updatedAt || l.createdAt).getTime();
-        const rt = new Date(r.updatedAt || r.createdAt).getTime();
-        return rt - lt;
-      })[0] ?? null,
-    [proposals]
+  const commercialStageOrder = useMemo(
+    () => new Map(COMMERCIAL_ACCOUNT_PIPELINE_STAGES.map((stage, index) => [stage.id, index])),
+    []
   );
+
+  const commercialFacilityJourneys = useMemo(() => {
+    return facilities.map((facility) => {
+      const includeUnscopedRecords = facilities.length === 1;
+      const facilityAppointments = appointments.filter(
+        (appointment) => appointment.facility?.id === facility.id || (includeUnscopedRecords && !appointment.facility)
+      );
+      const facilityProposals = proposals.filter(
+        (proposal) => proposal.facility?.id === facility.id || (includeUnscopedRecords && !proposal.facility)
+      );
+      const facilityContracts = contracts.filter(
+        (contract) => contract.facility?.id === facility.id || (includeUnscopedRecords && !contract.facility)
+      );
+      const facilityRecentJobs = recentJobs.filter((job) => job.facility?.id === facility.id);
+      const facilityActiveContract =
+        facilityContracts.find((contract) => contract.status === 'active') ?? null;
+
+      return {
+        facility,
+        journey: getCommercialJourneyState({
+          facilities: [facility],
+          appointments: facilityAppointments,
+          proposals: facilityProposals,
+          activeContract: facilityActiveContract,
+          recentJobs: facilityRecentJobs,
+        }),
+        latestProposal:
+          [...facilityProposals].sort((left, right) => {
+            const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
+            const rightTime = new Date(right.updatedAt || right.createdAt).getTime();
+            return rightTime - leftTime;
+          })[0] ?? null,
+        activeContract: facilityActiveContract,
+      };
+    });
+  }, [facilities, appointments, proposals, contracts, recentJobs]);
+
+  const defaultFocusedCommercialFacility = useMemo(() => {
+    return [...commercialFacilityJourneys].sort((left, right) => {
+      const leftIndex = commercialStageOrder.get(left.journey.stageId) ?? -1;
+      const rightIndex = commercialStageOrder.get(right.journey.stageId) ?? -1;
+      if (leftIndex !== rightIndex) return rightIndex - leftIndex;
+      return new Date(right.facility.updatedAt).getTime() - new Date(left.facility.updatedAt).getTime();
+    })[0] ?? null;
+  }, [commercialFacilityJourneys, commercialStageOrder]);
+
+  const effectiveCommercialFacilityId =
+    activeCommercialFacilityId ?? defaultFocusedCommercialFacility?.facility.id ?? null;
+  const selectedCommercialFacilityJourney =
+    commercialFacilityJourneys.find((entry) => entry.facility.id === effectiveCommercialFacilityId)
+    ?? defaultFocusedCommercialFacility;
+
+  const activeCommercialJourney = selectedCommercialFacilityJourney?.journey ?? commercialJourney;
+  const focusedCommercialProposal = selectedCommercialFacilityJourney
+    ? selectedCommercialFacilityJourney.latestProposal
+    : latestProposal;
+  const focusedCommercialContract = selectedCommercialFacilityJourney
+    ? selectedCommercialFacilityJourney.activeContract
+    : activeContract;
+  const focusedCommercialFacilityId = selectedCommercialFacilityJourney?.facility.id ?? null;
 
   if (loading) {
     return (
@@ -864,12 +930,14 @@ const AccountDetail = () => {
   ];
 
   const commercialActions = buildCommercialActions({
-    stageId: commercialJourney.stageId,
-    latestProposal,
-    activeContract,
+    stageId: activeCommercialJourney.stageId,
+    latestProposal: focusedCommercialProposal,
+    activeContract: focusedCommercialContract,
+    focusedFacilityId: focusedCommercialFacilityId,
     canWriteFacilities,
     onAddFacility: () => setShowFacilityModal(true),
     onOpenProposal: navigateToProposalDetail,
+    onOpenFacility: navigateToFacilityDetail,
     onNavigate: navigateFromAccount,
   });
 
@@ -912,6 +980,7 @@ const AccountDetail = () => {
       propertySwitcher={
         residentialProperties.length > 1 ? (
           <Select
+            aria-label="Residential service location"
             value={effectivePropertyId ?? ''}
             onChange={(value) => setActivePropertyId(value || null)}
             options={residentialProperties.map((property) => ({
@@ -925,15 +994,32 @@ const AccountDetail = () => {
   ) : (
     <AccountJourneyStepper
       title="Commercial Journey"
-      description="Track where this commercial account is in the sales-to-service pipeline."
+      description={
+        selectedCommercialFacilityJourney
+          ? `Tracking ${selectedCommercialFacilityJourney.facility.name} through the sales-to-service pipeline.`
+          : 'Track where this commercial account is in the sales-to-service pipeline.'
+      }
       stages={COMMERCIAL_ACCOUNT_PIPELINE_STAGES}
-      currentStageId={commercialJourney.stageId}
-      isLost={commercialJourney.isLost}
-      lostLabel={commercialJourney.lostLabel}
-      nextStep={commercialJourney.nextStep}
+      currentStageId={activeCommercialJourney.stageId}
+      isLost={activeCommercialJourney.isLost}
+      lostLabel={activeCommercialJourney.lostLabel}
+      nextStep={activeCommercialJourney.nextStep}
       primaryAction={commercialActions.primary}
       secondaryActions={commercialActions.secondary}
       tertiaryAction={commercialActions.tertiary}
+      propertySwitcher={
+        facilities.length > 1 ? (
+          <Select
+            aria-label="Commercial service location"
+            value={effectiveCommercialFacilityId ?? ''}
+            onChange={(value) => setActiveCommercialFacilityId(value || null)}
+            options={facilities.map((facility) => ({
+              value: facility.id,
+              label: facility.name,
+            }))}
+          />
+        ) : undefined
+      }
     />
   );
 
@@ -1278,9 +1364,11 @@ function buildCommercialActions(input: {
   stageId: CommercialAccountPipelineStageId;
   latestProposal: Proposal | null;
   activeContract: Contract | null;
+  focusedFacilityId: string | null;
   canWriteFacilities: boolean;
   onAddFacility: () => void;
   onOpenProposal: (id: string) => void;
+  onOpenFacility: (facilityId: string) => void;
   onNavigate: (path: string) => void;
 }): ActionsBundle {
   const { stageId, latestProposal, activeContract } = input;
@@ -1294,19 +1382,26 @@ function buildCommercialActions(input: {
     label: 'View all proposals',
     onClick: () => input.onNavigate('/proposals'),
   };
+  const openFacility: JourneyAction | undefined = input.focusedFacilityId
+    ? { label: 'Open service location', onClick: () => input.onOpenFacility(input.focusedFacilityId!) }
+    : undefined;
 
   if (activeContract) {
     if (stageId === 'scheduled_service') {
       return {
         primary: { label: 'View jobs', onClick: () => input.onNavigate('/jobs') },
         secondary: [
+          ...(openFacility ? [openFacility] : []),
           { label: 'Open active contract', onClick: () => input.onNavigate(`/contracts/${activeContract.id}`) },
         ],
       };
     }
     return {
       primary: { label: 'Open active contract', onClick: () => input.onNavigate(`/contracts/${activeContract.id}`) },
-      secondary: [{ label: 'View jobs', onClick: () => input.onNavigate('/jobs') }],
+      secondary: [
+        ...(openFacility ? [openFacility] : []),
+        { label: 'View jobs', onClick: () => input.onNavigate('/jobs') },
+      ],
     };
   }
 
@@ -1321,7 +1416,10 @@ function buildCommercialActions(input: {
     case 'facility_added':
       return {
         primary: { label: 'Book walkthrough', onClick: () => input.onNavigate('/appointments') },
-        secondary: [{ label: 'View service locations', onClick: () => input.onNavigate('/service-locations') }],
+        secondary: [
+          ...(openFacility ? [openFacility] : []),
+          { label: 'View service locations', onClick: () => input.onNavigate('/service-locations') },
+        ],
       };
     case 'walkthrough_booked':
       return {
