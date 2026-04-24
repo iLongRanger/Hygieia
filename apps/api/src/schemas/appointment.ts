@@ -34,10 +34,10 @@ export const createAppointmentSchema = z.object({
   }
 ).refine(
   (data) =>
-    (data.type === 'walk_through' && !!data.leadId && !data.accountId) ||
+    (data.type === 'walk_through' && (!!data.leadId || !!data.accountId)) ||
     (data.type !== 'walk_through' && !!data.accountId && !data.leadId),
   {
-    message: 'Walk-through requires a lead. Visits/inspections require an account.',
+    message: 'Walk-through requires a lead or account. Visits/inspections require an account.',
     path: ['type'],
   }
 );

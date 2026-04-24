@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import logger from '../lib/logger';
-import { findPreferredOpportunityForLead } from './opportunityResolver';
+import { findPreferredOpportunityForAccount, findPreferredOpportunityForLead } from './opportunityResolver';
 import { createAccountActivity } from './accountActivityService';
 
 export interface AppointmentListParams {
@@ -376,14 +376,28 @@ export async function createAppointment(input: AppointmentCreateInput) {
     scheduledEnd: input.scheduledEnd,
   });
   let walkthroughLeadAccountId: string | null = null;
+  let effectiveWalkthroughLeadId = input.leadId ?? null;
 
   if (input.type === 'walk_through') {
-    if (!input.leadId) {
-      throw new BadRequestError('Lead is required for walkthrough appointments');
+    if (!effectiveWalkthroughLeadId) {
+      if (!input.accountId) {
+        throw new BadRequestError('Lead or account is required for walkthrough appointments');
+      }
+
+      const opportunity = await findPreferredOpportunityForAccount(prisma, input.accountId, {
+        requireLeadId: true,
+        facilityId: input.facilityId,
+      });
+
+      if (!opportunity?.leadId) {
+        throw new BadRequestError('No active opportunity found for this service location');
+      }
+
+      effectiveWalkthroughLeadId = opportunity.leadId;
     }
 
     const lead = await prisma.lead.findUnique({
-      where: { id: input.leadId },
+      where: { id: effectiveWalkthroughLeadId },
       select: {
         id: true,
         archivedAt: true,
@@ -428,7 +442,7 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
     const existingWalkthrough = await prisma.appointment.findFirst({
       where: {
-        leadId: input.leadId,
+        leadId: effectiveWalkthroughLeadId,
         facilityId: input.facilityId,
         type: 'walk_through',
         status: 'scheduled',
@@ -487,16 +501,16 @@ export async function createAppointment(input: AppointmentCreateInput) {
 
   const appointment = await prisma.$transaction(async (tx) => {
     let opportunity =
-      input.type === 'walk_through' && input.leadId
-        ? await findPreferredOpportunityForLead(tx, input.leadId, {
+      input.type === 'walk_through' && effectiveWalkthroughLeadId
+        ? await findPreferredOpportunityForLead(tx, effectiveWalkthroughLeadId, {
             facilityId: input.facilityId ?? undefined,
           })
         : null;
 
-    if (input.type === 'walk_through' && input.leadId && input.facilityId && !opportunity) {
+    if (input.type === 'walk_through' && effectiveWalkthroughLeadId && input.facilityId && !opportunity) {
       const [lead, primaryContact] = await Promise.all([
         tx.lead.findUnique({
-          where: { id: input.leadId },
+          where: { id: effectiveWalkthroughLeadId },
           select: {
             id: true,
             convertedToAccountId: true,
@@ -557,13 +571,13 @@ export async function createAppointment(input: AppointmentCreateInput) {
       });
     }
 
-    if (input.type === 'walk_through' && input.leadId && !opportunity) {
-      opportunity = await findPreferredOpportunityForLead(tx, input.leadId);
+    if (input.type === 'walk_through' && effectiveWalkthroughLeadId && !opportunity) {
+      opportunity = await findPreferredOpportunityForLead(tx, effectiveWalkthroughLeadId);
     }
 
     const appointment = await tx.appointment.create({
       data: {
-        leadId: input.leadId ?? null,
+        leadId: effectiveWalkthroughLeadId,
         accountId: input.accountId ?? walkthroughLeadAccountId ?? null,
         facilityId: input.facilityId,
         opportunityId: opportunity?.id ?? null,
@@ -581,9 +595,9 @@ export async function createAppointment(input: AppointmentCreateInput) {
       select: appointmentSelect,
     });
 
-    if (input.type === 'walk_through' && input.leadId) {
+    if (input.type === 'walk_through' && effectiveWalkthroughLeadId) {
       await tx.lead.update({
-        where: { id: input.leadId },
+        where: { id: effectiveWalkthroughLeadId },
         data: { status: 'walk_through_booked' },
       });
 

@@ -22,6 +22,7 @@ import {
   autoAdvanceLeadStatusForAccount,
   autoSetLeadStatusForAccount,
 } from './leadService';
+import { findPreferredOpportunityForAccount } from './opportunityResolver';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 
 const PUBLIC_TOKEN_EXPIRY_DAYS = parseInt(process.env.PUBLIC_TOKEN_EXPIRY_DAYS ?? '30', 10);
@@ -1045,7 +1046,7 @@ async function syncResidentialFacility(
     });
   }
 
-  return tx.facility.create({
+  const createdFacility = await tx.facility.create({
     data: {
       accountId: input.accountId,
       createdByUserId: input.createdByUserId,
@@ -1056,6 +1057,74 @@ async function syncResidentialFacility(
       id: true,
       name: true,
     },
+  });
+
+  await createResidentialFacilityOpportunity(tx, {
+    accountId: input.accountId,
+    facilityId: createdFacility.id,
+    facilityName,
+    createdByUserId: input.createdByUserId,
+  });
+
+  return createdFacility;
+}
+
+async function createResidentialFacilityOpportunity(
+  tx: Prisma.TransactionClient,
+  input: {
+    accountId: string;
+    facilityId: string;
+    facilityName: string;
+    createdByUserId: string;
+  }
+) {
+  const sourceOpportunity = await findPreferredOpportunityForAccount(tx, input.accountId, {
+    requireLeadId: true,
+  });
+
+  if (!sourceOpportunity?.leadId) {
+    return;
+  }
+
+  const [lead, primaryContact] = await Promise.all([
+    tx.lead.findUnique({
+      where: { id: sourceOpportunity.leadId },
+      select: {
+        id: true,
+        companyName: true,
+        contactName: true,
+        estimatedValue: true,
+        probability: true,
+        expectedCloseDate: true,
+        assignedToUserId: true,
+        createdByUserId: true,
+      },
+    }),
+    tx.contact.findFirst({
+      where: {
+        accountId: input.accountId,
+        archivedAt: null,
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: { id: true },
+    }),
+  ]);
+
+  await tx.opportunity.create({
+    data: {
+      leadId: sourceOpportunity.leadId,
+      accountId: input.accountId,
+      facilityId: input.facilityId,
+      primaryContactId: primaryContact?.id ?? null,
+      title: input.facilityName,
+      source: null,
+      estimatedValue: lead?.estimatedValue ?? null,
+      probability: lead?.probability ?? 0,
+      expectedCloseDate: lead?.expectedCloseDate ?? null,
+      ownerUserId: lead?.assignedToUserId ?? null,
+      createdByUserId: lead?.createdByUserId ?? input.createdByUserId,
+      status: 'lead',
+    } satisfies Prisma.OpportunityUncheckedCreateInput,
   });
 }
 

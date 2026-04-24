@@ -104,7 +104,7 @@ describe('appointmentService', () => {
     );
   });
 
-  it('createAppointment should require lead for walkthrough', async () => {
+  it('createAppointment should require lead or account for walkthrough', async () => {
     await expect(
       appointmentService.createAppointment({
         assignedToUserId: 'user-1',
@@ -116,7 +116,84 @@ describe('appointmentService', () => {
         timezone: 'America/New_York',
         createdByUserId: 'admin-1',
       })
-    ).rejects.toThrow('Lead is required for walkthrough appointments');
+    ).rejects.toThrow('Lead or account is required for walkthrough appointments');
+  });
+
+  it('createAppointment should resolve walkthrough lead from account service location opportunity', async () => {
+    (prisma.opportunity.findMany as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          id: 'opp-1',
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          leadId: 'lead-1',
+          status: 'lead',
+          updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+          createdAt: new Date('2026-02-01T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'opp-1',
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          leadId: 'lead-1',
+          status: 'lead',
+          updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+          createdAt: new Date('2026-02-01T10:00:00.000Z'),
+        },
+      ]);
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      archivedAt: null,
+      convertedToAccountId: 'account-1',
+      companyName: 'Willow Residence',
+      contactName: 'Jane Client',
+      estimatedValue: null,
+      probability: 0,
+      expectedCloseDate: null,
+      lostReason: null,
+      assignedToUserId: null,
+      createdByUserId: 'admin-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (prisma.appointment.create as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'walk_through',
+      status: 'scheduled',
+      lead: { id: 'lead-1' },
+      account: { id: 'account-1', name: 'Willow Residence', type: 'residential' },
+      facility: { id: 'facility-1', name: 'Willow Main Home' },
+      assignedToUser: { id: 'user-1', fullName: 'Morgan Manager', email: 'morgan@example.com' },
+      scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+      timezone: 'America/New_York',
+      location: null,
+      notes: null,
+    });
+
+    await appointmentService.createAppointment({
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      assignedToUserId: 'user-1',
+      type: 'walk_through',
+      status: 'scheduled',
+      scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+      timezone: 'America/New_York',
+      createdByUserId: 'admin-1',
+    });
+
+    expect(prisma.appointment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          leadId: 'lead-1',
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          opportunityId: 'opp-1',
+        }),
+      })
+    );
   });
 
   it('createAppointment should require active contract for non-walkthrough', async () => {

@@ -78,6 +78,35 @@ describe('residentialService pipeline updates', () => {
         create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'Maple House' }),
         update: jest.fn(),
       },
+      opportunity: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'opp-account-1',
+            accountId: 'account-1',
+            facilityId: null,
+            leadId: 'lead-1',
+            status: 'lead',
+            updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+            createdAt: new Date('2026-02-01T10:00:00.000Z'),
+          },
+        ]),
+        create: jest.fn().mockResolvedValue({ id: 'opp-facility-1' }),
+      },
+      lead: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'lead-1',
+          companyName: null,
+          contactName: 'Jane Client',
+          estimatedValue: 1200,
+          probability: 20,
+          expectedCloseDate: null,
+          assignedToUserId: 'manager-1',
+          createdByUserId: 'user-1',
+        }),
+      },
+      contact: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'contact-1' }),
+      },
       account: {
         update: jest.fn().mockResolvedValue({}),
       },
@@ -128,6 +157,16 @@ describe('residentialService pipeline updates', () => {
         }),
       })
     );
+    expect(tx.opportunity.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        leadId: 'lead-1',
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        primaryContactId: 'contact-1',
+        title: 'Maple House',
+        status: 'lead',
+      }),
+    });
   });
 
   it('updateResidentialProperty should sync the linked facility metadata', async () => {
@@ -164,6 +203,16 @@ describe('residentialService pipeline updates', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'facility-1' }),
         create: jest.fn(),
         update: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'Maple House Updated' }),
+      },
+      opportunity: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+      },
+      lead: {
+        findUnique: jest.fn(),
+      },
+      contact: {
+        findFirst: jest.fn(),
       },
       account: {
         update: jest.fn().mockResolvedValue({}),
