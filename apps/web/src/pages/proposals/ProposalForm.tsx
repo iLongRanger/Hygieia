@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -2233,17 +2234,15 @@ const ProposalForm = () => {
                     value={formData.scheduledDate || ''}
                     onChange={(e) => handleChange('scheduledDate', e.target.value || null)}
                   />
-                  <Input
+                  <TimeSelect
                     label="Start Time *"
-                    type="time"
                     value={formData.scheduledStartTime || ''}
-                    onChange={(e) => handleChange('scheduledStartTime', e.target.value || null)}
+                    onChange={(value) => handleChange('scheduledStartTime', value || null)}
                   />
-                  <Input
+                  <TimeSelect
                     label="End Time *"
-                    type="time"
                     value={formData.scheduledEndTime || ''}
-                    onChange={(e) => handleChange('scheduledEndTime', e.target.value || null)}
+                    onChange={(value) => handleChange('scheduledEndTime', value || null)}
                   />
                 </>
               ) : isResidentialAccount ? (

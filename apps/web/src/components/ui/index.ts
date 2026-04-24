@@ -2,6 +2,7 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { Input } from './Input';
 export { Select } from './Select';
+export { TimeSelect } from './TimeSelect';
 export { Modal } from './Modal';
 export { Badge } from './Badge';
 export { Table } from './Table';

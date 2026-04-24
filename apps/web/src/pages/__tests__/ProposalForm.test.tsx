@@ -707,8 +707,8 @@ describe('ProposalForm', () => {
     expect(screen.getByDisplayValue('Carpet Extraction - Deep carpet extraction service')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/scheduled date/i), '2026-05-01');
-    await user.type(screen.getByLabelText(/start time/i), '09:00');
-    await user.type(screen.getByLabelText(/end time/i), '12:00');
+    await user.selectOptions(screen.getByLabelText(/start time/i), '09:00');
+    await user.selectOptions(screen.getByLabelText(/end time/i), '12:00');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');

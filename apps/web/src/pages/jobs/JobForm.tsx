@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { createJob, updateJob, getJob } from '../../lib/jobs';
@@ -347,25 +348,23 @@ const JobForm = () => {
                   )
                 }
               />
-              <Input
+              <TimeSelect
                 label="Start Time"
-                type="time"
                 value={formData.scheduledStartTime || ''}
-                onChange={(e) =>
+                onChange={(value) =>
                   handleChange(
                     'scheduledStartTime',
-                    e.target.value || null
+                    value || null
                   )
                 }
               />
-              <Input
+              <TimeSelect
                 label="End Time"
-                type="time"
                 value={formData.scheduledEndTime || ''}
-                onChange={(e) =>
+                onChange={(value) =>
                   handleChange(
                     'scheduledEndTime',
-                    e.target.value || null
+                    value || null
                   )
                 }
               />

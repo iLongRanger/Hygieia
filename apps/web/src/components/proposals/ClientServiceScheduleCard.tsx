@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
 import { Select } from '../ui/Select';
-import { Input } from '../ui/Input';
+import { TimeSelect } from '../ui/TimeSelect';
 import { Button } from '../ui/Button';
 
 interface ScheduleOption {
@@ -60,17 +60,15 @@ export const ClientServiceScheduleCard: React.FC<ClientServiceScheduleCardProps>
           onChange={onFrequencyChange}
           options={frequencyOptions}
         />
-        <Input
+        <TimeSelect
           label="Allowed Start Time"
-          type="time"
           value={allowedWindowStart}
-          onChange={(e) => onAllowedWindowStartChange(e.target.value || '00:00')}
+          onChange={(value) => onAllowedWindowStartChange(value || '00:00')}
         />
-        <Input
+        <TimeSelect
           label="Allowed End Time"
-          type="time"
           value={allowedWindowEnd}
-          onChange={(e) => onAllowedWindowEndChange(e.target.value || '23:59')}
+          onChange={(value) => onAllowedWindowEndChange(value || '23:59')}
         />
       </div>
 

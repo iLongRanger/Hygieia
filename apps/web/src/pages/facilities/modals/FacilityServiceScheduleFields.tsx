@@ -1,5 +1,5 @@
-import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { TimeSelect } from '../../../components/ui/TimeSelect';
 import type { Address } from '../../../types/facility';
 
 type ServiceScheduleDay =
@@ -152,17 +152,15 @@ export function FacilityServiceScheduleFields({
         }
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input
+        <TimeSelect
           label="Window Start"
-          type="time"
           value={schedule.allowedWindowStart}
-          onChange={(e) => updateSchedule({ allowedWindowStart: e.target.value || '00:00' })}
+          onChange={(value) => updateSchedule({ allowedWindowStart: value || '00:00' })}
         />
-        <Input
+        <TimeSelect
           label="Window End"
-          type="time"
           value={schedule.allowedWindowEnd}
-          onChange={(e) => updateSchedule({ allowedWindowEnd: e.target.value || '23:59' })}
+          onChange={(value) => updateSchedule({ allowedWindowEnd: value || '23:59' })}
         />
       </div>
       <div>

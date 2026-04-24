@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
+import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Input } from '../../components/ui/Input';
 import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
@@ -58,15 +59,6 @@ const APPOINTMENT_STATUSES: { value: AppointmentStatus; label: string }[] = [
 ];
 
 const APPOINTMENT_ASSIGNABLE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
-const TIME_OPTIONS = Array.from({ length: 34 }, (_, index) => {
-  const totalMinutes = (6 * 60) + index * 30;
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
-  const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-  const labelHour = hour % 12 || 12;
-  const labelPeriod = hour < 12 ? 'AM' : 'PM';
-  return { value, label: `${labelHour}:${String(minute).padStart(2, '0')} ${labelPeriod}` };
-});
 
 const toLocalDateTimeInputValue = (date: Date): string => (
   new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -1227,9 +1219,8 @@ const AppointmentsPage = () => {
                 });
               }}
             />
-            <Select
+            <TimeSelect
               label="Start Time"
-              options={TIME_OPTIONS}
               value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
@@ -1239,9 +1230,8 @@ const AppointmentsPage = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <Select
+            <TimeSelect
               label="End Time"
-              options={TIME_OPTIONS}
               value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
@@ -1373,9 +1363,8 @@ const AppointmentsPage = () => {
                 });
               }}
             />
-            <Select
+            <TimeSelect
               label="Start Time"
-              options={TIME_OPTIONS}
               value={formData.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
@@ -1385,9 +1374,8 @@ const AppointmentsPage = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <Select
+            <TimeSelect
               label="End Time"
-              options={TIME_OPTIONS}
               value={formData.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
               onChange={(value) => {
                 const date = formData.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];

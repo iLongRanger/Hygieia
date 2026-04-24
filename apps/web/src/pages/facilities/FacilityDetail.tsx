@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Drawer } from '../../components/ui/Drawer';
 import { Textarea } from '../../components/ui/Textarea';
 import { useAuthStore } from '../../stores/authStore';
@@ -88,16 +89,6 @@ const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
 ];
 
 const APPOINTMENT_ASSIGNABLE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
-
-const TIME_OPTIONS = Array.from({ length: 34 }, (_, index) => {
-  const totalMinutes = (6 * 60) + index * 30;
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
-  const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-  const labelHour = hour % 12 || 12;
-  const labelPeriod = hour < 12 ? 'AM' : 'PM';
-  return { value, label: `${labelHour}:${String(minute).padStart(2, '0')} ${labelPeriod}` };
-});
 
 const canBeAppointmentRep = (user: User): boolean => {
   const roleKeys = new Set<string>();
@@ -1953,9 +1944,8 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
                 }));
               }}
             />
-            <Select
+            <TimeSelect
               label="Start Time"
-              options={TIME_OPTIONS}
               value={appointmentForm.scheduledStart?.split('T')[1]?.slice(0, 5) || '09:00'}
               onChange={(value) => {
                 const date = appointmentForm.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];
@@ -1967,9 +1957,8 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             />
           </div>
 
-          <Select
+          <TimeSelect
             label="End Time"
-            options={TIME_OPTIONS}
             value={appointmentForm.scheduledEnd?.split('T')[1]?.slice(0, 5) || '10:00'}
             onChange={(value) => {
               const date = appointmentForm.scheduledStart?.split('T')[0] || new Date().toISOString().split('T')[0];

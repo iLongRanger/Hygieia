@@ -16,6 +16,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
+import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { convertLead, getLead, listLeadSources, updateLead } from '../../lib/leads';
@@ -51,14 +52,6 @@ const LEAD_TYPE_OPTIONS = [
 ];
 
 const LEAD_ASSIGNABLE_ROLES = new Set(['owner', 'admin', 'manager']);
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
-  const hour = String(Math.floor(index / 2)).padStart(2, '0');
-  const minute = index % 2 === 0 ? '00' : '30';
-  const value = `${hour}:${minute}`;
-  const labelHour = Number(hour) % 12 || 12;
-  const labelPeriod = Number(hour) < 12 ? 'AM' : 'PM';
-  return { value, label: `${labelHour}:${minute} ${labelPeriod}` };
-});
 
 const toLocalDateValue = (date: Date): string => {
   const year = date.getFullYear();
@@ -1201,15 +1194,13 @@ const LeadDetail = () => {
               value={scheduleDate}
               onChange={(e) => setScheduleDate(e.target.value)}
             />
-            <Select
+            <TimeSelect
               label="Start Time"
-              options={TIME_OPTIONS}
               value={scheduleStartTime}
               onChange={setScheduleStartTime}
             />
-            <Select
+            <TimeSelect
               label="End Time"
-              options={TIME_OPTIONS}
               value={scheduleEndTime}
               onChange={setScheduleEndTime}
             />
