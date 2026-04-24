@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
+import { ensureOwnershipAccess } from '../middleware/ownership';
 import {
   listFacilityTasks,
   getFacilityTaskById,
@@ -97,6 +98,13 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: parsed.data.facilityId,
+        path: req.path,
+        method: req.method,
+      });
+
       const task = await createFacilityTask({
         ...parsed.data,
         createdByUserId: req.user.id,
@@ -124,6 +132,13 @@ router.post(
         throw new ValidationError('User not authenticated');
       }
 
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: parsed.data.facilityId,
+        path: req.path,
+        method: req.method,
+      });
+
       const result = await bulkCreateFacilityTasks(
         parsed.data.facilityId,
         parsed.data.taskTemplateIds,
@@ -149,6 +164,13 @@ router.patch(
       if (!existing) {
         throw new NotFoundError('Facility task not found');
       }
+
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       const parsed = updateFacilityTaskSchema.safeParse(req.body);
       if (!parsed.success) {

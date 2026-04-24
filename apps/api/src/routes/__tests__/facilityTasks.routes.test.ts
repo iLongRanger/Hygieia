@@ -132,7 +132,10 @@ describe('Facility Task Routes', () => {
   });
 
   it('PATCH /:id should update task', async () => {
-    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({ id: 'task-1' });
+    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      facility: { id: '11111111-1111-1111-1111-111111111111' },
+    });
     (facilityTaskService.updateFacilityTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
 
     const response = await request(app)
