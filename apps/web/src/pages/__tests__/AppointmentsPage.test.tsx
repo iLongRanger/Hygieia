@@ -201,6 +201,7 @@ describe('AppointmentsPage', () => {
       expect(await screen.findByText('Edit Appointment')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/assigned rep/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^facility$/i)).toBeDisabled();
     });
 
     it('only shows owner admin and manager users in assigned rep options', async () => {

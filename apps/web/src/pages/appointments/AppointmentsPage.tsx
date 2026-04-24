@@ -1328,9 +1328,10 @@ const AppointmentsPage = () => {
             options={availableLocationOptions}
             value={formData.facilityId}
             onChange={(value) => setFormData({ ...formData, facilityId: value })}
+            disabled
             hint={selectedLocationKind === 'property' && selectedLocationOption
               ? `Editing the walkthrough for ${selectedLocationOption.label} updates its linked operational scope.`
-              : undefined}
+              : 'Service location is locked when editing an appointment.'}
           />
 
           <Select

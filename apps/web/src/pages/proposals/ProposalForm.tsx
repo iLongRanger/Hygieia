@@ -2091,6 +2091,7 @@ const ProposalForm = () => {
                 label="Proposal Type *"
                 value={proposalCategory}
                 onChange={handleProposalCategoryChange}
+                disabled={Boolean(isEditMode)}
                 options={[
                   { value: 'commercial', label: 'Commercial' },
                   { value: 'residential', label: 'Residential' },
@@ -2103,6 +2104,7 @@ const ProposalForm = () => {
                 value={formData.accountId}
                 onChange={(value) => handleChange('accountId', value)}
                 options={availableAccounts.map((a) => ({ value: a.id, label: a.name }))}
+                disabled={Boolean(isEditMode)}
               />
               <Select
                 label="Service Location *"
@@ -2113,7 +2115,13 @@ const ProposalForm = () => {
                   value: f.id,
                   label: f.name,
                 }))}
+                disabled={Boolean(isEditMode)}
               />
+              {isEditMode ? (
+                <p className="md:col-span-2 -mt-2 text-xs text-surface-500 dark:text-surface-400">
+                  Proposal type, account, and service location are locked when editing so this proposal stays attached to the original record.
+                </p>
+              ) : null}
               {formData.accountId && availableProposalFacilities.length === 0 ? (
                 <p className="md:col-span-2 -mt-2 text-sm text-amber-600 dark:text-amber-400">
                   {isResidentialAccount

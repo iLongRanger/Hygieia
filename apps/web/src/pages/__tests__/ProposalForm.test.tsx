@@ -730,7 +730,7 @@ describe('ProposalForm', () => {
     expect(screen.getByText(/no service locations are available without an active proposal/i)).toBeInTheDocument();
   });
 
-  it('keeps the current service location selectable when editing an active proposal', async () => {
+  it('locks proposal identity fields when editing an active proposal', async () => {
     mockParams = { id: 'proposal-1' };
     listProposalsMock.mockResolvedValue({
       data: [activeProposal],
@@ -740,7 +740,13 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     expect(await screen.findByDisplayValue('Existing Proposal')).toBeInTheDocument();
+    expect(screen.getByLabelText(/proposal type/i)).toBeDisabled();
+    expect(screen.getByLabelText(/account/i)).toBeDisabled();
+    expect(screen.getByLabelText(/service location/i)).toBeDisabled();
     expect(screen.getByRole('option', { name: 'Main Facility', selected: true })).toBeInTheDocument();
+    expect(
+      screen.getByText(/proposal type, account, and service location are locked when editing/i)
+    ).toBeInTheDocument();
   });
 
   it('uses the residential quote engine for residential proposals', async () => {
