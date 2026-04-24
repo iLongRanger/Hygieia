@@ -114,7 +114,7 @@ const navSections: NavSection[] = [
       { to: '/tasks', icon: ClipboardList, label: 'Tasks' },
       { to: '/commercial/pricing', icon: Calculator, label: 'Commercial Pricing' },
       { to: '/residential/pricing', icon: Home, label: 'Residential Pricing' },
-      { to: '/specialized/catalog', icon: Calculator, label: 'One-Time Standards' },
+      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job Management' },
       { to: '/area-templates', icon: LayoutTemplate, label: 'Area Templates' },
       { to: '/users', icon: UserCog, label: 'Users' },
       { to: '/settings/global', icon: Settings, label: 'Settings' },

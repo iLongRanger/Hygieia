@@ -55,7 +55,7 @@ const OneTimeServiceCatalogPage = () => {
       const result = await listOneTimeServiceCatalog({ includeInactive: true });
       setItems(result);
     } catch {
-      toast.error('Failed to load one-time service standards');
+      toast.error('Failed to load specialized job standards');
     }
   };
 
@@ -86,11 +86,11 @@ const OneTimeServiceCatalogPage = () => {
         minimumCharge: Number(newItem.minimumCharge) > 0 ? Number(newItem.minimumCharge) : null,
         addOns: [],
       });
-      toast.success('One-time service standard created');
+      toast.success('Specialized job standard created');
       setNewItem(EMPTY_ITEM);
       await load();
     } catch (error) {
-      toast.error(extractApiErrorMessage(error, 'Failed to create one-time service standard'));
+      toast.error(extractApiErrorMessage(error, 'Failed to create specialized job standard'));
     } finally {
       setSaving(false);
     }
@@ -159,11 +159,11 @@ const OneTimeServiceCatalogPage = () => {
         description: editingItem.description || null,
         minimumCharge: Number(editingItem.minimumCharge) > 0 ? Number(editingItem.minimumCharge) : null,
       });
-      toast.success('One-time service standard updated');
+      toast.success('Specialized job standard updated');
       cancelEdit();
       await load();
     } catch (error) {
-      toast.error(extractApiErrorMessage(error, 'Failed to update one-time service standard'));
+      toast.error(extractApiErrorMessage(error, 'Failed to update specialized job standard'));
     } finally {
       setUpdating(false);
     }
@@ -173,13 +173,13 @@ const OneTimeServiceCatalogPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">One-Time Service Standards</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">Specialized Job Management</h1>
         </div>
       </div>
 
       <Card>
         <div className="p-6 space-y-4">
-          <h2 className="text-lg font-semibold">New Standard</h2>
+          <h2 className="text-lg font-semibold">New Specialized Job</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Input label="Name" value={newItem.name} onChange={(e) => setNewItem((prev) => ({ ...prev, name: e.target.value }))} />
             <Input label="Code" value={newItem.code} onChange={(e) => setNewItem((prev) => ({ ...prev, code: e.target.value }))} />
@@ -261,15 +261,15 @@ const OneTimeServiceCatalogPage = () => {
           </div>
           <Button onClick={createItem} disabled={saving}>
             <Plus className="mr-1.5 h-4 w-4" />
-            {saving ? 'Saving...' : 'Create Standard'}
+            {saving ? 'Saving...' : 'Create Specialized Job'}
           </Button>
         </div>
       </Card>
 
       <Card>
         <div className="p-6 space-y-3">
-          <h2 className="text-lg font-semibold">Existing Standards</h2>
-          {items.length === 0 && <p className="text-sm text-surface-500">No standards yet.</p>}
+          <h2 className="text-lg font-semibold">Specialized Jobs</h2>
+          {items.length === 0 && <p className="text-sm text-surface-500">No specialized jobs yet.</p>}
           {items.map((item) => {
             const isEditing = editingId === item.id && editingItem !== null;
             const currentEditingItem = isEditing ? editingItem : null;
