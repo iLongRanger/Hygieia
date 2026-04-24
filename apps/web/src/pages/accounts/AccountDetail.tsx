@@ -751,11 +751,12 @@ const AccountDetail = () => {
       journey: getResidentialPropertyJourneyState({
         property,
         residentialQuotes,
+        appointments,
         contracts,
         recentJobs,
       }),
     }));
-  }, [residentialProperties, residentialQuotes, contracts, recentJobs]);
+  }, [residentialProperties, residentialQuotes, appointments, contracts, recentJobs]);
 
   const defaultFocusedProperty = useMemo(() => {
     return [...residentialPropertyJourneys].sort((left, right) => {
@@ -777,8 +778,10 @@ const AccountDetail = () => {
 
   const fallbackResidentialJourney = getResidentialJourneyState({
     residentialQuotes,
+    appointments,
     activeContract,
     recentJobs,
+    hasServiceLocation: residentialProperties.length > 0 || facilities.length > 0,
   });
 
   const activeResidentialJourney = selectedPropertyJourney?.journey ?? fallbackResidentialJourney;
@@ -1068,6 +1071,7 @@ const AccountDetail = () => {
                   properties={residentialProperties}
                   facilities={facilities}
                   contracts={contracts}
+                  appointments={appointments}
                   recentJobs={recentJobs}
                   residentialQuotes={residentialQuotes}
                   focusedPropertyId={effectivePropertyId}
@@ -1351,7 +1355,7 @@ const AccountDetail = () => {
 };
 
 function getResidentialLostStageId(): ResidentialAccountPipelineStageId {
-  return 'quote_sent';
+  return 'proposal_sent';
 }
 
 interface ActionsBundle {
@@ -1511,12 +1515,24 @@ function buildResidentialActions(input: {
         primary: { label: 'Add service location', onClick: input.onAddProperty },
         secondary: [openProposals],
       };
-    case 'quote_draft':
-    case 'review_required':
-    case 'review_approved':
-    case 'quote_sent':
-    case 'quote_viewed':
-    case 'quote_accepted':
+    case 'facility_added':
+      return {
+        primary: { label: 'Book walkthrough', onClick: () => input.onNavigate('/appointments') },
+        secondary: openFacility ? [openFacility] : [viewServiceLocations],
+      };
+    case 'walkthrough_booked':
+      return {
+        primary: { label: 'Open appointments', onClick: () => input.onNavigate('/appointments') },
+        secondary: openFacility ? [openFacility] : [],
+      };
+    case 'walkthrough_completed':
+      return {
+        primary: { label: 'Create proposal', onClick: () => input.onNavigate('/proposals') },
+        secondary: openFacility ? [openFacility] : [],
+      };
+    case 'proposal_draft':
+    case 'proposal_sent':
+    case 'proposal_viewed':
       return {
         primary: openFocusedProposal ?? openProposals,
         secondary: openFacility ? [openFacility] : [],

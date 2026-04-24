@@ -1,4 +1,4 @@
-import type { ResidentialPropertySummary } from '../types/crm';
+import type { Appointment, ResidentialPropertySummary } from '../types/crm';
 import type { Contract } from '../types/contract';
 import type { Job } from '../types/job';
 import type { ResidentialQuote } from '../types/residential';
@@ -17,12 +17,12 @@ export type CommercialAccountPipelineStageId =
 
 export type ResidentialAccountPipelineStageId =
   | 'account_created'
-  | 'quote_draft'
-  | 'review_required'
-  | 'review_approved'
-  | 'quote_sent'
-  | 'quote_viewed'
-  | 'quote_accepted'
+  | 'facility_added'
+  | 'walkthrough_booked'
+  | 'walkthrough_completed'
+  | 'proposal_draft'
+  | 'proposal_sent'
+  | 'proposal_viewed'
   | 'contract_ready'
   | 'active_contract'
   | 'scheduled_service';
@@ -48,12 +48,12 @@ export const COMMERCIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDe
 
 export const RESIDENTIAL_ACCOUNT_PIPELINE_STAGES: readonly AccountPipelineStageDefinition<ResidentialAccountPipelineStageId>[] = [
   { id: 'account_created', label: 'Account Created', canonicalStatus: 'lead' },
-  { id: 'quote_draft', label: 'Proposal Draft', canonicalStatus: 'lead' },
-  { id: 'review_required', label: 'Review Required', canonicalStatus: 'lead' },
-  { id: 'review_approved', label: 'Review Approved', canonicalStatus: 'lead' },
-  { id: 'quote_sent', label: 'Proposal Sent', canonicalStatus: 'proposal_sent' },
-  { id: 'quote_viewed', label: 'Proposal Viewed', canonicalStatus: 'negotiation' },
-  { id: 'quote_accepted', label: 'Proposal Accepted', canonicalStatus: 'negotiation' },
+  { id: 'facility_added', label: 'Service Location Added', canonicalStatus: 'lead' },
+  { id: 'walkthrough_booked', label: 'Walkthrough Booked', canonicalStatus: 'walk_through_booked' },
+  { id: 'walkthrough_completed', label: 'Walkthrough Completed', canonicalStatus: 'walk_through_completed' },
+  { id: 'proposal_draft', label: 'Proposal Draft', canonicalStatus: 'walk_through_completed' },
+  { id: 'proposal_sent', label: 'Proposal Sent', canonicalStatus: 'proposal_sent' },
+  { id: 'proposal_viewed', label: 'Proposal Viewed', canonicalStatus: 'negotiation' },
   { id: 'contract_ready', label: 'Contract Ready', canonicalStatus: 'negotiation' },
   { id: 'active_contract', label: 'Active Contract', canonicalStatus: 'won' },
   { id: 'scheduled_service', label: 'Scheduled Service', canonicalStatus: 'won' },
@@ -81,8 +81,10 @@ function getResidentialJourneyStage(
 
 export function getResidentialJourneyState(input: {
   residentialQuotes: ResidentialQuote[];
+  appointments?: Appointment[];
   activeContract: Contract | null;
   recentJobs: Job[];
+  hasServiceLocation?: boolean;
 }): ResidentialJourneyState | { currentStage: string; canonicalStatus: 'lost'; nextStep: string } {
   const latestQuote = [...input.residentialQuotes].sort((left, right) => {
     const leftTime = new Date(left.updatedAt || left.createdAt).getTime();
@@ -91,6 +93,11 @@ export function getResidentialJourneyState(input: {
   })[0];
 
   const hasScheduledService = input.recentJobs.length > 0;
+  const walkthroughs = (input.appointments ?? []).filter((appointment) => appointment.type === 'walk_through');
+  const hasCompletedWalkthrough = walkthroughs.some((appointment) => appointment.status === 'completed');
+  const hasBookedWalkthrough = walkthroughs.some(
+    (appointment) => appointment.status !== 'completed' && appointment.status !== 'canceled'
+  );
 
   if (hasScheduledService) {
     return getResidentialJourneyStage(
@@ -111,27 +118,27 @@ export function getResidentialJourneyState(input: {
       return getResidentialJourneyStage('contract_ready', 'Open the linked contract and activate service.');
     case 'review_required':
       return getResidentialJourneyStage(
-        'review_required',
+        'proposal_draft',
         'Get internal approval before sending the residential proposal to the client.'
       );
     case 'review_approved':
       return getResidentialJourneyStage(
-        'review_approved',
+        'proposal_draft',
         'Send the approved residential proposal to the client.'
       );
     case 'accepted':
       return getResidentialJourneyStage(
-        'quote_accepted',
+        'contract_ready',
         'Convert the accepted proposal into a residential contract.'
       );
     case 'viewed':
       return getResidentialJourneyStage(
-        'quote_viewed',
+        'proposal_viewed',
         'Follow up with the client while the residential proposal is actively under review.'
       );
     case 'sent':
       return getResidentialJourneyStage(
-        'quote_sent',
+        'proposal_sent',
         'Follow up with the client or resend the proposal if needed.'
       );
     case 'declined':
@@ -143,24 +150,40 @@ export function getResidentialJourneyState(input: {
     case 'draft':
     case 'quoted':
       return getResidentialJourneyStage(
-        'quote_draft',
+        'proposal_draft',
         'Finish pricing details and send the residential proposal to the client.'
       );
     default:
-      return getResidentialJourneyStage(
-        'account_created',
-        'Create the first residential proposal for this household.'
-      );
+      break;
   }
+
+  if (hasCompletedWalkthrough) {
+    return getResidentialJourneyStage('walkthrough_completed', 'Build the proposal using the completed walkthrough scope.');
+  }
+  if (hasBookedWalkthrough) {
+    return getResidentialJourneyStage('walkthrough_booked', 'Prepare the service location details before the walkthrough happens.');
+  }
+  if (input.hasServiceLocation) {
+    return getResidentialJourneyStage('facility_added', 'Book the first walkthrough for the service location.');
+  }
+  return getResidentialJourneyStage(
+    'account_created',
+    'Add the first service location so walkthrough planning can begin.'
+  );
 }
 
 export function getResidentialPropertyJourneyState(input: {
   property: ResidentialPropertySummary;
   residentialQuotes: ResidentialQuote[];
+  appointments?: Appointment[];
   contracts: Contract[];
   recentJobs: Job[];
 }): ResidentialJourneyState | { currentStage: string; canonicalStatus: 'lost'; nextStep: string } {
   const propertyQuotes = input.residentialQuotes.filter((quote) => quote.propertyId === input.property.id);
+  const propertyFacilityId = input.property.facility?.id ?? null;
+  const propertyAppointments = (input.appointments ?? []).filter((appointment) => {
+    return propertyFacilityId ? appointment.facility?.id === propertyFacilityId : false;
+  });
   const propertyContracts = input.contracts.filter((contract) => {
     if (contract.residentialPropertyId) {
       return contract.residentialPropertyId === input.property.id;
@@ -180,13 +203,13 @@ export function getResidentialPropertyJourneyState(input: {
     );
   });
   const activeContract =
-    propertyContracts.find((contract) => contract.status === 'active')
-    ?? propertyContracts.find((contract) => contract.status !== 'terminated')
-    ?? null;
+    propertyContracts.find((contract) => contract.status === 'active') ?? null;
 
   return getResidentialJourneyState({
     residentialQuotes: propertyQuotes,
+    appointments: propertyAppointments,
     activeContract,
     recentJobs: propertyJobs,
+    hasServiceLocation: Boolean(propertyFacilityId),
   });
 }

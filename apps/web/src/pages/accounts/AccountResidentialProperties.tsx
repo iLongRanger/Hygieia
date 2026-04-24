@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatShortDate } from './account-constants';
-import type { ResidentialPropertySummary } from '../../types/crm';
+import type { Appointment, ResidentialPropertySummary } from '../../types/crm';
 import type { Facility } from '../../types/facility';
 import type { Contract } from '../../types/contract';
 import type { Job } from '../../types/job';
@@ -15,6 +15,7 @@ interface AccountResidentialPropertiesProps {
   properties: ResidentialPropertySummary[];
   facilities: Facility[];
   contracts: Contract[];
+  appointments: Appointment[];
   recentJobs: Job[];
   residentialQuotes: ResidentialQuote[];
   focusedPropertyId: string | null;
@@ -56,6 +57,7 @@ export const AccountResidentialProperties = forwardRef<HTMLDivElement, AccountRe
       properties,
       facilities,
       contracts,
+      appointments,
       recentJobs,
       residentialQuotes,
       focusedPropertyId,
@@ -122,6 +124,7 @@ export const AccountResidentialProperties = forwardRef<HTMLDivElement, AccountRe
               const journey = getResidentialPropertyJourneyState({
                 property,
                 residentialQuotes,
+                appointments,
                 contracts,
                 recentJobs,
               });

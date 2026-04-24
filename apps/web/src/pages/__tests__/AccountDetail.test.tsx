@@ -589,7 +589,7 @@ describe('AccountDetail', () => {
 
     expect(await screen.findByRole('heading', { name: 'Jane Doe Residence' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /residential journey/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Proposal Accepted').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Contract Ready').length).toBeGreaterThan(0);
     expect(screen.getByText(/convert the accepted proposal into a residential contract/i)).toBeInTheDocument();
   });
 
@@ -701,7 +701,7 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     expect(await screen.findByRole('heading', { name: 'Review Household' })).toBeInTheDocument();
-    expect(screen.getAllByText('Review Required').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Proposal Draft').length).toBeGreaterThan(0);
     expect(screen.getByText(/get internal approval before sending the residential proposal to the client/i)).toBeInTheDocument();
   });
 
@@ -1062,8 +1062,10 @@ describe('AccountDetail', () => {
     render(<AccountDetail />);
 
     await screen.findByRole('heading', { name: 'Birch Residence' });
+    expect(screen.getAllByText('Service Location Added').length).toBeGreaterThan(0);
+    expect(screen.getByText(/book the first walkthrough for the service location/i)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /task manager/i })).not.toBeInTheDocument();
-    await userEventInstance.click(screen.getByRole('button', { name: /open service location/i }));
+    await userEventInstance.click(screen.getAllByRole('button', { name: /open service location/i })[0]);
 
     expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
       state: {
