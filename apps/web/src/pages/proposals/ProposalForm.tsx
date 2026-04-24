@@ -491,7 +491,7 @@ const defaultCommercialProposalTitle = (
 const defaultSpecializedProposalTitle = (
   jobName: string,
   locationName: string | null | undefined
-) => (locationName ? `${defaultCommercialProposalTitle(locationName)} - ${jobName}` : `${jobName} Proposal`);
+) => (locationName ? `${jobName} - ${locationName}` : `${jobName} Proposal`);
 
 const getResidentialFrequencyLabel = (frequency: ResidentialFrequency) =>
   RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label || frequency;
