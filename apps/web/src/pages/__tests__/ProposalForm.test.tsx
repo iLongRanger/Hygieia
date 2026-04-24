@@ -667,6 +667,8 @@ describe('ProposalForm', () => {
     render(<ProposalForm />);
 
     await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'specialized');
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-1');
 
     await waitFor(() => {
       expect(listOneTimeServiceCatalogMock).toHaveBeenCalledWith({ includeInactive: false });
@@ -677,6 +679,33 @@ describe('ProposalForm', () => {
     expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Window Cleaning');
     expect(screen.getByDisplayValue('Window Cleaning - Interior and exterior window cleaning')).toBeInTheDocument();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/service location review before proposal/i)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/scheduled date/i), '2026-05-01');
+    await user.type(screen.getByLabelText(/start time/i), '09:00');
+    await user.type(screen.getByLabelText(/end time/i), '12:00');
+    const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '5');
+    await user.click(screen.getAllByRole('button', { name: /create proposal/i })[0]);
+
+    await waitFor(() => {
+      expect(listAreasMock).not.toHaveBeenCalled();
+      expect(listFacilityTasksMock).not.toHaveBeenCalled();
+      expect(createProposalMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proposalType: 'specialized',
+          accountId: 'account-1',
+          facilityId: 'facility-1',
+          proposalItems: expect.arrayContaining([
+            expect.objectContaining({
+              description: 'Window Cleaning - Interior and exterior window cleaning',
+              totalPrice: 250,
+            }),
+          ]),
+        })
+      );
+    });
   });
 
   it('auto-populates services from facility pricing using client schedule frequency', async () => {
