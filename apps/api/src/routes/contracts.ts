@@ -662,6 +662,29 @@ router.patch(
         );
       }
 
+      if (
+        parsed.data.accountId !== undefined
+        && parsed.data.accountId !== existingContract.account.id
+      ) {
+        await ensureManagerAccountAccess(req.user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
+      }
+
+      if (
+        parsed.data.facilityId !== undefined
+        && parsed.data.facilityId !== null
+        && parsed.data.facilityId !== existingContract.facility?.id
+      ) {
+        await ensureOwnershipAccess(req.user, {
+          resourceType: 'facility',
+          resourceId: parsed.data.facilityId,
+          path: req.path,
+          method: req.method,
+        });
+      }
+
       const contract = await updateContract(req.params.id, parsed.data);
 
       await logContractActivity({
