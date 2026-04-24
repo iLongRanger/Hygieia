@@ -2,7 +2,11 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { verifyOwnership } from '../middleware/ownership';
+import {
+  verifyOwnership,
+  ensureOwnershipAccess,
+  ensureManagerAccountAccess,
+} from '../middleware/ownership';
 import { UnauthorizedError } from '../middleware/errorHandler';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
@@ -79,6 +83,10 @@ router.post(
   validate(createInvoiceSchema),
   async (req: Request, res: Response) => {
     const user = requireAuthenticatedUser(req);
+    await ensureManagerAccountAccess(user, req.body.accountId, {
+      path: req.path,
+      method: req.method,
+    });
     const input = {
       ...req.body,
       issueDate: new Date(req.body.issueDate),
@@ -172,6 +180,12 @@ router.post(
   validate(generateFromContractSchema),
   async (req: Request, res: Response) => {
     const user = requireAuthenticatedUser(req);
+    await ensureOwnershipAccess(user, {
+      resourceType: 'contract',
+      resourceId: req.body.contractId,
+      path: req.path,
+      method: req.method,
+    });
     const invoice = await generateInvoiceFromContract(
       req.body.contractId,
       new Date(req.body.periodStart),
