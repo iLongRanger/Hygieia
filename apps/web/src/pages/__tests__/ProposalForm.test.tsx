@@ -338,6 +338,21 @@ describe('ProposalForm', () => {
         isActive: true,
         addOns: [],
       },
+      {
+        id: 'specialized-2',
+        name: 'Carpet Extraction',
+        code: 'CARPET_EXTRACTION',
+        description: 'Deep carpet extraction service',
+        serviceType: 'carpet_cleaning',
+        unitType: 'fixed',
+        baseRate: 300,
+        defaultQuantity: 1,
+        minimumCharge: null,
+        maxDiscountPercent: 10,
+        requiresSchedule: true,
+        isActive: true,
+        addOns: [],
+      },
     ]);
     getFacilityMock.mockResolvedValue(residentialFacility);
     getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
@@ -683,6 +698,14 @@ describe('ProposalForm', () => {
     expect(screen.queryByRole('heading', { name: /^services$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add service/i })).not.toBeInTheDocument();
 
+    const titleInput = screen.getByLabelText(/proposal title/i);
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Manual Specialized Title');
+    await user.selectOptions(screen.getByLabelText(/specialized job requested/i), 'specialized-2');
+
+    expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Carpet Extraction - Main Facility');
+    expect(screen.getByDisplayValue('Carpet Extraction - Deep carpet extraction service')).toBeInTheDocument();
+
     await user.type(screen.getByLabelText(/scheduled date/i), '2026-05-01');
     await user.type(screen.getByLabelText(/start time/i), '09:00');
     await user.type(screen.getByLabelText(/end time/i), '12:00');
@@ -702,8 +725,8 @@ describe('ProposalForm', () => {
           proposalServices: [],
           proposalItems: expect.arrayContaining([
             expect.objectContaining({
-              description: 'Window Cleaning - Interior and exterior window cleaning',
-              totalPrice: 250,
+              description: 'Carpet Extraction - Deep carpet extraction service',
+              totalPrice: 300,
             }),
           ]),
         })
