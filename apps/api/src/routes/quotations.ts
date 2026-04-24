@@ -173,6 +173,31 @@ router.put(
       if (!parsed.success) throw handleZodError(parsed.error);
       const user = requireAuthenticatedUser(req);
 
+      const existing = await getQuotationById(req.params.id);
+
+      if (
+        parsed.data.accountId !== undefined
+        && parsed.data.accountId !== existing.account.id
+      ) {
+        await ensureManagerAccountAccess(user, parsed.data.accountId, {
+          path: req.path,
+          method: req.method,
+        });
+      }
+
+      if (
+        parsed.data.facilityId !== undefined
+        && parsed.data.facilityId !== null
+        && parsed.data.facilityId !== existing.facility?.id
+      ) {
+        await ensureOwnershipAccess(user, {
+          resourceType: 'facility',
+          resourceId: parsed.data.facilityId,
+          path: req.path,
+          method: req.method,
+        });
+      }
+
       const quotation = await updateQuotation(req.params.id, {
         ...parsed.data,
         updatedByUserId: user.id,
