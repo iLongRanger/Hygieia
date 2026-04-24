@@ -10,6 +10,12 @@ export interface PayrollRunListParams {
   limit?: number;
 }
 
+export interface PayrollRunListAccessOptions {
+  userRole?: string;
+  userId?: string;
+  userTeamId?: string | null;
+}
+
 export interface AdjustPayrollEntryInput {
   grossPay?: number;
   scheduledHours?: number;
@@ -174,12 +180,24 @@ const payrollEntryUserSelect = {
 
 // ==================== Service ====================
 
-export async function listPayrollRuns(params: PayrollRunListParams) {
+export async function listPayrollRuns(
+  params: PayrollRunListParams,
+  options?: PayrollRunListAccessOptions
+) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.PayrollRunWhereInput = {};
   if (params.status) where.status = params.status;
+
+  // RBAC: cleaners and subcontractors only see runs containing their own entry
+  if (
+    options?.userRole &&
+    ['cleaner', 'subcontractor'].includes(options.userRole) &&
+    options.userId
+  ) {
+    where.entries = { some: { userId: options.userId } };
+  }
 
   const [data, total] = await Promise.all([
     prisma.payrollRun.findMany({

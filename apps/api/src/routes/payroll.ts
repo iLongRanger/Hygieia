@@ -38,11 +38,18 @@ router.get(
   validate(listPayrollRunsSchema),
   async (req: Request, res: Response) => {
     const { status, page, limit } = req.query;
-    const result = await listPayrollRuns({
-      status: status as string,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    const result = await listPayrollRuns(
+      {
+        status: status as string,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? null,
+      }
+    );
     res.json(result);
   }
 );
