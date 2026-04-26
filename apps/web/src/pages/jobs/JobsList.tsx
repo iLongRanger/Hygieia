@@ -686,17 +686,38 @@ const JobsList = () => {
       cell: (job: Job) => (
         <div className="flex items-center gap-1">
           {job.status === 'scheduled' && (
-            <Button variant="ghost" size="sm" onClick={() => handleStart(job.id)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleStart(job.id);
+              }}
+            >
               <Play className="h-3.5 w-3.5" />
             </Button>
           )}
           {job.status === 'in_progress' && (
-            <Button variant="ghost" size="sm" onClick={() => handleComplete(job.id)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleComplete(job.id);
+              }}
+            >
               <CheckCircle className="h-3.5 w-3.5" />
             </Button>
           )}
           {['scheduled', 'in_progress'].includes(job.status) && (
-            <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleCancel(job.id);
+              }}
+            >
               <XCircle className="h-3.5 w-3.5 text-danger-500" />
             </Button>
           )}

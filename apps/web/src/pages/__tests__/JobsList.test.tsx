@@ -134,7 +134,7 @@ describe('JobsList', () => {
     const jobs = [mockJob({ id: 'job-1', jobNumber: 'JOB-001', status: 'scheduled' })];
     listJobsMock.mockResolvedValue(mockPaginatedResponse(jobs));
 
-    render(<JobsList />);
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
     await screen.findByText('JOB-001');
 
     // The start button is a ghost button with Play icon in the actions column
@@ -150,6 +150,7 @@ describe('JobsList', () => {
       await waitFor(() => {
         expect(startJobMock).toHaveBeenCalledWith('job-1');
       });
+      expect(navigateMock).not.toHaveBeenCalledWith('/jobs/job-1', expect.anything());
     }
   });
 
