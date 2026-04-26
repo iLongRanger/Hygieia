@@ -128,6 +128,8 @@ describe('JobForm', () => {
 
     expect(await screen.findByText('New Job')).toBeInTheDocument();
     expect(screen.getByLabelText(/contract \*/i)).toBeInTheDocument();
+    expect(listTeamsMock).toHaveBeenCalledWith({ limit: 100, isActive: true });
+    expect(listUsersMock).toHaveBeenCalledWith({ limit: 100, status: 'active' });
   });
 
   it('validates required fields on submit', async () => {

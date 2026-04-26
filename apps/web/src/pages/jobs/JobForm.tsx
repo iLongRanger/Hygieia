@@ -85,8 +85,8 @@ const JobForm = () => {
     try {
       const [contractsRes, teamsRes, usersRes] = await Promise.all([
         listContracts({ status: 'active', limit: 100 }),
-        listTeams({ limit: 100 }),
-        listUsers({ limit: 100 }),
+        listTeams({ limit: 100, isActive: true }),
+        listUsers({ limit: 100, status: 'active' }),
       ]);
       setContracts(contractsRes?.data || []);
       setTeams(teamsRes?.data || []);
