@@ -259,7 +259,7 @@ describe('JobDetail', () => {
 
     expect(screen.queryByText('Contract')).not.toBeInTheDocument();
     expect(screen.queryByText('Quotation')).not.toBeInTheDocument();
-    expect(screen.getByText('Service Location')).toBeInTheDocument();
+    expect(screen.getAllByText('Service Location').length).toBeGreaterThan(0);
     expect(screen.getByText(/123 Main St/i)).toBeInTheDocument();
     expect(screen.getByText('Contact Person')).toBeInTheDocument();
     expect(screen.getByText('Jamie Client')).toBeInTheDocument();

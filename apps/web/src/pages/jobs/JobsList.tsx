@@ -629,7 +629,7 @@ const JobsList = () => {
       ),
     },
     {
-      header: 'Facility',
+      header: 'Service Location',
       cell: (job: Job) => {
         const accountType = getAccountTypeBadge(job.account.type);
         return (
@@ -1272,7 +1272,7 @@ const JobsList = () => {
             }
             options={contracts.map((contract) => ({
               value: contract.id,
-              label: `${contract.contractNumber} — ${contract.account.name}${contract.facility ? ` (${contract.facility.name})` : ''}`,
+              label: `${contract.contractNumber} - ${contract.account.name}${contract.facility ? ` (${contract.facility.name})` : ''}`,
             }))}
             disabled={contractsLoading || generating}
           />

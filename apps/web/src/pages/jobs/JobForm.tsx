@@ -185,7 +185,7 @@ const JobForm = () => {
       return;
     }
     if (!formData.facilityId) {
-      toast.error('Selected contract has no facility assigned');
+      toast.error('Selected contract has no service location assigned');
       return;
     }
     if (formData.assignedTeamId && formData.assignedToUserId) {
@@ -281,7 +281,7 @@ const JobForm = () => {
                   onChange={handleContractChange}
                   options={contracts.map((c) => ({
                     value: c.id,
-                    label: `${c.contractNumber} — ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}`,
+                    label: `${c.contractNumber} - ${c.account.name}${c.facility ? ` (${c.facility.name})` : ''}`,
                   }))}
                   disabled={isEditMode}
                 />
@@ -411,7 +411,7 @@ const JobForm = () => {
                 {selectedContract.facility && (
                   <div>
                     <span className="text-surface-500 dark:text-surface-400">
-                      Facility
+                      Service Location
                     </span>
                     <p className="font-medium text-surface-900 dark:text-surface-100">
                       {selectedContract.facility.name}

@@ -240,7 +240,7 @@ const JobDetail = () => {
     } catch (error) {
       const details = getJobActionErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
-        toast.error('You must be at the facility to start this job');
+        toast.error('You must be at the service location to start this job');
         return;
       }
       if (details?.code === 'ACTIVE_CLOCK_IN_EXISTS') {
@@ -298,7 +298,7 @@ const JobDetail = () => {
     } catch (error) {
       const details = getJobActionErrorDetails(error);
       if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
-        toast.error('You must be at the facility to complete this job');
+        toast.error('You must be at the service location to complete this job');
         return;
       }
       if (details?.code === 'ACTIVE_CLOCK_IN_REQUIRED') {
@@ -478,7 +478,7 @@ const JobDetail = () => {
               <Badge variant={workforce.badgeVariant}>{workforce.label}</Badge>
             </div>
             <p className="text-sm text-surface-500 dark:text-surface-400">
-              {job.facility.name} &mdash; {job.account.name}
+              {job.facility.name} - {job.account.name}
             </p>
           </div>
         </div>
@@ -631,7 +631,7 @@ const JobDetail = () => {
               {isFieldWorker && (
                 <div>
                   <span className="text-surface-500 dark:text-surface-400">
-                    {job.account.type === 'residential' ? 'Property' : 'Facility'}
+                    Service Location
                   </span>
                   <p className="font-medium text-surface-900 dark:text-surface-100">
                     {job.facility.name}
