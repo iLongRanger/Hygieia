@@ -153,6 +153,39 @@ describe('jobService', () => {
     });
   });
 
+  it('listJobs keeps subcontractor scope separate from ready settlement filter', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.count as jest.Mock).mockResolvedValue(0);
+
+    await listJobs(
+      {
+        settlementStatus: 'ready',
+        page: 1,
+        limit: 25,
+      },
+      {
+        userRole: 'subcontractor',
+        userId: 'user-1',
+        userTeamId: 'team-1',
+      }
+    );
+
+    expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [{ assignedTeamId: 'team-1' }, { assignedToUserId: 'user-1' }],
+            },
+            {
+              OR: [{ settlementReview: null }, { settlementReview: { status: 'ready' } }],
+            },
+          ],
+        }),
+      })
+    );
+  });
+
   it('createJob rejects when contract is not active', async () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',

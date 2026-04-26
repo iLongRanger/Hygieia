@@ -923,16 +923,19 @@ export async function listJobs(
   } = params;
 
   const where: Prisma.JobWhereInput = {};
+  const andFilters: Prisma.JobWhereInput[] = [];
 
   if (options?.userRole === 'manager' && options?.userId) {
     where.account = { accountManagerId: options.userId };
   }
 
   if (options?.userRole === 'subcontractor' && options?.userTeamId) {
-    where.OR = [
-      { assignedTeamId: options.userTeamId },
-      ...(options.userId ? [{ assignedToUserId: options.userId }] : []),
-    ];
+    andFilters.push({
+      OR: [
+        { assignedTeamId: options.userTeamId },
+        ...(options.userId ? [{ assignedToUserId: options.userId }] : []),
+      ],
+    });
   }
 
   if (contractId) where.contractId = contractId;
@@ -945,11 +948,9 @@ export async function listJobs(
   if (jobCategory) where.jobCategory = jobCategory;
   if (status) where.status = status;
   if (settlementStatus === 'ready') {
-    where.OR = [
-      ...(where.OR ?? []),
-      { settlementReview: null },
-      { settlementReview: { status: 'ready' } },
-    ];
+    andFilters.push({
+      OR: [{ settlementReview: null }, { settlementReview: { status: 'ready' } }],
+    });
   } else if (settlementStatus) {
     where.settlementReview = { status: settlementStatus };
   }
@@ -958,6 +959,10 @@ export async function listJobs(
     where.scheduledDate = {};
     if (dateFrom) where.scheduledDate.gte = dateFrom;
     if (dateTo) where.scheduledDate.lte = dateTo;
+  }
+
+  if (andFilters.length > 0) {
+    where.AND = andFilters;
   }
 
   const skip = (page - 1) * limit;
