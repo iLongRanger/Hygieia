@@ -186,6 +186,49 @@ describe('jobService', () => {
     );
   });
 
+  it('listJobs filters assigned jobs before pagination', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.count as jest.Mock).mockResolvedValue(0);
+
+    await listJobs({
+      assignment: 'assigned',
+      page: 1,
+      limit: 25,
+    });
+
+    expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [{ assignedTeamId: { not: null } }, { assignedToUserId: { not: null } }],
+            },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('listJobs filters unassigned jobs before pagination', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.count as jest.Mock).mockResolvedValue(0);
+
+    await listJobs({
+      assignment: 'unassigned',
+      page: 1,
+      limit: 25,
+    });
+
+    expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          assignedTeamId: null,
+          assignedToUserId: null,
+        }),
+      })
+    );
+  });
+
   it('createJob rejects when contract is not active', async () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',

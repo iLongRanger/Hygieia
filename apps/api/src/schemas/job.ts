@@ -18,6 +18,7 @@ export const jobListQuerySchema = z.object({
   accountId: z.string().uuid().optional(),
   assignedTeamId: z.string().uuid().optional(),
   assignedToUserId: z.string().uuid().optional(),
+  assignment: z.enum(['assigned', 'unassigned']).optional(),
   jobType: jobTypeSchema.optional(),
   jobCategory: jobCategorySchema.optional(),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled', 'missed']).optional(),

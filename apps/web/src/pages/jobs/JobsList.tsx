@@ -310,6 +310,7 @@ const JobsList = () => {
       if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
       if (settlementStatusFilter) params.settlementStatus = settlementStatusFilter;
+      if (assignmentFilter) params.assignment = assignmentFilter;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
 
@@ -321,7 +322,7 @@ const JobsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, jobTypeFilter, statusFilter, settlementStatusFilter, dateFrom, dateTo]);
+  }, [page, jobTypeFilter, statusFilter, settlementStatusFilter, assignmentFilter, dateFrom, dateTo]);
 
   const fetchCalendarJobs = useCallback(async () => {
     try {
@@ -336,6 +337,7 @@ const JobsList = () => {
       if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
       if (settlementStatusFilter) params.settlementStatus = settlementStatusFilter;
+      if (assignmentFilter) params.assignment = assignmentFilter;
       const result = await listJobs(params);
       setCalendarJobs(result.data);
     } catch {
@@ -343,7 +345,7 @@ const JobsList = () => {
     } finally {
       setCalendarLoading(false);
     }
-  }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter, settlementStatusFilter]);
+  }, [calendarView, calendarYear, calendarMonth, calendarDate, jobTypeFilter, statusFilter, settlementStatusFilter, assignmentFilter]);
 
   const filteredJobs = useMemo(() => {
     if (!assignmentFilter) {

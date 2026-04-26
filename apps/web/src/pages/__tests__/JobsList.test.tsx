@@ -317,6 +317,11 @@ describe('JobsList', () => {
     await user.click(screen.getByRole('button', { name: /filters/i }));
     await user.selectOptions(screen.getByLabelText(/assignment/i), 'unassigned');
 
+    await waitFor(() => {
+      expect(listJobsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ assignment: 'unassigned' })
+      );
+    });
     expect(await screen.findByText('JOB-UNASSIGNED')).toBeInTheDocument();
     expect(screen.queryByText('JOB-ASSIGNED')).not.toBeInTheDocument();
   });

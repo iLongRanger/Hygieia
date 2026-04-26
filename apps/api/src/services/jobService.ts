@@ -28,6 +28,7 @@ export interface JobListParams {
   accountId?: string;
   assignedTeamId?: string;
   assignedToUserId?: string;
+  assignment?: 'assigned' | 'unassigned';
   jobType?: string;
   jobCategory?: string;
   status?: string;
@@ -912,6 +913,7 @@ export async function listJobs(
     accountId,
     assignedTeamId,
     assignedToUserId,
+    assignment,
     jobType,
     jobCategory,
     status,
@@ -944,6 +946,14 @@ export async function listJobs(
   if (accountId) where.accountId = accountId;
   if (assignedTeamId) where.assignedTeamId = assignedTeamId;
   if (assignedToUserId) where.assignedToUserId = assignedToUserId;
+  if (assignment === 'assigned') {
+    andFilters.push({
+      OR: [{ assignedTeamId: { not: null } }, { assignedToUserId: { not: null } }],
+    });
+  } else if (assignment === 'unassigned') {
+    where.assignedTeamId = null;
+    where.assignedToUserId = null;
+  }
   if (jobType) where.jobType = jobType;
   if (jobCategory) where.jobCategory = jobCategory;
   if (status) where.status = status;
