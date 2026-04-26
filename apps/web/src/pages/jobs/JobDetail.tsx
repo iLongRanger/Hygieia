@@ -842,8 +842,8 @@ const JobDetail = () => {
                     className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
                   >
                     <button
-                      onClick={() => !isFieldWorker && handleToggleTask(task)}
-                      disabled={isFieldWorker}
+                      aria-label={`${task.status === 'completed' ? 'Mark task pending' : 'Mark task done'}: ${task.taskName}`}
+                      onClick={() => handleToggleTask(task)}
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
                         task.status === 'completed'
                           ? 'border-success-500 bg-success-500 text-white'

@@ -60,6 +60,12 @@ function assertCanEditJob(req: Request): void {
   }
 }
 
+function assertCanUpdateJobTask(req: Request, job: Awaited<ReturnType<typeof getJobById>>): void {
+  if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
+    assertCanViewJob(req, job);
+  }
+}
+
 function assertCanViewJob(req: Request, job: Awaited<ReturnType<typeof getJobById>>): void {
   if (!req.user || !job) {
     return;
@@ -471,12 +477,12 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = requireAuthenticatedUser(req);
-      assertCanEditJob(req);
       const existing = await getJobById(req.params.jobId);
       if (!existing) {
         res.status(404).json({ error: 'Job not found' });
         return;
       }
+      assertCanUpdateJobTask(req, existing);
       await assertManagerJobScope(req, existing.account?.id);
 
       const parsed = updateJobTaskSchema.safeParse(req.body);

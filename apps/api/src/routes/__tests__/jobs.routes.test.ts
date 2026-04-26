@@ -155,4 +155,49 @@ describe('Job Routes', () => {
       reviewNotes: 'Confirmed manually.',
     });
   });
+
+  it('PATCH /:jobId/tasks/:taskId should allow an assigned cleaner to complete a task', async () => {
+    mockAuthUser.role = 'cleaner';
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      account: { id: 'account-1' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-1' },
+    });
+    (jobService.updateJobTask as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      status: 'completed',
+    });
+
+    const response = await request(app)
+      .patch('/api/v1/jobs/job-1/tasks/task-1')
+      .send({ status: 'completed' })
+      .expect(200);
+
+    expect(response.body.data).toEqual({
+      id: 'task-1',
+      status: 'completed',
+    });
+    expect(jobService.updateJobTask).toHaveBeenCalledWith('task-1', {
+      status: 'completed',
+      completedByUserId: 'user-1',
+    });
+  });
+
+  it('PATCH /:jobId/tasks/:taskId should reject cleaners outside the assignment', async () => {
+    mockAuthUser.role = 'cleaner';
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      account: { id: 'account-1' },
+      assignedTeam: null,
+      assignedToUser: { id: 'user-2' },
+    });
+
+    await request(app)
+      .patch('/api/v1/jobs/job-1/tasks/task-1')
+      .send({ status: 'completed' })
+      .expect(422);
+
+    expect(jobService.updateJobTask).not.toHaveBeenCalled();
+  });
 });

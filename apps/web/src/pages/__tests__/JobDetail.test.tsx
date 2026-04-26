@@ -290,6 +290,33 @@ describe('JobDetail', () => {
     expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
   });
 
+  it('allows cleaner users to update checklist tasks', async () => {
+    const user = userEvent.setup();
+    useAuthStore.setState({
+      user: {
+        id: 'cleaner-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    getJobMock.mockResolvedValue({
+      ...scheduledJob,
+      assignedToUser: { id: 'cleaner-1', fullName: 'Cleaner User', email: 'cleaner@example.com' },
+    });
+
+    render(<JobDetail />);
+
+    await user.click(await screen.findByRole('button', { name: /mark task done: vacuum floors/i }));
+
+    expect(updateJobTaskMock).toHaveBeenCalledWith('job-1', 'task-1', { status: 'completed' });
+  });
+
   it('shows initial clean action on the first eligible job', async () => {
     getJobMock.mockResolvedValue(
       mockJobDetail({
