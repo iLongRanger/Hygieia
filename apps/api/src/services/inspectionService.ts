@@ -1389,11 +1389,12 @@ export async function addInspectionItem(inspectionId: string, input: InspectionI
 }
 
 export async function updateInspectionItem(
+  inspectionId: string,
   itemId: string,
   input: Partial<InspectionItemInput>
 ) {
-  const existing = await prisma.inspectionItem.findUnique({
-    where: { id: itemId },
+  const existing = await prisma.inspectionItem.findFirst({
+    where: { id: itemId, inspectionId },
     include: { inspection: { select: { status: true } } },
   });
   if (!existing) throw new NotFoundError('Inspection item not found');
@@ -1414,9 +1415,9 @@ export async function updateInspectionItem(
   return item;
 }
 
-export async function deleteInspectionItem(itemId: string) {
-  const existing = await prisma.inspectionItem.findUnique({
-    where: { id: itemId },
+export async function deleteInspectionItem(inspectionId: string, itemId: string) {
+  const existing = await prisma.inspectionItem.findFirst({
+    where: { id: itemId, inspectionId },
     include: { inspection: { select: { status: true } } },
   });
   if (!existing) throw new NotFoundError('Inspection item not found');

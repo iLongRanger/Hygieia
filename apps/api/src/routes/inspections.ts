@@ -241,7 +241,7 @@ router.patch(
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
-    const item = await updateInspectionItem(req.params.itemId, req.body);
+    const item = await updateInspectionItem(req.params.id, req.params.itemId, req.body);
     res.json({ data: item });
   }
 );
@@ -254,7 +254,7 @@ router.delete(
     const existing = await getInspectionById(req.params.id);
     await assertInspectionAccess(req, existing);
 
-    await deleteInspectionItem(req.params.itemId);
+    await deleteInspectionItem(req.params.id, req.params.itemId);
     res.status(204).send();
   }
 );
