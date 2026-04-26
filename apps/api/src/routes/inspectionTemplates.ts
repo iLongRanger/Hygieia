@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { UnauthorizedError } from '../middleware/errorHandler';
+import { ensureOwnershipAccess } from '../middleware/ownership';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -53,9 +54,15 @@ router.get(
 // Get or create template for a contract
 router.get(
   '/by-contract/:contractId',
-  requirePermission(PERMISSIONS.INSPECTIONS_READ),
+  requirePermission(PERMISSIONS.INSPECTIONS_WRITE),
   async (req: Request, res: Response) => {
     const user = requireAuthenticatedUser(req);
+    await ensureOwnershipAccess(req.user, {
+      resourceType: 'contract',
+      resourceId: req.params.contractId,
+      path: req.path,
+      method: req.method,
+    });
     const template = await getOrCreateTemplateForContract(
       req.params.contractId,
       user.id
