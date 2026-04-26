@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
-import { UnauthorizedError, ValidationError } from '../middleware/errorHandler';
+import { UnauthorizedError } from '../middleware/errorHandler';
 import { ensureManagerAccountAccess } from '../middleware/ownership';
 import {
   listInspectionsSchema,
@@ -52,20 +52,12 @@ function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   return req.user;
 }
 
-async function assertInspectionAccess(req: Request, inspection: { accountId: string; inspectorUserId: string }) {
+async function assertInspectionAccess(req: Request, inspection: { accountId: string }) {
   if (req.user?.role === 'manager') {
     await ensureManagerAccountAccess(req.user, inspection.accountId, {
       path: req.path,
       method: req.method,
     });
-  }
-
-  if (
-    req.user &&
-    (req.user.role === 'cleaner' || req.user.role === 'subcontractor') &&
-    inspection.inspectorUserId !== req.user.id
-  ) {
-    throw new ValidationError('Insufficient permissions');
   }
 }
 
@@ -80,18 +72,13 @@ router.get(
       status, dateFrom, dateTo, minScore, maxScore, page, limit,
     } = req.query;
 
-    const scopedInspectorUserId =
-      req.user?.role === 'cleaner' || req.user?.role === 'subcontractor'
-        ? req.user.id
-        : (inspectorUserId as string);
-
     const result = await listInspections(
       {
         facilityId: facilityId as string,
         accountId: accountId as string,
         contractId: contractId as string,
         jobId: jobId as string,
-        inspectorUserId: scopedInspectorUserId,
+        inspectorUserId: inspectorUserId as string,
         status: status as string,
         dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
