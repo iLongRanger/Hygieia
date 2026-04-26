@@ -45,6 +45,21 @@ jest.mock('../../lib/prisma', () => ({
     facilityTask: {
       count: jest.fn(),
     },
+    contract: {
+      findFirst: jest.fn(),
+    },
+    job: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    jobTask: {
+      createMany: jest.fn(),
+    },
+    jobActivity: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
 }));
 
@@ -104,6 +119,13 @@ describe('proposalService', () => {
       id: 'account-1',
       archivedAt: null,
     });
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
+    );
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.jobTask.createMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prisma.jobActivity.create as jest.Mock).mockResolvedValue({});
     (prisma.opportunity.findMany as jest.Mock).mockImplementation(({ where }) => {
       if (where?.facilityId === 'facility-2') {
         return Promise.resolve([]);
@@ -1080,6 +1102,73 @@ describe('proposalService', () => {
         select: expect.any(Object),
       });
       expect(result).toEqual(mockProposal);
+    });
+  });
+
+  describe('ensureOneTimeJobForAcceptedProposal', () => {
+    it('assigns generated specialized jobs from the active service location contract', async () => {
+      (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+        id: 'proposal-1',
+        status: 'accepted',
+        proposalNumber: 'PROP-20260424-0001',
+        proposalType: 'specialized',
+        title: 'Window Cleaning',
+        description: null,
+        accountId: 'account-1',
+        facilityId: 'facility-1',
+        scheduledDate: new Date('2026-05-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-05-01T16:00:00.000Z'),
+        scheduledEndTime: new Date('2026-05-01T18:00:00.000Z'),
+        createdByUserId: 'user-1',
+        generatedJob: null,
+        proposalServices: [
+          {
+            serviceName: 'Window Cleaning',
+            description: 'Interior and exterior windows',
+            includedTasks: ['Clean interior glass', 'Clean exterior glass'],
+          },
+        ],
+        proposalItems: [],
+      });
+      (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+        jobNumber: 'WO-2026-0004',
+      });
+      (prisma.contract.findFirst as jest.Mock).mockResolvedValue({
+        assignedTeamId: 'team-1',
+        assignedToUserId: null,
+      });
+      (prisma.job.create as jest.Mock).mockResolvedValue({
+        id: 'job-1',
+        jobNumber: 'WO-2026-0005',
+      });
+
+      const result = await proposalService.ensureOneTimeJobForAcceptedProposal('proposal-1');
+
+      expect(result).toEqual({
+        created: true,
+        jobId: 'job-1',
+        jobNumber: 'WO-2026-0005',
+      });
+      expect(prisma.contract.findFirst).toHaveBeenCalledWith({
+        where: {
+          facilityId: 'facility-1',
+          status: 'active',
+          OR: [{ assignedTeamId: { not: null } }, { assignedToUserId: { not: null } }],
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          assignedTeamId: true,
+          assignedToUserId: true,
+        },
+      });
+      expect(prisma.job.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            assignedTeamId: 'team-1',
+            assignedToUserId: null,
+          }),
+        })
+      );
     });
   });
 

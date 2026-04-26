@@ -1249,6 +1249,22 @@ export async function ensureOneTimeJobForAcceptedProposal(proposalId: string): P
         if (!isNaN(lastSeq)) seq = lastSeq + 1;
       }
       const jobNumber = `${prefix}${String(seq).padStart(4, '0')}`;
+      const activeContractAssignment = await tx.contract.findFirst({
+        where: {
+          facilityId: proposal.facilityId!,
+          status: 'active',
+          OR: [{ assignedTeamId: { not: null } }, { assignedToUserId: { not: null } }],
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          assignedTeamId: true,
+          assignedToUserId: true,
+        },
+      });
+      const assignedToUserId = activeContractAssignment?.assignedToUserId ?? null;
+      const assignedTeamId = assignedToUserId
+        ? null
+        : activeContractAssignment?.assignedTeamId ?? null;
 
       const job = await tx.job.create({
         data: {
@@ -1261,6 +1277,8 @@ export async function ensureOneTimeJobForAcceptedProposal(proposalId: string): P
           jobType: 'special_job',
           jobCategory: 'one_time',
           status: 'scheduled',
+          assignedTeamId,
+          assignedToUserId,
           scheduledDate,
           scheduledStartTime,
           scheduledEndTime,
