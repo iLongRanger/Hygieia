@@ -1047,6 +1047,8 @@ describe('jobService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           scheduledDate: new Date('2026-01-07T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-01-07T08:00:00.000Z'),
+          scheduledEndTime: new Date('2026-01-07T17:00:00.000Z'),
         }),
       })
     );
@@ -1055,6 +1057,51 @@ describe('jobService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           scheduledDate: new Date('2026-02-04T00:00:00.000Z'),
+          scheduledStartTime: new Date('2026-02-04T08:00:00.000Z'),
+          scheduledEndTime: new Date('2026-02-04T17:00:00.000Z'),
+        }),
+      })
+    );
+  });
+
+  it('generateJobsFromContract stores overnight schedule windows', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: 'team-1',
+      serviceFrequency: 'weekly',
+      serviceSchedule: {
+        days: ['wednesday'],
+        allowedWindowStart: '22:00',
+        allowedWindowEnd: '02:00',
+      },
+      facility: { address: null },
+    });
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValueOnce({
+      jobNumber: `WO-${year}-0001`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      jobNumber: `WO-${year}-0002`,
+      scheduledDate: new Date('2026-01-07T00:00:00.000Z'),
+    });
+
+    await generateJobsFromContract({
+      contractId: 'contract-1',
+      dateFrom: new Date('2026-01-07T00:00:00.000Z'),
+      dateTo: new Date('2026-01-07T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scheduledStartTime: new Date('2026-01-07T22:00:00.000Z'),
+          scheduledEndTime: new Date('2026-01-08T02:00:00.000Z'),
         }),
       })
     );

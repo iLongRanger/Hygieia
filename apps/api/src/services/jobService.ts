@@ -15,6 +15,7 @@ import {
 import {
   extractFacilityTimezone,
   normalizeServiceSchedule,
+  type NormalizedServiceSchedule,
   type ServiceWeekday,
   validateServiceWindow,
 } from './serviceScheduleService';
@@ -867,6 +868,62 @@ function iterateDateRange(from: Date, to: Date): string[] {
   }
 
   return dates;
+}
+
+function getTimezoneOffsetMs(date: Date, timezone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, Number(part.value)])
+  ) as Record<string, number>;
+
+  const asUtc = Date.UTC(
+    values.year,
+    (values.month ?? 1) - 1,
+    values.day,
+    values.hour === 24 ? 0 : values.hour,
+    values.minute ?? 0,
+    values.second ?? 0
+  );
+
+  return asUtc - date.getTime();
+}
+
+function localDateTimeToUtc(dateIso: string, time: string, timezone: string): Date {
+  const [hour = 0, minute = 0] = time.split(':').map(Number);
+  const [year, month, day] = dateIso.split('-').map(Number);
+  const localAsUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+  const firstPass = new Date(localAsUtc.getTime() - getTimezoneOffsetMs(localAsUtc, timezone));
+  return new Date(localAsUtc.getTime() - getTimezoneOffsetMs(firstPass, timezone));
+}
+
+function buildScheduledWindow(
+  dateIso: string,
+  schedule: NormalizedServiceSchedule,
+  timezone: string
+): { scheduledStartTime: Date; scheduledEndTime: Date } {
+  const scheduledStartTime = localDateTimeToUtc(dateIso, schedule.allowedWindowStart, timezone);
+  let endDateIso = dateIso;
+
+  if (schedule.allowedWindowEnd <= schedule.allowedWindowStart) {
+    const endDate = new Date(`${dateIso}T00:00:00.000Z`);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    endDateIso = toIsoDate(endDate);
+  }
+
+  const scheduledEndTime = localDateTimeToUtc(endDateIso, schedule.allowedWindowEnd, timezone);
+  return { scheduledStartTime, scheduledEndTime };
 }
 
 function atUtcStartOfDay(value: Date): Date {
@@ -1862,6 +1919,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
   for (const dateIso of newDates) {
     try {
       const jobNumber = await generateJobNumber();
+      const scheduledWindow = buildScheduledWindow(dateIso, normalizedSchedule, effectiveTimezone);
       const job = await prisma.job.create({
         data: {
           jobNumber,
@@ -1874,6 +1932,8 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
           assignedToUserId: resolvedAssignedToUserId,
           status: 'scheduled',
           scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
+          scheduledStartTime: scheduledWindow.scheduledStartTime,
+          scheduledEndTime: scheduledWindow.scheduledEndTime,
           notes: hasExplicitSchedule
             ?
             `Allowed window ${normalizedSchedule.allowedWindowStart}-${normalizedSchedule.allowedWindowEnd} ` +
