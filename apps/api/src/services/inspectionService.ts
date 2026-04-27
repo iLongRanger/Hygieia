@@ -163,6 +163,15 @@ const inspectionDetailSelect = {
       notes: true,
       photoUrl: true,
       sortOrder: true,
+      feedback: {
+        select: {
+          id: true,
+          body: true,
+          createdAt: true,
+          authorUser: { select: { id: true, fullName: true } },
+        },
+        orderBy: { createdAt: 'asc' as const },
+      },
     },
     orderBy: { sortOrder: 'asc' as const },
   },
