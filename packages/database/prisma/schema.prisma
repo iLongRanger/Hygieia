@@ -85,6 +85,7 @@ model User {
   resolvedInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("ResolvedInspectionCorrectiveActions")
   verifiedInspectionCorrectiveActions  InspectionCorrectiveAction[] @relation("VerifiedInspectionCorrectiveActions")
   inspectionSignoffs                   InspectionSignoff[]          @relation("InspectionSignoffs")
+  inspectionItemFeedback               InspectionItemFeedback[]
   timeEntries                          TimeEntry[]                  @relation("UserTimeEntries")
   approvedTimeEntries                  TimeEntry[]                  @relation("ApprovedTimeEntries")
   editedTimeEntries                    TimeEntry[]                  @relation("EditedTimeEntries")
@@ -1718,6 +1719,7 @@ model InspectionItem {
 
   inspection        Inspection                   @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   correctiveActions InspectionCorrectiveAction[]
+  feedback          InspectionItemFeedback[]
 
   @@index([inspectionId])
   @@map("inspection_items")
@@ -1793,6 +1795,21 @@ model InspectionSignoff {
   @@index([signerType])
   @@index([signedAt])
   @@map("inspection_signoffs")
+}
+
+model InspectionItemFeedback {
+  id               String         @id @default(uuid()) @db.Uuid
+  inspectionItemId String         @map("inspection_item_id") @db.Uuid
+  authorUserId     String         @map("author_user_id") @db.Uuid
+  body             String         @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  inspectionItem   InspectionItem @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
+  authorUser       User           @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([inspectionItemId])
+  @@index([authorUserId])
+  @@map("inspection_item_feedback")
 }
 
 // ============================================================
