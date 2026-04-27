@@ -1802,7 +1802,7 @@ model InspectionItemFeedback {
   inspectionItemId String         @map("inspection_item_id") @db.Uuid
   authorUserId     String         @map("author_user_id") @db.Uuid
   body             String         @db.Text
-  createdAt        DateTime       @default(now()) @map("created_at")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
   inspectionItem   InspectionItem @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
   authorUser       User           @relation(fields: [authorUserId], references: [id], onDelete: Restrict)

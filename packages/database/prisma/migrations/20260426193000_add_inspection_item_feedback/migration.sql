@@ -1,11 +1,11 @@
 -- Append-only per-item feedback channel for inspections.
 
 CREATE TABLE IF NOT EXISTS "inspection_item_feedback" (
-    "id" UUID NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "inspection_item_id" UUID NOT NULL,
     "author_user_id" UUID NOT NULL,
     "body" TEXT NOT NULL,
-    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "inspection_item_feedback_pkey" PRIMARY KEY ("id")
 );
