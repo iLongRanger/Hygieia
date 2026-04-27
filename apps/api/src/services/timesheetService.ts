@@ -71,18 +71,42 @@ const timesheetDetailSelect = {
 
 // ==================== Service ====================
 
+function getManagerTimeEntryScope(userId: string): Prisma.TimeEntryWhereInput {
+  return {
+    OR: [
+      { facility: { account: { accountManagerId: userId } } },
+      { contract: { account: { accountManagerId: userId } } },
+      { job: { account: { accountManagerId: userId } } },
+    ],
+  };
+}
+
 function getManagerTimesheetScope(userId: string): Prisma.TimesheetWhereInput {
   return {
     entries: {
-      some: {
-        OR: [
-          { facility: { account: { accountManagerId: userId } } },
-          { contract: { account: { accountManagerId: userId } } },
-          { job: { account: { accountManagerId: userId } } },
-        ],
-      },
+      some: getManagerTimeEntryScope(userId),
     },
   };
+}
+
+async function assertManagerTimesheetEntriesFullyScoped(
+  id: string,
+  options?: TimesheetAccessOptions
+) {
+  if (options?.userRole !== 'manager' || !options.userId) {
+    return;
+  }
+
+  const outOfScopeCount = await prisma.timeEntry.count({
+    where: {
+      timesheetId: id,
+      NOT: getManagerTimeEntryScope(options.userId),
+    },
+  });
+
+  if (outOfScopeCount > 0) {
+    throw new NotFoundError('Timesheet not found');
+  }
 }
 
 export async function listTimesheets(
@@ -160,6 +184,7 @@ export async function getTimesheetById(
       },
     });
     if (!hasAccess) throw new NotFoundError('Timesheet not found');
+    await assertManagerTimesheetEntriesFullyScoped(id, options);
   }
 
   return timesheet;
@@ -291,9 +316,8 @@ export async function generateTimesheetsBulk(input: GenerateTimesheetsBulkInput,
   };
 }
 
-export async function submitTimesheet(id: string) {
-  const existing = await prisma.timesheet.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Timesheet not found');
+export async function submitTimesheet(id: string, options?: TimesheetAccessOptions) {
+  const existing = await getTimesheetById(id, options);
   if (!['draft', 'rejected'].includes(existing.status)) {
     throw new BadRequestError('Timesheet can only be submitted from draft or rejected status');
   }
@@ -307,9 +331,8 @@ export async function submitTimesheet(id: string) {
   return timesheet;
 }
 
-export async function approveTimesheet(id: string, approvedByUserId: string) {
-  const existing = await prisma.timesheet.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Timesheet not found');
+export async function approveTimesheet(id: string, approvedByUserId: string, options?: TimesheetAccessOptions) {
+  const existing = await getTimesheetById(id, options);
   if (existing.status !== 'submitted') throw new BadRequestError('Timesheet can only be approved from submitted status');
   if (existing.userId === approvedByUserId) throw new BadRequestError('Cannot approve your own timesheet');
 
@@ -338,9 +361,8 @@ export async function approveTimesheet(id: string, approvedByUserId: string) {
   return timesheet;
 }
 
-export async function rejectTimesheet(id: string, notes?: string) {
-  const existing = await prisma.timesheet.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Timesheet not found');
+export async function rejectTimesheet(id: string, notes?: string, options?: TimesheetAccessOptions) {
+  const existing = await getTimesheetById(id, options);
   if (existing.status !== 'submitted') throw new BadRequestError('Timesheet can only be rejected from submitted status');
 
   const timesheet = await prisma.timesheet.update({
@@ -355,9 +377,8 @@ export async function rejectTimesheet(id: string, notes?: string) {
   return timesheet;
 }
 
-export async function deleteTimesheet(id: string) {
-  const existing = await prisma.timesheet.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError('Timesheet not found');
+export async function deleteTimesheet(id: string, options?: TimesheetAccessOptions) {
+  const existing = await getTimesheetById(id, options);
   if (existing.status === 'approved') throw new BadRequestError('Cannot delete an approved timesheet');
   if (existing.status === 'submitted') {
     throw new BadRequestError('Cannot delete a submitted timesheet');

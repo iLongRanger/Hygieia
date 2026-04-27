@@ -23,6 +23,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     timeEntry: {
       findMany: jest.fn(),
+      count: jest.fn(),
       updateMany: jest.fn(),
     },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
@@ -74,6 +75,21 @@ describe('timesheetService', () => {
 
     await expect(
       getTimesheetById('ts-1', { userRole: 'subcontractor', userId: 'sub-1' })
+    ).rejects.toThrow('Timesheet not found');
+  });
+
+  it('getTimesheetById rejects manager access when any linked entry is outside scope', async () => {
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      userId: 'worker-1',
+      user: { id: 'worker-1', fullName: 'Worker User', teamId: null },
+      entries: [],
+    });
+    (prisma.timesheet.count as jest.Mock).mockResolvedValue(1);
+    (prisma.timeEntry.count as jest.Mock).mockResolvedValue(1);
+
+    await expect(
+      getTimesheetById('ts-1', { userRole: 'manager', userId: 'manager-1' })
     ).rejects.toThrow('Timesheet not found');
   });
 
@@ -148,6 +164,25 @@ describe('timesheetService', () => {
         approvedAt: expect.any(Date),
       }),
     });
+  });
+
+  it('approveTimesheet applies manager scope inside the mutation service', async () => {
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      userId: 'worker-1',
+      status: 'submitted',
+      user: { id: 'worker-1', fullName: 'Worker User', teamId: null },
+      entries: [],
+    });
+    (prisma.timesheet.count as jest.Mock).mockResolvedValue(1);
+    (prisma.timeEntry.count as jest.Mock).mockResolvedValue(1);
+
+    await expect(
+      approveTimesheet('ts-1', 'manager-1', { userRole: 'manager', userId: 'manager-1' })
+    ).rejects.toThrow('Timesheet not found');
+
+    expect(prisma.timesheet.update).not.toHaveBeenCalled();
+    expect(prisma.timeEntry.updateMany).not.toHaveBeenCalled();
   });
 
   it('submitTimesheet allows rejected status for resubmission', async () => {

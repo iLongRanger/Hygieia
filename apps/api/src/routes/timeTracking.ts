@@ -356,12 +356,12 @@ router.post(
   '/timesheets/:id/submit',
   requirePermission(PERMISSIONS.TIME_TRACKING_WRITE),
   async (req: Request, res: Response) => {
-    await getTimesheetById(req.params.id, {
+    const access = {
       userRole: req.user?.role,
       userId: req.user?.id,
       userTeamId: req.user?.teamId ?? undefined,
-    });
-    const timesheet = await submitTimesheet(req.params.id);
+    };
+    const timesheet = await submitTimesheet(req.params.id, access);
     res.json({ data: timesheet });
   }
 );
@@ -372,12 +372,12 @@ router.post(
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
     const user = requireAuthenticatedUser(req);
-    await getTimesheetById(req.params.id, {
+    const access = {
       userRole: user.role,
       userId: user.id,
       userTeamId: user.teamId ?? undefined,
-    });
-    const timesheet = await approveTimesheet(req.params.id, user.id);
+    };
+    const timesheet = await approveTimesheet(req.params.id, user.id, access);
     res.json({ data: timesheet });
   }
 );
@@ -388,12 +388,12 @@ router.post(
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   validate(rejectTimesheetSchema),
   async (req: Request, res: Response) => {
-    await getTimesheetById(req.params.id, {
+    const access = {
       userRole: req.user?.role,
       userId: req.user?.id,
       userTeamId: req.user?.teamId ?? undefined,
-    });
-    const timesheet = await rejectTimesheet(req.params.id, req.body.notes);
+    };
+    const timesheet = await rejectTimesheet(req.params.id, req.body.notes, access);
     res.json({ data: timesheet });
   }
 );
@@ -403,12 +403,12 @@ router.delete(
   '/timesheets/:id',
   requirePermission(PERMISSIONS.TIME_TRACKING_APPROVE),
   async (req: Request, res: Response) => {
-    await getTimesheetById(req.params.id, {
+    const access = {
       userRole: req.user?.role,
       userId: req.user?.id,
       userTeamId: req.user?.teamId ?? undefined,
-    });
-    await deleteTimesheet(req.params.id);
+    };
+    await deleteTimesheet(req.params.id, access);
     res.status(204).send();
   }
 );
