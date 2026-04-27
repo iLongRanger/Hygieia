@@ -180,6 +180,11 @@ const toDateInputValue = (date: Date): string => {
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
 };
 
+const getTodayDateKey = () => toDateInputValue(new Date());
+
+const isScheduledToday = (scheduledDate: string): boolean =>
+  scheduledDate.slice(0, 10) === getTodayDateKey();
+
 type GenerateAssignmentMode = 'contract_default' | 'subcontractor_team' | 'internal_employee';
 type JobsViewMode = 'table' | 'schedule' | 'calendar';
 type CalendarView = 'month' | 'week' | 'day';
@@ -617,16 +622,22 @@ const JobsList = () => {
     },
     {
       header: 'Scheduled',
-      cell: (job: Job) => (
-        <span className="text-sm">
-          {new Date(job.scheduledDate).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: 'UTC',
-          })}
-        </span>
-      ),
+      cell: (job: Job) => {
+        const today = isScheduledToday(job.scheduledDate);
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm">
+              {new Date(job.scheduledDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })}
+            </span>
+            {today && <Badge variant="warning">Today</Badge>}
+          </div>
+        );
+      },
     },
     {
       header: 'Service Location',
@@ -1051,12 +1062,17 @@ const JobsList = () => {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {scheduleDates.map((dateKey, index) => {
                   const dateJobs = jobsByDate[dateKey];
+                  const today = dateKey === getTodayDateKey();
                   const headerToneClass =
-                    index % 2 === 0
+                    today
+                      ? 'bg-warning-50 dark:bg-warning-900/20'
+                      : index % 2 === 0
                       ? 'bg-primary-50 dark:bg-primary-900/20'
                       : 'bg-secondary-50 dark:bg-secondary-900/20';
                   const counterToneClass =
-                    index % 2 === 0
+                    today
+                      ? 'border-warning-200 bg-warning-100 text-warning-700 dark:border-warning-800 dark:bg-warning-900/40 dark:text-warning-300'
+                      : index % 2 === 0
                       ? 'border-primary-200 bg-primary-100 text-primary-700 dark:border-primary-800 dark:bg-primary-900/40 dark:text-primary-300'
                       : 'border-secondary-200 bg-secondary-100 text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/40 dark:text-secondary-300';
                   return (
@@ -1075,6 +1091,7 @@ const JobsList = () => {
                               timeZone: 'UTC',
                             })}
                           </p>
+                          {today && <Badge variant="warning">Today</Badge>}
                           <span
                             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${counterToneClass}`}
                           >

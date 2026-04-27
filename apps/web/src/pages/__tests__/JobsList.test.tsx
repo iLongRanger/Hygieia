@@ -119,6 +119,22 @@ describe('JobsList', () => {
     expect(missedBadge).toHaveClass('text-error-700');
   });
 
+  it('indicates jobs scheduled today in the table', async () => {
+    const timezoneOffset = new Date().getTimezoneOffset() * 60000;
+    const today = new Date(Date.now() - timezoneOffset).toISOString().slice(0, 10);
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({ id: 'job-today', jobNumber: 'JOB-TODAY', scheduledDate: today }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
+
+    const todayBadge = await screen.findByText('Today');
+    expect(todayBadge).toHaveClass('bg-warning-50');
+    expect(screen.getByText('JOB-TODAY')).toBeInTheDocument();
+  });
+
   it('shows empty state when no jobs', async () => {
     listJobsMock.mockResolvedValue(mockPaginatedResponse([]));
 
