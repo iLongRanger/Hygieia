@@ -116,6 +116,7 @@ router.post(
         userId: user.id,
         ...req.body,
         userRole: user.role,
+        userTeamId: user.teamId ?? null,
       });
       res.status(201).json({ data: entry });
     } catch (error) {

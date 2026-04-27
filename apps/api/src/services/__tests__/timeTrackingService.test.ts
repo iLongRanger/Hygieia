@@ -14,12 +14,15 @@ jest.mock('../../lib/prisma', () => ({
   prisma: {
     job: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     contract: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     facility: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     timeEntry: {
       findMany: jest.fn(),
@@ -64,7 +67,7 @@ describe('timeTrackingService', () => {
   it('clockIn rejects when selected job is not scheduled for today', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-02-01T08:00:00.000Z'));
     (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
-    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
       scheduledDate: new Date('2026-02-02T00:00:00.000Z'),
       contractId: 'contract-1',
       facilityId: 'facility-1',
@@ -86,7 +89,7 @@ describe('timeTrackingService', () => {
 
   it('clockIn rejects when user is outside facility geofence', async () => {
     (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
-    (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({
       address: {
         latitude: 43.70011,
         longitude: -79.4163,
@@ -105,6 +108,92 @@ describe('timeTrackingService', () => {
         },
       })
     ).rejects.toThrow('You are outside the allowed facility check-in radius');
+  });
+
+  it('clockIn rejects jobs outside the worker assignment scope', async () => {
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      clockIn({
+        userId: 'cleaner-1',
+        userRole: 'cleaner',
+        jobId: 'job-1',
+      })
+    ).rejects.toThrow('Time entry target not found');
+
+    expect(prisma.job.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'job-1',
+          assignedToUserId: 'cleaner-1',
+        }),
+      })
+    );
+  });
+
+  it('clockIn rejects mismatched job and facility identifiers', async () => {
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-2' });
+
+    await expect(
+      clockIn({
+        userId: 'cleaner-1',
+        userRole: 'cleaner',
+        jobId: 'job-1',
+        facilityId: 'facility-2',
+      })
+    ).rejects.toThrow('Job does not belong to the selected facility');
+  });
+
+  it('clockIn derives persisted links from the selected job', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-02-01T08:00:00.000Z'));
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      contract: {
+        serviceFrequency: null,
+        serviceSchedule: null,
+        facility: { address: null },
+      },
+      facility: {
+        address: {
+          latitude: 43.70011,
+          longitude: -79.4163,
+          geofenceRadiusMeters: 100,
+        },
+      },
+    });
+    (prisma.timeEntry.create as jest.Mock).mockResolvedValue({ id: 'entry-1', job: null });
+
+    await clockIn({
+      userId: 'cleaner-1',
+      userRole: 'cleaner',
+      jobId: 'job-1',
+      geoLocation: {
+        latitude: 43.70011,
+        longitude: -79.4163,
+        accuracy: 10,
+      },
+    });
+
+    expect(prisma.timeEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          jobId: 'job-1',
+          contractId: 'contract-1',
+          facilityId: 'facility-1',
+        }),
+      })
+    );
   });
 
   it('clockOut computes totalHours using elapsed time and break minutes', async () => {

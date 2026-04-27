@@ -41,6 +41,7 @@ export interface ClockInInput {
   managerOverride?: boolean;
   overrideReason?: string | null;
   userRole?: string;
+  userTeamId?: string | null;
 }
 
 export interface ManualEntryInput {
@@ -164,38 +165,137 @@ function getManagerTimeEntryScope(userId: string): Prisma.TimeEntryWhereInput {
   };
 }
 
-async function assertManagerCanWriteManualEntry(
-  input: ManualEntryInput,
-  options?: TimeTrackingAccessOptions
-) {
-  if (options?.userRole !== 'manager' || !options.userId) {
-    return;
+function getWorkerJobScope(options?: TimeTrackingAccessOptions): Prisma.JobWhereInput {
+  if (options?.userRole === 'cleaner' && options.userId) {
+    return { assignedToUserId: options.userId };
   }
 
-  const scopeChecks = await Promise.all([
+  if (options?.userRole === 'subcontractor') {
+    const assignmentScope: Prisma.JobWhereInput[] = [];
+    if (options.userId) assignmentScope.push({ assignedToUserId: options.userId });
+    if (options.userTeamId) assignmentScope.push({ assignedTeamId: options.userTeamId });
+    return assignmentScope.length > 0 ? { OR: assignmentScope } : { id: '00000000-0000-0000-0000-000000000000' };
+  }
+
+  if (options?.userRole === 'manager' && options.userId) {
+    return { account: { accountManagerId: options.userId } };
+  }
+
+  return {};
+}
+
+function getWorkerContractScope(options?: TimeTrackingAccessOptions): Prisma.ContractWhereInput {
+  if (options?.userRole === 'cleaner' && options.userId) {
+    return { assignedToUserId: options.userId };
+  }
+
+  if (options?.userRole === 'subcontractor') {
+    const assignmentScope: Prisma.ContractWhereInput[] = [];
+    if (options.userId) assignmentScope.push({ assignedToUserId: options.userId });
+    if (options.userTeamId) assignmentScope.push({ assignedTeamId: options.userTeamId });
+    return assignmentScope.length > 0 ? { OR: assignmentScope } : { id: '00000000-0000-0000-0000-000000000000' };
+  }
+
+  if (options?.userRole === 'manager' && options.userId) {
+    return { account: { accountManagerId: options.userId } };
+  }
+
+  return {};
+}
+
+function getWorkerFacilityScope(options?: TimeTrackingAccessOptions): Prisma.FacilityWhereInput {
+  if (options?.userRole === 'cleaner' && options.userId) {
+    return {
+      OR: [
+        { jobs: { some: { assignedToUserId: options.userId } } },
+        { contracts: { some: { assignedToUserId: options.userId } } },
+      ],
+    };
+  }
+
+  if (options?.userRole === 'subcontractor') {
+    const jobScope: Prisma.JobWhereInput[] = [];
+    const contractScope: Prisma.ContractWhereInput[] = [];
+    if (options.userId) {
+      jobScope.push({ assignedToUserId: options.userId });
+      contractScope.push({ assignedToUserId: options.userId });
+    }
+    if (options.userTeamId) {
+      jobScope.push({ assignedTeamId: options.userTeamId });
+      contractScope.push({ assignedTeamId: options.userTeamId });
+    }
+    if (jobScope.length === 0 && contractScope.length === 0) {
+      return { id: '00000000-0000-0000-0000-000000000000' };
+    }
+    return {
+      OR: [
+        ...(jobScope.length > 0 ? [{ jobs: { some: { OR: jobScope } } }] : []),
+        ...(contractScope.length > 0 ? [{ contracts: { some: { OR: contractScope } } }] : []),
+      ],
+    };
+  }
+
+  if (options?.userRole === 'manager' && options.userId) {
+    return { account: { accountManagerId: options.userId } };
+  }
+
+  return {};
+}
+
+async function assertLinkedTargetsAreConsistent(input: {
+  jobId?: string | null;
+  contractId?: string | null;
+  facilityId?: string | null;
+}, options?: TimeTrackingAccessOptions) {
+  const [job, contract, facility] = await Promise.all([
     input.jobId
       ? prisma.job.findFirst({
-          where: { id: input.jobId, account: { accountManagerId: options.userId } },
-          select: { id: true },
+          where: { id: input.jobId, ...getWorkerJobScope(options) },
+          select: { id: true, contractId: true, facilityId: true },
         })
       : Promise.resolve(null),
     input.contractId
       ? prisma.contract.findFirst({
-          where: { id: input.contractId, account: { accountManagerId: options.userId } },
-          select: { id: true },
+          where: { id: input.contractId, ...getWorkerContractScope(options) },
+          select: { id: true, facilityId: true },
         })
       : Promise.resolve(null),
     input.facilityId
       ? prisma.facility.findFirst({
-          where: { id: input.facilityId, account: { accountManagerId: options.userId } },
+          where: { id: input.facilityId, ...getWorkerFacilityScope(options) },
           select: { id: true },
         })
       : Promise.resolve(null),
   ]);
 
-  if (!scopeChecks.some(Boolean)) {
+  if ((input.jobId && !job) || (input.contractId && !contract) || (input.facilityId && !facility)) {
     throw new NotFoundError('Time entry target not found');
   }
+
+  if (job && input.contractId && job.contractId !== input.contractId) {
+    throw new BadRequestError('Job does not belong to the selected contract');
+  }
+
+  if (job && input.facilityId && job.facilityId !== input.facilityId) {
+    throw new BadRequestError('Job does not belong to the selected facility');
+  }
+
+  if (contract && input.facilityId && contract.facilityId !== input.facilityId) {
+    throw new BadRequestError('Contract does not belong to the selected facility');
+  }
+
+  return {
+    jobId: job?.id ?? null,
+    contractId: job?.contractId ?? contract?.id ?? null,
+    facilityId: job?.facilityId ?? contract?.facilityId ?? facility?.id ?? null,
+  };
+}
+
+async function assertManagerCanWriteManualEntry(
+  input: ManualEntryInput,
+  options?: TimeTrackingAccessOptions
+) {
+  await assertLinkedTargetsAreConsistent(input, options);
 }
 
 export async function listTimeEntries(
@@ -296,10 +396,19 @@ export async function clockIn(input: ClockInInput) {
   let scheduleOverrideMeta: Record<string, unknown> | null = null;
 
   let linkedFacilityAddress: unknown = null;
+  const resolvedLinks = await assertLinkedTargetsAreConsistent(input, {
+    userRole: input.userRole,
+    userId: input.userId,
+    userTeamId: input.userTeamId ?? undefined,
+  });
   if (input.jobId ?? input.contractId) {
     const linkedJob = input.jobId
-      ? await prisma.job.findUnique({
-          where: { id: input.jobId },
+      ? await prisma.job.findFirst({
+          where: { id: input.jobId, ...getWorkerJobScope({
+            userRole: input.userRole,
+            userId: input.userId,
+            userTeamId: input.userTeamId ?? undefined,
+          }) },
           select: {
             scheduledDate: true,
             contractId: true,
@@ -329,8 +438,12 @@ export async function clockIn(input: ClockInInput) {
     }
 
     const linkedContract = !linkedJob && input.contractId
-      ? await prisma.contract.findUnique({
-          where: { id: input.contractId },
+      ? await prisma.contract.findFirst({
+          where: { id: input.contractId, ...getWorkerContractScope({
+            userRole: input.userRole,
+            userId: input.userId,
+            userTeamId: input.userTeamId ?? undefined,
+          }) },
           select: {
             serviceFrequency: true,
             serviceSchedule: true,
@@ -398,8 +511,12 @@ export async function clockIn(input: ClockInInput) {
       }
     }
   } else if (input.facilityId) {
-    const facility = await prisma.facility.findUnique({
-      where: { id: input.facilityId },
+    const facility = await prisma.facility.findFirst({
+      where: { id: input.facilityId, ...getWorkerFacilityScope({
+        userRole: input.userRole,
+        userId: input.userId,
+        userTeamId: input.userTeamId ?? undefined,
+      }) },
       select: { address: true },
     });
     linkedFacilityAddress = facility?.address ?? null;
@@ -457,9 +574,9 @@ export async function clockIn(input: ClockInInput) {
   const entry = await prisma.timeEntry.create({
     data: {
       userId: input.userId,
-      jobId: input.jobId,
-      contractId: input.contractId,
-      facilityId: input.facilityId,
+      jobId: resolvedLinks.jobId,
+      contractId: resolvedLinks.contractId,
+      facilityId: resolvedLinks.facilityId,
       entryType: 'clock_in',
       clockIn: new Date(),
       notes: input.notes,
@@ -615,6 +732,17 @@ export async function editTimeEntry(id: string, input: EditTimeEntryInput, optio
     ? input.clockOut
     : existing.clockOut;
   const breakMinutes = input.breakMinutes ?? existing.breakMinutes;
+
+  if (input.jobId !== undefined || input.facilityId !== undefined) {
+    await assertLinkedTargetsAreConsistent(
+      {
+        jobId: input.jobId ?? existing.job?.id ?? null,
+        contractId: existing.contract?.id ?? null,
+        facilityId: input.facilityId ?? existing.facility?.id ?? null,
+      },
+      options
+    );
+  }
 
   let totalHours: number | null = null;
   if (clockOut) {
