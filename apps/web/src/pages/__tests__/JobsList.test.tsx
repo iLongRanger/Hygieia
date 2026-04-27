@@ -105,6 +105,20 @@ describe('JobsList', () => {
     expect(screen.getByText('JOB-002')).toBeInTheDocument();
   });
 
+  it('shows missed jobs with the error badge color', async () => {
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({ id: 'job-missed', jobNumber: 'JOB-MISSED', status: 'missed' }),
+      ])
+    );
+
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
+
+    const missedBadge = await screen.findByText('Missed');
+    expect(missedBadge).toHaveClass('bg-error-50');
+    expect(missedBadge).toHaveClass('text-error-700');
+  });
+
   it('shows empty state when no jobs', async () => {
     listJobsMock.mockResolvedValue(mockPaginatedResponse([]));
 

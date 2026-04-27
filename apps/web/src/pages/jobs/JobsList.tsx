@@ -77,7 +77,7 @@ const getStatusVariant = (status: JobStatus): 'default' | 'success' | 'warning' 
     in_progress: 'warning',
     completed: 'success',
     canceled: 'error',
-    missed: 'default',
+    missed: 'error',
   };
   return variants[status];
 };
