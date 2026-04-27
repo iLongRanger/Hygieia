@@ -303,4 +303,52 @@ describe('inspectionService', () => {
       )
     ).rejects.toThrow('A client signoff already exists for this inspection');
   });
+
+  it('listInspections scopes cleaner to inspections on assigned contracts', async () => {
+    (prisma.inspection.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.inspection.count as jest.Mock).mockResolvedValue(0);
+
+    await listInspections({}, { userRole: 'cleaner', userId: 'cleaner-1' });
+
+    expect(prisma.inspection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          contract: { assignedToUserId: 'cleaner-1' },
+          status: { in: ['scheduled', 'completed'] },
+        }),
+      })
+    );
+  });
+
+  it('listInspections scopes subcontractor by team OR user assignment', async () => {
+    (prisma.inspection.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.inspection.count as jest.Mock).mockResolvedValue(0);
+
+    await listInspections(
+      {},
+      { userRole: 'subcontractor', userId: 'sub-1', userTeamId: 'team-1' }
+    );
+
+    expect(prisma.inspection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          contract: {
+            OR: [
+              { assignedTeamId: 'team-1' },
+              { assignedToUserId: 'sub-1' },
+            ],
+          },
+          status: { in: ['scheduled', 'completed'] },
+        }),
+      })
+    );
+  });
+
+  it('listInspections returns empty for subcontractor with no userId', async () => {
+    const result = await listInspections({}, { userRole: 'subcontractor' });
+
+    expect(result.data).toEqual([]);
+    expect(result.pagination.total).toBe(0);
+    expect(prisma.inspection.findMany).not.toHaveBeenCalled();
+  });
 });

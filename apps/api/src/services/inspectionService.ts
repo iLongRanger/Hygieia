@@ -392,10 +392,17 @@ function isActionOpen(status: string): boolean {
 
 export async function listInspections(
   params: InspectionListParams,
-  options?: { userRole?: string; userId?: string }
+  options?: { userRole?: string; userId?: string; userTeamId?: string | null }
 ) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
+
+  if (options?.userRole === 'subcontractor' && !options.userId) {
+    return {
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0 },
+    };
+  }
 
   const where: Record<string, unknown> = {};
   if (params.facilityId) where.facilityId = params.facilityId;
@@ -407,6 +414,23 @@ export async function listInspections(
 
   if (options?.userRole === 'manager' && options.userId) {
     where.account = { accountManagerId: options.userId };
+  }
+
+  if (options?.userRole === 'cleaner' && options.userId) {
+    where.contract = { assignedToUserId: options.userId };
+  }
+
+  if (options?.userRole === 'subcontractor' && options.userId) {
+    where.contract = {
+      OR: [
+        ...(options.userTeamId ? [{ assignedTeamId: options.userTeamId }] : []),
+        { assignedToUserId: options.userId },
+      ],
+    };
+  }
+
+  if (options?.userRole === 'cleaner' || options?.userRole === 'subcontractor') {
+    where.status = { in: ['scheduled', 'completed'] };
   }
 
   if ((params.dateFrom ?? params.dateTo) !== undefined) {
