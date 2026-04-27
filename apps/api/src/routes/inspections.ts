@@ -4,8 +4,8 @@ import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
-import { UnauthorizedError } from '../middleware/errorHandler';
-import { ensureManagerAccountAccess } from '../middleware/ownership';
+import { UnauthorizedError, ForbiddenError } from '../middleware/errorHandler';
+import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
 import {
   listInspectionsSchema,
   createInspectionSchema,
@@ -52,9 +52,24 @@ function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   return req.user;
 }
 
-async function assertInspectionAccess(req: Request, inspection: { accountId: string }) {
+async function assertInspectionAccess(
+  req: Request,
+  inspection: { accountId: string; contractId: string | null }
+) {
   if (req.user?.role === 'manager') {
     await ensureManagerAccountAccess(req.user, inspection.accountId, {
+      path: req.path,
+      method: req.method,
+    });
+    return;
+  }
+  if (req.user?.role === 'cleaner' || req.user?.role === 'subcontractor') {
+    if (!inspection.contractId) {
+      throw new ForbiddenError('Access denied');
+    }
+    await ensureOwnershipAccess(req.user, {
+      resourceType: 'contract',
+      resourceId: inspection.contractId,
       path: req.path,
       method: req.method,
     });
