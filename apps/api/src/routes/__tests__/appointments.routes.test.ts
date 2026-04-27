@@ -100,6 +100,10 @@ describe('Appointments Routes', () => {
         leadId: payload.leadId,
         assignedToUserId: payload.assignedToUserId,
         createdByUserId: 'user-1',
+      }),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
       })
     );
   });
@@ -125,10 +129,17 @@ describe('Appointments Routes', () => {
       .expect(200);
 
     expect(response.body.data.id).toBe('appt-1');
-    expect(appointmentService.updateAppointment).toHaveBeenCalledWith('appt-1', {
-      notes: 'Updated',
-      performedByUserId: 'user-1',
-    });
+    expect(appointmentService.updateAppointment).toHaveBeenCalledWith(
+      'appt-1',
+      {
+        notes: 'Updated',
+        performedByUserId: 'user-1',
+      },
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 
   it('POST /:id/reschedule should reschedule appointment', async () => {
@@ -149,7 +160,11 @@ describe('Appointments Routes', () => {
       expect.objectContaining({
         timezone: 'America/New_York',
       }),
-      'user-1'
+      'user-1',
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
     );
   });
 
@@ -166,6 +181,17 @@ describe('Appointments Routes', () => {
       .expect(200);
 
     expect(response.body.data.status).toBe('completed');
+    expect(appointmentService.completeAppointment).toHaveBeenCalledWith(
+      'appt-1',
+      expect.objectContaining({
+        facilityId: '33333333-3333-3333-3333-333333333333',
+        userId: 'user-1',
+      }),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 
   it('DELETE /:id should delete appointment', async () => {
@@ -174,6 +200,13 @@ describe('Appointments Routes', () => {
 
     await request(app).delete('/api/v1/appointments/appt-1').expect(204);
 
-    expect(appointmentService.deleteAppointment).toHaveBeenCalledWith('appt-1', 'user-1');
+    expect(appointmentService.deleteAppointment).toHaveBeenCalledWith(
+      'appt-1',
+      'user-1',
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
   });
 });

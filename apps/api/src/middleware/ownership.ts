@@ -121,10 +121,18 @@ async function hasManagerAccess(
         where: { id: resourceId },
         select: {
           account: { select: { accountManagerId: true } },
+          facility: {
+            select: {
+              account: { select: { accountManagerId: true } },
+            },
+          },
         },
       });
       if (!appointment) return false;
-      return appointment.account?.accountManagerId === userId;
+      return (
+        appointment.account?.accountManagerId === userId ||
+        appointment.facility?.account.accountManagerId === userId
+      );
     }
 
     case 'invoice': {

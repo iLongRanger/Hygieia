@@ -115,10 +115,17 @@ router.post(
         });
       }
 
-      const appointment = await createAppointment({
-        ...parsed.data,
-        createdByUserId: req.user.id,
-      });
+      const appointment = await createAppointment(
+        {
+          ...parsed.data,
+          createdByUserId: req.user.id,
+        },
+        {
+          userRole: req.user.role,
+          userId: req.user.id,
+          userTeamId: req.user.teamId ?? null,
+        }
+      );
 
       res.status(201).json({ data: appointment });
     } catch (error) {
@@ -162,10 +169,18 @@ router.patch(
         });
       }
 
-      const appointment = await updateAppointment(req.params.id, {
-        ...parsed.data,
-        performedByUserId: req.user?.id ?? null,
-      });
+      const appointment = await updateAppointment(
+        req.params.id,
+        {
+          ...parsed.data,
+          performedByUserId: req.user?.id ?? null,
+        },
+        {
+          userRole: req.user?.role,
+          userId: req.user?.id,
+          userTeamId: req.user?.teamId ?? null,
+        }
+      );
       res.json({ data: appointment });
     } catch (error) {
       next(error);
@@ -195,7 +210,11 @@ router.post(
         method: req.method,
       });
 
-      const appointment = await rescheduleAppointment(req.params.id, parsed.data, req.user.id);
+      const appointment = await rescheduleAppointment(req.params.id, parsed.data, req.user.id, {
+        userRole: req.user.role,
+        userId: req.user.id,
+        userTeamId: req.user.teamId ?? null,
+      });
       res.status(201).json({ data: appointment });
     } catch (error) {
       next(error);
@@ -235,10 +254,18 @@ router.post(
         throw new BadRequestError('Only the assigned rep can complete this appointment');
       }
 
-      const updated = await completeAppointment(req.params.id, {
-        ...parsed.data,
-        userId: req.user.id,
-      });
+      const updated = await completeAppointment(
+        req.params.id,
+        {
+          ...parsed.data,
+          userId: req.user.id,
+        },
+        {
+          userRole: req.user.role,
+          userId: req.user.id,
+          userTeamId: req.user.teamId ?? null,
+        }
+      );
 
       res.json({ data: updated });
     } catch (error) {
@@ -265,7 +292,11 @@ router.delete(
         method: req.method,
       });
 
-      await deleteAppointment(req.params.id, req.user?.id ?? null);
+      await deleteAppointment(req.params.id, req.user?.id ?? null, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? null,
+      });
       res.status(204).send();
     } catch (error) {
       next(error);

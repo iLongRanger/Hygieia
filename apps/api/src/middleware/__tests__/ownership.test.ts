@@ -169,6 +169,49 @@ describe('ownership middleware', () => {
       expect(mockNext).toHaveBeenCalledWith();
     });
 
+    it('should allow manager appointment access through service location account manager', async () => {
+      mockReq.user = { id: 'user-123', email: 'test@test.com', role: 'manager' };
+
+      (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+        account: null,
+        facility: {
+          account: { accountManagerId: 'user-123' },
+        },
+      });
+
+      const middleware = verifyOwnership({ resourceType: 'appointment' });
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(prisma.appointment.findUnique).toHaveBeenCalledWith({
+        where: { id: 'resource-123' },
+        select: {
+          account: { select: { accountManagerId: true } },
+          facility: {
+            select: {
+              account: { select: { accountManagerId: true } },
+            },
+          },
+        },
+      });
+      expect(mockNext).toHaveBeenCalledWith();
+    });
+
+    it('should deny manager appointment access outside account and service location scope', async () => {
+      mockReq.user = { id: 'user-123', email: 'test@test.com', role: 'manager' };
+
+      (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+        account: { accountManagerId: 'other-user' },
+        facility: {
+          account: { accountManagerId: 'another-user' },
+        },
+      });
+
+      const middleware = verifyOwnership({ resourceType: 'appointment' });
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
+    });
+
     it('should deny access if resource not found', async () => {
       mockReq.user = { id: 'user-123', email: 'test@test.com', role: 'manager' };
 

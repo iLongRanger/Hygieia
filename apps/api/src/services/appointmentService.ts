@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import type { Prisma } from '@prisma/client';
-import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../middleware/errorHandler';
 import { createNotification } from './notificationService';
 import logger from '../lib/logger';
 import { findPreferredOpportunityForAccount, findPreferredOpportunityForLead } from './opportunityResolver';
@@ -69,6 +69,13 @@ export interface AppointmentCompleteInput {
 }
 
 const APPOINTMENT_ASSIGNEE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
+
+type AppointmentAccessRecord = {
+  id: string;
+  accountId?: string | null;
+  facilityId?: string | null;
+  assignedToUserId?: string | null;
+};
 
 interface AppointmentActivityRecord {
   id: string;
@@ -200,6 +207,109 @@ async function assertAssignableAppointmentRep(userId: string) {
   if (!hasEligibleRole) {
     throw new BadRequestError('Assigned rep must be an owner, admin, or manager');
   }
+}
+
+function isPrivilegedAppointmentRole(role?: string) {
+  return role === 'owner' || role === 'admin';
+}
+
+async function assertManagerAccountScope(accountId: string, userId: string) {
+  const account = await prisma.account.findFirst({
+    where: {
+      id: accountId,
+      accountManagerId: userId,
+    },
+    select: { id: true },
+  });
+
+  if (!account) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+}
+
+async function assertManagerFacilityScope(facilityId: string, userId: string) {
+  const facility = await prisma.facility.findFirst({
+    where: {
+      id: facilityId,
+      account: {
+        accountManagerId: userId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!facility) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+}
+
+async function assertSubcontractorFacilityScope(facilityId: string, teamId?: string | null) {
+  if (!teamId) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+
+  const contract = await prisma.contract.findFirst({
+    where: {
+      facilityId,
+      assignedTeamId: teamId,
+      archivedAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (!contract) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+}
+
+async function assertAppointmentAccess(
+  appointment: AppointmentAccessRecord,
+  access?: AppointmentAccessOptions
+) {
+  if (!access?.userRole || isPrivilegedAppointmentRole(access.userRole)) {
+    return;
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    if (appointment.accountId) {
+      await assertManagerAccountScope(appointment.accountId, access.userId);
+      return;
+    }
+
+    if (appointment.facilityId) {
+      await assertManagerFacilityScope(appointment.facilityId, access.userId);
+      return;
+    }
+
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+
+  if (access.userRole === 'cleaner' && appointment.assignedToUserId === access.userId) {
+    return;
+  }
+
+  if (access.userRole === 'subcontractor' && appointment.facilityId) {
+    await assertSubcontractorFacilityScope(appointment.facilityId, access.userTeamId);
+    return;
+  }
+
+  throw new ForbiddenError('You do not have access to this appointment');
+}
+
+async function assertCreateAppointmentAccountAccess(
+  accountId: string,
+  access?: AppointmentAccessOptions
+) {
+  if (!access?.userRole || isPrivilegedAppointmentRole(access.userRole)) {
+    return;
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    await assertManagerAccountScope(accountId, access.userId);
+    return;
+  }
+
+  throw new ForbiddenError('You do not have access to this appointment');
 }
 
 const appointmentSelect = {
@@ -407,7 +517,10 @@ export async function getAppointmentById(id: string) {
   });
 }
 
-export async function createAppointment(input: AppointmentCreateInput) {
+export async function createAppointment(
+  input: AppointmentCreateInput,
+  access?: AppointmentAccessOptions
+) {
   await assertAssignableAppointmentRep(input.assignedToUserId);
   await assertNoAppointmentConflict({
     assignedToUserId: input.assignedToUserId,
@@ -479,6 +592,8 @@ export async function createAppointment(input: AppointmentCreateInput) {
       throw new BadRequestError('Facility not found for the selected lead account');
     }
 
+    await assertCreateAppointmentAccountAccess(lead.convertedToAccountId, access);
+
     await assertNoDuplicateScheduledAppointmentType({
       leadId: effectiveWalkthroughLeadId,
       facilityId: input.facilityId,
@@ -510,6 +625,8 @@ export async function createAppointment(input: AppointmentCreateInput) {
     if (!facility) {
       throw new BadRequestError('Facility not found for the selected account');
     }
+
+    await assertCreateAppointmentAccountAccess(input.accountId, access);
 
     const activeContract = await prisma.contract.findFirst({
       where: {
@@ -709,13 +826,18 @@ export async function createAppointment(input: AppointmentCreateInput) {
   return appointment;
 }
 
-export async function updateAppointment(id: string, input: AppointmentUpdateInput) {
+export async function updateAppointment(
+  id: string,
+  input: AppointmentUpdateInput,
+  access?: AppointmentAccessOptions
+) {
   const existing = await prisma.appointment.findUnique({
     where: { id },
     select: {
       id: true,
       leadId: true,
       accountId: true,
+      facilityId: true,
       type: true,
       assignedToUserId: true,
       scheduledStart: true,
@@ -728,6 +850,8 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
   if (!existing) {
     throw new NotFoundError('Appointment not found');
   }
+
+  await assertAppointmentAccess(existing, access);
 
   if (input.facilityId) {
     if (existing.type === 'walk_through') {
@@ -879,16 +1003,24 @@ export async function updateAppointment(id: string, input: AppointmentUpdateInpu
 
 export async function deleteAppointment(
   id: string,
-  performedByUserId?: string | null
+  performedByUserId?: string | null,
+  access?: AppointmentAccessOptions
 ) {
   const existing = await prisma.appointment.findUnique({
     where: { id },
-    select: appointmentSelect,
+    select: {
+      ...appointmentSelect,
+      accountId: true,
+      facilityId: true,
+      assignedToUserId: true,
+    },
   });
 
   if (!existing) {
     throw new NotFoundError('Appointment not found');
   }
+
+  await assertAppointmentAccess(existing, access);
 
   if (existing.status === 'completed') {
     throw new BadRequestError('Completed appointments cannot be deleted');
@@ -916,7 +1048,8 @@ export async function deleteAppointment(
 export async function rescheduleAppointment(
   id: string,
   input: AppointmentRescheduleInput,
-  userId: string
+  userId: string,
+  access?: AppointmentAccessOptions
 ) {
   const existing = await prisma.appointment.findUnique({
     where: { id },
@@ -937,6 +1070,8 @@ export async function rescheduleAppointment(
   if (!existing) {
     throw new NotFoundError('Appointment not found');
   }
+
+  await assertAppointmentAccess(existing, access);
 
   if (existing.status === 'completed') {
     throw new BadRequestError('Cannot reschedule a completed appointment');
@@ -1019,7 +1154,8 @@ export async function rescheduleAppointment(
 
 export async function completeAppointment(
   id: string,
-  input: AppointmentCompleteInput
+  input: AppointmentCompleteInput,
+  access?: AppointmentAccessOptions
 ) {
   const appointment = await prisma.appointment.findUnique({
     where: { id },
@@ -1038,6 +1174,8 @@ export async function completeAppointment(
   if (!appointment) {
     throw new NotFoundError('Appointment not found');
   }
+
+  await assertAppointmentAccess(appointment, access);
 
   if (appointment.status === 'completed') {
     throw new BadRequestError('Appointment already completed');

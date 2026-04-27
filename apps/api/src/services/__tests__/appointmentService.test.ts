@@ -19,6 +19,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     account: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -86,6 +87,7 @@ describe('appointmentService', () => {
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
     (prisma.accountActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
+    (prisma.account.findFirst as jest.Mock).mockResolvedValue({ id: 'account-1' });
   });
 
   it('listAppointments should default to future appointments when includePast is false', async () => {
@@ -409,6 +411,44 @@ describe('appointmentService', () => {
     ).rejects.toThrow('Assigned rep must be an owner, admin, or manager');
   });
 
+  it('createAppointment should reject manager access to another account resolved from a lead', async () => {
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      archivedAt: null,
+      convertedToAccountId: 'account-2',
+      companyName: 'Other Account',
+      contactName: 'Other Client',
+      estimatedValue: null,
+      probability: 0,
+      expectedCloseDate: null,
+      lostReason: null,
+      assignedToUserId: null,
+      createdByUserId: 'admin-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-2' });
+    (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      appointmentService.createAppointment(
+        {
+          leadId: 'lead-1',
+          facilityId: 'facility-2',
+          assignedToUserId: 'user-1',
+          type: 'walk_through',
+          status: 'scheduled',
+          scheduledStart: new Date('2026-02-01T10:00:00.000Z'),
+          scheduledEnd: new Date('2026-02-01T11:00:00.000Z'),
+          timezone: 'America/New_York',
+          createdByUserId: 'manager-1',
+        },
+        {
+          userRole: 'manager',
+          userId: 'manager-1',
+        }
+      )
+    ).rejects.toThrow('You do not have access to this appointment');
+  });
+
   it('completeAppointment should reject when no tasks exist for facility', async () => {
     (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
       id: 'appt-1',
@@ -465,6 +505,71 @@ describe('appointmentService', () => {
         }),
       })
     );
+  });
+
+  it('updateAppointment should reject manager access outside their account scope', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      accountId: 'account-2',
+      facilityId: 'facility-2',
+      leadId: null,
+      assignedToUserId: 'user-1',
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+      status: 'scheduled',
+      inspectionId: null,
+    });
+    (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      appointmentService.updateAppointment(
+        'appt-1',
+        {
+          notes: 'Updated instructions',
+        },
+        {
+          userRole: 'manager',
+          userId: 'manager-1',
+        }
+      )
+    ).rejects.toThrow('You do not have access to this appointment');
+  });
+
+  it('updateAppointment should allow manager access through the appointment service location account', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      accountId: null,
+      facilityId: 'facility-1',
+      leadId: null,
+      assignedToUserId: 'user-1',
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+      status: 'scheduled',
+      inspectionId: null,
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (prisma.appointment.update as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'visit',
+      assignedToUser: { id: 'user-1', fullName: 'Rep', email: 'rep@example.com' },
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+    });
+
+    await expect(
+      appointmentService.updateAppointment(
+        'appt-1',
+        {
+          notes: 'Updated instructions',
+        },
+        {
+          userRole: 'manager',
+          userId: 'manager-1',
+        }
+      )
+    ).resolves.toMatchObject({ id: 'appt-1' });
   });
 
   it('updateAppointment resets reminder state when reassigned', async () => {
