@@ -5,6 +5,8 @@ import {
   deleteTimesheet,
   generateTimesheet,
   generateTimesheetsBulk,
+  getTimesheetById,
+  listTimesheets,
   submitTimesheet,
 } from '../timesheetService';
 
@@ -45,6 +47,34 @@ describe('timesheetService', () => {
         periodEnd: new Date('2026-02-07T23:59:59.000Z'),
       })
     ).rejects.toThrow('Timesheet already exists for this period');
+  });
+
+  it('listTimesheets scopes subcontractors without a team to their own timesheets', async () => {
+    (prisma.timesheet.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.timesheet.count as jest.Mock).mockResolvedValue(0);
+
+    await listTimesheets({}, { userRole: 'subcontractor', userId: 'sub-1' });
+
+    expect(prisma.timesheet.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [{ OR: [{ userId: 'sub-1' }] }],
+        }),
+      })
+    );
+  });
+
+  it('getTimesheetById rejects subcontractors without direct or team ownership', async () => {
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      userId: 'other-user',
+      user: { id: 'other-user', fullName: 'Other User', teamId: null },
+      entries: [],
+    });
+
+    await expect(
+      getTimesheetById('ts-1', { userRole: 'subcontractor', userId: 'sub-1' })
+    ).rejects.toThrow('Timesheet not found');
   });
 
   it('generateTimesheet computes totals and links entries', async () => {

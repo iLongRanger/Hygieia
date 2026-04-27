@@ -99,8 +99,16 @@ export async function listTimesheets(
   // RBAC scoping
   if (options?.userRole === 'cleaner' && options.userId) {
     where.userId = options.userId;
-  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
-    where.user = { teamId: options.userTeamId };
+  } else if (options?.userRole === 'subcontractor') {
+    const subcontractorScope: Prisma.TimesheetWhereInput[] = [];
+    if (options.userId) subcontractorScope.push({ userId: options.userId });
+    if (options.userTeamId) subcontractorScope.push({ user: { teamId: options.userTeamId } });
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      subcontractorScope.length > 0
+        ? { OR: subcontractorScope }
+        : { userId: '00000000-0000-0000-0000-000000000000' },
+    ];
   } else if (options?.userRole === 'manager' && options.userId) {
     where.AND = [getManagerTimesheetScope(options.userId)];
   }
@@ -140,8 +148,10 @@ export async function getTimesheetById(
   // RBAC ownership check — return NotFoundError (not 403) to avoid resource enumeration
   if (options?.userRole === 'cleaner' && options.userId) {
     if (timesheet.userId !== options.userId) throw new NotFoundError('Timesheet not found');
-  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
-    if (timesheet.user.teamId !== options.userTeamId) throw new NotFoundError('Timesheet not found');
+  } else if (options?.userRole === 'subcontractor') {
+    const hasDirectAccess = Boolean(options.userId) && timesheet.userId === options.userId;
+    const hasTeamAccess = Boolean(options.userTeamId) && timesheet.user.teamId === options.userTeamId;
+    if (!hasDirectAccess && !hasTeamAccess) throw new NotFoundError('Timesheet not found');
   } else if (options?.userRole === 'manager' && options.userId) {
     const hasAccess = await prisma.timesheet.count({
       where: {

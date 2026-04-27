@@ -6,7 +6,9 @@ import {
   clockOut,
   editTimeEntry,
   endBreak,
+  getTimeEntryById,
   getUserTimeSummary,
+  listTimeEntries,
   startBreak,
 } from '../timeTrackingService';
 
@@ -23,6 +25,9 @@ jest.mock('../../lib/prisma', () => ({
     facility: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
     timeEntry: {
       findMany: jest.fn(),
@@ -280,6 +285,45 @@ describe('timeTrackingService', () => {
     await expect(approveTimeEntry('entry-1', 'manager-1')).rejects.toThrow(
       'Cannot approve an active entry'
     );
+  });
+
+  it('listTimeEntries scopes subcontractors without a team to their own entries', async () => {
+    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.timeEntry.count as jest.Mock).mockResolvedValue(0);
+
+    await listTimeEntries({}, { userRole: 'subcontractor', userId: 'sub-1' });
+
+    expect(prisma.timeEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [{ OR: [{ userId: 'sub-1' }] }],
+        }),
+      })
+    );
+  });
+
+  it('getTimeEntryById rejects subcontractors without direct or team ownership', async () => {
+    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({
+      id: 'entry-1',
+      userId: 'other-user',
+      user: { id: 'other-user', fullName: 'Other User', teamId: null },
+      job: null,
+    });
+
+    await expect(
+      getTimeEntryById('entry-1', { userRole: 'subcontractor', userId: 'sub-1' })
+    ).rejects.toThrow('Time entry not found');
+  });
+
+  it('getUserTimeSummary rejects subcontractors without team access to the target user', async () => {
+    await expect(
+      getUserTimeSummary(
+        'other-user',
+        new Date('2026-02-01T00:00:00.000Z'),
+        new Date('2026-02-07T23:59:59.000Z'),
+        { userRole: 'subcontractor', userId: 'sub-1' }
+      )
+    ).rejects.toThrow('Time entry not found');
   });
 
   it('getUserTimeSummary calculates regular and overtime hours', async () => {

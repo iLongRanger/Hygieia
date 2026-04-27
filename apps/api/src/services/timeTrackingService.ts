@@ -321,8 +321,16 @@ export async function listTimeEntries(
   // RBAC scoping
   if (options?.userRole === 'cleaner' && options.userId) {
     where.userId = options.userId;
-  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
-    where.user = { teamId: options.userTeamId };
+  } else if (options?.userRole === 'subcontractor') {
+    const subcontractorScope: Prisma.TimeEntryWhereInput[] = [];
+    if (options.userId) subcontractorScope.push({ userId: options.userId });
+    if (options.userTeamId) subcontractorScope.push({ user: { teamId: options.userTeamId } });
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      subcontractorScope.length > 0
+        ? { OR: subcontractorScope }
+        : { userId: '00000000-0000-0000-0000-000000000000' },
+    ];
   } else if (options?.userRole === 'manager' && options.userId) {
     where.AND = [getManagerTimeEntryScope(options.userId)];
   }
@@ -362,8 +370,10 @@ export async function getTimeEntryById(
   // RBAC ownership check — return NotFoundError (not 403) to avoid resource enumeration
   if (options?.userRole === 'cleaner' && options.userId) {
     if (entry.userId !== options.userId) throw new NotFoundError('Time entry not found');
-  } else if (options?.userRole === 'subcontractor' && options.userTeamId) {
-    if (entry.user.teamId !== options.userTeamId) throw new NotFoundError('Time entry not found');
+  } else if (options?.userRole === 'subcontractor') {
+    const hasDirectAccess = Boolean(options.userId) && entry.userId === options.userId;
+    const hasTeamAccess = Boolean(options.userTeamId) && entry.user.teamId === options.userTeamId;
+    if (!hasDirectAccess && !hasTeamAccess) throw new NotFoundError('Time entry not found');
   } else if (options?.userRole === 'manager' && options.userId) {
     const hasAccess = await prisma.timeEntry.count({
       where: {
@@ -820,6 +830,23 @@ export async function getUserTimeSummary(
 
     if (!hasAccess) {
       throw new NotFoundError('Time entry not found');
+    }
+  } else if (options?.userRole === 'cleaner' && options.userId && userId !== options.userId) {
+    throw new NotFoundError('Time entry not found');
+  } else if (options?.userRole === 'subcontractor') {
+    if (userId !== options.userId) {
+      if (!options.userTeamId) {
+        throw new NotFoundError('Time entry not found');
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { teamId: true },
+      });
+
+      if (!targetUser || targetUser.teamId !== options.userTeamId) {
+        throw new NotFoundError('Time entry not found');
+      }
     }
   }
 
