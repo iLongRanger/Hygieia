@@ -105,6 +105,7 @@ router.get(
       {
         userRole: req.user?.role,
         userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? null,
       }
     );
 
