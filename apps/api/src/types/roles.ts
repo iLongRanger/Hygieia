@@ -229,6 +229,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     time_tracking_read: true,
     time_tracking_write: true,
     payroll_read: true,
+    inspections_read: true,
   },
   subcontractor: {
     dashboard_read: true,
@@ -240,6 +241,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     time_tracking_write: true,
     expenses_read: true,
     payroll_read: true,
+    inspections_read: true,
   },
 };
 
