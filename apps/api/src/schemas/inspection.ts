@@ -171,3 +171,9 @@ export const createReinspectionSchema = z.object({
     actionIds: z.array(z.string().uuid()).optional(),
   }),
 });
+
+export const createInspectionItemFeedbackSchema = z.object({
+  body: z.object({
+    body: z.string().min(1, 'Feedback body is required').max(2000),
+  }),
+});
