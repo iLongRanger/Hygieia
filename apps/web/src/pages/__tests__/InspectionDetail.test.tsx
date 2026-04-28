@@ -25,6 +25,9 @@ const createInspectionCorrectiveActionMock = vi.fn();
 const updateInspectionCorrectiveActionMock = vi.fn();
 const verifyInspectionCorrectiveActionMock = vi.fn();
 const createInspectionSignoffMock = vi.fn();
+const getAreaGuidanceMock = vi.fn();
+const listInspectionItemFeedbackMock = vi.fn();
+const createInspectionItemFeedbackMock = vi.fn();
 
 vi.mock('../../lib/inspections', () => ({
   getInspection: (...args: unknown[]) => getInspectionMock(...args),
@@ -36,6 +39,15 @@ vi.mock('../../lib/inspections', () => ({
   updateInspectionCorrectiveAction: (...args: unknown[]) => updateInspectionCorrectiveActionMock(...args),
   verifyInspectionCorrectiveAction: (...args: unknown[]) => verifyInspectionCorrectiveActionMock(...args),
   createInspectionSignoff: (...args: unknown[]) => createInspectionSignoffMock(...args),
+  getAreaGuidance: (...args: unknown[]) => getAreaGuidanceMock(...args),
+  listInspectionItemFeedback: (...args: unknown[]) => listInspectionItemFeedbackMock(...args),
+  createInspectionItemFeedback: (...args: unknown[]) => createInspectionItemFeedbackMock(...args),
+}));
+
+const hasPermissionMock = vi.fn();
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: (selector: (state: { hasPermission: (p: string) => boolean }) => unknown) =>
+    selector({ hasPermission: (p: string) => hasPermissionMock(p) }),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -50,6 +62,9 @@ describe('InspectionDetail', () => {
     vi.clearAllMocks();
     mockParams = { id: 'inspection-1' };
     navigateMock.mockReset();
+    hasPermissionMock.mockReturnValue(true);
+    getAreaGuidanceMock.mockResolvedValue({});
+    listInspectionItemFeedbackMock.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -127,6 +142,72 @@ describe('InspectionDetail', () => {
 
     await waitFor(() => {
       expect(cancelInspectionMock).toHaveBeenCalledWith('inspection-1');
+    });
+  });
+
+  describe('field-role access', () => {
+    beforeEach(() => {
+      hasPermissionMock.mockReturnValue(false);
+    });
+
+    it('hides write controls when user lacks INSPECTIONS_WRITE', async () => {
+      getInspectionMock.mockResolvedValue(
+        mockInspectionDetail({ status: 'scheduled', items: [mockInspectionItem()] })
+      );
+
+      render(<InspectionDetail />);
+
+      await screen.findByText('INSP-202602-0001');
+      expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^start$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^cancel$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^complete$/i })).not.toBeInTheDocument();
+    });
+
+    it('renders existing feedback and allows posting it', async () => {
+      const user = userEvent.setup();
+      getInspectionMock.mockResolvedValue(
+        mockInspectionDetail({
+          status: 'completed',
+          items: [
+            {
+              ...mockInspectionItem(),
+              feedback: [
+                {
+                  id: 'fb-1',
+                  body: 'existing note',
+                  createdAt: new Date('2026-04-01').toISOString(),
+                  authorUser: { id: 'user-2', fullName: 'Jane Cleaner' },
+                },
+              ],
+            },
+          ],
+        })
+      );
+      createInspectionItemFeedbackMock.mockResolvedValue({
+        id: 'fb-2',
+        body: 'fresh note',
+        createdAt: new Date('2026-04-02').toISOString(),
+        authorUser: { id: 'user-3', fullName: 'New Author' },
+      });
+
+      render(<InspectionDetail />);
+
+      expect(await screen.findByText('existing note')).toBeInTheDocument();
+
+      const textarea = screen.getByPlaceholderText(/add feedback/i);
+      await user.type(textarea, 'fresh note');
+      await user.click(screen.getByRole('button', { name: /post/i }));
+
+      await waitFor(() => {
+        expect(createInspectionItemFeedbackMock).toHaveBeenCalledWith(
+          'inspection-1',
+          'item-1',
+          'fresh note'
+        );
+      });
+
+      expect(await screen.findByText('fresh note')).toBeInTheDocument();
     });
   });
 });
