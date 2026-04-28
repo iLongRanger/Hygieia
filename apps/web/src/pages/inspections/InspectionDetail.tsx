@@ -32,6 +32,9 @@ import {
   getAreaGuidance,
 } from '../../lib/inspections';
 import { InspectorGuidance } from '../../components/inspections/InspectorGuidance';
+import { InspectionItemFeedbackSection } from './InspectionItemFeedbackSection';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../lib/permissions';
 import { extractApiErrorMessage } from '../../lib/api';
 import type {
   InspectionDetail as InspectionDetailType,
@@ -83,6 +86,7 @@ const getSeverityVariant = (
 const InspectionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const [inspection, setInspection] = useState<InspectionDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -344,6 +348,7 @@ const InspectionDetail = () => {
   }
 
   const isEditable = inspection.status === 'scheduled' || inspection.status === 'in_progress';
+  const canWrite = hasPermission(PERMISSIONS.INSPECTIONS_WRITE);
 
   return (
     <div className="space-y-6">
@@ -370,19 +375,19 @@ const InspectionDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isEditable && (
+          {canWrite && isEditable && (
             <Button variant="secondary" size="sm" onClick={() => navigate(`/inspections/${id}/edit`)}>
               <Edit2 className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
           )}
-          {inspection.status === 'scheduled' && (
+          {canWrite && inspection.status === 'scheduled' && (
             <Button size="sm" onClick={handleStart}>
               <Play className="mr-1.5 h-4 w-4" />
               Start
             </Button>
           )}
-          {inspection.status === 'in_progress' && (
+          {canWrite && inspection.status === 'in_progress' && (
             <Button
               variant="primary"
               size="sm"
@@ -392,12 +397,12 @@ const InspectionDetail = () => {
               Complete
             </Button>
           )}
-          {inspection.status === 'completed' && inspection.items.some((item) => item.score === 'fail') && (
+          {canWrite && inspection.status === 'completed' && inspection.items.some((item) => item.score === 'fail') && (
             <Button variant="secondary" size="sm" onClick={handleCreateReinspection} isLoading={reinspectionSaving}>
               Reinspect Failed Items
             </Button>
           )}
-          {isEditable && (
+          {canWrite && isEditable && (
             <Button variant="danger" size="sm" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
               Cancel
@@ -657,6 +662,15 @@ const InspectionDetail = () => {
                           </div>
                         )}
                         {/* TODO: Show photo thumbnails here when photo upload is implemented */}
+                        {items.map((item) => (
+                          <InspectionItemFeedbackSection
+                            key={item.id}
+                            inspectionId={inspection.id}
+                            itemId={item.id}
+                            initialFeedback={item.feedback ?? []}
+                            disabled={inspection.status === 'canceled'}
+                          />
+                        ))}
                       </>
                     );
                   })()}
@@ -681,7 +695,7 @@ const InspectionDetail = () => {
             )}
           </div>
 
-          {inspection.status !== 'canceled' && (
+          {canWrite && inspection.status !== 'canceled' && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 sm:grid-cols-2 md:grid-cols-4">
               <input
                 type="text"
@@ -753,28 +767,30 @@ const InspectionDetail = () => {
                     <div className="text-xs text-surface-500 dark:text-surface-400">
                       Due: {action.dueDate ? new Date(action.dueDate).toLocaleDateString() : 'No due date'}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {action.status === 'open' && (
-                        <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'in_progress')}>
-                          Start
-                        </Button>
-                      )}
-                      {action.status === 'in_progress' && (
-                        <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'resolved')}>
-                          Resolve
-                        </Button>
-                      )}
-                      {action.status === 'resolved' && (
-                        <Button size="sm" onClick={() => handleUpdateActionStatus(action.id, 'verified')}>
-                          Verify
-                        </Button>
-                      )}
-                      {(action.status === 'resolved' || action.status === 'verified' || action.status === 'canceled') && (
-                        <Button size="sm" variant="ghost" onClick={() => handleUpdateActionStatus(action.id, 'open')}>
-                          Reopen
-                        </Button>
-                      )}
-                    </div>
+                    {canWrite && (
+                      <div className="flex items-center gap-2">
+                        {action.status === 'open' && (
+                          <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'in_progress')}>
+                            Start
+                          </Button>
+                        )}
+                        {action.status === 'in_progress' && (
+                          <Button size="sm" variant="secondary" onClick={() => handleUpdateActionStatus(action.id, 'resolved')}>
+                            Resolve
+                          </Button>
+                        )}
+                        {action.status === 'resolved' && (
+                          <Button size="sm" onClick={() => handleUpdateActionStatus(action.id, 'verified')}>
+                            Verify
+                          </Button>
+                        )}
+                        {(action.status === 'resolved' || action.status === 'verified' || action.status === 'canceled') && (
+                          <Button size="sm" variant="ghost" onClick={() => handleUpdateActionStatus(action.id, 'open')}>
+                            Reopen
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -790,7 +806,7 @@ const InspectionDetail = () => {
             Signoffs ({inspection.signoffs.length})
           </h3>
 
-          {inspection.status === 'completed' && (
+          {canWrite && inspection.status === 'completed' && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 sm:grid-cols-2 md:grid-cols-4">
               <select
                 value={signoffForm.signerType}
