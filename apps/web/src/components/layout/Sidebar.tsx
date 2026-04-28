@@ -150,6 +150,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           items: [
             { to: '/contracts', icon: FileSignature, label: isSubcontractor ? 'Team Contracts' : 'My Contracts' },
             { to: '/jobs', icon: Briefcase, label: isSubcontractor ? 'Team Jobs' : 'My Jobs' },
+            { to: '/inspections', icon: ClipboardCheck, label: 'Inspections' },
             { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
             ...(isSubcontractor ? [{ to: '/finance/expenses', icon: Receipt, label: 'Expenses' }] : []),
           ],
