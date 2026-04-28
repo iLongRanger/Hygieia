@@ -410,12 +410,16 @@ router.get(
 router.get(
   '/:id/items/:itemId/feedback',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
-  async (req: Request, res: Response) => {
-    const inspection = await getInspectionById(req.params.id);
-    await assertInspectionAccess(req, inspection);
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const inspection = await getInspectionById(req.params.id);
+      await assertInspectionAccess(req, inspection);
 
-    const feedback = await listInspectionItemFeedback(req.params.id, req.params.itemId);
-    res.json({ data: feedback });
+      const feedback = await listInspectionItemFeedback(req.params.id, req.params.itemId);
+      res.json({ data: feedback });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -424,20 +428,24 @@ router.post(
   '/:id/items/:itemId/feedback',
   requirePermission(PERMISSIONS.INSPECTIONS_READ),
   validate(createInspectionItemFeedbackSchema),
-  async (req: Request, res: Response) => {
-    const user = requireAuthenticatedUser(req);
-    const inspection = await getInspectionById(req.params.id);
-    await assertInspectionAccess(req, inspection);
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      const inspection = await getInspectionById(req.params.id);
+      await assertInspectionAccess(req, inspection);
 
-    const feedback = await createInspectionItemFeedback(
-      req.params.id,
-      req.params.itemId,
-      {
-        body: req.body.body,
-        authorUserId: user.id,
-      }
-    );
-    res.status(201).json({ data: feedback });
+      const feedback = await createInspectionItemFeedback(
+        req.params.id,
+        req.params.itemId,
+        {
+          body: req.body.body,
+          authorUserId: user.id,
+        }
+      );
+      res.status(201).json({ data: feedback });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
