@@ -19,6 +19,7 @@ import type {
   UpdateInspectionTemplateInput,
   InspectionActivity,
   InspectionCorrectiveAction,
+  InspectionItemFeedback,
   InspectionSignoff,
 } from '../types/inspection';
 
@@ -237,5 +238,29 @@ export async function createReinspection(
   input: CreateReinspectionInput = {}
 ): Promise<InspectionDetail> {
   const response = await api.post(`/inspections/${inspectionId}/reinspect`, input);
+  return response.data.data;
+}
+
+// ==================== Item feedback ====================
+
+export async function listInspectionItemFeedback(
+  inspectionId: string,
+  itemId: string
+): Promise<InspectionItemFeedback[]> {
+  const response = await api.get<{ data: InspectionItemFeedback[] }>(
+    `/inspections/${inspectionId}/items/${itemId}/feedback`
+  );
+  return response.data.data;
+}
+
+export async function createInspectionItemFeedback(
+  inspectionId: string,
+  itemId: string,
+  body: string
+): Promise<InspectionItemFeedback> {
+  const response = await api.post<{ data: InspectionItemFeedback }>(
+    `/inspections/${inspectionId}/items/${itemId}/feedback`,
+    { body }
+  );
   return response.data.data;
 }
