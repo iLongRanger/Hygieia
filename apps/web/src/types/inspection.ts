@@ -95,6 +95,13 @@ export interface InspectionDetail {
   signoffs: InspectionSignoff[];
 }
 
+export interface InspectionItemFeedback {
+  id: string;
+  body: string;
+  createdAt: string;
+  authorUser: { id: string; fullName: string };
+}
+
 export interface InspectionItem {
   id: string;
   templateItemId: string | null;
@@ -105,6 +112,7 @@ export interface InspectionItem {
   notes: string | null;
   photoUrl: string | null;
   sortOrder: number;
+  feedback?: InspectionItemFeedback[];
 }
 
 export interface InspectionActivity {
