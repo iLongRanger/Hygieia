@@ -4,12 +4,20 @@ import {
   addInspectionItem,
   completeInspection,
   createInspection,
+  createInspectionItemFeedback,
   createInspectionSignoff,
+  findInspectionItemInScope,
   getInspectionById,
+  listInspectionItemFeedback,
   listInspections,
   startInspection,
   updateInspection,
 } from '../inspectionService';
+import { createNotification } from '../notificationService';
+
+jest.mock('../notificationService', () => ({
+  createNotification: jest.fn(async () => undefined),
+}));
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -50,6 +58,10 @@ jest.mock('../../lib/prisma', () => ({
       findMany: jest.fn(),
       findFirst: jest.fn(),
     },
+    inspectionItemFeedback: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+    },
     user: {
       findUnique: jest.fn(),
     },
@@ -59,6 +71,7 @@ jest.mock('../../lib/prisma', () => ({
 describe('inspectionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (createNotification as jest.Mock).mockResolvedValue(undefined);
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({
       id: 'user-1',
       roles: [{ role: { key: 'manager' } }],
@@ -350,5 +363,133 @@ describe('inspectionService', () => {
     expect(result.data).toEqual([]);
     expect(result.pagination.total).toBe(0);
     expect(prisma.inspection.findMany).not.toHaveBeenCalled();
+  });
+
+  describe('findInspectionItemInScope', () => {
+    it('returns the item when it belongs to the inspection', async () => {
+      (prisma.inspectionItem.findFirst as jest.Mock).mockResolvedValue({
+        id: 'item-1',
+        inspectionId: 'ins-1',
+        itemText: 'Floors',
+      });
+
+      const item = await findInspectionItemInScope('ins-1', 'item-1');
+
+      expect(item.id).toBe('item-1');
+      expect(prisma.inspectionItem.findFirst).toHaveBeenCalledWith({
+        where: { id: 'item-1', inspectionId: 'ins-1' },
+        select: { id: true, inspectionId: true, itemText: true },
+      });
+    });
+
+    it('throws NotFoundError when the item is in a different inspection', async () => {
+      (prisma.inspectionItem.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(findInspectionItemInScope('ins-1', 'item-other')).rejects.toThrow(
+        'Inspection item not found'
+      );
+    });
+  });
+
+  describe('listInspectionItemFeedback', () => {
+    it('returns feedback ordered by createdAt asc when item is in scope', async () => {
+      (prisma.inspectionItem.findFirst as jest.Mock).mockResolvedValue({
+        id: 'item-1',
+        inspectionId: 'ins-1',
+        itemText: 'Floors',
+      });
+      (prisma.inspectionItemFeedback.findMany as jest.Mock).mockResolvedValue([
+        { id: 'fb-1', body: 'first', createdAt: new Date('2026-01-01'), authorUser: { id: 'u-1', fullName: 'A' } },
+      ]);
+
+      const result = await listInspectionItemFeedback('ins-1', 'item-1');
+
+      expect(result).toHaveLength(1);
+      expect(prisma.inspectionItemFeedback.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { inspectionItemId: 'item-1' },
+          orderBy: { createdAt: 'asc' },
+        })
+      );
+    });
+  });
+
+  describe('createInspectionItemFeedback', () => {
+    beforeEach(() => {
+      (createNotification as jest.Mock).mockResolvedValue(undefined);
+      (prisma.inspectionItem.findFirst as jest.Mock).mockResolvedValue({
+        id: 'item-1',
+        inspectionId: 'ins-1',
+        itemText: 'Floors',
+      });
+      (prisma.inspection.findUnique as jest.Mock).mockResolvedValue({
+        id: 'ins-1',
+        inspectionNumber: 'INS-2026-0001',
+        inspectorUserId: 'inspector-1',
+        account: { accountManagerId: 'manager-1' },
+      });
+      (prisma.inspectionItemFeedback.create as jest.Mock).mockResolvedValue({
+        id: 'fb-1',
+        body: 'something is off',
+        createdAt: new Date('2026-04-26'),
+        authorUser: { id: 'cleaner-1', fullName: 'Cleaner' },
+      });
+    });
+
+    it('creates feedback and writes an activity row', async () => {
+      await createInspectionItemFeedback('ins-1', 'item-1', {
+        body: 'something is off',
+        authorUserId: 'cleaner-1',
+      });
+
+      expect(prisma.inspectionItemFeedback.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            inspectionItemId: 'item-1',
+            authorUserId: 'cleaner-1',
+            body: 'something is off',
+          },
+        })
+      );
+      expect(prisma.inspectionActivity.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            inspectionId: 'ins-1',
+            action: 'field_feedback_posted',
+          }),
+        })
+      );
+    });
+
+    it('notifies inspector and account manager, deduplicating and skipping author', async () => {
+      await createInspectionItemFeedback('ins-1', 'item-1', {
+        body: 'something is off',
+        authorUserId: 'cleaner-1',
+      });
+
+      const userIds = (createNotification as jest.Mock).mock.calls.map(
+        (call: unknown[]) => (call[0] as { userId: string }).userId
+      );
+      expect(new Set(userIds)).toEqual(new Set(['inspector-1', 'manager-1']));
+    });
+
+    it('does not notify author when author is also the inspector', async () => {
+      (prisma.inspection.findUnique as jest.Mock).mockResolvedValue({
+        id: 'ins-1',
+        inspectionNumber: 'INS-2026-0001',
+        inspectorUserId: 'cleaner-1',
+        account: { accountManagerId: 'manager-1' },
+      });
+
+      await createInspectionItemFeedback('ins-1', 'item-1', {
+        body: 'something is off',
+        authorUserId: 'cleaner-1',
+      });
+
+      const userIds = (createNotification as jest.Mock).mock.calls.map(
+        (call: unknown[]) => (call[0] as { userId: string }).userId
+      );
+      expect(userIds).toEqual(['manager-1']);
+    });
   });
 });

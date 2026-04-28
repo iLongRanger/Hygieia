@@ -93,6 +93,11 @@ export interface InspectionSignoffInput {
   comments?: string | null;
 }
 
+export interface InspectionItemFeedbackInput {
+  body: string;
+  authorUserId: string;
+}
+
 export interface CreateReinspectionInput {
   scheduledDate?: Date;
   inspectorUserId?: string;
@@ -281,6 +286,14 @@ const inspectionSignoffSelect = {
   signedAt: true,
   createdAt: true,
   signedByUser: { select: { id: true, fullName: true } },
+};
+
+const inspectionItemFeedbackSelect = {
+  id: true,
+  inspectionItemId: true,
+  body: true,
+  createdAt: true,
+  authorUser: { select: { id: true, fullName: true } },
 };
 
 const ELIGIBLE_INSPECTOR_ROLES = new Set(['owner', 'admin', 'manager']);
@@ -1475,4 +1488,90 @@ export async function listInspectionActivities(inspectionId: string) {
     orderBy: { createdAt: 'desc' },
   });
   return activities;
+}
+
+// ==================== Item feedback ====================
+
+export async function findInspectionItemInScope(inspectionId: string, itemId: string) {
+  const item = await prisma.inspectionItem.findFirst({
+    where: { id: itemId, inspectionId },
+    select: { id: true, inspectionId: true, itemText: true },
+  });
+  if (!item) throw new NotFoundError('Inspection item not found');
+  return item;
+}
+
+export async function listInspectionItemFeedback(inspectionId: string, itemId: string) {
+  await findInspectionItemInScope(inspectionId, itemId);
+
+  return prisma.inspectionItemFeedback.findMany({
+    where: { inspectionItemId: itemId },
+    select: inspectionItemFeedbackSelect,
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+export async function createInspectionItemFeedback(
+  inspectionId: string,
+  itemId: string,
+  input: InspectionItemFeedbackInput
+) {
+  const item = await findInspectionItemInScope(inspectionId, itemId);
+
+  const inspection = await prisma.inspection.findUnique({
+    where: { id: inspectionId },
+    select: {
+      id: true,
+      inspectionNumber: true,
+      inspectorUserId: true,
+      account: { select: { accountManagerId: true } },
+    },
+  });
+  if (!inspection) throw new NotFoundError('Inspection not found');
+
+  const feedback = await prisma.inspectionItemFeedback.create({
+    data: {
+      inspectionItemId: itemId,
+      authorUserId: input.authorUserId,
+      body: input.body,
+    },
+    select: inspectionItemFeedbackSelect,
+  });
+
+  await prisma.inspectionActivity.create({
+    data: {
+      inspectionId,
+      action: 'field_feedback_posted',
+      performedByUserId: input.authorUserId,
+      metadata: {
+        inspectionItemId: itemId,
+        feedbackId: feedback.id,
+      },
+    },
+  });
+
+  const recipients = new Set<string>();
+  if (inspection.inspectorUserId !== input.authorUserId) {
+    recipients.add(inspection.inspectorUserId);
+  }
+  const accountManagerId = inspection.account?.accountManagerId;
+  if (accountManagerId && accountManagerId !== input.authorUserId) {
+    recipients.add(accountManagerId);
+  }
+
+  for (const userId of recipients) {
+    createNotification({
+      userId,
+      type: 'inspection_feedback_posted',
+      title: `New feedback on inspection ${inspection.inspectionNumber}`,
+      body: `${feedback.authorUser.fullName} commented on "${item.itemText}"`,
+      metadata: {
+        inspectionId,
+        inspectionItemId: itemId,
+        feedbackId: feedback.id,
+      },
+    }).catch(() => undefined);
+  }
+
+  return feedback;
 }
