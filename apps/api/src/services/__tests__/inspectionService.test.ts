@@ -128,8 +128,9 @@ describe('inspectionService', () => {
 
   it('createInspection pre-populates items from template', async () => {
     const year = new Date().getFullYear();
-    (prisma.inspection.findFirst as jest.Mock).mockResolvedValue({
-      inspectionNumber: `INS-${year}-0003`,
+    (prisma.inspection.findFirst as jest.Mock).mockImplementation((args: { where?: { status?: unknown } } = {}) => {
+      if (args.where?.status) return Promise.resolve(null);
+      return Promise.resolve({ inspectionNumber: `INS-${year}-0003` });
     });
     (prisma.inspectionTemplate.findUnique as jest.Mock).mockResolvedValue({
       items: [
@@ -177,6 +178,29 @@ describe('inspectionService', () => {
         }),
       })
     );
+  });
+
+  it('createInspection blocks new inspection when one is still incomplete for the service location', async () => {
+    (prisma.inspection.findFirst as jest.Mock).mockImplementation((args: { where?: { status?: unknown } } = {}) => {
+      if (args.where?.status) {
+        return Promise.resolve({ inspectionNumber: 'INS-2026-0001' });
+      }
+      return Promise.resolve(null);
+    });
+
+    await expect(
+      createInspection({
+        templateId: 'template-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        inspectorUserId: 'user-1',
+        scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+        createdByUserId: 'admin-1',
+        skipAutoCreate: true,
+      })
+    ).rejects.toThrow(/INS-2026-0001 is still pending/);
+
+    expect(prisma.inspection.create).not.toHaveBeenCalled();
   });
 
   it('updateInspection rejects edits to completed inspections', async () => {

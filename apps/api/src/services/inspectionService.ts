@@ -612,6 +612,19 @@ export async function createInspection(input: InspectionCreateInput) {
     throw new BadRequestError('Facility does not belong to the selected account');
   }
 
+  const incompleteInspection = await prisma.inspection.findFirst({
+    where: {
+      facilityId: input.facilityId,
+      status: { in: ['scheduled', 'in_progress'] },
+    },
+    select: { inspectionNumber: true },
+  });
+  if (incompleteInspection) {
+    throw new BadRequestError(
+      `Cannot create a new inspection: ${incompleteInspection.inspectionNumber} is still pending for this service location`
+    );
+  }
+
   await assertEligibleInspectorUser(input.inspectorUserId);
 
   const inspectionNumber = await generateInspectionNumber();
