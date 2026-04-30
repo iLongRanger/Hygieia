@@ -126,6 +126,12 @@ const InspectionDetail = () => {
       setLoading(true);
       const data = await getInspection(id);
       setInspection(data);
+      // Prefill signoff signer with the assigned inspector
+      setSignoffForm((prev) =>
+        prev.signerName.trim()
+          ? prev
+          : { ...prev, signerName: data.inspectorUser?.fullName || '' }
+      );
       // Initialize item scores from existing data
       const scores: Record<string, { score: InspectionScore; rating: number | null; notes: string }> = {};
       data.items.forEach((item) => {
