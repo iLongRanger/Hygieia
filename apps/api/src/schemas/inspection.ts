@@ -156,7 +156,7 @@ export const verifyInspectionCorrectiveActionSchema = z.object({
 
 export const createInspectionSignoffSchema = z.object({
   body: z.object({
-    signerType: z.enum(['supervisor', 'client']),
+    signerType: z.enum(['inspector', 'client']),
     signerName: z.string().min(1).max(255),
     signerTitle: z.string().max(255).optional().nullable(),
     comments: z.string().max(5000).optional().nullable(),

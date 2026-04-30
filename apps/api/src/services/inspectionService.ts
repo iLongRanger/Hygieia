@@ -87,7 +87,7 @@ export interface InspectionCorrectiveActionUpdateInput {
 }
 
 export interface InspectionSignoffInput {
-  signerType: 'supervisor' | 'client';
+  signerType: 'inspector' | 'client';
   signerName: string;
   signerTitle?: string | null;
   comments?: string | null;

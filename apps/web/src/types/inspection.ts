@@ -3,7 +3,7 @@ export type InspectionScore = 'pass' | 'fail' | 'na';
 export type InspectionRating = 'excellent' | 'good' | 'fair' | 'poor' | 'failing';
 export type InspectionCorrectiveActionSeverity = 'critical' | 'major' | 'minor';
 export type InspectionCorrectiveActionStatus = 'open' | 'in_progress' | 'resolved' | 'verified' | 'canceled';
-export type InspectionSignerType = 'supervisor' | 'client';
+export type InspectionSignerType = 'inspector' | 'client';
 
 export interface InspectionTemplate {
   id: string;

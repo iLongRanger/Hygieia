@@ -114,7 +114,7 @@ const InspectionDetail = () => {
     signerTitle: string;
     comments: string;
   }>({
-    signerType: 'supervisor',
+    signerType: 'inspector',
     signerName: '',
     signerTitle: '',
     comments: '',
@@ -126,11 +126,11 @@ const InspectionDetail = () => {
       setLoading(true);
       const data = await getInspection(id);
       setInspection(data);
-      // Prefill signoff signer with the assigned inspector
+      // Prefill signoff signer with the assigned inspector when signer type is "inspector"
       setSignoffForm((prev) =>
-        prev.signerName.trim()
-          ? prev
-          : { ...prev, signerName: data.inspectorUser?.fullName || '' }
+        prev.signerType === 'inspector' && !prev.signerName.trim()
+          ? { ...prev, signerName: data.inspectorUser?.fullName || '' }
+          : prev
       );
       // Initialize item scores from existing data
       const scores: Record<string, { score: InspectionScore; rating: number | null; notes: string }> = {};
@@ -260,7 +260,7 @@ const InspectionDetail = () => {
         comments: signoffForm.comments.trim() || null,
       });
       setSignoffForm({
-        signerType: 'supervisor',
+        signerType: 'inspector',
         signerName: '',
         signerTitle: '',
         comments: '',
@@ -816,10 +816,20 @@ const InspectionDetail = () => {
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700 sm:grid-cols-2 md:grid-cols-4">
               <select
                 value={signoffForm.signerType}
-                onChange={(e) => setSignoffForm((prev) => ({ ...prev, signerType: e.target.value as InspectionSignerType }))}
+                onChange={(e) => {
+                  const nextType = e.target.value as InspectionSignerType;
+                  setSignoffForm((prev) => ({
+                    ...prev,
+                    signerType: nextType,
+                    signerName:
+                      nextType === 'inspector'
+                        ? inspection.inspectorUser?.fullName || ''
+                        : '',
+                  }));
+                }}
                 className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
               >
-                <option value="supervisor">Supervisor</option>
+                <option value="inspector">Inspector</option>
                 <option value="client">Client</option>
               </select>
               <input
