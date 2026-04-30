@@ -211,7 +211,7 @@ const InspectionForm = () => {
           setFormData((prev) => ({ ...prev, templateId: template.id }));
           await fetchTemplateDetail(template.id);
         } else {
-          toast.error('No service areas found for this contract/facility. The Hygieia checklist could not be generated.');
+          toast.error('No service areas found for this contract/service location. The Hygieia checklist could not be generated.');
         }
       } catch (err) {
         console.error('Failed to load template for contract:', err);
@@ -230,7 +230,7 @@ const InspectionForm = () => {
     e.preventDefault();
 
     if (!formData.facilityId) {
-      toast.error('Please select a facility');
+      toast.error('Please select a service location');
       return;
     }
     if (!formData.inspectorUserId) {
@@ -307,20 +307,20 @@ const InspectionForm = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column - Form fields */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Facility & Inspector */}
+          {/* Service Location & Inspector */}
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
               <Building2 className="h-4 w-4 text-primary-500" />
-              Facility & Inspector
+              Service Location & Inspector
             </h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <Select
-                  label="Facility *"
+                  label="Service Location *"
                   placeholder={
                     !isEditMode && eligibleFacilities.length === 0
                       ? 'No accounts with active contracts'
-                      : 'Select a facility'
+                      : 'Select a service location'
                   }
                   value={formData.facilityId}
                   onChange={handleFacilityChange}
@@ -429,7 +429,7 @@ const InspectionForm = () => {
             {selectedFacility ? (
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="text-surface-500 dark:text-surface-400">Facility</span>
+                  <span className="text-surface-500 dark:text-surface-400">Service Location</span>
                   <p className="font-medium text-surface-900 dark:text-surface-100">
                     {selectedFacility.name}
                   </p>
@@ -480,7 +480,7 @@ const InspectionForm = () => {
               </div>
             ) : (
               <p className="text-sm text-surface-400 dark:text-surface-500">
-                Select a facility to see summary information.
+                Select a service location to see summary information.
               </p>
             )}
           </Card>
