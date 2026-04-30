@@ -90,7 +90,7 @@ const InspectionForm = () => {
       const [facilitiesRes, usersRes, activeContractsRes] = await Promise.all([
         listFacilities({ limit: 100 }),
         listUsers({ limit: 100, status: 'active' }),
-        listContracts({ status: 'active', limit: 200 }),
+        listContracts({ status: 'active', limit: 100 }).catch(() => null),
       ]);
       const eligibleInspectorRoles = new Set(['owner', 'admin', 'manager']);
       const eligibleInspectors = (usersRes?.data || []).filter((user) =>
