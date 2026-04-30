@@ -104,7 +104,7 @@ const InspectionForm = () => {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [facilitiesRes, usersRes] = await Promise.all([
-        listFacilities({ limit: 100 }),
+        listFacilities({ limit: 100, includeResidentialLinked: true }),
         listUsers({ limit: 100, status: 'active' }),
       ]);
       const eligibleInspectorRoles = new Set(['owner', 'admin', 'manager']);
