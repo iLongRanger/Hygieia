@@ -124,7 +124,7 @@ describe('InspectionForm', () => {
     render(<InspectionForm />);
 
     expect(await screen.findByText('New Inspection')).toBeInTheDocument();
-    expect(screen.getByText('Select a service location')).toBeInTheDocument();
+    expect(screen.getByText('Select an account')).toBeInTheDocument();
   });
 
   it('validates required fields on submit', async () => {
@@ -145,6 +145,12 @@ describe('InspectionForm', () => {
     render(<InspectionForm />);
 
     await screen.findByText('New Inspection');
+
+    // Select account
+    await user.selectOptions(
+      screen.getByLabelText(/^account/i),
+      'account-1'
+    );
 
     // Select service location
     await user.selectOptions(

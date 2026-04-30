@@ -77,12 +77,26 @@ const InspectionForm = () => {
 
   // Derived values
   const selectedFacility = facilities.find((f) => f.id === formData.facilityId);
+  const eligibleAccounts = (() => {
+    if (isEditMode) {
+      const acct = facilities.find((f) => f.account.id === formData.accountId)?.account;
+      return acct ? [acct] : [];
+    }
+    const seen = new Map<string, FacilityOption['account']>();
+    for (const f of facilities) {
+      if (
+        f.account.type === locationType &&
+        activeContractAccountIds.has(f.account.id) &&
+        !seen.has(f.account.id)
+      ) {
+        seen.set(f.account.id, f.account);
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  })();
   const eligibleFacilities = isEditMode
     ? facilities
-    : facilities.filter(
-        (f) =>
-          activeContractAccountIds.has(f.account.id) && f.account.type === locationType
-      );
+    : facilities.filter((f) => f.account.id === formData.accountId);
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -223,6 +237,17 @@ const InspectionForm = () => {
     setSelectedTemplateDetail(null);
   };
 
+  const handleAccountChange = (accountId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      accountId,
+      facilityId: '',
+      contractId: null,
+      templateId: null,
+    }));
+    setSelectedTemplateDetail(null);
+  };
+
   const handleChange = (field: keyof CreateInspectionInput, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -329,19 +354,38 @@ const InspectionForm = () => {
               </div>
               <div className="md:col-span-2">
                 <Select
+                  label="Account *"
+                  placeholder={
+                    !isEditMode && eligibleAccounts.length === 0
+                      ? `No ${locationType} accounts with active contracts`
+                      : 'Select an account'
+                  }
+                  value={formData.accountId}
+                  onChange={handleAccountChange}
+                  options={eligibleAccounts.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                  }))}
+                  disabled={isEditMode || eligibleAccounts.length === 0}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Select
                   label="Service Location *"
                   placeholder={
-                    !isEditMode && eligibleFacilities.length === 0
-                      ? `No ${locationType} accounts with active contracts`
-                      : 'Select a service location'
+                    !formData.accountId
+                      ? 'Select an account first'
+                      : eligibleFacilities.length === 0
+                        ? 'No service locations for this account'
+                        : 'Select a service location'
                   }
                   value={formData.facilityId}
                   onChange={handleFacilityChange}
                   options={eligibleFacilities.map((f) => ({
                     value: f.id,
-                    label: `${f.name} — ${f.account.name}`,
+                    label: f.name,
                   }))}
-                  disabled={isEditMode || eligibleFacilities.length === 0}
+                  disabled={isEditMode || !formData.accountId || eligibleFacilities.length === 0}
                 />
               </div>
               <Select
