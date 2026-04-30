@@ -100,24 +100,32 @@ const InspectionForm = () => {
 
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [facilitiesRes, usersRes, activeContractsRes] = await Promise.all([
+      const [facilitiesRes, usersRes] = await Promise.all([
         listFacilities({ limit: 100 }),
         listUsers({ limit: 100, status: 'active' }),
-        listContracts({ status: 'active', limit: 100 }).catch(() => null),
       ]);
       const eligibleInspectorRoles = new Set(['owner', 'admin', 'manager']);
       const eligibleInspectors = (usersRes?.data || []).filter((user) =>
         (user.roles || []).some((assignment) => eligibleInspectorRoles.has(assignment.role.key))
       );
-      const accountIds = new Set(
-        (activeContractsRes?.data || [])
-          .map((c) => c.account?.id)
-          .filter((id): id is string => Boolean(id))
-      );
       setFacilities(facilitiesRes?.data || []);
       setUsers(eligibleInspectors);
+
+      let page = 1;
+      const accountIds = new Set<string>();
+      // Paginate through active contracts so accounts beyond the first 100 still surface.
+      while (true) {
+        const res = await listContracts({ status: 'active', limit: 100, page });
+        for (const c of res?.data || []) {
+          if (c.account?.id) accountIds.add(c.account.id);
+        }
+        const totalPages = res?.pagination?.totalPages ?? 1;
+        if (page >= totalPages) break;
+        page += 1;
+      }
       setActiveContractAccountIds(accountIds);
-    } catch {
+    } catch (err) {
+      console.error('Failed to load inspection form reference data:', err);
       toast.error('Failed to load reference data');
     }
   }, []);
