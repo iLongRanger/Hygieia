@@ -65,6 +65,7 @@ const mockActiveContract = {
   contractNumber: 'CONT-001',
   title: 'Monthly Service',
   account: { id: 'account-1', name: 'Acme Corporation' },
+  facility: { id: 'facility-1', name: 'Main Office' },
 };
 
 const mockUserOption = {

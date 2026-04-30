@@ -59,6 +59,7 @@ const InspectionForm = () => {
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [activeContractAccountIds, setActiveContractAccountIds] = useState<Set<string>>(new Set());
+  const [activeContractFacilityIds, setActiveContractFacilityIds] = useState<Set<string>>(new Set());
   const [locationType, setLocationType] = useState<InspectionLocationType>('commercial');
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<InspectionTemplateDetail | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
@@ -96,7 +97,9 @@ const InspectionForm = () => {
   })();
   const eligibleFacilities = isEditMode
     ? facilities
-    : facilities.filter((f) => f.account.id === formData.accountId);
+    : facilities.filter(
+        (f) => f.account.id === formData.accountId && activeContractFacilityIds.has(f.id)
+      );
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -113,17 +116,20 @@ const InspectionForm = () => {
 
       let page = 1;
       const accountIds = new Set<string>();
+      const facilityIds = new Set<string>();
       // Paginate through active contracts so accounts beyond the first 100 still surface.
       while (true) {
         const res = await listContracts({ status: 'active', limit: 100, page });
         for (const c of res?.data || []) {
           if (c.account?.id) accountIds.add(c.account.id);
+          if (c.facility?.id) facilityIds.add(c.facility.id);
         }
         const totalPages = res?.pagination?.totalPages ?? 1;
         if (page >= totalPages) break;
         page += 1;
       }
       setActiveContractAccountIds(accountIds);
+      setActiveContractFacilityIds(facilityIds);
     } catch (err) {
       console.error('Failed to load inspection form reference data:', err);
       toast.error('Failed to load reference data');
