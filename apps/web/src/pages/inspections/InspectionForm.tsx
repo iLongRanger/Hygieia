@@ -63,6 +63,7 @@ const InspectionForm = () => {
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [contracts, setContracts] = useState<ContractOption[]>([]);
+  const [activeContractAccountIds, setActiveContractAccountIds] = useState<Set<string>>(new Set());
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<InspectionTemplateDetail | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
@@ -80,19 +81,29 @@ const InspectionForm = () => {
 
   // Derived values
   const selectedFacility = facilities.find((f) => f.id === formData.facilityId);
+  const eligibleFacilities = isEditMode
+    ? facilities
+    : facilities.filter((f) => activeContractAccountIds.has(f.account.id));
 
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [facilitiesRes, usersRes] = await Promise.all([
+      const [facilitiesRes, usersRes, activeContractsRes] = await Promise.all([
         listFacilities({ limit: 100 }),
         listUsers({ limit: 100, status: 'active' }),
+        listContracts({ status: 'active', limit: 200 }),
       ]);
       const eligibleInspectorRoles = new Set(['owner', 'admin', 'manager']);
       const eligibleInspectors = (usersRes?.data || []).filter((user) =>
         (user.roles || []).some((assignment) => eligibleInspectorRoles.has(assignment.role.key))
       );
+      const accountIds = new Set(
+        (activeContractsRes?.data || [])
+          .map((c) => c.account?.id)
+          .filter((id): id is string => Boolean(id))
+      );
       setFacilities(facilitiesRes?.data || []);
       setUsers(eligibleInspectors);
+      setActiveContractAccountIds(accountIds);
     } catch {
       toast.error('Failed to load reference data');
     }
@@ -306,14 +317,18 @@ const InspectionForm = () => {
               <div className="md:col-span-2">
                 <Select
                   label="Facility *"
-                  placeholder="Select a facility"
+                  placeholder={
+                    !isEditMode && eligibleFacilities.length === 0
+                      ? 'No accounts with active contracts'
+                      : 'Select a facility'
+                  }
                   value={formData.facilityId}
                   onChange={handleFacilityChange}
-                  options={facilities.map((f) => ({
+                  options={eligibleFacilities.map((f) => ({
                     value: f.id,
                     label: `${f.name} — ${f.account.name}`,
                   }))}
-                  disabled={isEditMode}
+                  disabled={isEditMode || eligibleFacilities.length === 0}
                 />
               </div>
               <Select
