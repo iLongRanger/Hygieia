@@ -705,7 +705,42 @@ export async function createInspection(input: InspectionCreateInput) {
     }).catch(() => undefined);
   }
 
+  // Notify field workers assigned to the contract (cleaner / subcontractor + team)
+  const fieldRecipients = await getInspectionFieldRecipients(
+    input.contractId ?? null,
+    new Set([input.inspectorUserId, input.createdByUserId])
+  );
+  for (const userId of fieldRecipients) {
+    createNotification({
+      userId,
+      type: 'inspection_assigned',
+      title: `Inspection ${inspectionNumber} scheduled at your service location`,
+      body: `Scheduled for ${input.scheduledDate.toLocaleDateString()}`,
+      metadata: { inspectionId: inspection.id, facilityId: input.facilityId },
+    }).catch(() => undefined);
+  }
+
   return inspection;
+}
+
+async function getInspectionFieldRecipients(
+  contractId: string | null,
+  exclude: Set<string>
+): Promise<string[]> {
+  if (!contractId) return [];
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      assignedToUserId: true,
+      assignedTeam: { select: { users: { select: { id: true } } } },
+    },
+  });
+  if (!contract) return [];
+  const recipients = new Set<string>();
+  if (contract.assignedToUserId) recipients.add(contract.assignedToUserId);
+  for (const u of contract.assignedTeam?.users ?? []) recipients.add(u.id);
+  for (const id of exclude) recipients.delete(id);
+  return Array.from(recipients);
 }
 
 export async function updateInspection(id: string, input: InspectionUpdateInput) {
@@ -917,6 +952,26 @@ export async function completeInspection(id: string, input: InspectionCompleteIn
         },
       },
     });
+  }
+
+  // Notify field workers (cleaner / subcontractor + team) and inspector that the inspection completed
+  const completionRecipients = new Set<string>();
+  if (existing.inspectorUserId && existing.inspectorUserId !== input.userId) {
+    completionRecipients.add(existing.inspectorUserId);
+  }
+  const fieldRecipients = await getInspectionFieldRecipients(
+    existing.contractId ?? null,
+    new Set([input.userId])
+  );
+  for (const userId of fieldRecipients) completionRecipients.add(userId);
+  for (const userId of completionRecipients) {
+    createNotification({
+      userId,
+      type: 'inspection_completed',
+      title: `Inspection ${existing.inspectionNumber} completed`,
+      body: `Overall rating: ${rating}`,
+      metadata: { inspectionId: id, facilityId: existing.facilityId },
+    }).catch(() => undefined);
   }
 
   return getInspectionById(inspection.id);
