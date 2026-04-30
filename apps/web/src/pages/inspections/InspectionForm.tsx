@@ -31,8 +31,10 @@ import type { CreateInspectionInput, UpdateInspectionInput, InspectionTemplateDe
 interface FacilityOption {
   id: string;
   name: string;
-  account: { id: string; name: string };
+  account: { id: string; name: string; type: string };
 }
+
+type InspectionLocationType = 'commercial' | 'residential';
 
 interface UserOption {
   id: string;
@@ -43,12 +45,6 @@ interface UserOption {
       key: string;
     };
   }[];
-}
-
-interface ContractOption {
-  id: string;
-  contractNumber: string;
-  title: string;
 }
 
 const InspectionForm = () => {
@@ -62,8 +58,8 @@ const InspectionForm = () => {
   // Reference data
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
-  const [contracts, setContracts] = useState<ContractOption[]>([]);
   const [activeContractAccountIds, setActiveContractAccountIds] = useState<Set<string>>(new Set());
+  const [locationType, setLocationType] = useState<InspectionLocationType>('commercial');
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<InspectionTemplateDetail | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
@@ -83,7 +79,10 @@ const InspectionForm = () => {
   const selectedFacility = facilities.find((f) => f.id === formData.facilityId);
   const eligibleFacilities = isEditMode
     ? facilities
-    : facilities.filter((f) => activeContractAccountIds.has(f.account.id));
+    : facilities.filter(
+        (f) =>
+          activeContractAccountIds.has(f.account.id) && f.account.type === locationType
+      );
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -109,16 +108,13 @@ const InspectionForm = () => {
     }
   }, []);
 
-  const fetchContractsForFacility = useCallback(async (facilityId: string) => {
-    if (!facilityId) {
-      setContracts([]);
-      return;
-    }
+  const fetchActiveContractIdForFacility = useCallback(async (facilityId: string) => {
+    if (!facilityId) return null;
     try {
       const res = await listContracts({ facilityId, status: 'active', limit: 100 });
-      setContracts(res?.data || []);
+      return res?.data?.[0]?.id ?? null;
     } catch {
-      setContracts([]);
+      return null;
     }
   }, []);
 
@@ -154,8 +150,6 @@ const InspectionForm = () => {
           scheduledDate: inspection.scheduledDate.split('T')[0],
           notes: inspection.notes || null,
         });
-        // Load contracts for the facility
-        await fetchContractsForFacility(inspection.facilityId);
         // Load template detail if one exists
         if (inspection.templateId) {
           await fetchTemplateDetail(inspection.templateId);
@@ -165,7 +159,7 @@ const InspectionForm = () => {
         navigate('/inspections');
       }
     },
-    [navigate, fetchContractsForFacility, fetchTemplateDetail]
+    [navigate, fetchTemplateDetail]
   );
 
   useEffect(() => {
@@ -180,7 +174,7 @@ const InspectionForm = () => {
     loadData();
   }, [fetchReferenceData, fetchInspection, isEditMode, id]);
 
-  const handleFacilityChange = (facilityId: string) => {
+  const handleFacilityChange = async (facilityId: string) => {
     const facility = facilities.find((f) => f.id === facilityId);
     setFormData((prev) => ({
       ...prev,
@@ -191,35 +185,42 @@ const InspectionForm = () => {
       templateId: null,
     }));
     setSelectedTemplateDetail(null);
-    fetchContractsForFacility(facilityId);
+
+    if (!facilityId) return;
+
+    setLoadingTemplate(true);
+    try {
+      const contractId = await fetchActiveContractIdForFacility(facilityId);
+      if (!contractId) {
+        toast.error('No active contract found for this service location.');
+        return;
+      }
+      setFormData((prev) => ({ ...prev, contractId }));
+      const template = await getTemplateForContract(contractId);
+      if (template) {
+        setFormData((prev) => ({ ...prev, templateId: template.id }));
+        await fetchTemplateDetail(template.id);
+      } else {
+        toast.error('No service areas found for this service location. The Hygieia checklist could not be generated.');
+      }
+    } catch (err) {
+      console.error('Failed to load template for service location:', err);
+      toast.error('Failed to generate inspection checklist');
+    } finally {
+      setLoadingTemplate(false);
+    }
   };
 
-  const handleContractChange = async (contractId: string) => {
+  const handleLocationTypeChange = (next: string) => {
+    setLocationType(next as InspectionLocationType);
     setFormData((prev) => ({
       ...prev,
-      contractId: contractId || null,
+      facilityId: '',
+      accountId: '',
+      contractId: null,
       templateId: null,
     }));
     setSelectedTemplateDetail(null);
-
-    // Auto-generate area-first template from contract/facility data
-    if (contractId) {
-      setLoadingTemplate(true);
-      try {
-        const template = await getTemplateForContract(contractId);
-        if (template) {
-          setFormData((prev) => ({ ...prev, templateId: template.id }));
-          await fetchTemplateDetail(template.id);
-        } else {
-          toast.error('No service areas found for this contract/service location. The Hygieia checklist could not be generated.');
-        }
-      } catch (err) {
-        console.error('Failed to load template for contract:', err);
-        toast.error('Failed to generate inspection checklist');
-      } finally {
-        setLoadingTemplate(false);
-      }
-    }
   };
 
   const handleChange = (field: keyof CreateInspectionInput, value: unknown) => {
@@ -316,10 +317,22 @@ const InspectionForm = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <Select
+                  label="Type *"
+                  value={locationType}
+                  onChange={handleLocationTypeChange}
+                  options={[
+                    { value: 'commercial', label: 'Commercial' },
+                    { value: 'residential', label: 'Residential' },
+                  ]}
+                  disabled={isEditMode}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Select
                   label="Service Location *"
                   placeholder={
                     !isEditMode && eligibleFacilities.length === 0
-                      ? 'No accounts with active contracts'
+                      ? `No ${locationType} accounts with active contracts`
                       : 'Select a service location'
                   }
                   value={formData.facilityId}
@@ -340,20 +353,6 @@ const InspectionForm = () => {
                   value: u.id,
                   label: u.fullName,
                 }))}
-              />
-              <Select
-                label="Contract *"
-                placeholder="Select an active contract"
-                value={formData.contractId || ''}
-                onChange={(val) => handleContractChange(val)}
-                options={[
-                  { value: '', label: 'None' },
-                  ...contracts.map((c) => ({
-                    value: c.id,
-                    label: `${c.contractNumber} — ${c.title}`,
-                  })),
-                ]}
-                disabled={isEditMode || !formData.facilityId}
               />
             </div>
           </Card>
@@ -445,14 +444,6 @@ const InspectionForm = () => {
                     <span className="text-surface-500 dark:text-surface-400">Inspector</span>
                     <p className="font-medium text-surface-900 dark:text-surface-100">
                       {users.find((u) => u.id === formData.inspectorUserId)?.fullName}
-                    </p>
-                  </div>
-                )}
-                {formData.contractId && (
-                  <div>
-                    <span className="text-surface-500 dark:text-surface-400">Contract</span>
-                    <p className="font-medium text-surface-900 dark:text-surface-100">
-                      {contracts.find((c) => c.id === formData.contractId)?.contractNumber || formData.contractId}
                     </p>
                   </div>
                 )}

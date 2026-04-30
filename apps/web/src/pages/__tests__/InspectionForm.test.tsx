@@ -18,10 +18,13 @@ vi.mock('react-router-dom', async () => {
 
 const listFacilitiesMock = vi.fn();
 const listUsersMock = vi.fn();
+const listContractsMock = vi.fn();
 const listInspectionTemplatesMock = vi.fn();
 const createInspectionMock = vi.fn();
 const updateInspectionMock = vi.fn();
 const getInspectionMock = vi.fn();
+const getInspectionTemplateMock = vi.fn();
+const getTemplateForContractMock = vi.fn();
 
 vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
@@ -31,11 +34,17 @@ vi.mock('../../lib/users', () => ({
   listUsers: (...args: unknown[]) => listUsersMock(...args),
 }));
 
+vi.mock('../../lib/contracts', () => ({
+  listContracts: (...args: unknown[]) => listContractsMock(...args),
+}));
+
 vi.mock('../../lib/inspections', () => ({
   listInspectionTemplates: (...args: unknown[]) => listInspectionTemplatesMock(...args),
   createInspection: (...args: unknown[]) => createInspectionMock(...args),
   updateInspection: (...args: unknown[]) => updateInspectionMock(...args),
   getInspection: (...args: unknown[]) => getInspectionMock(...args),
+  getInspectionTemplate: (...args: unknown[]) => getInspectionTemplateMock(...args),
+  getTemplateForContract: (...args: unknown[]) => getTemplateForContractMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -48,6 +57,13 @@ vi.mock('react-hot-toast', () => ({
 const mockFacility = {
   id: 'facility-1',
   name: 'Main Office',
+  account: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+};
+
+const mockActiveContract = {
+  id: 'contract-1',
+  contractNumber: 'CONT-001',
+  title: 'Monthly Service',
   account: { id: 'account-1', name: 'Acme Corporation' },
 };
 
@@ -70,9 +86,21 @@ describe('InspectionForm', () => {
     listUsersMock.mockResolvedValue(
       mockPaginatedResponse([mockUserOption])
     );
+    listContractsMock.mockResolvedValue(
+      mockPaginatedResponse([mockActiveContract])
+    );
     listInspectionTemplatesMock.mockResolvedValue(
       mockPaginatedResponse([{ id: 'template-1', name: 'Standard Checklist' }])
     );
+    getInspectionTemplateMock.mockResolvedValue({
+      id: 'template-1',
+      name: 'Standard Checklist',
+      items: [],
+    });
+    getTemplateForContractMock.mockResolvedValue({
+      id: 'template-1',
+      name: 'Standard Checklist',
+    });
     createInspectionMock.mockResolvedValue(mockInspectionDetail());
     updateInspectionMock.mockResolvedValue(mockInspectionDetail());
     getInspectionMock.mockResolvedValue(
@@ -96,7 +124,7 @@ describe('InspectionForm', () => {
     render(<InspectionForm />);
 
     expect(await screen.findByText('New Inspection')).toBeInTheDocument();
-    expect(screen.getByText('Select a facility')).toBeInTheDocument();
+    expect(screen.getByText('Select a service location')).toBeInTheDocument();
   });
 
   it('validates required fields on submit', async () => {
@@ -108,7 +136,7 @@ describe('InspectionForm', () => {
 
     await user.click(screen.getByRole('button', { name: /create inspection/i }));
 
-    expect(toast.error).toHaveBeenCalledWith('Please select a facility');
+    expect(toast.error).toHaveBeenCalledWith('Please select a service location');
     expect(createInspectionMock).not.toHaveBeenCalled();
   });
 
@@ -118,9 +146,9 @@ describe('InspectionForm', () => {
 
     await screen.findByText('New Inspection');
 
-    // Select facility
+    // Select service location
     await user.selectOptions(
-      screen.getByLabelText(/facility/i),
+      screen.getByLabelText(/service location/i),
       'facility-1'
     );
 
