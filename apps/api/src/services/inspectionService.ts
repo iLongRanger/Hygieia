@@ -594,6 +594,43 @@ async function cancelLinkedInspectionAppointment(inspectionId: string) {
   });
 }
 
+async function completeLinkedInspectionAppointment(inspectionId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { inspectionId },
+    select: { id: true, status: true },
+  });
+
+  if (!appointment || ['completed', 'canceled', 'rescheduled'].includes(appointment.status)) {
+    return;
+  }
+
+  await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: { status: 'completed' },
+  });
+}
+
+// Self-heal: cancel any stale scheduled inspection appointments on this facility
+// whose linked inspection is no longer active (completed/canceled). Past data may
+// have completed inspections whose appointments were never closed, which would
+// otherwise block new inspections via the appointment duplicate check.
+async function clearStaleInspectionAppointments(facilityId: string) {
+  const stale = await prisma.appointment.findMany({
+    where: {
+      facilityId,
+      type: 'inspection',
+      status: 'scheduled',
+      inspection: { status: { in: ['completed', 'canceled'] } },
+    },
+    select: { id: true },
+  });
+  if (stale.length === 0) return;
+  await prisma.appointment.updateMany({
+    where: { id: { in: stale.map((a) => a.id) } },
+    data: { status: 'canceled' },
+  });
+}
+
 export async function createInspection(input: InspectionCreateInput) {
   const facility = await prisma.facility.findUnique({
     where: { id: input.facilityId },
@@ -690,6 +727,7 @@ export async function createInspection(input: InspectionCreateInput) {
   });
 
   if (!input.skipAutoCreate) {
+    await clearStaleInspectionAppointments(input.facilityId);
     try {
       await createLinkedInspectionAppointment({
         inspectionId: inspection.id,
@@ -966,6 +1004,8 @@ export async function completeInspection(id: string, input: InspectionCompleteIn
       },
     });
   }
+
+  await completeLinkedInspectionAppointment(id);
 
   // Notify field workers (cleaner / subcontractor + team) and inspector that the inspection completed
   const completionRecipients = new Set<string>();

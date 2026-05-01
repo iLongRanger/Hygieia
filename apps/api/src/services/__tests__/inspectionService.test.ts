@@ -65,6 +65,15 @@ jest.mock('../../lib/prisma', () => ({
     user: {
       findUnique: jest.fn(),
     },
+    appointment: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    contract: {
+      findUnique: jest.fn(),
+    },
   },
 }));
 
@@ -82,6 +91,9 @@ describe('inspectionService', () => {
       archivedAt: null,
       status: 'active',
     });
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.appointment.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue(null);
   });
 
   it('listInspections applies date and score filters with pagination', async () => {
