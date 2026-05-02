@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="Hygieia — a quiet system for the work of clean spaces" width="100%" />
+</p>
+
 # Hygieia
 
 Single-tenant cleaning operations platform covering CRM, sales, contracts, field operations, inspections, workforce management, billing, and finance. The system supports both commercial and residential business lines.
