@@ -51,6 +51,8 @@ export const PERMISSIONS = {
   CONTRACTS_ADMIN: 'contracts_admin',
   APPOINTMENTS_READ: 'appointments_read',
   APPOINTMENTS_WRITE: 'appointments_write',
+  NOTIFICATIONS_READ: 'notifications_read',
+  NOTIFICATIONS_WRITE: 'notifications_write',
   JOBS_READ: 'jobs_read',
   JOBS_WRITE: 'jobs_write',
   JOBS_ADMIN: 'jobs_admin',

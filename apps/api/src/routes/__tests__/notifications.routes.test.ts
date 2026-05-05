@@ -4,15 +4,30 @@ import type { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as notificationService from '../../services/notificationService';
 
+let mockAuthUser = { id: 'user-1', role: 'owner' };
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = { id: 'user-1', role: 'owner' };
+    req.user = mockAuthUser;
     next();
   },
 }));
 
 jest.mock('../../middleware/rbac', () => ({
-  requireAnyRole: (_req: any, _res: any, next: any) => next(),
+  requirePermission:
+    (permission: string) =>
+    (req: any, res: any, next: any) => {
+      const rolePermissions: Record<string, string[]> = {
+        owner: ['all'],
+        cleaner: ['notifications_read'],
+      };
+      const permissions = rolePermissions[req.user?.role] ?? [];
+      if (!permissions.includes('all') && !permissions.includes(permission)) {
+        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } });
+        return;
+      }
+      next();
+    },
 }));
 
 jest.mock('../../services/notificationService');
@@ -22,6 +37,7 @@ describe('Notifications Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockAuthUser = { id: 'user-1', role: 'owner' };
     app = createTestApp();
     const routes = (await import('../notifications')).default;
     setupTestRoutes(app, routes, '/api/v1/notifications');
@@ -40,6 +56,17 @@ describe('Notifications Routes', () => {
 
   it('GET / should return 422 for invalid query', async () => {
     await request(app).get('/api/v1/notifications?limit=0').expect(422);
+  });
+
+  it('PATCH /:id/read should return 403 without notification write permission', async () => {
+    mockAuthUser = { id: 'cleaner-1', role: 'cleaner' };
+
+    await request(app)
+      .patch('/api/v1/notifications/notification-1/read')
+      .send({ read: true })
+      .expect(403);
+
+    expect(notificationService.markNotificationRead).not.toHaveBeenCalled();
   });
 
   it('PATCH /:id/read should mark notification read', async () => {

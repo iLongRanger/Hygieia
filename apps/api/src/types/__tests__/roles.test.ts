@@ -53,6 +53,14 @@ describe('roles utilities', () => {
     });
   });
 
+  describe('notification permissions', () => {
+    it('grants self-notification read and write to every app role', () => {
+      expect(hasPermission('manager', 'notifications_read')).toBe(true);
+      expect(hasPermission('cleaner', 'notifications_write')).toBe(true);
+      expect(hasPermission('subcontractor', 'notifications_read')).toBe(true);
+    });
+  });
+
   describe('isRoleAtLeast', () => {
     it('evaluates role hierarchy correctly', () => {
       expect(isRoleAtLeast('admin', 'manager')).toBe(true);

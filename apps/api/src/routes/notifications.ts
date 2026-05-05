@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireAnyRole } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { ValidationError } from '../middleware/errorHandler';
+import { PERMISSIONS } from '../types';
 import type { ZodError } from 'zod';
 import {
   listNotificationsQuerySchema,
@@ -32,7 +33,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.NOTIFICATIONS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listNotificationsQuerySchema.safeParse(req.query);
@@ -60,7 +61,7 @@ router.get(
 router.get(
   '/unread-count',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.NOTIFICATIONS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
@@ -78,7 +79,7 @@ router.get(
 router.patch(
   '/:id/read',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.NOTIFICATIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = markNotificationReadSchema.safeParse(req.body);
@@ -104,7 +105,7 @@ router.patch(
 router.post(
   '/mark-all-read',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.NOTIFICATIONS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
