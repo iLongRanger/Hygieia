@@ -387,7 +387,11 @@ async function main() {
     console.log('Default Super Admin Created Successfully!')
     console.log('=================================================')
     console.log(`Email:    ${superAdminEmail}`)
-    console.log(`Password: ${defaultPassword}`)
+    if (process.env.SHOW_SEED_CREDENTIALS === 'true') {
+      console.log(`Password: ${defaultPassword}`)
+    } else {
+      console.log('Password: [hidden] set SHOW_SEED_CREDENTIALS=true to print in local development')
+    }
     console.log('=================================================')
     console.log('IMPORTANT: Change this password after first login!')
     console.log('=================================================\n')
