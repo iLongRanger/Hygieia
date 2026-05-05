@@ -26,9 +26,19 @@ describe('dashboardService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.lead.count as jest.Mock).mockResolvedValue(0);
+    (prisma.lead.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.lead.aggregate as jest.Mock).mockResolvedValue({ _sum: { estimatedValue: 0 } });
     (prisma.account.count as jest.Mock).mockResolvedValue(0);
     (prisma.contract.count as jest.Mock).mockResolvedValue(0);
+    (prisma.contract.aggregate as jest.Mock).mockResolvedValue({ _sum: { monthlyValue: 0 } });
+    (prisma.contract.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.contract.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.proposal.count as jest.Mock).mockResolvedValue(0);
+    (prisma.proposal.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.appointment.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.proposalActivity.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.contractActivity.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.accountActivity.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.user.count as jest.Mock).mockResolvedValue(0);
     (prisma.team.count as jest.Mock).mockResolvedValue(0);
     (prisma.job.count as jest.Mock).mockResolvedValue(0);
@@ -107,5 +117,42 @@ describe('dashboardService', () => {
     expect(result.upcomingAppointments).toEqual([]);
     expect(result.recentActivity).toEqual([]);
     expect(result.revenueByMonth).toHaveLength(6);
+  });
+
+  it('getDashboardStats scopes manager dashboard queries to managed records', async () => {
+    await dashboardService.getDashboardStats({
+      userRole: 'manager',
+      userId: 'manager-1',
+    });
+
+    expect(prisma.lead.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          archivedAt: null,
+          OR: expect.arrayContaining([
+            { createdByUserId: 'manager-1' },
+            { assignedToUserId: 'manager-1' },
+            { convertedToAccount: { is: { accountManagerId: 'manager-1' } } },
+          ]),
+        }),
+      })
+    );
+    expect(prisma.account.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          archivedAt: null,
+          accountManagerId: 'manager-1',
+        }),
+      })
+    );
+    expect(prisma.proposal.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          account: { accountManagerId: 'manager-1' },
+        }),
+      })
+    );
+    expect(prisma.user.count).not.toHaveBeenCalled();
+    expect(prisma.team.count).not.toHaveBeenCalled();
   });
 });

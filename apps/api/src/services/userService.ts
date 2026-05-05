@@ -42,6 +42,10 @@ export interface UserUpdateInput {
   hourlyPayRate?: number | null;
 }
 
+export interface UserFormatOptions {
+  includeCompensation?: boolean;
+}
+
 function readCalendarColor(preferences: unknown): string | null {
   if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
     return null;
@@ -92,7 +96,7 @@ export type UserWithRoles = Prisma.UserGetPayload<{
   select: typeof userSelect;
 }>;
 
-function formatUser(user: UserWithRoles) {
+function formatUser(user: UserWithRoles, options: UserFormatOptions = { includeCompensation: true }) {
   const primaryRole = user.roles[0]?.role;
   const roleKeys = user.roles.map((ur) => ur.role.key);
   const workforceType = roleKeys.includes('subcontractor')
@@ -101,7 +105,25 @@ function formatUser(user: UserWithRoles) {
       ? 'internal_employee'
       : 'office';
 
-  return {
+  const formatted: {
+    id: string;
+    email: string;
+    fullName: string;
+    phone: string | null;
+    address: Prisma.JsonValue;
+    avatarUrl: string | null;
+    status: string;
+    lastLoginAt: Date | null;
+    preferences: Prisma.JsonValue;
+    calendarColor: string | null;
+    workforceType: string;
+    createdAt: Date;
+    updatedAt: Date;
+    role: { id: string; key: string; label: string } | null;
+    roles: { id: string; role: { id: string; key: string; label: string } }[];
+    payType?: 'hourly' | 'percentage' | null;
+    hourlyPayRate?: number | null;
+  } = {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
@@ -113,8 +135,6 @@ function formatUser(user: UserWithRoles) {
     preferences: user.preferences,
     calendarColor: readCalendarColor(user.preferences),
     workforceType,
-    payType: user.payType,
-    hourlyPayRate: user.hourlyPayRate != null ? Number(user.hourlyPayRate) : null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     role: primaryRole
@@ -129,10 +149,18 @@ function formatUser(user: UserWithRoles) {
       },
     })),
   };
+
+  if (options.includeCompensation !== false) {
+    formatted.payType = user.payType;
+    formatted.hourlyPayRate = user.hourlyPayRate != null ? Number(user.hourlyPayRate) : null;
+  }
+
+  return formatted;
 }
 
 export async function listUsers(
-  params: UserListParams
+  params: UserListParams,
+  options: UserFormatOptions = { includeCompensation: true }
 ): Promise<PaginatedResult<ReturnType<typeof formatUser>>> {
   const {
     page = 1,
@@ -188,7 +216,7 @@ export async function listUsers(
   ]);
 
   return {
-    data: users.map(formatUser),
+    data: users.map((user) => formatUser(user, options)),
     pagination: {
       page,
       limit,
@@ -198,7 +226,7 @@ export async function listUsers(
   };
 }
 
-export async function getUserById(id: string) {
+export async function getUserById(id: string, options: UserFormatOptions = { includeCompensation: true }) {
   const user = await prisma.user.findUnique({
     where: { id },
     select: userSelect,
@@ -208,7 +236,7 @@ export async function getUserById(id: string) {
     return null;
   }
 
-  return formatUser(user);
+  return formatUser(user, options);
 }
 
 export async function getUserByEmail(email: string) {

@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 
 export type TimePeriod = 'week' | 'month' | 'quarter';
@@ -135,11 +136,66 @@ function calcChange(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100);
 }
 
+function getManagerLeadWhere(userId?: string): Prisma.LeadWhereInput {
+  if (!userId) return {};
+  return {
+    OR: [
+      { createdByUserId: userId },
+      { assignedToUserId: userId },
+      { convertedToAccount: { is: { accountManagerId: userId } } },
+    ],
+  };
+}
+
+function getManagerAccountWhere(userId?: string): Prisma.AccountWhereInput {
+  return userId ? { accountManagerId: userId } : {};
+}
+
+function getManagerAccountRelationWhere(userId?: string): { account?: { accountManagerId: string } } {
+  return userId ? { account: { accountManagerId: userId } } : {};
+}
+
+function getManagerJobWhere(userId?: string): Prisma.JobWhereInput {
+  return userId ? { account: { accountManagerId: userId } } : {};
+}
+
+function getManagerInspectionWhere(userId?: string): Prisma.InspectionWhereInput {
+  return userId ? { account: { accountManagerId: userId } } : {};
+}
+
+function getManagerTimeEntryWhere(userId?: string): Prisma.TimeEntryWhereInput {
+  if (!userId) return {};
+  return {
+    OR: [
+      { job: { is: { account: { accountManagerId: userId } } } },
+      { contract: { is: { account: { accountManagerId: userId } } } },
+      { facility: { is: { account: { accountManagerId: userId } } } },
+    ],
+  };
+}
+
+function getManagerAppointmentWhere(userId?: string): Prisma.AppointmentWhereInput {
+  if (!userId) return {};
+  return {
+    OR: [
+      { createdByUserId: userId },
+      { assignedToUserId: userId },
+      { account: { is: { accountManagerId: userId } } },
+      { facility: { is: { account: { accountManagerId: userId } } } },
+      { lead: { is: getManagerLeadWhere(userId) } },
+    ],
+  };
+}
+
 async function getComparisonData(
   periodStart: Date,
-  periodEnd: Date
+  periodEnd: Date,
+  managerUserId?: string
 ): Promise<PeriodComparison> {
   const prev = getPreviousPeriodDates(periodStart, periodEnd);
+  const leadScope = getManagerLeadWhere(managerUserId);
+  const accountScope = getManagerAccountWhere(managerUserId);
+  const accountRelationScope = getManagerAccountRelationWhere(managerUserId);
 
   const [
     newLeads, newLeadsPrev,
@@ -149,17 +205,17 @@ async function getComparisonData(
     acceptedPrev, rejectedPrev,
     mrrAgg,
   ] = await Promise.all([
-    prisma.lead.count({ where: { archivedAt: null, createdAt: { gte: periodStart, lte: periodEnd } } }),
-    prisma.lead.count({ where: { archivedAt: null, createdAt: { gte: prev.start, lt: prev.end } } }),
-    prisma.account.count({ where: { archivedAt: null, createdAt: { gte: periodStart, lte: periodEnd } } }),
-    prisma.account.count({ where: { archivedAt: null, createdAt: { gte: prev.start, lt: prev.end } } }),
-    prisma.proposal.count({ where: { sentAt: { gte: periodStart, lte: periodEnd }, archivedAt: null } }),
-    prisma.proposal.count({ where: { sentAt: { gte: prev.start, lt: prev.end }, archivedAt: null } }),
-    prisma.proposal.count({ where: { acceptedAt: { gte: periodStart, lte: periodEnd }, archivedAt: null } }),
-    prisma.proposal.count({ where: { rejectedAt: { gte: periodStart, lte: periodEnd }, archivedAt: null } }),
-    prisma.proposal.count({ where: { acceptedAt: { gte: prev.start, lt: prev.end }, archivedAt: null } }),
-    prisma.proposal.count({ where: { rejectedAt: { gte: prev.start, lt: prev.end }, archivedAt: null } }),
-    prisma.contract.aggregate({ _sum: { monthlyValue: true }, where: { status: 'active' } }),
+    prisma.lead.count({ where: { archivedAt: null, createdAt: { gte: periodStart, lte: periodEnd }, ...leadScope } }),
+    prisma.lead.count({ where: { archivedAt: null, createdAt: { gte: prev.start, lt: prev.end }, ...leadScope } }),
+    prisma.account.count({ where: { archivedAt: null, createdAt: { gte: periodStart, lte: periodEnd }, ...accountScope } }),
+    prisma.account.count({ where: { archivedAt: null, createdAt: { gte: prev.start, lt: prev.end }, ...accountScope } }),
+    prisma.proposal.count({ where: { sentAt: { gte: periodStart, lte: periodEnd }, archivedAt: null, ...accountRelationScope } }),
+    prisma.proposal.count({ where: { sentAt: { gte: prev.start, lt: prev.end }, archivedAt: null, ...accountRelationScope } }),
+    prisma.proposal.count({ where: { acceptedAt: { gte: periodStart, lte: periodEnd }, archivedAt: null, ...accountRelationScope } }),
+    prisma.proposal.count({ where: { rejectedAt: { gte: periodStart, lte: periodEnd }, archivedAt: null, ...accountRelationScope } }),
+    prisma.proposal.count({ where: { acceptedAt: { gte: prev.start, lt: prev.end }, archivedAt: null, ...accountRelationScope } }),
+    prisma.proposal.count({ where: { rejectedAt: { gte: prev.start, lt: prev.end }, archivedAt: null, ...accountRelationScope } }),
+    prisma.contract.aggregate({ _sum: { monthlyValue: true }, where: { status: 'active', ...accountRelationScope } }),
   ]);
 
   const totalDecidedCur = acceptedCur + rejectedCur;
@@ -460,6 +516,14 @@ export async function getDashboardStats(
     now.getMonth(),
     now.getDate() + 60
   );
+  const managerUserId = userRole === 'manager' ? userId : undefined;
+  const leadScope = getManagerLeadWhere(managerUserId);
+  const accountScope = getManagerAccountWhere(managerUserId);
+  const accountRelationScope = getManagerAccountRelationWhere(managerUserId);
+  const jobScope = getManagerJobWhere(managerUserId);
+  const inspectionScope = getManagerInspectionWhere(managerUserId);
+  const timeEntryScope = getManagerTimeEntryWhere(managerUserId);
+  const appointmentScope = getManagerAppointmentWhere(managerUserId);
 
   const [
     totalLeads,
@@ -499,41 +563,41 @@ export async function getDashboardStats(
     invoicesPaidInPeriod,
   ] = await Promise.all([
     // Counts
-    prisma.lead.count({ where: { archivedAt: null } }),
+    prisma.lead.count({ where: { archivedAt: null, ...leadScope } }),
     prisma.lead.count({
-      where: { archivedAt: null, createdAt: { gte: periodStart } },
+      where: { archivedAt: null, createdAt: { gte: periodStart }, ...leadScope },
     }),
-    prisma.account.count({ where: { archivedAt: null } }),
+    prisma.account.count({ where: { archivedAt: null, ...accountScope } }),
     prisma.account.count({
-      where: { archivedAt: null, createdAt: { gte: periodStart } },
+      where: { archivedAt: null, createdAt: { gte: periodStart }, ...accountScope },
     }),
-    prisma.contract.count({ where: { status: 'active' } }),
+    prisma.contract.count({ where: { status: 'active', ...accountRelationScope } }),
 
     // MRR
     prisma.contract.aggregate({
       _sum: { monthlyValue: true },
-      where: { status: 'active' },
+      where: { status: 'active', ...accountRelationScope },
     }),
 
     // Proposals sent in period
     prisma.proposal.count({
-      where: { sentAt: { gte: periodStart }, archivedAt: null },
+      where: { sentAt: { gte: periodStart }, archivedAt: null, ...accountRelationScope },
     }),
 
     // Win rate: accepted in period
     prisma.proposal.count({
-      where: { acceptedAt: { gte: periodStart }, archivedAt: null },
+      where: { acceptedAt: { gte: periodStart }, archivedAt: null, ...accountRelationScope },
     }),
     // Win rate: rejected in period
     prisma.proposal.count({
-      where: { rejectedAt: { gte: periodStart }, archivedAt: null },
+      where: { rejectedAt: { gte: periodStart }, archivedAt: null, ...accountRelationScope },
     }),
 
     // Leads by status
     prisma.lead.groupBy({
       by: ['status'],
       _count: { id: true },
-      where: { archivedAt: null },
+      where: { archivedAt: null, ...leadScope },
     }),
 
     // Pipeline value
@@ -542,6 +606,7 @@ export async function getDashboardStats(
       where: {
         archivedAt: null,
         status: { notIn: ['won', 'lost'] },
+        ...leadScope,
       },
     }),
 
@@ -550,13 +615,14 @@ export async function getDashboardStats(
       by: ['status'],
       _count: { id: true },
       _sum: { totalAmount: true },
-      where: { archivedAt: null },
+      where: { archivedAt: null, ...accountRelationScope },
     }),
 
     // Contracts by status
     prisma.contract.groupBy({
       by: ['status'],
       _count: { id: true },
+      where: accountRelationScope,
     }),
 
     // Expiring contracts (within 60 days)
@@ -564,6 +630,7 @@ export async function getDashboardStats(
       where: {
         status: 'active',
         endDate: { lte: sixtyDaysFromNow, gte: now },
+        ...accountRelationScope,
       },
       select: {
         id: true,
@@ -584,6 +651,7 @@ export async function getDashboardStats(
         status: { in: ['active', 'expired', 'terminated'] },
         startDate: { lte: now },
         OR: [{ endDate: null }, { endDate: { gte: sixMonthsAgo } }],
+        ...accountRelationScope,
       },
       select: {
         monthlyValue: true,
@@ -598,6 +666,7 @@ export async function getDashboardStats(
       where: {
         scheduledStart: { gte: now },
         status: { in: ['scheduled', 'rescheduled'] },
+        ...appointmentScope,
       },
       select: {
         id: true,
@@ -621,6 +690,7 @@ export async function getDashboardStats(
         performedByUser: { select: { fullName: true } },
         proposal: { select: { id: true, title: true } },
       },
+      where: managerUserId ? { proposal: accountRelationScope } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),
@@ -634,6 +704,7 @@ export async function getDashboardStats(
         performedByUser: { select: { fullName: true } },
         contract: { select: { id: true, title: true } },
       },
+      where: managerUserId ? { contract: accountRelationScope } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),
@@ -647,16 +718,17 @@ export async function getDashboardStats(
         performedByUser: { select: { fullName: true } },
         account: { select: { id: true, name: true } },
       },
+      where: managerUserId ? { account: accountScope } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 20,
     }),
 
     // Users & Teams
-    prisma.user.count({ where: { status: 'active' } }),
-    prisma.team.count({ where: { isActive: true, archivedAt: null } }),
+    managerUserId ? Promise.resolve(0) : prisma.user.count({ where: { status: 'active' } }),
+    managerUserId ? Promise.resolve(0) : prisma.team.count({ where: { isActive: true, archivedAt: null } }),
 
     // Period comparison
-    getComparisonData(periodStart, periodEnd),
+    getComparisonData(periodStart, periodEnd, managerUserId),
 
     // Operations — Jobs
     prisma.job.count({
@@ -666,6 +738,7 @@ export async function getDashboardStats(
           lt: todayEnd,
         },
         status: 'scheduled',
+        ...jobScope,
       },
     }),
     prisma.job.count({
@@ -675,6 +748,7 @@ export async function getDashboardStats(
           lt: todayEnd,
         },
         status: 'in_progress',
+        ...jobScope,
       },
     }),
     prisma.job.count({
@@ -684,6 +758,7 @@ export async function getDashboardStats(
           lt: todayEnd,
         },
         status: 'completed',
+        ...jobScope,
       },
     }),
     prisma.job.count({
@@ -695,46 +770,53 @@ export async function getDashboardStats(
         status: { in: ['scheduled', 'in_progress'] },
         assignedTeamId: null,
         assignedToUserId: null,
+        ...jobScope,
       },
     }),
     prisma.job.count({
-      where: { status: 'completed', updatedAt: { gte: periodStart, lte: periodEnd } },
+      where: { status: 'completed', updatedAt: { gte: periodStart, lte: periodEnd }, ...jobScope },
     }),
     prisma.job.count({
-      where: { status: 'missed', updatedAt: { gte: periodStart, lte: periodEnd } },
+      where: { status: 'missed', updatedAt: { gte: periodStart, lte: periodEnd }, ...jobScope },
     }),
 
     // Operations — Inspections
     prisma.inspection.aggregate({
       _avg: { overallScore: true },
-      where: { status: 'completed', completedAt: { gte: periodStart, lte: periodEnd } },
+      where: { status: 'completed', completedAt: { gte: periodStart, lte: periodEnd }, ...inspectionScope },
     }),
     prisma.inspection.count({
-      where: { status: 'completed', completedAt: { gte: periodStart, lte: periodEnd } },
+      where: { status: 'completed', completedAt: { gte: periodStart, lte: periodEnd }, ...inspectionScope },
     }),
 
     // Operations — Time Tracking
     prisma.timeEntry.count({
-      where: { status: 'active', clockOut: null },
+      where: { status: 'active', clockOut: null, ...timeEntryScope },
     }),
     prisma.timesheet.count({
-      where: { status: { in: ['draft', 'submitted'] } },
+      where: managerUserId
+        ? {
+            status: { in: ['draft', 'submitted'] },
+            entries: { some: timeEntryScope },
+          }
+        : { status: { in: ['draft', 'submitted'] } },
     }),
 
     // Operations — Invoices
     prisma.invoice.aggregate({
       _sum: { balanceDue: true },
-      where: { status: { notIn: ['void', 'written_off', 'paid'] } },
+      where: { status: { notIn: ['void', 'written_off', 'paid'] }, ...accountRelationScope },
     }),
     prisma.invoice.count({
       where: {
         status: { notIn: ['void', 'written_off', 'paid'] },
         dueDate: { lt: now },
         balanceDue: { gt: 0 },
+        ...accountRelationScope,
       },
     }),
     prisma.invoice.count({
-      where: { status: 'paid', paidAt: { gte: periodStart, lte: periodEnd } },
+      where: { status: 'paid', paidAt: { gte: periodStart, lte: periodEnd }, ...accountRelationScope },
     }),
   ]);
 

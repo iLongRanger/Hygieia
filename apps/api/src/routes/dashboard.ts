@@ -65,8 +65,8 @@ router.get(
   requirePermission(PERMISSIONS.DASHBOARD_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (req.user?.role === 'subcontractor' || req.user?.role === 'cleaner') {
-        throw new ForbiddenError('Field workers cannot export dashboard data');
+      if (req.user?.role !== 'owner' && req.user?.role !== 'admin') {
+        throw new ForbiddenError('Only owner and admin users can export dashboard data');
       }
 
       const typeParam = req.query.type as string | undefined;

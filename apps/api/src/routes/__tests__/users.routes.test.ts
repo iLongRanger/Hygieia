@@ -4,9 +4,11 @@ import type { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as userService from '../../services/userService';
 
+let mockAuthUser = { id: 'admin-1', role: 'owner' };
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = { id: 'admin-1', role: 'owner' };
+    req.user = mockAuthUser;
     next();
   },
 }));
@@ -22,6 +24,7 @@ describe('Users Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockAuthUser = { id: 'admin-1', role: 'owner' };
     app = createTestApp();
     const routes = (await import('../users')).default;
     setupTestRoutes(app, routes, '/api/v1/users');
@@ -36,7 +39,25 @@ describe('Users Routes', () => {
     const response = await request(app).get('/api/v1/users').expect(200);
 
     expect(response.body.data).toHaveLength(1);
-    expect(userService.listUsers).toHaveBeenCalled();
+    expect(userService.listUsers).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ includeCompensation: true })
+    );
+  });
+
+  it('GET / should hide compensation fields for managers', async () => {
+    mockAuthUser = { id: 'manager-1', role: 'manager' };
+    (userService.listUsers as jest.Mock).mockResolvedValue({
+      data: [{ id: 'user-1' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    await request(app).get('/api/v1/users').expect(200);
+
+    expect(userService.listUsers).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ includeCompensation: false })
+    );
   });
 
   it('GET / should return 422 for invalid query', async () => {
@@ -62,6 +83,10 @@ describe('Users Routes', () => {
     const response = await request(app).get('/api/v1/users/user-1').expect(200);
 
     expect(response.body.data.id).toBe('user-1');
+    expect(userService.getUserById).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ includeCompensation: true })
+    );
   });
 
   it('GET /:id should return 404 when missing', async () => {

@@ -33,6 +33,11 @@ describe('roles utilities', () => {
       expect(hasPermission('manager', 'payroll_read')).toBe(false);
     });
 
+    it('does not grant managers team mutation access', () => {
+      expect(hasPermission('manager', 'teams_read')).toBe(true);
+      expect(hasPermission('manager', 'teams_write')).toBe(false);
+    });
+
     it('keeps field workers limited to their own payroll access', () => {
       expect(hasPermission('cleaner', 'payroll_read')).toBe(true);
       expect(hasPermission('subcontractor', 'payroll_read')).toBe(true);

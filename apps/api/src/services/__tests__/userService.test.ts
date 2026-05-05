@@ -182,6 +182,24 @@ describe('userService', () => {
       expect(result.data[0].hourlyPayRate).toBe(24.5);
       expect(result.data[0].workforceType).toBe('office');
     });
+
+    it('should omit compensation fields when not requested', async () => {
+      const mockUsers = [
+        createMockUserWithRoles({
+          email: 'test@example.com',
+          payType: 'hourly',
+          hourlyPayRate: 24.5,
+        }),
+      ];
+
+      (prisma.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
+      (prisma.user.count as jest.Mock).mockResolvedValue(1);
+
+      const result = await userService.listUsers({}, { includeCompensation: false });
+
+      expect(result.data[0]).not.toHaveProperty('payType');
+      expect(result.data[0]).not.toHaveProperty('hourlyPayRate');
+    });
   });
 
   describe('getUserById', () => {

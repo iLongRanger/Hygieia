@@ -178,7 +178,6 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     settings_read: true,
     pricing_read: true,
     teams_read: true,
-    teams_write: true,
     proposal_templates_read: true,
     proposal_templates_write: true,
     area_types_manage: true,

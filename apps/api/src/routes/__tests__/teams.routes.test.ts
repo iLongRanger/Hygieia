@@ -48,7 +48,7 @@ jest.mock('../../middleware/rbac', () => ({
       const rolePermissions: Record<string, string[]> = {
         owner: ['all'],
         admin: ['teams_read', 'teams_write', 'teams_admin'],
-        manager: ['teams_read', 'teams_write'],
+        manager: ['teams_read'],
         cleaner: [],
       };
       const permissions = rolePermissions[req.user.role] ?? [];
@@ -134,6 +134,17 @@ describe('Team Routes', () => {
       .expect(422);
   });
 
+  it('POST / should return 403 for manager role', async () => {
+    mockUser = { id: 'manager-1', role: 'manager' };
+
+    await request(app)
+      .post('/api/v1/teams')
+      .send({ name: 'Manager Team' })
+      .expect(403);
+
+    expect(teamService.createTeam).not.toHaveBeenCalled();
+  });
+
   it('PATCH /:id should return 422 for invalid payload', async () => {
     await request(app)
       .patch('/api/v1/teams/team-1')
@@ -176,6 +187,17 @@ describe('Team Routes', () => {
 
     expect(response.body.data.id).toBe('team-1');
     expect(sensitiveLimiterCalls).toBe(1);
+  });
+
+  it('PATCH /:id should return 403 for manager role', async () => {
+    mockUser = { id: 'manager-1', role: 'manager' };
+
+    await request(app)
+      .patch('/api/v1/teams/team-1')
+      .send({ name: 'Manager Team' })
+      .expect(403);
+
+    expect(teamService.updateTeam).not.toHaveBeenCalled();
   });
 
   it('POST /:id/resend-subcontractor-invite should trigger resend flow', async () => {

@@ -60,6 +60,10 @@ function ensureCallerOutranksTarget(callerRole: string, targetRole: string) {
   }
 }
 
+function canViewCompensation(user: Request['user']): boolean {
+  return user?.role === 'owner' || user?.role === 'admin';
+}
+
 router.get(
   '/',
   authenticate,
@@ -71,7 +75,9 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listUsers(parsed.data);
+      const result = await listUsers(parsed.data, {
+        includeCompensation: canViewCompensation(req.user),
+      });
 
       res.json({
         data: result.data,
@@ -104,7 +110,9 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const user = await getUserById(id);
+      const user = await getUserById(id, {
+        includeCompensation: canViewCompensation(req.user),
+      });
 
       if (!user) {
         throw new NotFoundError('User not found', { userId: id });
