@@ -72,8 +72,10 @@ const APPOINTMENT_ASSIGNEE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
 
 type AppointmentAccessRecord = {
   id: string;
+  leadId?: string | null;
   accountId?: string | null;
   facilityId?: string | null;
+  opportunityId?: string | null;
   assignedToUserId?: string | null;
 };
 
@@ -243,6 +245,60 @@ async function assertManagerFacilityScope(facilityId: string, userId: string) {
   }
 }
 
+async function assertManagerLeadScope(leadId: string, userId: string) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      createdByUserId: true,
+      assignedToUserId: true,
+      convertedToAccount: { select: { accountManagerId: true } },
+    },
+  });
+
+  if (
+    !lead ||
+    (
+      lead.createdByUserId !== userId &&
+      lead.assignedToUserId !== userId &&
+      lead.convertedToAccount?.accountManagerId !== userId
+    )
+  ) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+}
+
+async function assertManagerOpportunityScope(opportunityId: string, userId: string) {
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    select: {
+      createdByUserId: true,
+      ownerUserId: true,
+      account: { select: { accountManagerId: true } },
+      lead: {
+        select: {
+          createdByUserId: true,
+          assignedToUserId: true,
+          convertedToAccount: { select: { accountManagerId: true } },
+        },
+      },
+    },
+  });
+
+  if (
+    !opportunity ||
+    (
+      opportunity.createdByUserId !== userId &&
+      opportunity.ownerUserId !== userId &&
+      opportunity.account?.accountManagerId !== userId &&
+      opportunity.lead?.createdByUserId !== userId &&
+      opportunity.lead?.assignedToUserId !== userId &&
+      opportunity.lead?.convertedToAccount?.accountManagerId !== userId
+    )
+  ) {
+    throw new ForbiddenError('You do not have access to this appointment');
+  }
+}
+
 async function assertSubcontractorFacilityScope(facilityId: string, teamId?: string | null) {
   if (!teamId) {
     throw new ForbiddenError('You do not have access to this appointment');
@@ -278,6 +334,16 @@ async function assertAppointmentAccess(
 
     if (appointment.facilityId) {
       await assertManagerFacilityScope(appointment.facilityId, access.userId);
+      return;
+    }
+
+    if (appointment.opportunityId) {
+      await assertManagerOpportunityScope(appointment.opportunityId, access.userId);
+      return;
+    }
+
+    if (appointment.leadId) {
+      await assertManagerLeadScope(appointment.leadId, access.userId);
       return;
     }
 
@@ -488,7 +554,33 @@ export async function listAppointments(
   }
 
   if (access.userRole === 'manager' && access.userId) {
-    where.account = { accountManagerId: access.userId };
+    where.OR = [
+      { createdByUserId: access.userId },
+      { assignedToUserId: access.userId },
+      { account: { accountManagerId: access.userId } },
+      { facility: { account: { accountManagerId: access.userId } } },
+      {
+        lead: {
+          OR: [
+            { createdByUserId: access.userId },
+            { assignedToUserId: access.userId },
+            { convertedToAccount: { is: { accountManagerId: access.userId } } },
+          ],
+        },
+      },
+      {
+        opportunity: {
+          OR: [
+            { createdByUserId: access.userId },
+            { ownerUserId: access.userId },
+            { account: { accountManagerId: access.userId } },
+            { lead: { createdByUserId: access.userId } },
+            { lead: { assignedToUserId: access.userId } },
+            { lead: { convertedToAccount: { is: { accountManagerId: access.userId } } } },
+          ],
+        },
+      },
+    ];
   }
 
   // Subcontractors only see appointments tied to facilities their team services.

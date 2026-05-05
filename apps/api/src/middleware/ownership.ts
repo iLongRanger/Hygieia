@@ -120,18 +120,52 @@ async function hasManagerAccess(
       const appointment = await prisma.appointment.findUnique({
         where: { id: resourceId },
         select: {
+          createdByUserId: true,
+          assignedToUserId: true,
           account: { select: { accountManagerId: true } },
           facility: {
             select: {
               account: { select: { accountManagerId: true } },
             },
           },
+          lead: {
+            select: {
+              createdByUserId: true,
+              assignedToUserId: true,
+              convertedToAccount: { select: { accountManagerId: true } },
+            },
+          },
+          opportunity: {
+            select: {
+              createdByUserId: true,
+              ownerUserId: true,
+              account: { select: { accountManagerId: true } },
+              lead: {
+                select: {
+                  createdByUserId: true,
+                  assignedToUserId: true,
+                  convertedToAccount: { select: { accountManagerId: true } },
+                },
+              },
+            },
+          },
         },
       });
       if (!appointment) return false;
       return (
+        appointment.createdByUserId === userId ||
+        appointment.assignedToUserId === userId ||
         appointment.account?.accountManagerId === userId ||
-        appointment.facility?.account.accountManagerId === userId
+        appointment.facility?.account.accountManagerId === userId ||
+        appointment.lead?.createdByUserId === userId ||
+        appointment.lead?.assignedToUserId === userId ||
+        appointment.lead?.convertedToAccount?.accountManagerId === userId ||
+        appointment.opportunity?.createdByUserId === userId ||
+        appointment.opportunity?.ownerUserId === userId ||
+        appointment.opportunity?.account?.accountManagerId === userId ||
+        appointment.opportunity?.lead?.createdByUserId === userId ||
+        appointment.opportunity?.lead?.assignedToUserId === userId ||
+        appointment.opportunity?.lead?.convertedToAccount?.accountManagerId === userId
       );
     }
 

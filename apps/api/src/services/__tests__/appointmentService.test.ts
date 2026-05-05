@@ -29,6 +29,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     opportunity: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
@@ -101,6 +102,28 @@ describe('appointmentService', () => {
           scheduledEnd: expect.objectContaining({
             gte: expect.any(Date),
           }),
+        }),
+      })
+    );
+  });
+
+  it('listAppointments should include lead and opportunity scopes for managers', async () => {
+    (prisma.appointment.findMany as jest.Mock).mockResolvedValue([]);
+
+    await appointmentService.listAppointments(
+      {},
+      { userRole: 'manager', userId: 'manager-1' }
+    );
+
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { createdByUserId: 'manager-1' },
+            { assignedToUserId: 'manager-1' },
+            { lead: expect.any(Object) },
+            { opportunity: expect.any(Object) },
+          ]),
         }),
       })
     );
@@ -568,6 +591,43 @@ describe('appointmentService', () => {
           userRole: 'manager',
           userId: 'manager-1',
         }
+      )
+    ).resolves.toMatchObject({ id: 'appt-1' });
+  });
+
+  it('updateAppointment should allow manager access through a lead-only appointment', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'walk_through',
+      accountId: null,
+      facilityId: null,
+      leadId: 'lead-1',
+      opportunityId: null,
+      assignedToUserId: 'user-1',
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+      status: 'scheduled',
+      inspectionId: null,
+    });
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      createdByUserId: 'other-user',
+      assignedToUserId: 'manager-1',
+      convertedToAccount: null,
+    });
+    (prisma.appointment.update as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'walk_through',
+      lead: { id: 'lead-1' },
+      assignedToUser: { id: 'user-1', fullName: 'Rep', email: 'rep@example.com' },
+      scheduledStart: new Date('2026-02-05T10:00:00.000Z'),
+      scheduledEnd: new Date('2026-02-05T11:00:00.000Z'),
+    });
+
+    await expect(
+      appointmentService.updateAppointment(
+        'appt-1',
+        { notes: 'Lead only update' },
+        { userRole: 'manager', userId: 'manager-1' }
       )
     ).resolves.toMatchObject({ id: 'appt-1' });
   });
