@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Archive, Calculator, Plus, RotateCcw, Star } from 'lucide-react';
+import { Archive, Calculator, Home, Plus, RotateCcw, Sparkles, Star, Timer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -152,6 +152,31 @@ function cloneDefaultSettings(): ResidentialPricingPlanSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 }
 
+type GuideIcon = typeof Calculator;
+
+const GuideStat = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: GuideIcon;
+  label: string;
+  value: string;
+}) => (
+  <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+    <Icon className="h-5 w-5 text-emerald-200" />
+    <div className="mt-3 text-xs uppercase tracking-[0.18em] text-emerald-100/75">{label}</div>
+    <div className="mt-1 text-sm font-semibold text-white">{value}</div>
+  </div>
+);
+
+const GuideStep = ({ title, description }: { title: string; description: string }) => (
+  <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+    <div className="text-sm font-semibold text-white">{title}</div>
+    <p className="mt-2 text-xs leading-5 text-surface-200/80">{description}</p>
+  </div>
+);
+
 const ResidentialPricingPlansPage = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const canWrite = hasPermission(PERMISSIONS.PRICING_WRITE);
@@ -275,6 +300,33 @@ const ResidentialPricingPlansPage = () => {
           </Button>
         )}
       </div>
+
+      <Card className="border-none bg-[linear-gradient(135deg,_rgba(6,78,59,0.98),_rgba(15,23,42,0.98))] text-white shadow-soft-xl">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2 text-sm uppercase tracking-[0.24em] text-emerald-200/80">
+              <Sparkles className="h-4 w-4" />
+              Residential Pricing Guide
+            </div>
+            <h2 className="mt-3 text-3xl font-semibold">Build repeatable house-cleaning prices from residential details</h2>
+            <p className="mt-3 text-sm text-surface-200/85">
+              Residential plans turn home type, square footage, rooms, bathrooms, condition, service type, frequency,
+              and add-ons into a consistent client price and estimated time on site.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <GuideStat icon={Home} label="Home Profile" value="Type, sqft, rooms, baths" />
+            <GuideStat icon={Calculator} label="Price Logic" value="Base, multipliers, discounts" />
+            <GuideStat icon={Timer} label="Time Estimate" value="Used for proposals and planning" />
+          </div>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <GuideStep title="1. Set the base" description="Start with base prices by home type, then adjust for size, bedrooms, bathrooms, levels, and condition." />
+          <GuideStep title="2. Tune service types" description="Deep clean, move-in/out, turnover, and post-construction can carry different multipliers from recurring service." />
+          <GuideStep title="3. Control frequency" description="Weekly, biweekly, every-four-weeks, and one-time discounts or surcharges keep recurring pricing consistent." />
+          <GuideStep title="4. Add proposal extras" description="Add-ons like oven, fridge, windows, baseboards, and laundry feed the residential proposal services and PDF details." />
+        </div>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {loading ? (
