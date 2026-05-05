@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Calculator, ClipboardList, Pencil, Plus, Save, Sparkles, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -41,6 +41,31 @@ const EMPTY_ITEM = {
   minimumCharge: 0,
   maxDiscountPercent: 10,
 };
+
+type GuideIcon = typeof Calculator;
+
+const GuideStat = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: GuideIcon;
+  label: string;
+  value: string;
+}) => (
+  <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+    <Icon className="h-5 w-5 text-cyan-200" />
+    <div className="mt-3 text-xs uppercase tracking-[0.18em] text-cyan-100/75">{label}</div>
+    <div className="mt-1 text-sm font-semibold text-white">{value}</div>
+  </div>
+);
+
+const GuideStep = ({ title, description }: { title: string; description: string }) => (
+  <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+    <div className="text-sm font-semibold text-white">{title}</div>
+    <p className="mt-2 text-xs leading-5 text-surface-200/80">{description}</p>
+  </div>
+);
 
 const OneTimeServiceCatalogPage = () => {
   const [items, setItems] = useState<OneTimeServiceCatalogItem[]>([]);
@@ -176,6 +201,33 @@ const OneTimeServiceCatalogPage = () => {
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">Specialized Job Management</h1>
         </div>
       </div>
+
+      <Card className="border-none bg-[linear-gradient(135deg,_rgba(30,41,59,0.98),_rgba(12,74,110,0.96))] text-white shadow-soft-xl">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2 text-sm uppercase tracking-[0.24em] text-cyan-200/80">
+              <Sparkles className="h-4 w-4" />
+              Specialized Job Pricing Guide
+            </div>
+            <h2 className="mt-3 text-3xl font-semibold">Build one-time job standards that proposals can reuse</h2>
+            <p className="mt-3 text-sm text-surface-200/85">
+              Use this catalog for work that does not follow recurring commercial or residential pricing, like windows,
+              carpet cleaning, pressure washing, post-construction cleanup, or any custom one-time request.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <GuideStat icon={ClipboardList} label="Catalog Item" value="What job is requested" />
+            <GuideStat icon={Calculator} label="Rate + Unit" value="How price is calculated" />
+            <GuideStat icon={Sparkles} label="Proposal Use" value="Selectable in specialized proposals" />
+          </div>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <GuideStep title="1. Name the job" description="Create a clear client-facing standard, such as Window Cleaning or Carpet Cleaning." />
+          <GuideStep title="2. Pick the unit" description="Choose fixed, per window, per square foot, or a custom unit that matches how the work is estimated." />
+          <GuideStep title="3. Set pricing guardrails" description="Base rate, default quantity, minimum charge, and max discount protect margin before sending proposals." />
+          <GuideStep title="4. Use in proposals" description="When proposal type is Specialized, admins select one of these jobs and the proposal title/line item can populate from it." />
+        </div>
+      </Card>
 
       <Card>
         <div className="p-6 space-y-4">
