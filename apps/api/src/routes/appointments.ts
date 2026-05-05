@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
-import { requireAnyRole, requireManager } from '../middleware/rbac';
+import { requirePermission } from '../middleware/rbac';
 import { NotFoundError, ValidationError, BadRequestError } from '../middleware/errorHandler';
 import { ensureManagerAccountAccess, ensureOwnershipAccess } from '../middleware/ownership';
+import { PERMISSIONS } from '../types';
 import type { ZodError } from 'zod';
 import {
   createAppointmentSchema,
@@ -38,7 +39,7 @@ function handleZodError(error: ZodError): ValidationError {
 router.get(
   '/',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.APPOINTMENTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listAppointmentsQuerySchema.safeParse(req.query);
@@ -67,7 +68,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.APPOINTMENTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const appointment = await getAppointmentById(req.params.id);
@@ -96,7 +97,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireManager,
+  requirePermission(PERMISSIONS.APPOINTMENTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createAppointmentSchema.safeParse(req.body);
@@ -137,7 +138,7 @@ router.post(
 router.patch(
   '/:id',
   authenticate,
-  requireManager,
+  requirePermission(PERMISSIONS.APPOINTMENTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAppointmentById(req.params.id);
@@ -191,7 +192,7 @@ router.patch(
 router.post(
   '/:id/reschedule',
   authenticate,
-  requireManager,
+  requirePermission(PERMISSIONS.APPOINTMENTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = rescheduleAppointmentSchema.safeParse(req.body);
@@ -225,7 +226,7 @@ router.post(
 router.post(
   '/:id/complete',
   authenticate,
-  requireAnyRole,
+  requirePermission(PERMISSIONS.APPOINTMENTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = completeAppointmentSchema.safeParse(req.body);
@@ -277,7 +278,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireManager,
+  requirePermission(PERMISSIONS.APPOINTMENTS_WRITE),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await getAppointmentById(req.params.id);

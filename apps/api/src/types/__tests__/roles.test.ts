@@ -44,6 +44,15 @@ describe('roles utilities', () => {
     });
   });
 
+  describe('appointment permissions', () => {
+    it('grants appointment permissions to manager roles only above field workers', () => {
+      expect(hasPermission('manager', 'appointments_read')).toBe(true);
+      expect(hasPermission('manager', 'appointments_write')).toBe(true);
+      expect(hasPermission('cleaner', 'appointments_read')).toBe(false);
+      expect(hasPermission('subcontractor', 'appointments_write')).toBe(false);
+    });
+  });
+
   describe('isRoleAtLeast', () => {
     it('evaluates role hierarchy correctly', () => {
       expect(isRoleAtLeast('admin', 'manager')).toBe(true);

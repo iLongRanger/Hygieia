@@ -5,16 +5,38 @@ import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as appointmentService from '../../services/appointmentService';
 import { ensureOwnershipAccess } from '../../middleware/ownership';
 
+let mockAuthUser = { id: 'user-1', role: 'owner' };
+
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
-    req.user = { id: 'user-1', role: 'owner' };
+    req.user = mockAuthUser;
     next();
   },
 }));
 
 jest.mock('../../middleware/rbac', () => ({
-  requireAnyRole: (_req: any, _res: any, next: any) => next(),
-  requireManager: (_req: any, _res: any, next: any) => next(),
+  requirePermission:
+    (permission: string) =>
+    (req: any, res: any, next: any) => {
+      const rolePermissions: Record<string, string[]> = {
+        owner: ['all'],
+        admin: ['appointments_read', 'appointments_write'],
+        manager: ['appointments_read', 'appointments_write'],
+        cleaner: [],
+        subcontractor: [],
+      };
+      const permissions = rolePermissions[req.user?.role] ?? [];
+      if (!permissions.includes('all') && !permissions.includes(permission)) {
+        res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Insufficient permissions',
+          },
+        });
+        return;
+      }
+      next();
+    },
 }));
 
 jest.mock('../../middleware/ownership', () => ({
@@ -29,6 +51,7 @@ describe('Appointments Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockAuthUser = { id: 'user-1', role: 'owner' };
     app = createTestApp();
     const routes = (await import('../appointments')).default;
     setupTestRoutes(app, routes, '/api/v1/appointments');
@@ -53,6 +76,14 @@ describe('Appointments Routes', () => {
     await request(app)
       .get('/api/v1/appointments?leadId=not-a-uuid')
       .expect(422);
+  });
+
+  it('GET / should return 403 without appointment read permission', async () => {
+    mockAuthUser = { id: 'cleaner-1', role: 'cleaner' };
+
+    await request(app)
+      .get('/api/v1/appointments')
+      .expect(403);
   });
 
   it('GET /:id should return appointment', async () => {
@@ -117,6 +148,17 @@ describe('Appointments Routes', () => {
         scheduledEnd: '2026-02-10T10:00:00.000Z',
       })
       .expect(422);
+  });
+
+  it('POST / should return 403 without appointment write permission', async () => {
+    mockAuthUser = { id: 'cleaner-1', role: 'cleaner' };
+
+    await request(app)
+      .post('/api/v1/appointments')
+      .send({})
+      .expect(403);
+
+    expect(appointmentService.createAppointment).not.toHaveBeenCalled();
   });
 
   it('PATCH /:id should update appointment', async () => {
