@@ -120,7 +120,7 @@ describe('Sidebar RBAC', () => {
 
     expect(screen.getAllByRole('link', { name: 'Commercial' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Residential' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Specialized Job' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Specialized Job Pricing' }).length).toBeGreaterThan(0);
   });
 
   it('allows active expanded sections to be collapsed manually', () => {

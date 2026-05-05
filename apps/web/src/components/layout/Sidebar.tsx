@@ -113,7 +113,7 @@ const navSections: NavSection[] = [
     items: [
       { to: '/commercial/pricing', icon: Calculator, label: 'Commercial' },
       { to: '/residential/pricing', icon: Home, label: 'Residential' },
-      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job' },
+      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job Pricing' },
     ],
   },
   {
