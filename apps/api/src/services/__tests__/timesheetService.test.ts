@@ -126,6 +126,40 @@ describe('timesheetService', () => {
     expect(result.id).toBe('ts-1');
   });
 
+  it('generateTimesheet excludes subcontractor attendance entries', async () => {
+    (prisma.timesheet.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue([
+      { id: 'te-1', totalHours: { toString: () => '8' } },
+    ]);
+    (prisma.timesheet.create as jest.Mock).mockResolvedValue({ id: 'ts-1' });
+    (prisma.timeEntry.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
+      id: 'ts-1',
+      totalHours: { toString: () => '8' },
+      regularHours: { toString: () => '8' },
+      overtimeHours: { toString: () => '0' },
+      entries: [],
+    });
+
+    await generateTimesheet({
+      userId: 'user-1',
+      periodStart: new Date('2026-02-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-02-07T23:59:59.000Z'),
+    });
+
+    expect(prisma.timeEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          entryType: { not: 'attendance' },
+          OR: [
+            { jobId: null },
+            { job: { compensationType: { not: 'percentage' } } },
+          ],
+        }),
+      })
+    );
+  });
+
   it('submitTimesheet only allows draft status', async () => {
     (prisma.timesheet.findUnique as jest.Mock).mockResolvedValue({
       id: 'ts-1',

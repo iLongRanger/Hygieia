@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import logger from '../lib/logger';
 import { createBulkNotifications, createNotification } from './notificationService';
 import { logContractActivity } from './contractActivityService';
@@ -19,9 +20,13 @@ interface DueContractOverride {
   assignedTeamId: string | null;
   assignedToUserId: string | null;
   subcontractorTier: string | null;
+  compensationType: string;
+  subcontractorPercentage: Prisma.Decimal | number | string | null;
   pendingAssignedTeamId: string | null;
   pendingAssignedToUserId: string | null;
   pendingSubcontractorTier: string | null;
+  pendingCompensationType: string | null;
+  pendingSubcontractorPercentage: Prisma.Decimal | number | string | null;
   assignmentOverrideEffectiveDate: Date | null;
   assignmentOverrideSetByUserId: string | null;
   pendingAssignedTeam: { id: string; name: string } | null;
@@ -40,7 +45,12 @@ function isMissingOverrideColumnsError(error: unknown): boolean {
   const maybeError = error as { code?: string; meta?: { column?: string } };
   if (maybeError.code !== 'P2022') return false;
   const column = maybeError.meta?.column ?? '';
-  return column.includes('contracts.pending_assigned_') || column.includes('contracts.assignment_override_');
+  return (
+    column.includes('contracts.pending_assigned_') ||
+    column.includes('contracts.assignment_override_') ||
+    column.includes('contracts.pending_compensation_') ||
+    column.includes('contracts.pending_subcontractor_percentage')
+  );
 }
 
 async function getTeamUserIds(teamId: string | null): Promise<string[]> {
@@ -129,6 +139,11 @@ async function applyContractAssignmentOverride(
 
   const nextTeamId = contract.pendingAssignedTeamId ?? null;
   const nextUserId = contract.pendingAssignedToUserId ?? null;
+  const nextCompensationType =
+    contract.pendingCompensationType ?? (nextTeamId ? 'percentage' : 'hourly');
+  const nextSubcontractorPercentage = nextTeamId
+    ? contract.pendingSubcontractorPercentage ?? contract.subcontractorPercentage
+    : null;
 
   if (!nextTeamId && !nextUserId) {
     return { applied: false, reassignedJobs: 0, notifications: 0 };
@@ -167,6 +182,8 @@ async function applyContractAssignmentOverride(
       data: {
         assignedTeamId: nextTeamId,
         assignedToUserId: nextUserId,
+        compensationType: nextCompensationType,
+        subcontractorPercentageSnapshot: nextSubcontractorPercentage,
       },
     });
 
@@ -178,9 +195,14 @@ async function applyContractAssignmentOverride(
         subcontractorTier: nextTeamId
           ? contract.pendingSubcontractorTier ?? contract.subcontractorTier
           : contract.subcontractorTier,
+        compensationType:
+          nextCompensationType,
+        subcontractorPercentage: nextSubcontractorPercentage,
         pendingAssignedTeamId: null,
         pendingAssignedToUserId: null,
         pendingSubcontractorTier: null,
+        pendingCompensationType: null,
+        pendingSubcontractorPercentage: null,
         assignmentOverrideEffectiveDate: null,
         assignmentOverrideSetByUserId: null,
         assignmentOverrideSetAt: null,
@@ -281,9 +303,13 @@ export async function applyDueContractAssignmentOverrideForContract(
         assignedTeamId: true,
         assignedToUserId: true,
         subcontractorTier: true,
+        compensationType: true,
+        subcontractorPercentage: true,
         pendingAssignedTeamId: true,
         pendingAssignedToUserId: true,
         pendingSubcontractorTier: true,
+        pendingCompensationType: true,
+        pendingSubcontractorPercentage: true,
         assignmentOverrideEffectiveDate: true,
         assignmentOverrideSetByUserId: true,
         pendingAssignedTeam: { select: { id: true, name: true } },
@@ -343,9 +369,13 @@ export async function runContractAssignmentOverrideCycle(
         assignedTeamId: true,
         assignedToUserId: true,
         subcontractorTier: true,
+        compensationType: true,
+        subcontractorPercentage: true,
         pendingAssignedTeamId: true,
         pendingAssignedToUserId: true,
         pendingSubcontractorTier: true,
+        pendingCompensationType: true,
+        pendingSubcontractorPercentage: true,
         assignmentOverrideEffectiveDate: true,
         assignmentOverrideSetByUserId: true,
         pendingAssignedTeam: { select: { id: true, name: true } },

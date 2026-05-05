@@ -261,6 +261,12 @@ describe('jobService', () => {
       status: 'active',
       facilityId: 'facility-1',
       accountId: 'account-1',
+      assignedTeamId: null,
+      assignedToUserId: null,
+      compensationType: 'hourly',
+      subcontractorPercentage: null,
+      monthlyValue: { toString: () => '1000' },
+      serviceFrequency: 'weekly',
     });
     (prisma.job.findFirst as jest.Mock).mockResolvedValue({
       jobNumber: `WO-${year}-0009`,
@@ -298,6 +304,58 @@ describe('jobService', () => {
         }),
       })
     );
+  });
+
+  it('createJob snapshots subcontractor percentage compensation from the contract', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: 'team-1',
+      assignedToUserId: null,
+      compensationType: 'percentage',
+      subcontractorPercentage: { toString: () => '0.625' },
+      monthlyValue: { toString: () => '1000' },
+      serviceFrequency: 'weekly',
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0009`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      jobNumber: `WO-${year}-0010`,
+      assignedTeam: null,
+      assignedToUser: null,
+    });
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assignedTeamId: 'team-1',
+          assignedToUserId: null,
+          compensationType: 'percentage',
+          subcontractorPercentageSnapshot: expect.objectContaining({
+            toString: expect.any(Function),
+          }),
+          jobRevenueSnapshot: expect.objectContaining({
+            toString: expect.any(Function),
+          }),
+        }),
+      })
+    );
+    const createArg = (prisma.job.create as jest.Mock).mock.calls[0][0];
+    expect(createArg.data.subcontractorPercentageSnapshot.toString()).toBe('0.625');
+    expect(createArg.data.jobRevenueSnapshot.toString()).toBe('230.95');
   });
 
   it('createJob seeds job tasks from facility tasks', async () => {
@@ -853,10 +911,11 @@ describe('jobService', () => {
 
     expect(prisma.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: {
+        data: expect.objectContaining({
           assignedTeamId: null,
           assignedToUserId: 'user-8',
-        },
+          compensationType: 'hourly',
+        }),
       })
     );
     expect(createNotification).toHaveBeenCalledTimes(2);

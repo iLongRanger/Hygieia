@@ -23,25 +23,55 @@ export interface AdjustPayrollEntryInput {
   adjustmentNotes?: string | null;
 }
 
-// ==================== Tier percentages ====================
-
-const TIER_PERCENTAGES: Record<string, number> = {
-  tier1: 0.45,
-  tier2: 0.50,
-  tier3: 0.55,
-};
-
 const eligiblePayrollJobSelect = Prisma.validator<Prisma.JobSelect>()({
   id: true,
   jobNumber: true,
   contractId: true,
   scheduledDate: true,
+  assignedTeamId: true,
+  assignedToUserId: true,
+  compensationType: true,
+  subcontractorPercentageSnapshot: true,
+  jobRevenueSnapshot: true,
   contract: {
     select: {
       id: true,
       monthlyValue: true,
       subcontractorTier: true,
+      subcontractorPercentage: true,
       serviceFrequency: true,
+      assignedTeam: {
+        select: {
+          users: {
+            where: {
+              status: { in: ['active', 'pending'] },
+            },
+            select: {
+              id: true,
+              payType: true,
+              hourlyPayRate: true,
+              roles: {
+                select: {
+                  role: { select: { key: true } },
+                },
+              },
+            },
+            take: 1,
+          },
+        },
+      },
+      assignedToUser: {
+        select: {
+          id: true,
+          payType: true,
+          hourlyPayRate: true,
+          roles: {
+            select: {
+              role: { select: { key: true } },
+            },
+          },
+        },
+      },
     },
   },
   timeEntries: {
@@ -53,6 +83,7 @@ const eligiblePayrollJobSelect = Prisma.validator<Prisma.JobSelect>()({
       id: true,
       userId: true,
       contractId: true,
+      entryType: true,
       clockIn: true,
       clockOut: true,
       totalHours: true,
@@ -150,6 +181,26 @@ function derivePerJobBillableAmount(contract: {
   const monthlyVisits = getMonthlyVisits(contract.serviceFrequency);
   if (monthlyVisits <= 0) return monthlyValue;
   return Math.round((monthlyValue / monthlyVisits) * 100) / 100;
+}
+
+function getJobRevenue(job: EligiblePayrollJob): number {
+  if (job.jobRevenueSnapshot != null) {
+    return Number(job.jobRevenueSnapshot);
+  }
+
+  return derivePerJobBillableAmount(job.contract);
+}
+
+function getSubcontractorPercentage(job: EligiblePayrollJob): number {
+  if (job.subcontractorPercentageSnapshot != null) {
+    return Number(job.subcontractorPercentageSnapshot);
+  }
+
+  if (job.contract?.subcontractorPercentage != null) {
+    return Number(job.contract.subcontractorPercentage);
+  }
+
+  return 0.6;
 }
 
 // ==================== Select objects ====================
@@ -334,7 +385,43 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
   const groupedEntries = new Map<string, GroupedPayrollEntry>();
 
   for (const job of eligibleJobs) {
-    const completedEntries = job.timeEntries.filter((entry) => calculateEntryHours(entry) > 0);
+    if (job.compensationType === 'percentage') {
+      const payee = job.contract?.assignedToUser ?? job.contract?.assignedTeam?.users[0] ?? null;
+      if (!payee) {
+        continue;
+      }
+
+      const jobRevenue = getJobRevenue(job);
+      const percentage = getSubcontractorPercentage(job);
+      const grossPay = Math.round(jobRevenue * percentage * 100) / 100;
+      const key = `${payee.id}:percentage:${job.contractId ?? 'none'}`;
+      const existingGroup: GroupedPayrollEntry = groupedEntries.get(key) ?? {
+        userId: payee.id,
+        payType: 'percentage',
+        contractId: job.contractId ?? null,
+        contractMonthlyValue: job.contract ? Number(job.contract.monthlyValue) : null,
+        tierPercentage: percentage * 100,
+        hourlyRate: null,
+        scheduledHours: 0,
+        grossPay: 0,
+        status: grossPay > 0 ? 'valid' : 'flagged',
+        flagReasons: grossPay > 0 ? [] : ['Missing job revenue snapshot'],
+        jobAllocations: [],
+      };
+
+      existingGroup.grossPay += grossPay;
+      existingGroup.jobAllocations.push({
+        jobId: job.id,
+        allocatedHours: null,
+        allocatedGrossPay: grossPay,
+      });
+      groupedEntries.set(key, existingGroup);
+      continue;
+    }
+
+    const completedEntries = job.timeEntries
+      .filter((entry) => entry.entryType !== 'attendance')
+      .filter((entry) => calculateEntryHours(entry) > 0);
     if (completedEntries.length === 0) {
       continue;
     }
@@ -354,13 +441,11 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
 
       const hours = calculateEntryHours(entry);
       const share = totalJobHours > 0 ? hours / totalJobHours : 1 / completedEntries.length;
-      const tier = job.contract?.subcontractorTier ?? 'tier1';
-      const tierPct = TIER_PERCENTAGES[tier] ?? 0.45;
       const hourlyRate = entry.user.hourlyPayRate
         ? Number(entry.user.hourlyPayRate)
         : defaultHourlyRate;
       const grossPay = payType === 'percentage'
-        ? Math.round(jobBillableAmount * tierPct * share * 100) / 100
+        ? Math.round(jobBillableAmount * getSubcontractorPercentage(job) * share * 100) / 100
         : Math.round(hours * hourlyRate * 100) / 100;
 
       const key = payType === 'percentage'
@@ -372,7 +457,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
         payType,
         contractId: payType === 'percentage' ? (job.contractId ?? null) : null,
         contractMonthlyValue: payType === 'percentage' && job.contract ? Number(job.contract.monthlyValue) : null,
-        tierPercentage: payType === 'percentage' ? tierPct * 100 : null,
+        tierPercentage: payType === 'percentage' ? getSubcontractorPercentage(job) * 100 : null,
         hourlyRate: payType === 'hourly' ? hourlyRate : null,
         scheduledHours: 0,
         grossPay: 0,

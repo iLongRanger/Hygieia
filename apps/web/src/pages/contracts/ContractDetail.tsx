@@ -988,6 +988,7 @@ const ContractDetail = () => {
   const [activeTab, setActiveTab] = useState<ContractDetailTab>('overview');
   const [assigningTeam, setAssigningTeam] = useState(false);
   const [selectedTier, setSelectedTier] = useState('premium');
+  const [subcontractorPercentage, setSubcontractorPercentage] = useState('60');
   const [overrideEffectivityDate, setOverrideEffectivityDate] = useState('');
 
   // T&C inline editing state
@@ -1154,6 +1155,11 @@ const ContractDetail = () => {
       setSelectedTeamId(data.assignedTeam?.id || '');
       setSelectedUserId(data.assignedToUser?.id || '');
       setSelectedTier(data.subcontractorTier || 'premium');
+      setSubcontractorPercentage(
+        data.subcontractorPercentage != null
+          ? (Number(data.subcontractorPercentage) * 100).toString()
+          : (tierToPercentage(data.subcontractorTier || 'premium') * 100).toString()
+      );
       setOverrideEffectivityDate(
         data.assignmentOverrideEffectiveDate
           ? new Date(data.assignmentOverrideEffectiveDate).toISOString().slice(0, 10)
@@ -1200,7 +1206,21 @@ const ContractDetail = () => {
         Boolean(contract.assignedTeam?.id || contract.assignedToUser?.id) &&
         Boolean(teamId || assignedToUserId) &&
         (teamId !== (contract.assignedTeam?.id || null) ||
-          assignedToUserId !== (contract.assignedToUser?.id || null));
+          assignedToUserId !== (contract.assignedToUser?.id || null) ||
+          (teamId &&
+            Number(subcontractorPercentage) / 100 !== Number(contract.subcontractorPercentage ?? 0)));
+
+      const subcontractorPercentageValue = teamId ? Number(subcontractorPercentage) : null;
+      if (
+        teamId &&
+        (subcontractorPercentageValue == null ||
+          !Number.isFinite(subcontractorPercentageValue) ||
+          subcontractorPercentageValue <= 0 ||
+          subcontractorPercentageValue > 100)
+      ) {
+        toast.error('Subcontractor percentage must be between 1 and 100');
+        return;
+      }
 
       if (requiresEffectivityDate && !overrideEffectivityDate) {
         toast.error('Effectivity date is required when overriding an existing assignment');
@@ -1213,6 +1233,7 @@ const ContractDetail = () => {
         teamId,
         assignedToUserId,
         teamId ? selectedTier : undefined,
+        subcontractorPercentageValue,
         requiresEffectivityDate ? overrideEffectivityDate : null
       );
       setContract(updatedContract);
@@ -2934,17 +2955,31 @@ const ContractDetail = () => {
                   <Select
                     label="Subcontractor Tier"
                     value={selectedTier}
-                    onChange={setSelectedTier}
+                    onChange={(value) => {
+                      setSelectedTier(value);
+                      setSubcontractorPercentage((tierToPercentage(value) * 100).toFixed(0));
+                    }}
                     disabled={contract.status !== 'active' || !canAdminContracts}
                     options={SUBCONTRACTOR_TIER_OPTIONS}
+                  />
+                  <Input
+                    label="Subcontractor Percentage"
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="0.01"
+                    value={subcontractorPercentage}
+                    onChange={(event) => setSubcontractorPercentage(event.target.value)}
+                    disabled={contract.status !== 'active' || !canAdminContracts}
+                    hint="Percent of each completed job revenue snapshot paid to this subcontractor."
                   />
                   <div>
                     <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Subcontract Pay</div>
                     <div className="text-lg font-semibold text-teal-400">
-                      ${(Number(contract.monthlyValue) * tierToPercentage(selectedTier)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                      ${(Number(contract.monthlyValue) * (Number(subcontractorPercentage || 0) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
                     </div>
                     <div className="text-xs text-surface-500 mt-0.5">
-                      {(tierToPercentage(selectedTier) * 100).toFixed(0)}% of monthly value
+                      {Number(subcontractorPercentage || 0).toFixed(2)}% of monthly value, paid per completed eligible job
                     </div>
                   </div>
                 </div>

@@ -307,6 +307,9 @@ const jobSelect = {
   actualEndTime: true,
   estimatedHours: true,
   actualHours: true,
+  compensationType: true,
+  subcontractorPercentageSnapshot: true,
+  jobRevenueSnapshot: true,
   notes: true,
   completionNotes: true,
   createdAt: true,
@@ -855,6 +858,64 @@ function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function getMonthlyVisits(frequency: string | null | undefined): number {
+  const normalized = (frequency ?? '').trim().toLowerCase();
+  const visitsMap: Record<string, number> = {
+    '1x_week': 4.33,
+    '2x_week': 8.67,
+    '3x_week': 13,
+    '4x_week': 17.33,
+    '5x_week': 21.67,
+    '7x_week': 30.33,
+    daily: 30,
+    weekly: 4.33,
+    biweekly: 2.17,
+    bi_weekly: 2.17,
+    monthly: 1,
+    quarterly: 0.33,
+  };
+
+  return visitsMap[normalized] ?? 4.33;
+}
+
+function deriveJobRevenueSnapshot(contract: {
+  monthlyValue: Prisma.Decimal | number;
+  serviceFrequency: string | null;
+}): Prisma.Decimal {
+  const monthlyValue = Number(contract.monthlyValue);
+  const monthlyVisits = getMonthlyVisits(contract.serviceFrequency);
+  const amount = monthlyVisits > 0 ? monthlyValue / monthlyVisits : monthlyValue;
+  return new Prisma.Decimal(Math.round(amount * 100) / 100);
+}
+
+function buildJobCompensationSnapshot(contract: {
+  assignedTeamId?: string | null;
+  assignedToUserId?: string | null;
+  compensationType?: string | null;
+  subcontractorPercentage?: Prisma.Decimal | number | null;
+  monthlyValue: Prisma.Decimal | number;
+  serviceFrequency: string | null;
+}, assignment?: { assignedTeamId?: string | null; assignedToUserId?: string | null }) {
+  const assignedTeamId = assignment?.assignedToUserId
+    ? null
+    : assignment?.assignedTeamId !== undefined
+      ? assignment.assignedTeamId
+      : contract.assignedTeamId ?? null;
+  const assignedToUserId = assignment?.assignedToUserId !== undefined
+    ? assignment.assignedToUserId
+    : contract.assignedToUserId ?? null;
+  const compensationType =
+    assignedTeamId || contract.compensationType === 'percentage' ? 'percentage' : 'hourly';
+
+  return {
+    compensationType,
+    subcontractorPercentageSnapshot: compensationType === 'percentage'
+      ? new Prisma.Decimal(Number(contract.subcontractorPercentage ?? 0.6))
+      : null,
+    jobRevenueSnapshot: deriveJobRevenueSnapshot(contract),
+  };
+}
+
 function iterateDateRange(from: Date, to: Date): string[] {
   const startIso = toIsoDate(from);
   const endIso = toIsoDate(to);
@@ -1081,7 +1142,18 @@ export async function createJob(input: JobCreateInput) {
   // Validate contract exists and is active
   const contract = await prisma.contract.findUnique({
     where: { id: input.contractId },
-    select: { id: true, status: true, facilityId: true, accountId: true },
+    select: {
+      id: true,
+      status: true,
+      facilityId: true,
+      accountId: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+      compensationType: true,
+      subcontractorPercentage: true,
+      monthlyValue: true,
+      serviceFrequency: true,
+    },
   });
   if (!contract) throw new NotFoundError('Contract not found');
   if (contract.status !== 'active') {
@@ -1091,13 +1163,26 @@ export async function createJob(input: JobCreateInput) {
     throw new BadRequestError('Contract does not belong to the selected account and service location');
   }
 
+  const resolvedAssignedTeamId =
+    input.assignedToUserId
+      ? null
+      : (input.assignedTeamId !== undefined ? input.assignedTeamId : contract.assignedTeamId) ?? null;
+  const resolvedAssignedToUserId =
+    input.assignedToUserId !== undefined
+      ? input.assignedToUserId
+      : (contract.assignedToUserId ?? null);
+
   await assertNoDirectJobConflict({
-    assignedToUserId: input.assignedToUserId ?? null,
+    assignedToUserId: resolvedAssignedToUserId,
     scheduledStartTime: input.scheduledStartTime ?? null,
     scheduledEndTime: input.scheduledEndTime ?? null,
   });
 
   const jobNumber = await generateJobNumber();
+  const compensationSnapshot = buildJobCompensationSnapshot(contract, {
+    assignedTeamId: resolvedAssignedTeamId,
+    assignedToUserId: resolvedAssignedToUserId,
+  });
 
   return prisma.$transaction(async (tx) => {
     const job = await tx.job.create({
@@ -1108,8 +1193,9 @@ export async function createJob(input: JobCreateInput) {
         accountId: input.accountId,
         jobType: input.jobType ?? 'special_job',
         jobCategory: input.jobCategory ?? 'one_time',
-        assignedTeamId: input.assignedTeamId ?? null,
-        assignedToUserId: input.assignedToUserId ?? null,
+        assignedTeamId: resolvedAssignedTeamId,
+        assignedToUserId: resolvedAssignedToUserId,
+        ...compensationSnapshot,
         status: 'scheduled',
         scheduledDate: input.scheduledDate,
         scheduledStartTime: input.scheduledStartTime ?? null,
@@ -1150,6 +1236,16 @@ export async function updateJob(id: string, input: JobUpdateInput, userId: strin
       status: true,
       assignedTeamId: true,
       assignedToUserId: true,
+      contract: {
+        select: {
+          assignedTeamId: true,
+          assignedToUserId: true,
+          compensationType: true,
+          subcontractorPercentage: true,
+          monthlyValue: true,
+          serviceFrequency: true,
+        },
+      },
     },
   });
   if (!existing) throw new NotFoundError('Job not found');
@@ -1630,6 +1726,16 @@ export async function assignJob(
       status: true,
       assignedTeamId: true,
       assignedToUserId: true,
+      contract: {
+        select: {
+          assignedTeamId: true,
+          assignedToUserId: true,
+          compensationType: true,
+          subcontractorPercentage: true,
+          monthlyValue: true,
+          serviceFrequency: true,
+        },
+      },
     },
   });
   if (!existing) throw new NotFoundError('Job not found');
@@ -1653,11 +1759,22 @@ export async function assignJob(
   });
 
   const job = await prisma.$transaction(async (tx) => {
+    const compensationSnapshot = existing.contract
+      ? buildJobCompensationSnapshot(existing.contract, {
+          assignedTeamId: teamId,
+          assignedToUserId: userId,
+        })
+      : {
+          compensationType: teamId ? 'percentage' : 'hourly',
+          subcontractorPercentageSnapshot: null,
+          jobRevenueSnapshot: null,
+        };
     const job = await tx.job.update({
       where: { id },
       data: {
         assignedTeamId: teamId,
         assignedToUserId: userId,
+        ...compensationSnapshot,
       },
       select: jobSelect,
     });
@@ -1718,6 +1835,28 @@ export async function reassignScheduledJobsForContract(input: {
     return { updated: 0, notifications: 0 };
   }
 
+  const contract = await prisma.contract.findUnique({
+    where: { id: input.contractId },
+    select: {
+      assignedTeamId: true,
+      assignedToUserId: true,
+      compensationType: true,
+      subcontractorPercentage: true,
+      monthlyValue: true,
+      serviceFrequency: true,
+    },
+  });
+  const compensationSnapshot = contract
+    ? buildJobCompensationSnapshot(contract, {
+        assignedTeamId: input.assignedTeamId,
+        assignedToUserId: input.assignedToUserId,
+      })
+    : {
+        compensationType: input.assignedTeamId ? 'percentage' : 'hourly',
+        subcontractorPercentageSnapshot: null,
+        jobRevenueSnapshot: null,
+      };
+
   await prisma.$transaction(async (tx) => {
     await tx.job.updateMany({
       where: {
@@ -1726,6 +1865,7 @@ export async function reassignScheduledJobsForContract(input: {
       data: {
         assignedTeamId: input.assignedTeamId,
         assignedToUserId: input.assignedToUserId,
+        ...compensationSnapshot,
       },
     });
 
@@ -1765,6 +1905,10 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
       facilityId: true,
       accountId: true,
       assignedTeamId: true,
+      assignedToUserId: true,
+      compensationType: true,
+      subcontractorPercentage: true,
+      monthlyValue: true,
       serviceFrequency: true,
       serviceSchedule: true,
       facility: {
@@ -1914,7 +2058,13 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
       ? null
       : (input.assignedTeamId !== undefined ? input.assignedTeamId : contract.assignedTeamId) ?? null;
   const resolvedAssignedToUserId =
-    input.assignedToUserId !== undefined ? input.assignedToUserId : null;
+    input.assignedToUserId !== undefined
+      ? input.assignedToUserId
+      : (contract.assignedToUserId ?? null);
+  const compensationSnapshot = buildJobCompensationSnapshot(contract, {
+    assignedTeamId: resolvedAssignedTeamId,
+    assignedToUserId: resolvedAssignedToUserId,
+  });
 
   // Batch create jobs
   const jobs = [];
@@ -1933,6 +2083,7 @@ export async function generateJobsFromContract(input: GenerateJobsInput) {
           jobCategory: 'recurring',
           assignedTeamId: resolvedAssignedTeamId,
           assignedToUserId: resolvedAssignedToUserId,
+          ...compensationSnapshot,
           status: 'scheduled',
           scheduledDate: new Date(`${dateIso}T00:00:00.000Z`),
           scheduledStartTime: scheduledWindow.scheduledStartTime,

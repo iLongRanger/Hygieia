@@ -406,6 +406,7 @@ export async function clockIn(input: ClockInInput) {
   let scheduleOverrideMeta: Record<string, unknown> | null = null;
 
   let linkedFacilityAddress: unknown = null;
+  let linkedJobForClockIn: { compensationType: string } | null = null;
   const resolvedLinks = await assertLinkedTargetsAreConsistent(input, {
     userRole: input.userRole,
     userId: input.userId,
@@ -423,6 +424,7 @@ export async function clockIn(input: ClockInInput) {
             scheduledDate: true,
             contractId: true,
             facilityId: true,
+            compensationType: true,
             contract: {
               select: {
                 serviceFrequency: true,
@@ -434,6 +436,7 @@ export async function clockIn(input: ClockInInput) {
           },
         })
       : null;
+    linkedJobForClockIn = linkedJob ? { compensationType: linkedJob.compensationType } : null;
 
     if (linkedJob?.scheduledDate) {
       const scheduledDate = toIsoDate(linkedJob.scheduledDate);
@@ -587,7 +590,7 @@ export async function clockIn(input: ClockInInput) {
       jobId: resolvedLinks.jobId,
       contractId: resolvedLinks.contractId,
       facilityId: resolvedLinks.facilityId,
-      entryType: 'clock_in',
+      entryType: linkedJobForClockIn?.compensationType === 'percentage' ? 'attendance' : 'clock_in',
       clockIn: new Date(),
       notes: input.notes,
       status: 'active',
@@ -611,7 +614,7 @@ export async function clockOut(
   const active = await prisma.timeEntry.findFirst({
     where: { userId, status: 'active', clockOut: null },
     include: {
-      job: { select: { id: true, facility: { select: { address: true } } } },
+      job: { select: { id: true, compensationType: true, facility: { select: { address: true } } } },
     },
   });
   if (!active) throw new BadRequestError('No active clock-in found');
@@ -634,14 +637,18 @@ export async function clockOut(
   }
 
   const clockOutTime = new Date();
-  const totalHours = computeHours(active.clockIn, clockOutTime, active.breakMinutes);
+  const isAttendanceOnly =
+    active.entryType === 'attendance' || active.job?.compensationType === 'percentage';
+  const totalHours = isAttendanceOnly
+    ? null
+    : computeHours(active.clockIn, clockOutTime, active.breakMinutes);
 
   const existingGeo = (active.geoLocation as Record<string, unknown>) ?? {};
   const entry = await prisma.timeEntry.update({
     where: { id: active.id },
     data: {
       clockOut: clockOutTime,
-      totalHours: new Prisma.Decimal(totalHours),
+      totalHours: totalHours == null ? null : new Prisma.Decimal(totalHours),
       status: 'completed',
       notes: notes ?? active.notes,
       geoLocation: (geoLocation

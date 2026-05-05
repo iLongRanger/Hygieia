@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
 import { generateContractTerms } from './contractTemplateService';
-import { percentageToTier } from '../lib/subcontractorTiers';
+import { normalizeSubcontractorPercentage, percentageToTier, tierToPercentage } from '../lib/subcontractorTiers';
 import {
   extractFacilityTimezone,
   mapProposalFrequencyToContractFrequency,
@@ -60,6 +60,8 @@ export interface ContractCreateInput {
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
   subcontractorTier?: string | null;
+  compensationType?: string;
+  subcontractorPercentage?: number | null;
   createdByUserId: string;
 }
 
@@ -85,6 +87,8 @@ export interface ContractUpdateInput {
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
   subcontractorTier?: string | null;
+  compensationType?: string;
+  subcontractorPercentage?: number | null;
 }
 
 export interface ContractSignInput {
@@ -177,6 +181,10 @@ const contractSelect = {
   billingCycle: true,
   paymentTerms: true,
   subcontractorTier: true,
+  compensationType: true,
+  subcontractorPercentage: true,
+  pendingCompensationType: true,
+  pendingSubcontractorPercentage: true,
   termsAndConditions: true,
   termsDocumentName: true,
   termsDocumentMimeType: true,
@@ -321,6 +329,8 @@ const {
   pendingAssignedTeamId: _pendingAssignedTeamIdOmitted,
   pendingAssignedToUserId: _pendingAssignedToUserIdOmitted,
   pendingSubcontractorTier: _pendingSubcontractorTierOmitted,
+  pendingCompensationType: _pendingCompensationTypeOmitted,
+  pendingSubcontractorPercentage: _pendingSubcontractorPercentageOmitted,
   assignmentOverrideEffectiveDate: _assignmentOverrideEffectiveDateOmitted,
   assignmentOverrideSetAt: _assignmentOverrideSetAtOmitted,
   pendingAssignedTeam: _pendingAssignedTeamOmitted,
@@ -337,6 +347,10 @@ function isLegacyContractColumnError(error: unknown): boolean {
     'contracts.pending_assigned_team_id',
     'contracts.pending_assigned_to_user_id',
     'contracts.pending_subcontractor_tier',
+    'contracts.compensation_type',
+    'contracts.subcontractor_percentage',
+    'contracts.pending_compensation_type',
+    'contracts.pending_subcontractor_percentage',
     'contracts.assignment_override_effective_date',
     'contracts.assignment_override_set_at',
   ];
@@ -351,6 +365,13 @@ function withLegacyPendingDefaults<T extends Record<string, unknown>>(contract: 
     pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
     pendingSubcontractorTier:
       'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
+    compensationType: 'compensationType' in contract ? contract.compensationType : 'hourly',
+    subcontractorPercentage:
+      'subcontractorPercentage' in contract ? contract.subcontractorPercentage : null,
+    pendingCompensationType:
+      'pendingCompensationType' in contract ? contract.pendingCompensationType : null,
+    pendingSubcontractorPercentage:
+      'pendingSubcontractorPercentage' in contract ? contract.pendingSubcontractorPercentage : null,
     assignmentOverrideEffectiveDate:
       'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
     assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
@@ -603,6 +624,13 @@ export async function listContracts(
       pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
       pendingSubcontractorTier:
         'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
+      compensationType: 'compensationType' in contract ? contract.compensationType : 'hourly',
+      subcontractorPercentage:
+        'subcontractorPercentage' in contract ? contract.subcontractorPercentage : null,
+      pendingCompensationType:
+        'pendingCompensationType' in contract ? contract.pendingCompensationType : null,
+      pendingSubcontractorPercentage:
+        'pendingSubcontractorPercentage' in contract ? contract.pendingSubcontractorPercentage : null,
       assignmentOverrideEffectiveDate:
         'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
       assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
@@ -747,6 +775,11 @@ export async function createContract(data: ContractCreateInput) {
     termsDocumentDataUrl: data.termsDocumentDataUrl,
     specialInstructions: data.specialInstructions,
     subcontractorTier: data.subcontractorTier,
+    compensationType: data.compensationType ?? 'hourly',
+    subcontractorPercentage:
+      data.compensationType === 'percentage'
+        ? normalizeSubcontractorPercentage(data.subcontractorPercentage, data.subcontractorTier)
+        : null,
     includesInitialClean: true,
     createdByUser: { connect: { id: data.createdByUserId } },
   });
@@ -838,6 +871,8 @@ export async function createContractFromProposal(
     specialInstructions: overrides?.specialInstructions ?? proposal.notes,
     includesInitialClean: true,
     subcontractorTier,
+    compensationType: 'hourly',
+    subcontractorPercentage: null,
     createdByUser: { connect: { id: createdByUserId } },
   };
 
@@ -872,7 +907,7 @@ export async function createContractFromProposal(
  */
 export async function updateContract(id: string, data: ContractUpdateInput) {
   const { serviceSchedule, ...rest } = data;
-  const updateData: Prisma.ContractUpdateInput = {
+  const updateData: Prisma.ContractUncheckedUpdateInput = {
     ...rest,
   };
 
@@ -1070,7 +1105,8 @@ export async function assignContractTeam(
   contractId: string,
   teamId: string | null,
   assignedToUserId: string | null = null,
-  subcontractorTier?: string
+  subcontractorTier?: string,
+  subcontractorPercentage?: number | null
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -1095,13 +1131,23 @@ export async function assignContractTeam(
   }
 
   await validateContractAssignee(teamId, assignedToUserId);
+  const assignmentCompensation = buildAssignmentCompensation({
+    teamId,
+    assignedToUserId,
+    subcontractorTier,
+    subcontractorPercentage,
+  });
 
-  const data: Prisma.ContractUpdateInput = {
+  const data: Prisma.ContractUncheckedUpdateInput = {
     assignedTeamId: teamId,
     assignedToUserId: assignedToUserId,
+    compensationType: assignmentCompensation.compensationType,
+    subcontractorPercentage: assignmentCompensation.subcontractorPercentage,
     pendingAssignedTeamId: null,
     pendingAssignedToUserId: null,
     pendingSubcontractorTier: null,
+    pendingCompensationType: null,
+    pendingSubcontractorPercentage: null,
     assignmentOverrideEffectiveDate: null,
     assignmentOverrideSetByUserId: null,
     assignmentOverrideSetAt: null,
@@ -1125,6 +1171,8 @@ export async function assignContractTeam(
     const legacyData: Record<string, unknown> = {
       assignedTeamId: teamId,
       assignedToUserId: assignedToUserId,
+      compensationType: assignmentCompensation.compensationType,
+      subcontractorPercentage: assignmentCompensation.subcontractorPercentage,
     };
     if (subcontractorTier !== undefined) {
       legacyData.subcontractorTier = subcontractorTier;
@@ -1184,13 +1232,49 @@ async function validateContractAssignee(
   }
 }
 
+function buildAssignmentCompensation(input: {
+  teamId: string | null;
+  assignedToUserId: string | null;
+  subcontractorTier?: string | null;
+  subcontractorPercentage?: number | null;
+}) {
+  if (input.teamId) {
+    const subcontractorPercentage = normalizeSubcontractorPercentage(
+      input.subcontractorPercentage,
+      input.subcontractorTier
+    );
+
+    if (subcontractorPercentage <= 0 || subcontractorPercentage > 1) {
+      throw new Error('Subcontractor percentage must be greater than 0 and no more than 100');
+    }
+
+    return {
+      compensationType: 'percentage',
+      subcontractorPercentage,
+    };
+  }
+
+  if (input.assignedToUserId) {
+    return {
+      compensationType: 'hourly',
+      subcontractorPercentage: null,
+    };
+  }
+
+  return {
+    compensationType: 'hourly',
+    subcontractorPercentage: null,
+  };
+}
+
 export async function scheduleContractAssignmentOverride(
   contractId: string,
   teamId: string | null,
   assignedToUserId: string | null,
   effectivityDate: Date,
   updatedByUserId: string,
-  subcontractorTier?: string
+  subcontractorTier?: string,
+  subcontractorPercentage?: number | null
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -1200,6 +1284,7 @@ export async function scheduleContractAssignmentOverride(
       assignedTeamId: true,
       assignedToUserId: true,
       subcontractorTier: true,
+      subcontractorPercentage: true,
     },
   });
 
@@ -1220,11 +1305,21 @@ export async function scheduleContractAssignmentOverride(
   }
 
   await validateContractAssignee(teamId, assignedToUserId);
+  const assignmentCompensation = buildAssignmentCompensation({
+    teamId,
+    assignedToUserId,
+    subcontractorTier: subcontractorTier ?? contract.subcontractorTier,
+    subcontractorPercentage,
+  });
 
   const sameAssignee =
     contract.assignedTeamId === (teamId ?? null) &&
     contract.assignedToUserId === (assignedToUserId ?? null) &&
-    (teamId ? (subcontractorTier ?? contract.subcontractorTier) === contract.subcontractorTier : true);
+    (teamId
+      ? (subcontractorTier ?? contract.subcontractorTier) === contract.subcontractorTier &&
+        assignmentCompensation.subcontractorPercentage ===
+          Number(contract.subcontractorPercentage ?? 0)
+      : true);
   if (sameAssignee) {
     throw new Error('New assignment must be different from current assignment');
   }
@@ -1238,6 +1333,10 @@ export async function scheduleContractAssignmentOverride(
       pendingAssignedTeamId: teamId,
       pendingAssignedToUserId: assignedToUserId,
       pendingSubcontractorTier: teamId ? subcontractorTier ?? contract.subcontractorTier : null,
+      pendingCompensationType: assignmentCompensation.compensationType,
+      pendingSubcontractorPercentage: teamId
+        ? assignmentCompensation.subcontractorPercentage
+        : null,
       assignmentOverrideEffectiveDate: normalizedDate,
       assignmentOverrideSetByUserId: updatedByUserId,
       assignmentOverrideSetAt: new Date(),

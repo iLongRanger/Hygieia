@@ -14,6 +14,18 @@ export function tierToPercentage(tier: string | null | undefined): number {
   return 0.60;
 }
 
+export function normalizeSubcontractorPercentage(
+  value: number | null | undefined,
+  fallbackTier?: string | null
+): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const normalized = value > 1 ? value / 100 : value;
+    return Math.min(1, Math.max(0, Math.round(normalized * 10000) / 10000));
+  }
+
+  return tierToPercentage(fallbackTier);
+}
+
 export function percentageToTier(pct: number): string {
   const entries = Object.entries(SUBCONTRACTOR_TIER_MAP);
   let closest = 'premium';

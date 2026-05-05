@@ -1229,6 +1229,10 @@ model Contract {
   pendingAssignedTeamId           String?   @map("pending_assigned_team_id") @db.Uuid
   pendingAssignedToUserId         String?   @map("pending_assigned_to_user_id") @db.Uuid
   pendingSubcontractorTier        String?   @map("pending_subcontractor_tier") @db.VarChar(20)
+  compensationType                String    @default("hourly") @map("compensation_type") @db.VarChar(20)
+  subcontractorPercentage         Decimal?  @map("subcontractor_percentage") @db.Decimal(5, 4)
+  pendingCompensationType         String?   @map("pending_compensation_type") @db.VarChar(20)
+  pendingSubcontractorPercentage  Decimal?  @map("pending_subcontractor_percentage") @db.Decimal(5, 4)
   assignmentOverrideEffectiveDate DateTime? @map("assignment_override_effective_date") @db.Date
   assignmentOverrideSetByUserId   String?   @map("assignment_override_set_by_user_id") @db.Uuid
   assignmentOverrideSetAt         DateTime? @map("assignment_override_set_at") @db.Timestamptz(6)
@@ -1329,6 +1333,7 @@ model Contract {
   @@index([assignedToUserId])
   @@index([pendingAssignedTeamId])
   @@index([pendingAssignedToUserId])
+  @@index([compensationType])
   @@index([assignmentOverrideEffectiveDate])
   @@index([assignmentOverrideSetByUserId])
   @@index([startDate])
@@ -1487,6 +1492,9 @@ model Job {
   accountId          String    @map("account_id") @db.Uuid
   assignedTeamId     String?   @map("assigned_team_id") @db.Uuid
   assignedToUserId   String?   @map("assigned_to_user_id") @db.Uuid
+  compensationType   String    @default("hourly") @map("compensation_type") @db.VarChar(20)
+  subcontractorPercentageSnapshot Decimal? @map("subcontractor_percentage_snapshot") @db.Decimal(5, 4)
+  jobRevenueSnapshot Decimal?  @map("job_revenue_snapshot") @db.Decimal(12, 2)
   jobType            String    @default("scheduled_service") @map("job_type") @db.VarChar(30)
   jobCategory        String    @default("one_time") @map("job_category") @db.VarChar(20)
   status             String    @default("scheduled") @db.VarChar(30)
@@ -1530,6 +1538,7 @@ model Job {
   @@index([accountId])
   @@index([assignedTeamId])
   @@index([assignedToUserId])
+  @@index([compensationType])
   @@index([jobType])
   @@index([jobCategory])
   @@index([status])

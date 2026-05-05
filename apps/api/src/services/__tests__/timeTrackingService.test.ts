@@ -76,6 +76,7 @@ describe('timeTrackingService', () => {
       scheduledDate: new Date('2026-02-02T00:00:00.000Z'),
       contractId: 'contract-1',
       facilityId: 'facility-1',
+      compensationType: 'hourly',
       contract: {
         serviceFrequency: null,
         serviceSchedule: null,
@@ -90,6 +91,51 @@ describe('timeTrackingService', () => {
         jobId: 'job-1',
       })
     ).rejects.toThrow('You cannot clock in today. Job is not scheduled for today.');
+  });
+
+  it('clockIn marks percentage jobs as attendance entries', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-02-01T08:00:00.000Z'));
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      compensationType: 'percentage',
+      contract: {
+        serviceFrequency: null,
+        serviceSchedule: null,
+        facility: { address: null },
+      },
+      facility: {
+        address: {
+          latitude: 43.70011,
+          longitude: -79.4163,
+          geofenceRadiusMeters: 100,
+        },
+      },
+    });
+    (prisma.timeEntry.create as jest.Mock).mockResolvedValue({ id: 'entry-1', job: null });
+
+    await clockIn({
+      userId: 'sub-1',
+      userRole: 'subcontractor',
+      userTeamId: 'team-1',
+      jobId: 'job-1',
+      geoLocation: {
+        latitude: 43.70011,
+        longitude: -79.4163,
+        accuracy: 10,
+      },
+    });
+
+    expect(prisma.timeEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          entryType: 'attendance',
+        }),
+      })
+    );
   });
 
   it('clockIn rejects when user is outside facility geofence', async () => {
@@ -205,6 +251,7 @@ describe('timeTrackingService', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-02-01T12:30:00.000Z'));
     (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
       id: 'entry-1',
+      entryType: 'clock_in',
       clockIn: new Date('2026-02-01T09:00:00.000Z'),
       breakMinutes: 30,
       notes: null,
@@ -217,6 +264,31 @@ describe('timeTrackingService', () => {
     const updateArg = (prisma.timeEntry.update as jest.Mock).mock.calls[0][0];
     expect(updateArg.data.status).toBe('completed');
     expect(updateArg.data.totalHours.toString()).toBe('3');
+  });
+
+  it('clockOut does not calculate payable hours for attendance entries', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-02-01T12:30:00.000Z'));
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
+      id: 'entry-1',
+      entryType: 'attendance',
+      clockIn: new Date('2026-02-01T09:00:00.000Z'),
+      breakMinutes: 0,
+      notes: null,
+      status: 'active',
+      geoLocation: {},
+      job: {
+        id: 'job-1',
+        compensationType: 'percentage',
+        facility: { address: null },
+      },
+    });
+    (prisma.timeEntry.update as jest.Mock).mockResolvedValue({ id: 'entry-1' });
+
+    await clockOut('sub-1', undefined, undefined, 'manager');
+
+    const updateArg = (prisma.timeEntry.update as jest.Mock).mock.calls[0][0];
+    expect(updateArg.data.status).toBe('completed');
+    expect(updateArg.data.totalHours).toBeNull();
   });
 
   it('startBreak rejects when break is already active', async () => {

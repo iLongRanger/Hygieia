@@ -1,7 +1,7 @@
 import React from 'react';
 import { Select } from './Select';
 
-interface TimeSelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
+interface TimeSelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange' | 'value'> {
   label?: string;
   error?: string;
   hint?: string;
@@ -79,4 +79,3 @@ export const TimeSelect = React.forwardRef<HTMLSelectElement, TimeSelectProps>(
 );
 
 TimeSelect.displayName = 'TimeSelect';
-

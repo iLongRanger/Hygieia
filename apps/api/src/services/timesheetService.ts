@@ -211,6 +211,11 @@ async function generateTimesheetWithAccess(
     clockOut: { lte: input.periodEnd },
     status: { in: ['completed', 'edited', 'approved'] },
     timesheetId: null,
+    entryType: { not: 'attendance' },
+    OR: [
+      { jobId: null },
+      { job: { compensationType: { not: 'percentage' } } },
+    ],
   };
 
   if (options?.userRole === 'manager' && options.userId) {

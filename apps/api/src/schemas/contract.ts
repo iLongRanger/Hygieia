@@ -251,6 +251,7 @@ export const assignContractTeamSchema = z
     assignedToUserId: z.string().uuid().nullable().optional(),
     effectivityDate: z.coerce.date().nullable().optional(),
     subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
+    subcontractorPercentage: z.coerce.number().min(0.01).max(100).optional(),
   })
   .refine((data) => !(data.teamId && data.assignedToUserId), {
     message: 'Assign either a subcontractor team or an internal employee, not both',

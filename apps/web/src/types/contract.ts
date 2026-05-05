@@ -91,9 +91,13 @@ export interface Contract {
   paymentTerms: string;
   subcontractorTier?: string | null;
   subcontractorPayout?: number | null;
+  compensationType?: 'hourly' | 'percentage' | string | null;
+  subcontractorPercentage?: number | null;
   pendingAssignedTeamId?: string | null;
   pendingAssignedToUserId?: string | null;
   pendingSubcontractorTier?: string | null;
+  pendingCompensationType?: 'hourly' | 'percentage' | string | null;
+  pendingSubcontractorPercentage?: number | null;
   assignmentOverrideEffectiveDate?: string | null;
   assignmentOverrideSetAt?: string | null;
   termsAndConditions?: string | null;

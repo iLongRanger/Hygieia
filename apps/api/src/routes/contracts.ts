@@ -914,8 +914,16 @@ router.patch(
         (nextTeamId &&
           parsed.data.subcontractorTier !== undefined &&
           parsed.data.subcontractorTier !== existingContract.subcontractorTier);
+      const percentageChanged =
+        nextTeamId &&
+        parsed.data.subcontractorPercentage !== undefined &&
+        Number(existingContract.subcontractorPercentage ?? 0) !==
+          (parsed.data.subcontractorPercentage > 1
+            ? parsed.data.subcontractorPercentage / 100
+            : parsed.data.subcontractorPercentage);
       const hasNextAssignment = Boolean(nextTeamId ?? nextAssignedToUserId);
-      const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentChanged;
+      const shouldScheduleOverride =
+        hasCurrentAssignment && hasNextAssignment && (assignmentChanged || Boolean(percentageChanged));
 
       if (shouldScheduleOverride && !parsed.data.effectivityDate) {
         throw new ValidationError(
@@ -942,13 +950,15 @@ router.patch(
             nextAssignedToUserId,
             effectivityDate as Date,
             user.id,
-            parsed.data.subcontractorTier
+            parsed.data.subcontractorTier,
+            parsed.data.subcontractorPercentage
           )
         : await assignContractTeam(
             req.params.id,
             nextTeamId,
             nextAssignedToUserId,
-            parsed.data.subcontractorTier
+            parsed.data.subcontractorTier,
+            parsed.data.subcontractorPercentage
           );
 
       await logContractActivity({
@@ -962,6 +972,7 @@ router.patch(
           assignedToUserId: parsed.data.assignedToUserId ?? null,
           effectivityDate: parsed.data.effectivityDate?.toISOString() ?? null,
           subcontractorTier: parsed.data.subcontractorTier,
+          subcontractorPercentage: parsed.data.subcontractorPercentage,
         },
       });
 
