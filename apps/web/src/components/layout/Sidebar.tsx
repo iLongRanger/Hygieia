@@ -28,6 +28,7 @@ import {
   PanelLeftOpen,
   PanelLeftClose,
   ChevronRight,
+  Tags,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
@@ -106,6 +107,16 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    key: 'pricing',
+    title: 'Pricing',
+    icon: Tags,
+    items: [
+      { to: '/commercial/pricing', icon: Calculator, label: 'Commercial' },
+      { to: '/residential/pricing', icon: Home, label: 'Residential' },
+      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job' },
+    ],
+  },
+  {
     key: 'manage',
     title: 'Manage',
     icon: Settings,
@@ -114,9 +125,6 @@ const navSections: NavSection[] = [
       { to: '/tasks', icon: ClipboardList, label: 'Task' },
       { to: '/users', icon: UserCog, label: 'People' },
       { to: '/teams', icon: Handshake, label: 'Teams' },
-      { to: '/commercial/pricing', icon: Calculator, label: 'Commercial' },
-      { to: '/residential/pricing', icon: Home, label: 'Residential' },
-      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job' },
       { to: '/settings/global', icon: Settings, label: 'Global Settings' },
     ],
   },

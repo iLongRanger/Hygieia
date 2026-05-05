@@ -102,6 +102,27 @@ describe('Sidebar RBAC', () => {
     );
   });
 
+  it('shows pricing links from the collapsed rail on hover', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    fireEvent.mouseEnter(screen.getAllByRole('button', { name: 'Pricing' })[0]);
+
+    expect(screen.getAllByRole('link', { name: 'Commercial' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Residential' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Specialized Job' }).length).toBeGreaterThan(0);
+  });
+
   it('allows active expanded sections to be collapsed manually', () => {
     useAuthStore.setState({
       user: {
