@@ -124,9 +124,9 @@ export async function listExpenses(params: ExpenseListParams, options?: ExpenseL
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.ExpenseWhereInput = {};
 
-  // RBAC: subcontractors see expenses created by their team, cleaners only their own.
+  // RBAC: managers see their managed account expenses; subcontractors see team expenses; cleaners only their own.
   if (options?.role === 'subcontractor') {
     if (options.userTeamId) {
       where.createdByUser = { teamId: options.userTeamId };
@@ -135,6 +135,13 @@ export async function listExpenses(params: ExpenseListParams, options?: ExpenseL
     }
   } else if (options?.role === 'cleaner' && options.userId) {
     where.createdByUserId = options.userId;
+  } else if (options?.role === 'manager' && options.userId) {
+    where.OR = [
+      { createdByUserId: options.userId },
+      { contract: { account: { accountManagerId: options.userId } } },
+      { facility: { account: { accountManagerId: options.userId } } },
+      { job: { account: { accountManagerId: options.userId } } },
+    ];
   }
 
   if (params.categoryId) where.categoryId = params.categoryId;
@@ -206,6 +213,23 @@ export async function getExpenseByIdScoped(
 
   if (options?.role === 'cleaner' && options.userId && expense.createdByUserId !== options.userId) {
     throw new NotFoundError('Expense not found');
+  }
+
+  if (options?.role === 'manager' && options.userId) {
+    const visibleCount = await prisma.expense.count({
+      where: {
+        id,
+        OR: [
+          { createdByUserId: options.userId },
+          { contract: { account: { accountManagerId: options.userId } } },
+          { facility: { account: { accountManagerId: options.userId } } },
+          { job: { account: { accountManagerId: options.userId } } },
+        ],
+      },
+    });
+    if (visibleCount === 0) {
+      throw new NotFoundError('Expense not found');
+    }
   }
 
   return expense;

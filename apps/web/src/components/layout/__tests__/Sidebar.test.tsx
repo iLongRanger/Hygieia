@@ -32,6 +32,10 @@ describe('Sidebar RBAC', () => {
     expect(screen.getAllByRole('link', { name: 'Teams' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Global Settings' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Area' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Payroll' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Reports' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Overview' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Expenses' }).length).toBeGreaterThan(0);
   });
 
   it('shows route when explicit user permissions grant access', () => {

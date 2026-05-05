@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
@@ -7,7 +7,8 @@ import {
   ensureOwnershipAccess,
   ensureManagerAccountAccess,
 } from '../middleware/ownership';
-import { UnauthorizedError } from '../middleware/errorHandler';
+import { BadRequestError, UnauthorizedError } from '../middleware/errorHandler';
+import { prisma } from '../lib/prisma';
 import { PERMISSIONS } from '../types';
 import { validate } from '../middleware/validate';
 import {
@@ -45,6 +46,47 @@ function requireAuthenticatedUser(req: Request): NonNullable<Request['user']> {
   return req.user;
 }
 
+async function assertInvoiceResourceAccess(
+  user: NonNullable<Request['user']>,
+  input: { accountId: string; contractId?: string | null; facilityId?: string | null },
+  context: { path: string; method: string }
+) {
+  if (input.facilityId) {
+    const facility = await prisma.facility.findUnique({
+      where: { id: input.facilityId },
+      select: { accountId: true },
+    });
+    if (!facility || facility.accountId !== input.accountId) {
+      throw new BadRequestError('Service location does not belong to the selected account');
+    }
+    await ensureOwnershipAccess(user, {
+      resourceType: 'facility',
+      resourceId: input.facilityId,
+      path: context.path,
+      method: context.method,
+    });
+  }
+
+  if (input.contractId) {
+    const contract = await prisma.contract.findUnique({
+      where: { id: input.contractId },
+      select: { accountId: true, facilityId: true },
+    });
+    if (!contract || contract.accountId !== input.accountId) {
+      throw new BadRequestError('Contract does not belong to the selected account');
+    }
+    if (input.facilityId && contract.facilityId !== input.facilityId) {
+      throw new BadRequestError('Contract does not belong to the selected service location');
+    }
+    await ensureOwnershipAccess(user, {
+      resourceType: 'contract',
+      resourceId: input.contractId,
+      path: context.path,
+      method: context.method,
+    });
+  }
+}
+
 // List invoices
 router.get(
   '/',
@@ -55,17 +97,23 @@ router.get(
       accountId, contractId, facilityId, status, overdue,
       dateFrom, dateTo, page, limit,
     } = req.query;
-    const result = await listInvoices({
-      accountId: accountId as string,
-      contractId: contractId as string,
-      facilityId: facilityId as string,
-      status: status as string,
-      overdue: overdue === 'true',
-      dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-      dateTo: dateTo ? new Date(dateTo as string) : undefined,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    const result = await listInvoices(
+      {
+        accountId: accountId as string,
+        contractId: contractId as string,
+        facilityId: facilityId as string,
+        status: status as string,
+        overdue: overdue === 'true',
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      }
+    );
     res.json(result);
   }
 );
@@ -81,22 +129,30 @@ router.post(
   '/',
   requirePermission(PERMISSIONS.INVOICES_WRITE),
   validate(createInvoiceSchema),
-  async (req: Request, res: Response) => {
-    const user = requireAuthenticatedUser(req);
-    await ensureManagerAccountAccess(user, req.body.accountId, {
-      path: req.path,
-      method: req.method,
-    });
-    const input = {
-      ...req.body,
-      issueDate: new Date(req.body.issueDate),
-      dueDate: new Date(req.body.dueDate),
-      periodStart: req.body.periodStart ? new Date(req.body.periodStart) : null,
-      periodEnd: req.body.periodEnd ? new Date(req.body.periodEnd) : null,
-      createdByUserId: user.id,
-    };
-    const invoice = await createInvoice(input);
-    res.status(201).json({ data: invoice });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      await ensureManagerAccountAccess(user, req.body.accountId, {
+        path: req.path,
+        method: req.method,
+      });
+      await assertInvoiceResourceAccess(user, req.body, {
+        path: req.path,
+        method: req.method,
+      });
+      const input = {
+        ...req.body,
+        issueDate: new Date(req.body.issueDate),
+        dueDate: new Date(req.body.dueDate),
+        periodStart: req.body.periodStart ? new Date(req.body.periodStart) : null,
+        periodEnd: req.body.periodEnd ? new Date(req.body.periodEnd) : null,
+        createdByUserId: user.id,
+      };
+      const invoice = await createInvoice(input);
+      res.status(201).json({ data: invoice });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

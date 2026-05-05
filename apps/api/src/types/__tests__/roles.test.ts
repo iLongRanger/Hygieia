@@ -27,6 +27,18 @@ describe('roles utilities', () => {
     });
   });
 
+  describe('finance permissions', () => {
+    it('does not grant managers global finance report or payroll access', () => {
+      expect(hasPermission('manager', 'finance_reports_read')).toBe(false);
+      expect(hasPermission('manager', 'payroll_read')).toBe(false);
+    });
+
+    it('keeps field workers limited to their own payroll access', () => {
+      expect(hasPermission('cleaner', 'payroll_read')).toBe(true);
+      expect(hasPermission('subcontractor', 'payroll_read')).toBe(true);
+    });
+  });
+
   describe('isRoleAtLeast', () => {
     it('evaluates role hierarchy correctly', () => {
       expect(isRoleAtLeast('admin', 'manager')).toBe(true);

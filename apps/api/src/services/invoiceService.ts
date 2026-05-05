@@ -19,6 +19,11 @@ export interface InvoiceListParams {
   limit?: number;
 }
 
+export interface InvoiceListAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface InvoiceCreateInput {
   contractId?: string | null;
   accountId: string;
@@ -566,11 +571,17 @@ async function createInvoiceFromJobs(input: {
 
 // ==================== Service ====================
 
-export async function listInvoices(params: InvoiceListParams) {
+export async function listInvoices(
+  params: InvoiceListParams,
+  options?: InvoiceListAccessOptions
+) {
   const { page = 1, limit = 20 } = params;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.InvoiceWhereInput = {};
+  if (options?.userRole === 'manager' && options.userId) {
+    where.account = { accountManagerId: options.userId };
+  }
   if (params.accountId) where.accountId = params.accountId;
   if (params.contractId) where.contractId = params.contractId;
   if (params.facilityId) where.facilityId = params.facilityId;

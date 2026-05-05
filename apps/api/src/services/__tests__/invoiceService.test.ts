@@ -4,6 +4,7 @@ import {
   batchGenerateInvoices,
   createInvoice,
   generateInvoiceFromContract,
+  listInvoices,
 } from '../invoiceService';
 
 jest.mock('../../lib/prisma', () => ({
@@ -162,6 +163,28 @@ describe('invoiceService', () => {
     expect(Number(createArg.data.taxRate.toString())).toBe(0.05);
     expect(Number(createArg.data.taxAmount.toString())).toBe(5);
     expect(Number(createArg.data.totalAmount.toString())).toBe(105);
+  });
+
+  it('listInvoices scopes managers to their assigned accounts', async () => {
+    (prisma.invoice.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.invoice.count as jest.Mock).mockResolvedValue(0);
+
+    await listInvoices({}, { userRole: 'manager', userId: 'manager-1' });
+
+    expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          account: { accountManagerId: 'manager-1' },
+        }),
+      })
+    );
+    expect(prisma.invoice.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          account: { accountManagerId: 'manager-1' },
+        }),
+      })
+    );
   });
 
   it('batchGenerateInvoices returns detailed statuses for generated and duplicates', async () => {

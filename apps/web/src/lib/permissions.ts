@@ -209,8 +209,6 @@ const rolePermissionMap: Record<UserRole, PermissionMap> = {
     quotations_write: true,
     expenses_read: true,
     expenses_write: true,
-    payroll_read: true,
-    finance_reports_read: true,
   },
   cleaner: {
     dashboard_read: true,
