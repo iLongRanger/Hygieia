@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { extractFacilityTimezone } from './serviceScheduleService';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
+import { getGlobalSettings } from './globalSettingsService';
 
 // ==================== Interfaces ====================
 
@@ -655,7 +656,8 @@ export async function generateInvoicePublicToken(invoiceId: string): Promise<str
 
 export async function createInvoice(input: InvoiceCreateInput) {
   const invoiceNumber = await generateInvoiceNumber();
-  const taxRate = input.taxRate ?? 0;
+  const globalSettings = input.taxRate === undefined ? await getGlobalSettings() : null;
+  const taxRate = input.taxRate ?? globalSettings?.taxRate ?? 0;
   const { subtotal, taxAmount, totalAmount } = calculateTotals(input.items, taxRate);
   const { hashedToken } = createPublicTokenPair();
 

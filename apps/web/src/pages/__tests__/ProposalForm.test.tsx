@@ -35,6 +35,7 @@ const previewResidentialQuoteMock = vi.fn();
 const getFacilityMock = vi.fn();
 const getResidentialPropertyMock = vi.fn();
 const listOneTimeServiceCatalogMock = vi.fn();
+const getGlobalSettingsMock = vi.fn();
 
 vi.mock('../../lib/accounts', () => ({
   listAccounts: (...args: unknown[]) => listAccountsMock(...args),
@@ -76,6 +77,10 @@ vi.mock('../../lib/proposalTemplates', () => ({
 
 vi.mock('../../lib/oneTimeServiceCatalog', () => ({
   listOneTimeServiceCatalog: (...args: unknown[]) => listOneTimeServiceCatalogMock(...args),
+}));
+
+vi.mock('../../lib/globalSettings', () => ({
+  getGlobalSettings: (...args: unknown[]) => getGlobalSettingsMock(...args),
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -318,6 +323,7 @@ describe('ProposalForm', () => {
     getFacilityMock.mockReset();
     getResidentialPropertyMock.mockReset();
     listOneTimeServiceCatalogMock.mockReset();
+    getGlobalSettingsMock.mockReset();
 
     listAccountsMock.mockResolvedValue({ data: [account, residentialAccount] });
     listFacilitiesMock.mockResolvedValue({ data: [facility, residentialFacility] });
@@ -354,6 +360,20 @@ describe('ProposalForm', () => {
         addOns: [],
       },
     ]);
+    getGlobalSettingsMock.mockResolvedValue({
+      companyName: 'Hygieia',
+      companyEmail: null,
+      companyPhone: null,
+      companyWebsite: null,
+      companyAddress: null,
+      companyTimezone: 'UTC',
+      taxRate: 0,
+      logoDataUrl: null,
+      themePrimaryColor: '#1f2937',
+      themeAccentColor: '#0f766e',
+      themeBackgroundColor: '#ffffff',
+      themeTextColor: '#111827',
+    });
     getFacilityMock.mockResolvedValue(residentialFacility);
     getResidentialPropertyMock.mockResolvedValue(residentialAccount.residentialProperties![0]);
     listAreasMock.mockResolvedValue({
@@ -674,6 +694,29 @@ describe('ProposalForm', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Cleaning Services - Main Facility');
+    });
+  });
+
+  it('defaults new proposals to the global tax rate', async () => {
+    getGlobalSettingsMock.mockResolvedValueOnce({
+      companyName: 'Hygieia',
+      companyEmail: null,
+      companyPhone: null,
+      companyWebsite: null,
+      companyAddress: null,
+      companyTimezone: 'UTC',
+      taxRate: 0.05,
+      logoDataUrl: null,
+      themePrimaryColor: '#1f2937',
+      themeAccentColor: '#0f766e',
+      themeBackgroundColor: '#ffffff',
+      themeTextColor: '#111827',
+    });
+
+    render(<ProposalForm />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('spinbutton', { name: /tax rate/i })[0]).toHaveValue(5);
     });
   });
 

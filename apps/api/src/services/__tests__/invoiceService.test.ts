@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { prisma } from '../../lib/prisma';
 import {
   batchGenerateInvoices,
+  createInvoice,
   generateInvoiceFromContract,
 } from '../invoiceService';
 
@@ -28,6 +29,9 @@ jest.mock('../../lib/prisma', () => ({
     invoiceActivity: {
       create: jest.fn(),
     },
+    globalSettings: {
+      findUnique: jest.fn(),
+    },
     job: {
       findMany: jest.fn(),
     },
@@ -42,6 +46,7 @@ describe('invoiceService', () => {
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
     (prisma.invoice.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.globalSettings.findUnique as jest.Mock).mockResolvedValue({ taxRate: 0.05 });
     (prisma.invoice.create as jest.Mock).mockResolvedValue({ id: 'inv-1' });
     (prisma.invoiceItem.create as jest.Mock).mockResolvedValue({ id: 'item-1' });
     (prisma.invoiceJobAllocation.create as jest.Mock).mockResolvedValue({ id: 'allocation-1' });
@@ -135,6 +140,28 @@ describe('invoiceService', () => {
         'user-1'
       )
     ).rejects.toThrow('Billing period cannot exceed 31 days');
+  });
+
+  it('createInvoice uses the global tax rate when no tax rate is provided', async () => {
+    await createInvoice({
+      accountId: 'account-1',
+      issueDate: new Date('2026-03-01T00:00:00.000Z'),
+      dueDate: new Date('2026-03-31T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+      items: [
+        {
+          itemType: 'service',
+          description: 'Monthly cleaning',
+          quantity: 1,
+          unitPrice: 100,
+        },
+      ],
+    });
+
+    const createArg = (prisma.invoice.create as jest.Mock).mock.calls[0][0];
+    expect(Number(createArg.data.taxRate.toString())).toBe(0.05);
+    expect(Number(createArg.data.taxAmount.toString())).toBe(5);
+    expect(Number(createArg.data.totalAmount.toString())).toBe(105);
   });
 
   it('batchGenerateInvoices returns detailed statuses for generated and duplicates', async () => {

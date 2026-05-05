@@ -15,6 +15,7 @@ import {
 } from './leadService';
 import { BadRequestError } from '../middleware/errorHandler';
 import { findPreferredOpportunityForAccount } from './opportunityResolver';
+import { getGlobalSettings } from './globalSettingsService';
 
 export interface ProposalListParams {
   page?: number;
@@ -733,7 +734,8 @@ export async function createProposal(input: ProposalCreateInput) {
   const readiness = await assertProposalCreateReadiness(input);
 
   const proposalNumber = await generateProposalNumber();
-  const taxRate = input.taxRate ?? 0;
+  const globalSettings = input.taxRate === undefined ? await getGlobalSettings() : null;
+  const taxRate = input.taxRate ?? globalSettings?.taxRate ?? 0;
   const proposalType = input.proposalType ?? 'recurring';
   const isSpecialized = isSpecializedProposalType(proposalType);
   const serviceFrequency = input.serviceFrequency ?? '5x_week';

@@ -30,6 +30,9 @@ jest.mock('../../lib/prisma', () => ({
     contractActivity: {
       findFirst: jest.fn(),
     },
+    globalSettings: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => cb(prisma)),
   },
 }));
@@ -40,6 +43,7 @@ describe('contractService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)
     );
+    (prisma.globalSettings.findUnique as jest.Mock).mockResolvedValue({ taxRate: 0.05 });
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',
       accountId: 'account-1',
@@ -166,6 +170,7 @@ describe('contractService', () => {
       proposalId: 'proposal-1',
       startDate: new Date('2026-02-01'),
       monthlyValue: 1000,
+      termsAndConditions: 'Terms',
       createdByUserId: 'user-1',
     });
 
@@ -663,5 +668,29 @@ describe('contractService', () => {
     ).rejects.toThrow('Facility does not belong to the selected account');
 
     expect(prisma.contract.create).not.toHaveBeenCalled();
+  });
+
+  it('createStandaloneContract should use global tax rate when no tax rate is provided', async () => {
+    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-standalone' });
+
+    await contractService.createStandaloneContract({
+      title: 'Standalone',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      startDate: new Date('2026-02-01'),
+      monthlyValue: 1000,
+      termsAndConditions: 'Terms',
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.contract.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          taxRate: 0.05,
+          taxAmount: 50,
+          totalValue: 1050,
+        }),
+      })
+    );
   });
 });

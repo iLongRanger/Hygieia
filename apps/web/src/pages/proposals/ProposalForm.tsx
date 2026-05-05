@@ -65,6 +65,7 @@ import { AreaTaskTimeBreakdown } from '../../components/proposals/AreaTaskTimeBr
 import { PricingBreakdownPanel } from '../../components/proposals/PricingBreakdownPanel';
 import ClientServiceScheduleCard from '../../components/proposals/ClientServiceScheduleCard';
 import { listTemplates } from '../../lib/proposalTemplates';
+import { getGlobalSettings } from '../../lib/globalSettings';
 import type { ProposalTemplate } from '../../types/proposalTemplate';
 import { SUBCONTRACTOR_TIER_OPTIONS } from '../../lib/subcontractorTiers';
 import {
@@ -1041,6 +1042,7 @@ const ProposalForm = () => {
         templatesRes,
         proposalsRes,
         specializedCatalogRes,
+        globalSettings,
       ] = await Promise.all([
         listAccounts({ limit: 100, readyForProposal: true }),
         listFacilities({ limit: 100, includeResidentialLinked: true }),
@@ -1049,6 +1051,7 @@ const ProposalForm = () => {
         listTemplates(),
         listProposals({ limit: 100, includeArchived: false }),
         listOneTimeServiceCatalog({ includeInactive: false }),
+        getGlobalSettings(),
       ]);
       const readyAccounts = accountsRes?.data || [];
       const readyAccountIds = new Set(readyAccounts.map((account) => account.id));
@@ -1087,6 +1090,10 @@ const ProposalForm = () => {
       }
       // Set default template terms for new proposals
       if (!isEditMode) {
+        setFormData((prev) => ({
+          ...prev,
+          taxRate: globalSettings.taxRate ?? 0,
+        }));
         const defaultTemplate = (templatesRes || []).find((t: ProposalTemplate) => t.isDefault);
         if (defaultTemplate) {
           // Default template found (terms now managed in contracts)

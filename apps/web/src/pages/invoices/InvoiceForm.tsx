@@ -11,6 +11,7 @@ import { createInvoice } from '../../lib/invoices';
 import { listAccounts } from '../../lib/accounts';
 import { listContracts } from '../../lib/contracts';
 import { listFacilities } from '../../lib/facilities';
+import { getGlobalSettings } from '../../lib/globalSettings';
 import type { Account } from '../../types/crm';
 import type { InvoiceItemType } from '../../types/invoice';
 
@@ -78,6 +79,7 @@ const InvoiceForm = () => {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingContractItems, setLoadingContractItems] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [globalTaxRate, setGlobalTaxRate] = useState(0);
   const [contractDefaults, setContractDefaults] = useState<InvoiceContractDefaults>({
     contractId: null,
     facilityId: null,
@@ -98,8 +100,17 @@ const InvoiceForm = () => {
   useEffect(() => {
     const loadAccounts = async () => {
       try {
-        const res = await listAccounts({ page: 1, limit: 100 });
+        const [res, settings] = await Promise.all([
+          listAccounts({ page: 1, limit: 100 }),
+          getGlobalSettings(),
+        ]);
         setAccounts(res.data);
+        const defaultTaxRate = settings.taxRate ?? 0;
+        setGlobalTaxRate(defaultTaxRate);
+        setContractDefaults((prev) => ({
+          ...prev,
+          taxRate: prev.taxRate || defaultTaxRate,
+        }));
       } catch {
         toast.error('Failed to load accounts');
       } finally {
@@ -122,7 +133,7 @@ const InvoiceForm = () => {
           contractId: null,
           facilityId: null,
           paymentTerms: '',
-          taxRate: 0,
+          taxRate: globalTaxRate,
         });
         setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
         return;
@@ -174,7 +185,7 @@ const InvoiceForm = () => {
             contractId: null,
             facilityId: null,
             paymentTerms: '',
-            taxRate: 0,
+            taxRate: globalTaxRate,
           });
           setItems([{ description: '', quantity: '1', unitPrice: '0', itemType: 'service' }]);
           toast('No active facility contracts found for this account');
@@ -213,7 +224,7 @@ const InvoiceForm = () => {
     };
 
     void loadAccountContractItems();
-  }, [form.accountId, form.issueDate]);
+  }, [form.accountId, form.issueDate, globalTaxRate]);
 
   const updateItem = (index: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));

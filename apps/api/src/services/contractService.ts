@@ -13,6 +13,7 @@ import {
   autoSetLeadStatusForAccount,
   autoSetLeadStatusForOpportunity,
 } from './leadService';
+import { getGlobalSettings } from './globalSettingsService';
 
 export interface ContractListParams {
   page?: number;
@@ -1593,6 +1594,11 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     data.serviceSchedule,
     data.serviceFrequency
   );
+  const globalSettings = data.taxRate === undefined ? await getGlobalSettings() : null;
+  const taxRate = data.taxRate ?? globalSettings?.taxRate ?? 0;
+  const taxAmount = data.taxAmount ?? Math.round(data.monthlyValue * taxRate * 100) / 100;
+  const totalValue =
+    data.totalValue ?? Math.round((data.monthlyValue + taxAmount) * 100) / 100;
 
   // Auto-generate terms if not provided
   let termsAndConditions = data.termsAndConditions;
@@ -1637,9 +1643,9 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     autoRenew: data.autoRenew ?? false,
     renewalNoticeDays: data.renewalNoticeDays ?? 30,
     monthlyValue: data.monthlyValue,
-    taxRate: data.taxRate ?? 0,
-    taxAmount: data.taxAmount ?? 0,
-    totalValue: data.totalValue,
+    taxRate,
+    taxAmount,
+    totalValue,
     billingCycle: data.billingCycle ?? 'monthly',
     paymentTerms: data.paymentTerms ?? 'Net 30',
     termsAndConditions,

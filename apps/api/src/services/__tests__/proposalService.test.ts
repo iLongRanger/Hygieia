@@ -36,6 +36,9 @@ jest.mock('../../lib/prisma', () => ({
     contact: {
       findFirst: jest.fn(),
     },
+    globalSettings: {
+      findUnique: jest.fn(),
+    },
     lead: {
       findUnique: jest.fn(),
     },
@@ -110,6 +113,7 @@ const createTestProposal = (overrides = {}) => ({
 describe('proposalService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.globalSettings.findUnique as jest.Mock).mockResolvedValue({ taxRate: 0.05 });
     jest.spyOn(pricingService, 'resolvePricingPlan').mockResolvedValue({
       id: 'pricing-plan-1',
       name: 'Standard',
@@ -449,7 +453,7 @@ describe('proposalService', () => {
           accountId: 'account-1',
           status: 'draft',
           subtotal: 0,
-          taxRate: 0,
+          taxRate: 0.05,
           taxAmount: 0,
           totalAmount: 0,
           createdByUserId: 'user-1',
