@@ -1,19 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import { getInvoiceByPublicToken } from '../services/invoiceService';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
+import { publicTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router: Router = Router();
 
-// Rate limiting for public endpoints
-const publicRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30,
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-router.use(publicRateLimiter);
+router.use(publicTokenRateLimiter);
 
 // Get invoice by public token
 router.get('/:token', async (req: Request, res: Response, next: NextFunction) => {

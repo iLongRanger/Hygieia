@@ -14,10 +14,10 @@ import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicSignContractSchema } from '../schemas/publicContract';
 import type { ZodError } from 'zod';
-import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
 import { hashPublicToken } from '../services/publicTokenService';
 import { escapeHtml } from '../utils/escapeHtml';
+import { publicTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router: Router = Router();
 type PublicContractPayload = NonNullable<Awaited<ReturnType<typeof getContractByPublicToken>>>;
@@ -31,13 +31,7 @@ function decodeDataUrlToBuffer(dataUrl: string): Buffer {
   return Buffer.from(base64, 'base64');
 }
 
-const publicRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-router.use(publicRateLimiter);
+router.use(publicTokenRateLimiter);
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];

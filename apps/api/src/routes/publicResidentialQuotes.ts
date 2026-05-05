@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import type { ZodError } from 'zod';
-import rateLimit from 'express-rate-limit';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler';
 import {
   acceptResidentialQuotePublic,
@@ -14,16 +13,11 @@ import {
   publicDeclineResidentialQuoteSchema,
 } from '../schemas/residential';
 import { getDefaultBranding, getGlobalSettings } from '../services/globalSettingsService';
+import { publicTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router: Router = Router();
 
-const publicRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-router.use(publicRateLimiter);
+router.use(publicTokenRateLimiter);
 
 function handleZodError(error: ZodError): ValidationError {
   const firstError = error.errors[0];

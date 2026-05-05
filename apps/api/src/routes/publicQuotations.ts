@@ -16,19 +16,13 @@ import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicAcceptQuotationSchema, publicRejectQuotationSchema } from '../schemas/quotation';
 import type { ZodError } from 'zod';
-import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
+import { publicTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router: Router = Router();
 type PublicQuotationPayload = NonNullable<Awaited<ReturnType<typeof getQuotationByPublicToken>>>;
 
-const publicRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-router.use(publicRateLimiter);
+router.use(publicTokenRateLimiter);
 
 async function getNotificationRecipients(quotationId: string) {
   const quotation = await prisma.quotation.findUnique({

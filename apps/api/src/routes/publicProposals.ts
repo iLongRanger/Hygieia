@@ -17,20 +17,13 @@ import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import { publicAcceptSchema, publicRejectSchema } from '../schemas/publicProposal';
 import type { ZodError } from 'zod';
-import rateLimit from 'express-rate-limit';
 import { createBulkNotifications } from '../services/notificationService';
+import { publicTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router: Router = Router();
 type PublicProposalPayload = NonNullable<Awaited<ReturnType<typeof getProposalByPublicToken>>>;
 
-// Rate limiting for public endpoints
-const publicRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30,
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-router.use(publicRateLimiter);
+router.use(publicTokenRateLimiter);
 
 async function getNotificationRecipients(proposalId: string) {
   const proposal = await prisma.proposal.findUnique({

@@ -16,14 +16,22 @@ function createRedisStore(prefix: string) {
   });
 }
 
+function shouldSkipRateLimit(): boolean {
+  return !RATE_LIMIT_ENABLED || process.env.NODE_ENV === 'test';
+}
+
+function getRateLimitStore(prefix: string) {
+  return shouldSkipRateLimit() ? undefined : createRedisStore(prefix);
+}
+
 // Global rate limiter: 100 requests per 15 minutes
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => !RATE_LIMIT_ENABLED,
-  store: createRedisStore('ratelimit:global:'),
+  skip: shouldSkipRateLimit,
+  store: getRateLimitStore('ratelimit:global:'),
   handler: (req: Request, res: Response) => {
     logSecurityEvent('rate_limit_exceeded', {
       ip: req.ip,
@@ -49,8 +57,8 @@ export const authRateLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => !RATE_LIMIT_ENABLED,
-  store: createRedisStore('ratelimit:auth:'),
+  skip: shouldSkipRateLimit,
+  store: getRateLimitStore('ratelimit:auth:'),
   handler: (req: Request, res: Response) => {
     logSecurityEvent('auth_rate_limit_exceeded', {
       ip: req.ip,
@@ -75,8 +83,8 @@ export const sensitiveRateLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => !RATE_LIMIT_ENABLED,
-  store: createRedisStore('ratelimit:sensitive:'),
+  skip: shouldSkipRateLimit,
+  store: getRateLimitStore('ratelimit:sensitive:'),
   handler: (req: Request, res: Response) => {
     logSecurityEvent('sensitive_rate_limit_exceeded', {
       ip: req.ip,
@@ -87,6 +95,32 @@ export const sensitiveRateLimiter = rateLimit({
       error: {
         code: 'TOO_MANY_REQUESTS',
         message: 'Too many requests for this operation',
+      },
+    });
+  },
+  keyGenerator: (req: Request) => {
+    return req.ip ?? req.socket.remoteAddress ?? 'unknown';
+  },
+});
+
+export const publicTokenRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: shouldSkipRateLimit,
+  store: getRateLimitStore('ratelimit:public-token:'),
+  handler: (req: Request, res: Response) => {
+    logSecurityEvent('public_token_rate_limit_exceeded', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method,
+      userAgent: req.headers['user-agent'],
+    });
+    res.status(429).json({
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many public link requests, please try again later',
       },
     });
   },
