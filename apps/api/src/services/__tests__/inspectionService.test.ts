@@ -74,6 +74,9 @@ jest.mock('../../lib/prisma', () => ({
     contract: {
       findUnique: jest.fn(),
     },
+    job: {
+      findUnique: jest.fn(),
+    },
   },
 }));
 
@@ -94,6 +97,7 @@ describe('inspectionService', () => {
     (prisma.appointment.findUnique as jest.Mock).mockResolvedValue(null);
     (prisma.appointment.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue(null);
   });
 
   it('listInspections applies date and score filters with pagination', async () => {
@@ -211,6 +215,80 @@ describe('inspectionService', () => {
         skipAutoCreate: true,
       })
     ).rejects.toThrow(/INS-2026-0001 is still pending/);
+
+    expect(prisma.inspection.create).not.toHaveBeenCalled();
+  });
+
+  it('createInspection rejects a contract from another service location', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      accountId: 'account-1',
+      facilityId: 'facility-2',
+    });
+
+    await expect(
+      createInspection({
+        contractId: 'contract-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        inspectorUserId: 'user-1',
+        scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+        createdByUserId: 'admin-1',
+        skipAutoCreate: true,
+      })
+    ).rejects.toThrow('Contract does not belong to the selected account and service location');
+
+    expect(prisma.inspection.create).not.toHaveBeenCalled();
+  });
+
+  it('createInspection rejects a job from another account or service location', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      accountId: 'account-2',
+      facilityId: 'facility-1',
+      contractId: null,
+    });
+
+    await expect(
+      createInspection({
+        jobId: 'job-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        inspectorUserId: 'user-1',
+        scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+        createdByUserId: 'admin-1',
+        skipAutoCreate: true,
+      })
+    ).rejects.toThrow('Job does not belong to the selected account and service location');
+
+    expect(prisma.inspection.create).not.toHaveBeenCalled();
+  });
+
+  it('createInspection rejects a job that does not belong to the selected contract', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+    });
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      contractId: 'contract-2',
+    });
+
+    await expect(
+      createInspection({
+        contractId: 'contract-1',
+        jobId: 'job-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        inspectorUserId: 'user-1',
+        scheduledDate: new Date('2026-02-01T00:00:00.000Z'),
+        createdByUserId: 'admin-1',
+        skipAutoCreate: true,
+      })
+    ).rejects.toThrow('Job does not belong to the selected contract');
 
     expect(prisma.inspection.create).not.toHaveBeenCalled();
   });

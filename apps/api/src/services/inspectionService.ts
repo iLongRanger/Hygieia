@@ -649,6 +649,36 @@ export async function createInspection(input: InspectionCreateInput) {
     throw new BadRequestError('Facility does not belong to the selected account');
   }
 
+  if (input.contractId) {
+    const contract = await prisma.contract.findUnique({
+      where: { id: input.contractId },
+      select: { id: true, accountId: true, facilityId: true },
+    });
+
+    if (
+      !contract ||
+      contract.accountId !== input.accountId ||
+      contract.facilityId !== input.facilityId
+    ) {
+      throw new BadRequestError('Contract does not belong to the selected account and service location');
+    }
+  }
+
+  if (input.jobId) {
+    const job = await prisma.job.findUnique({
+      where: { id: input.jobId },
+      select: { id: true, accountId: true, facilityId: true, contractId: true },
+    });
+
+    if (!job || job.accountId !== input.accountId || job.facilityId !== input.facilityId) {
+      throw new BadRequestError('Job does not belong to the selected account and service location');
+    }
+
+    if (input.contractId && job.contractId !== input.contractId) {
+      throw new BadRequestError('Job does not belong to the selected contract');
+    }
+  }
+
   const incompleteInspection = await prisma.inspection.findFirst({
     where: {
       facilityId: input.facilityId,
