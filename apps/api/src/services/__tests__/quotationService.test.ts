@@ -43,6 +43,9 @@ jest.mock('../../lib/prisma', () => ({
     quotationActivity: {
       create: jest.fn(),
     },
+    globalSettings: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => callback(prisma)),
   },
 }));
@@ -53,6 +56,7 @@ describe('quotationService', () => {
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
     );
+    (prisma.globalSettings.findUnique as jest.Mock).mockResolvedValue({ taxRate: 0.05 });
     (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
       id: 'facility-1',
       accountId: 'account-1',
@@ -117,6 +121,35 @@ describe('quotationService', () => {
               expect.objectContaining({ sortOrder: 1, includedTasks: [] }),
             ],
           },
+        }),
+      })
+    );
+  });
+
+  it('createQuotation uses the global tax rate when no tax rate is provided', async () => {
+    const year = new Date().getFullYear();
+    (prisma.quotation.findFirst as jest.Mock).mockResolvedValue({
+      quotationNumber: `QT-${year}-0004`,
+    });
+    (prisma.quotation.create as jest.Mock).mockResolvedValue({ id: 'qt-5' });
+
+    await createQuotation({
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      title: 'Specialized Job',
+      createdByUserId: 'user-1',
+      services: [
+        { serviceName: 'Window Cleaning', price: 200 },
+      ],
+    });
+
+    expect(prisma.quotation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subtotal: 200,
+          taxRate: 0.05,
+          taxAmount: 10,
+          totalAmount: 210,
         }),
       })
     );

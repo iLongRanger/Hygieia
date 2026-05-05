@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
+import { getGlobalSettings } from './globalSettingsService';
 
 // ==================== Interfaces ====================
 
@@ -369,7 +370,8 @@ export async function createQuotation(input: QuotationCreateInput) {
   }
 
   const quotationNumber = await generateQuotationNumber();
-  const taxRate = input.taxRate ?? 0;
+  const globalSettings = input.taxRate === undefined ? await getGlobalSettings() : null;
+  const taxRate = input.taxRate ?? globalSettings?.taxRate ?? 0;
   const services = input.services ?? [];
   const normalizedServices = services.map((service) => ({
     ...service,
