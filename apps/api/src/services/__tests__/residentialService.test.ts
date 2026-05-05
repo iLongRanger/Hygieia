@@ -14,6 +14,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     residentialProperty: {
       create: jest.fn(),
+      count: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -41,6 +42,33 @@ jest.mock('../leadService', () => ({
 describe('residentialService pipeline updates', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('listResidentialProperties scopes managers to assigned accounts', async () => {
+    (prisma.residentialProperty.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.residentialProperty.count as jest.Mock).mockResolvedValue(0);
+
+    await residentialService.listResidentialProperties(
+      { search: 'maple' },
+      { userRole: 'manager', userId: 'manager-1' }
+    );
+
+    expect(prisma.residentialProperty.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          archivedAt: null,
+          AND: expect.arrayContaining([
+            {
+              OR: [
+                { name: { contains: 'maple', mode: 'insensitive' } },
+                { account: { is: { name: { contains: 'maple', mode: 'insensitive' } } } },
+              ],
+            },
+            { account: { is: { accountManagerId: 'manager-1' } } },
+          ]),
+        }),
+      })
+    );
   });
 
   it('createResidentialProperty should create a linked facility in the same transaction', async () => {

@@ -17,6 +17,12 @@ export interface FacilityTaskListParams {
   includeArchived?: boolean;
 }
 
+export interface FacilityTaskAccessOptions {
+  userRole?: string;
+  userId?: string;
+  userTeamId?: string | null;
+}
+
 export interface FacilityTaskCreateInput {
   facilityId: string;
   areaId?: string | null;
@@ -264,7 +270,8 @@ async function resolveTaskTemplateForCreate(
 }
 
 export async function listFacilityTasks(
-  params: FacilityTaskListParams
+  params: FacilityTaskListParams,
+  access: FacilityTaskAccessOptions = {}
 ): Promise<
   PaginatedResult<
     Prisma.FacilityTaskGetPayload<{ select: typeof facilityTaskSelect }>
@@ -316,9 +323,33 @@ export async function listFacilityTasks(
   }
 
   if (search) {
-    where.OR = [
-      { customName: { contains: search, mode: 'insensitive' } },
-      { taskTemplate: { name: { contains: search, mode: 'insensitive' } } },
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { customName: { contains: search, mode: 'insensitive' } },
+          { taskTemplate: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      { facility: { account: { accountManagerId: access.userId } } },
+    ];
+  } else if (access.userRole === 'cleaner' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      { facility: { jobs: { some: { assignedToUserId: access.userId } } } },
+    ];
+  } else if (access.userRole === 'subcontractor') {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      access.userTeamId
+        ? { facility: { contracts: { some: { assignedTeamId: access.userTeamId } } } }
+        : { id: '__no_subcontractor_team_scope__' },
     ];
   }
 

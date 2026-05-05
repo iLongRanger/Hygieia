@@ -650,6 +650,8 @@ describe('Contract Routes', () => {
       'contract-1',
       '11111111-1111-1111-1111-111111111111',
       null,
+      undefined,
+      undefined,
       undefined
     );
     expect(jobService.autoGenerateRecurringJobsForContract).toHaveBeenCalled();
@@ -711,6 +713,8 @@ describe('Contract Routes', () => {
       'contract-1',
       null,
       '22222222-2222-2222-2222-222222222222',
+      undefined,
+      undefined,
       undefined
     );
     expect(notificationService.createBulkNotifications).toHaveBeenCalledWith(
@@ -868,6 +872,15 @@ describe('Contract Routes', () => {
 
     expect(response.body.data).toHaveLength(1);
     expect(contractAmendmentService.listContractAmendments).toHaveBeenCalledWith('contract-1');
+  });
+
+  it('GET /:id/activities should enforce contract ownership', async () => {
+    mockAuthUser.role = 'manager';
+    mockOwnership.deniedKeys.add('manager:contract:contract-locked');
+
+    await request(app)
+      .get('/api/v1/contracts/contract-locked/activities')
+      .expect(403);
   });
 
   it('POST /:id/amendments should create amendment draft', async () => {

@@ -42,6 +42,11 @@ interface ResidentialQuoteAccessOptions {
   userId?: string;
 }
 
+interface ResidentialPropertyAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 const residentialPropertySelect = {
   id: true,
   accountId: true,
@@ -733,7 +738,8 @@ export async function setDefaultResidentialPricingPlan(id: string) {
 }
 
 export async function listResidentialProperties(
-  params: ListResidentialPropertiesQuery
+  params: ListResidentialPropertiesQuery,
+  access: ResidentialPropertyAccessOptions = {}
 ): Promise<PaginatedResult<ResidentialPropertyRecord>> {
   const {
     page = 1,
@@ -755,9 +761,21 @@ export async function listResidentialProperties(
     where.status = status;
   }
   if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { account: { is: { name: { contains: search, mode: 'insensitive' } } } },
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { account: { is: { name: { contains: search, mode: 'insensitive' } } } },
+        ],
+      },
+    ];
+  }
+
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      { account: { is: { accountManagerId: access.userId } } },
     ];
   }
 

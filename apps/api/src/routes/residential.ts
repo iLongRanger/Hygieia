@@ -281,7 +281,10 @@ router.get(
           method: req.method,
         });
       }
-      const result = await listResidentialProperties(parsed.data);
+      const result = await listResidentialProperties(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);

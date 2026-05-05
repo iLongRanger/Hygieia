@@ -14,6 +14,11 @@ export interface OpportunityListParams {
   includeArchived?: boolean;
 }
 
+export interface OpportunityListAccessOptions {
+  userRole?: string;
+  userId?: string;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   pagination: {
@@ -84,7 +89,8 @@ const opportunitySelect = {
 } satisfies Prisma.OpportunitySelect;
 
 export async function listOpportunities(
-  params: OpportunityListParams
+  params: OpportunityListParams,
+  access: OpportunityListAccessOptions = {}
 ): Promise<
   PaginatedResult<Prisma.OpportunityGetPayload<{ select: typeof opportunitySelect }>>
 > {
@@ -112,13 +118,31 @@ export async function listOpportunities(
   if (leadId) where.leadId = leadId;
   if (ownerUserId) where.ownerUserId = ownerUserId;
 
+  if (access.userRole === 'manager' && access.userId) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { createdByUserId: access.userId },
+          { ownerUserId: access.userId },
+          { account: { accountManagerId: access.userId } },
+        ],
+      },
+    ];
+  }
+
   if (search) {
-    where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { account: { name: { contains: search, mode: 'insensitive' } } },
-      { facility: { name: { contains: search, mode: 'insensitive' } } },
-      { lead: { contactName: { contains: search, mode: 'insensitive' } } },
-      { lead: { companyName: { contains: search, mode: 'insensitive' } } },
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { account: { name: { contains: search, mode: 'insensitive' } } },
+          { facility: { name: { contains: search, mode: 'insensitive' } } },
+          { lead: { contactName: { contains: search, mode: 'insensitive' } } },
+          { lead: { companyName: { contains: search, mode: 'insensitive' } } },
+        ],
+      },
     ];
   }
 

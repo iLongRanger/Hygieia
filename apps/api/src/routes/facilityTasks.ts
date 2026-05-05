@@ -58,7 +58,11 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listFacilityTasks(parsed.data);
+      const result = await listFacilityTasks(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+        userTeamId: req.user?.teamId ?? null,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -76,6 +80,12 @@ router.get(
       if (!task) {
         throw new NotFoundError('Facility task not found');
       }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: task.facility.id,
+        path: req.path,
+        method: req.method,
+      });
       res.json({ data: task });
     } catch (error) {
       next(error);
@@ -195,6 +205,12 @@ router.post(
       if (!existing) {
         throw new NotFoundError('Facility task not found');
       }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       const task = await archiveFacilityTask(req.params.id);
       res.json({ data: task });
@@ -214,6 +230,12 @@ router.post(
       if (!existing) {
         throw new NotFoundError('Facility task not found');
       }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       const task = await restoreFacilityTask(req.params.id);
       res.json({ data: task });
@@ -233,6 +255,12 @@ router.delete(
       if (!existing) {
         throw new NotFoundError('Facility task not found');
       }
+      await ensureOwnershipAccess(req.user, {
+        resourceType: 'facility',
+        resourceId: existing.facility.id,
+        path: req.path,
+        method: req.method,
+      });
 
       await deleteFacilityTask(req.params.id);
       res.status(204).send();

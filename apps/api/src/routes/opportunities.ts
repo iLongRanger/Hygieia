@@ -39,7 +39,10 @@ router.get(
         throw handleZodError(parsed.error);
       }
 
-      const result = await listOpportunities(parsed.data);
+      const result = await listOpportunities(parsed.data, {
+        userRole: req.user?.role,
+        userId: req.user?.id,
+      });
       res.json({ data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);

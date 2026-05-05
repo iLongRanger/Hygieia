@@ -180,10 +180,34 @@ describe('facilityTaskService', () => {
       expect(prisma.facilityTask.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: [
-              { customName: { contains: 'vacuum', mode: 'insensitive' } },
-              { taskTemplate: { name: { contains: 'vacuum', mode: 'insensitive' } } },
-            ],
+            AND: expect.arrayContaining([
+              {
+                OR: [
+                  { customName: { contains: 'vacuum', mode: 'insensitive' } },
+                  { taskTemplate: { name: { contains: 'vacuum', mode: 'insensitive' } } },
+                ],
+              },
+            ]),
+          }),
+        })
+      );
+    });
+
+    it('should scope managers to facility tasks for managed accounts', async () => {
+      (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.facilityTask.count as jest.Mock).mockResolvedValue(0);
+
+      await facilityTaskService.listFacilityTasks(
+        {},
+        { userRole: 'manager', userId: 'manager-1' }
+      );
+
+      expect(prisma.facilityTask.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              { facility: { account: { accountManagerId: 'manager-1' } } },
+            ]),
           }),
         })
       );

@@ -2249,6 +2249,7 @@ router.get(
   '/:id/activities',
   authenticate,
   requirePermission(PERMISSIONS.CONTRACTS_READ),
+  verifyOwnership({ resourceType: 'contract' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = listContractActivitiesQuerySchema.safeParse(req.query);

@@ -105,4 +105,23 @@ describe('Residential Routes', () => {
     expect(response.body.data.status).toBe('review_approved');
     expect(residentialService.approveResidentialQuoteReview).toHaveBeenCalledWith('rq-1');
   });
+
+  it('GET /properties passes user scope when accountId is omitted', async () => {
+    (residentialService.listResidentialProperties as jest.Mock).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+    });
+
+    await request(app)
+      .get('/api/v1/residential/properties')
+      .expect(200);
+
+    expect(residentialService.listResidentialProperties).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+      })
+    );
+  });
 });

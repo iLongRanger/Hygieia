@@ -3,6 +3,7 @@ import request from 'supertest';
 import type { Application } from 'express';
 import { createTestApp, setupTestRoutes } from '../../test/integration-setup';
 import * as facilityTaskService from '../../services/facilityTaskService';
+import { ensureOwnershipAccess } from '../../middleware/ownership';
 
 jest.mock('../../middleware/auth', () => ({
   authenticate: (req: any, _res: any, next: any) => {
@@ -13,6 +14,10 @@ jest.mock('../../middleware/auth', () => ({
 
 jest.mock('../../middleware/rbac', () => ({
   requirePermission: () => (_req: any, _res: any, next: any) => next(),
+}));
+
+jest.mock('../../middleware/ownership', () => ({
+  ensureOwnershipAccess: jest.fn(async () => undefined),
 }));
 
 jest.mock('../../services/facilityTaskService');
@@ -38,7 +43,14 @@ describe('Facility Task Routes', () => {
       .expect(200);
 
     expect(response.body.data).toHaveLength(1);
-    expect(facilityTaskService.listFacilityTasks).toHaveBeenCalled();
+    expect(facilityTaskService.listFacilityTasks).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        userRole: 'owner',
+        userId: 'user-1',
+        userTeamId: null,
+      })
+    );
   });
 
   it('GET / should return 422 for invalid query', async () => {
@@ -48,13 +60,23 @@ describe('Facility Task Routes', () => {
   });
 
   it('GET /:id should return task', async () => {
-    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({ id: 'task-1' });
+    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      facility: { id: '11111111-1111-1111-1111-111111111111' },
+    });
 
     const response = await request(app)
       .get('/api/v1/facility-tasks/task-1')
       .expect(200);
 
     expect(response.body.data.id).toBe('task-1');
+    expect(ensureOwnershipAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1', role: 'owner' }),
+      expect.objectContaining({
+        resourceType: 'facility',
+        resourceId: '11111111-1111-1111-1111-111111111111',
+      })
+    );
   });
 
   it('GET /:id should return 404 when not found', async () => {
@@ -156,7 +178,10 @@ describe('Facility Task Routes', () => {
   });
 
   it('POST /:id/archive should archive task', async () => {
-    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({ id: 'task-1' });
+    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      facility: { id: '11111111-1111-1111-1111-111111111111' },
+    });
     (facilityTaskService.archiveFacilityTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
 
     const response = await request(app)
@@ -167,7 +192,10 @@ describe('Facility Task Routes', () => {
   });
 
   it('POST /:id/restore should restore task', async () => {
-    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({ id: 'task-1' });
+    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      facility: { id: '11111111-1111-1111-1111-111111111111' },
+    });
     (facilityTaskService.restoreFacilityTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
 
     const response = await request(app)
@@ -178,7 +206,10 @@ describe('Facility Task Routes', () => {
   });
 
   it('DELETE /:id should delete task', async () => {
-    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({ id: 'task-1' });
+    (facilityTaskService.getFacilityTaskById as jest.Mock).mockResolvedValue({
+      id: 'task-1',
+      facility: { id: '11111111-1111-1111-1111-111111111111' },
+    });
     (facilityTaskService.deleteFacilityTask as jest.Mock).mockResolvedValue({ id: 'task-1' });
 
     await request(app)
