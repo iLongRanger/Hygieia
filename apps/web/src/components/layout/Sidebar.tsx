@@ -113,6 +113,7 @@ const navSections: NavSection[] = [
       { to: '/area-templates', icon: LayoutTemplate, label: 'Area' },
       { to: '/tasks', icon: ClipboardList, label: 'Task' },
       { to: '/users', icon: UserCog, label: 'People' },
+      { to: '/teams', icon: Handshake, label: 'Teams' },
       { to: '/commercial/pricing', icon: Calculator, label: 'Commercial' },
       { to: '/residential/pricing', icon: Home, label: 'Residential' },
       { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job' },
