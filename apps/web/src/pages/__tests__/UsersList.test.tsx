@@ -48,6 +48,7 @@ const user: User = {
   email: 'cleaner@example.com',
   fullName: 'Jane Cleaner',
   phone: '(555) 123-4567',
+  address: { street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada' },
   avatarUrl: null,
   status: 'active',
   lastLoginAt: null,
@@ -106,6 +107,8 @@ describe('UsersList', () => {
     await userEventInstance.type(await screen.findByLabelText(/full name/i), 'New User');
     await userEventInstance.type(screen.getByLabelText(/^email$/i), 'new.user@example.com');
     await userEventInstance.type(screen.getByLabelText(/password/i), 'Password123');
+    await userEventInstance.type(screen.getByLabelText(/street address/i), '123 Main St');
+    await userEventInstance.type(screen.getByLabelText(/^city$/i), 'Toronto');
     await userEventInstance.type(screen.getByLabelText(/hourly rate/i), '25');
     await userEventInstance.click(screen.getByRole('button', { name: /create person/i }));
 
@@ -113,6 +116,10 @@ describe('UsersList', () => {
       expect.objectContaining({
         fullName: 'New User',
         email: 'new.user@example.com',
+        address: expect.objectContaining({
+          street: '123 Main St',
+          city: 'Toronto',
+        }),
         payType: 'hourly',
         hourlyPayRate: 25,
       })

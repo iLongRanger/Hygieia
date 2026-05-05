@@ -268,6 +268,7 @@ describe('userService', () => {
         password: 'password123',
         fullName: 'New User',
         phone: '555-0100',
+        address: { street: '123 Main St', city: 'Toronto' },
         avatarUrl: 'https://example.com/avatar.jpg',
         status: 'active',
         role: 'owner',
@@ -291,6 +292,7 @@ describe('userService', () => {
           passwordHash: '$2a$10$hashedPassword',
           fullName: 'New User',
           phone: '555-0100',
+          address: { street: '123 Main St', city: 'Toronto' },
           avatarUrl: 'https://example.com/avatar.jpg',
           status: 'active',
           payType: 'hourly',
@@ -394,6 +396,7 @@ describe('userService', () => {
       const input: userService.UserUpdateInput = {
         fullName: 'Updated Name',
         phone: '555-9999',
+        address: { street: '456 Queen St', city: 'Toronto' },
         status: 'inactive',
         payType: 'hourly',
         hourlyPayRate: 27.5,
@@ -410,6 +413,7 @@ describe('userService', () => {
         data: {
           fullName: 'Updated Name',
           phone: '555-9999',
+          address: { street: '456 Queen St', city: 'Toronto' },
           status: 'inactive',
           payType: 'hourly',
           hourlyPayRate: 27.5,

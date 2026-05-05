@@ -12,7 +12,7 @@ import { Select } from '../../components/ui/Select';
 import { Can } from '../../components/auth/Can';
 import { PERMISSIONS } from '../../lib/permissions';
 import { listUsers, createUser, listRoles } from '../../lib/users';
-import type { User, Role, CreateUserInput } from '../../types/user';
+import type { User, Role, CreateUserInput, UserAddress } from '../../types/user';
 import { maxLengths } from '../../lib/validation';
 
 const USER_STATUSES = [
@@ -40,6 +40,26 @@ const formatPay = (user: User) => {
   return 'Pay not set';
 };
 
+const emptyAddress = (): UserAddress => ({
+  street: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: '',
+});
+
+const normalizeAddress = (address?: UserAddress | null): UserAddress | null => {
+  if (!address) return null;
+  const normalized = {
+    street: address.street?.trim() || null,
+    city: address.city?.trim() || null,
+    state: address.state?.trim() || null,
+    postalCode: address.postalCode?.trim() || null,
+    country: address.country?.trim() || null,
+  };
+  return Object.values(normalized).some(Boolean) ? normalized : null;
+};
+
 const UsersList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -57,6 +77,7 @@ const UsersList = () => {
     password: '',
     fullName: '',
     phone: null,
+    address: emptyAddress(),
     status: 'active',
     role: 'cleaner',
     payType: 'hourly',
@@ -112,7 +133,10 @@ const UsersList = () => {
 
     try {
       setCreating(true);
-      await createUser(formData);
+      await createUser({
+        ...formData,
+        address: normalizeAddress(formData.address),
+      });
       toast.success('User created successfully');
       setShowCreateModal(false);
       resetForm();
@@ -131,6 +155,7 @@ const UsersList = () => {
       password: '',
       fullName: '',
       phone: null,
+      address: emptyAddress(),
       status: 'active',
       role: 'cleaner',
       payType: 'hourly',
@@ -353,6 +378,69 @@ const UsersList = () => {
               value={formData.status || 'active'}
               onChange={(value) => setFormData({ ...formData, status: value })}
             />
+          </div>
+
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/20">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Address
+            </div>
+            <div className="space-y-4">
+              <Input
+                label="Street Address"
+                placeholder="123 Main St"
+                value={formData.address?.street || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    address: { ...(formData.address || emptyAddress()), street: e.target.value },
+                  })
+                }
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="City"
+                  value={formData.address?.city || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), city: e.target.value },
+                    })
+                  }
+                />
+                <Input
+                  label="State / Province"
+                  value={formData.address?.state || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), state: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Postal Code"
+                  value={formData.address?.postalCode || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), postalCode: e.target.value },
+                    })
+                  }
+                />
+                <Input
+                  label="Country"
+                  value={formData.address?.country || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), country: e.target.value },
+                    })
+                  }
+                />
+              </div>
+            </div>
           </div>
 
           <Select

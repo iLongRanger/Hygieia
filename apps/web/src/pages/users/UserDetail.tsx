@@ -13,6 +13,7 @@ import {
   Clock,
   Briefcase,
   DollarSign,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -32,7 +33,7 @@ import {
   changePassword,
 } from '../../lib/users';
 import { PERMISSIONS } from '../../lib/permissions';
-import type { User, Role, UpdateUserInput } from '../../types/user';
+import type { User, Role, UpdateUserInput, UserAddress } from '../../types/user';
 
 const USER_STATUSES = [
   { value: 'active', label: 'Active' },
@@ -59,6 +60,34 @@ const formatPay = (user: User) => {
     return user.hourlyPayRate != null ? `$${user.hourlyPayRate.toFixed(2)}/hr` : 'Hourly rate not set';
   }
   return 'Pay not set';
+};
+
+const emptyAddress = (): UserAddress => ({
+  street: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: '',
+});
+
+const normalizeAddress = (address?: UserAddress | null): UserAddress | null => {
+  if (!address) return null;
+  const normalized = {
+    street: address.street?.trim() || null,
+    city: address.city?.trim() || null,
+    state: address.state?.trim() || null,
+    postalCode: address.postalCode?.trim() || null,
+    country: address.country?.trim() || null,
+  };
+  return Object.values(normalized).some(Boolean) ? normalized : null;
+};
+
+const formatAddress = (address?: UserAddress | null) => {
+  if (!address) return 'Not set';
+  const parts = [address.street, address.city, address.state, address.postalCode, address.country]
+    .map((part) => part?.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
 const UserDetail = () => {
@@ -91,6 +120,7 @@ const UserDetail = () => {
         setFormData({
           fullName: data.fullName,
           phone: data.phone,
+          address: data.address || emptyAddress(),
           status: data.status,
           calendarColor: data.calendarColor ?? null,
           payType: data.payType ?? null,
@@ -124,7 +154,10 @@ const UserDetail = () => {
     if (!id) return;
     try {
       setSaving(true);
-      await updateUser(id, formData);
+      await updateUser(id, {
+        ...formData,
+        address: normalizeAddress(formData.address),
+      });
       toast.success('User updated successfully');
       setShowEditModal(false);
       fetchUser();
@@ -325,6 +358,14 @@ const UserDetail = () => {
                   <div className="text-surface-900 dark:text-white">{user.phone || 'Not set'}</div>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 text-surface-500 dark:text-surface-400" />
+                <div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Address</div>
+                  <div className="text-surface-900 dark:text-white">{formatAddress(user.address)}</div>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
@@ -448,6 +489,68 @@ const UserDetail = () => {
               setFormData({ ...formData, phone: e.target.value || null })
             }
           />
+
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Address
+            </div>
+            <div className="space-y-4">
+              <Input
+                label="Street Address"
+                value={formData.address?.street || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    address: { ...(formData.address || emptyAddress()), street: e.target.value },
+                  })
+                }
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="City"
+                  value={formData.address?.city || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), city: e.target.value },
+                    })
+                  }
+                />
+                <Input
+                  label="State / Province"
+                  value={formData.address?.state || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), state: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Postal Code"
+                  value={formData.address?.postalCode || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), postalCode: e.target.value },
+                    })
+                  }
+                />
+                <Input
+                  label="Country"
+                  value={formData.address?.country || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...(formData.address || emptyAddress()), country: e.target.value },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
 
           <Select
             label="Status"

@@ -78,6 +78,7 @@ describe('Users Routes', () => {
       email: 'user@example.com',
       password: 'StrongPass1',
       fullName: 'Test User',
+      address: { street: '123 Main St', city: 'Toronto' },
       role: 'manager',
       payType: 'hourly',
       hourlyPayRate: 25,
@@ -89,6 +90,7 @@ describe('Users Routes', () => {
     expect(userService.createUser).toHaveBeenCalledWith(expect.objectContaining({
       email: 'user@example.com',
       fullName: 'Test User',
+      address: { street: '123 Main St', city: 'Toronto' },
       payType: 'hourly',
       hourlyPayRate: 25,
     }));
@@ -113,13 +115,19 @@ describe('Users Routes', () => {
 
     const response = await request(app)
       .patch('/api/v1/users/user-1')
-      .send({ fullName: 'Updated User', payType: 'hourly', hourlyPayRate: 28 })
+      .send({
+        fullName: 'Updated User',
+        address: { street: '456 Queen St', city: 'Toronto' },
+        payType: 'hourly',
+        hourlyPayRate: 28,
+      })
       .expect(200);
 
     expect(response.body.data.fullName).toBe('Updated User');
     expect(userService.updateUser).toHaveBeenCalledWith('user-1', expect.objectContaining({
       payType: 'hourly',
       hourlyPayRate: 28,
+      address: { street: '456 Queen St', city: 'Toronto' },
     }));
   });
 

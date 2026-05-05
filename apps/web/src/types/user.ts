@@ -20,12 +20,21 @@ export interface UserRole {
   };
 }
 
+export interface UserAddress {
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
   fullName: string;
   role?: string;
   phone: string | null;
+  address?: UserAddress | null;
   avatarUrl: string | null;
   status: string;
   lastLoginAt: string | null;
@@ -44,6 +53,7 @@ export interface CreateUserInput {
   password: string;
   fullName: string;
   phone?: string | null;
+  address?: UserAddress | null;
   status?: string;
   role?: string;
   payType?: 'hourly' | 'percentage' | null;
@@ -54,6 +64,7 @@ export interface UpdateUserInput {
   email?: string;
   fullName?: string;
   phone?: string | null;
+  address?: UserAddress | null;
   avatarUrl?: string | null;
   status?: string;
   preferences?: Record<string, unknown>;

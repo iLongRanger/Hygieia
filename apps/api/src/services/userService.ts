@@ -22,6 +22,7 @@ export interface UserCreateInput {
   password: string;
   fullName: string;
   phone?: string | null;
+  address?: Record<string, unknown> | null;
   avatarUrl?: string | null;
   status?: string;
   role?: UserRole;
@@ -32,6 +33,7 @@ export interface UserCreateInput {
 export interface UserUpdateInput {
   fullName?: string;
   phone?: string | null;
+  address?: Record<string, unknown> | null;
   avatarUrl?: string | null;
   status?: string;
   preferences?: Record<string, unknown>;
@@ -64,6 +66,7 @@ const userSelect = {
   email: true,
   fullName: true,
   phone: true,
+  address: true,
   avatarUrl: true,
   status: true,
   lastLoginAt: true,
@@ -103,6 +106,7 @@ function formatUser(user: UserWithRoles) {
     email: user.email,
     fullName: user.fullName,
     phone: user.phone,
+    address: user.address,
     avatarUrl: user.avatarUrl,
     status: user.status,
     lastLoginAt: user.lastLoginAt,
@@ -226,6 +230,7 @@ export async function createUser(input: UserCreateInput) {
     password,
     fullName,
     phone,
+    address,
     avatarUrl,
     status = 'active',
     role = 'cleaner',
@@ -251,22 +256,28 @@ export async function createUser(input: UserCreateInput) {
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const user = await prisma.user.create({
-    data: {
-      email: email.toLowerCase(),
-      passwordHash,
-      fullName,
-      phone,
-      avatarUrl,
-      status,
-      payType,
-      hourlyPayRate,
-      roles: {
-        create: {
-          roleId: roleRecord.id,
-        },
+  const data: Prisma.UserCreateInput = {
+    email: email.toLowerCase(),
+    passwordHash,
+    fullName,
+    phone,
+    avatarUrl,
+    status,
+    payType,
+    hourlyPayRate,
+    roles: {
+      create: {
+        roleId: roleRecord.id,
       },
     },
+  };
+
+  if (address !== undefined) {
+    data.address = address === null ? Prisma.JsonNull : (address as Prisma.InputJsonValue);
+  }
+
+  const user = await prisma.user.create({
+    data,
     select: userSelect,
   });
 
@@ -278,6 +289,10 @@ export async function updateUser(id: string, input: UserUpdateInput) {
 
   if (input.fullName !== undefined) updateData.fullName = input.fullName;
   if (input.phone !== undefined) updateData.phone = input.phone;
+  if (input.address !== undefined) {
+    updateData.address =
+      input.address === null ? Prisma.JsonNull : (input.address as Prisma.InputJsonValue);
+  }
   if (input.avatarUrl !== undefined) updateData.avatarUrl = input.avatarUrl;
   if (input.status !== undefined) updateData.status = input.status;
   if (input.payType !== undefined) updateData.payType = input.payType;

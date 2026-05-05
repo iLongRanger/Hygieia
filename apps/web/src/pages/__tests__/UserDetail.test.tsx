@@ -69,6 +69,7 @@ const userData: User = {
   email: 'jane@example.com',
   fullName: 'Jane Cleaner',
   phone: '(555) 123-4567',
+  address: { street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 1A1', country: 'Canada' },
   avatarUrl: null,
   status: 'active',
   lastLoginAt: null,
@@ -118,6 +119,7 @@ describe('UserDetail', () => {
 
     expect(await screen.findByRole('heading', { name: 'Jane Cleaner' })).toBeInTheDocument();
     expect((await screen.findAllByText('jane@example.com')).length).toBeGreaterThan(0);
+    expect(screen.getByText('123 Main St, Toronto, ON, M5V 1A1, Canada')).toBeInTheDocument();
     expect(screen.getByText('Internal employee')).toBeInTheDocument();
     expect(screen.getByText('$24.00/hr')).toBeInTheDocument();
     expect(screen.getByText('Assigned Roles')).toBeInTheDocument();
@@ -131,6 +133,9 @@ describe('UserDetail', () => {
     const fullNameInput = await screen.findByLabelText(/full name/i);
     await user.clear(fullNameInput);
     await user.type(fullNameInput, 'Jane Updated');
+    const streetInput = screen.getByLabelText(/street address/i);
+    await user.clear(streetInput);
+    await user.type(streetInput, '456 Queen St');
     fireEvent.change(screen.getByLabelText(/job calendar color/i), {
       target: { value: '#112233' },
     });
@@ -144,6 +149,10 @@ describe('UserDetail', () => {
         'user-1',
         expect.objectContaining({
           fullName: 'Jane Updated',
+          address: expect.objectContaining({
+            street: '456 Queen St',
+            city: 'Toronto',
+          }),
           calendarColor: '#112233',
           payType: 'hourly',
           hourlyPayRate: 28,

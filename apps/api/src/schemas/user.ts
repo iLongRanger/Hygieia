@@ -10,6 +10,16 @@ const hourlyPayRateSchema = z.coerce
   .max(1000, 'Hourly pay rate is too high')
   .nullable()
   .optional();
+const addressSchema = z
+  .object({
+    street: z.string().max(200).optional().nullable(),
+    city: z.string().max(100).optional().nullable(),
+    state: z.string().max(100).optional().nullable(),
+    postalCode: z.string().max(30).optional().nullable(),
+    country: z.string().max(100).optional().nullable(),
+  })
+  .nullable()
+  .optional();
 const phoneSchema = z
   .string()
   .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format')
@@ -23,6 +33,7 @@ export const createUserSchema = z.object({
   password: passwordSchema,
   fullName: z.string().min(1, 'Full name is required').max(255),
   phone: phoneSchema,
+  address: addressSchema,
   avatarUrl: z.string().url().optional().nullable(),
   status: z
     .enum(['active', 'disabled', 'pending'])
@@ -36,6 +47,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   fullName: z.string().min(1).max(255).optional(),
   phone: phoneSchema,
+  address: addressSchema,
   avatarUrl: z.string().url().optional().nullable(),
   status: z.enum(['active', 'disabled', 'pending']).optional(),
   preferences: z.record(z.unknown()).optional(),
