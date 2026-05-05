@@ -28,7 +28,7 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'People' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Area Templates' }).length).toBeGreaterThan(0);
   });
@@ -52,7 +52,7 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getAllByRole('link', { name: 'Users' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'People' }).length).toBeGreaterThan(0);
   });
 
   it('shows direct dashboard link in the collapsed rail on hover', () => {

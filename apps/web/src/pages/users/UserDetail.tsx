@@ -262,7 +262,7 @@ const UserDetail = () => {
           <Can permission={PERMISSIONS.USERS_WRITE}>
             <Button variant="secondary" onClick={() => setShowEditModal(true)}>
               <Edit2 className="mr-2 h-4 w-4" />
-              Edit User
+              Edit Person
             </Button>
           </Can>
           <Can permission={PERMISSIONS.USERS_WRITE}>
@@ -425,12 +425,12 @@ const UserDetail = () => {
         </Card>
       </div>
 
-      {/* Edit User Modal */}
+      {/* Edit Person Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
         <Drawer
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          title="Edit User"
+          title="Edit Person"
         >
         <div className="space-y-4">
           <Input
@@ -537,11 +537,11 @@ const UserDetail = () => {
         <Drawer
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
-          title="Delete User"
+          title="Delete Person"
         >
         <div className="space-y-4">
           <p className="text-surface-600 dark:text-surface-400">
-            Are you sure you want to delete this user? This action cannot be
+            Are you sure you want to delete this person? This action cannot be
             undone.
           </p>
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
@@ -561,7 +561,7 @@ const UserDetail = () => {
               isLoading={deleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete User
+              Delete Person
             </Button>
           </div>
         </div>

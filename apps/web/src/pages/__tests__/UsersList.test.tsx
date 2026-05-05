@@ -102,12 +102,12 @@ describe('UsersList', () => {
     const userEventInstance = userEvent.setup();
     render(<UsersList />);
 
-    await userEventInstance.click(screen.getByRole('button', { name: /add new user/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /add person/i }));
     await userEventInstance.type(await screen.findByLabelText(/full name/i), 'New User');
     await userEventInstance.type(screen.getByLabelText(/^email$/i), 'new.user@example.com');
     await userEventInstance.type(screen.getByLabelText(/password/i), 'Password123');
     await userEventInstance.type(screen.getByLabelText(/hourly rate/i), '25');
-    await userEventInstance.click(screen.getByRole('button', { name: /create user/i }));
+    await userEventInstance.click(screen.getByRole('button', { name: /create person/i }));
 
     expect(createUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -128,7 +128,7 @@ describe('UsersList', () => {
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith('/users/user-1', {
         state: {
-          backLabel: 'Users',
+          backLabel: 'People',
           backPath: '/users',
         },
       });

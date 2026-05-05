@@ -228,7 +228,7 @@ const UsersList = () => {
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/users/${item.id}`, { state: { backLabel: 'Users', backPath: '/users' } });
+            navigate(`/users/${item.id}`, { state: { backLabel: 'People', backPath: '/users' } });
           }}
         >
           <Eye className="mr-1 h-4 w-4" />
@@ -241,11 +241,11 @@ const UsersList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">System Users</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">People</h1>
         <Can permission={PERMISSIONS.USERS_WRITE}>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add New User
+            Add Person
           </Button>
         </Can>
       </div>
@@ -300,7 +300,7 @@ const UsersList = () => {
         <Drawer
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          title="Add New User"
+          title="Add Person"
           size="lg"
         >
         <div className="space-y-4">
@@ -422,7 +422,7 @@ const UsersList = () => {
               isLoading={creating}
               disabled={!formData.email || !formData.password || !formData.fullName}
             >
-              Create User
+              Create Person
             </Button>
           </div>
         </div>

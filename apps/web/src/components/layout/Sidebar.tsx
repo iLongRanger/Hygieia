@@ -116,7 +116,7 @@ const navSections: NavSection[] = [
       { to: '/residential/pricing', icon: Home, label: 'Residential Pricing' },
       { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job Management' },
       { to: '/area-templates', icon: LayoutTemplate, label: 'Area Templates' },
-      { to: '/users', icon: UserCog, label: 'Users' },
+      { to: '/users', icon: UserCog, label: 'People' },
       { to: '/settings/global', icon: Settings, label: 'Settings' },
     ],
   },

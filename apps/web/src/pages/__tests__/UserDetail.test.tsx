@@ -127,7 +127,7 @@ describe('UserDetail', () => {
     const user = userEvent.setup();
     render(<UserDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /edit user/i }));
+    await user.click(await screen.findByRole('button', { name: /edit person/i }));
     const fullNameInput = await screen.findByLabelText(/full name/i);
     await user.clear(fullNameInput);
     await user.type(fullNameInput, 'Jane Updated');
