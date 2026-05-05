@@ -14,6 +14,7 @@
     "backfill:opportunities": "tsx prisma/backfill-opportunities.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "seed": "tsx prisma/seed.ts",
+    "seed:compensation-demo": "tsx prisma/seed-compensation-demo.ts",
     "studio": "prisma studio",
     "format": "prisma format",
     "clean": "rm -rf node_modules prisma/migrations/*_*.js"
