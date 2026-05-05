@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Shield, Mail, Eye } from 'lucide-react';
+import { Briefcase, DollarSign, Eye, Mail, Plus, Search, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -21,6 +21,25 @@ const USER_STATUSES = [
   { value: 'pending', label: 'Pending' },
 ];
 
+const PAY_TYPES = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'percentage', label: 'Percentage' },
+];
+
+const formatWorkerType = (user: User) => {
+  if (user.workforceType === 'subcontractor') return 'Subcontractor';
+  if (user.workforceType === 'internal_employee') return 'Internal employee';
+  return 'Office/admin';
+};
+
+const formatPay = (user: User) => {
+  if (user.payType === 'percentage') return 'Percentage';
+  if (user.payType === 'hourly') {
+    return user.hourlyPayRate != null ? `$${user.hourlyPayRate.toFixed(2)}/hr` : 'Hourly rate not set';
+  }
+  return 'Pay not set';
+};
+
 const UsersList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -40,6 +59,8 @@ const UsersList = () => {
     phone: null,
     status: 'active',
     role: 'cleaner',
+    payType: 'hourly',
+    hourlyPayRate: null,
   });
 
   const fetchUsers = useCallback(
@@ -112,6 +133,8 @@ const UsersList = () => {
       phone: null,
       status: 'active',
       role: 'cleaner',
+      payType: 'hourly',
+      hourlyPayRate: null,
     });
   };
 
@@ -155,6 +178,21 @@ const UsersList = () => {
           ) : (
             <span className="text-surface-500 dark:text-surface-400">No roles</span>
           )}
+        </div>
+      ),
+    },
+    {
+      header: 'Worker / Pay',
+      cell: (item: User) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1 text-sm font-medium text-surface-700 dark:text-surface-200">
+            <Briefcase className="h-3.5 w-3.5 text-emerald" />
+            {formatWorkerType(item)}
+          </div>
+          <div className="flex items-center gap-1 text-sm text-surface-500 dark:text-surface-400">
+            <DollarSign className="h-3.5 w-3.5" />
+            {formatPay(item)}
+          </div>
         </div>
       ),
     },
@@ -330,6 +368,48 @@ const UsersList = () => {
             }
           />
 
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/20">
+            <div className="mb-3">
+              <div className="text-sm font-semibold text-surface-900 dark:text-white">
+                Payroll Settings
+              </div>
+              <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                Roles control permissions. These fields control worker pay and reporting.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Pay Type"
+                options={PAY_TYPES}
+                value={formData.payType || ''}
+                onChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    payType: value as 'hourly' | 'percentage',
+                    hourlyPayRate: value === 'percentage' ? null : formData.hourlyPayRate,
+                  })
+                }
+              />
+              {formData.payType === 'hourly' && (
+                <Input
+                  label="Hourly Rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.hourlyPayRate ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      hourlyPayRate: e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
+                />
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="secondary"
@@ -353,4 +433,3 @@ const UsersList = () => {
 };
 
 export default UsersList;
-

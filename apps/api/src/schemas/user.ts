@@ -3,6 +3,13 @@ import { passwordSchema } from '../utils/passwordPolicy';
 
 const emailSchema = z.string().email('Invalid email format').max(255);
 const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Calendar color must be a hex value');
+const payTypeSchema = z.enum(['hourly', 'percentage']).nullable().optional();
+const hourlyPayRateSchema = z.coerce
+  .number()
+  .min(0, 'Hourly pay rate must be positive')
+  .max(1000, 'Hourly pay rate is too high')
+  .nullable()
+  .optional();
 const phoneSchema = z
   .string()
   .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone format')
@@ -22,6 +29,8 @@ export const createUserSchema = z.object({
     .optional()
     .default('active'),
   role: userRoleSchema.optional().default('cleaner'),
+  payType: payTypeSchema,
+  hourlyPayRate: hourlyPayRateSchema,
 });
 
 export const updateUserSchema = z.object({
@@ -31,6 +40,8 @@ export const updateUserSchema = z.object({
   status: z.enum(['active', 'disabled', 'pending']).optional(),
   preferences: z.record(z.unknown()).optional(),
   calendarColor: hexColorSchema.nullable().optional(),
+  payType: payTypeSchema,
+  hourlyPayRate: hourlyPayRateSchema,
 });
 
 export const updateCurrentUserProfileSchema = z.object({

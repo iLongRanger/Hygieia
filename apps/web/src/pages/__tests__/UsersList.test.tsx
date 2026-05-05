@@ -52,6 +52,9 @@ const user: User = {
   status: 'active',
   lastLoginAt: null,
   preferences: {},
+  workforceType: 'internal_employee',
+  payType: 'hourly',
+  hourlyPayRate: 24,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   roles: [
@@ -91,6 +94,8 @@ describe('UsersList', () => {
 
     expect(await screen.findByText('Jane Cleaner')).toBeInTheDocument();
     expect(screen.getByText('cleaner@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Internal employee')).toBeInTheDocument();
+    expect(screen.getByText('$24.00/hr')).toBeInTheDocument();
   });
 
   it('creates a user from modal', async () => {
@@ -101,12 +106,15 @@ describe('UsersList', () => {
     await userEventInstance.type(await screen.findByLabelText(/full name/i), 'New User');
     await userEventInstance.type(screen.getByLabelText(/^email$/i), 'new.user@example.com');
     await userEventInstance.type(screen.getByLabelText(/password/i), 'Password123');
+    await userEventInstance.type(screen.getByLabelText(/hourly rate/i), '25');
     await userEventInstance.click(screen.getByRole('button', { name: /create user/i }));
 
     expect(createUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
         fullName: 'New User',
         email: 'new.user@example.com',
+        payType: 'hourly',
+        hourlyPayRate: 25,
       })
     );
   });

@@ -79,6 +79,8 @@ describe('Users Routes', () => {
       password: 'StrongPass1',
       fullName: 'Test User',
       role: 'manager',
+      payType: 'hourly',
+      hourlyPayRate: 25,
     };
 
     const response = await request(app).post('/api/v1/users').send(payload).expect(201);
@@ -87,6 +89,8 @@ describe('Users Routes', () => {
     expect(userService.createUser).toHaveBeenCalledWith(expect.objectContaining({
       email: 'user@example.com',
       fullName: 'Test User',
+      payType: 'hourly',
+      hourlyPayRate: 25,
     }));
   });
 
@@ -109,10 +113,14 @@ describe('Users Routes', () => {
 
     const response = await request(app)
       .patch('/api/v1/users/user-1')
-      .send({ fullName: 'Updated User' })
+      .send({ fullName: 'Updated User', payType: 'hourly', hourlyPayRate: 28 })
       .expect(200);
 
     expect(response.body.data.fullName).toBe('Updated User');
+    expect(userService.updateUser).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      payType: 'hourly',
+      hourlyPayRate: 28,
+    }));
   });
 
   it('POST /:id/roles should assign role', async () => {

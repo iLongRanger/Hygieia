@@ -11,6 +11,8 @@ import {
   X,
   Calendar,
   Clock,
+  Briefcase,
+  DollarSign,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -38,7 +40,26 @@ const USER_STATUSES = [
   { value: 'pending', label: 'Pending' },
 ];
 
+const PAY_TYPES = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'percentage', label: 'Percentage' },
+];
+
 const DEFAULT_CALENDAR_COLOR = '#14b8a6';
+
+const formatWorkerType = (user: User) => {
+  if (user.workforceType === 'subcontractor') return 'Subcontractor';
+  if (user.workforceType === 'internal_employee') return 'Internal employee';
+  return 'Office/admin';
+};
+
+const formatPay = (user: User) => {
+  if (user.payType === 'percentage') return 'Percentage';
+  if (user.payType === 'hourly') {
+    return user.hourlyPayRate != null ? `$${user.hourlyPayRate.toFixed(2)}/hr` : 'Hourly rate not set';
+  }
+  return 'Pay not set';
+};
 
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -72,6 +93,8 @@ const UserDetail = () => {
           phone: data.phone,
           status: data.status,
           calendarColor: data.calendarColor ?? null,
+          payType: data.payType ?? null,
+          hourlyPayRate: data.hourlyPayRate ?? null,
         });
       }
     } catch (error) {
@@ -306,6 +329,24 @@ const UserDetail = () => {
 
             <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
               <div className="flex items-center gap-3">
+                <Briefcase className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+                <div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Worker Type</div>
+                  <div className="text-surface-900 dark:text-white">{formatWorkerType(user)}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <DollarSign className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+                <div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400">Pay</div>
+                  <div className="text-surface-900 dark:text-white">{formatPay(user)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
+              <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-surface-500 dark:text-surface-400" />
                 <div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
@@ -414,6 +455,47 @@ const UserDetail = () => {
             value={formData.status || 'active'}
             onChange={(value) => setFormData({ ...formData, status: value })}
           />
+
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
+            <div className="mb-3">
+              <div className="text-sm font-semibold text-surface-900 dark:text-white">
+                Payroll Settings
+              </div>
+              <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                Roles control permissions. These fields control worker pay and reporting.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Pay Type"
+                options={PAY_TYPES}
+                value={formData.payType || ''}
+                onChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    payType: value as 'hourly' | 'percentage',
+                    hourlyPayRate: value === 'percentage' ? null : formData.hourlyPayRate,
+                  })
+                }
+              />
+              {formData.payType === 'hourly' && (
+                <Input
+                  label="Hourly Rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.hourlyPayRate ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      hourlyPayRate: e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
+                />
+              )}
+            </div>
+          </div>
 
           <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
             <div className="flex items-center justify-between gap-3">

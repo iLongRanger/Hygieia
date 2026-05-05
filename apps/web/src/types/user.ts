@@ -31,6 +31,9 @@ export interface User {
   lastLoginAt: string | null;
   preferences: Record<string, unknown>;
   calendarColor?: string | null;
+  workforceType?: 'internal_employee' | 'subcontractor' | 'office' | null;
+  payType?: 'hourly' | 'percentage' | null;
+  hourlyPayRate?: number | null;
   createdAt: string;
   updatedAt: string;
   roles: UserRole[];
@@ -43,6 +46,8 @@ export interface CreateUserInput {
   phone?: string | null;
   status?: string;
   role?: string;
+  payType?: 'hourly' | 'percentage' | null;
+  hourlyPayRate?: number | null;
 }
 
 export interface UpdateUserInput {
@@ -53,6 +58,8 @@ export interface UpdateUserInput {
   status?: string;
   preferences?: Record<string, unknown>;
   calendarColor?: string | null;
+  payType?: 'hourly' | 'percentage' | null;
+  hourlyPayRate?: number | null;
 }
 
 export interface Pagination {

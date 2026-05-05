@@ -74,6 +74,9 @@ const userData: User = {
   lastLoginAt: null,
   preferences: {},
   calendarColor: '#22c55e',
+  workforceType: 'internal_employee',
+  payType: 'hourly',
+  hourlyPayRate: 24,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   roles: [
@@ -115,6 +118,8 @@ describe('UserDetail', () => {
 
     expect(await screen.findByRole('heading', { name: 'Jane Cleaner' })).toBeInTheDocument();
     expect((await screen.findAllByText('jane@example.com')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Internal employee')).toBeInTheDocument();
+    expect(screen.getByText('$24.00/hr')).toBeInTheDocument();
     expect(screen.getByText('Assigned Roles')).toBeInTheDocument();
   });
 
@@ -129,6 +134,9 @@ describe('UserDetail', () => {
     fireEvent.change(screen.getByLabelText(/job calendar color/i), {
       target: { value: '#112233' },
     });
+    const hourlyRateInput = screen.getByLabelText(/hourly rate/i);
+    await user.clear(hourlyRateInput);
+    await user.type(hourlyRateInput, '28');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
@@ -137,6 +145,8 @@ describe('UserDetail', () => {
         expect.objectContaining({
           fullName: 'Jane Updated',
           calendarColor: '#112233',
+          payType: 'hourly',
+          hourlyPayRate: 28,
         })
       );
     });

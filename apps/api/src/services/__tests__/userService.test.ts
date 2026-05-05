@@ -158,7 +158,13 @@ describe('userService', () => {
     });
 
     it('should format user data correctly', async () => {
-      const mockUsers = [createMockUserWithRoles({ email: 'test@example.com' })];
+      const mockUsers = [
+        createMockUserWithRoles({
+          email: 'test@example.com',
+          payType: 'hourly',
+          hourlyPayRate: 24.5,
+        }),
+      ];
 
       (prisma.user.findMany as jest.Mock).mockResolvedValue(mockUsers);
       (prisma.user.count as jest.Mock).mockResolvedValue(1);
@@ -172,6 +178,9 @@ describe('userService', () => {
         key: 'owner',
         label: 'Owner',
       });
+      expect(result.data[0].payType).toBe('hourly');
+      expect(result.data[0].hourlyPayRate).toBe(24.5);
+      expect(result.data[0].workforceType).toBe('office');
     });
   });
 
@@ -262,6 +271,8 @@ describe('userService', () => {
         avatarUrl: 'https://example.com/avatar.jpg',
         status: 'active',
         role: 'owner',
+        payType: 'hourly',
+        hourlyPayRate: 26,
       };
 
       const mockRole = createTestRole({ key: 'owner' });
@@ -282,6 +293,8 @@ describe('userService', () => {
           phone: '555-0100',
           avatarUrl: 'https://example.com/avatar.jpg',
           status: 'active',
+          payType: 'hourly',
+          hourlyPayRate: 26,
           roles: {
             create: {
               roleId: mockRole.id,
@@ -382,6 +395,8 @@ describe('userService', () => {
         fullName: 'Updated Name',
         phone: '555-9999',
         status: 'inactive',
+        payType: 'hourly',
+        hourlyPayRate: 27.5,
       };
 
       const mockUser = createMockUserWithRoles({ ...input, id: 'user-123' });
@@ -396,6 +411,8 @@ describe('userService', () => {
           fullName: 'Updated Name',
           phone: '555-9999',
           status: 'inactive',
+          payType: 'hourly',
+          hourlyPayRate: 27.5,
         },
         select: expect.any(Object),
       });

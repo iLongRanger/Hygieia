@@ -25,6 +25,8 @@ export interface UserCreateInput {
   avatarUrl?: string | null;
   status?: string;
   role?: UserRole;
+  payType?: 'hourly' | 'percentage' | null;
+  hourlyPayRate?: number | null;
 }
 
 export interface UserUpdateInput {
@@ -34,6 +36,8 @@ export interface UserUpdateInput {
   status?: string;
   preferences?: Record<string, unknown>;
   calendarColor?: string | null;
+  payType?: 'hourly' | 'percentage' | null;
+  hourlyPayRate?: number | null;
 }
 
 function readCalendarColor(preferences: unknown): string | null {
@@ -64,6 +68,8 @@ const userSelect = {
   status: true,
   lastLoginAt: true,
   preferences: true,
+  payType: true,
+  hourlyPayRate: true,
   createdAt: true,
   updatedAt: true,
   roles: {
@@ -85,6 +91,13 @@ export type UserWithRoles = Prisma.UserGetPayload<{
 
 function formatUser(user: UserWithRoles) {
   const primaryRole = user.roles[0]?.role;
+  const roleKeys = user.roles.map((ur) => ur.role.key);
+  const workforceType = roleKeys.includes('subcontractor')
+    ? 'subcontractor'
+    : roleKeys.includes('cleaner')
+      ? 'internal_employee'
+      : 'office';
+
   return {
     id: user.id,
     email: user.email,
@@ -95,6 +108,9 @@ function formatUser(user: UserWithRoles) {
     lastLoginAt: user.lastLoginAt,
     preferences: user.preferences,
     calendarColor: readCalendarColor(user.preferences),
+    workforceType,
+    payType: user.payType,
+    hourlyPayRate: user.hourlyPayRate != null ? Number(user.hourlyPayRate) : null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     role: primaryRole
@@ -213,6 +229,8 @@ export async function createUser(input: UserCreateInput) {
     avatarUrl,
     status = 'active',
     role = 'cleaner',
+    payType = null,
+    hourlyPayRate = null,
   } = input;
 
   let roleRecord = await prisma.role.findUnique({
@@ -241,6 +259,8 @@ export async function createUser(input: UserCreateInput) {
       phone,
       avatarUrl,
       status,
+      payType,
+      hourlyPayRate,
       roles: {
         create: {
           roleId: roleRecord.id,
@@ -260,6 +280,8 @@ export async function updateUser(id: string, input: UserUpdateInput) {
   if (input.phone !== undefined) updateData.phone = input.phone;
   if (input.avatarUrl !== undefined) updateData.avatarUrl = input.avatarUrl;
   if (input.status !== undefined) updateData.status = input.status;
+  if (input.payType !== undefined) updateData.payType = input.payType;
+  if (input.hourlyPayRate !== undefined) updateData.hourlyPayRate = input.hourlyPayRate;
   if (input.preferences !== undefined || input.calendarColor !== undefined) {
     const existingUser =
       input.calendarColor !== undefined
