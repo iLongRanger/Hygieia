@@ -8,6 +8,7 @@ const DEFAULT_BRANDING: GlobalBranding = {
   companyWebsite: process.env.COMPANY_WEBSITE ?? null,
   companyAddress: process.env.COMPANY_ADDRESS ?? null,
   companyTimezone: process.env.COMPANY_TIMEZONE ?? 'UTC',
+  taxRate: Number(process.env.COMPANY_TAX_RATE ?? 0),
   logoDataUrl: process.env.COMPANY_LOGO_PATH ?? null,
   themePrimaryColor: '#1a1a2e',
   themeAccentColor: '#d4af37',
@@ -22,6 +23,7 @@ export interface UpdateGlobalSettingsInput {
   companyWebsite?: string | null;
   companyAddress?: string | null;
   companyTimezone?: string;
+  taxRate?: number;
   logoDataUrl?: string | null;
   themePrimaryColor?: string;
   themeAccentColor?: string;
@@ -37,6 +39,7 @@ function mergeWithDefaults(input: Partial<GlobalBranding> | null | undefined): G
     companyWebsite: input?.companyWebsite ?? DEFAULT_BRANDING.companyWebsite,
     companyAddress: input?.companyAddress ?? DEFAULT_BRANDING.companyAddress,
     companyTimezone: input?.companyTimezone ?? DEFAULT_BRANDING.companyTimezone,
+    taxRate: input?.taxRate != null ? Number(input.taxRate) : DEFAULT_BRANDING.taxRate,
     logoDataUrl: input?.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
     themePrimaryColor: input?.themePrimaryColor ?? DEFAULT_BRANDING.themePrimaryColor,
     themeAccentColor: input?.themeAccentColor ?? DEFAULT_BRANDING.themeAccentColor,
@@ -64,6 +67,7 @@ export async function updateGlobalSettings(input: UpdateGlobalSettingsInput): Pr
       companyWebsite: input.companyWebsite ?? DEFAULT_BRANDING.companyWebsite,
       companyAddress: input.companyAddress ?? DEFAULT_BRANDING.companyAddress,
       companyTimezone: input.companyTimezone ?? DEFAULT_BRANDING.companyTimezone,
+      taxRate: input.taxRate ?? DEFAULT_BRANDING.taxRate,
       logoDataUrl: input.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
       themePrimaryColor: input.themePrimaryColor ?? DEFAULT_BRANDING.themePrimaryColor,
       themeAccentColor: input.themeAccentColor ?? DEFAULT_BRANDING.themeAccentColor,
@@ -77,6 +81,7 @@ export async function updateGlobalSettings(input: UpdateGlobalSettingsInput): Pr
       ...(input.companyWebsite !== undefined ? { companyWebsite: input.companyWebsite } : {}),
       ...(input.companyAddress !== undefined ? { companyAddress: input.companyAddress } : {}),
       ...(input.companyTimezone !== undefined ? { companyTimezone: input.companyTimezone } : {}),
+      ...(input.taxRate !== undefined ? { taxRate: input.taxRate } : {}),
       ...(input.logoDataUrl !== undefined ? { logoDataUrl: input.logoDataUrl } : {}),
       ...(input.themePrimaryColor !== undefined ? { themePrimaryColor: input.themePrimaryColor } : {}),
       ...(input.themeAccentColor !== undefined ? { themeAccentColor: input.themeAccentColor } : {}),

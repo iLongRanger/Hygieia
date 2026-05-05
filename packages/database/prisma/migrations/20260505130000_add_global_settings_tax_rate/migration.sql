@@ -1,0 +1,1 @@
+ALTER TABLE "global_settings" ADD COLUMN "tax_rate" DECIMAL(5,4) NOT NULL DEFAULT 0;

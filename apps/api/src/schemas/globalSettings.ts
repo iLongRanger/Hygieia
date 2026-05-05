@@ -19,6 +19,11 @@ export const updateGlobalSettingsSchema = z.object({
   companyPhone: z.string().max(20).nullable().optional(),
   companyWebsite: z.string().url('Invalid website URL').max(500).nullable().optional(),
   companyAddress: z.string().max(2000).nullable().optional(),
+  taxRate: z.coerce
+    .number()
+    .min(0, 'Tax rate cannot be negative')
+    .max(1, 'Tax rate must be 100% or less')
+    .optional(),
   companyTimezone: z
     .string()
     .min(1, 'Timezone is required')

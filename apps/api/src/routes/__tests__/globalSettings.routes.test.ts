@@ -65,10 +65,12 @@ describe('Global Settings Routes', () => {
 
     (globalSettingsService.getGlobalSettings as jest.Mock).mockResolvedValue({
       companyName: 'Hygieia Cleaning Services',
+      taxRate: 0.05,
       themePrimaryColor: '#1a1a2e',
     });
     (globalSettingsService.updateGlobalSettings as jest.Mock).mockResolvedValue({
       companyName: 'Hygieia Cleaning Services',
+      taxRate: 0.05,
       themePrimaryColor: '#1a1a2e',
     });
     (globalSettingsService.clearGlobalLogo as jest.Mock).mockResolvedValue({
@@ -80,18 +82,26 @@ describe('Global Settings Routes', () => {
   it('GET / should return global settings', async () => {
     const response = await request(app).get('/api/v1/settings/global').expect(200);
     expect(response.body.data.companyName).toBe('Hygieia Cleaning Services');
+    expect(response.body.data.taxRate).toBe(0.05);
   });
 
   it('PUT / should update settings', async () => {
     await request(app)
       .put('/api/v1/settings/global')
-      .send({ companyName: 'Acme Janitorial', themePrimaryColor: '#112233' })
+      .send({ companyName: 'Acme Janitorial', themePrimaryColor: '#112233', taxRate: 0.07 })
       .expect(200);
 
     expect(globalSettingsService.updateGlobalSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ companyName: 'Acme Janitorial', themePrimaryColor: '#112233' })
+      expect.objectContaining({ companyName: 'Acme Janitorial', themePrimaryColor: '#112233', taxRate: 0.07 })
     );
     expect(sensitiveLimiterCalls).toBe(1);
+  });
+
+  it('PUT / should return 422 for invalid tax rate', async () => {
+    await request(app)
+      .put('/api/v1/settings/global')
+      .send({ taxRate: 1.25 })
+      .expect(422);
   });
 
   it('PUT / should return 422 for invalid hex color', async () => {

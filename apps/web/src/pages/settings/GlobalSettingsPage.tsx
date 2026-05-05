@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   companyWebsite: '',
   companyAddress: '',
   companyTimezone: 'UTC',
+  taxRate: 0,
   logoDataUrl: null,
   themePrimaryColor: '#1a1a2e',
   themeAccentColor: '#d4af37',
@@ -203,6 +204,7 @@ const GlobalSettingsPage: React.FC = () => {
         companyWebsite: settings.companyWebsite?.trim() || null,
         companyAddress: settings.companyAddress?.trim() || null,
         companyTimezone: settings.companyTimezone?.trim() || 'UTC',
+        taxRate: Number(settings.taxRate || 0),
         themePrimaryColor: settings.themePrimaryColor,
         themeAccentColor: settings.themeAccentColor,
         themeBackgroundColor: settings.themeBackgroundColor,
@@ -423,6 +425,20 @@ const GlobalSettingsPage: React.FC = () => {
             value={settings.companyTimezone || 'UTC'}
             onChange={(e) => setSettings((prev) => ({ ...prev, companyTimezone: e.target.value }))}
             placeholder="America/New_York"
+          />
+          <Input
+            label="Default Tax Rate (%)"
+            type="number"
+            min={0}
+            max={100}
+            step={0.01}
+            value={Number(settings.taxRate || 0) * 100}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                taxRate: Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100,
+              }))
+            }
           />
         </div>
         <div className="mt-4">

@@ -39,6 +39,7 @@ describe('GlobalSettingsPage', () => {
     companyWebsite: 'https://hygieia.example',
     companyAddress: '123 Main St',
     companyTimezone: 'America/New_York',
+    taxRate: 0.05,
     logoDataUrl: null,
     themePrimaryColor: '#1a1a2e',
     themeAccentColor: '#d4af37',
@@ -71,6 +72,7 @@ describe('GlobalSettingsPage', () => {
     render(<GlobalSettingsPage />);
     expect(await screen.findByDisplayValue('Hygieia Cleaning Services')).toBeInTheDocument();
     expect(screen.getByDisplayValue('ops@hygieia.example')).toBeInTheDocument();
+    expect(screen.getByLabelText(/default tax rate/i)).toHaveValue(5);
   });
 
   it('saves edited company settings', async () => {
@@ -80,11 +82,14 @@ describe('GlobalSettingsPage', () => {
     const nameInput = await screen.findByLabelText(/company name/i);
     await user.clear(nameInput);
     await user.type(nameInput, 'Acme Janitorial');
+    const taxRateInput = screen.getByLabelText(/default tax rate/i);
+    await user.clear(taxRateInput);
+    await user.type(taxRateInput, '7');
     await user.click(screen.getByRole('button', { name: /save global settings/i }));
 
     await waitFor(() => {
       expect(updateGlobalSettingsMock).toHaveBeenCalledWith(
-        expect.objectContaining({ companyName: 'Acme Janitorial' })
+        expect.objectContaining({ companyName: 'Acme Janitorial', taxRate: 0.07 })
       );
     });
   });

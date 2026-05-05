@@ -5,6 +5,7 @@ export interface GlobalBranding {
   companyWebsite: string | null;
   companyAddress: string | null;
   companyTimezone: string;
+  taxRate: number;
   logoDataUrl: string | null;
   themePrimaryColor: string;
   themeAccentColor: string;
