@@ -1081,11 +1081,14 @@ export async function createJob(input: JobCreateInput) {
   // Validate contract exists and is active
   const contract = await prisma.contract.findUnique({
     where: { id: input.contractId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, facilityId: true, accountId: true },
   });
   if (!contract) throw new NotFoundError('Contract not found');
   if (contract.status !== 'active') {
     throw new BadRequestError('Contract must be active to create jobs');
+  }
+  if (contract.facilityId !== input.facilityId || contract.accountId !== input.accountId) {
+    throw new BadRequestError('Contract does not belong to the selected account and service location');
   }
 
   await assertNoDirectJobConflict({
@@ -2611,7 +2614,13 @@ export async function createJobTask(jobId: string, input: JobTaskCreateInput) {
   });
 }
 
-export async function updateJobTask(taskId: string, input: JobTaskUpdateInput) {
+export async function updateJobTask(jobId: string, taskId: string, input: JobTaskUpdateInput) {
+  const existing = await prisma.jobTask.findFirst({
+    where: { id: taskId, jobId },
+    select: { id: true },
+  });
+  if (!existing) throw new NotFoundError('Job task not found');
+
   const data: Prisma.JobTaskUpdateInput = {};
 
   if (input.status !== undefined) {
@@ -2645,7 +2654,13 @@ export async function updateJobTask(taskId: string, input: JobTaskUpdateInput) {
   });
 }
 
-export async function deleteJobTask(taskId: string) {
+export async function deleteJobTask(jobId: string, taskId: string) {
+  const existing = await prisma.jobTask.findFirst({
+    where: { id: taskId, jobId },
+    select: { id: true },
+  });
+  if (!existing) throw new NotFoundError('Job task not found');
+
   return prisma.jobTask.delete({
     where: { id: taskId },
     select: { id: true },

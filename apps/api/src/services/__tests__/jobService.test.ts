@@ -16,6 +16,8 @@ import {
   runRecurringJobsAutoRegenerationCycle,
   runJobNearingEndNoCheckInAlertCycle,
   updateJob,
+  updateJobTask,
+  deleteJobTask,
 } from '../jobService';
 
 jest.mock('../../lib/prisma', () => ({
@@ -34,6 +36,9 @@ jest.mock('../../lib/prisma', () => ({
     },
     jobTask: {
       createMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     contract: {
       findUnique: jest.fn(),
@@ -110,6 +115,7 @@ describe('jobService', () => {
     );
     (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.jobTask.createMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prisma.jobTask.findFirst as jest.Mock).mockResolvedValue({ id: 'task-1' });
     (prisma.job.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
     (prisma.jobActivity.createMany as jest.Mock).mockResolvedValue({ count: 0 });
     (sendSms as jest.Mock).mockResolvedValue(true);
@@ -233,6 +239,8 @@ describe('jobService', () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'draft',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
     });
 
     await expect(
@@ -251,6 +259,8 @@ describe('jobService', () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
     });
     (prisma.job.findFirst as jest.Mock).mockResolvedValue({
       jobNumber: `WO-${year}-0009`,
@@ -295,6 +305,8 @@ describe('jobService', () => {
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
       id: 'contract-1',
       status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
     });
     (prisma.job.findFirst as jest.Mock).mockResolvedValue({
       jobNumber: `WO-${year}-0009`,
@@ -342,6 +354,8 @@ describe('jobService', () => {
         return Promise.resolve({
           id: 'contract-1',
           status: 'active',
+          facilityId: 'facility-1',
+          accountId: 'account-1',
         });
       }
 
@@ -424,6 +438,8 @@ describe('jobService', () => {
         return Promise.resolve({
           id: 'contract-1',
           status: 'active',
+          facilityId: 'facility-1',
+          accountId: 'account-1',
         });
       }
 
@@ -488,6 +504,8 @@ describe('jobService', () => {
         return Promise.resolve({
           id: 'contract-1',
           status: 'active',
+          facilityId: 'facility-1',
+          accountId: 'account-1',
         });
       }
 
@@ -549,7 +567,12 @@ describe('jobService', () => {
     const year = new Date().getFullYear();
     (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
       if (select?.status) {
-        return Promise.resolve({ id: 'contract-1', status: 'active' });
+        return Promise.resolve({
+          id: 'contract-1',
+          status: 'active',
+          facilityId: 'facility-1',
+          accountId: 'account-1',
+        });
       }
 
       return Promise.resolve({
@@ -604,7 +627,12 @@ describe('jobService', () => {
     const year = new Date().getFullYear();
     (prisma.contract.findUnique as jest.Mock).mockImplementation(({ select }: { select?: Record<string, unknown> }) => {
       if (select?.status) {
-        return Promise.resolve({ id: 'contract-1', status: 'active' });
+        return Promise.resolve({
+          id: 'contract-1',
+          status: 'active',
+          facilityId: 'facility-1',
+          accountId: 'account-1',
+        });
       }
 
       return Promise.resolve({
@@ -1594,6 +1622,27 @@ describe('jobService', () => {
     expect(prisma.job.update).not.toHaveBeenCalled();
   });
 
+  it('createJob rejects when contract does not match the selected account and service location', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-2',
+      accountId: 'account-1',
+    });
+
+    await expect(
+      createJob({
+        contractId: 'contract-1',
+        facilityId: 'facility-1',
+        accountId: 'account-1',
+        scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+        createdByUserId: 'user-1',
+      })
+    ).rejects.toThrow('Contract does not belong to the selected account and service location');
+
+    expect(prisma.job.create).not.toHaveBeenCalled();
+  });
+
   it('completeJob clocks out active entry linked to the same job', async () => {
     (prisma.job.findUnique as jest.Mock).mockResolvedValue({
       id: 'job-1',
@@ -1737,5 +1786,23 @@ describe('jobService', () => {
         canCompleteOnThisJob: false,
       })
     );
+  });
+
+  it('updateJobTask rejects task IDs outside the requested job', async () => {
+    (prisma.jobTask.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      updateJobTask('job-1', 'task-2', { status: 'completed' })
+    ).rejects.toThrow('Job task not found');
+
+    expect(prisma.jobTask.update).not.toHaveBeenCalled();
+  });
+
+  it('deleteJobTask rejects task IDs outside the requested job', async () => {
+    (prisma.jobTask.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(deleteJobTask('job-1', 'task-2')).rejects.toThrow('Job task not found');
+
+    expect(prisma.jobTask.delete).not.toHaveBeenCalled();
   });
 });

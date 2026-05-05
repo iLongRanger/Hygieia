@@ -37,6 +37,10 @@ describe('Job Routes', () => {
   });
 
   it('POST /:id/complete-initial-clean should mark initial clean from a job', async () => {
+    (jobService.getJobById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      account: { id: 'account-1' },
+    });
     (jobService.completeInitialCleanForJob as jest.Mock).mockResolvedValue({ id: 'job-1' });
 
     const response = await request(app)
@@ -55,6 +59,17 @@ describe('Job Routes', () => {
       .post('/api/v1/jobs/job-1/complete-initial-clean')
       .send({})
       .expect(422);
+
+    expect(jobService.completeInitialCleanForJob).not.toHaveBeenCalled();
+  });
+
+  it('POST /:id/complete-initial-clean should return 404 when job is missing', async () => {
+    (jobService.getJobById as jest.Mock).mockResolvedValue(null);
+
+    await request(app)
+      .post('/api/v1/jobs/job-1/complete-initial-clean')
+      .send({})
+      .expect(404);
 
     expect(jobService.completeInitialCleanForJob).not.toHaveBeenCalled();
   });
@@ -178,10 +193,14 @@ describe('Job Routes', () => {
       id: 'task-1',
       status: 'completed',
     });
-    expect(jobService.updateJobTask).toHaveBeenCalledWith('task-1', {
-      status: 'completed',
-      completedByUserId: 'user-1',
-    });
+    expect(jobService.updateJobTask).toHaveBeenCalledWith(
+      'job-1',
+      'task-1',
+      {
+        status: 'completed',
+        completedByUserId: 'user-1',
+      }
+    );
   });
 
   it('PATCH /:jobId/tasks/:taskId should reject cleaners outside the assignment', async () => {

@@ -373,6 +373,13 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       assertCanEditJob(req);
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
       const parsed = completeInitialCleanForJobSchema.safeParse(req.body || {});
       if (!parsed.success) throw handleZodError(parsed.error);
 
@@ -488,7 +495,7 @@ router.patch(
       const parsed = updateJobTaskSchema.safeParse(req.body);
       if (!parsed.success) throw handleZodError(parsed.error);
 
-      const task = await updateJobTask(req.params.taskId, {
+      const task = await updateJobTask(req.params.jobId, req.params.taskId, {
         ...parsed.data,
         completedByUserId: parsed.data.status === 'completed' ? user.id : undefined,
       });
@@ -512,7 +519,7 @@ router.delete(
         return;
       }
       await assertManagerJobScope(req, existing.account?.id);
-      await deleteJobTask(req.params.taskId);
+      await deleteJobTask(req.params.jobId, req.params.taskId);
       res.json({ data: { id: req.params.taskId } });
     } catch (error) {
       next(error);
