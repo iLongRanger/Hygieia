@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
@@ -36,21 +36,25 @@ router.get(
   '/',
   requirePermission(PERMISSIONS.PAYROLL_READ),
   validate(listPayrollRunsSchema),
-  async (req: Request, res: Response) => {
-    const { status, page, limit } = req.query;
-    const result = await listPayrollRuns(
-      {
-        status: status as string,
-        page: page ? Number(page) : undefined,
-        limit: limit ? Number(limit) : undefined,
-      },
-      {
-        userRole: req.user?.role,
-        userId: req.user?.id,
-        userTeamId: req.user?.teamId ?? null,
-      }
-    );
-    res.json(result);
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status, page, limit } = req.query;
+      const result = await listPayrollRuns(
+        {
+          status: status as string,
+          page: page ? Number(page) : undefined,
+          limit: limit ? Number(limit) : undefined,
+        },
+        {
+          userRole: req.user?.role,
+          userId: req.user?.id,
+          userTeamId: req.user?.teamId ?? null,
+        }
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -58,13 +62,17 @@ router.get(
 router.get(
   '/:id',
   requirePermission(PERMISSIONS.PAYROLL_READ),
-  async (req: Request, res: Response) => {
-    const user = requireAuthenticatedUser(req);
-    const run = await getPayrollRunById(req.params.id, {
-      userRole: user.role,
-      userId: user.id,
-    });
-    res.json({ data: run });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      const run = await getPayrollRunById(req.params.id, {
+        userRole: user.role,
+        userId: user.id,
+      });
+      res.json({ data: run });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -73,9 +81,13 @@ router.post(
   '/generate',
   requirePermission(PERMISSIONS.PAYROLL_WRITE),
   validate(generatePayrollSchema),
-  async (req: Request, res: Response) => {
-    const run = await generatePayrollRun(req.body.periodStart, req.body.periodEnd);
-    res.status(201).json({ data: run });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const run = await generatePayrollRun(req.body.periodStart, req.body.periodEnd);
+      res.status(201).json({ data: run });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -83,10 +95,14 @@ router.post(
 router.post(
   '/:id/approve',
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
-  async (req: Request, res: Response) => {
-    const user = requireAuthenticatedUser(req);
-    const run = await approvePayrollRun(req.params.id, user.id);
-    res.json({ data: run });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      const run = await approvePayrollRun(req.params.id, user.id);
+      res.json({ data: run });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -94,9 +110,13 @@ router.post(
 router.post(
   '/:id/mark-paid',
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
-  async (req: Request, res: Response) => {
-    const run = await markPayrollRunPaid(req.params.id);
-    res.json({ data: run });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const run = await markPayrollRunPaid(req.params.id);
+      res.json({ data: run });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -105,14 +125,18 @@ router.patch(
   '/:id/entries/:entryId',
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
   validate(adjustPayrollEntrySchema),
-  async (req: Request, res: Response) => {
-    const user = requireAuthenticatedUser(req);
-    const run = await adjustPayrollEntry(
-      req.params.entryId,
-      req.body,
-      user.id
-    );
-    res.json({ data: run });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      const run = await adjustPayrollEntry(
+        req.params.entryId,
+        req.body,
+        user.id
+      );
+      res.json({ data: run });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -120,9 +144,13 @@ router.patch(
 router.delete(
   '/:id',
   requirePermission(PERMISSIONS.PAYROLL_APPROVE),
-  async (req: Request, res: Response) => {
-    await deletePayrollRun(req.params.id);
-    res.status(204).send();
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await deletePayrollRun(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
