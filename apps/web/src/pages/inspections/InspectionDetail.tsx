@@ -13,6 +13,7 @@ import {
   Calendar,
   FileText,
   Minus,
+  Camera,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -64,6 +65,19 @@ const getRatingColor = (rating: string | null) => {
   if (rating === 'poor') return 'text-orange-600 dark:text-orange-400';
   return 'text-red-600 dark:text-red-400';
 };
+
+function PhotoEvidencePlaceholder({ mode }: { mode: 'capture' | 'review' }) {
+  return (
+    <div className="mt-2 flex items-start gap-2 rounded-lg border border-dashed border-surface-300 bg-surface-50 px-3 py-2 text-xs text-surface-600 dark:border-surface-700 dark:bg-surface-800/50 dark:text-surface-400">
+      <Camera className="mt-0.5 h-4 w-4 shrink-0 text-surface-400" />
+      <span>
+        {mode === 'capture'
+          ? 'Photo evidence capture is not enabled yet. Use area notes and item feedback for inspection evidence.'
+          : 'No photo evidence is attached to this area yet.'}
+      </span>
+    </div>
+  );
+}
 
 const getActionStatusVariant = (
   status: InspectionCorrectiveActionStatus
@@ -612,7 +626,9 @@ const InspectionDetail = () => {
                           placeholder={`Notes for ${category}...`}
                         />
                       </div>
-                      {/* TODO: Add PhotoUploader component here for per-area photo capture (Cloudflare R2) */}
+                      <div className="px-2">
+                        <PhotoEvidencePlaceholder mode="capture" />
+                      </div>
                     </>
                   );
                 })()}
@@ -667,7 +683,7 @@ const InspectionDetail = () => {
                             {areaState.notes}
                           </div>
                         )}
-                        {/* TODO: Show photo thumbnails here when photo upload is implemented */}
+                        <PhotoEvidencePlaceholder mode="review" />
                         {items.map((item) => (
                           <InspectionItemFeedbackSection
                             key={item.id}
