@@ -250,6 +250,7 @@ export const assignContractTeamSchema = z
     teamId: z.string().uuid().nullable().optional(),
     assignedToUserId: z.string().uuid().nullable().optional(),
     effectivityDate: z.coerce.date().nullable().optional(),
+    compensationType: z.enum(['hourly', 'percentage']).optional(),
     subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
     subcontractorPercentage: z.coerce.number().min(0.01).max(100).optional(),
   })

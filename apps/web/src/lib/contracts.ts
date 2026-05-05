@@ -137,6 +137,7 @@ export async function assignContractTeam(
   assignedToUserId?: string | null,
   subcontractorTier?: string,
   subcontractorPercentage?: number | null,
+  compensationType?: 'hourly' | 'percentage',
   effectivityDate?: string | null
 ): Promise<Contract> {
   const response = await api.patch(`/contracts/${id}/team`, {
@@ -144,6 +145,7 @@ export async function assignContractTeam(
     assignedToUserId: assignedToUserId ?? null,
     subcontractorTier,
     subcontractorPercentage,
+    compensationType,
     effectivityDate: effectivityDate ?? null,
   });
   return response.data.data;

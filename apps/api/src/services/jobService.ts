@@ -904,8 +904,7 @@ function buildJobCompensationSnapshot(contract: {
   const assignedToUserId = assignment?.assignedToUserId !== undefined
     ? assignment.assignedToUserId
     : contract.assignedToUserId ?? null;
-  const compensationType =
-    assignedTeamId || contract.compensationType === 'percentage' ? 'percentage' : 'hourly';
+  const compensationType = contract.compensationType === 'percentage' ? 'percentage' : 'hourly';
 
   return {
     compensationType,
@@ -1765,7 +1764,7 @@ export async function assignJob(
           assignedToUserId: userId,
         })
       : {
-          compensationType: teamId ? 'percentage' : 'hourly',
+          compensationType: 'hourly',
           subcontractorPercentageSnapshot: null,
           jobRevenueSnapshot: null,
         };
@@ -1852,7 +1851,7 @@ export async function reassignScheduledJobsForContract(input: {
         assignedToUserId: input.assignedToUserId,
       })
     : {
-        compensationType: input.assignedTeamId ? 'percentage' : 'hourly',
+        compensationType: 'hourly',
         subcontractorPercentageSnapshot: null,
         jobRevenueSnapshot: null,
       };

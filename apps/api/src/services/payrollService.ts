@@ -125,6 +125,13 @@ type GroupedPayrollEntry = {
   }[];
 };
 
+type PayrollPayee = {
+  id: string;
+  payType: string | null;
+  hourlyPayRate: Prisma.Decimal | null;
+  roles: { role: { key: string } }[];
+};
+
 function getPayrollEligibilityFilter() {
   return {
     status: 'completed',
@@ -201,6 +208,15 @@ function getSubcontractorPercentage(job: EligiblePayrollJob): number {
   }
 
   return 0.6;
+}
+
+function getPercentagePayee(job: EligiblePayrollJob): PayrollPayee | null {
+  const directlyAssignedPayee = job.contract?.assignedToUser ?? null;
+  if (directlyAssignedPayee) {
+    return directlyAssignedPayee;
+  }
+
+  return job.contract?.assignedTeam?.users[0] ?? null;
 }
 
 // ==================== Select objects ====================
@@ -386,7 +402,7 @@ export async function generatePayrollRun(periodStart: string, periodEnd: string)
 
   for (const job of eligibleJobs) {
     if (job.compensationType === 'percentage') {
-      const payee = job.contract?.assignedToUser ?? job.contract?.assignedTeam?.users[0] ?? null;
+      const payee = getPercentagePayee(job);
       if (!payee) {
         continue;
       }

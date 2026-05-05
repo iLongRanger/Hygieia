@@ -1106,7 +1106,8 @@ export async function assignContractTeam(
   teamId: string | null,
   assignedToUserId: string | null = null,
   subcontractorTier?: string,
-  subcontractorPercentage?: number | null
+  subcontractorPercentage?: number | null,
+  compensationType: 'hourly' | 'percentage' = 'hourly'
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -1136,6 +1137,7 @@ export async function assignContractTeam(
     assignedToUserId,
     subcontractorTier,
     subcontractorPercentage,
+    compensationType,
   });
 
   const data: Prisma.ContractUncheckedUpdateInput = {
@@ -1235,10 +1237,20 @@ async function validateContractAssignee(
 function buildAssignmentCompensation(input: {
   teamId: string | null;
   assignedToUserId: string | null;
+  compensationType?: 'hourly' | 'percentage';
   subcontractorTier?: string | null;
   subcontractorPercentage?: number | null;
 }) {
-  if (input.teamId) {
+  if (!input.teamId && !input.assignedToUserId) {
+    return {
+      compensationType: 'hourly',
+      subcontractorPercentage: null,
+    };
+  }
+
+  const compensationType = input.compensationType ?? 'hourly';
+
+  if (compensationType === 'percentage') {
     const subcontractorPercentage = normalizeSubcontractorPercentage(
       input.subcontractorPercentage,
       input.subcontractorTier
@@ -1251,13 +1263,6 @@ function buildAssignmentCompensation(input: {
     return {
       compensationType: 'percentage',
       subcontractorPercentage,
-    };
-  }
-
-  if (input.assignedToUserId) {
-    return {
-      compensationType: 'hourly',
-      subcontractorPercentage: null,
     };
   }
 
@@ -1274,7 +1279,8 @@ export async function scheduleContractAssignmentOverride(
   effectivityDate: Date,
   updatedByUserId: string,
   subcontractorTier?: string,
-  subcontractorPercentage?: number | null
+  subcontractorPercentage?: number | null,
+  compensationType: 'hourly' | 'percentage' = 'hourly'
 ) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
@@ -1285,6 +1291,7 @@ export async function scheduleContractAssignmentOverride(
       assignedToUserId: true,
       subcontractorTier: true,
       subcontractorPercentage: true,
+      compensationType: true,
     },
   });
 
@@ -1310,12 +1317,14 @@ export async function scheduleContractAssignmentOverride(
     assignedToUserId,
     subcontractorTier: subcontractorTier ?? contract.subcontractorTier,
     subcontractorPercentage,
+    compensationType,
   });
 
   const sameAssignee =
     contract.assignedTeamId === (teamId ?? null) &&
     contract.assignedToUserId === (assignedToUserId ?? null) &&
-    (teamId
+    assignmentCompensation.compensationType === contract.compensationType &&
+    (assignmentCompensation.compensationType === 'percentage'
       ? (subcontractorTier ?? contract.subcontractorTier) === contract.subcontractorTier &&
         assignmentCompensation.subcontractorPercentage ===
           Number(contract.subcontractorPercentage ?? 0)
@@ -1332,9 +1341,12 @@ export async function scheduleContractAssignmentOverride(
     data: {
       pendingAssignedTeamId: teamId,
       pendingAssignedToUserId: assignedToUserId,
-      pendingSubcontractorTier: teamId ? subcontractorTier ?? contract.subcontractorTier : null,
+      pendingSubcontractorTier:
+        assignmentCompensation.compensationType === 'percentage'
+          ? subcontractorTier ?? contract.subcontractorTier
+          : null,
       pendingCompensationType: assignmentCompensation.compensationType,
-      pendingSubcontractorPercentage: teamId
+      pendingSubcontractorPercentage: assignmentCompensation.compensationType === 'percentage'
         ? assignmentCompensation.subcontractorPercentage
         : null,
       assignmentOverrideEffectiveDate: normalizedDate,

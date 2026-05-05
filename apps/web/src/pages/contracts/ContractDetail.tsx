@@ -987,6 +987,7 @@ const ContractDetail = () => {
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>('subcontractor_team');
   const [activeTab, setActiveTab] = useState<ContractDetailTab>('overview');
   const [assigningTeam, setAssigningTeam] = useState(false);
+  const [compensationType, setCompensationType] = useState<'hourly' | 'percentage'>('hourly');
   const [selectedTier, setSelectedTier] = useState('premium');
   const [subcontractorPercentage, setSubcontractorPercentage] = useState('60');
   const [overrideEffectivityDate, setOverrideEffectivityDate] = useState('');
@@ -1154,6 +1155,7 @@ const ContractDetail = () => {
       setAssignmentMode(hasAssignedUser ? 'internal_employee' : 'subcontractor_team');
       setSelectedTeamId(data.assignedTeam?.id || '');
       setSelectedUserId(data.assignedToUser?.id || '');
+      setCompensationType(data.compensationType === 'percentage' ? 'percentage' : 'hourly');
       setSelectedTier(data.subcontractorTier || 'premium');
       setSubcontractorPercentage(
         data.subcontractorPercentage != null
@@ -1207,12 +1209,13 @@ const ContractDetail = () => {
         Boolean(teamId || assignedToUserId) &&
         (teamId !== (contract.assignedTeam?.id || null) ||
           assignedToUserId !== (contract.assignedToUser?.id || null) ||
-          (teamId &&
+          compensationType !== (contract.compensationType === 'percentage' ? 'percentage' : 'hourly') ||
+          (compensationType === 'percentage' &&
             Number(subcontractorPercentage) / 100 !== Number(contract.subcontractorPercentage ?? 0)));
 
-      const subcontractorPercentageValue = teamId ? Number(subcontractorPercentage) : null;
+      const subcontractorPercentageValue = compensationType === 'percentage' ? Number(subcontractorPercentage) : null;
       if (
-        teamId &&
+        compensationType === 'percentage' &&
         (subcontractorPercentageValue == null ||
           !Number.isFinite(subcontractorPercentageValue) ||
           subcontractorPercentageValue <= 0 ||
@@ -1232,8 +1235,9 @@ const ContractDetail = () => {
         contract.id,
         teamId,
         assignedToUserId,
-        teamId ? selectedTier : undefined,
+        compensationType === 'percentage' ? selectedTier : undefined,
         subcontractorPercentageValue,
+        compensationType,
         requiresEffectivityDate ? overrideEffectivityDate : null
       );
       setContract(updatedContract);
@@ -2929,61 +2933,38 @@ const ContractDetail = () => {
                 { value: 'internal_employee', label: 'Internal Employee' },
               ]}
             />
+            <Select
+              label="Compensation Type"
+              value={compensationType}
+              onChange={(value) => setCompensationType(value as 'hourly' | 'percentage')}
+              disabled={contract.status !== 'active' || !canAdminContracts}
+              options={[
+                { value: 'hourly', label: 'Pay by Hour' },
+                { value: 'percentage', label: 'Pay by Percentage' },
+              ]}
+              hint="This controls payroll calculation and is independent from whether the assignee is a team or employee."
+            />
             {assignmentMode === 'subcontractor_team' ? (
-              <>
-                <Select
-                  label="Subcontractor Team"
-                  value={selectedTeamId}
-                  onChange={(value) => {
-                    setSelectedTeamId(value);
-                    if (value) setSelectedUserId('');
-                  }}
-                  disabled={contract.status !== 'active' || !canAdminContracts}
-                  options={[
-                    { value: '', label: 'Unassigned' },
-                    ...teams.map((team) => ({ value: team.id, label: team.name })),
-                  ]}
-                  hint={
-                    contract.status !== 'active'
-                      ? 'Assignments can only be changed on active contracts'
-                      : !canAdminContracts
-                        ? 'You do not have permission to update assignments'
-                        : undefined
-                  }
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Select
-                    label="Subcontractor Tier"
-                    value={selectedTier}
-                    onChange={(value) => {
-                      setSelectedTier(value);
-                      setSubcontractorPercentage((tierToPercentage(value) * 100).toFixed(0));
-                    }}
-                    disabled={contract.status !== 'active' || !canAdminContracts}
-                    options={SUBCONTRACTOR_TIER_OPTIONS}
-                  />
-                  <Input
-                    label="Subcontractor Percentage"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="0.01"
-                    value={subcontractorPercentage}
-                    onChange={(event) => setSubcontractorPercentage(event.target.value)}
-                    disabled={contract.status !== 'active' || !canAdminContracts}
-                    hint="Percent of each completed job revenue snapshot paid to this subcontractor."
-                  />
-                  <div>
-                    <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Subcontract Pay</div>
-                    <div className="text-lg font-semibold text-teal-400">
-                      ${(Number(contract.monthlyValue) * (Number(subcontractorPercentage || 0) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
-                    </div>
-                    <div className="text-xs text-surface-500 mt-0.5">
-                      {Number(subcontractorPercentage || 0).toFixed(2)}% of monthly value, paid per completed eligible job
-                    </div>
-                  </div>
-                </div>
-              </>
+              <Select
+                label="Subcontractor Team"
+                value={selectedTeamId}
+                onChange={(value) => {
+                  setSelectedTeamId(value);
+                  if (value) setSelectedUserId('');
+                }}
+                disabled={contract.status !== 'active' || !canAdminContracts}
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...teams.map((team) => ({ value: team.id, label: team.name })),
+                ]}
+                hint={
+                  contract.status !== 'active'
+                    ? 'Assignments can only be changed on active contracts'
+                    : !canAdminContracts
+                      ? 'You do not have permission to update assignments'
+                      : undefined
+                }
+              />
             ) : (
               <Select
                 label="Internal Employee"
@@ -3007,6 +2988,40 @@ const ContractDetail = () => {
                       : undefined
                 }
               />
+            )}
+            {compensationType === 'percentage' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Select
+                  label="Percentage Preset"
+                  value={selectedTier}
+                  onChange={(value) => {
+                    setSelectedTier(value);
+                    setSubcontractorPercentage((tierToPercentage(value) * 100).toFixed(0));
+                  }}
+                  disabled={contract.status !== 'active' || !canAdminContracts}
+                  options={SUBCONTRACTOR_TIER_OPTIONS}
+                />
+                <Input
+                  label="Pay Percentage"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="0.01"
+                  value={subcontractorPercentage}
+                  onChange={(event) => setSubcontractorPercentage(event.target.value)}
+                  disabled={contract.status !== 'active' || !canAdminContracts}
+                  hint="Percent of each completed job revenue snapshot paid to this assignee."
+                />
+                <div>
+                  <div className="text-sm text-surface-500 dark:text-surface-400 mb-1">Estimated Monthly Pay</div>
+                  <div className="text-lg font-semibold text-teal-400">
+                    ${(Number(contract.monthlyValue) * (Number(subcontractorPercentage || 0) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                  </div>
+                  <div className="text-xs text-surface-500 mt-0.5">
+                    {Number(subcontractorPercentage || 0).toFixed(2)}% of monthly value, paid per completed eligible job
+                  </div>
+                </div>
+              </div>
             )}
             {shouldScheduleOverride && (
               <Input

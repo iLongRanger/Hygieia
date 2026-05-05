@@ -396,9 +396,50 @@ describe('contractService', () => {
         data: expect.objectContaining({
           assignedTeamId: 'team-1',
           assignedToUserId: null,
+          compensationType: 'hourly',
+          subcontractorPercentage: null,
           pendingAssignedTeamId: null,
           pendingAssignedToUserId: null,
           assignmentOverrideEffectiveDate: null,
+        }),
+      })
+    );
+  });
+
+  it('assignContractTeam should allow percentage pay for an internal employee', async () => {
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      accountId: 'account-1',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'user-2',
+      status: 'active',
+    });
+    (prisma.contract.update as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      assignedToUser: { id: 'user-2' },
+      assignedTeam: null,
+      compensationType: 'percentage',
+      subcontractorPercentage: { toString: () => '0.55' },
+    });
+
+    await contractService.assignContractTeam(
+      'contract-1',
+      null,
+      'user-2',
+      undefined,
+      55,
+      'percentage'
+    );
+
+    expect(prisma.contract.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assignedTeamId: null,
+          assignedToUserId: 'user-2',
+          compensationType: 'percentage',
+          subcontractorPercentage: 0.55,
         }),
       })
     );
@@ -435,6 +476,8 @@ describe('contractService', () => {
         data: expect.objectContaining({
           assignedTeamId: null,
           assignedToUserId: 'user-2',
+          compensationType: 'hourly',
+          subcontractorPercentage: null,
           pendingAssignedTeamId: null,
           pendingAssignedToUserId: null,
           assignmentOverrideEffectiveDate: null,
@@ -450,6 +493,8 @@ describe('contractService', () => {
       assignedTeamId: 'team-old',
       assignedToUserId: null,
       subcontractorTier: 'standard',
+      compensationType: 'hourly',
+      subcontractorPercentage: null,
     });
     (prisma.team.findUnique as jest.Mock).mockResolvedValue({
       id: 'team-new',
@@ -468,7 +513,9 @@ describe('contractService', () => {
       null,
       new Date('2026-03-10'),
       'owner-1',
-      'premium'
+      'premium',
+      60,
+      'percentage'
     );
 
     expect(result).toEqual(
@@ -483,6 +530,8 @@ describe('contractService', () => {
         data: expect.objectContaining({
           pendingAssignedTeamId: 'team-new',
           pendingAssignedToUserId: null,
+          pendingCompensationType: 'percentage',
+          pendingSubcontractorPercentage: 0.6,
           assignmentOverrideSetByUserId: 'owner-1',
         }),
       })

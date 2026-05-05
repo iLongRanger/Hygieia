@@ -118,4 +118,39 @@ describe('payrollService', () => {
       })
     );
   });
+
+  it('generates percentage payroll for a directly assigned internal employee', async () => {
+    (prisma.job.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'job-1',
+        contractId: 'contract-1',
+        compensationType: 'percentage',
+        subcontractorPercentageSnapshot: { toString: () => '0.50' },
+        jobRevenueSnapshot: { toString: () => '300' },
+        contract: {
+          id: 'contract-1',
+          monthlyValue: { toString: () => '1200' },
+          subcontractorTier: null,
+          subcontractorPercentage: { toString: () => '0.5' },
+          serviceFrequency: 'weekly',
+          assignedTeam: null,
+          assignedToUser: {
+            id: 'employee-1',
+            payType: 'percentage',
+            hourlyPayRate: null,
+            roles: [{ role: { key: 'cleaner' } }],
+          },
+        },
+        timeEntries: [],
+      },
+    ]);
+
+    await generatePayrollRun('2026-02-01', '2026-02-15');
+
+    const entryArg = (prisma.payrollEntry.create as jest.Mock).mock.calls[0][0];
+    expect(entryArg.data.userId).toBe('employee-1');
+    expect(entryArg.data.payType).toBe('percentage');
+    expect(entryArg.data.scheduledHours).toBeNull();
+    expect(entryArg.data.grossPay.toString()).toBe('150');
+  });
 });

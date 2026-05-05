@@ -911,11 +911,13 @@ router.patch(
       const assignmentChanged =
         (existingContract.assignedTeam?.id ?? null) !== nextTeamId ||
         (existingContract.assignedToUser?.id ?? null) !== nextAssignedToUserId ||
+        (parsed.data.compensationType !== undefined &&
+          parsed.data.compensationType !== existingContract.compensationType) ||
         (nextTeamId &&
           parsed.data.subcontractorTier !== undefined &&
           parsed.data.subcontractorTier !== existingContract.subcontractorTier);
       const percentageChanged =
-        nextTeamId &&
+        (parsed.data.compensationType ?? existingContract.compensationType) === 'percentage' &&
         parsed.data.subcontractorPercentage !== undefined &&
         Number(existingContract.subcontractorPercentage ?? 0) !==
           (parsed.data.subcontractorPercentage > 1
@@ -951,14 +953,16 @@ router.patch(
             effectivityDate as Date,
             user.id,
             parsed.data.subcontractorTier,
-            parsed.data.subcontractorPercentage
+            parsed.data.subcontractorPercentage,
+            parsed.data.compensationType
           )
         : await assignContractTeam(
             req.params.id,
             nextTeamId,
             nextAssignedToUserId,
             parsed.data.subcontractorTier,
-            parsed.data.subcontractorPercentage
+            parsed.data.subcontractorPercentage,
+            parsed.data.compensationType
           );
 
       await logContractActivity({
@@ -971,6 +975,7 @@ router.patch(
           teamId: parsed.data.teamId ?? null,
           assignedToUserId: parsed.data.assignedToUserId ?? null,
           effectivityDate: parsed.data.effectivityDate?.toISOString() ?? null,
+          compensationType: parsed.data.compensationType,
           subcontractorTier: parsed.data.subcontractorTier,
           subcontractorPercentage: parsed.data.subcontractorPercentage,
         },

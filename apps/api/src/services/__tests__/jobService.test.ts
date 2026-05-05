@@ -358,6 +358,44 @@ describe('jobService', () => {
     expect(createArg.data.jobRevenueSnapshot.toString()).toBe('230.95');
   });
 
+  it('createJob keeps a team-assigned job hourly when the contract is hourly', async () => {
+    const year = new Date().getFullYear();
+    (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      assignedTeamId: 'team-1',
+      assignedToUserId: null,
+      compensationType: 'hourly',
+      subcontractorPercentage: { toString: () => '0.625' },
+      monthlyValue: { toString: () => '1000' },
+      serviceFrequency: 'weekly',
+    });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue({
+      jobNumber: `WO-${year}-0009`,
+    });
+    (prisma.job.create as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      jobNumber: `WO-${year}-0010`,
+      assignedTeam: null,
+      assignedToUser: null,
+    });
+
+    await createJob({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      scheduledDate: new Date('2026-03-01T00:00:00.000Z'),
+      createdByUserId: 'user-1',
+    });
+
+    const createArg = (prisma.job.create as jest.Mock).mock.calls[0][0];
+    expect(createArg.data.assignedTeamId).toBe('team-1');
+    expect(createArg.data.compensationType).toBe('hourly');
+    expect(createArg.data.subcontractorPercentageSnapshot).toBeNull();
+  });
+
   it('createJob seeds job tasks from facility tasks', async () => {
     const year = new Date().getFullYear();
     (prisma.contract.findUnique as jest.Mock).mockResolvedValue({
