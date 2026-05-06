@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import type { UserRole} from '../types/roles';
 import { isValidRole } from '../types/roles';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { validatePassword } from '../utils/passwordPolicy';
 
@@ -151,7 +151,8 @@ function formatUser(user: UserWithRoles, options: UserFormatOptions = { includeC
   };
 
   if (options.includeCompensation !== false) {
-    formatted.payType = user.payType;
+    formatted.payType =
+      user.payType === 'hourly' || user.payType === 'percentage' ? user.payType : null;
     formatted.hourlyPayRate = user.hourlyPayRate != null ? Number(user.hourlyPayRate) : null;
   }
 

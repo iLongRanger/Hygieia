@@ -18,6 +18,7 @@ export function buildProposalRejectedHtml(data: RejectedEmailData): string {
     companyEmail: companyConfig.email || null,
     companyWebsite: companyConfig.website || null,
     companyTimezone: 'UTC',
+    taxRate: 0,
     logoDataUrl: companyConfig.logoPath || null,
     themePrimaryColor: '#991b1b',
     themeAccentColor: '#ffffff',

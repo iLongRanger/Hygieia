@@ -115,6 +115,21 @@ interface ContractAccessOptions {
   userId?: string;
 }
 
+interface ContractLegacyDefaults {
+  assignedToUser: Prisma.ContractGetPayload<{ select: typeof contractSelect }>['assignedToUser'] | null;
+  pendingAssignedTeamId: string | null;
+  pendingAssignedToUserId: string | null;
+  pendingSubcontractorTier: string | null;
+  compensationType: string;
+  subcontractorPercentage: Prisma.Decimal | null;
+  pendingCompensationType: string | null;
+  pendingSubcontractorPercentage: Prisma.Decimal | null;
+  assignmentOverrideEffectiveDate: Date | null;
+  assignmentOverrideSetAt: Date | null;
+  pendingAssignedTeam: Prisma.ContractGetPayload<{ select: typeof contractSelect }>['pendingAssignedTeam'] | null;
+  pendingAssignedToUser: Prisma.ContractGetPayload<{ select: typeof contractSelect }>['pendingAssignedToUser'] | null;
+}
+
 function applyContractAccessScope(
   where: Prisma.ContractWhereInput,
   options?: ContractAccessOptions
@@ -339,7 +354,7 @@ const {
   ...contractSelectWithoutAssignedUser
 } = contractSelect;
 
-type ContractRecord = ReturnType<typeof withLegacyPendingDefaults<Prisma.ContractGetPayload<{ select: typeof contractSelect }>>>;
+type ContractRecord = Prisma.ContractGetPayload<{ select: typeof contractSelect }> & ContractLegacyDefaults;
 
 function isLegacyContractColumnError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -358,26 +373,25 @@ function isLegacyContractColumnError(error: unknown): boolean {
   return error.message.includes('does not exist') && missingColumns.some((c) => error.message.includes(c));
 }
 
-function withLegacyPendingDefaults<T extends Record<string, unknown>>(contract: T) {
+function getKnownProperty<T>(value: Record<string, unknown>, key: string, fallback: T): T {
+  return key in value ? (value[key] as T) : fallback;
+}
+
+function withLegacyPendingDefaults<T extends Record<string, unknown>>(contract: T): T & ContractLegacyDefaults {
   return {
     ...contract,
-    assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
-    pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
-    pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
-    pendingSubcontractorTier:
-      'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
-    compensationType: 'compensationType' in contract ? contract.compensationType : 'hourly',
-    subcontractorPercentage:
-      'subcontractorPercentage' in contract ? contract.subcontractorPercentage : null,
-    pendingCompensationType:
-      'pendingCompensationType' in contract ? contract.pendingCompensationType : null,
-    pendingSubcontractorPercentage:
-      'pendingSubcontractorPercentage' in contract ? contract.pendingSubcontractorPercentage : null,
-    assignmentOverrideEffectiveDate:
-      'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
-    assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
-    pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
-    pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
+    assignedToUser: getKnownProperty<ContractLegacyDefaults['assignedToUser']>(contract, 'assignedToUser', null),
+    pendingAssignedTeamId: getKnownProperty<string | null>(contract, 'pendingAssignedTeamId', null),
+    pendingAssignedToUserId: getKnownProperty<string | null>(contract, 'pendingAssignedToUserId', null),
+    pendingSubcontractorTier: getKnownProperty<string | null>(contract, 'pendingSubcontractorTier', null),
+    compensationType: getKnownProperty<string>(contract, 'compensationType', 'hourly'),
+    subcontractorPercentage: getKnownProperty<Prisma.Decimal | null>(contract, 'subcontractorPercentage', null),
+    pendingCompensationType: getKnownProperty<string | null>(contract, 'pendingCompensationType', null),
+    pendingSubcontractorPercentage: getKnownProperty<Prisma.Decimal | null>(contract, 'pendingSubcontractorPercentage', null),
+    assignmentOverrideEffectiveDate: getKnownProperty<Date | null>(contract, 'assignmentOverrideEffectiveDate', null),
+    assignmentOverrideSetAt: getKnownProperty<Date | null>(contract, 'assignmentOverrideSetAt', null),
+    pendingAssignedTeam: getKnownProperty<ContractLegacyDefaults['pendingAssignedTeam']>(contract, 'pendingAssignedTeam', null),
+    pendingAssignedToUser: getKnownProperty<ContractLegacyDefaults['pendingAssignedToUser']>(contract, 'pendingAssignedToUser', null),
   };
 }
 
@@ -618,26 +632,7 @@ export async function listContracts(
   }
 
   return {
-    data: contracts.map((contract) => ({
-      ...contract,
-      assignedToUser: 'assignedToUser' in contract ? contract.assignedToUser : null,
-      pendingAssignedTeamId: 'pendingAssignedTeamId' in contract ? contract.pendingAssignedTeamId : null,
-      pendingAssignedToUserId: 'pendingAssignedToUserId' in contract ? contract.pendingAssignedToUserId : null,
-      pendingSubcontractorTier:
-        'pendingSubcontractorTier' in contract ? contract.pendingSubcontractorTier : null,
-      compensationType: 'compensationType' in contract ? contract.compensationType : 'hourly',
-      subcontractorPercentage:
-        'subcontractorPercentage' in contract ? contract.subcontractorPercentage : null,
-      pendingCompensationType:
-        'pendingCompensationType' in contract ? contract.pendingCompensationType : null,
-      pendingSubcontractorPercentage:
-        'pendingSubcontractorPercentage' in contract ? contract.pendingSubcontractorPercentage : null,
-      assignmentOverrideEffectiveDate:
-        'assignmentOverrideEffectiveDate' in contract ? contract.assignmentOverrideEffectiveDate : null,
-      assignmentOverrideSetAt: 'assignmentOverrideSetAt' in contract ? contract.assignmentOverrideSetAt : null,
-      pendingAssignedTeam: 'pendingAssignedTeam' in contract ? contract.pendingAssignedTeam : null,
-      pendingAssignedToUser: 'pendingAssignedToUser' in contract ? contract.pendingAssignedToUser : null,
-    })),
+    data: contracts.map((contract) => withLegacyPendingDefaults(contract)),
     pagination: {
       page,
       limit,
@@ -1433,6 +1428,8 @@ export interface RenewContractInput {
   startDate?: Date;
   endDate?: Date | null;
   monthlyValue?: number;
+  taxRate?: number;
+  taxAmount?: number;
   serviceFrequency?: string | null;
   serviceSchedule?: Record<string, unknown> | null;
   autoRenew?: boolean;

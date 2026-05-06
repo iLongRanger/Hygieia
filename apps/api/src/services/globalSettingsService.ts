@@ -31,7 +31,11 @@ export interface UpdateGlobalSettingsInput {
   themeTextColor?: string;
 }
 
-function mergeWithDefaults(input: Partial<GlobalBranding> | null | undefined): GlobalBranding {
+type GlobalBrandingInput = Omit<Partial<GlobalBranding>, 'taxRate'> & {
+  taxRate?: number | string | { toString(): string } | null;
+};
+
+function mergeWithDefaults(input: GlobalBrandingInput | null | undefined): GlobalBranding {
   return {
     companyName: input?.companyName ?? DEFAULT_BRANDING.companyName,
     companyEmail: input?.companyEmail ?? DEFAULT_BRANDING.companyEmail,

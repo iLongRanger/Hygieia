@@ -763,6 +763,9 @@ export async function consumePasswordSetToken(
   if (passwordTokenInvalid) {
     throw new UnauthorizedError('Invalid or expired token');
   }
+  if (!passwordToken) {
+    throw new UnauthorizedError('Invalid or expired token');
+  }
 
   if (!options?.emailChallengeId || !options?.emailCode) {
     throw new UnauthorizedError('Email verification is required before setting this password.');
@@ -826,6 +829,9 @@ export async function beginPasswordSetVerification(
         ? true
         : passwordToken.expiresAt < new Date();
   if (passwordSetupTokenInvalid) {
+    throw new UnauthorizedError('Invalid or expired token');
+  }
+  if (!passwordToken) {
     throw new UnauthorizedError('Invalid or expired token');
   }
 

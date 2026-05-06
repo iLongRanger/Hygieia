@@ -10,6 +10,8 @@ import {
   normalizeServiceSchedule,
 } from './serviceScheduleService';
 
+type PdfNumeric = number | string | { toString(): string };
+
 // Use standard PDF fonts (no font files needed)
 const printer = new PdfPrinter({
   Helvetica: {
@@ -36,6 +38,14 @@ interface AddressLike {
   postalCode?: string | null;
 }
 
+function asAddressLike(value: unknown): AddressLike | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as AddressLike;
+}
+
 interface PdfTableNode {
   table: {
     body: TableCell[][];
@@ -44,11 +54,11 @@ interface PdfTableNode {
 
 interface ProposalOperationalEstimate {
   durationRangePerVisit?: {
-    minHours?: number | string | null;
-    maxHours?: number | string | null;
+    minHours?: PdfNumeric | null;
+    maxHours?: PdfNumeric | null;
   } | null;
   recommendedCrewSize?: number | null;
-  hoursPerVisit?: number | string | null;
+  hoursPerVisit?: PdfNumeric | null;
 }
 
 interface ProposalPricingSnapshot {
@@ -57,7 +67,7 @@ interface ProposalPricingSnapshot {
 
 interface ResidentialHomeProfile {
   homeType?: string | null;
-  squareFeet?: number | string | null;
+  squareFeet?: PdfNumeric | null;
   bedrooms?: number | null;
   fullBathrooms?: number | null;
   halfBathrooms?: number | null;
@@ -73,16 +83,16 @@ interface ResidentialHomeProfile {
 interface QuotationPricingMeta {
   quantity?: number;
   unitType?: string | null;
-  unitPrice?: number | string | null;
+  unitPrice?: PdfNumeric | null;
   discountPercent?: number | null;
   addOns?: {
     name: string;
     quantity: number;
-    total: number | string;
+    total: PdfNumeric;
   }[];
 }
 
-function formatCurrency(amount: number | string): string {
+function formatCurrency(amount: PdfNumeric): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -98,13 +108,13 @@ function formatDate(date: string | Date | null | undefined): string {
   });
 }
 
-function formatWholeHours(hours: number | string | null | undefined): string {
+function formatWholeHours(hours: PdfNumeric | null | undefined): string {
   const parsed = Number(hours);
   if (!Number.isFinite(parsed) || parsed <= 0) return '-';
   return `${Math.round(parsed)} hrs`;
 }
 
-function formatEstimatedTimeOnSite(hours: number | string | null | undefined): string {
+function formatEstimatedTimeOnSite(hours: PdfNumeric | null | undefined): string {
   const parsed = Number(hours);
   if (!Number.isFinite(parsed) || parsed <= 0) return 'To be confirmed';
 
@@ -132,33 +142,33 @@ interface ProposalForPdf {
   title: string;
   status: string;
   description?: string | null;
-  subtotal: number | string;
-  taxRate: number | string;
-  taxAmount: number | string;
-  totalAmount: number | string;
+  subtotal: PdfNumeric;
+  taxRate: PdfNumeric;
+  taxAmount: PdfNumeric;
+  totalAmount: PdfNumeric;
   validUntil?: string | Date | null;
   createdAt: string | Date;
   account: { name: string };
-  facility?: { name: string; address?: AddressLike | null } | null;
-  createdByUser: { fullName: string; email: string };
+  facility?: { name: string; address?: unknown } | null;
+  createdByUser?: { fullName: string; email: string } | null;
   proposalItems: {
     itemType: string;
     description: string;
-    quantity: number | string;
-    unitPrice: number | string;
-    totalPrice: number | string;
+    quantity: PdfNumeric;
+    unitPrice: PdfNumeric;
+    totalPrice: PdfNumeric;
   }[];
   proposalServices: {
     serviceName: string;
     serviceType: string;
     frequency: string;
-    estimatedHours?: number | string | null;
-    hourlyRate?: number | string | null;
-    monthlyPrice: number | string;
+    estimatedHours?: PdfNumeric | null;
+    hourlyRate?: PdfNumeric | null;
+    monthlyPrice: PdfNumeric;
     description?: string | null;
-    includedTasks?: string[] | null;
+    includedTasks?: unknown;
   }[];
-  pricingSnapshot?: ProposalPricingSnapshot | null;
+  pricingSnapshot?: unknown;
 }
 
 export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buffer> {
@@ -249,12 +259,14 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
   if (proposal.facility) {
     clientInfo.push({ text: proposal.facility.name, style: 'clientDetail' });
     if (proposal.facility.address) {
-      const addr = proposal.facility.address;
-      const addrParts = [addr.street, addr.city, addr.state, addr.zip]
-        .filter(Boolean)
-        .join(', ');
-      if (addrParts) {
-        clientInfo.push({ text: addrParts, style: 'clientDetail' });
+      const addr = asAddressLike(proposal.facility.address);
+      if (addr) {
+        const addrParts = [addr.street, addr.city, addr.state, addr.zip]
+          .filter(Boolean)
+          .join(', ');
+        if (addrParts) {
+          clientInfo.push({ text: addrParts, style: 'clientDetail' });
+        }
       }
     }
   }
@@ -361,9 +373,14 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     }
   }
 
+  const proposalPricingSnapshot =
+    proposal.pricingSnapshot && typeof proposal.pricingSnapshot === 'object' && !Array.isArray(proposal.pricingSnapshot)
+      ? proposal.pricingSnapshot as ProposalPricingSnapshot
+      : null;
+
   // Estimated Time On Site
-  if (proposal.pricingSnapshot?.operationalEstimate) {
-    const estimate = proposal.pricingSnapshot.operationalEstimate;
+  if (proposalPricingSnapshot?.operationalEstimate) {
+    const estimate = proposalPricingSnapshot.operationalEstimate;
     content.push({ text: 'Estimated Time On Site', style: 'sectionHeader' });
     content.push({
       columns: [
@@ -694,12 +711,12 @@ interface ContractForPdf {
   status: string;
   startDate: string | Date;
   endDate?: string | Date | null;
-  monthlyValue: number | string;
-  totalValue?: number | string | null;
+  monthlyValue: PdfNumeric;
+  totalValue?: PdfNumeric | null;
   billingCycle: string;
   paymentTerms: string;
   serviceFrequency?: string | null;
-  serviceSchedule?: Record<string, unknown> | null;
+  serviceSchedule?: unknown;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
   signedByName?: string | null;
@@ -707,7 +724,7 @@ interface ContractForPdf {
   signedDate?: string | Date | null;
   createdAt: string | Date;
   account: { name: string };
-  facility?: { name: string; address?: AddressLike | null } | null;
+  facility?: { name: string; address?: unknown } | null;
   proposal?: {
     proposalServices?: {
       serviceName: string;
@@ -716,7 +733,7 @@ interface ContractForPdf {
       includedTasks?: unknown;
     }[] | null;
   } | null;
-  createdByUser: { fullName: string; email: string };
+  createdByUser?: { fullName: string; email: string } | null;
 }
 
 function parseServiceTaskGroups(
@@ -767,8 +784,8 @@ interface ResidentialQuoteForPdf {
   status: string;
   createdAt: string | Date;
   preferredStartDate?: string | Date | null;
-  totalAmount: number | string;
-  estimatedHours?: number | string | null;
+  totalAmount: PdfNumeric;
+  estimatedHours?: PdfNumeric | null;
   notes?: string | null;
   customerName: string;
   customerEmail?: string | null;
@@ -778,29 +795,20 @@ interface ResidentialQuoteForPdf {
   account?: { name: string } | null;
   property?: {
     name: string;
-    serviceAddress?: AddressLike | null;
-    homeProfile?: ResidentialHomeProfile | null;
+    serviceAddress?: unknown;
+    homeProfile?: unknown;
   } | null;
-  homeAddress?: AddressLike | null;
-  homeProfile?: ResidentialHomeProfile | null;
+  homeAddress?: unknown;
+  homeProfile?: unknown;
   addOns?: {
     label: string;
     quantity: number;
-    pricingType: 'flat' | 'per_unit';
+    pricingType: string;
     unitLabel?: string | null;
-    unitPrice: number | string;
-    lineTotal: number | string;
+    unitPrice: PdfNumeric;
+    lineTotal: PdfNumeric;
   }[];
-  priceBreakdown?: {
-    baseSubtotal?: number | string;
-    recurringDiscount?: number | string;
-    firstCleanSurcharge?: number | string;
-    addOnTotal?: number | string;
-    finalTotal?: number | string;
-    estimatedHours?: number | string;
-    guidance?: string[];
-    manualReviewReasons?: string[];
-  } | null;
+  priceBreakdown?: unknown;
 }
 
 function formatResidentialServiceType(value: string): string {
@@ -827,10 +835,21 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
     accent: branding.themeAccentColor,
   };
 
-  const propertyAddress = quote.property?.serviceAddress ?? quote.homeAddress ?? null;
-  const homeProfile = quote.property?.homeProfile ?? quote.homeProfile ?? null;
+  const propertyAddress = asAddressLike(quote.property?.serviceAddress ?? quote.homeAddress ?? null);
+  const homeProfile = (quote.property?.homeProfile ?? quote.homeProfile ?? null) as ResidentialHomeProfile | null;
+  const priceBreakdown =
+    quote.priceBreakdown && typeof quote.priceBreakdown === 'object' && !Array.isArray(quote.priceBreakdown)
+      ? quote.priceBreakdown as {
+          baseSubtotal?: PdfNumeric;
+          recurringDiscount?: PdfNumeric;
+          firstCleanSurcharge?: PdfNumeric;
+          addOnTotal?: PdfNumeric;
+          estimatedHours?: PdfNumeric;
+          guidance?: string[];
+        }
+      : null;
   const estimatedTimeOnSite = formatEstimatedTimeOnSite(
-    quote.estimatedHours ?? quote.priceBreakdown?.estimatedHours
+    quote.estimatedHours ?? priceBreakdown?.estimatedHours
   );
   const addressLine = propertyAddress
     ? [propertyAddress.street, propertyAddress.city, propertyAddress.state, propertyAddress.postalCode]
@@ -1131,19 +1150,19 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
           body: [
             [
               { text: 'Service Subtotal', alignment: 'right' as const, color: COLORS.lightText },
-              { text: formatCurrency(quote.priceBreakdown?.baseSubtotal ?? quote.totalAmount), alignment: 'right' as const },
+              { text: formatCurrency(priceBreakdown?.baseSubtotal ?? quote.totalAmount), alignment: 'right' as const },
             ],
             [
               { text: 'Recurring Discount', alignment: 'right' as const, color: COLORS.lightText },
-              { text: formatCurrency(quote.priceBreakdown?.recurringDiscount ?? 0), alignment: 'right' as const },
+              { text: formatCurrency(priceBreakdown?.recurringDiscount ?? 0), alignment: 'right' as const },
             ],
             [
               { text: 'First Clean Surcharge', alignment: 'right' as const, color: COLORS.lightText },
-              { text: formatCurrency(quote.priceBreakdown?.firstCleanSurcharge ?? 0), alignment: 'right' as const },
+              { text: formatCurrency(priceBreakdown?.firstCleanSurcharge ?? 0), alignment: 'right' as const },
             ],
             [
               { text: 'Add-Ons', alignment: 'right' as const, color: COLORS.lightText },
-              { text: formatCurrency(quote.priceBreakdown?.addOnTotal ?? 0), alignment: 'right' as const },
+              { text: formatCurrency(priceBreakdown?.addOnTotal ?? 0), alignment: 'right' as const },
             ],
             [
               {
@@ -1183,10 +1202,10 @@ export async function generateResidentialQuotePdf(quote: ResidentialQuoteForPdf)
     });
   }
 
-  if (quote.priceBreakdown?.guidance?.length) {
+  if (priceBreakdown?.guidance?.length) {
     content.push({ text: 'Guidance', style: 'sectionHeader' });
     content.push({
-      ul: quote.priceBreakdown.guidance,
+      ul: priceBreakdown.guidance,
       margin: [0, 4, 0, 12] as [number, number, number, number],
       fontSize: 9,
       color: COLORS.text,
@@ -1370,9 +1389,11 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
   if (contract.facility) {
     clientInfo.push({ text: contract.facility.name, style: 'clientDetail' });
     if (contract.facility.address) {
-      const addr = contract.facility.address;
-      const addrParts = [addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
-      if (addrParts) clientInfo.push({ text: addrParts, style: 'clientDetail' });
+      const addr = asAddressLike(contract.facility.address);
+      if (addr) {
+        const addrParts = [addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+        if (addrParts) clientInfo.push({ text: addrParts, style: 'clientDetail' });
+      }
     }
   }
   content.push({ stack: clientInfo, margin: [0, 0, 0, 20] as [number, number, number, number] });
@@ -1716,10 +1737,10 @@ interface QuotationForPdf {
   title: string;
   status: string;
   description?: string | null;
-  subtotal: number | string;
-  taxRate: number | string;
-  taxAmount: number | string;
-  totalAmount: number | string;
+  subtotal: PdfNumeric;
+  taxRate: PdfNumeric;
+  taxAmount: PdfNumeric;
+  totalAmount: PdfNumeric;
   validUntil?: string | Date | null;
   scheduledDate?: string | Date | null;
   scheduledStartTime?: string | Date | null;
@@ -1729,14 +1750,14 @@ interface QuotationForPdf {
   signatureDate?: string | Date | null;
   createdAt: string | Date;
   account: { name: string };
-  facility?: { name: string; address?: AddressLike | null } | null;
-  createdByUser: { fullName: string; email: string };
+  facility?: { name: string; address?: unknown } | null;
+  createdByUser?: { fullName: string; email: string } | null;
   services: {
     serviceName: string;
     description?: string | null;
-    price: number | string;
-    includedTasks?: string[] | null;
-    pricingMeta?: QuotationPricingMeta | null;
+    price: PdfNumeric;
+    includedTasks?: unknown;
+    pricingMeta?: unknown;
     sortOrder?: number;
   }[];
 }
@@ -1831,12 +1852,14 @@ export async function generateQuotationPdf(quotation: QuotationForPdf): Promise<
   if (quotation.facility) {
     clientInfo.push({ text: quotation.facility.name, style: 'clientDetail' });
     if (quotation.facility.address) {
-      const addr = quotation.facility.address;
-      const addrParts = [addr.street, addr.city, addr.state, addr.zip ?? addr.postalCode]
-        .filter(Boolean)
-        .join(', ');
-      if (addrParts) {
-        clientInfo.push({ text: addrParts, style: 'clientDetail' });
+      const addr = asAddressLike(quotation.facility.address);
+      if (addr) {
+        const addrParts = [addr.street, addr.city, addr.state, addr.zip ?? addr.postalCode]
+          .filter(Boolean)
+          .join(', ');
+        if (addrParts) {
+          clientInfo.push({ text: addrParts, style: 'clientDetail' });
+        }
       }
     }
   }
@@ -1871,7 +1894,10 @@ export async function generateQuotationPdf(quotation: QuotationForPdf): Promise<
       const details: string[] = [];
       if (service.description) details.push(service.description);
 
-      const meta = service.pricingMeta;
+      const meta =
+        service.pricingMeta && typeof service.pricingMeta === 'object' && !Array.isArray(service.pricingMeta)
+          ? service.pricingMeta as QuotationPricingMeta
+          : null;
       if (meta) {
         if (typeof meta.quantity === 'number' && meta.unitType) {
           const unitLabel = meta.unitType === 'per_window' ? 'window' : meta.unitType === 'per_sqft' ? 'sqft' : meta.unitType === 'fixed' ? 'service' : meta.unitType.replace(/_/g, ' ');

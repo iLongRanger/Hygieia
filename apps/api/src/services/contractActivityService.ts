@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export interface LogContractActivityInput {
   contractId: string;
@@ -29,7 +30,7 @@ export async function logContractActivity(input: LogContractActivityInput) {
       contractId: input.contractId,
       action: input.action,
       performedByUserId: input.performedByUserId ?? null,
-      metadata: input.metadata ?? {},
+      metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
       ipAddress: input.ipAddress ?? null,
     },
     select: activitySelect,

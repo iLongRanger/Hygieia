@@ -19,6 +19,7 @@ export function buildProposalAcceptedHtml(data: AcceptedEmailData): string {
     companyEmail: companyConfig.email || null,
     companyWebsite: companyConfig.website || null,
     companyTimezone: 'UTC',
+    taxRate: 0,
     logoDataUrl: companyConfig.logoPath || null,
     themePrimaryColor: '#166534',
     themeAccentColor: '#ffffff',

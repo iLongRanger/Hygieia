@@ -108,7 +108,7 @@ function canViewContractPricing(role?: string | null): boolean {
   return role === 'owner' || role === 'admin';
 }
 
-function stripContractPricing<T extends Record<string, unknown>>(contract: T): Omit<
+function stripContractPricing<T extends object>(contract: T): Omit<
   T,
   'monthlyValue' | 'totalValue' | 'taxRate' | 'taxAmount'
 > {
@@ -118,7 +118,12 @@ function stripContractPricing<T extends Record<string, unknown>>(contract: T): O
     taxRate: _taxRate,
     taxAmount: _taxAmount,
     ...safeContract
-  } = contract;
+  } = contract as T & {
+    monthlyValue?: unknown;
+    totalValue?: unknown;
+    taxRate?: unknown;
+    taxAmount?: unknown;
+  };
 
   return safeContract;
 }
@@ -189,6 +194,7 @@ async function getBrandingSafe() {
       companyEmail: branding?.companyEmail ?? null,
       companyWebsite: branding?.companyWebsite ?? null,
       companyTimezone: branding?.companyTimezone || 'UTC',
+      taxRate: branding?.taxRate ?? 0,
       logoDataUrl: branding?.logoDataUrl ?? null,
       themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
       themeAccentColor: branding?.themeAccentColor || '#d4af37',
@@ -204,6 +210,7 @@ async function getBrandingSafe() {
       companyEmail: branding?.companyEmail ?? null,
       companyWebsite: branding?.companyWebsite ?? null,
       companyTimezone: branding?.companyTimezone || 'UTC',
+      taxRate: branding?.taxRate ?? 0,
       logoDataUrl: branding?.logoDataUrl ?? null,
       themePrimaryColor: branding?.themePrimaryColor || '#1a1a2e',
       themeAccentColor: branding?.themeAccentColor || '#d4af37',
@@ -1218,7 +1225,7 @@ router.patch(
               proposalServices: notifData.proposal?.proposalServices ?? [],
               facilityTasks: facilityTasks.map((ft: FacilityTask) => ({
                 name: ft.taskTemplate?.name ?? ft.customName ?? 'Unnamed task',
-                area: ft.area?.name,
+                area: ft.area?.name ?? undefined,
                 frequency: ft.cleaningFrequency,
               })),
             };

@@ -19,6 +19,7 @@ export function buildQuotationEmailHtml(data: QuotationEmailData): string {
     companyEmail: companyConfig.email || null,
     companyWebsite: companyConfig.website || null,
     companyTimezone: 'UTC',
+    taxRate: 0,
     logoDataUrl: companyConfig.logoPath || null,
     themePrimaryColor: '#1a1a2e',
     themeAccentColor: '#d4af37',

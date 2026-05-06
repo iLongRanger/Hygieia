@@ -57,7 +57,7 @@ export interface DashboardStats {
     title: string;
     accountName: string;
     monthlyValue: number;
-    endDate: string;
+    endDate: string | null;
     status: string;
   }[];
   revenueByMonth: { month: string; mrr: number }[];

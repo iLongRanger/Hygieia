@@ -442,7 +442,7 @@ export async function isFacilityReadyForPricing(facilityId: string): Promise<{
     };
   }
 
-  const totalSquareFeet = facility.areas.reduce((sum: number, area: { squareFeet: number | string | null; quantity: number | null }) => {
+  const totalSquareFeet = facility.areas.reduce((sum, area) => {
     const sqFt = Number(area.squareFeet ?? 0);
     const qty = area.quantity ?? 1;
     return sum + (sqFt * qty);

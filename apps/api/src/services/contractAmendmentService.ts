@@ -70,6 +70,16 @@ const amendmentListSelect = {
 
 const amendmentDetailSelect = {
   ...amendmentListSelect,
+  contract: {
+    select: {
+      contractNumber: true,
+      account: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  },
   oldServiceSchedule: true,
   newServiceSchedule: true,
   pricingSnapshot: true,
@@ -151,8 +161,34 @@ interface AmendmentWorkingScope {
     name?: string;
     buildingType?: string | null;
   } | null;
-  areas?: Record<string, unknown>[];
-  tasks?: Record<string, unknown>[];
+  areas?: (Record<string, unknown> & {
+    id?: string;
+    tempId?: string;
+    name?: string;
+    areaTypeId?: string;
+    areaTypeName?: string;
+    areaType?: { id?: string; name?: string } | null;
+    squareFeet?: unknown;
+    floorType?: unknown;
+    conditionLevel?: unknown;
+    trafficLevel?: unknown;
+    quantity?: unknown;
+    roomCount?: unknown;
+    unitCount?: unknown;
+  })[];
+  tasks?: (Record<string, unknown> & {
+    id?: string;
+    tempId?: string;
+    areaId?: string | null;
+    cleaningFrequency?: unknown;
+    customName?: unknown;
+    estimatedMinutes?: unknown;
+    baseMinutesOverride?: unknown;
+    perSqftMinutesOverride?: unknown;
+    perUnitMinutesOverride?: unknown;
+    perRoomMinutesOverride?: unknown;
+    taskTemplate?: { id?: string; name?: string } | null;
+  })[];
   contract?: {
     serviceFrequency?: string | null;
     serviceSchedule?: Record<string, unknown> | null;
