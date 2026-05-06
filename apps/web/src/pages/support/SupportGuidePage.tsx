@@ -72,7 +72,6 @@ const modules: GuideModule[] = [
       'Book a walkthrough before managing areas and tasks.',
       'Use account history to review notes, appointments, and sales activity.',
     ],
-    notes: ['Residential and commercial accounts both use Service Locations. Avoid using Facility or Property as separate workflows.'],
   },
   {
     id: 'appointments',
