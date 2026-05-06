@@ -158,6 +158,8 @@ const GlobalSettingsPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingServiceKey, setSavingServiceKey] = useState<BackgroundServiceKey | null>(null);
   const [runningServiceKey, setRunningServiceKey] = useState<BackgroundServiceKey | null>(null);
+  const [activeBackgroundServiceKey, setActiveBackgroundServiceKey] =
+    useState<BackgroundServiceKey>('reminders');
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -322,6 +324,11 @@ const GlobalSettingsPage: React.FC = () => {
 
   const getServiceLogs = (serviceKey: BackgroundServiceKey): BackgroundServiceRunLogPage =>
     backgroundServiceLogs[serviceKey];
+
+  const activeBackgroundService =
+    backgroundServices.find((service) => service.serviceKey === activeBackgroundServiceKey)
+    ?? backgroundServices[0]
+    ?? null;
 
   const onChangeLogPage = async (serviceKey: BackgroundServiceKey, page: number) => {
     try {
@@ -543,27 +550,73 @@ const GlobalSettingsPage: React.FC = () => {
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Background Services</h2>
-        <p className="mb-4 text-sm text-surface-500 dark:text-surface-400">
-          Configure daily background jobs at a specific company-local time, and set job alerts to run
-          on a recurring frequency throughout the day.
-        </p>
-        <div className="space-y-4">
-          {backgroundServices.map((service) => (
-            <div key={service.serviceKey} className="rounded-lg border border-surface-700 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Background Services</h2>
+          <p className="text-sm text-surface-500 dark:text-surface-400">
+            Configure automation without scrolling through every service. Select a service to edit its schedule,
+            trigger a run, and review recent logs.
+          </p>
+        </div>
+        {activeBackgroundService ? (
+          <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+            <div
+              className="flex gap-2 overflow-x-auto rounded-xl border border-surface-200 bg-surface-100 p-2 dark:border-surface-700 dark:bg-surface-900/40 lg:block lg:space-y-2 lg:overflow-visible"
+              role="tablist"
+              aria-label="Background services"
+            >
+              {backgroundServices.map((service) => {
+                const active = activeBackgroundService.serviceKey === service.serviceKey;
+                return (
+                  <button
+                    key={service.serviceKey}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveBackgroundServiceKey(service.serviceKey)}
+                    className={`min-w-[220px] rounded-lg border px-3 py-3 text-left transition-colors lg:min-w-0 lg:w-full ${
+                      active
+                        ? 'border-primary-500 bg-primary-900/20 text-primary-300'
+                        : 'border-transparent text-surface-600 hover:bg-surface-50 dark:text-surface-400 dark:hover:bg-surface-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{getServiceLabel(service.serviceKey)}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] ${
+                          service.enabled
+                            ? 'bg-emerald-500/15 text-emerald-400'
+                            : 'bg-surface-500/15 text-surface-500'
+                        }`}
+                      >
+                        {service.enabled ? 'On' : 'Off'}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-surface-500">
+                      {isIntervalScheduledService(service.serviceKey)
+                        ? formatIntervalLabel(service.intervalMs)
+                        : msToTime(service.serviceKey, service.intervalMs)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700" role="tabpanel">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold text-surface-900 dark:text-white">{getServiceLabel(service.serviceKey)}</h3>
+                  <h3 className="font-semibold text-surface-900 dark:text-white">
+                    {getServiceLabel(activeBackgroundService.serviceKey)}
+                  </h3>
                   <p className="text-xs text-surface-500 dark:text-surface-400">
-                    {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].description}
+                    {BACKGROUND_SERVICE_GUIDANCE[activeBackgroundService.serviceKey].description}
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                   <input
                     type="checkbox"
-                    checked={service.enabled}
+                    checked={activeBackgroundService.enabled}
                     onChange={(e) =>
-                      updateServiceState(service.serviceKey, (current) => ({
+                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
                         ...current,
                         enabled: e.target.checked,
                       }))
@@ -575,21 +628,26 @@ const GlobalSettingsPage: React.FC = () => {
               </div>
               <p className="mb-3 text-xs text-primary-300">
                 Recommended{' '}
-                {isIntervalScheduledService(service.serviceKey) ? 'frequency' : 'run time'}:{' '}
-                {BACKGROUND_SERVICE_GUIDANCE[service.serviceKey].recommendedValueLabel}
-                {!isIntervalScheduledService(service.serviceKey)
+                {isIntervalScheduledService(activeBackgroundService.serviceKey) ? 'frequency' : 'run time'}:{' '}
+                {BACKGROUND_SERVICE_GUIDANCE[activeBackgroundService.serviceKey].recommendedValueLabel}
+                {!isIntervalScheduledService(activeBackgroundService.serviceKey)
                   ? ` (${settings.companyTimezone || 'UTC'})`
                   : ''}
                 .
               </p>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                {isIntervalScheduledService(service.serviceKey) ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {isIntervalScheduledService(activeBackgroundService.serviceKey) ? (
                   <Select
                     label="Run Frequency"
                     options={JOB_ALERT_INTERVAL_OPTIONS}
-                    value={String(getSanitizedIntervalMs(service.serviceKey, service.intervalMs))}
+                    value={String(
+                      getSanitizedIntervalMs(
+                        activeBackgroundService.serviceKey,
+                        activeBackgroundService.intervalMs
+                      )
+                    )}
                     onChange={(value) =>
-                      updateServiceState(service.serviceKey, (current) => ({
+                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
                         ...current,
                         intervalMs: Number(value),
                       }))
@@ -599,38 +657,38 @@ const GlobalSettingsPage: React.FC = () => {
                   <Input
                     label={`Run Time (${settings.companyTimezone || 'UTC'})`}
                     type="time"
-                    value={msToTime(service.serviceKey, service.intervalMs)}
+                    value={msToTime(activeBackgroundService.serviceKey, activeBackgroundService.intervalMs)}
                     onChange={(e) =>
-                      updateServiceState(service.serviceKey, (current) => ({
+                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
                         ...current,
                         intervalMs: timeToMs(e.target.value),
                       }))
                     }
                   />
                 )}
-                <Input label="Last Run" value={formatDateTime(service.lastRunAt)} readOnly />
-                <Input label="Last Success" value={formatDateTime(service.lastSuccessAt)} readOnly />
-                <Input label="Last Error" value={service.lastError || 'None'} readOnly />
+                <Input label="Last Run" value={formatDateTime(activeBackgroundService.lastRunAt)} readOnly />
+                <Input label="Last Success" value={formatDateTime(activeBackgroundService.lastSuccessAt)} readOnly />
+                <Input label="Last Error" value={activeBackgroundService.lastError || 'None'} readOnly />
               </div>
               <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
-                {isIntervalScheduledService(service.serviceKey)
-                  ? `Current frequency: ${formatIntervalLabel(service.intervalMs)}.`
-                  : `Current run time: ${msToTime(service.serviceKey, service.intervalMs)} (${settings.companyTimezone || 'UTC'}).`}
+                {isIntervalScheduledService(activeBackgroundService.serviceKey)
+                  ? `Current frequency: ${formatIntervalLabel(activeBackgroundService.intervalMs)}.`
+                  : `Current run time: ${msToTime(activeBackgroundService.serviceKey, activeBackgroundService.intervalMs)} (${settings.companyTimezone || 'UTC'}).`}
               </p>
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onRunBackgroundService(service.serviceKey)}
-                  isLoading={runningServiceKey === service.serviceKey}
+                  onClick={() => onRunBackgroundService(activeBackgroundService.serviceKey)}
+                  isLoading={runningServiceKey === activeBackgroundService.serviceKey}
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Run Now
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onSaveBackgroundService(service)}
-                  isLoading={savingServiceKey === service.serviceKey}
+                  onClick={() => onSaveBackgroundService(activeBackgroundService)}
+                  isLoading={savingServiceKey === activeBackgroundService.serviceKey}
                 >
                   Save Service
                 </Button>
@@ -639,11 +697,11 @@ const GlobalSettingsPage: React.FC = () => {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
                   Recent Runs
                 </p>
-                {getServiceLogs(service.serviceKey).items.length === 0 ? (
+                {getServiceLogs(activeBackgroundService.serviceKey).items.length === 0 ? (
                   <p className="text-xs text-surface-500">No logs yet.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {getServiceLogs(service.serviceKey).items.map((log) => (
+                  <div className="grid gap-2 xl:grid-cols-2">
+                    {getServiceLogs(activeBackgroundService.serviceKey).items.map((log) => (
                       <div key={log.id} className="rounded border border-surface-700 p-2">
                         <div className="flex items-center justify-between gap-2">
                           <span
@@ -660,43 +718,53 @@ const GlobalSettingsPage: React.FC = () => {
                         <p className="mt-1 text-xs text-surface-600 dark:text-surface-400">{log.summary}</p>
                       </div>
                     ))}
-                    {getServiceLogs(service.serviceKey).totalPages > 1 && (
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={getServiceLogs(service.serviceKey).page <= 1}
-                          onClick={() =>
-                            onChangeLogPage(service.serviceKey, getServiceLogs(service.serviceKey).page - 1)
-                          }
-                        >
-                          Previous
-                        </Button>
-                        <span className="text-xs text-surface-500 dark:text-surface-400">
-                          Page {getServiceLogs(service.serviceKey).page} of{' '}
-                          {getServiceLogs(service.serviceKey).totalPages}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={
-                            getServiceLogs(service.serviceKey).page >=
-                            getServiceLogs(service.serviceKey).totalPages
-                          }
-                          onClick={() =>
-                            onChangeLogPage(service.serviceKey, getServiceLogs(service.serviceKey).page + 1)
-                          }
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
+                  </div>
+                )}
+                {getServiceLogs(activeBackgroundService.serviceKey).totalPages > 1 && (
+                  <div className="flex items-center justify-end gap-2 pt-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={getServiceLogs(activeBackgroundService.serviceKey).page <= 1}
+                      onClick={() =>
+                        onChangeLogPage(
+                          activeBackgroundService.serviceKey,
+                          getServiceLogs(activeBackgroundService.serviceKey).page - 1
+                        )
+                      }
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs text-surface-500 dark:text-surface-400">
+                      Page {getServiceLogs(activeBackgroundService.serviceKey).page} of{' '}
+                      {getServiceLogs(activeBackgroundService.serviceKey).totalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={
+                        getServiceLogs(activeBackgroundService.serviceKey).page >=
+                        getServiceLogs(activeBackgroundService.serviceKey).totalPages
+                      }
+                      onClick={() =>
+                        onChangeLogPage(
+                          activeBackgroundService.serviceKey,
+                          getServiceLogs(activeBackgroundService.serviceKey).page + 1
+                        )
+                      }
+                    >
+                      Next
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <p className="rounded-lg border border-surface-200 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
+            No background services are configured.
+          </p>
+        )}
       </Card>
 
       <div className="flex justify-end">

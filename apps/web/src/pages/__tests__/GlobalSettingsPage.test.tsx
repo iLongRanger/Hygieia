@@ -93,4 +93,44 @@ describe('GlobalSettingsPage', () => {
       );
     });
   });
+
+  it('shows one background service detail panel at a time', async () => {
+    const user = userEvent.setup();
+    getBackgroundServiceSettingsMock.mockResolvedValue([
+      {
+        serviceKey: 'reminders',
+        enabled: true,
+        intervalMs: 28800000,
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastError: null,
+        lastErrorAt: null,
+        updatedByUserId: null,
+        createdAt: null,
+        updatedAt: null,
+      },
+      {
+        serviceKey: 'job_alerts',
+        enabled: false,
+        intervalMs: 1800000,
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastError: null,
+        lastErrorAt: null,
+        updatedByUserId: null,
+        createdAt: null,
+        updatedAt: null,
+      },
+    ]);
+
+    render(<GlobalSettingsPage />);
+
+    expect(await screen.findByRole('tab', { name: /client reminders/i })).toBeInTheDocument();
+    expect(screen.getByText(/sends appointment and follow-up reminders/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /job alert checks/i }));
+
+    expect(screen.getByText(/checks for jobs that need attention/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/run frequency/i)).toHaveValue('1800000');
+  });
 });
