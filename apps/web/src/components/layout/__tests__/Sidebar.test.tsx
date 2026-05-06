@@ -36,6 +36,7 @@ describe('Sidebar RBAC', () => {
     expect(screen.queryByRole('link', { name: 'Reports' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Overview' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Expenses' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Support Guide' }).length).toBeGreaterThan(0);
   });
 
   it('shows route when explicit user permissions grant access', () => {
@@ -125,6 +126,23 @@ describe('Sidebar RBAC', () => {
     expect(screen.getAllByRole('link', { name: 'Commercial' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Residential' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Specialized Job' }).length).toBeGreaterThan(0);
+  });
+
+  it('shows support guide for field workers', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'cleaner-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar isOpen />);
+
+    expect(screen.getAllByRole('link', { name: 'Support Guide' }).length).toBeGreaterThan(0);
   });
 
   it('allows active expanded sections to be collapsed manually', () => {

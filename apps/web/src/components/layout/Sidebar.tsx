@@ -29,6 +29,7 @@ import {
   PanelLeftClose,
   ChevronRight,
   Tags,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
@@ -128,6 +129,13 @@ const navSections: NavSection[] = [
       { to: '/settings/global', icon: Settings, label: 'Global Settings' },
     ],
   },
+  {
+    key: 'support',
+    title: 'Support',
+    icon: HelpCircle,
+    directLink: '/support',
+    items: [{ to: '/support', icon: HelpCircle, label: 'Support Guide' }],
+  },
 ];
 
 const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: SidebarProps) => {
@@ -162,6 +170,13 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
             { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
             ...(isSubcontractor ? [{ to: '/finance/expenses', icon: Receipt, label: 'Expenses' }] : []),
           ],
+        },
+        {
+          key: 'support',
+          title: 'Support',
+          icon: HelpCircle,
+          directLink: '/support',
+          items: [{ to: '/support', icon: HelpCircle, label: 'Support Guide' }],
         },
       ]
     : navSections;

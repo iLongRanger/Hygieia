@@ -70,6 +70,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { getRequiredPermissions } from './lib/routeAccess';
 import ProfilePage from './pages/profile/ProfilePage';
+import SupportGuidePage from './pages/support/SupportGuidePage';
 
 function withRouteGuard(path: string, element: ReactNode) {
   const requiredPermissions = getRequiredPermissions(path);
@@ -134,6 +135,7 @@ function App() {
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path="/app" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/support" element={<SupportGuidePage />} />
             <Route path="/leads" element={withRouteGuard('/leads', <LeadsList />)} />
             <Route path="/leads/new" element={withRouteGuard('/leads', <LeadsList />)} />
             <Route path="/leads/:id" element={withRouteGuard('/leads', <LeadDetail />)} />
