@@ -45,6 +45,7 @@ model User {
   createdAccounts                      Account[]                    @relation("CreatedAccounts")
   createdContacts                      Contact[]                    @relation("CreatedContacts")
   createdFacilities                    Facility[]                   @relation("CreatedFacilities")
+  uploadedPhotoAssets                  PhotoAsset[]                 @relation("UploadedPhotoAssets")
   createdAreas                         Area[]                       @relation("CreatedAreas")
   createdTasks                         FacilityTask[]               @relation("CreatedTasks")
   assignedToLeads                      Lead[]                       @relation("AssignedToLeads")
@@ -323,6 +324,7 @@ model Appointment {
   rescheduledFrom Appointment?  @relation("AppointmentReschedules", fields: [rescheduledFromId], references: [id])
   reschedules     Appointment[] @relation("AppointmentReschedules")
   inspection      Inspection?   @relation("AppointmentInspection", fields: [inspectionId], references: [id], onDelete: SetNull)
+  photos          PhotoAsset[]  @relation("AppointmentPhotos")
 
   @@index([leadId])
   @@index([accountId])
@@ -352,6 +354,43 @@ model Notification {
   @@index([readAt])
   @@index([type])
   @@map("notifications")
+}
+
+model PhotoAsset {
+  id               String    @id @default(uuid()) @db.Uuid
+  facilityId       String?   @map("facility_id") @db.Uuid
+  appointmentId    String?   @map("appointment_id") @db.Uuid
+  inspectionId     String?   @map("inspection_id") @db.Uuid
+  jobId            String?   @map("job_id") @db.Uuid
+  category         String    @default("general") @db.VarChar(50)
+  caption          String?   @db.Text
+  bucket           String    @db.VarChar(255)
+  objectKey        String    @unique @map("object_key") @db.Text
+  originalFilename String?   @map("original_filename") @db.VarChar(255)
+  contentType      String    @map("content_type") @db.VarChar(100)
+  sizeBytes        Int       @map("size_bytes")
+  status           String    @default("pending") @db.VarChar(30)
+  uploadedByUserId String    @map("uploaded_by_user_id") @db.Uuid
+  uploadedAt       DateTime? @map("uploaded_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt       DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  facility       Facility?    @relation("FacilityPhotos", fields: [facilityId], references: [id], onDelete: Cascade)
+  appointment    Appointment? @relation("AppointmentPhotos", fields: [appointmentId], references: [id], onDelete: Cascade)
+  inspection     Inspection?  @relation("InspectionPhotos", fields: [inspectionId], references: [id], onDelete: Cascade)
+  job            Job?         @relation("JobPhotos", fields: [jobId], references: [id], onDelete: Cascade)
+  uploadedByUser User         @relation("UploadedPhotoAssets", fields: [uploadedByUserId], references: [id])
+
+  @@index([facilityId])
+  @@index([appointmentId])
+  @@index([inspectionId])
+  @@index([jobId])
+  @@index([uploadedByUserId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@map("photo_assets")
 }
 
 model Account {
@@ -581,6 +620,7 @@ model Facility {
   residentialProperty ResidentialProperty? @relation(fields: [residentialPropertyId], references: [id], onDelete: SetNull)
   opportunities      Opportunity[]
   appointments       Appointment[]
+  photos             PhotoAsset[]     @relation("FacilityPhotos")
   areas              Area[]
   taskTemplates      TaskTemplate[]   @relation("FacilityTaskTemplates")
   facilityTasks      FacilityTask[]   @relation("FacilityTasks")
@@ -1530,6 +1570,7 @@ model Job {
   expenses           Expense[]             @relation("JobExpenses")
   invoiceAllocations InvoiceJobAllocation[]
   payrollAllocations PayrollJobAllocation[]
+  photos             PhotoAsset[]          @relation("JobPhotos")
 
   @@index([jobNumber])
   @@index([contractId])
@@ -1702,6 +1743,7 @@ model Inspection {
   correctiveActions InspectionCorrectiveAction[]
   signoffs          InspectionSignoff[]
   appointment       Appointment?                 @relation("AppointmentInspection")
+  photos            PhotoAsset[]                 @relation("InspectionPhotos")
 
   @@index([inspectionNumber])
   @@index([templateId])

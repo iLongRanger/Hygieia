@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { PhotoGalleryCard } from '../../components/photos/PhotoGalleryCard';
 import { getAccountDetailPath } from '../../lib/accountRoutes';
 import { PERMISSIONS } from '../../lib/permissions';
 import { getAppointment } from '../../lib/appointments';
@@ -358,6 +359,13 @@ const AppointmentDetail = () => {
           </div>
         </Card>
       )}
+
+      <PhotoGalleryCard
+        targetType="appointment"
+        targetId={appointment.id}
+        title="Appointment Photos"
+        description="Upload walkthrough, visit, or inspection photos taken during this appointment."
+      />
 
       {/* Activity Info */}
       <Card>

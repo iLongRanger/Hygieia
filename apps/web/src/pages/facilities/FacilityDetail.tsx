@@ -70,6 +70,7 @@ import { AreaModal } from './modals/AreaModal';
 import { TaskModal } from './modals/TaskModal';
 import { TaskSelectionModal } from './modals/TaskSelectionModal';
 import { SubmitProposalModal } from './modals/SubmitProposalModal';
+import { PhotoGalleryCard } from '../../components/photos/PhotoGalleryCard';
 import {
   isCleaningFrequency,
   ORDERED_CLEANING_FREQUENCIES,
@@ -143,7 +144,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'areas' | 'assignment' | 'add-ons' | 'area-detail'
+    'overview' | 'areas' | 'photos' | 'assignment' | 'add-ons' | 'area-detail'
   >('overview');
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
 
@@ -1598,6 +1599,21 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
             )}
           </button>
         )}
+        {resolvedFacilityId && (
+          <button
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === 'photos'
+                ? 'text-surface-900 dark:text-white'
+                : 'text-surface-500 dark:text-surface-400 hover:text-surface-600 dark:text-surface-400'
+            }`}
+            onClick={() => setActiveTab('photos')}
+          >
+            Photos
+            {activeTab === 'photos' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald" />
+            )}
+          </button>
+        )}
         {canManageResidentialAddOns && (
           <button
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
@@ -1674,6 +1690,14 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           onAssignedTeamChange={setAssignedTeamId}
           onAssignedToUserChange={setAssignedToUserId}
           onSave={handleSaveAssignment}
+        />
+      )}
+      {activeTab === 'photos' && resolvedFacilityId && (
+        <PhotoGalleryCard
+          targetType="facility"
+          targetId={resolvedFacilityId}
+          title={`${locationLabel} Photos`}
+          description="Upload walkthrough, parking, access, and general photos for this service location."
         />
       )}
       {canManageOperationalScope && activeTab === 'areas' && (
