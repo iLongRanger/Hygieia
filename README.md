@@ -177,3 +177,5 @@ Status checked on 2026-04-08:
 - Auth flow includes SMS verification for login and conditional password setup verification
 
 This README is intended to stay high-signal. For detailed endpoint, workflow, and route-access coverage, see [SYSTEM_UNDERSTANDING.md](A:\Projects\Hygieia\SYSTEM_UNDERSTANDING.md).
+
+For buyer-facing product documentation, see [docs/HYGIEIA_BUYER_DOCUMENTATION.md](docs/HYGIEIA_BUYER_DOCUMENTATION.md).
