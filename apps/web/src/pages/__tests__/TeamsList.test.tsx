@@ -88,19 +88,19 @@ describe('TeamsList', () => {
     const user = userEvent.setup();
     render(<TeamsList />);
 
-    await user.click(screen.getByRole('button', { name: /new team/i }));
-    await user.click(await screen.findByRole('button', { name: /create team/i }));
+    await user.click(screen.getByRole('button', { name: /new subcontractor/i }));
+    await user.click(await screen.findByRole('button', { name: /create subcontractor access/i }));
 
     expect(createTeamMock).not.toHaveBeenCalled();
-    expect(toastErrorMock).toHaveBeenCalledWith('Team name is required');
+    expect(toastErrorMock).toHaveBeenCalledWith('Subcontractor company name is required');
   });
 
   it('creates a team with trimmed payload values', async () => {
     const user = userEvent.setup();
     render(<TeamsList />);
 
-    await user.click(screen.getByRole('button', { name: /new team/i }));
-    await user.type(await screen.findByLabelText(/team name/i), '  Bravo Team  ');
+    await user.click(screen.getByRole('button', { name: /new subcontractor/i }));
+    await user.type(await screen.findByLabelText(/subcontractor company name/i), '  Bravo Team  ');
     await user.type(screen.getByLabelText(/contact name/i), '  Bob  ');
     await user.type(screen.getByLabelText(/contact email/i), '  bob@example.com  ');
     await user.type(screen.getByLabelText(/contact phone/i), '  555-222-3333  ');
@@ -110,7 +110,7 @@ describe('TeamsList', () => {
     fireEvent.change(screen.getByLabelText(/job calendar color/i), {
       target: { value: '#112233' },
     });
-    await user.click(screen.getByRole('button', { name: /create team/i }));
+    await user.click(screen.getByRole('button', { name: /create subcontractor access/i }));
 
     await waitFor(() => {
       expect(createTeamMock).toHaveBeenCalledWith({
@@ -130,7 +130,7 @@ describe('TeamsList', () => {
     render(<TeamsList />);
 
     await user.click(await screen.findByRole('button', { name: /^edit$/i }));
-    const teamNameInput = await screen.findByLabelText(/team name/i);
+    const teamNameInput = await screen.findByLabelText(/subcontractor company name/i);
     await user.clear(teamNameInput);
     await user.type(teamNameInput, 'Alpha Team Updated');
     await user.click(screen.getByRole('button', { name: /save changes/i }));

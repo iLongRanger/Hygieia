@@ -124,7 +124,7 @@ const navSections: NavSection[] = [
       { to: '/area-templates', icon: LayoutTemplate, label: 'Area' },
       { to: '/tasks', icon: ClipboardList, label: 'Task' },
       { to: '/users', icon: UserCog, label: 'People' },
-      { to: '/teams', icon: Handshake, label: 'Teams' },
+      { to: '/teams', icon: Handshake, label: 'Subcontractor Access' },
       { to: '/settings/global', icon: Settings, label: 'Global Settings' },
     ],
   },

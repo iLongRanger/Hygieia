@@ -93,7 +93,7 @@ const TeamsList = () => {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      toast.error('Team name is required');
+      toast.error('Subcontractor company name is required');
       return;
     }
 
@@ -112,10 +112,10 @@ const TeamsList = () => {
 
       if (editingTeam) {
         await updateTeam(editingTeam.id, payload);
-        toast.success('Team updated successfully');
+        toast.success('Subcontractor access updated successfully');
       } else {
         await createTeam(payload);
-        toast.success('Team created successfully');
+        toast.success('Subcontractor access created successfully');
       }
 
       setShowModal(false);
@@ -129,11 +129,11 @@ const TeamsList = () => {
   };
 
   const handleArchive = async (team: Team) => {
-    if (!confirm(`Archive team "${team.name}"?`)) return;
+    if (!confirm(`Archive subcontractor access for "${team.name}"?`)) return;
 
     try {
       await archiveTeam(team.id);
-      toast.success('Team archived');
+      toast.success('Subcontractor access archived');
       await fetchTeams();
     } catch (error) {
       toast.error(extractApiErrorMessage(error, 'Failed to archive team'));
@@ -143,7 +143,7 @@ const TeamsList = () => {
   const handleRestore = async (team: Team) => {
     try {
       await restoreTeam(team.id);
-      toast.success('Team restored');
+      toast.success('Subcontractor access restored');
       await fetchTeams();
     } catch {
       toast.error('Failed to restore team');
@@ -152,7 +152,7 @@ const TeamsList = () => {
 
   const handleResendInvite = async (team: Team) => {
     if (!team.contactEmail) {
-      toast.error('Team needs a contact email before sending invite');
+      toast.error('Subcontractor access needs a contact email before sending invite');
       return;
     }
 
@@ -174,20 +174,22 @@ const TeamsList = () => {
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary-500" />
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Team Management</h1>
-            <p className="text-surface-500 dark:text-surface-400">Manage subcontractor teams and assign them to active contracts.</p>
+            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Subcontractor Access Management</h1>
+            <p className="text-surface-500 dark:text-surface-400">
+              Invite subcontractor companies, manage their portal access, and assign their crews to active contracts.
+            </p>
           </div>
         </div>
         <Button onClick={openCreateModal}>
           <Plus className="mr-2 h-4 w-4" />
-          New Team
+          New Subcontractor
         </Button>
       </div>
 
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
-            placeholder="Search teams..."
+            placeholder="Search subcontractors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -207,7 +209,7 @@ const TeamsList = () => {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30">
               <tr>
-                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Team</th>
+                <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Subcontractor</th>
                 <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Contact</th>
                 <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Status</th>
                 <th className="px-4 py-3 text-surface-600 dark:text-surface-400">Actions</th>
@@ -216,11 +218,11 @@ const TeamsList = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">Loading teams...</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">Loading subcontractor access...</td>
                 </tr>
               ) : teams.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">No teams found</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-surface-500 dark:text-surface-400">No subcontractor access records found</td>
                 </tr>
               ) : (
                 teams.map((team) => (
@@ -280,11 +282,11 @@ const TeamsList = () => {
           setShowModal(false);
           resetForm();
         }}
-        title={editingTeam ? 'Edit Team' : 'Create Team'}
+        title={editingTeam ? 'Edit Subcontractor Access' : 'Create Subcontractor Access'}
       >
         <div className="space-y-4">
           <Input
-            label="Team Name"
+            label="Subcontractor Company Name"
             value={formData.name}
             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
             required
@@ -339,7 +341,7 @@ const TeamsList = () => {
               </Button>
             </div>
             <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
-              Jobs assigned to this subcontractor team use this color in the calendar.
+              Jobs assigned to this subcontractor access record use this color in the calendar.
             </p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -354,7 +356,7 @@ const TeamsList = () => {
               Cancel
             </Button>
             <Button onClick={handleSave} isLoading={saving}>
-              {editingTeam ? 'Save Changes' : 'Create Team'}
+              {editingTeam ? 'Save Changes' : 'Create Subcontractor Access'}
             </Button>
           </div>
         </div>
