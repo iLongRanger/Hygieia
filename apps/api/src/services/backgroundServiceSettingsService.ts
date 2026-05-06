@@ -49,6 +49,10 @@ const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
   contract_amendment_auto_apply: 2 * 60 * 60 * 1000,
 };
 
+const DEFAULT_LOG_RETENTION_DAYS = 60;
+const DEFAULT_LOG_RETENTION_LIMIT_PER_SERVICE = 250;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 function parseIntervalMs(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback;
   const parsed = Number(raw);
@@ -159,6 +163,33 @@ function hasBackgroundServiceDelegate(): boolean {
 
 function hasBackgroundServiceLogDelegate(): boolean {
   return Boolean((prisma as unknown as { backgroundServiceRunLog?: unknown }).backgroundServiceRunLog);
+}
+
+function parseRetentionValue(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    return fallback;
+  }
+  return Math.floor(parsed);
+}
+
+function getLogRetentionDays(): number {
+  return parseRetentionValue(
+    process.env.BACKGROUND_SERVICE_LOG_RETENTION_DAYS,
+    DEFAULT_LOG_RETENTION_DAYS,
+    1,
+    3650
+  );
+}
+
+function getLogRetentionLimitPerService(): number {
+  return parseRetentionValue(
+    process.env.BACKGROUND_SERVICE_LOG_RETENTION_LIMIT_PER_SERVICE,
+    DEFAULT_LOG_RETENTION_LIMIT_PER_SERVICE,
+    10,
+    5000
+  );
 }
 
 function shouldSkipDbReads(): boolean {
@@ -288,6 +319,43 @@ export async function markBackgroundServiceRunFailure(
   });
 }
 
+async function pruneBackgroundServiceRunLogs(serviceKey: BackgroundServiceKey): Promise<void> {
+  if (!hasBackgroundServiceLogDelegate()) {
+    return;
+  }
+
+  try {
+    const retentionCutoff = new Date(Date.now() - getLogRetentionDays() * MS_PER_DAY);
+    const retentionLimit = getLogRetentionLimitPerService();
+
+    await prisma.backgroundServiceRunLog.deleteMany({
+      where: {
+        serviceKey,
+        createdAt: { lt: retentionCutoff },
+      },
+    });
+
+    const excessLogs = await prisma.backgroundServiceRunLog.findMany({
+      where: { serviceKey },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      skip: retentionLimit,
+    });
+
+    if (excessLogs.length === 0) {
+      return;
+    }
+
+    await prisma.backgroundServiceRunLog.deleteMany({
+      where: {
+        id: { in: excessLogs.map((log) => log.id) },
+      },
+    });
+  } catch (error) {
+    logger.warn(`Failed to prune background service run logs for "${serviceKey}"`, error);
+  }
+}
+
 export async function createBackgroundServiceRunLog(
   serviceKey: BackgroundServiceKey,
   input: {
@@ -313,6 +381,7 @@ export async function createBackgroundServiceRunLog(
         endedAt: input.endedAt,
       },
     });
+    await pruneBackgroundServiceRunLogs(serviceKey);
   } catch (error) {
     logger.warn(`Failed to create background service run log for "${serviceKey}"`, error);
   }
