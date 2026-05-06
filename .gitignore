@@ -82,5 +82,8 @@ uploads/
 # Worktrees
 .worktrees/
 
+# Local cleanup archive
+OLD Files/
+
 # CocoIndex
 .cocoindex_code/
