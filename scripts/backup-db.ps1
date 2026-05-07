@@ -86,11 +86,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $backupInfo = Get-Item $backupFile
+$checksum = Get-FileHash -Algorithm SHA256 -Path $backupFile
 $manifest = [ordered]@{
   createdAt = (Get-Date).ToUniversalTime().ToString('o')
   backupFile = $backupInfo.Name
   format = if ($PlainSql) { 'plain-sql' } else { 'pg-custom' }
   sizeBytes = $backupInfo.Length
+  sha256 = $checksum.Hash.ToLowerInvariant()
   databaseUrlProtocol = ($DatabaseUrl -split '://')[0]
   restoreCommand = if ($PlainSql) {
     "pnpm run db:restore -- -BackupFile `"$backupFile`" -PlainSql"

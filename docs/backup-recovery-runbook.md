@@ -42,6 +42,8 @@ The script reads `DATABASE_URL` from the current shell, root `.env`, or `package
 backups/database/
 ```
 
+Each backup also writes a `.manifest.json` file with format, size, restore command, and SHA-256 checksum metadata.
+
 To choose a different output directory:
 
 ```powershell
@@ -59,6 +61,8 @@ Verify a custom-format backup before trusting it:
 ```powershell
 pnpm run db:backup:verify -- -BackupFile "backups/database/hygieia-YYYYMMDD-HHMMSS.dump"
 ```
+
+If a matching `.manifest.json` exists, verification checks the SHA-256 checksum before validating the dump.
 
 For plain SQL backups, verification confirms the file is non-empty and readable:
 
