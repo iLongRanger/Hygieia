@@ -80,6 +80,12 @@ pnpm run db:backup:r2
 
 For Windows scheduled backups, use `docs/windows-scheduled-backup.md`.
 
+List available R2 backups:
+
+```powershell
+pnpm run db:backup:list-r2 -- --limit 25
+```
+
 Upload a specific backup file:
 
 ```powershell

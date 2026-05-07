@@ -38,6 +38,12 @@ export interface BackupDownloadResult {
   filePath: string;
 }
 
+export interface R2BackupObjectSummary {
+  objectKey: string;
+  lastModified: Date | null;
+  sizeBytes: number | null;
+}
+
 export function getR2BackupConfig(): R2BackupConfig {
   const bucket =
     process.env.R2_BACKUP_BUCKET_NAME ??
@@ -150,6 +156,43 @@ export async function findLatestR2BackupObjectKey(
   }
 
   return latest.Key;
+}
+
+export async function listR2BackupObjects(
+  options: {
+    config?: R2BackupConfig;
+    client?: BackupDownloadClient;
+    limit?: number;
+  } = {}
+): Promise<R2BackupObjectSummary[]> {
+  const config = options.config ?? getR2BackupConfig();
+  const client = options.client ?? createR2BackupClient(config);
+  const normalizedPrefix = config.prefix.replace(/^\/+|\/+$/g, '');
+  const response = (await client.send(
+    new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: `${normalizedPrefix}/`,
+      MaxKeys: options.limit,
+    })
+  )) as {
+    Contents?: Array<{
+      Key?: string;
+      LastModified?: Date;
+      Size?: number;
+    }>;
+  };
+
+  return (response.Contents ?? [])
+    .filter((object) => object.Key && /\.(dump|sql)$/i.test(object.Key))
+    .sort(
+      (a, b) =>
+        (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0)
+    )
+    .map((object) => ({
+      objectKey: object.Key as string,
+      lastModified: object.LastModified ?? null,
+      sizeBytes: object.Size ?? null,
+    }));
 }
 
 export async function downloadBackupFileFromR2(

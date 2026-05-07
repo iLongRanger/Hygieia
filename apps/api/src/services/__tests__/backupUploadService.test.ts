@@ -11,6 +11,7 @@ import {
   downloadBackupFileFromR2,
   findLatestR2BackupObjectKey,
   getR2BackupConfig,
+  listR2BackupObjects,
   uploadBackupFileToR2,
 } from '../backupUploadService';
 
@@ -130,6 +131,56 @@ describe('backupUploadService', () => {
 
     expect(client.send).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));
     expect(objectKey).toBe('backups/database/latest.dump');
+  });
+
+  it('lists backup objects in newest first order', async () => {
+    const client = {
+      send: jest.fn<() => Promise<unknown>>().mockResolvedValue({
+        Contents: [
+          {
+            Key: 'backups/database/old.sql',
+            LastModified: new Date('2026-04-01T00:00:00Z'),
+            Size: 1000,
+          },
+          {
+            Key: 'backups/database/latest.dump',
+            LastModified: new Date('2026-04-02T00:00:00Z'),
+            Size: 2000,
+          },
+          {
+            Key: 'backups/database/latest.manifest.json',
+            LastModified: new Date('2026-04-03T00:00:00Z'),
+            Size: 50,
+          },
+        ],
+      }),
+    };
+
+    const backups = await listR2BackupObjects({
+      config: {
+        bucket: 'hygieia-backups',
+        endpoint: 'https://account.r2.cloudflarestorage.com',
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key',
+        prefix: 'backups/database',
+      },
+      client,
+      limit: 10,
+    });
+
+    expect(client.send).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));
+    expect(backups).toEqual([
+      {
+        objectKey: 'backups/database/latest.dump',
+        lastModified: new Date('2026-04-02T00:00:00Z'),
+        sizeBytes: 2000,
+      },
+      {
+        objectKey: 'backups/database/old.sql',
+        lastModified: new Date('2026-04-01T00:00:00Z'),
+        sizeBytes: 1000,
+      },
+    ]);
   });
 
   it('downloads a backup file from R2', async () => {
