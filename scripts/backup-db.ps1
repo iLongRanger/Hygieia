@@ -36,6 +36,41 @@ function Assert-Command {
   }
 }
 
+function Get-AppVersion {
+  param([string]$RepoRoot)
+
+  $packageJsonPath = Join-Path $RepoRoot 'package.json'
+  if (-not (Test-Path $packageJsonPath)) {
+    return $null
+  }
+
+  try {
+    $packageJson = Get-Content -Raw $packageJsonPath | ConvertFrom-Json
+    return $packageJson.version
+  } catch {
+    return $null
+  }
+}
+
+function Get-GitCommit {
+  param([string]$RepoRoot)
+
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    return $null
+  }
+
+  Push-Location $RepoRoot
+  try {
+    $commit = git rev-parse --short HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return $null
+    }
+    return $commit
+  } finally {
+    Pop-Location
+  }
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $envPathCandidates = @(
   (Join-Path $repoRoot '.env'),
@@ -93,6 +128,8 @@ $manifest = [ordered]@{
   format = if ($PlainSql) { 'plain-sql' } else { 'pg-custom' }
   sizeBytes = $backupInfo.Length
   sha256 = $checksum.Hash.ToLowerInvariant()
+  appVersion = Get-AppVersion -RepoRoot $repoRoot
+  gitCommit = Get-GitCommit -RepoRoot $repoRoot
   databaseUrlProtocol = ($DatabaseUrl -split '://')[0]
   restoreCommand = if ($PlainSql) {
     "pnpm run db:restore -- -BackupFile `"$backupFile`" -PlainSql"

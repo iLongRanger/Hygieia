@@ -42,7 +42,7 @@ The script reads `DATABASE_URL` from the current shell, root `.env`, or `package
 backups/database/
 ```
 
-Each backup also writes a `.manifest.json` file with format, size, restore command, and SHA-256 checksum metadata.
+Each backup also writes a `.manifest.json` file with format, size, app version, git commit, restore command, and SHA-256 checksum metadata.
 
 To choose a different output directory:
 
