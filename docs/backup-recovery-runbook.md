@@ -138,3 +138,25 @@ GET /api/v1/system-config/export
 ```
 
 This endpoint exports portable baseline setup data for settings, pricing, specialized catalog, fixture types, area types, task templates, and area templates. It intentionally excludes CRM, sales, operations, finance transactions, service-location-specific task templates, users, and credentials.
+
+Initial API import:
+
+```text
+POST /api/v1/system-config/import
+```
+
+Body:
+
+```json
+{
+  "dryRun": true,
+  "data": {
+    "metadata": {
+      "schemaVersion": 1,
+      "format": "hygieia-system-configuration"
+    }
+  }
+}
+```
+
+Use `dryRun: true` first to see counts without writing data. With `dryRun: false`, the import merges by stable keys such as pricing plan name, area type name, fixture type name, specialized catalog code, and background service key.

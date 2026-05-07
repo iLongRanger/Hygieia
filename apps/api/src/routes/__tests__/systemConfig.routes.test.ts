@@ -19,6 +19,10 @@ jest.mock('../../services/systemConfigExportService', () => ({
   exportSystemConfiguration: jest.fn(),
 }));
 
+jest.mock('../../services/systemConfigImportService', () => ({
+  importSystemConfiguration: jest.fn(),
+}));
+
 describe('System Config Routes', () => {
   let app: Application;
 
@@ -65,6 +69,65 @@ describe('System Config Routes', () => {
     expect(response.body.error.code).toBe('INSUFFICIENT_SCOPE');
     expect(
       systemConfigExportService.exportSystemConfiguration
+    ).not.toHaveBeenCalled();
+  });
+
+  it('POST /import supports dry-run imports', async () => {
+    const systemConfigImportService =
+      await import('../../services/systemConfigImportService');
+    (
+      systemConfigImportService.importSystemConfiguration as jest.Mock
+    ).mockResolvedValue({
+      dryRun: true,
+      imported: { areaTypes: 1 },
+    });
+
+    const response = await request(app)
+      .post('/api/v1/system-config/import')
+      .send({
+        dryRun: true,
+        data: {
+          metadata: {
+            schemaVersion: 1,
+            format: 'hygieia-system-configuration',
+          },
+        },
+      })
+      .expect(200);
+
+    expect(response.body.data.dryRun).toBe(true);
+    expect(
+      systemConfigImportService.importSystemConfiguration
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          format: 'hygieia-system-configuration',
+        }),
+      }),
+      'user-1',
+      { dryRun: true }
+    );
+  });
+
+  it('rejects users without settings write permission on import', async () => {
+    mockAuthUser.role = 'cleaner';
+    const systemConfigImportService =
+      await import('../../services/systemConfigImportService');
+
+    await request(app)
+      .post('/api/v1/system-config/import')
+      .send({
+        data: {
+          metadata: {
+            schemaVersion: 1,
+            format: 'hygieia-system-configuration',
+          },
+        },
+      })
+      .expect(403);
+
+    expect(
+      systemConfigImportService.importSystemConfiguration
     ).not.toHaveBeenCalled();
   });
 });
