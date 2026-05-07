@@ -31,6 +31,7 @@
     "db:restore": "powershell -ExecutionPolicy Bypass -File scripts/restore-db.ps1",
     "db:backup:upload-r2": "cd apps/api && pnpm tsx src/scripts/uploadBackupToR2.ts",
     "db:backup:download-r2": "cd apps/api && pnpm tsx src/scripts/downloadBackupFromR2.ts",
+    "db:restore:r2": "powershell -ExecutionPolicy Bypass -File scripts/restore-db-from-r2.ps1",
     "photos:cleanup-pending": "cd apps/api && pnpm tsx src/scripts/cleanupStalePendingPhotos.ts",
     "db:generate": "cd packages/database && npm run generate",
     "db:seed": "cd packages/database && npm run seed",

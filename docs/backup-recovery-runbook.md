@@ -98,6 +98,18 @@ Download a specific R2 object key:
 pnpm run db:backup:download-r2 -- --key "backups/database/hygieia-YYYYMMDD-HHMMSS.dump"
 ```
 
+Download, verify, and restore the latest R2 backup:
+
+```powershell
+pnpm run db:restore:r2 -- -Latest
+```
+
+Download, verify, and restore a specific R2 object key:
+
+```powershell
+pnpm run db:restore:r2 -- -ObjectKey "backups/database/hygieia-YYYYMMDD-HHMMSS.dump"
+```
+
 R2 upload uses:
 
 ```text
@@ -131,6 +143,7 @@ pnpm run db:restore -- -BackupFile "backups/database/hygieia-YYYYMMDD-HHMMSS.sql
 ```
 
 The restore script asks for confirmation unless `-Force` is passed.
+The R2 restore wrapper uses the same confirmation behavior unless `-Force` is passed.
 
 ## Recovery Order
 
