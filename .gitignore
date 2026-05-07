@@ -70,6 +70,9 @@ packages/database/prisma/migrations/*.js
 # Uploads
 uploads/
 
+# Local database backups
+backups/
+
 # Production
 .production
 .vercel/
