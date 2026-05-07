@@ -48,6 +48,30 @@ To create plain SQL instead of a custom-format dump:
 pnpm run db:backup -- -PlainSql
 ```
 
+Upload the latest local backup to R2:
+
+```powershell
+pnpm run db:backup:upload-r2 -- --latest --include-manifest
+```
+
+Upload a specific backup file:
+
+```powershell
+pnpm run db:backup:upload-r2 -- --file "backups/database/hygieia-YYYYMMDD-HHMMSS.dump" --include-manifest
+```
+
+R2 upload uses:
+
+```text
+R2_BACKUP_BUCKET_NAME
+R2_BACKUP_PREFIX
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_ENDPOINT or R2_ACCOUNT_ID
+```
+
+If `R2_BACKUP_BUCKET_NAME` is not set, the script falls back to `R2_BUCKET_NAME`.
+
 ## Database Restore
 
 Restore a custom-format backup:

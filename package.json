@@ -25,6 +25,7 @@
     "db:migrate:deploy:local:safe": "powershell -ExecutionPolicy Bypass -File scripts/db-migrate-deploy-local.ps1",
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
     "db:restore": "powershell -ExecutionPolicy Bypass -File scripts/restore-db.ps1",
+    "db:backup:upload-r2": "cd apps/api && pnpm tsx src/scripts/uploadBackupToR2.ts",
     "db:generate": "cd packages/database && npm run generate",
     "db:seed": "cd packages/database && npm run seed",
     "db:studio": "cd packages/database && npm run studio",
