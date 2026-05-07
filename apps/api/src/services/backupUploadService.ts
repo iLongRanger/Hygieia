@@ -1,7 +1,14 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
+import {
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { createReadStream, createWriteStream } from 'fs';
+import { mkdir, stat } from 'fs/promises';
 import path from 'path';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 export interface R2BackupConfig {
   bucket: string;
@@ -15,10 +22,20 @@ export interface BackupUploadClient {
   send(command: PutObjectCommand): Promise<unknown>;
 }
 
+export interface BackupDownloadClient {
+  send(command: GetObjectCommand | ListObjectsV2Command): Promise<unknown>;
+}
+
 export interface BackupUploadResult {
   bucket: string;
   objectKey: string;
   sizeBytes: number;
+}
+
+export interface BackupDownloadResult {
+  bucket: string;
+  objectKey: string;
+  filePath: string;
 }
 
 export function getR2BackupConfig(): R2BackupConfig {
@@ -95,5 +112,81 @@ export async function uploadBackupFileToR2(
     bucket: config.bucket,
     objectKey,
     sizeBytes: fileInfo.size,
+  };
+}
+
+export async function findLatestR2BackupObjectKey(
+  options: {
+    config?: R2BackupConfig;
+    client?: BackupDownloadClient;
+  } = {}
+): Promise<string> {
+  const config = options.config ?? getR2BackupConfig();
+  const client = options.client ?? createR2BackupClient(config);
+  const normalizedPrefix = config.prefix.replace(/^\/+|\/+$/g, '');
+  const response = (await client.send(
+    new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: `${normalizedPrefix}/`,
+    })
+  )) as {
+    Contents?: Array<{
+      Key?: string;
+      LastModified?: Date;
+    }>;
+  };
+
+  const latest = (response.Contents ?? [])
+    .filter((object) => object.Key && /\.(dump|sql)$/i.test(object.Key))
+    .sort(
+      (a, b) =>
+        (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0)
+    )[0];
+
+  if (!latest?.Key) {
+    throw new Error(
+      `No .dump or .sql backup objects found under ${config.bucket}/${normalizedPrefix}`
+    );
+  }
+
+  return latest.Key;
+}
+
+export async function downloadBackupFileFromR2(
+  objectKey: string,
+  outputDir: string,
+  options: {
+    config?: R2BackupConfig;
+    client?: BackupDownloadClient;
+  } = {}
+): Promise<BackupDownloadResult> {
+  const config = options.config ?? getR2BackupConfig();
+  const client = options.client ?? createR2BackupClient(config);
+  const safeFilename = path.basename(objectKey);
+  if (!safeFilename || safeFilename === '.' || safeFilename === '..') {
+    throw new Error(`Invalid backup object key: ${objectKey}`);
+  }
+
+  await mkdir(outputDir, { recursive: true });
+  const filePath = path.join(outputDir, safeFilename);
+  const response = (await client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: objectKey,
+    })
+  )) as {
+    Body?: NodeJS.ReadableStream | Readable;
+  };
+
+  if (!response.Body) {
+    throw new Error(`R2 object has no response body: ${objectKey}`);
+  }
+
+  await pipeline(response.Body, createWriteStream(filePath));
+
+  return {
+    bucket: config.bucket,
+    objectKey,
+    filePath,
   };
 }

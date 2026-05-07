@@ -86,6 +86,18 @@ Upload a specific backup file:
 pnpm run db:backup:upload-r2 -- --file "backups/database/hygieia-YYYYMMDD-HHMMSS.dump" --include-manifest
 ```
 
+Download the latest R2 backup before restore:
+
+```powershell
+pnpm run db:backup:download-r2 -- --latest
+```
+
+Download a specific R2 object key:
+
+```powershell
+pnpm run db:backup:download-r2 -- --key "backups/database/hygieia-YYYYMMDD-HHMMSS.dump"
+```
+
 R2 upload uses:
 
 ```text
