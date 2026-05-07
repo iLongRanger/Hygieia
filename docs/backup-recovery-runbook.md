@@ -158,6 +158,8 @@ Preview cleanup without deleting:
 pnpm run db:backup:cleanup-local -- -RetentionDays 7 -DryRun
 ```
 
+Use `docs/r2-lifecycle-policy.md` to configure cloud-side backup and photo retention.
+
 ## R2 Photo Recovery Notes
 
 The database stores photo metadata and object keys. R2 stores the actual photo bytes.

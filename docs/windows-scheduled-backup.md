@@ -80,6 +80,7 @@ Recommended production retention:
 - Keep R2 weekly backups for 3-6 months.
 
 Use R2 lifecycle rules for cloud retention and a separate local cleanup job for local disk retention.
+See `docs/r2-lifecycle-policy.md` for the recommended R2 rules.
 
 Local cleanup command:
 
