@@ -79,11 +79,12 @@ The scheduled backup command writes transcript logs to:
 backups/logs/
 ```
 
-The scheduled backup command creates the backup, uploads it to R2, and then deletes old local backup files after successful upload.
+The scheduled backup command creates the backup, uploads it to R2, deletes old local backup files after successful upload, and deletes old scheduled backup logs.
 
 Recommended production retention:
 
 - Keep local backups for 7 days.
+- Keep local scheduled backup logs for 30 days.
 - Keep R2 daily backups for 30 days.
 - Keep R2 weekly backups for 3-6 months.
 

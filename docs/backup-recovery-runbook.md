@@ -88,7 +88,7 @@ For Windows scheduled backups, use the logged scheduled runner:
 pnpm run db:backup:scheduled
 ```
 
-This runs readiness checks, creates and uploads the backup, cleans local backups after successful upload, and writes a transcript log under `backups/logs`.
+This runs readiness checks, creates and uploads the backup, cleans local backups after successful upload, writes a transcript log under `backups/logs`, and keeps scheduled backup logs for 30 days by default.
 
 For Task Scheduler setup, use `docs/windows-scheduled-backup.md`.
 
