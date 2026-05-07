@@ -66,6 +66,12 @@ Upload the latest local backup to R2:
 pnpm run db:backup:upload-r2 -- --latest --include-manifest
 ```
 
+Create a fresh backup and upload it to R2 in one command:
+
+```powershell
+pnpm run db:backup:r2
+```
+
 Upload a specific backup file:
 
 ```powershell
