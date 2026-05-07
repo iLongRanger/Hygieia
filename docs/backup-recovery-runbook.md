@@ -127,6 +127,8 @@ The restore script asks for confirmation unless `-Force` is passed.
 - Invoice totals and tax are correct.
 - Uploaded photos can generate signed view URLs.
 
+Use `docs/restore-drill-checklist.md` to record restore drill results.
+
 ## Recommended Schedule
 
 | Environment | Frequency                         | Retention  |
