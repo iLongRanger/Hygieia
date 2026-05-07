@@ -82,7 +82,15 @@ Create a fresh backup and upload it to R2 in one command:
 pnpm run db:backup:r2
 ```
 
-For Windows scheduled backups, use `docs/windows-scheduled-backup.md`.
+For Windows scheduled backups, use the logged scheduled runner:
+
+```powershell
+pnpm run db:backup:scheduled
+```
+
+This runs readiness checks, creates and uploads the backup, cleans local backups after successful upload, and writes a transcript log under `backups/logs`.
+
+For Task Scheduler setup, use `docs/windows-scheduled-backup.md`.
 
 List available R2 backups:
 

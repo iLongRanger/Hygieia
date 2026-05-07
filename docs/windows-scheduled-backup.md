@@ -24,7 +24,7 @@ Run this before creating a scheduled task:
 ```powershell
 cd A:\Projects\Hygieia
 pnpm run db:backup:check
-pnpm run db:backup:r2
+pnpm run db:backup:scheduled
 ```
 
 Confirm:
@@ -32,6 +32,7 @@ Confirm:
 - A `.dump` file was created under `backups/database`.
 - A `.manifest.json` file was created beside it.
 - Both files were uploaded to R2.
+- A transcript log was created under `backups/logs`.
 
 ## Create Scheduled Task
 
@@ -40,7 +41,7 @@ Run PowerShell as Administrator:
 ```powershell
 $action = New-ScheduledTaskAction `
   -Execute "powershell.exe" `
-  -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"cd 'A:\Projects\Hygieia'; pnpm run db:backup:r2`""
+  -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"cd 'A:\Projects\Hygieia'; pnpm run db:backup:scheduled`""
 
 $trigger = New-ScheduledTaskTrigger -Daily -At 2:00am
 
@@ -70,9 +71,15 @@ Then check:
 - R2 has matching objects under `R2_BACKUP_PREFIX`.
 - Windows Task Scheduler shows `LastTaskResult` as `0`.
 
-## Retention
+## Logs And Retention
 
-The script creates and uploads backups. It does not delete old local or R2 backups yet.
+The scheduled backup command writes transcript logs to:
+
+```text
+backups/logs/
+```
+
+The scheduled backup command creates the backup, uploads it to R2, and then deletes old local backup files after successful upload.
 
 Recommended production retention:
 
@@ -80,7 +87,7 @@ Recommended production retention:
 - Keep R2 daily backups for 30 days.
 - Keep R2 weekly backups for 3-6 months.
 
-Use R2 lifecycle rules for cloud retention and a separate local cleanup job for local disk retention.
+Use R2 lifecycle rules for cloud retention.
 See `docs/r2-lifecycle-policy.md` for the recommended R2 rules.
 
 Local cleanup command:
@@ -90,4 +97,4 @@ cd A:\Projects\Hygieia
 pnpm run db:backup:cleanup-local -- -RetentionDays 7
 ```
 
-Add this as a second scheduled task after backup upload has been verified.
+Use the local cleanup command manually when you need to preview or override retention behavior outside the scheduled backup runner.
