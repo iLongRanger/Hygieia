@@ -80,3 +80,12 @@ Recommended production retention:
 - Keep R2 weekly backups for 3-6 months.
 
 Use R2 lifecycle rules for cloud retention and a separate local cleanup job for local disk retention.
+
+Local cleanup command:
+
+```powershell
+cd A:\Projects\Hygieia
+pnpm run db:backup:cleanup-local -- -RetentionDays 7
+```
+
+Add this as a second scheduled task after backup upload has been verified.

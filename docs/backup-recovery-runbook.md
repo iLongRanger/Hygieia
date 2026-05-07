@@ -146,6 +146,18 @@ Use `docs/restore-drill-checklist.md` to record restore drill results.
 | Staging     | Daily or before test cycles       | 7-14 days  |
 | Development | Manual before destructive testing | As needed  |
 
+Clean local backup files after confirming R2 upload and retention:
+
+```powershell
+pnpm run db:backup:cleanup-local -- -RetentionDays 7
+```
+
+Preview cleanup without deleting:
+
+```powershell
+pnpm run db:backup:cleanup-local -- -RetentionDays 7 -DryRun
+```
+
 ## R2 Photo Recovery Notes
 
 The database stores photo metadata and object keys. R2 stores the actual photo bytes.

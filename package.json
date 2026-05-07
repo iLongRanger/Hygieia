@@ -26,6 +26,7 @@
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
     "db:backup:verify": "powershell -ExecutionPolicy Bypass -File scripts/verify-db-backup.ps1",
     "db:backup:r2": "powershell -ExecutionPolicy Bypass -File scripts/backup-db-to-r2.ps1",
+    "db:backup:cleanup-local": "powershell -ExecutionPolicy Bypass -File scripts/cleanup-local-backups.ps1",
     "db:restore": "powershell -ExecutionPolicy Bypass -File scripts/restore-db.ps1",
     "db:backup:upload-r2": "cd apps/api && pnpm tsx src/scripts/uploadBackupToR2.ts",
     "db:generate": "cd packages/database && npm run generate",
