@@ -130,3 +130,11 @@ Recommended admin exports:
 - Photo asset manifest export.
 
 These exports should use JSON or CSV and should not replace full database backups.
+
+Initial API export:
+
+```text
+GET /api/v1/system-config/export
+```
+
+This endpoint exports portable baseline setup data for settings, pricing, specialized catalog, fixture types, area types, task templates, and area templates. It intentionally excludes CRM, sales, operations, finance transactions, service-location-specific task templates, users, and credentials.

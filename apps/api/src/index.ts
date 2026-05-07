@@ -54,6 +54,7 @@ import expensesRoutes from './routes/expenses';
 import payrollRoutes from './routes/payroll';
 import financeRoutes from './routes/finance';
 import photoAssetsRoutes from './routes/photoAssets';
+import systemConfigRoutes from './routes/systemConfig';
 import { initializeRealtime } from './lib/realtime';
 import { startReminderScheduler } from './services/reminderScheduler';
 import { startRecurringJobScheduler } from './services/recurringJobScheduler';
@@ -117,7 +118,8 @@ app.get('/health', (req, res) => {
 
   // Detailed info only for internal requests with valid secret
   const internalSecret = process.env.INTERNAL_SECRET;
-  const isInternal = internalSecret && req.headers['x-internal-request'] === internalSecret;
+  const isInternal =
+    internalSecret && req.headers['x-internal-request'] === internalSecret;
 
   if (isInternal) {
     res.json({
@@ -166,6 +168,7 @@ app.use('/api/v1/expenses', expensesRoutes);
 app.use('/api/v1/payroll', payrollRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/photos', photoAssetsRoutes);
+app.use('/api/v1/system-config', systemConfigRoutes);
 
 // Public routes (no auth middleware)
 app.use('/api/v1/public/proposals', publicProposalsRoutes);
