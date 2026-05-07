@@ -150,6 +150,7 @@ pnpm run db:restore -- -BackupFile "backups/database/hygieia-YYYYMMDD-HHMMSS.sql
 
 The restore script asks for confirmation unless `-Force` is passed.
 The R2 restore wrapper uses the same confirmation behavior unless `-Force` is passed.
+Before confirmation, restore commands print the target host, port, database, and user so the operator can confirm the destination is correct.
 
 ## Recovery Order
 

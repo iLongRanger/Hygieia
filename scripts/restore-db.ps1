@@ -38,6 +38,32 @@ function Assert-Command {
   }
 }
 
+function Get-DatabaseTargetSummary {
+  param([string]$Url)
+
+  try {
+    $uri = [System.Uri]$Url
+    $databaseName = $uri.AbsolutePath.TrimStart('/')
+    if (-not $databaseName) {
+      $databaseName = '(unknown)'
+    }
+
+    return [ordered]@{
+      Host = $uri.Host
+      Port = if ($uri.Port -gt 0) { $uri.Port } else { '(default)' }
+      Database = $databaseName
+      User = $uri.UserInfo.Split(':')[0]
+    }
+  } catch {
+    return [ordered]@{
+      Host = '(unparseable)'
+      Port = '(unparseable)'
+      Database = '(unparseable)'
+      User = '(unparseable)'
+    }
+  }
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $envPathCandidates = @(
   (Join-Path $repoRoot '.env'),
@@ -67,6 +93,13 @@ if ($PlainSql) {
 } else {
   Assert-Command 'pg_restore'
 }
+
+$target = Get-DatabaseTargetSummary -Url $DatabaseUrl
+Write-Host 'Restore target:'
+Write-Host "Host: $($target.Host)"
+Write-Host "Port: $($target.Port)"
+Write-Host "Database: $($target.Database)"
+Write-Host "User: $($target.User)"
 
 if (-not $Force) {
   Write-Host 'Restore can overwrite database data.'
