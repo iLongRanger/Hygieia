@@ -6,6 +6,7 @@ import {
   Users,
   Building2,
   Contact,
+  DatabaseBackup,
   UserCog,
   LogOut,
   Warehouse,
@@ -114,7 +115,11 @@ const navSections: NavSection[] = [
     items: [
       { to: '/commercial/pricing', icon: Calculator, label: 'Commercial' },
       { to: '/residential/pricing', icon: Home, label: 'Residential' },
-      { to: '/specialized/catalog', icon: Calculator, label: 'Specialized Job' },
+      {
+        to: '/specialized/catalog',
+        icon: Calculator,
+        label: 'Specialized Job',
+      },
     ],
   },
   {
@@ -134,20 +139,37 @@ const navSections: NavSection[] = [
     title: 'Support',
     icon: HelpCircle,
     directLink: '/support',
-    items: [{ to: '/support', icon: HelpCircle, label: 'Support Guide' }],
+    items: [
+      { to: '/support', icon: HelpCircle, label: 'Support Guide' },
+      {
+        to: '/support?module=backup-restore',
+        icon: DatabaseBackup,
+        label: 'Backup and Restore',
+      },
+    ],
   },
 ];
 
-const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: SidebarProps) => {
+const Sidebar = ({
+  isOpen = false,
+  onClose,
+  expanded = false,
+  onToggleExpand,
+}: SidebarProps) => {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
-  const [closedSections, setClosedSections] = useState<Set<string>>(() => new Set());
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [closedSections, setClosedSections] = useState<Set<string>>(
+    () => new Set()
+  );
 
-  const isFieldWorker = user?.role === 'subcontractor' || user?.role === 'cleaner';
+  const isFieldWorker =
+    user?.role === 'subcontractor' || user?.role === 'cleaner';
   const isSubcontractor = user?.role === 'subcontractor';
 
   const effectiveSections: NavSection[] = isFieldWorker
@@ -164,11 +186,21 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           title: isSubcontractor ? 'Team Work' : 'My Work',
           icon: Briefcase,
           items: [
-            { to: '/contracts', icon: FileSignature, label: isSubcontractor ? 'Team Contracts' : 'My Contracts' },
-            { to: '/jobs', icon: Briefcase, label: isSubcontractor ? 'Team Jobs' : 'My Jobs' },
+            {
+              to: '/contracts',
+              icon: FileSignature,
+              label: isSubcontractor ? 'Team Contracts' : 'My Contracts',
+            },
+            {
+              to: '/jobs',
+              icon: Briefcase,
+              label: isSubcontractor ? 'Team Jobs' : 'My Jobs',
+            },
             { to: '/inspections', icon: ClipboardCheck, label: 'Inspections' },
             { to: '/time-tracking', icon: Timer, label: 'Time Tracking' },
-            ...(isSubcontractor ? [{ to: '/finance/expenses', icon: Receipt, label: 'Expenses' }] : []),
+            ...(isSubcontractor
+              ? [{ to: '/finance/expenses', icon: Receipt, label: 'Expenses' }]
+              : []),
           ],
         },
         {
@@ -176,7 +208,14 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           title: 'Support',
           icon: HelpCircle,
           directLink: '/support',
-          items: [{ to: '/support', icon: HelpCircle, label: 'Support Guide' }],
+          items: [
+            { to: '/support', icon: HelpCircle, label: 'Support Guide' },
+            {
+              to: '/support?module=backup-restore',
+              icon: DatabaseBackup,
+              label: 'Backup and Restore',
+            },
+          ],
         },
       ]
     : navSections;
@@ -190,17 +229,23 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
 
   const isSectionActive = (section: NavSection) => {
     return section.items.some((item) => {
-      if (item.to === '/' || item.to === '/app') return location.pathname === item.to;
-      return location.pathname.startsWith(item.to);
+      const itemPath = item.to.split('?')[0];
+      if (itemPath === '/' || itemPath === '/app')
+        return location.pathname === itemPath;
+      return location.pathname.startsWith(itemPath);
     });
   };
 
   const toggleSection = (key: string) => {
-    const activeSection = visibleSections.find((section) => section.key === key);
+    const activeSection = visibleSections.find(
+      (section) => section.key === key
+    );
     const currentlyOpen =
-      Boolean(activeSection?.directLink)
-      || openSections.has(key)
-      || (activeSection ? isSectionActive(activeSection) && !closedSections.has(key) : false);
+      Boolean(activeSection?.directLink) ||
+      openSections.has(key) ||
+      (activeSection
+        ? isSectionActive(activeSection) && !closedSections.has(key)
+        : false);
 
     setOpenSections((prev) => {
       const next = new Set(prev);
@@ -237,9 +282,7 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
             <item.icon
               className={cn(
                 'h-5 w-5 shrink-0',
-                linkActive
-                  ? 'text-primary-400'
-                  : 'text-surface-500'
+                linkActive ? 'text-primary-400' : 'text-surface-500'
               )}
             />
             {item.label}
@@ -273,9 +316,9 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           {visibleSections.map((section) => {
             const active = isSectionActive(section);
             const isOpen =
-              section.directLink
-              || openSections.has(section.key)
-              || (active && !closedSections.has(section.key));
+              section.directLink ||
+              openSections.has(section.key) ||
+              (active && !closedSections.has(section.key));
 
             if (section.directLink) {
               return (
@@ -364,7 +407,11 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
               onMouseLeave={() => setHoveredSection(null)}
               onFocus={() => setHoveredSection(section.key)}
               onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                if (
+                  !event.currentTarget.contains(
+                    event.relatedTarget as Node | null
+                  )
+                ) {
                   setHoveredSection(null);
                 }
               }}
@@ -490,14 +537,16 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
           {visibleSections.map((section) => {
             const active = isSectionActive(section);
             const isOpen =
-              section.directLink
-              || openSections.has(section.key)
-              || (active && !closedSections.has(section.key));
+              section.directLink ||
+              openSections.has(section.key) ||
+              (active && !closedSections.has(section.key));
 
             if (section.directLink) {
               return (
                 <ul key={section.key} className="space-y-0.5">
-                  {section.items.map((item) => renderNavLink(item, () => onClose?.()))}
+                  {section.items.map((item) =>
+                    renderNavLink(item, () => onClose?.())
+                  )}
                 </ul>
               );
             }
@@ -531,7 +580,9 @@ const Sidebar = ({ isOpen = false, onClose, expanded = false, onToggleExpand }: 
                   )}
                 >
                   <ul className="space-y-0.5 overflow-hidden">
-                    {section.items.map((item) => renderNavLink(item, () => onClose?.()))}
+                    {section.items.map((item) =>
+                      renderNavLink(item, () => onClose?.())
+                    )}
                   </ul>
                 </div>
               </div>

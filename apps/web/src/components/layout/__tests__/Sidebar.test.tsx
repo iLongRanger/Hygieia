@@ -28,15 +28,36 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getAllByRole('link', { name: 'People' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Subcontractor Access' }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('link', { name: 'Global Settings' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Area' }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('link', { name: 'Payroll' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Reports' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Overview' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Expenses' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Support Guide' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'People' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Subcontractor Access' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('link', { name: 'Global Settings' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Area' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('link', { name: 'Payroll' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Reports' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Overview' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Expenses' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Support Guide' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Backup and Restore' }).length
+    ).toBeGreaterThan(0);
   });
 
   it('shows route when explicit user permissions grant access', () => {
@@ -58,7 +79,9 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getAllByRole('link', { name: 'People' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'People' }).length
+    ).toBeGreaterThan(0);
   });
 
   it('shows direct dashboard link in the collapsed rail on hover', () => {
@@ -75,7 +98,9 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar />);
 
-    const initialDashboardLinks = screen.getAllByRole('link', { name: 'Dashboard' }).length;
+    const initialDashboardLinks = screen.getAllByRole('link', {
+      name: 'Dashboard',
+    }).length;
 
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Dashboard' }));
 
@@ -98,7 +123,9 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar />);
 
-    const initialLeadLinks = screen.getAllByRole('link', { name: 'Leads' }).length;
+    const initialLeadLinks = screen.getAllByRole('link', {
+      name: 'Leads',
+    }).length;
 
     fireEvent.mouseEnter(screen.getAllByRole('button', { name: 'CRM' })[0]);
 
@@ -123,9 +150,15 @@ describe('Sidebar RBAC', () => {
 
     fireEvent.mouseEnter(screen.getAllByRole('button', { name: 'Pricing' })[0]);
 
-    expect(screen.getAllByRole('link', { name: 'Commercial' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Residential' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Specialized Job' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Commercial' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Residential' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Specialized Job' }).length
+    ).toBeGreaterThan(0);
   });
 
   it('shows support guide for field workers', () => {
@@ -142,7 +175,12 @@ describe('Sidebar RBAC', () => {
 
     render(<Sidebar isOpen />);
 
-    expect(screen.getAllByRole('link', { name: 'Support Guide' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Support Guide' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Backup and Restore' }).length
+    ).toBeGreaterThan(0);
   });
 
   it('allows active expanded sections to be collapsed manually', () => {

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ComponentType } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
   Briefcase,
@@ -659,11 +660,30 @@ const fullFlow = [
   },
 ];
 
+function getSupportedModuleId(moduleId: string | null): string {
+  return modules.some((module) => module.id === moduleId)
+    ? (moduleId as string)
+    : modules[0].id;
+}
+
 export default function SupportGuidePage() {
-  const [activeModuleId, setActiveModuleId] = useState(modules[0].id);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedModuleId = searchParams.get('module');
+  const [activeModuleId, setActiveModuleId] = useState(() =>
+    getSupportedModuleId(requestedModuleId)
+  );
   const activeModule =
     modules.find((module) => module.id === activeModuleId) ?? modules[0];
   const ActiveIcon = activeModule.icon;
+
+  useEffect(() => {
+    setActiveModuleId(getSupportedModuleId(requestedModuleId));
+  }, [requestedModuleId]);
+
+  const handleModuleSelect = (moduleId: string) => {
+    setActiveModuleId(moduleId);
+    setSearchParams(moduleId === modules[0].id ? {} : { module: moduleId });
+  };
 
   return (
     <div className="space-y-6">
@@ -751,7 +771,7 @@ export default function SupportGuidePage() {
                 <button
                   key={module.id}
                   type="button"
-                  onClick={() => setActiveModuleId(module.id)}
+                  onClick={() => handleModuleSelect(module.id)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors',
                     isActive

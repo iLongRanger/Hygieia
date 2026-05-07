@@ -61,4 +61,17 @@ describe('SupportGuidePage', () => {
       screen.getByText(/database restore is a server\/admin operation/i)
     ).toBeInTheDocument();
   });
+
+  it('opens backup and restore from module query param', () => {
+    render(<SupportGuidePage />, {
+      initialRoute: '/support?module=backup-restore',
+    });
+
+    expect(
+      screen.getByRole('heading', { name: /backup and restore/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/use pnpm run db:backup:scheduled/i)
+    ).toBeInTheDocument();
+  });
 });
