@@ -72,6 +72,8 @@ Create a fresh backup and upload it to R2 in one command:
 pnpm run db:backup:r2
 ```
 
+For Windows scheduled backups, use `docs/windows-scheduled-backup.md`.
+
 Upload a specific backup file:
 
 ```powershell
