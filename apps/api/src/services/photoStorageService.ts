@@ -1,9 +1,17 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import { prisma } from '../lib/prisma';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../middleware/errorHandler';
+import {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+} from '../middleware/errorHandler';
 import { ensureOwnershipAccess } from '../middleware/ownership';
 import type { ResourceType } from '../middleware/ownership';
 import type { AuthenticatedUser } from '../types/express';
@@ -17,15 +25,31 @@ import type {
 
 const UPLOAD_URL_EXPIRES_SECONDS = 10 * 60;
 const VIEW_URL_EXPIRES_SECONDS = 10 * 60;
+const DEFAULT_PENDING_UPLOAD_RETENTION_HOURS = 24;
 
-const targetPermissionMap: Record<PhotoTargetType, { read: string; write: string }> = {
-  facility: { read: PERMISSIONS.FACILITIES_READ, write: PERMISSIONS.FACILITIES_WRITE },
-  appointment: { read: PERMISSIONS.APPOINTMENTS_READ, write: PERMISSIONS.APPOINTMENTS_WRITE },
-  inspection: { read: PERMISSIONS.INSPECTIONS_READ, write: PERMISSIONS.INSPECTIONS_WRITE },
+const targetPermissionMap: Record<
+  PhotoTargetType,
+  { read: string; write: string }
+> = {
+  facility: {
+    read: PERMISSIONS.FACILITIES_READ,
+    write: PERMISSIONS.FACILITIES_WRITE,
+  },
+  appointment: {
+    read: PERMISSIONS.APPOINTMENTS_READ,
+    write: PERMISSIONS.APPOINTMENTS_WRITE,
+  },
+  inspection: {
+    read: PERMISSIONS.INSPECTIONS_READ,
+    write: PERMISSIONS.INSPECTIONS_WRITE,
+  },
   job: { read: PERMISSIONS.JOBS_READ, write: PERMISSIONS.JOBS_WRITE },
 };
 
-const targetForeignKeyMap: Record<PhotoTargetType, 'facilityId' | 'appointmentId' | 'inspectionId' | 'jobId'> = {
+const targetForeignKeyMap: Record<
+  PhotoTargetType,
+  'facilityId' | 'appointmentId' | 'inspectionId' | 'jobId'
+> = {
   facility: 'facilityId',
   appointment: 'appointmentId',
   inspection: 'inspectionId',
@@ -34,8 +58,11 @@ const targetForeignKeyMap: Record<PhotoTargetType, 'facilityId' | 'appointmentId
 
 function getR2Config() {
   const bucket = process.env.R2_BUCKET_NAME ?? process.env.CLOUDFLARE_R2_BUCKET;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  const accessKeyId =
+    process.env.R2_ACCESS_KEY_ID ?? process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretAccessKey =
+    process.env.R2_SECRET_ACCESS_KEY ??
+    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
   const endpoint =
     process.env.R2_ENDPOINT ||
     (process.env.R2_ACCOUNT_ID
@@ -83,14 +110,22 @@ function buildObjectKey(input: CreatePhotoUploadInput): string {
   ].join('/');
 }
 
-function assertPermission(user: AuthenticatedUser, targetType: PhotoTargetType, mode: 'read' | 'write') {
+function assertPermission(
+  user: AuthenticatedUser,
+  targetType: PhotoTargetType,
+  mode: 'read' | 'write'
+) {
   const permission = targetPermissionMap[targetType][mode];
   if (!hasPermission(user.role, permission)) {
     throw new ForbiddenError(`Missing required permission: ${permission}`);
   }
 }
 
-async function ensureTargetAccess(user: AuthenticatedUser, targetType: PhotoTargetType, targetId: string) {
+async function ensureTargetAccess(
+  user: AuthenticatedUser,
+  targetType: PhotoTargetType,
+  targetId: string
+) {
   if (targetType === 'inspection') {
     const inspection = await prisma.inspection.findUnique({
       where: { id: targetId },
@@ -102,9 +137,15 @@ async function ensureTargetAccess(user: AuthenticatedUser, targetType: PhotoTarg
     });
     if (!inspection) throw new NotFoundError('Inspection not found');
     if (inspection.appointment?.id) {
-      await ensureOwnershipAccess(user, { resourceType: 'appointment', resourceId: inspection.appointment.id });
+      await ensureOwnershipAccess(user, {
+        resourceType: 'appointment',
+        resourceId: inspection.appointment.id,
+      });
     } else {
-      await ensureOwnershipAccess(user, { resourceType: 'facility', resourceId: inspection.facilityId });
+      await ensureOwnershipAccess(user, {
+        resourceType: 'facility',
+        resourceId: inspection.facilityId,
+      });
     }
     return;
   }
@@ -123,11 +164,17 @@ async function ensureTargetAccess(user: AuthenticatedUser, targetType: PhotoTarg
     if (user.role === 'cleaner' && job.assignedToUserId !== user.id) {
       throw new ForbiddenError('Insufficient permissions');
     }
-    if (user.role === 'subcontractor' && (!user.teamId || job.assignedTeamId !== user.teamId)) {
+    if (
+      user.role === 'subcontractor' &&
+      (!user.teamId || job.assignedTeamId !== user.teamId)
+    ) {
       throw new ForbiddenError('Insufficient permissions');
     }
     if (user.role === 'manager') {
-      await ensureOwnershipAccess(user, { resourceType: 'facility', resourceId: job.facilityId });
+      await ensureOwnershipAccess(user, {
+        resourceType: 'facility',
+        resourceId: job.facilityId,
+      });
     }
     return;
   }
@@ -156,11 +203,14 @@ function toPhotoView(photo: {
   return photo;
 }
 
-export async function listPhotoAssets(user: AuthenticatedUser, input: {
-  targetType: PhotoTargetType;
-  targetId: string;
-  includeArchived?: boolean;
-}) {
+export async function listPhotoAssets(
+  user: AuthenticatedUser,
+  input: {
+    targetType: PhotoTargetType;
+    targetId: string;
+    includeArchived?: boolean;
+  }
+) {
   assertPermission(user, input.targetType, 'read');
   await ensureTargetAccess(user, input.targetType, input.targetId);
 
@@ -201,7 +251,10 @@ const photoSelect = {
   },
 } as const;
 
-export async function createPhotoUpload(user: AuthenticatedUser, input: CreatePhotoUploadInput) {
+export async function createPhotoUpload(
+  user: AuthenticatedUser,
+  input: CreatePhotoUploadInput
+) {
   assertPermission(user, input.targetType, 'write');
   await ensureTargetAccess(user, input.targetType, input.targetId);
 
@@ -248,7 +301,11 @@ export async function createPhotoUpload(user: AuthenticatedUser, input: CreatePh
   };
 }
 
-async function getPhotoForUser(user: AuthenticatedUser, photoId: string, mode: 'read' | 'write') {
+async function getPhotoForUser(
+  user: AuthenticatedUser,
+  photoId: string,
+  mode: 'read' | 'write'
+) {
   const photo = await prisma.photoAsset.findUnique({
     where: { id: photoId },
     select: {
@@ -266,7 +323,11 @@ async function getPhotoForUser(user: AuthenticatedUser, photoId: string, mode: '
       : photo.inspectionId
         ? 'inspection'
         : 'job';
-  const targetId = photo.facilityId ?? photo.appointmentId ?? photo.inspectionId ?? photo.jobId;
+  const targetId =
+    photo.facilityId ??
+    photo.appointmentId ??
+    photo.inspectionId ??
+    photo.jobId;
   if (!targetId) throw new NotFoundError('Photo target not found');
 
   assertPermission(user, targetType, mode);
@@ -274,7 +335,11 @@ async function getPhotoForUser(user: AuthenticatedUser, photoId: string, mode: '
   return photo;
 }
 
-export async function completePhotoUpload(user: AuthenticatedUser, photoId: string, sizeBytes?: number) {
+export async function completePhotoUpload(
+  user: AuthenticatedUser,
+  photoId: string,
+  sizeBytes?: number
+) {
   await getPhotoForUser(user, photoId, 'write');
   const photo = await prisma.photoAsset.update({
     where: { id: photoId },
@@ -288,7 +353,11 @@ export async function completePhotoUpload(user: AuthenticatedUser, photoId: stri
   return toPhotoView(photo);
 }
 
-export async function updatePhotoAsset(user: AuthenticatedUser, photoId: string, input: UpdatePhotoAssetInput) {
+export async function updatePhotoAsset(
+  user: AuthenticatedUser,
+  photoId: string,
+  input: UpdatePhotoAssetInput
+) {
   await getPhotoForUser(user, photoId, 'write');
   const photo = await prisma.photoAsset.update({
     where: { id: photoId },
@@ -301,7 +370,10 @@ export async function updatePhotoAsset(user: AuthenticatedUser, photoId: string,
   return toPhotoView(photo);
 }
 
-export async function archivePhotoAsset(user: AuthenticatedUser, photoId: string) {
+export async function archivePhotoAsset(
+  user: AuthenticatedUser,
+  photoId: string
+) {
   await getPhotoForUser(user, photoId, 'write');
   const photo = await prisma.photoAsset.update({
     where: { id: photoId },
@@ -314,7 +386,10 @@ export async function archivePhotoAsset(user: AuthenticatedUser, photoId: string
   return toPhotoView(photo);
 }
 
-export async function createPhotoViewUrl(user: AuthenticatedUser, photoId: string) {
+export async function createPhotoViewUrl(
+  user: AuthenticatedUser,
+  photoId: string
+) {
   const photo = await getPhotoForUser(user, photoId, 'read');
   const client = createR2Client();
   const url = await getSignedUrl(
@@ -327,4 +402,56 @@ export async function createPhotoViewUrl(user: AuthenticatedUser, photoId: strin
   );
 
   return { url, expiresIn: VIEW_URL_EXPIRES_SECONDS };
+}
+
+export async function cleanupStalePendingPhotoAssets(
+  options: {
+    olderThanHours?: number;
+    dryRun?: boolean;
+  } = {}
+) {
+  const olderThanHours =
+    options.olderThanHours ?? DEFAULT_PENDING_UPLOAD_RETENTION_HOURS;
+  if (!Number.isFinite(olderThanHours) || olderThanHours <= 0) {
+    throw new BadRequestError('olderThanHours must be greater than 0');
+  }
+
+  const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+  const stalePhotos = await prisma.photoAsset.findMany({
+    where: {
+      status: 'pending',
+      uploadedAt: null,
+      archivedAt: null,
+      createdAt: { lt: cutoff },
+    },
+    select: {
+      id: true,
+      objectKey: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (!options.dryRun && stalePhotos.length > 0) {
+    await prisma.photoAsset.updateMany({
+      where: {
+        id: { in: stalePhotos.map((photo) => photo.id) },
+        status: 'pending',
+        uploadedAt: null,
+        archivedAt: null,
+      },
+      data: {
+        status: 'archived',
+        archivedAt: new Date(),
+      },
+    });
+  }
+
+  return {
+    dryRun: options.dryRun ?? false,
+    olderThanHours,
+    cutoff,
+    count: stalePhotos.length,
+    photos: stalePhotos,
+  };
 }

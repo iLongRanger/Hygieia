@@ -3,6 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { prisma } from '../../lib/prisma';
 import { ensureOwnershipAccess } from '../../middleware/ownership';
 import {
+  cleanupStalePendingPhotoAssets,
   createPhotoUpload,
   listPhotoAssets,
   completePhotoUpload,
@@ -15,6 +16,7 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     inspection: {
       findUnique: jest.fn(),
@@ -65,12 +67,15 @@ const mockPhoto = {
 
 describe('photoStorageService', () => {
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     process.env.R2_BUCKET_NAME = 'hygieia-photos';
     process.env.R2_ACCESS_KEY_ID = 'access-key';
     process.env.R2_SECRET_ACCESS_KEY = 'secret-key';
     process.env.R2_ENDPOINT = 'https://account.r2.cloudflarestorage.com';
-    (getSignedUrl as jest.Mock).mockResolvedValue('https://r2.example/upload-url');
+    (getSignedUrl as jest.Mock).mockResolvedValue(
+      'https://r2.example/upload-url'
+    );
   });
 
   it('creates a facility photo upload and returns a signed R2 PUT URL', async () => {
@@ -151,5 +156,63 @@ describe('photoStorageService', () => {
       })
     );
     expect(result.status).toBe('uploaded');
+  });
+
+  it('previews stale pending photo cleanup without archiving records', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-07T12:00:00.000Z'));
+    (prisma.photoAsset.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'photo-stale',
+        objectKey: 'photo-assets/facility/facility-1/2026-05/stale.jpg',
+        createdAt: new Date('2026-05-06T10:00:00.000Z'),
+      },
+    ]);
+
+    const result = await cleanupStalePendingPhotoAssets({
+      olderThanHours: 24,
+      dryRun: true,
+    });
+
+    expect(prisma.photoAsset.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'pending',
+          uploadedAt: null,
+          archivedAt: null,
+          createdAt: { lt: new Date('2026-05-06T12:00:00.000Z') },
+        }),
+      })
+    );
+    expect(prisma.photoAsset.updateMany).not.toHaveBeenCalled();
+    expect(result.count).toBe(1);
+    jest.useRealTimers();
+  });
+
+  it('archives stale pending photo records', async () => {
+    (prisma.photoAsset.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'photo-stale',
+        objectKey: 'photo-assets/facility/facility-1/2026-05/stale.jpg',
+        createdAt: new Date('2026-05-06T10:00:00.000Z'),
+      },
+    ]);
+    (prisma.photoAsset.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+    await cleanupStalePendingPhotoAssets({ olderThanHours: 24 });
+
+    expect(prisma.photoAsset.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['photo-stale'] },
+          status: 'pending',
+          uploadedAt: null,
+          archivedAt: null,
+        }),
+        data: expect.objectContaining({
+          status: 'archived',
+          archivedAt: expect.any(Date),
+        }),
+      })
+    );
   });
 });

@@ -186,11 +186,22 @@ Current behavior:
 
 - Deleting a photo archives the metadata.
 - The R2 object is retained.
-- Failed uploads can leave pending metadata.
+- Failed uploads can leave pending metadata until cleanup runs.
+
+Preview stale pending upload cleanup:
+
+```powershell
+pnpm run photos:cleanup-pending -- --dry-run --older-than-hours 24
+```
+
+Archive stale pending upload records:
+
+```powershell
+pnpm run photos:cleanup-pending -- --older-than-hours 24
+```
 
 Production follow-up:
 
-- Add a scheduled cleanup for stale pending photo records.
 - Decide whether archived photos should be retained forever or deleted from R2 after a retention window.
 - Export a periodic `photo_assets` manifest so R2 objects can be audited against database records.
 
