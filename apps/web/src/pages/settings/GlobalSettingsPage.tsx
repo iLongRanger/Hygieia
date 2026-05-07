@@ -26,6 +26,7 @@ import {
   runBackgroundServiceNow,
   updateBackgroundServiceSetting,
   exportSystemConfiguration,
+  exportPhotoAssetManifest,
   importSystemConfiguration,
 } from '../../lib/globalSettings';
 import type { GlobalSettings } from '../../types/globalSettings';
@@ -176,6 +177,7 @@ const GlobalSettingsPage: React.FC = () => {
   const [activeBackgroundServiceKey, setActiveBackgroundServiceKey] =
     useState<BackgroundServiceKey>('reminders');
   const [exportingConfig, setExportingConfig] = useState(false);
+  const [exportingPhotoManifest, setExportingPhotoManifest] = useState(false);
   const [importingConfig, setImportingConfig] = useState(false);
   const [importDryRunResult, setImportDryRunResult] = useState<Record<
     string,
@@ -439,7 +441,7 @@ const GlobalSettingsPage: React.FC = () => {
     }
   };
 
-  const downloadJson = (data: Record<string, unknown>) => {
+  const downloadJson = (data: Record<string, unknown>, namePrefix: string) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: 'application/json',
@@ -447,7 +449,7 @@ const GlobalSettingsPage: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `hygieia-system-config-${timestamp}.json`;
+    link.download = `${namePrefix}-${timestamp}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -458,7 +460,7 @@ const GlobalSettingsPage: React.FC = () => {
     try {
       setExportingConfig(true);
       const data = await exportSystemConfiguration();
-      downloadJson(data);
+      downloadJson(data, 'hygieia-system-config');
       toast.success('System configuration exported');
     } catch (error) {
       toast.error(
@@ -466,6 +468,21 @@ const GlobalSettingsPage: React.FC = () => {
       );
     } finally {
       setExportingConfig(false);
+    }
+  };
+
+  const onExportPhotoManifest = async () => {
+    try {
+      setExportingPhotoManifest(true);
+      const data = await exportPhotoAssetManifest();
+      downloadJson(data, 'hygieia-photo-manifest');
+      toast.success('Photo manifest exported');
+    } catch (error) {
+      toast.error(
+        extractApiErrorMessage(error, 'Failed to export photo manifest')
+      );
+    } finally {
+      setExportingPhotoManifest(false);
     }
   };
 
@@ -1065,7 +1082,7 @@ const GlobalSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-4">
           <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
             <h3 className="font-semibold text-surface-900 dark:text-white">
               Export Current Setup
@@ -1081,6 +1098,25 @@ const GlobalSettingsPage: React.FC = () => {
             >
               <Download className="mr-2 h-4 w-4" />
               Export JSON
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+            <h3 className="font-semibold text-surface-900 dark:text-white">
+              Export Photo Manifest
+            </h3>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+              Download R2 bucket/object keys and photo metadata for recovery
+              audits.
+            </p>
+            <Button
+              className="mt-4"
+              variant="outline"
+              onClick={onExportPhotoManifest}
+              isLoading={exportingPhotoManifest}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export Manifest
             </Button>
           </div>
 

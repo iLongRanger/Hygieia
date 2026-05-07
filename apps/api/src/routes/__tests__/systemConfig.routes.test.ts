@@ -23,6 +23,10 @@ jest.mock('../../services/systemConfigImportService', () => ({
   importSystemConfiguration: jest.fn(),
 }));
 
+jest.mock('../../services/photoManifestExportService', () => ({
+  exportPhotoAssetManifest: jest.fn(),
+}));
+
 describe('System Config Routes', () => {
   let app: Application;
 
@@ -106,6 +110,31 @@ describe('System Config Routes', () => {
       }),
       'user-1',
       { dryRun: true }
+    );
+  });
+
+  it('GET /photo-manifest returns R2 photo metadata export', async () => {
+    const photoManifestService =
+      await import('../../services/photoManifestExportService');
+    (
+      photoManifestService.exportPhotoAssetManifest as jest.Mock
+    ).mockResolvedValue({
+      metadata: { format: 'hygieia-photo-asset-manifest', totalCount: 1 },
+      photos: [
+        {
+          id: 'photo-1',
+          objectKey: 'photo-assets/facility/facility-1/photo.jpg',
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .get('/api/v1/system-config/photo-manifest')
+      .expect(200);
+
+    expect(response.body.data.metadata.totalCount).toBe(1);
+    expect(photoManifestService.exportPhotoAssetManifest).toHaveBeenCalledTimes(
+      1
     );
   });
 

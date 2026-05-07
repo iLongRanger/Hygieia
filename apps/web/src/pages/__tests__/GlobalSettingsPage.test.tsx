@@ -12,6 +12,7 @@ const getBackgroundServiceLogsMock = vi.fn();
 const updateBackgroundServiceSettingMock = vi.fn();
 const runBackgroundServiceNowMock = vi.fn();
 const exportSystemConfigurationMock = vi.fn();
+const exportPhotoAssetManifestMock = vi.fn();
 const importSystemConfigurationMock = vi.fn();
 
 vi.mock('../../lib/globalSettings', () => ({
@@ -30,6 +31,8 @@ vi.mock('../../lib/globalSettings', () => ({
     runBackgroundServiceNowMock(...args),
   exportSystemConfiguration: (...args: unknown[]) =>
     exportSystemConfigurationMock(...args),
+  exportPhotoAssetManifest: (...args: unknown[]) =>
+    exportPhotoAssetManifestMock(...args),
   importSystemConfiguration: (...args: unknown[]) =>
     importSystemConfigurationMock(...args),
 }));
@@ -78,6 +81,10 @@ describe('GlobalSettingsPage', () => {
     runBackgroundServiceNowMock.mockResolvedValue(null);
     exportSystemConfigurationMock.mockResolvedValue({
       metadata: { schemaVersion: 1, format: 'hygieia-system-configuration' },
+    });
+    exportPhotoAssetManifestMock.mockResolvedValue({
+      metadata: { schemaVersion: 1, format: 'hygieia-photo-asset-manifest' },
+      photos: [],
     });
     importSystemConfigurationMock.mockResolvedValue({
       dryRun: true,
@@ -182,6 +189,21 @@ describe('GlobalSettingsPage', () => {
 
     await waitFor(() => {
       expect(exportSystemConfigurationMock).toHaveBeenCalledTimes(1);
+    });
+    expect(window.URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  it('exports photo manifest as json', async () => {
+    const user = userEvent.setup();
+    render(<GlobalSettingsPage />);
+
+    const exportButton = await screen.findByRole('button', {
+      name: /export manifest/i,
+    });
+    await user.click(exportButton);
+
+    await waitFor(() => {
+      expect(exportPhotoAssetManifestMock).toHaveBeenCalledTimes(1);
     });
     expect(window.URL.createObjectURL).toHaveBeenCalled();
   });

@@ -83,6 +83,13 @@ export async function exportSystemConfiguration(): Promise<
   return response.data.data;
 }
 
+export async function exportPhotoAssetManifest(): Promise<
+  Record<string, unknown>
+> {
+  const response = await api.get('/system-config/photo-manifest');
+  return response.data.data;
+}
+
 export async function importSystemConfiguration(
   data: Record<string, unknown>,
   dryRun = false

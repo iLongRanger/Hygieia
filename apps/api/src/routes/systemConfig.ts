@@ -12,6 +12,7 @@ import { PERMISSIONS } from '../types';
 import { importSystemConfigurationSchema } from '../schemas/systemConfig';
 import { exportSystemConfiguration } from '../services/systemConfigExportService';
 import { importSystemConfiguration } from '../services/systemConfigImportService';
+import { exportPhotoAssetManifest } from '../services/photoManifestExportService';
 import type { ZodError } from 'zod';
 
 const router: Router = Router();
@@ -34,6 +35,20 @@ router.get(
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await exportSystemConfiguration();
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  '/photo-manifest',
+  authenticate,
+  requirePermission(PERMISSIONS.SETTINGS_READ),
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await exportPhotoAssetManifest();
       res.json({ data });
     } catch (error) {
       next(error);

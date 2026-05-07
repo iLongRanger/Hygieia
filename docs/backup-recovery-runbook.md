@@ -160,3 +160,11 @@ Body:
 ```
 
 Use `dryRun: true` first to see counts without writing data. With `dryRun: false`, the import merges by stable keys such as pricing plan name, area type name, fixture type name, specialized catalog code, and background service key.
+
+Photo manifest export:
+
+```text
+GET /api/v1/system-config/photo-manifest
+```
+
+This endpoint exports R2 object keys and photo metadata for recovery audits. It does not include signed view URLs or image bytes.
