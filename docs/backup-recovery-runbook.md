@@ -48,6 +48,18 @@ To create plain SQL instead of a custom-format dump:
 pnpm run db:backup -- -PlainSql
 ```
 
+Verify a custom-format backup before trusting it:
+
+```powershell
+pnpm run db:backup:verify -- -BackupFile "backups/database/hygieia-YYYYMMDD-HHMMSS.dump"
+```
+
+For plain SQL backups, verification confirms the file is non-empty and readable:
+
+```powershell
+pnpm run db:backup:verify -- -BackupFile "backups/database/hygieia-YYYYMMDD-HHMMSS.sql" -PlainSql
+```
+
 Upload the latest local backup to R2:
 
 ```powershell
