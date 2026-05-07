@@ -183,6 +183,27 @@ describe('Sidebar RBAC', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('shows backup and restore from the collapsed support flyout', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Support' }));
+
+    expect(
+      screen.getAllByRole('link', { name: 'Backup and Restore' }).length
+    ).toBeGreaterThan(0);
+  });
+
   it('allows active expanded sections to be collapsed manually', () => {
     useAuthStore.setState({
       user: {

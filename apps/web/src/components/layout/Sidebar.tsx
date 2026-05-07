@@ -395,9 +395,7 @@ const Sidebar = ({
           const SectionIcon = section.icon;
           const active = isSectionActive(section);
           const isHovered = hoveredSection === section.key;
-          const flyoutItems = section.directLink
-            ? section.items.slice(0, 1)
-            : section.items;
+          const flyoutItems = section.items;
 
           return (
             <div
