@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Upload, Trash2, Palette, Building2, Play } from 'lucide-react';
+import {
+  Download,
+  FileJson,
+  Save,
+  Upload,
+  Trash2,
+  Palette,
+  Building2,
+  Play,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -16,6 +25,8 @@ import {
   getBackgroundServiceLogs,
   runBackgroundServiceNow,
   updateBackgroundServiceSetting,
+  exportSystemConfiguration,
+  importSystemConfiguration,
 } from '../../lib/globalSettings';
 import type { GlobalSettings } from '../../types/globalSettings';
 import type {
@@ -108,7 +119,9 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 const GlobalSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
-  const [backgroundServices, setBackgroundServices] = useState<BackgroundServiceSetting[]>([]);
+  const [backgroundServices, setBackgroundServices] = useState<
+    BackgroundServiceSetting[]
+  >([]);
   const [backgroundServiceLogs, setBackgroundServiceLogs] = useState<
     Record<BackgroundServiceKey, BackgroundServiceRunLogPage>
   >({
@@ -156,10 +169,18 @@ const GlobalSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [savingServiceKey, setSavingServiceKey] = useState<BackgroundServiceKey | null>(null);
-  const [runningServiceKey, setRunningServiceKey] = useState<BackgroundServiceKey | null>(null);
+  const [savingServiceKey, setSavingServiceKey] =
+    useState<BackgroundServiceKey | null>(null);
+  const [runningServiceKey, setRunningServiceKey] =
+    useState<BackgroundServiceKey | null>(null);
   const [activeBackgroundServiceKey, setActiveBackgroundServiceKey] =
     useState<BackgroundServiceKey>('reminders');
+  const [exportingConfig, setExportingConfig] = useState(false);
+  const [importingConfig, setImportingConfig] = useState(false);
+  const [importDryRunResult, setImportDryRunResult] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -170,10 +191,13 @@ const GlobalSettingsPage: React.FC = () => {
           getBackgroundServiceSettings(),
         ]);
         const logsEntries = await Promise.all(
-          BACKGROUND_SERVICE_KEYS.map(async (serviceKey) => [
-            serviceKey,
-            await getBackgroundServiceLogs(serviceKey, 1, LOGS_PAGE_LIMIT),
-          ] as const)
+          BACKGROUND_SERVICE_KEYS.map(
+            async (serviceKey) =>
+              [
+                serviceKey,
+                await getBackgroundServiceLogs(serviceKey, 1, LOGS_PAGE_LIMIT),
+              ] as const
+          )
         );
         setSettings(data);
         setBackgroundServices(serviceData);
@@ -221,21 +245,31 @@ const GlobalSettingsPage: React.FC = () => {
     }
   };
 
-  const getSanitizedTimeOfDayMs = (serviceKey: BackgroundServiceKey, value: number): number => {
+  const getSanitizedTimeOfDayMs = (
+    serviceKey: BackgroundServiceKey,
+    value: number
+  ): number => {
     if (Number.isFinite(value) && value >= 0 && value <= 86_340_000) {
       return Math.floor(value);
     }
-    const [hours, minutes] = BACKGROUND_SERVICE_GUIDANCE[serviceKey].recommendedValueLabel
+    const [hours, minutes] = BACKGROUND_SERVICE_GUIDANCE[
+      serviceKey
+    ].recommendedValueLabel
       .split(':')
       .map((part) => Number(part));
     return (hours * 60 + minutes) * 60_000;
   };
 
-  const isIntervalScheduledService = (serviceKey: BackgroundServiceKey): boolean => {
+  const isIntervalScheduledService = (
+    serviceKey: BackgroundServiceKey
+  ): boolean => {
     return serviceKey === 'job_alerts';
   };
 
-  const getSanitizedIntervalMs = (serviceKey: BackgroundServiceKey, value: number): number => {
+  const getSanitizedIntervalMs = (
+    serviceKey: BackgroundServiceKey,
+    value: number
+  ): number => {
     if (!isIntervalScheduledService(serviceKey)) {
       return getSanitizedTimeOfDayMs(serviceKey, value);
     }
@@ -251,7 +285,10 @@ const GlobalSettingsPage: React.FC = () => {
     return Math.min(86_340_000, Math.max(0, (hours * 60 + minutes) * 60_000));
   };
 
-  const msToTime = (serviceKey: BackgroundServiceKey, value: number): string => {
+  const msToTime = (
+    serviceKey: BackgroundServiceKey,
+    value: number
+  ): string => {
     const safeValue = getSanitizedTimeOfDayMs(serviceKey, value);
     const totalMinutes = Math.floor(safeValue / 60_000);
     const hours = Math.floor(totalMinutes / 60);
@@ -274,14 +311,19 @@ const GlobalSettingsPage: React.FC = () => {
     updater: (service: BackgroundServiceSetting) => BackgroundServiceSetting
   ) => {
     setBackgroundServices((prev) =>
-      prev.map((item) => (item.serviceKey === serviceKey ? updater(item) : item))
+      prev.map((item) =>
+        item.serviceKey === serviceKey ? updater(item) : item
+      )
     );
   };
 
   const onSaveBackgroundService = async (service: BackgroundServiceSetting) => {
     try {
       setSavingServiceKey(service.serviceKey);
-      const sanitizedIntervalMs = getSanitizedIntervalMs(service.serviceKey, service.intervalMs);
+      const sanitizedIntervalMs = getSanitizedIntervalMs(
+        service.serviceKey,
+        service.intervalMs
+      );
       const updated = await updateBackgroundServiceSetting(service.serviceKey, {
         enabled: service.enabled,
         intervalMs: sanitizedIntervalMs,
@@ -289,7 +331,9 @@ const GlobalSettingsPage: React.FC = () => {
       updateServiceState(service.serviceKey, () => updated);
       toast.success('Background service updated');
     } catch (error) {
-      toast.error(extractApiErrorMessage(error, 'Failed to update background service'));
+      toast.error(
+        extractApiErrorMessage(error, 'Failed to update background service')
+      );
     } finally {
       setSavingServiceKey(null);
     }
@@ -307,7 +351,9 @@ const GlobalSettingsPage: React.FC = () => {
       setBackgroundServiceLogs((prev) => ({ ...prev, [serviceKey]: logs }));
       toast.success('Background service run triggered');
     } catch (error) {
-      toast.error(extractApiErrorMessage(error, 'Failed to trigger background service'));
+      toast.error(
+        extractApiErrorMessage(error, 'Failed to trigger background service')
+      );
     } finally {
       setRunningServiceKey(null);
     }
@@ -320,19 +366,30 @@ const GlobalSettingsPage: React.FC = () => {
   const formatDateTime = (value: string | null): string =>
     value ? new Date(value).toLocaleString() : 'Never';
 
-  const formatLogDateTime = (value: string): string => new Date(value).toLocaleString();
+  const formatLogDateTime = (value: string): string =>
+    new Date(value).toLocaleString();
 
-  const getServiceLogs = (serviceKey: BackgroundServiceKey): BackgroundServiceRunLogPage =>
-    backgroundServiceLogs[serviceKey];
+  const getServiceLogs = (
+    serviceKey: BackgroundServiceKey
+  ): BackgroundServiceRunLogPage => backgroundServiceLogs[serviceKey];
 
   const activeBackgroundService =
-    backgroundServices.find((service) => service.serviceKey === activeBackgroundServiceKey)
-    ?? backgroundServices[0]
-    ?? null;
+    backgroundServices.find(
+      (service) => service.serviceKey === activeBackgroundServiceKey
+    ) ??
+    backgroundServices[0] ??
+    null;
 
-  const onChangeLogPage = async (serviceKey: BackgroundServiceKey, page: number) => {
+  const onChangeLogPage = async (
+    serviceKey: BackgroundServiceKey,
+    page: number
+  ) => {
     try {
-      const nextPage = await getBackgroundServiceLogs(serviceKey, page, LOGS_PAGE_LIMIT);
+      const nextPage = await getBackgroundServiceLogs(
+        serviceKey,
+        page,
+        LOGS_PAGE_LIMIT
+      );
       setBackgroundServiceLogs((prev) => ({ ...prev, [serviceKey]: nextPage }));
     } catch {
       toast.error('Failed to load background service logs');
@@ -382,6 +439,78 @@ const GlobalSettingsPage: React.FC = () => {
     }
   };
 
+  const downloadJson = (data: Record<string, unknown>) => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hygieia-system-config-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const onExportSystemConfig = async () => {
+    try {
+      setExportingConfig(true);
+      const data = await exportSystemConfiguration();
+      downloadJson(data);
+      toast.success('System configuration exported');
+    } catch (error) {
+      toast.error(
+        extractApiErrorMessage(error, 'Failed to export system configuration')
+      );
+    } finally {
+      setExportingConfig(false);
+    }
+  };
+
+  const readJsonFile = async (file: File): Promise<Record<string, unknown>> => {
+    const text =
+      typeof file.text === 'function'
+        ? await file.text()
+        : await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result ?? ''));
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+          });
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Invalid JSON file');
+    }
+    return parsed as Record<string, unknown>;
+  };
+
+  const onSelectSystemConfigImport = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    dryRun: boolean
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingConfig(true);
+      const data = await readJsonFile(file);
+      const result = await importSystemConfiguration(data, dryRun);
+      setImportDryRunResult(result.imported);
+      toast.success(
+        dryRun ? 'Import preview complete' : 'System configuration imported'
+      );
+    } catch (error) {
+      toast.error(
+        extractApiErrorMessage(error, 'Failed to import system configuration')
+      );
+    } finally {
+      event.target.value = '';
+      setImportingConfig(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -393,7 +522,9 @@ const GlobalSettingsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Global Branding Settings</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
+          Global Branding Settings
+        </h1>
         <p className="text-surface-500 dark:text-surface-400">
           Configure company identity used across proposals and outbound emails.
         </p>
@@ -402,35 +533,53 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary-400" />
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Company Information</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+            Company Information
+          </h2>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input
             label="Company Name"
             value={settings.companyName}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyName: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({ ...prev, companyName: e.target.value }))
+            }
             required
           />
           <Input
             label="Company Email"
             type="email"
             value={settings.companyEmail || ''}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyEmail: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({ ...prev, companyEmail: e.target.value }))
+            }
           />
           <Input
             label="Company Phone"
             value={settings.companyPhone || ''}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyPhone: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({ ...prev, companyPhone: e.target.value }))
+            }
           />
           <Input
             label="Website"
             value={settings.companyWebsite || ''}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyWebsite: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                companyWebsite: e.target.value,
+              }))
+            }
           />
           <Input
             label="Company Timezone (IANA)"
             value={settings.companyTimezone || 'UTC'}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyTimezone: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                companyTimezone: e.target.value,
+              }))
+            }
             placeholder="America/New_York"
           />
           <Input
@@ -443,7 +592,8 @@ const GlobalSettingsPage: React.FC = () => {
             onChange={(e) =>
               setSettings((prev) => ({
                 ...prev,
-                taxRate: Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100,
+                taxRate:
+                  Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100,
               }))
             }
           />
@@ -453,7 +603,12 @@ const GlobalSettingsPage: React.FC = () => {
             label="Address"
             rows={3}
             value={settings.companyAddress || ''}
-            onChange={(e) => setSettings((prev) => ({ ...prev, companyAddress: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                companyAddress: e.target.value,
+              }))
+            }
           />
         </div>
       </Card>
@@ -461,39 +616,63 @@ const GlobalSettingsPage: React.FC = () => {
       <Card className="p-6">
         <div className="mb-4 flex items-center gap-2">
           <Palette className="h-5 w-5 text-gold" />
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Theme Colors</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+            Theme Colors
+          </h2>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Input
             label="Primary"
             type="color"
             value={settings.themePrimaryColor}
-            onChange={(e) => setSettings((prev) => ({ ...prev, themePrimaryColor: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                themePrimaryColor: e.target.value,
+              }))
+            }
           />
           <Input
             label="Accent"
             type="color"
             value={settings.themeAccentColor}
-            onChange={(e) => setSettings((prev) => ({ ...prev, themeAccentColor: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                themeAccentColor: e.target.value,
+              }))
+            }
           />
           <Input
             label="Background"
             type="color"
             value={settings.themeBackgroundColor}
-            onChange={(e) => setSettings((prev) => ({ ...prev, themeBackgroundColor: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                themeBackgroundColor: e.target.value,
+              }))
+            }
           />
           <Input
             label="Text"
             type="color"
             value={settings.themeTextColor}
-            onChange={(e) => setSettings((prev) => ({ ...prev, themeTextColor: e.target.value }))}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                themeTextColor: e.target.value,
+              }))
+            }
           />
         </div>
       </Card>
 
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Company Logo</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+            Company Logo
+          </h2>
           <label className="inline-flex cursor-pointer">
             <input
               type="file"
@@ -512,20 +691,32 @@ const GlobalSettingsPage: React.FC = () => {
         <div className="rounded-lg border border-surface-700 p-4">
           {settings.logoDataUrl ? (
             <div className="space-y-3">
-              <img src={settings.logoDataUrl} alt="Company logo" className="max-h-24 w-auto" />
-              <Button variant="ghost" onClick={onRemoveLogo} disabled={uploadingLogo}>
+              <img
+                src={settings.logoDataUrl}
+                alt="Company logo"
+                className="max-h-24 w-auto"
+              />
+              <Button
+                variant="ghost"
+                onClick={onRemoveLogo}
+                disabled={uploadingLogo}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Remove Logo
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-surface-500 dark:text-surface-400">No logo uploaded yet.</p>
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              No logo uploaded yet.
+            </p>
           )}
         </div>
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Preview</h2>
+        <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">
+          Preview
+        </h2>
         <div
           className="rounded-lg border p-5"
           style={{
@@ -536,25 +727,38 @@ const GlobalSettingsPage: React.FC = () => {
         >
           <div
             className="mb-4 rounded-md p-4"
-            style={{ backgroundColor: settings.themePrimaryColor, color: settings.themeAccentColor }}
+            style={{
+              backgroundColor: settings.themePrimaryColor,
+              color: settings.themeAccentColor,
+            }}
           >
             {settings.logoDataUrl && (
-              <img src={settings.logoDataUrl} alt="Preview logo" className="mb-2 max-h-10 w-auto" />
+              <img
+                src={settings.logoDataUrl}
+                alt="Preview logo"
+                className="mb-2 max-h-10 w-auto"
+              />
             )}
-            <div className="text-xl font-bold">{settings.companyName || 'Company Name'}</div>
+            <div className="text-xl font-bold">
+              {settings.companyName || 'Company Name'}
+            </div>
           </div>
           <p className="text-sm">
-            This style preview will be used by proposal PDFs, public proposal pages, and email templates.
+            This style preview will be used by proposal PDFs, public proposal
+            pages, and email templates.
           </p>
         </div>
       </Card>
 
       <Card className="p-6">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Background Services</h2>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+            Background Services
+          </h2>
           <p className="text-sm text-surface-500 dark:text-surface-400">
-            Configure automation without scrolling through every service. Select a service to edit its schedule,
-            trigger a run, and review recent logs.
+            Configure automation without scrolling through every service. Select
+            a service to edit its schedule, trigger a run, and review recent
+            logs.
           </p>
         </div>
         {activeBackgroundService ? (
@@ -565,14 +769,17 @@ const GlobalSettingsPage: React.FC = () => {
               aria-label="Background services"
             >
               {backgroundServices.map((service) => {
-                const active = activeBackgroundService.serviceKey === service.serviceKey;
+                const active =
+                  activeBackgroundService.serviceKey === service.serviceKey;
                 return (
                   <button
                     key={service.serviceKey}
                     type="button"
                     role="tab"
                     aria-selected={active}
-                    onClick={() => setActiveBackgroundServiceKey(service.serviceKey)}
+                    onClick={() =>
+                      setActiveBackgroundServiceKey(service.serviceKey)
+                    }
                     className={`min-w-[220px] rounded-lg border px-3 py-3 text-left transition-colors lg:min-w-0 lg:w-full ${
                       active
                         ? 'border-primary-500 bg-primary-900/20 text-primary-300'
@@ -580,7 +787,9 @@ const GlobalSettingsPage: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold">{getServiceLabel(service.serviceKey)}</span>
+                      <span className="text-sm font-semibold">
+                        {getServiceLabel(service.serviceKey)}
+                      </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] ${
                           service.enabled
@@ -601,14 +810,21 @@ const GlobalSettingsPage: React.FC = () => {
               })}
             </div>
 
-            <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700" role="tabpanel">
+            <div
+              className="rounded-xl border border-surface-200 p-4 dark:border-surface-700"
+              role="tabpanel"
+            >
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-surface-900 dark:text-white">
                     {getServiceLabel(activeBackgroundService.serviceKey)}
                   </h3>
                   <p className="text-xs text-surface-500 dark:text-surface-400">
-                    {BACKGROUND_SERVICE_GUIDANCE[activeBackgroundService.serviceKey].description}
+                    {
+                      BACKGROUND_SERVICE_GUIDANCE[
+                        activeBackgroundService.serviceKey
+                      ].description
+                    }
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
@@ -616,10 +832,13 @@ const GlobalSettingsPage: React.FC = () => {
                     type="checkbox"
                     checked={activeBackgroundService.enabled}
                     onChange={(e) =>
-                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
-                        ...current,
-                        enabled: e.target.checked,
-                      }))
+                      updateServiceState(
+                        activeBackgroundService.serviceKey,
+                        (current) => ({
+                          ...current,
+                          enabled: e.target.checked,
+                        })
+                      )
                     }
                     className="h-4 w-4"
                   />
@@ -628,15 +847,24 @@ const GlobalSettingsPage: React.FC = () => {
               </div>
               <p className="mb-3 text-xs text-primary-300">
                 Recommended{' '}
-                {isIntervalScheduledService(activeBackgroundService.serviceKey) ? 'frequency' : 'run time'}:{' '}
-                {BACKGROUND_SERVICE_GUIDANCE[activeBackgroundService.serviceKey].recommendedValueLabel}
+                {isIntervalScheduledService(activeBackgroundService.serviceKey)
+                  ? 'frequency'
+                  : 'run time'}
+                :{' '}
+                {
+                  BACKGROUND_SERVICE_GUIDANCE[
+                    activeBackgroundService.serviceKey
+                  ].recommendedValueLabel
+                }
                 {!isIntervalScheduledService(activeBackgroundService.serviceKey)
                   ? ` (${settings.companyTimezone || 'UTC'})`
                   : ''}
                 .
               </p>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {isIntervalScheduledService(activeBackgroundService.serviceKey) ? (
+                {isIntervalScheduledService(
+                  activeBackgroundService.serviceKey
+                ) ? (
                   <Select
                     label="Run Frequency"
                     options={JOB_ALERT_INTERVAL_OPTIONS}
@@ -647,28 +875,49 @@ const GlobalSettingsPage: React.FC = () => {
                       )
                     )}
                     onChange={(value) =>
-                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
-                        ...current,
-                        intervalMs: Number(value),
-                      }))
+                      updateServiceState(
+                        activeBackgroundService.serviceKey,
+                        (current) => ({
+                          ...current,
+                          intervalMs: Number(value),
+                        })
+                      )
                     }
                   />
                 ) : (
                   <Input
                     label={`Run Time (${settings.companyTimezone || 'UTC'})`}
                     type="time"
-                    value={msToTime(activeBackgroundService.serviceKey, activeBackgroundService.intervalMs)}
+                    value={msToTime(
+                      activeBackgroundService.serviceKey,
+                      activeBackgroundService.intervalMs
+                    )}
                     onChange={(e) =>
-                      updateServiceState(activeBackgroundService.serviceKey, (current) => ({
-                        ...current,
-                        intervalMs: timeToMs(e.target.value),
-                      }))
+                      updateServiceState(
+                        activeBackgroundService.serviceKey,
+                        (current) => ({
+                          ...current,
+                          intervalMs: timeToMs(e.target.value),
+                        })
+                      )
                     }
                   />
                 )}
-                <Input label="Last Run" value={formatDateTime(activeBackgroundService.lastRunAt)} readOnly />
-                <Input label="Last Success" value={formatDateTime(activeBackgroundService.lastSuccessAt)} readOnly />
-                <Input label="Last Error" value={activeBackgroundService.lastError || 'None'} readOnly />
+                <Input
+                  label="Last Run"
+                  value={formatDateTime(activeBackgroundService.lastRunAt)}
+                  readOnly
+                />
+                <Input
+                  label="Last Success"
+                  value={formatDateTime(activeBackgroundService.lastSuccessAt)}
+                  readOnly
+                />
+                <Input
+                  label="Last Error"
+                  value={activeBackgroundService.lastError || 'None'}
+                  readOnly
+                />
               </div>
               <p className="mt-2 text-xs text-surface-500 dark:text-surface-400">
                 {isIntervalScheduledService(activeBackgroundService.serviceKey)
@@ -679,16 +928,24 @@ const GlobalSettingsPage: React.FC = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => onRunBackgroundService(activeBackgroundService.serviceKey)}
-                  isLoading={runningServiceKey === activeBackgroundService.serviceKey}
+                  onClick={() =>
+                    onRunBackgroundService(activeBackgroundService.serviceKey)
+                  }
+                  isLoading={
+                    runningServiceKey === activeBackgroundService.serviceKey
+                  }
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Run Now
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onSaveBackgroundService(activeBackgroundService)}
-                  isLoading={savingServiceKey === activeBackgroundService.serviceKey}
+                  onClick={() =>
+                    onSaveBackgroundService(activeBackgroundService)
+                  }
+                  isLoading={
+                    savingServiceKey === activeBackgroundService.serviceKey
+                  }
                 >
                   Save Service
                 </Button>
@@ -697,12 +954,18 @@ const GlobalSettingsPage: React.FC = () => {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
                   Recent Runs
                 </p>
-                {getServiceLogs(activeBackgroundService.serviceKey).items.length === 0 ? (
+                {getServiceLogs(activeBackgroundService.serviceKey).items
+                  .length === 0 ? (
                   <p className="text-xs text-surface-500">No logs yet.</p>
                 ) : (
                   <div className="grid gap-2 xl:grid-cols-2">
-                    {getServiceLogs(activeBackgroundService.serviceKey).items.map((log) => (
-                      <div key={log.id} className="rounded border border-surface-700 p-2">
+                    {getServiceLogs(
+                      activeBackgroundService.serviceKey
+                    ).items.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded border border-surface-700 p-2"
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <span
                             className={
@@ -713,43 +976,60 @@ const GlobalSettingsPage: React.FC = () => {
                           >
                             {log.status === 'success' ? 'Success' : 'Failed'}
                           </span>
-                          <span className="text-xs text-surface-500">{formatLogDateTime(log.createdAt)}</span>
+                          <span className="text-xs text-surface-500">
+                            {formatLogDateTime(log.createdAt)}
+                          </span>
                         </div>
-                        <p className="mt-1 text-xs text-surface-600 dark:text-surface-400">{log.summary}</p>
+                        <p className="mt-1 text-xs text-surface-600 dark:text-surface-400">
+                          {log.summary}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
-                {getServiceLogs(activeBackgroundService.serviceKey).totalPages > 1 && (
+                {getServiceLogs(activeBackgroundService.serviceKey).totalPages >
+                  1 && (
                   <div className="flex items-center justify-end gap-2 pt-3">
                     <Button
                       type="button"
                       variant="ghost"
-                      disabled={getServiceLogs(activeBackgroundService.serviceKey).page <= 1}
+                      disabled={
+                        getServiceLogs(activeBackgroundService.serviceKey)
+                          .page <= 1
+                      }
                       onClick={() =>
                         onChangeLogPage(
                           activeBackgroundService.serviceKey,
-                          getServiceLogs(activeBackgroundService.serviceKey).page - 1
+                          getServiceLogs(activeBackgroundService.serviceKey)
+                            .page - 1
                         )
                       }
                     >
                       Previous
                     </Button>
                     <span className="text-xs text-surface-500 dark:text-surface-400">
-                      Page {getServiceLogs(activeBackgroundService.serviceKey).page} of{' '}
-                      {getServiceLogs(activeBackgroundService.serviceKey).totalPages}
+                      Page{' '}
+                      {getServiceLogs(activeBackgroundService.serviceKey).page}{' '}
+                      of{' '}
+                      {
+                        getServiceLogs(activeBackgroundService.serviceKey)
+                          .totalPages
+                      }
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       disabled={
-                        getServiceLogs(activeBackgroundService.serviceKey).page >=
-                        getServiceLogs(activeBackgroundService.serviceKey).totalPages
+                        getServiceLogs(activeBackgroundService.serviceKey)
+                          .page >=
+                        getServiceLogs(activeBackgroundService.serviceKey)
+                          .totalPages
                       }
                       onClick={() =>
                         onChangeLogPage(
                           activeBackgroundService.serviceKey,
-                          getServiceLogs(activeBackgroundService.serviceKey).page + 1
+                          getServiceLogs(activeBackgroundService.serviceKey)
+                            .page + 1
                         )
                       }
                     >
@@ -764,6 +1044,112 @@ const GlobalSettingsPage: React.FC = () => {
           <p className="rounded-lg border border-surface-200 p-4 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">
             No background services are configured.
           </p>
+        )}
+      </Card>
+
+      <Card className="p-6">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-xl bg-primary-500/10 p-2 text-primary-400">
+            <FileJson className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
+              System Configuration Import / Export
+            </h2>
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              Move baseline setup between environments: global settings,
+              pricing, specialized catalog, fixture types, area types, task
+              templates, and area templates. Operational records are not
+              included.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+            <h3 className="font-semibold text-surface-900 dark:text-white">
+              Export Current Setup
+            </h3>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+              Download a portable JSON file for backup, staging refreshes, or
+              onboarding another company.
+            </p>
+            <Button
+              className="mt-4"
+              onClick={onExportSystemConfig}
+              isLoading={exportingConfig}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export JSON
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+            <h3 className="font-semibold text-surface-900 dark:text-white">
+              Preview Import
+            </h3>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+              Run a dry-run first. It validates the file and shows how many
+              setup records would be merged.
+            </p>
+            <label className="mt-4 inline-flex cursor-pointer">
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                disabled={importingConfig}
+                onChange={(event) => onSelectSystemConfigImport(event, true)}
+              />
+              <span className="inline-flex items-center rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800">
+                Preview JSON Import
+              </span>
+            </label>
+          </div>
+
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-200">
+              Apply Import
+            </h3>
+            <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+              This merges setup records by stable names and codes. Use only
+              after reviewing the preview.
+            </p>
+            <label className="mt-4 inline-flex cursor-pointer">
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                disabled={importingConfig}
+                onChange={(event) => onSelectSystemConfigImport(event, false)}
+              />
+              <span className="inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+                Import JSON
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {importDryRunResult && (
+          <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900/40">
+            <p className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Last Import Summary
+            </p>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+              {Object.entries(importDryRunResult).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+                >
+                  <p className="text-xs capitalize text-surface-500 dark:text-surface-400">
+                    {key.replace(/([A-Z])/g, ' $1')}
+                  </p>
+                  <p className="text-lg font-semibold text-surface-900 dark:text-white">
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </Card>
 
