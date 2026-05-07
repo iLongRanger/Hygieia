@@ -23,6 +23,7 @@ Run this before creating a scheduled task:
 
 ```powershell
 cd A:\Projects\Hygieia
+pnpm run db:backup:check
 pnpm run db:backup:r2
 ```
 

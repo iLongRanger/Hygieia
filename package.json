@@ -23,6 +23,7 @@
     "db:migrate": "cd packages/database && npm run migrate",
     "db:migrate:deploy:local": "cd packages/database && npm run migrate:deploy:local",
     "db:migrate:deploy:local:safe": "powershell -ExecutionPolicy Bypass -File scripts/db-migrate-deploy-local.ps1",
+    "db:backup:check": "powershell -ExecutionPolicy Bypass -File scripts/check-backup-readiness.ps1",
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
     "db:backup:verify": "powershell -ExecutionPolicy Bypass -File scripts/verify-db-backup.ps1",
     "db:backup:r2": "powershell -ExecutionPolicy Bypass -File scripts/backup-db-to-r2.ps1",

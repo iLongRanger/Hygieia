@@ -24,6 +24,12 @@ Database backups should be stored outside the application server. R2 is acceptab
 
 ## Database Backup
 
+Check server readiness before enabling scheduled backups:
+
+```powershell
+pnpm run db:backup:check
+```
+
 Create a compressed PostgreSQL custom-format backup:
 
 ```powershell
