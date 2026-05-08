@@ -1,6 +1,9 @@
 import { prisma } from '../lib/prisma';
 import { getGlobalSettings, getDefaultBranding } from './globalSettingsService';
-import { createBulkNotifications, createNotification } from './notificationService';
+import {
+  createBulkNotifications,
+  createNotification,
+} from './notificationService';
 import { sendProposalEmail, sendEmail } from './emailService';
 import { sendSms } from './smsService';
 import { isEmailConfigured } from '../config/email';
@@ -25,6 +28,7 @@ import { logContractActivity } from './contractActivityService';
 import logger from '../lib/logger';
 import type { GlobalBranding } from '../types/branding';
 import { getFrontendBaseUrl } from '../lib/appUrl';
+import { getSystemNow } from '../lib/systemClock';
 import { generatePublicToken as generateProposalPublicToken } from './proposalPublicService';
 import { generatePublicToken as generateContractPublicToken } from './contractPublicService';
 
@@ -37,7 +41,9 @@ async function getBrandingSafe(): Promise<GlobalBranding> {
 }
 
 function atUtcStartOfDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
 }
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
@@ -64,7 +70,9 @@ function shouldSendFollowUpReminder(
 function resolveContactRecipients(
   contacts: { email: string | null; isPrimary: boolean }[]
 ): { to: string | null; cc: string[] } {
-  const primary = contacts.find((contact) => contact.isPrimary && contact.email);
+  const primary = contacts.find(
+    (contact) => contact.isPrimary && contact.email
+  );
   const fallback = contacts.find((contact) => contact.email);
   const to = primary?.email ?? fallback?.email ?? null;
   const cc = contacts
@@ -101,7 +109,9 @@ function resolveClientPhone(input: {
     return primaryContactPhone;
   }
 
-  const anyContactPhone = input.contacts?.find((contact) => contact.phone)?.phone;
+  const anyContactPhone = input.contacts?.find(
+    (contact) => contact.phone
+  )?.phone;
   if (anyContactPhone) {
     return anyContactPhone;
   }
@@ -128,7 +138,7 @@ async function getAdminUserIds(): Promise<string[]> {
  * Returns the number of reminders sent.
  */
 export async function sendAppointmentReminders(): Promise<number> {
-  const now = new Date();
+  const now = getSystemNow();
   const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -195,10 +205,13 @@ export async function sendAppointmentReminders(): Promise<number> {
       const emailHtml = buildAppointmentReminderHtml(
         {
           appointmentType: appt.type,
-          scheduledStart: new Date(appt.scheduledStart).toLocaleString('en-US', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          }),
+          scheduledStart: new Date(appt.scheduledStart).toLocaleString(
+            'en-US',
+            {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }
+          ),
           scheduledEnd: new Date(appt.scheduledEnd).toLocaleString('en-US', {
             dateStyle: 'medium',
             timeStyle: 'short',
@@ -243,7 +256,10 @@ export async function sendAppointmentReminders(): Promise<number> {
       });
       sent++;
     } catch (error) {
-      logger.error(`Failed to send reminder for appointment ${appt.id}:`, error);
+      logger.error(
+        `Failed to send reminder for appointment ${appt.id}:`,
+        error
+      );
     }
   }
 
@@ -252,7 +268,7 @@ export async function sendAppointmentReminders(): Promise<number> {
 }
 
 export async function sendUpcomingJobReminders(): Promise<number> {
-  const now = new Date();
+  const now = getSystemNow();
   const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
   const jobs = await prisma.job.findMany({
@@ -304,7 +320,9 @@ export async function sendUpcomingJobReminders(): Promise<number> {
     select: { jobId: true },
   });
 
-  const remindedJobIds = new Set(alreadyReminded.map((activity) => activity.jobId));
+  const remindedJobIds = new Set(
+    alreadyReminded.map((activity) => activity.jobId)
+  );
   let sent = 0;
 
   for (const job of jobs) {
@@ -339,7 +357,10 @@ export async function sendUpcomingJobReminders(): Promise<number> {
       remindedJobIds.add(job.id);
       sent += 1;
     } catch (error) {
-      logger.error(`Failed to send upcoming job reminder for ${job.id}:`, error);
+      logger.error(
+        `Failed to send upcoming job reminder for ${job.id}:`,
+        error
+      );
     }
   }
 
@@ -354,7 +375,7 @@ export async function sendUpcomingJobReminders(): Promise<number> {
 export async function sendContractExpiryReminders(
   daysThreshold = 30
 ): Promise<number> {
-  const now = new Date();
+  const now = getSystemNow();
   const startOfToday = atUtcStartOfDay(now);
   const thresholdDate = new Date(
     now.getFullYear(),
@@ -398,7 +419,8 @@ export async function sendContractExpiryReminders(
         activity.metadata &&
         typeof activity.metadata === 'object' &&
         !Array.isArray(activity.metadata) &&
-        typeof (activity.metadata as Record<string, unknown>).daysUntilExpiry === 'number'
+        typeof (activity.metadata as Record<string, unknown>)
+          .daysUntilExpiry === 'number'
           ? (activity.metadata as Record<string, unknown>).daysUntilExpiry
           : null;
       return `${activity.contractId}:${days ?? 'unknown'}`;
@@ -484,14 +506,16 @@ export async function sendProposalFollowUpReminders(): Promise<number> {
     return 0;
   }
 
-  const now = new Date();
+  const now = getSystemNow();
   const reminderEveryDays = parsePositiveInt(
     process.env.PROPOSAL_REMINDER_INTERVAL_DAYS,
     3
   );
   const frontendUrl = getFrontendBaseUrl();
   if (!frontendUrl) {
-    logger.warn('FRONTEND_URL is not configured — skipping proposal follow-up reminders');
+    logger.warn(
+      'FRONTEND_URL is not configured — skipping proposal follow-up reminders'
+    );
     return 0;
   }
 
@@ -641,14 +665,16 @@ export async function sendContractFollowUpReminders(): Promise<number> {
     return 0;
   }
 
-  const now = new Date();
+  const now = getSystemNow();
   const reminderEveryDays = parsePositiveInt(
     process.env.CONTRACT_REMINDER_INTERVAL_DAYS,
     3
   );
   const frontendUrl = getFrontendBaseUrl();
   if (!frontendUrl) {
-    logger.warn('FRONTEND_URL is not configured — skipping contract follow-up reminders');
+    logger.warn(
+      'FRONTEND_URL is not configured — skipping contract follow-up reminders'
+    );
     return 0;
   }
 

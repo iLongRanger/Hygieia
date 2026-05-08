@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from '@jest/globals';
 
 const runJobNearingEndNoCheckInAlertCycleMock = jest.fn();
 const loggerInfoMock = jest.fn();
@@ -121,5 +128,17 @@ describe('jobAlertScheduler', () => {
     await Promise.resolve();
 
     expect(runJobNearingEndNoCheckInAlertCycleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the dev system time override into manual job alert runs', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.SYSTEM_TIME_OVERRIDE = '2026-04-18T10:15:00.000Z';
+
+    const { runJobAlertCycleNow } = await import('../jobAlertScheduler');
+    await runJobAlertCycleNow();
+
+    expect(runJobNearingEndNoCheckInAlertCycleMock).toHaveBeenCalledWith({
+      now: new Date('2026-04-18T10:15:00.000Z'),
+    });
   });
 });

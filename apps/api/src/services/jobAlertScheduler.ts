@@ -1,4 +1,5 @@
 import logger from '../lib/logger';
+import { getSystemNow } from '../lib/systemClock';
 import { runJobNearingEndNoCheckInAlertCycle } from './jobService';
 import {
   createBackgroundServiceRunLog,
@@ -16,7 +17,9 @@ const SERVICE_KEY = 'job_alerts';
 
 async function runJobAlertCycle(): Promise<void> {
   if (cycleRunning) {
-    logger.warn('Skipping job alert cycle because a previous cycle is still running');
+    logger.warn(
+      'Skipping job alert cycle because a previous cycle is still running'
+    );
     return;
   }
 
@@ -24,7 +27,9 @@ async function runJobAlertCycle(): Promise<void> {
   const startedAt = new Date();
   await markBackgroundServiceRunStart(SERVICE_KEY);
   try {
-    const result = await runJobNearingEndNoCheckInAlertCycle();
+    const result = await runJobNearingEndNoCheckInAlertCycle({
+      now: getSystemNow(),
+    });
     logger.info(
       `Job alert cycle complete: checked=${result.checked}, alerted=${result.alerted}, notifications=${result.notifications}, settlementReviewsTriggered=${result.settlementReviewsTriggered}`
     );
@@ -77,12 +82,14 @@ async function configureJobAlertScheduler(): Promise<void> {
   );
 
   timeoutHandle = setTimeout(() => {
-    runJobAlertCycle().catch((error) => {
-      logger.error('Scheduled job alert cycle failed', error);
-    }).finally(() => {
-      timeoutHandle = null;
-      void configureJobAlertScheduler();
-    });
+    runJobAlertCycle()
+      .catch((error) => {
+        logger.error('Scheduled job alert cycle failed', error);
+      })
+      .finally(() => {
+        timeoutHandle = null;
+        void configureJobAlertScheduler();
+      });
   }, intervalMs);
 }
 
