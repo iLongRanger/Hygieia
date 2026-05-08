@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
@@ -20,10 +20,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuthStore } from '../stores/authStore';
-import {
-  getDashboardStats,
-  exportDashboardCsv,
-} from '../lib/dashboard';
+import { getDashboardStats, exportDashboardCsv } from '../lib/dashboard';
 import type { DashboardStats, TimePeriod, ExportType } from '../lib/dashboard';
 import { listContracts } from '../lib/contracts';
 import { listJobs } from '../lib/jobs';
@@ -31,12 +28,19 @@ import type { Contract } from '../types/contract';
 import type { Job } from '../types/job';
 import StatCard from '../components/dashboard/StatCard';
 import TimePeriodSelector from '../components/dashboard/TimePeriodSelector';
-import LeadFunnelChart from '../components/dashboard/LeadFunnelChart';
-import ProposalChart from '../components/dashboard/ProposalChart';
-import RevenueChart from '../components/dashboard/RevenueChart';
-import ContractStatusChart from '../components/dashboard/ContractStatusChart';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import ExpiringContractsTable from '../components/dashboard/ExpiringContractsTable';
+
+const LeadFunnelChart = lazy(
+  () => import('../components/dashboard/LeadFunnelChart')
+);
+const ProposalChart = lazy(
+  () => import('../components/dashboard/ProposalChart')
+);
+const RevenueChart = lazy(() => import('../components/dashboard/RevenueChart'));
+const ContractStatusChart = lazy(
+  () => import('../components/dashboard/ContractStatusChart')
+);
 
 const SkeletonCard = () => (
   <div className="animate-pulse rounded-xl border border-surface-200 bg-surface-50 p-6 shadow-soft dark:border-surface-700 dark:bg-surface-800">
@@ -65,8 +69,13 @@ const EXPORT_OPTIONS: { value: ExportType; label: string }[] = [
   { value: 'contracts', label: 'Contracts' },
 ];
 
-const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
-  const map: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+const getJobStatusVariant = (
+  status: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+  const map: Record<
+    string,
+    'default' | 'success' | 'warning' | 'error' | 'info'
+  > = {
     scheduled: 'info',
     in_progress: 'warning',
     completed: 'success',
@@ -76,7 +85,9 @@ const getJobStatusVariant = (status: string): 'default' | 'success' | 'warning' 
   return map[status] || 'default';
 };
 
-const getSettlementVariant = (status?: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
+const getSettlementVariant = (
+  status?: string
+): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   switch (status) {
     case 'ready':
     case 'approved_both':
@@ -115,7 +126,11 @@ const getContractAssignmentLabel = (contract: Contract) => {
   return 'Unassigned';
 };
 
-const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) => {
+const FieldWorkerDashboard = ({
+  mode,
+}: {
+  mode: 'subcontractor' | 'cleaner';
+}) => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -208,7 +223,9 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
         <StatCard
           label={isSubcontractor ? 'Assigned Contracts' : 'Active Contracts'}
-          value={isSubcontractor ? counts.totalContracts : counts.activeContracts}
+          value={
+            isSubcontractor ? counts.totalContracts : counts.activeContracts
+          }
           subtitle={
             isSubcontractor
               ? `${counts.activeContracts} currently active`
@@ -257,7 +274,11 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             Upcoming Jobs
           </h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/jobs', dashboardBackState)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/jobs', dashboardBackState)}
+          >
             View all
           </Button>
         </div>
@@ -283,7 +304,8 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                     {job.facility.name}
                   </div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">
-                    {job.jobNumber} &middot; {new Date(job.scheduledDate).toLocaleDateString()}
+                    {job.jobNumber} &middot;{' '}
+                    {new Date(job.scheduledDate).toLocaleDateString()}
                     {job.scheduledStartTime && ` at ${job.scheduledStartTime}`}
                   </div>
                   {isSubcontractor && (
@@ -306,20 +328,28 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             {isSubcontractor ? 'Assigned Contracts' : 'Active Contracts'}
           </h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/contracts', dashboardBackState)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/contracts', dashboardBackState)}
+          >
             View all
           </Button>
         </div>
         {visibleContracts.length === 0 ? (
           <p className="text-sm text-surface-500 dark:text-surface-400 py-4 text-center">
-            {isSubcontractor ? 'No subcontractor contracts assigned.' : 'No active contracts assigned.'}
+            {isSubcontractor
+              ? 'No subcontractor contracts assigned.'
+              : 'No active contracts assigned.'}
           </p>
         ) : (
           <div className="space-y-2">
             {visibleContracts.map((contract) => (
               <button
                 key={contract.id}
-                onClick={() => navigate(`/contracts/${contract.id}`, dashboardBackState)}
+                onClick={() =>
+                  navigate(`/contracts/${contract.id}`, dashboardBackState)
+                }
                 className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
               >
                 <div>
@@ -327,7 +357,9 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                     {contract.title}
                   </div>
                   <div className="text-sm text-surface-500 dark:text-surface-400">
-                    {contract.contractNumber} &middot; {contract.facility?.name || 'No facility'} &middot; {contract.status.replace('_', ' ')}
+                    {contract.contractNumber} &middot;{' '}
+                    {contract.facility?.name || 'No facility'} &middot;{' '}
+                    {contract.status.replace('_', ' ')}
                   </div>
                   {isSubcontractor && (
                     <div className="mt-1 text-xs uppercase tracking-wide text-surface-400">
@@ -335,7 +367,16 @@ const FieldWorkerDashboard = ({ mode }: { mode: 'subcontractor' | 'cleaner' }) =
                     </div>
                   )}
                 </div>
-                <Badge variant={contract.status === 'active' ? 'success' : contract.status === 'pending_signature' ? 'info' : 'default'} size="sm">
+                <Badge
+                  variant={
+                    contract.status === 'active'
+                      ? 'success'
+                      : contract.status === 'pending_signature'
+                        ? 'info'
+                        : 'default'
+                  }
+                  size="sm"
+                >
                   {contract.status.replace('_', ' ')}
                 </Badge>
               </button>
@@ -520,7 +561,9 @@ const AdminDashboard = () => {
             color="text-success-600 dark:text-success-400"
             bg="bg-success-100 dark:bg-success-900/30"
             change={stats.comparison.mrrChange}
-            onClick={() => navigate('/contracts?status=active', dashboardBackState)}
+            onClick={() =>
+              navigate('/contracts?status=active', dashboardBackState)
+            }
           />
           <StatCard
             label="Pipeline Value"
@@ -562,10 +605,19 @@ const AdminDashboard = () => {
           <SkeletonChart />
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <LeadFunnelChart data={stats.leadsByStatus} />
-          <ProposalChart data={stats.proposalsByStatus} />
-        </div>
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <SkeletonChart />
+              <SkeletonChart />
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <LeadFunnelChart data={stats.leadsByStatus} />
+            <ProposalChart data={stats.proposalsByStatus} />
+          </div>
+        </Suspense>
       ) : null}
 
       {/* Revenue Section */}
@@ -575,10 +627,19 @@ const AdminDashboard = () => {
           <SkeletonChart />
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <RevenueChart data={stats.revenueByMonth} />
-          <ContractStatusChart data={stats.contractsByStatus} />
-        </div>
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <SkeletonChart />
+              <SkeletonChart />
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <RevenueChart data={stats.revenueByMonth} />
+            <ContractStatusChart data={stats.contractsByStatus} />
+          </div>
+        </Suspense>
       ) : null}
 
       {/* Expiring Contracts */}
@@ -600,7 +661,11 @@ const AdminDashboard = () => {
           />
           <StatCard
             label="Inspection Score"
-            value={stats.inspectionAvgScore != null ? `${stats.inspectionAvgScore}%` : '—'}
+            value={
+              stats.inspectionAvgScore != null
+                ? `${stats.inspectionAvgScore}%`
+                : '—'
+            }
             subtitle={`${stats.inspectionsCompletedInPeriod} completed ${periodLabel}`}
             icon={ClipboardCheck}
             color="text-teal-600 dark:text-teal-400"
@@ -645,7 +710,9 @@ const AdminDashboard = () => {
                   </p>
                 </div>
               </div>
-              <Badge variant="warning" size="sm">{reviewJobs.length}</Badge>
+              <Badge variant="warning" size="sm">
+                {reviewJobs.length}
+              </Badge>
             </div>
 
             {reviewJobs.length === 0 ? (
@@ -654,7 +721,8 @@ const AdminDashboard = () => {
                   No jobs currently need review
                 </p>
                 <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
-                  Exception follow-up items will appear here as soon as the scheduler flags them.
+                  Exception follow-up items will appear here as soon as the
+                  scheduler flags them.
                 </p>
               </div>
             ) : (
@@ -662,7 +730,9 @@ const AdminDashboard = () => {
                 {reviewJobs.map((job) => (
                   <button
                     key={job.id}
-                    onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
+                    onClick={() =>
+                      navigate(`/jobs/${job.id}`, dashboardBackState)
+                    }
                     className="flex w-full items-start justify-between rounded-lg border border-warning-200 bg-warning-50/60 px-4 py-3 text-left transition-colors hover:bg-warning-100 dark:border-warning-800/60 dark:bg-warning-900/10 dark:hover:bg-warning-900/20"
                   >
                     <div>
@@ -673,12 +743,15 @@ const AdminDashboard = () => {
                         {job.facility.name} • {job.account.name}
                       </div>
                       <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
-                        {new Date(job.scheduledDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC',
-                        })}
+                        {new Date(job.scheduledDate).toLocaleDateString(
+                          'en-US',
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            timeZone: 'UTC',
+                          }
+                        )}
                       </div>
                       {job.settlement?.issueSummary && (
                         <div className="mt-2 text-xs text-warning-900 dark:text-warning-100">
@@ -686,7 +759,10 @@ const AdminDashboard = () => {
                         </div>
                       )}
                     </div>
-                    <Badge variant={getSettlementVariant(job.settlement?.status)} size="sm">
+                    <Badge
+                      variant={getSettlementVariant(job.settlement?.status)}
+                      size="sm"
+                    >
                       Needs Review
                     </Badge>
                   </button>
@@ -710,7 +786,9 @@ const AdminDashboard = () => {
                   </p>
                 </div>
               </div>
-              <Badge variant="warning" size="sm">{unassignedJobs.length}</Badge>
+              <Badge variant="warning" size="sm">
+                {unassignedJobs.length}
+              </Badge>
             </div>
 
             {unassignedJobs.length === 0 ? (
@@ -719,7 +797,8 @@ const AdminDashboard = () => {
                   No unassigned jobs right now
                 </p>
                 <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
-                  Scheduled jobs without an assignee will appear here for quick triage.
+                  Scheduled jobs without an assignee will appear here for quick
+                  triage.
                 </p>
               </div>
             ) : (
@@ -727,7 +806,9 @@ const AdminDashboard = () => {
                 {unassignedJobs.map((job) => (
                   <button
                     key={job.id}
-                    onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
+                    onClick={() =>
+                      navigate(`/jobs/${job.id}`, dashboardBackState)
+                    }
                     className="flex w-full items-start justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
                   >
                     <div>
@@ -738,12 +819,15 @@ const AdminDashboard = () => {
                         {job.facility.name} • {job.account.name}
                       </div>
                       <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
-                        {new Date(job.scheduledDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC',
-                        })}
+                        {new Date(job.scheduledDate).toLocaleDateString(
+                          'en-US',
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            timeZone: 'UTC',
+                          }
+                        )}
                       </div>
                     </div>
                     <Badge variant={getJobStatusVariant(job.status)} size="sm">
