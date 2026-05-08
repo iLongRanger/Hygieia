@@ -24,7 +24,7 @@ describe('authStore permission helpers', () => {
       isAuthenticated: true,
     });
 
-    expect(useAuthStore.getState().hasPermission(PERMISSIONS.TEAMS_WRITE)).toBe(true);
+    expect(useAuthStore.getState().hasPermission(PERMISSIONS.ACCOUNTS_WRITE)).toBe(true);
     expect(useAuthStore.getState().hasPermission(PERMISSIONS.USERS_WRITE)).toBe(false);
   });
 
