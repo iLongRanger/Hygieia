@@ -1,5 +1,9 @@
 import { prisma } from '../lib/prisma';
 import type { Decimal } from '@prisma/client/runtime/library';
+import { BadRequestError } from '../middleware/errorHandler';
+
+const MAX_REPORT_RANGE_DAYS = 366;
+const MAX_REPORT_DETAIL_ROWS = 5000;
 
 function toNumber(val: Decimal | number | null | undefined): number {
   if (val == null) return 0;
@@ -9,22 +13,53 @@ function toNumber(val: Decimal | number | null | undefined): number {
 function getDefaultDateRange(): { dateFrom: Date; dateTo: Date } {
   const now = new Date();
   const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-  const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const dateTo = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
   return { dateFrom, dateTo };
 }
 
 function resolveDateRange(dateFrom?: Date, dateTo?: Date) {
   const defaults = getDefaultDateRange();
-  return {
+  const range = {
     dateFrom: dateFrom ?? defaults.dateFrom,
     dateTo: dateTo ?? defaults.dateTo,
   };
+
+  if (range.dateFrom > range.dateTo) {
+    throw new BadRequestError('Report start date must be before end date');
+  }
+
+  const days = daysBetween(range.dateFrom, range.dateTo) + 1;
+  if (days > MAX_REPORT_RANGE_DAYS) {
+    throw new BadRequestError(
+      `Report date range cannot exceed ${MAX_REPORT_RANGE_DAYS} days`
+    );
+  }
+
+  return range;
 }
 
 function formatPeriodLabel(dateFrom: Date, dateTo: Date): string {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   if (
     dateFrom.getMonth() === dateTo.getMonth() &&
@@ -44,6 +79,14 @@ function formatMonthKey(date: Date): string {
 function daysBetween(a: Date, b: Date): number {
   const msPerDay = 86400000;
   return Math.floor((b.getTime() - a.getTime()) / msPerDay);
+}
+
+function assertReportRowCountWithinLimit(label: string, count: number): void {
+  if (count > MAX_REPORT_DETAIL_ROWS) {
+    throw new BadRequestError(
+      `${label} report has ${count.toLocaleString()} rows. Narrow the date range or use a background export.`
+    );
+  }
 }
 
 // ── Finance Overview ──────────────────────────────────────────────────
@@ -95,7 +138,9 @@ export async function getFinanceOverview(dateFrom?: Date, dateTo?: Date) {
     orderBy: { createdAt: 'desc' },
     select: { totalGrossPay: true },
   });
-  const upcomingPayroll = draftPayroll ? toNumber(draftPayroll.totalGrossPay) : 0;
+  const upcomingPayroll = draftPayroll
+    ? toNumber(draftPayroll.totalGrossPay)
+    : 0;
 
   return {
     totalRevenue,
@@ -112,6 +157,12 @@ export async function getFinanceOverview(dateFrom?: Date, dateTo?: Date) {
 
 export async function getArAgingReport() {
   const now = new Date();
+  const unpaidInvoiceCount = await prisma.invoice.count({
+    where: {
+      status: { notIn: ['paid', 'void'] },
+    },
+  });
+  assertReportRowCountWithinLimit('AR aging', unpaidInvoiceCount);
 
   const unpaidInvoices = await prisma.invoice.findMany({
     where: {
@@ -204,6 +255,11 @@ export async function getProfitabilityReport(
   const range = resolveDateRange(dateFrom, dateTo);
 
   if (groupBy === 'contract') {
+    const contractCount = await prisma.contract.count({
+      where: { status: { not: 'cancelled' } },
+    });
+    assertReportRowCountWithinLimit('Contract profitability', contractCount);
+
     // Get all active contracts
     const contracts = await prisma.contract.findMany({
       where: { status: { not: 'cancelled' } },
@@ -284,6 +340,12 @@ export async function getProfitabilityReport(
   }
 
   // groupBy === 'facility'
+  const facilityCount = await prisma.facility.count();
+  assertReportRowCountWithinLimit(
+    'Service location profitability',
+    facilityCount
+  );
+
   const facilities = await prisma.facility.findMany({
     select: {
       id: true,
@@ -368,6 +430,13 @@ export async function getProfitabilityReport(
 
 export async function getRevenueReport(dateFrom?: Date, dateTo?: Date) {
   const range = resolveDateRange(dateFrom, dateTo);
+  const paidInvoiceCount = await prisma.invoice.count({
+    where: {
+      status: 'paid',
+      paidAt: { gte: range.dateFrom, lte: range.dateTo },
+    },
+  });
+  assertReportRowCountWithinLimit('Revenue', paidInvoiceCount);
 
   const paidInvoices = await prisma.invoice.findMany({
     where: {
@@ -386,7 +455,11 @@ export async function getRevenueReport(dateFrom?: Date, dateTo?: Date) {
   const monthSet = new Set<string>();
   const accountMap = new Map<
     string,
-    { accountName: string; monthlyRevenue: Record<string, number>; total: number }
+    {
+      accountName: string;
+      monthlyRevenue: Record<string, number>;
+      total: number;
+    }
   >();
 
   for (const inv of paidInvoices) {
@@ -407,7 +480,8 @@ export async function getRevenueReport(dateFrom?: Date, dateTo?: Date) {
     }
 
     const amount = toNumber(inv.totalAmount);
-    entry.monthlyRevenue[monthKey] = (entry.monthlyRevenue[monthKey] ?? 0) + amount;
+    entry.monthlyRevenue[monthKey] =
+      (entry.monthlyRevenue[monthKey] ?? 0) + amount;
     entry.total += amount;
   }
 
@@ -468,6 +542,16 @@ export async function getExpenseSummaryReport(dateFrom?: Date, dateTo?: Date) {
 
 export async function getLaborCostReport(dateFrom?: Date, dateTo?: Date) {
   const range = resolveDateRange(dateFrom, dateTo);
+  const entryCount = await prisma.payrollEntry.count({
+    where: {
+      payrollRun: {
+        status: { in: ['approved', 'paid'] },
+        periodStart: { gte: range.dateFrom },
+        periodEnd: { lte: range.dateTo },
+      },
+    },
+  });
+  assertReportRowCountWithinLimit('Labor cost', entryCount);
 
   const entries = await prisma.payrollEntry.findMany({
     where: {
@@ -540,6 +624,15 @@ export async function getLaborCostReport(dateFrom?: Date, dateTo?: Date) {
 
 export async function getPayrollSummaryReport(dateFrom?: Date, dateTo?: Date) {
   const range = resolveDateRange(dateFrom, dateTo);
+  const payrollRunCount = await prisma.payrollRun.count({
+    where: {
+      OR: [
+        { periodStart: { gte: range.dateFrom, lte: range.dateTo } },
+        { periodEnd: { gte: range.dateFrom, lte: range.dateTo } },
+      ],
+    },
+  });
+  assertReportRowCountWithinLimit('Payroll summary', payrollRunCount);
 
   const runs = await prisma.payrollRun.findMany({
     where: {
