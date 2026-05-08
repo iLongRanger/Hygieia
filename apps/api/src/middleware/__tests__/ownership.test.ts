@@ -185,10 +185,33 @@ describe('ownership middleware', () => {
       expect(prisma.appointment.findUnique).toHaveBeenCalledWith({
         where: { id: 'resource-123' },
         select: {
+          createdByUserId: true,
+          assignedToUserId: true,
           account: { select: { accountManagerId: true } },
           facility: {
             select: {
               account: { select: { accountManagerId: true } },
+            },
+          },
+          lead: {
+            select: {
+              createdByUserId: true,
+              assignedToUserId: true,
+              convertedToAccount: { select: { accountManagerId: true } },
+            },
+          },
+          opportunity: {
+            select: {
+              createdByUserId: true,
+              ownerUserId: true,
+              account: { select: { accountManagerId: true } },
+              lead: {
+                select: {
+                  createdByUserId: true,
+                  assignedToUserId: true,
+                  convertedToAccount: { select: { accountManagerId: true } },
+                },
+              },
             },
           },
         },
