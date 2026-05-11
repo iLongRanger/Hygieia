@@ -243,7 +243,57 @@ describe('facilityService', () => {
       expect(geocodeAddressIfNeeded).toHaveBeenCalled();
     });
 
-    it('should create a facility-scoped opportunity when the account already has a lead pipeline record', async () => {
+    it('should update the account-level opportunity when creating the first facility for a converted lead', async () => {
+      const input: facilityService.FacilityCreateInput = {
+        accountId: 'account-123',
+        name: 'First Site',
+        address: { street: '123 Main St', city: 'Test City' },
+        createdByUserId: 'user-123',
+      };
+
+      const mockFacility = createTestFacility({ ...input, id: 'facility-1' });
+
+      (prisma.facility.create as jest.Mock).mockResolvedValue(mockFacility);
+      (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'opp-1',
+          accountId: 'account-123',
+          facilityId: null,
+          leadId: 'lead-1',
+          status: 'lead',
+          updatedAt: new Date('2026-03-13T10:00:00Z'),
+          createdAt: new Date('2026-03-13T09:00:00Z'),
+        },
+      ]);
+      (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+        id: 'lead-1',
+        companyName: 'Acme Corporation',
+        contactName: 'Jane Smith',
+        estimatedValue: 5000,
+        probability: 40,
+        expectedCloseDate: new Date('2026-03-20T00:00:00Z'),
+        assignedToUserId: null,
+        createdByUserId: 'creator-1',
+      });
+      (prisma.contact.findFirst as jest.Mock).mockResolvedValue({ id: 'contact-1' });
+
+      await facilityService.createFacility(input);
+
+      expect(prisma.opportunity.update).toHaveBeenCalledWith({
+        where: { id: 'opp-1' },
+        data: expect.objectContaining({
+          leadId: 'lead-1',
+          accountId: 'account-123',
+          facilityId: 'facility-1',
+          primaryContactId: 'contact-1',
+          title: 'Acme Corporation',
+          status: 'lead',
+        }),
+      });
+      expect(prisma.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('should create a facility-scoped opportunity when the converted account already has a facility pipeline record', async () => {
       const input: facilityService.FacilityCreateInput = {
         accountId: 'account-123',
         name: 'Second Site',

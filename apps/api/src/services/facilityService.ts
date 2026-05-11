@@ -404,22 +404,31 @@ export async function createFacility(input: FacilityCreateInput) {
       }),
     ]);
 
-    await prisma.opportunity.create({
-      data: {
-        leadId: sourceOpportunity.leadId,
-        accountId: input.accountId,
-        facilityId: facility.id,
-        primaryContactId: primaryContact?.id ?? null,
-        title: lead?.companyName?.trim() ?? lead?.contactName?.trim() ?? normalizedName,
-        source: null,
-        estimatedValue: lead?.estimatedValue ?? null,
-        probability: lead?.probability ?? 0,
-        expectedCloseDate: lead?.expectedCloseDate ?? null,
-        ownerUserId: lead?.assignedToUserId ?? null,
-        createdByUserId: sourceOpportunity.leadId ? (lead?.createdByUserId ?? input.createdByUserId) : input.createdByUserId,
-        status: 'lead',
-      } satisfies Prisma.OpportunityUncheckedCreateInput,
-    });
+    const opportunityData = {
+      leadId: sourceOpportunity.leadId,
+      accountId: input.accountId,
+      facilityId: facility.id,
+      primaryContactId: primaryContact?.id ?? null,
+      title: lead?.companyName?.trim() ?? lead?.contactName?.trim() ?? normalizedName,
+      source: null,
+      estimatedValue: lead?.estimatedValue ?? null,
+      probability: lead?.probability ?? 0,
+      expectedCloseDate: lead?.expectedCloseDate ?? null,
+      ownerUserId: lead?.assignedToUserId ?? null,
+      createdByUserId: sourceOpportunity.leadId ? (lead?.createdByUserId ?? input.createdByUserId) : input.createdByUserId,
+      status: 'lead',
+    } satisfies Prisma.OpportunityUncheckedCreateInput;
+
+    if (!sourceOpportunity.facilityId) {
+      await prisma.opportunity.update({
+        where: { id: sourceOpportunity.id },
+        data: opportunityData,
+      });
+    } else {
+      await prisma.opportunity.create({
+        data: opportunityData,
+      });
+    }
   }
 
   return facility;

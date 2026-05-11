@@ -1128,21 +1128,31 @@ async function createResidentialFacilityOpportunity(
     }),
   ]);
 
+  const opportunityData = {
+    leadId: sourceOpportunity.leadId,
+    accountId: input.accountId,
+    facilityId: input.facilityId,
+    primaryContactId: primaryContact?.id ?? null,
+    title: input.facilityName,
+    source: null,
+    estimatedValue: lead?.estimatedValue ?? null,
+    probability: lead?.probability ?? 0,
+    expectedCloseDate: lead?.expectedCloseDate ?? null,
+    ownerUserId: lead?.assignedToUserId ?? null,
+    createdByUserId: lead?.createdByUserId ?? input.createdByUserId,
+    status: 'lead',
+  } satisfies Prisma.OpportunityUncheckedCreateInput;
+
+  if (!sourceOpportunity.facilityId) {
+    await tx.opportunity.update({
+      where: { id: sourceOpportunity.id },
+      data: opportunityData,
+    });
+    return;
+  }
+
   await tx.opportunity.create({
-    data: {
-      leadId: sourceOpportunity.leadId,
-      accountId: input.accountId,
-      facilityId: input.facilityId,
-      primaryContactId: primaryContact?.id ?? null,
-      title: input.facilityName,
-      source: null,
-      estimatedValue: lead?.estimatedValue ?? null,
-      probability: lead?.probability ?? 0,
-      expectedCloseDate: lead?.expectedCloseDate ?? null,
-      ownerUserId: lead?.assignedToUserId ?? null,
-      createdByUserId: lead?.createdByUserId ?? input.createdByUserId,
-      status: 'lead',
-    } satisfies Prisma.OpportunityUncheckedCreateInput,
+    data: opportunityData,
   });
 }
 

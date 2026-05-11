@@ -119,6 +119,7 @@ describe('residentialService pipeline updates', () => {
           },
         ]),
         create: jest.fn().mockResolvedValue({ id: 'opp-facility-1' }),
+        update: jest.fn().mockResolvedValue({ id: 'opp-account-1' }),
       },
       lead: {
         findUnique: jest.fn().mockResolvedValue({
@@ -185,7 +186,8 @@ describe('residentialService pipeline updates', () => {
         }),
       })
     );
-    expect(tx.opportunity.create).toHaveBeenCalledWith({
+    expect(tx.opportunity.update).toHaveBeenCalledWith({
+      where: { id: 'opp-account-1' },
       data: expect.objectContaining({
         leadId: 'lead-1',
         accountId: 'account-1',
@@ -195,6 +197,7 @@ describe('residentialService pipeline updates', () => {
         status: 'lead',
       }),
     });
+    expect(tx.opportunity.create).not.toHaveBeenCalled();
   });
 
   it('updateResidentialProperty should sync the linked facility metadata', async () => {
