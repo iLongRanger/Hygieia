@@ -429,6 +429,8 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     ]));
   }
 
+  const pricingSummaryStack: Content[] = [];
+
   // Services summary table
   if (proposal.proposalServices.length > 0) {
     const hasAnyHours = proposal.proposalServices.some(
@@ -465,14 +467,14 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       { text: formatCurrency(totalMonthly), alignment: 'right' as const, bold: true, fontSize: 9 },
     ]);
 
-    content.push({
-        table: {
-          headerRows: 1,
-          dontBreakRows: true,
-          keepWithHeaderRows: 1,
-          widths: hasAnyHours ? ['*', 100, 60, 90] : ['*', 130, 90],
-          body: areasBody,
-        },
+    pricingSummaryStack.push({
+      table: {
+        headerRows: 1,
+        dontBreakRows: true,
+        keepWithHeaderRows: 1,
+        widths: hasAnyHours ? ['*', 100, 60, 90] : ['*', 130, 90],
+        body: areasBody,
+      },
       layout: {
         hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length ? 1 : 0.5),
         vLineWidth: () => 0,
@@ -492,7 +494,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     (item) => Number(item.totalPrice ?? 0) > 0
   );
   if (visibleProposalItems.length > 0) {
-    content.push({ text: 'Line Items', style: 'sectionHeader' });
+    pricingSummaryStack.push({ text: 'Line Items', style: 'sectionHeader' });
 
     const itemsBody: TableCell[][] = [
       [
@@ -512,7 +514,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       ]);
     }
 
-    content.push({
+    pricingSummaryStack.push({
       table: {
         headerRows: 1,
         dontBreakRows: true,
@@ -535,7 +537,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
   }
 
   // Financial Summary
-  content.push(keepTogether([{
+  pricingSummaryStack.push({
     columns: [
       { width: '*', text: '' },
       {
@@ -586,7 +588,13 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       },
     ],
     margin: [0, 10, 0, 25] as [number, number, number, number],
-  }]));
+  });
+
+  // Keep the pricing rows and final total together. This prevents the PDF
+  // preview from showing services on one page and the total alone on the next.
+  if (pricingSummaryStack.length > 0) {
+    content.push(keepTogether(pricingSummaryStack));
+  }
 
   // Terms (aligned with public Review & Sign page)
   content.push(keepTogether([
