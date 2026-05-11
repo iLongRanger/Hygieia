@@ -18,7 +18,6 @@ import {
   listAreas,
   createArea,
   updateArea,
-  archiveArea,
   restoreArea,
   deleteArea,
   listAreaTypes,
@@ -911,15 +910,6 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     }
   };
 
-  const handleArchiveArea = async (areaId: string) => {
-    try {
-      await archiveArea(areaId);
-      fetchAreas();
-    } catch (error) {
-      console.error('Failed to archive area:', error);
-    }
-  };
-
   const handleRestoreArea = async (areaId: string) => {
     try {
       await restoreArea(areaId);
@@ -1690,7 +1680,6 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
           }}
           onAddTask={openAddTaskForArea}
           onEditArea={openEditArea}
-          onArchiveArea={handleArchiveArea}
           onRestoreArea={handleRestoreArea}
           onDeleteArea={handleDeleteArea}
           totalSquareFeet={totalSquareFeetFromAreas}

@@ -1,5 +1,4 @@
 import {
-  Archive,
   ClipboardList,
   Edit2,
   Plus,
@@ -19,7 +18,6 @@ interface AreaCardProps {
   onSelect: (area: Area) => void;
   onEdit: (area: Area) => void;
   onAddTask: (area: Area) => void;
-  onArchive: (areaId: string) => void;
   onRestore: (areaId: string) => void;
   onDelete: (areaId: string) => void;
 }
@@ -56,7 +54,6 @@ export function AreaCard({
   onSelect,
   onEdit,
   onAddTask,
-  onArchive,
   onRestore,
   onDelete,
 }: AreaCardProps): React.JSX.Element {
@@ -128,6 +125,7 @@ export function AreaCard({
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
+            aria-label={`Edit ${area.name || area.areaType.name}`}
             variant="ghost"
             size="sm"
             onClick={(e) => {
@@ -140,6 +138,7 @@ export function AreaCard({
           {isArchived ? (
             <>
               <Button
+                aria-label={`Restore ${area.name || area.areaType.name}`}
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
@@ -150,6 +149,7 @@ export function AreaCard({
                 <RotateCcw className="h-4 w-4" />
               </Button>
               <Button
+                aria-label={`Delete ${area.name || area.areaType.name}`}
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
@@ -162,14 +162,15 @@ export function AreaCard({
             </>
           ) : (
             <Button
+              aria-label={`Delete ${area.name || area.areaType.name}`}
               variant="ghost"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onArchive(area.id);
+                onDelete(area.id);
               }}
             >
-              <Archive className="h-4 w-4" />
+              <Trash2 className="h-4 w-4 text-red-400" />
             </Button>
           )}
         </div>

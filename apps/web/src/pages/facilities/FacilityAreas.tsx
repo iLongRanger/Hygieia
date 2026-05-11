@@ -12,7 +12,6 @@ interface FacilityAreasProps {
   onAddArea: () => void;
   onAddTask: (area: Area) => void;
   onEditArea: (area: Area) => void;
-  onArchiveArea: (areaId: string) => void;
   onRestoreArea: (areaId: string) => void;
   onDeleteArea: (areaId: string) => void;
   totalSquareFeet: number;
@@ -29,7 +28,6 @@ export function FacilityAreas({
   onAddArea,
   onAddTask,
   onEditArea,
-  onArchiveArea,
   onRestoreArea,
   onDeleteArea,
   totalSquareFeet,
@@ -84,7 +82,6 @@ export function FacilityAreas({
             onSelect={onSelectArea}
             onEdit={onEditArea}
             onAddTask={onAddTask}
-            onArchive={onArchiveArea}
             onRestore={onRestoreArea}
             onDelete={onDeleteArea}
           />
@@ -116,7 +113,6 @@ export function FacilityAreas({
                   onSelect={onSelectArea}
                   onEdit={onEditArea}
                   onAddTask={onAddTask}
-                  onArchive={onArchiveArea}
                   onRestore={onRestoreArea}
                   onDelete={onDeleteArea}
                 />

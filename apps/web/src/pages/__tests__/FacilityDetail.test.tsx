@@ -684,6 +684,21 @@ describe('FacilityDetail', () => {
     });
   });
 
+  it('permanently deletes an active area from the area card', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /delete office a/i }));
+
+    await waitFor(() => {
+      expect(deleteAreaMock).toHaveBeenCalledWith('area-1');
+      expect(archiveAreaMock).not.toHaveBeenCalled();
+    });
+  });
+
   it('shows area-specific default tasks as preselected when template has no tasks', async () => {
     const user = userEvent.setup();
     listTaskTemplatesMock.mockResolvedValue({ data: [areaSpecificTemplate] });
