@@ -191,4 +191,18 @@ describe('PricingSettingsPage', () => {
       );
     });
   });
+
+  it('shows labor assumption detail for loaded cost and target client rate', async () => {
+    const user = userEvent.setup();
+    render(<PricingSettingsPage />);
+
+    await screen.findByRole('heading', { name: 'Standard Plan' });
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /estimate labor/i }));
+
+    expect(screen.getByText('Labor assumption detail')).toBeInTheDocument();
+    expect(screen.getByText('$22.50/hr')).toBeInTheDocument();
+    expect(screen.getByText('$30.00/hr')).toBeInTheDocument();
+    expect(screen.getByText('$35.00/hr')).toBeInTheDocument();
+  });
 });

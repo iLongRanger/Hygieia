@@ -247,6 +247,15 @@ function formatCurrency(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+function formatCurrencyWithCents(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
 function formatPercent(value: number) {
   return `${(value * 100).toFixed(0)}%`;
 }
@@ -584,6 +593,13 @@ export function PricingPlanBuilder({
   const recommendation = normalized.pricingType === 'hourly'
     ? 'Recommended when the team needs a more operationally defensible price for dense or irregular scopes.'
     : 'Recommended when speed matters and the facility behaves like a standard recurring janitorial account.';
+  const loadedLaborCostPerHour =
+    normalized.laborCostPerHour * (1 + normalized.laborBurdenPercentage);
+  const targetBillableRatePerHour =
+    loadedLaborCostPerHour / Math.max(1 - normalized.targetProfitMargin, 0.01);
+  const currentHourlyMargin = normalized.hourlyRate - loadedLaborCostPerHour;
+  const currentHourlyMarginPercentage =
+    normalized.hourlyRate > 0 ? currentHourlyMargin / normalized.hourlyRate : 0;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_360px]">
@@ -770,6 +786,47 @@ export function PricingPlanBuilder({
                   onChange={(event) => updateNumberField(formData, onChange, 'laborBurdenPercentage', event.target.value)}
                   hint="Burden captures payroll taxes and related labor overhead on top of wages."
                 />
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900 dark:bg-sky-950/30">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h4 className="font-semibold text-sky-900 dark:text-sky-100">
+                      Labor assumption detail
+                    </h4>
+                    <p className="mt-1 text-sm text-sky-800/80 dark:text-sky-200/80">
+                      This translates your wage and burden inputs into the client-facing hourly rate needed to protect margin.
+                    </p>
+                  </div>
+                  <Badge className="border border-sky-300 bg-white text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200">
+                    Target margin {formatPercent(normalized.targetProfitMargin)}
+                  </Badge>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard
+                    label="Base Labor"
+                    value={`${formatCurrencyWithCents(normalized.laborCostPerHour)}/hr`}
+                    note="Manual wage or contractor labor cost before burden."
+                  />
+                  <MetricCard
+                    label="Loaded Labor"
+                    value={`${formatCurrencyWithCents(loadedLaborCostPerHour)}/hr`}
+                    note={`${formatPercent(normalized.laborBurdenPercentage)} burden added to base labor.`}
+                  />
+                  <MetricCard
+                    label="Target Client Rate"
+                    value={`${formatCurrencyWithCents(targetBillableRatePerHour)}/hr`}
+                    note="Billable rate needed to hit the target margin."
+                    tone="positive"
+                  />
+                  <MetricCard
+                    label="Current Hourly Setting"
+                    value={`${formatCurrencyWithCents(normalized.hourlyRate)}/hr`}
+                    note={`${formatCurrencyWithCents(currentHourlyMargin)}/hr margin, ${formatPercent(currentHourlyMarginPercentage)} gross margin.`}
+                    tone={currentHourlyMargin < 0 ? 'warning' : 'default'}
+                  />
+                </div>
               </div>
             </FieldShell>
 
