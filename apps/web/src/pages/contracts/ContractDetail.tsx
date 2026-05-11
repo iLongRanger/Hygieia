@@ -150,6 +150,15 @@ const getStatusVariant = (status: ContractStatus): 'default' | 'success' | 'warn
   return variants[status];
 };
 
+const formatProviderLabel = (value: string | null | undefined): string => {
+  const labels: Record<string, string> = {
+    company: 'Company',
+    client: 'Client',
+    mixed: 'Mixed',
+  };
+  return labels[String(value || 'company')] || value || 'Company';
+};
+
 const getStatusIcon = (status: ContractStatus) => {
   const icons: Record<ContractStatus, React.ElementType> = {
     draft: FileText,
@@ -3358,6 +3367,74 @@ const ContractDetail = () => {
           </div>
         )}
       </Card>}
+
+      {activeTab === 'terms' && !isLimitedContractViewer && (
+        <Card>
+          <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">
+            Supplies, Equipment & Chemicals
+          </h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Equipment Provided By</div>
+              <div className="text-surface-900 dark:text-white">{formatProviderLabel(contract.equipmentProvidedBy)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">Chemicals Provided By</div>
+              <div className="text-surface-900 dark:text-white">{formatProviderLabel(contract.chemicalsProvidedBy)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">SDS Required</div>
+              <div className="text-surface-900 dark:text-white">{contract.sdsRequired === false ? 'No' : 'Yes'}</div>
+            </div>
+            <div>
+              <div className="text-sm text-surface-500 dark:text-surface-400">On-Site Storage</div>
+              <div className="text-surface-900 dark:text-white">
+                {contract.storageAllowedOnSite ? 'Allowed' : 'Not allowed unless approved'}
+              </div>
+            </div>
+          </div>
+          {(contract.approvedChemicalNotes ||
+            contract.restrictedChemicalNotes ||
+            contract.equipmentNotes ||
+            contract.requiresSpecialEquipment ||
+            contract.specialEquipmentNotes) && (
+            <div className="mt-4 space-y-4 border-t border-surface-200 pt-4 dark:border-surface-700">
+              {contract.approvedChemicalNotes && (
+                <div>
+                  <div className="text-sm font-medium text-surface-900 dark:text-white">Approved Chemicals</div>
+                  <div className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
+                    {contract.approvedChemicalNotes}
+                  </div>
+                </div>
+              )}
+              {contract.restrictedChemicalNotes && (
+                <div>
+                  <div className="text-sm font-medium text-surface-900 dark:text-white">Restricted Chemicals</div>
+                  <div className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
+                    {contract.restrictedChemicalNotes}
+                  </div>
+                </div>
+              )}
+              {contract.equipmentNotes && (
+                <div>
+                  <div className="text-sm font-medium text-surface-900 dark:text-white">Equipment Notes</div>
+                  <div className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
+                    {contract.equipmentNotes}
+                  </div>
+                </div>
+              )}
+              {(contract.requiresSpecialEquipment || contract.specialEquipmentNotes) && (
+                <div>
+                  <div className="text-sm font-medium text-surface-900 dark:text-white">Special Equipment</div>
+                  <div className="text-sm text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
+                    {contract.specialEquipmentNotes || 'Required'}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Special Instructions */}
       {activeTab === 'terms' && contract.specialInstructions && (

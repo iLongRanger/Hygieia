@@ -1322,6 +1322,17 @@ model Contract {
   termsDocumentDataUrl  String? @map("terms_document_data_url") @db.Text
   specialInstructions   String? @map("special_instructions") @db.Text
 
+  // Supplies, Equipment & Chemicals
+  equipmentProvidedBy      String  @default("company") @map("equipment_provided_by") @db.VarChar(20)
+  chemicalsProvidedBy      String  @default("company") @map("chemicals_provided_by") @db.VarChar(20)
+  approvedChemicalNotes    String? @map("approved_chemical_notes") @db.Text
+  restrictedChemicalNotes  String? @map("restricted_chemical_notes") @db.Text
+  equipmentNotes           String? @map("equipment_notes") @db.Text
+  requiresSpecialEquipment Boolean @default(false) @map("requires_special_equipment")
+  specialEquipmentNotes    String? @map("special_equipment_notes") @db.Text
+  sdsRequired              Boolean @default(true) @map("sds_required")
+  storageAllowedOnSite     Boolean @default(false) @map("storage_allowed_on_site")
+
   // Document Management
   signedDocumentUrl String?   @map("signed_document_url") @db.Text
   signedDate        DateTime? @map("signed_date") @db.Date

@@ -780,6 +780,15 @@ interface ContractForPdf {
   serviceSchedule?: unknown;
   termsAndConditions?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: string | null;
+  chemicalsProvidedBy?: string | null;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean | null;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean | null;
+  storageAllowedOnSite?: boolean | null;
   signedByName?: string | null;
   signedByEmail?: string | null;
   signedDate?: string | Date | null;
@@ -837,6 +846,18 @@ function parseServiceTaskGroups(
     areaInfo: lines[0]?.trim() ?? '',
     groups,
   };
+}
+
+function formatProviderLabel(value: string | null | undefined): string {
+  switch ((value ?? '').toLowerCase()) {
+    case 'client':
+      return 'Client';
+    case 'mixed':
+      return 'Mixed';
+    case 'company':
+    default:
+      return 'Company';
+  }
 }
 
 interface ResidentialQuoteForPdf {
@@ -1640,6 +1661,74 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     },
     margin: [0, 5, 0, 15] as [number, number, number, number],
   });
+
+  const suppliesBody: TableCell[][] = [
+    [
+      { text: 'Equipment Provided By', style: 'tableHeader' },
+      { text: formatProviderLabel(contract.equipmentProvidedBy) },
+    ],
+    [
+      { text: 'Chemicals Provided By', style: 'tableHeader' },
+      { text: formatProviderLabel(contract.chemicalsProvidedBy) },
+    ],
+    [
+      { text: 'SDS Required', style: 'tableHeader' },
+      { text: contract.sdsRequired === false ? 'No' : 'Yes' },
+    ],
+    [
+      { text: 'On-Site Storage', style: 'tableHeader' },
+      { text: contract.storageAllowedOnSite ? 'Allowed' : 'Not allowed unless approved' },
+    ],
+  ];
+
+  if (contract.approvedChemicalNotes) {
+    suppliesBody.push([
+      { text: 'Approved Chemicals', style: 'tableHeader' },
+      { text: contract.approvedChemicalNotes },
+    ]);
+  }
+
+  if (contract.restrictedChemicalNotes) {
+    suppliesBody.push([
+      { text: 'Restricted Chemicals', style: 'tableHeader' },
+      { text: contract.restrictedChemicalNotes },
+    ]);
+  }
+
+  if (contract.equipmentNotes) {
+    suppliesBody.push([
+      { text: 'Equipment Notes', style: 'tableHeader' },
+      { text: contract.equipmentNotes },
+    ]);
+  }
+
+  if (contract.requiresSpecialEquipment || contract.specialEquipmentNotes) {
+    suppliesBody.push([
+      { text: 'Special Equipment', style: 'tableHeader' },
+      { text: contract.specialEquipmentNotes || 'Required' },
+    ]);
+  }
+
+  content.push(keepTogether([
+    { text: 'Supplies, Equipment & Chemicals', style: 'sectionHeader' },
+    {
+      table: {
+        headerRows: 0,
+        widths: [150, '*'],
+        body: suppliesBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: () => COLORS.border,
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
+    },
+  ]));
 
   // Terms & Conditions (start on new page)
   if (contract.termsAndConditions) {

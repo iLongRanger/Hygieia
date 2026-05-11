@@ -27,6 +27,12 @@ const formatCurrency = (amount: number | string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(amount));
 
 const frequencyLabels: Record<string, string> = {
+  '1x_week': '1x Week',
+  '2x_week': '2x Week',
+  '3x_week': '3x Week',
+  '4x_week': '4x Week',
+  '5x_week': '5x Week',
+  '7x_week': '7x Week',
   daily: 'Daily',
   weekly: 'Weekly',
   bi_weekly: 'Bi-Weekly',
@@ -40,6 +46,12 @@ const billingCycleLabels: Record<string, string> = {
   quarterly: 'Quarterly',
   semi_annual: 'Semi-Annual',
   annual: 'Annual',
+};
+
+const providerLabels: Record<string, string> = {
+  company: 'Company',
+  client: 'Client',
+  mixed: 'Mixed',
 };
 
 const formatDate = (date: string | null | undefined) => {
@@ -588,6 +600,68 @@ const PublicContractView: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-surface-900 mb-3">Supplies, Equipment & Chemicals</h3>
+          <div className="bg-surface-50 rounded-lg border border-surface-200 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-surface-500">Equipment Provided By</div>
+                <div className="font-medium text-surface-900">
+                  {providerLabels[String(contract.equipmentProvidedBy || 'company')] || contract.equipmentProvidedBy || 'Company'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-surface-500">Chemicals Provided By</div>
+                <div className="font-medium text-surface-900">
+                  {providerLabels[String(contract.chemicalsProvidedBy || 'company')] || contract.chemicalsProvidedBy || 'Company'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-surface-500">SDS Required</div>
+                <div className="font-medium text-surface-900">{contract.sdsRequired === false ? 'No' : 'Yes'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-surface-500">On-Site Storage</div>
+                <div className="font-medium text-surface-900">
+                  {contract.storageAllowedOnSite ? 'Allowed' : 'Not allowed unless approved'}
+                </div>
+              </div>
+            </div>
+            {(contract.approvedChemicalNotes ||
+              contract.restrictedChemicalNotes ||
+              contract.equipmentNotes ||
+              contract.requiresSpecialEquipment ||
+              contract.specialEquipmentNotes) && (
+              <div className="mt-4 space-y-3 border-t border-surface-200 pt-4 text-sm text-surface-700">
+                {contract.approvedChemicalNotes && (
+                  <div>
+                    <div className="font-medium text-surface-900">Approved Chemicals</div>
+                    <div className="whitespace-pre-wrap">{contract.approvedChemicalNotes}</div>
+                  </div>
+                )}
+                {contract.restrictedChemicalNotes && (
+                  <div>
+                    <div className="font-medium text-surface-900">Restricted Chemicals</div>
+                    <div className="whitespace-pre-wrap">{contract.restrictedChemicalNotes}</div>
+                  </div>
+                )}
+                {contract.equipmentNotes && (
+                  <div>
+                    <div className="font-medium text-surface-900">Equipment Notes</div>
+                    <div className="whitespace-pre-wrap">{contract.equipmentNotes}</div>
+                  </div>
+                )}
+                {(contract.requiresSpecialEquipment || contract.specialEquipmentNotes) && (
+                  <div>
+                    <div className="font-medium text-surface-900">Special Equipment</div>
+                    <div className="whitespace-pre-wrap">{contract.specialEquipmentNotes || 'Required'}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Terms & Conditions */}
         {contract.termsAndConditions && (

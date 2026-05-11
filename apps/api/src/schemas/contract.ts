@@ -33,6 +33,32 @@ export const billingCycleSchema = z.enum([
   'annual',
 ]);
 
+export const suppliesProvidedBySchema = z.enum(['company', 'client', 'mixed']);
+
+const createContractSuppliesTermsSchema = {
+  equipmentProvidedBy: suppliesProvidedBySchema.optional().default('company'),
+  chemicalsProvidedBy: suppliesProvidedBySchema.optional().default('company'),
+  approvedChemicalNotes: z.string().max(10000).optional().nullable(),
+  restrictedChemicalNotes: z.string().max(10000).optional().nullable(),
+  equipmentNotes: z.string().max(10000).optional().nullable(),
+  requiresSpecialEquipment: z.boolean().optional().default(false),
+  specialEquipmentNotes: z.string().max(10000).optional().nullable(),
+  sdsRequired: z.boolean().optional().default(true),
+  storageAllowedOnSite: z.boolean().optional().default(false),
+};
+
+const updateContractSuppliesTermsSchema = {
+  equipmentProvidedBy: suppliesProvidedBySchema.optional(),
+  chemicalsProvidedBy: suppliesProvidedBySchema.optional(),
+  approvedChemicalNotes: z.string().max(10000).optional().nullable(),
+  restrictedChemicalNotes: z.string().max(10000).optional().nullable(),
+  equipmentNotes: z.string().max(10000).optional().nullable(),
+  requiresSpecialEquipment: z.boolean().optional(),
+  specialEquipmentNotes: z.string().max(10000).optional().nullable(),
+  sdsRequired: z.boolean().optional(),
+  storageAllowedOnSite: z.boolean().optional(),
+};
+
 const contractServiceScheduleSchema = z
   .object({
     days: z.array(scheduleWeekdaySchema).min(1).max(7),
@@ -154,6 +180,7 @@ export const createContractSchema = z
     termsDocumentMimeType: termsDocumentMimeTypeSchema,
     termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
+    ...createContractSuppliesTermsSchema,
   })
   .refine(
     (data) => !data.endDate || data.endDate > data.startDate,
@@ -189,6 +216,7 @@ export const createContractFromProposalSchema = z
     termsDocumentMimeType: termsDocumentMimeTypeSchema,
     termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
+    ...createContractSuppliesTermsSchema,
   })
   .refine(
     (data) => !data.endDate || !data.startDate || data.endDate > data.startDate,
@@ -222,6 +250,7 @@ export const updateContractSchema = z
     termsDocumentMimeType: termsDocumentMimeTypeSchema,
     termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
+    ...updateContractSuppliesTermsSchema,
   })
   .refine(
     (data) => !data.endDate || !data.startDate || data.endDate > data.startDate,
@@ -289,6 +318,7 @@ export const renewContractSchema = z
     termsDocumentMimeType: termsDocumentMimeTypeSchema,
     termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
+    ...updateContractSuppliesTermsSchema,
   })
   .refine(
     (data) => !data.endDate || !data.startDate || data.endDate > data.startDate,
@@ -328,6 +358,7 @@ export const createStandaloneContractSchema = z
     termsDocumentMimeType: termsDocumentMimeTypeSchema,
     termsDocumentDataUrl: termsDocumentDataUrlSchema,
     specialInstructions: z.string().max(10000).optional().nullable(),
+    ...createContractSuppliesTermsSchema,
   })
   .refine(
     (data) => !data.endDate || data.endDate > data.startDate,

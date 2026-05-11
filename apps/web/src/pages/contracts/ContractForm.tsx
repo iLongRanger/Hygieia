@@ -35,6 +35,7 @@ import type {
   UpdateContractInput,
   ServiceFrequency,
   BillingCycle,
+  SuppliesProvidedBy,
 } from '../../types/contract';
 
 const SERVICE_FREQUENCIES = [
@@ -57,6 +58,12 @@ const BILLING_CYCLES = [
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'semi_annual', label: 'Semi-Annual' },
   { value: 'annual', label: 'Annual' },
+];
+
+const SUPPLIES_PROVIDED_BY_OPTIONS = [
+  { value: 'company', label: 'Company' },
+  { value: 'client', label: 'Client' },
+  { value: 'mixed', label: 'Mixed' },
 ];
 
 const mapProposalFrequencyToContractFrequency = (value?: string | null): ServiceFrequency => {
@@ -126,6 +133,15 @@ interface ContractFormData {
   termsDocumentMimeType: string | null;
   termsDocumentDataUrl: string | null;
   specialInstructions: string | null;
+  equipmentProvidedBy: SuppliesProvidedBy;
+  chemicalsProvidedBy: SuppliesProvidedBy;
+  approvedChemicalNotes: string | null;
+  restrictedChemicalNotes: string | null;
+  equipmentNotes: string | null;
+  requiresSpecialEquipment: boolean;
+  specialEquipmentNotes: string | null;
+  sdsRequired: boolean;
+  storageAllowedOnSite: boolean;
 }
 
 const ContractForm = () => {
@@ -165,6 +181,15 @@ const ContractForm = () => {
     termsDocumentMimeType: null,
     termsDocumentDataUrl: null,
     specialInstructions: null,
+    equipmentProvidedBy: 'company',
+    chemicalsProvidedBy: 'company',
+    approvedChemicalNotes: null,
+    restrictedChemicalNotes: null,
+    equipmentNotes: null,
+    requiresSpecialEquipment: false,
+    specialEquipmentNotes: null,
+    sdsRequired: true,
+    storageAllowedOnSite: false,
   });
 
   // Validation errors
@@ -215,6 +240,15 @@ const ContractForm = () => {
             termsDocumentMimeType: contract.termsDocumentMimeType || null,
             termsDocumentDataUrl: null,
             specialInstructions: contract.specialInstructions || null,
+            equipmentProvidedBy: (contract.equipmentProvidedBy || 'company') as SuppliesProvidedBy,
+            chemicalsProvidedBy: (contract.chemicalsProvidedBy || 'company') as SuppliesProvidedBy,
+            approvedChemicalNotes: contract.approvedChemicalNotes || null,
+            restrictedChemicalNotes: contract.restrictedChemicalNotes || null,
+            equipmentNotes: contract.equipmentNotes || null,
+            requiresSpecialEquipment: Boolean(contract.requiresSpecialEquipment),
+            specialEquipmentNotes: contract.specialEquipmentNotes || null,
+            sdsRequired: contract.sdsRequired !== false,
+            storageAllowedOnSite: Boolean(contract.storageAllowedOnSite),
           });
           setTermsDocumentTouched(false);
 
@@ -407,6 +441,15 @@ const ContractForm = () => {
           paymentTerms: formData.paymentTerms,
           termsAndConditions: formData.termsAndConditions,
           specialInstructions: formData.specialInstructions,
+          equipmentProvidedBy: formData.equipmentProvidedBy,
+          chemicalsProvidedBy: formData.chemicalsProvidedBy,
+          approvedChemicalNotes: formData.approvedChemicalNotes,
+          restrictedChemicalNotes: formData.restrictedChemicalNotes,
+          equipmentNotes: formData.equipmentNotes,
+          requiresSpecialEquipment: formData.requiresSpecialEquipment,
+          specialEquipmentNotes: formData.requiresSpecialEquipment ? formData.specialEquipmentNotes : null,
+          sdsRequired: formData.sdsRequired,
+          storageAllowedOnSite: formData.storageAllowedOnSite,
         };
         if (termsDocumentTouched) {
           updateData.termsDocumentName = formData.termsDocumentName;
@@ -431,6 +474,15 @@ const ContractForm = () => {
           termsDocumentMimeType: formData.termsDocumentMimeType,
           termsDocumentDataUrl: formData.termsDocumentDataUrl,
           specialInstructions: formData.specialInstructions,
+          equipmentProvidedBy: formData.equipmentProvidedBy,
+          chemicalsProvidedBy: formData.chemicalsProvidedBy,
+          approvedChemicalNotes: formData.approvedChemicalNotes,
+          restrictedChemicalNotes: formData.restrictedChemicalNotes,
+          equipmentNotes: formData.equipmentNotes,
+          requiresSpecialEquipment: formData.requiresSpecialEquipment,
+          specialEquipmentNotes: formData.requiresSpecialEquipment ? formData.specialEquipmentNotes : null,
+          sdsRequired: formData.sdsRequired,
+          storageAllowedOnSite: formData.storageAllowedOnSite,
         });
         toast.success('Contract created successfully');
       }
@@ -895,6 +947,87 @@ const ContractForm = () => {
                       Supported formats: PDF, DOC, DOCX. Max file size: 5MB.
                     </p>
                   </div>
+                </div>
+
+                <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/20 p-4">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-white mb-3">
+                    Supplies, Equipment & Chemicals
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Select
+                      label="Equipment Provided By"
+                      value={formData.equipmentProvidedBy}
+                      onChange={(value) => handleChange('equipmentProvidedBy', value as SuppliesProvidedBy)}
+                      options={SUPPLIES_PROVIDED_BY_OPTIONS}
+                    />
+                    <Select
+                      label="Chemicals Provided By"
+                      value={formData.chemicalsProvidedBy}
+                      onChange={(value) => handleChange('chemicalsProvidedBy', value as SuppliesProvidedBy)}
+                      options={SUPPLIES_PROVIDED_BY_OPTIONS}
+                    />
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Textarea
+                      label="Approved Chemical Notes"
+                      value={formData.approvedChemicalNotes || ''}
+                      onChange={(e) => handleChange('approvedChemicalNotes', e.target.value || null)}
+                      rows={3}
+                      placeholder="Approved products, scent restrictions, green-cleaning requirements..."
+                    />
+                    <Textarea
+                      label="Restricted Chemical Notes"
+                      value={formData.restrictedChemicalNotes || ''}
+                      onChange={(e) => handleChange('restrictedChemicalNotes', e.target.value || null)}
+                      rows={3}
+                      placeholder="Products or methods the client does not allow..."
+                    />
+                  </div>
+                  <Textarea
+                    label="Equipment Notes"
+                    value={formData.equipmentNotes || ''}
+                    onChange={(e) => handleChange('equipmentNotes', e.target.value || null)}
+                    rows={3}
+                    placeholder="Vacuum, mop system, floor machine, ladders, client-provided supplies..."
+                  />
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <label className="flex items-start gap-2 rounded-lg border border-surface-200 dark:border-surface-700 p-3 text-sm text-surface-700 dark:text-surface-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.requiresSpecialEquipment}
+                        onChange={(e) => handleChange('requiresSpecialEquipment', e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>Requires special equipment</span>
+                    </label>
+                    <label className="flex items-start gap-2 rounded-lg border border-surface-200 dark:border-surface-700 p-3 text-sm text-surface-700 dark:text-surface-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.sdsRequired}
+                        onChange={(e) => handleChange('sdsRequired', e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>SDS required</span>
+                    </label>
+                    <label className="flex items-start gap-2 rounded-lg border border-surface-200 dark:border-surface-700 p-3 text-sm text-surface-700 dark:text-surface-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.storageAllowedOnSite}
+                        onChange={(e) => handleChange('storageAllowedOnSite', e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>Storage allowed on site</span>
+                    </label>
+                  </div>
+                  {formData.requiresSpecialEquipment && (
+                    <Textarea
+                      label="Special Equipment Notes"
+                      value={formData.specialEquipmentNotes || ''}
+                      onChange={(e) => handleChange('specialEquipmentNotes', e.target.value || null)}
+                      rows={3}
+                      placeholder="Describe special equipment, rental responsibility, or extra charges..."
+                    />
+                  )}
                 </div>
 
                 <Textarea

@@ -181,6 +181,11 @@ describe('contractService', () => {
           proposal: { connect: { id: 'proposal-1' } },
           account: { connect: { id: 'account-1' } },
           status: 'draft',
+          equipmentProvidedBy: 'company',
+          chemicalsProvidedBy: 'company',
+          requiresSpecialEquipment: false,
+          sdsRequired: true,
+          storageAllowedOnSite: false,
         }),
       })
     );
@@ -218,6 +223,59 @@ describe('contractService', () => {
           serviceFrequency: 'weekly',
           proposal: { connect: { id: 'proposal-1' } },
           account: { connect: { id: 'account-1' } },
+        }),
+      })
+    );
+  });
+
+  it('createContractFromProposal should save supplied equipment and chemical terms', async () => {
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      id: 'proposal-1',
+      title: 'Proposal A',
+      status: 'accepted',
+      serviceFrequency: 'weekly',
+      serviceSchedule: null,
+      totalAmount: '2500',
+      taxRate: 0,
+      taxAmount: 0,
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      termsAndConditions: 'Terms',
+      notes: null,
+      account: {
+        name: 'Account',
+        paymentTerms: 'Net 30',
+      },
+      facility: { id: 'facility-1' },
+      proposalServices: [],
+    });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-2' });
+
+    await contractService.createContractFromProposal('proposal-1', 'user-1', {
+      equipmentProvidedBy: 'mixed',
+      chemicalsProvidedBy: 'client',
+      approvedChemicalNotes: 'Use fragrance-free products.',
+      restrictedChemicalNotes: 'No bleach.',
+      equipmentNotes: 'Client provides vacuum.',
+      requiresSpecialEquipment: true,
+      specialEquipmentNotes: 'Floor buffer required quarterly.',
+      sdsRequired: true,
+      storageAllowedOnSite: true,
+    });
+
+    expect(prisma.contract.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          equipmentProvidedBy: 'mixed',
+          chemicalsProvidedBy: 'client',
+          approvedChemicalNotes: 'Use fragrance-free products.',
+          restrictedChemicalNotes: 'No bleach.',
+          equipmentNotes: 'Client provides vacuum.',
+          requiresSpecialEquipment: true,
+          specialEquipmentNotes: 'Floor buffer required quarterly.',
+          sdsRequired: true,
+          storageAllowedOnSite: true,
         }),
       })
     );

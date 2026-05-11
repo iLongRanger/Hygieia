@@ -22,6 +22,16 @@ export interface PublicContract {
   termsAndConditions?: string | null;
   termsDocumentName?: string | null;
   termsDocumentMimeType?: string | null;
+  specialInstructions?: string | null;
+  equipmentProvidedBy?: 'company' | 'client' | 'mixed' | string | null;
+  chemicalsProvidedBy?: 'company' | 'client' | 'mixed' | string | null;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
   signedByName?: string | null;
   signedDate?: string | null;
   sentAt?: string | null;

@@ -60,6 +60,15 @@ export interface ContractCreateInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: string;
+  chemicalsProvidedBy?: string;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
   subcontractorTier?: string | null;
   compensationType?: string;
   subcontractorPercentage?: number | null;
@@ -87,6 +96,15 @@ export interface ContractUpdateInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: string;
+  chemicalsProvidedBy?: string;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
   subcontractorTier?: string | null;
   compensationType?: string;
   subcontractorPercentage?: number | null;
@@ -205,6 +223,15 @@ const contractSelect = {
   termsDocumentName: true,
   termsDocumentMimeType: true,
   specialInstructions: true,
+  equipmentProvidedBy: true,
+  chemicalsProvidedBy: true,
+  approvedChemicalNotes: true,
+  restrictedChemicalNotes: true,
+  equipmentNotes: true,
+  requiresSpecialEquipment: true,
+  specialEquipmentNotes: true,
+  sdsRequired: true,
+  storageAllowedOnSite: true,
   signedDocumentUrl: true,
   signedDate: true,
   signedByName: true,
@@ -770,6 +797,15 @@ export async function createContract(data: ContractCreateInput) {
     termsDocumentMimeType: data.termsDocumentMimeType,
     termsDocumentDataUrl: data.termsDocumentDataUrl,
     specialInstructions: data.specialInstructions,
+    equipmentProvidedBy: data.equipmentProvidedBy ?? 'company',
+    chemicalsProvidedBy: data.chemicalsProvidedBy ?? 'company',
+    approvedChemicalNotes: data.approvedChemicalNotes,
+    restrictedChemicalNotes: data.restrictedChemicalNotes,
+    equipmentNotes: data.equipmentNotes,
+    requiresSpecialEquipment: data.requiresSpecialEquipment ?? false,
+    specialEquipmentNotes: data.specialEquipmentNotes,
+    sdsRequired: data.sdsRequired ?? true,
+    storageAllowedOnSite: data.storageAllowedOnSite ?? false,
     subcontractorTier: data.subcontractorTier,
     compensationType: data.compensationType ?? 'hourly',
     subcontractorPercentage:
@@ -865,6 +901,15 @@ export async function createContractFromProposal(
     termsDocumentMimeType: overrides?.termsDocumentMimeType ?? null,
     termsDocumentDataUrl: overrides?.termsDocumentDataUrl ?? null,
     specialInstructions: overrides?.specialInstructions ?? proposal.notes,
+    equipmentProvidedBy: overrides?.equipmentProvidedBy ?? 'company',
+    chemicalsProvidedBy: overrides?.chemicalsProvidedBy ?? 'company',
+    approvedChemicalNotes: overrides?.approvedChemicalNotes ?? null,
+    restrictedChemicalNotes: overrides?.restrictedChemicalNotes ?? null,
+    equipmentNotes: overrides?.equipmentNotes ?? null,
+    requiresSpecialEquipment: overrides?.requiresSpecialEquipment ?? false,
+    specialEquipmentNotes: overrides?.specialEquipmentNotes ?? null,
+    sdsRequired: overrides?.sdsRequired ?? true,
+    storageAllowedOnSite: overrides?.storageAllowedOnSite ?? false,
     includesInitialClean: true,
     subcontractorTier,
     compensationType: 'hourly',
@@ -1441,6 +1486,15 @@ export interface RenewContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: string;
+  chemicalsProvidedBy?: string;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 /**
@@ -1504,6 +1558,15 @@ export async function renewContract(
   if (input.termsDocumentMimeType !== undefined) updateData.termsDocumentMimeType = input.termsDocumentMimeType;
   if (input.termsDocumentDataUrl !== undefined) updateData.termsDocumentDataUrl = input.termsDocumentDataUrl;
   if (input.specialInstructions !== undefined) updateData.specialInstructions = input.specialInstructions;
+  if (input.equipmentProvidedBy !== undefined) updateData.equipmentProvidedBy = input.equipmentProvidedBy;
+  if (input.chemicalsProvidedBy !== undefined) updateData.chemicalsProvidedBy = input.chemicalsProvidedBy;
+  if (input.approvedChemicalNotes !== undefined) updateData.approvedChemicalNotes = input.approvedChemicalNotes;
+  if (input.restrictedChemicalNotes !== undefined) updateData.restrictedChemicalNotes = input.restrictedChemicalNotes;
+  if (input.equipmentNotes !== undefined) updateData.equipmentNotes = input.equipmentNotes;
+  if (input.requiresSpecialEquipment !== undefined) updateData.requiresSpecialEquipment = input.requiresSpecialEquipment;
+  if (input.specialEquipmentNotes !== undefined) updateData.specialEquipmentNotes = input.specialEquipmentNotes;
+  if (input.sdsRequired !== undefined) updateData.sdsRequired = input.sdsRequired;
+  if (input.storageAllowedOnSite !== undefined) updateData.storageAllowedOnSite = input.storageAllowedOnSite;
 
   return prisma.contract.update({
     where: { id: contractId },
@@ -1575,6 +1638,15 @@ export interface StandaloneContractCreateInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: string;
+  chemicalsProvidedBy?: string;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
   createdByUserId: string;
 }
 
@@ -1650,6 +1722,15 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     termsDocumentMimeType: data.termsDocumentMimeType ?? null,
     termsDocumentDataUrl: data.termsDocumentDataUrl ?? null,
     specialInstructions: data.specialInstructions,
+    equipmentProvidedBy: data.equipmentProvidedBy ?? 'company',
+    chemicalsProvidedBy: data.chemicalsProvidedBy ?? 'company',
+    approvedChemicalNotes: data.approvedChemicalNotes,
+    restrictedChemicalNotes: data.restrictedChemicalNotes,
+    equipmentNotes: data.equipmentNotes,
+    requiresSpecialEquipment: data.requiresSpecialEquipment ?? false,
+    specialEquipmentNotes: data.specialEquipmentNotes,
+    sdsRequired: data.sdsRequired ?? true,
+    storageAllowedOnSite: data.storageAllowedOnSite ?? false,
     createdByUserId: data.createdByUserId,
   });
 }

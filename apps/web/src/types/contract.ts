@@ -29,6 +29,8 @@ export type BillingCycle =
   | 'semi_annual'
   | 'annual';
 
+export type SuppliesProvidedBy = 'company' | 'client' | 'mixed';
+
 export type ResidentialContractServiceType =
   | 'recurring_standard'
   | 'one_time_standard'
@@ -104,6 +106,15 @@ export interface Contract {
   termsDocumentName?: string | null;
   termsDocumentMimeType?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy | string | null;
+  chemicalsProvidedBy?: SuppliesProvidedBy | string | null;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
   sentAt?: string | null;
   viewedAt?: string | null;
   publicToken?: string | null;
@@ -373,6 +384,15 @@ export interface CreateContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy;
+  chemicalsProvidedBy?: SuppliesProvidedBy;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 export interface CreateContractFromProposalInput {
@@ -392,6 +412,15 @@ export interface CreateContractFromProposalInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy;
+  chemicalsProvidedBy?: SuppliesProvidedBy;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 export interface UpdateContractInput {
@@ -415,6 +444,15 @@ export interface UpdateContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy;
+  chemicalsProvidedBy?: SuppliesProvidedBy;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 export interface SignContractInput {
@@ -491,6 +529,15 @@ export interface RenewContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy;
+  chemicalsProvidedBy?: SuppliesProvidedBy;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 // Standalone contract creation (imported/legacy)
@@ -515,6 +562,15 @@ export interface CreateStandaloneContractInput {
   termsDocumentMimeType?: string | null;
   termsDocumentDataUrl?: string | null;
   specialInstructions?: string | null;
+  equipmentProvidedBy?: SuppliesProvidedBy;
+  chemicalsProvidedBy?: SuppliesProvidedBy;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean;
+  storageAllowedOnSite?: boolean;
 }
 
 export interface CreateContractAmendmentInput {
