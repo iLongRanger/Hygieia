@@ -272,8 +272,11 @@ describe('LeadDetail', () => {
     await userEventInstance.clear(within(modal).getByLabelText(/street address/i));
     await userEventInstance.type(within(modal).getByLabelText(/street address/i), '123 Main St');
     await userEventInstance.selectOptions(within(modal).getByLabelText(/assigned rep/i), 'user-1');
-    await userEventInstance.clear(within(modal).getByLabelText(/^date$/i));
-    await userEventInstance.type(within(modal).getByLabelText(/^date$/i), '2026-02-25');
+    const scheduleDateInput = within(modal).getByLabelText(/^date$/i);
+    expect(scheduleDateInput).toHaveAttribute('type', 'date');
+    expect(within(modal).getByRole('button', { name: /open date picker/i })).toBeInTheDocument();
+    await userEventInstance.clear(scheduleDateInput);
+    await userEventInstance.type(scheduleDateInput, '2026-02-25');
     await userEventInstance.selectOptions(within(modal).getByLabelText(/start time/i), '09:00');
     await userEventInstance.selectOptions(within(modal).getByLabelText(/end time/i), '10:00');
     await userEventInstance.click(within(modal).getByRole('button', { name: /^schedule$/i }));

@@ -18,6 +18,7 @@ import { Drawer } from '../../components/ui/Drawer';
 import { Select } from '../../components/ui/Select';
 import { TimeSelect } from '../../components/ui/TimeSelect';
 import { Input } from '../../components/ui/Input';
+import { DatePicker } from '../../components/ui/DatePicker';
 import { Textarea } from '../../components/ui/Textarea';
 import { convertLead, getLead, listLeadSources, updateLead } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
@@ -1188,9 +1189,8 @@ const LeadDetail = () => {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
+            <DatePicker
               label="Date"
-              type="date"
               value={scheduleDate}
               onChange={(e) => setScheduleDate(e.target.value)}
             />
