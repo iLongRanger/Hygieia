@@ -168,7 +168,7 @@ const taskGroupLabel = (key: string): string => {
     monthly: 'Monthly',
     quarterly: 'Quarterly',
     yearly: 'Yearly',
-    manual: 'Manual',
+    manual: 'Additional Tasks',
   };
   return labels[key] || key;
 };

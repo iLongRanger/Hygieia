@@ -178,7 +178,7 @@ describe('ProposalDetail', () => {
     await user.click(await screen.findByRole('button', { name: /^services$/i }));
     expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Weekly' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Manual' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Additional Tasks' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Yearly' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
