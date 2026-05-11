@@ -259,7 +259,7 @@ describe('LeadDetail', () => {
     expect(convertedAccountLink).toHaveAttribute('href', '/accounts/account-1');
   });
 
-  it('converts unconverted lead when scheduling walkthrough appointment', async () => {
+  it('converts unconverted lead to an account without creating a service location', async () => {
     const userEventInstance = userEvent.setup();
     render(<LeadDetail />);
 
@@ -267,10 +267,40 @@ describe('LeadDetail', () => {
     const modal = await screen.findByRole('dialog', { name: /schedule walkthrough/i });
     await userEventInstance.clear(within(modal).getByLabelText(/account name/i));
     await userEventInstance.type(within(modal).getByLabelText(/account name/i), 'Acme Corporation');
-    await userEventInstance.clear(within(modal).getByLabelText(/facility name/i));
-    await userEventInstance.type(within(modal).getByLabelText(/facility name/i), 'HQ');
-    await userEventInstance.clear(within(modal).getByLabelText(/street address/i));
-    await userEventInstance.type(within(modal).getByLabelText(/street address/i), '123 Main St');
+    expect(within(modal).queryByLabelText(/facility name/i)).not.toBeInTheDocument();
+    expect(within(modal).queryByLabelText(/^date$/i)).not.toBeInTheDocument();
+    await userEventInstance.click(within(modal).getByRole('button', { name: /^convert account$/i }));
+
+    await waitFor(() => {
+      expect(convertLeadMock).toHaveBeenCalledWith(
+        'lead-1',
+        expect.objectContaining({
+          createNewAccount: true,
+          facilityOption: 'none',
+          existingFacilityId: null,
+          accountData: expect.objectContaining({
+            name: 'Acme Corporation',
+          }),
+        })
+      );
+      expect(createAppointmentMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('schedules walkthrough for a converted lead with a date picker', async () => {
+    const userEventInstance = userEvent.setup();
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      convertedToAccountId: 'account-1',
+      convertedAt: new Date().toISOString(),
+      convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+    });
+
+    render(<LeadDetail />);
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));
+    const modal = await screen.findByRole('dialog', { name: /schedule walkthrough/i });
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/service location/i), 'facility-1');
     await userEventInstance.selectOptions(within(modal).getByLabelText(/assigned rep/i), 'user-1');
     const scheduleDateInput = within(modal).getByLabelText(/^date$/i);
     expect(scheduleDateInput).toHaveAttribute('type', 'date');
@@ -282,25 +312,11 @@ describe('LeadDetail', () => {
     await userEventInstance.click(within(modal).getByRole('button', { name: /^schedule$/i }));
 
     await waitFor(() => {
-      expect(convertLeadMock).toHaveBeenCalledWith(
-        'lead-1',
-        expect.objectContaining({
-          createNewAccount: true,
-          facilityOption: 'new',
-          accountData: expect.objectContaining({
-            name: 'Acme Corporation',
-          }),
-          facilityData: expect.objectContaining({
-            name: 'HQ',
-            address: expect.objectContaining({
-              street: '123 Main St',
-            }),
-          }),
-        })
-      );
+      expect(convertLeadMock).not.toHaveBeenCalled();
       expect(createAppointmentMock).toHaveBeenCalledWith(
         expect.objectContaining({
           leadId: 'lead-1',
+          facilityId: 'facility-1',
           assignedToUserId: 'user-1',
           type: 'walk_through',
         })
@@ -310,6 +326,12 @@ describe('LeadDetail', () => {
 
   it('shows only owner admin manager in assigned rep options', async () => {
     const userEventInstance = userEvent.setup();
+    getLeadMock.mockResolvedValue({
+      ...lead,
+      convertedToAccountId: 'account-1',
+      convertedAt: new Date().toISOString(),
+      convertedToAccount: { id: 'account-1', name: 'Acme Corporation', type: 'commercial' },
+    });
     render(<LeadDetail />);
 
     await userEventInstance.click(await screen.findByRole('button', { name: /schedule walkthrough/i }));

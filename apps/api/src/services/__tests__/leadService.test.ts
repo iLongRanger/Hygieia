@@ -558,6 +558,7 @@ describe('leadService', () => {
         convertedByUserId: 'user-1',
       };
 
+      const createFacilityMock = jest.fn();
       (prisma.lead.findUnique as jest.Mock).mockResolvedValue(existingLead);
       (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
         callback({
@@ -577,7 +578,7 @@ describe('leadService', () => {
             update: jest.fn(),
           },
           facility: {
-            create: jest.fn().mockResolvedValue({ id: 'facility-1', name: 'HQ' }),
+            create: createFacilityMock,
             findUnique: jest.fn(),
             update: jest.fn(),
             findFirst: jest.fn().mockResolvedValue(null),
@@ -603,17 +604,13 @@ describe('leadService', () => {
           name: 'Acme Corporation',
           type: 'commercial',
         },
-        facilityOption: 'new',
-        facilityData: {
-          name: 'HQ',
-          address: {
-            street: '123 Main St',
-          },
-        },
+        facilityOption: 'none',
         userId: 'user-1',
       });
 
       expect(result.lead.status).toBe('lead');
+      expect(result.facility).toBeUndefined();
+      expect(createFacilityMock).not.toHaveBeenCalled();
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 

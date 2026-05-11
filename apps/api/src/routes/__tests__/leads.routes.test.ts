@@ -142,13 +142,7 @@ describe('Lead Routes', () => {
           name: 'Acme Corp',
           type: 'commercial',
         },
-        facilityOption: 'new',
-        facilityData: {
-          name: 'HQ',
-          address: {
-            street: '123 Main St',
-          },
-        },
+        facilityOption: 'none',
       })
       .expect(201);
 

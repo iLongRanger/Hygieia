@@ -600,7 +600,7 @@ export interface ConvertLeadInput {
     paymentTerms?: string;
     notes?: string | null;
   };
-  facilityOption: 'new' | 'existing';
+  facilityOption?: 'none' | 'new' | 'existing';
   existingFacilityId?: string | null;
   facilityData?: {
     name: string;
@@ -635,7 +635,7 @@ export interface ConvertLeadResult {
   };
 }
 
-/** Convert a lead to an account with optional facility creation */
+/** Convert a lead to an account. Service locations are created separately unless explicitly provided. */
 export async function convertLead(
   leadId: string,
   input: ConvertLeadInput

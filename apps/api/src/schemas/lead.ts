@@ -119,8 +119,8 @@ export const convertLeadSchema = z.object({
     })
     .optional(),
 
-  // Facility options: 'new' or 'existing' (facility is required for conversion)
-  facilityOption: z.enum(['new', 'existing']).default('new'),
+  // Service location is optional during conversion. Accounts can have many service locations.
+  facilityOption: z.enum(['none', 'new', 'existing']).default('none'),
   existingFacilityId: z.string().uuid().optional().nullable(),
   facilityData: z
     .object({

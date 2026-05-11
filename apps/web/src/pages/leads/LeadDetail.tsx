@@ -130,7 +130,6 @@ const LeadDetail = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [conversionAccounts, setConversionAccounts] = useState<Account[]>([]);
-  const [conversionFacilities, setConversionFacilities] = useState<Facility[]>([]);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState<UpdateLeadInput>({});
@@ -159,19 +158,11 @@ const LeadDetail = () => {
     accountType: 'commercial' as 'commercial' | 'residential' | 'industrial' | 'government' | 'non_profit',
     billingEmail: '',
     billingPhone: '',
-    facilityName: '',
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: '',
     notes: '',
   });
   const [scheduleConversionOptions, setScheduleConversionOptions] = useState({
     createNewAccount: true,
     existingAccountId: '',
-    facilityOption: 'new' as 'new' | 'existing',
-    existingFacilityId: '',
   });
 
   const [completeForm, setCompleteForm] = useState({
@@ -265,21 +256,6 @@ const LeadDetail = () => {
     }
   }, [lead?.type]);
 
-  const fetchConversionFacilities = useCallback(async (accountId: string) => {
-    if (!accountId) {
-      setConversionFacilities([]);
-      return;
-    }
-
-    try {
-      const response = await listFacilities({ accountId, limit: 100 });
-      setConversionFacilities(response?.data || []);
-    } catch (error) {
-      console.error('Failed to fetch conversion facilities:', error);
-      setConversionFacilities([]);
-    }
-  }, []);
-
   useEffect(() => {
     fetchLead();
     fetchUsers();
@@ -301,25 +277,6 @@ const LeadDetail = () => {
 
     fetchConversionAccounts();
   }, [fetchConversionAccounts, lead?.convertedToAccountId, showScheduleModal]);
-
-  useEffect(() => {
-    if (!showScheduleModal || !!lead?.convertedToAccountId) {
-      return;
-    }
-
-    if (!scheduleConversionOptions.createNewAccount && scheduleConversionOptions.existingAccountId) {
-      fetchConversionFacilities(scheduleConversionOptions.existingAccountId);
-      return;
-    }
-
-    setConversionFacilities([]);
-  }, [
-    fetchConversionFacilities,
-    lead?.convertedToAccountId,
-    scheduleConversionOptions.createNewAccount,
-    scheduleConversionOptions.existingAccountId,
-    showScheduleModal,
-  ]);
 
   const formatDateTime = (value: string, timezone: string) => {
     const date = new Date(value);
@@ -356,49 +313,31 @@ const LeadDetail = () => {
 
   const handleSchedule = async () => {
     if (!id) return;
-    if (!scheduleForm.assignedToUserId || !scheduleDate || !scheduleStartTime || !scheduleEndTime) {
+
+    if (!lead?.convertedToAccountId) {
+      if (scheduleConversionOptions.createNewAccount) {
+        if (!scheduleConversionForm.accountName.trim()) {
+          toast.error('Account name is required before converting this lead');
+          return;
+        }
+      } else if (!scheduleConversionOptions.existingAccountId) {
+        toast.error('Select an existing account before converting this lead');
+        return;
+      }
+    } else if (!scheduleForm.assignedToUserId || !scheduleDate || !scheduleStartTime || !scheduleEndTime) {
       toast.error('Please fill all required fields');
       return;
     }
 
     const startDateTime = new Date(`${scheduleDate}T${scheduleStartTime}`);
     const endDateTime = new Date(`${scheduleDate}T${scheduleEndTime}`);
-    if (
+    if (lead?.convertedToAccountId && (
       Number.isNaN(startDateTime.getTime())
       || Number.isNaN(endDateTime.getTime())
       || endDateTime <= startDateTime
-    ) {
+    )) {
       toast.error('Please select a valid date and time range');
       return;
-    }
-
-    if (!lead?.convertedToAccountId) {
-      if (scheduleConversionOptions.createNewAccount) {
-        if (!scheduleConversionForm.accountName.trim()) {
-          toast.error('Account name is required before booking a walkthrough');
-          return;
-        }
-      } else if (!scheduleConversionOptions.existingAccountId) {
-        toast.error('Select an existing account before booking a walkthrough');
-        return;
-      }
-
-      if (scheduleConversionOptions.facilityOption === 'existing') {
-        if (!scheduleConversionOptions.existingFacilityId) {
-          toast.error('Select an existing facility before booking a walkthrough');
-          return;
-        }
-      } else {
-        if (!scheduleConversionForm.facilityName.trim()) {
-          toast.error('Facility name is required before booking a walkthrough');
-          return;
-        }
-
-        if (!scheduleConversionForm.street.trim()) {
-          toast.error('Facility address is required before booking a walkthrough');
-          return;
-        }
-      }
     }
 
     try {
@@ -412,7 +351,7 @@ const LeadDetail = () => {
       }
 
       if (wasConvertedDuringBooking) {
-        const conversionResult = await convertLead(id, {
+        await convertLead(id, {
           createNewAccount: scheduleConversionOptions.createNewAccount,
           existingAccountId: scheduleConversionOptions.createNewAccount
             ? null
@@ -427,31 +366,24 @@ const LeadDetail = () => {
                 notes: scheduleConversionForm.notes.trim() || null,
               }
             : undefined,
-          facilityOption: scheduleConversionOptions.createNewAccount
-            ? 'new'
-            : scheduleConversionOptions.facilityOption,
-          existingFacilityId:
-            !scheduleConversionOptions.createNewAccount
-            && scheduleConversionOptions.facilityOption === 'existing'
-              ? scheduleConversionOptions.existingFacilityId
-              : null,
-          facilityData:
-            scheduleConversionOptions.createNewAccount
-            || scheduleConversionOptions.facilityOption === 'new'
-              ? {
-                  name: scheduleConversionForm.facilityName.trim(),
-                  address: {
-                    street: scheduleConversionForm.street.trim(),
-                    city: scheduleConversionForm.city.trim() || null,
-                    state: scheduleConversionForm.state.trim() || null,
-                    postalCode: scheduleConversionForm.postalCode.trim() || null,
-                    country: scheduleConversionForm.country.trim() || null,
-                  },
-                  notes: scheduleConversionForm.notes.trim() || null,
-                }
-              : undefined,
+          facilityOption: 'none',
+          existingFacilityId: null,
         });
-        facilityIdForAppointment = conversionResult.facility?.id || '';
+        toast.success('Lead converted to account. Add a service location before booking the walkthrough.');
+        setShowScheduleModal(false);
+        setScheduleConversionForm({
+          accountName: '',
+          accountType: lead?.type === 'residential' ? 'residential' : 'commercial',
+          billingEmail: '',
+          billingPhone: '',
+          notes: '',
+        });
+        setScheduleConversionOptions({
+          createNewAccount: true,
+          existingAccountId: '',
+        });
+        fetchLead();
+        return;
       }
 
       if (!facilityIdForAppointment) {
@@ -470,11 +402,7 @@ const LeadDetail = () => {
         location: scheduleForm.location || null,
         notes: scheduleForm.notes || null,
       });
-      toast.success(
-        wasConvertedDuringBooking
-          ? 'Lead converted and walkthrough scheduled'
-          : 'Walkthrough scheduled'
-      );
+      toast.success('Walkthrough scheduled');
       setShowScheduleModal(false);
       setScheduleForm({
         assignedToUserId: '',
@@ -493,21 +421,12 @@ const LeadDetail = () => {
         accountType: lead?.type === 'residential' ? 'residential' : 'commercial',
         billingEmail: '',
         billingPhone: '',
-        facilityName: '',
-        street: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: '',
         notes: '',
       });
       setScheduleConversionOptions({
         createNewAccount: true,
         existingAccountId: '',
-        facilityOption: 'new',
-        existingFacilityId: '',
       });
-      setConversionFacilities([]);
       fetchAppointments();
       fetchLead();
     } catch (error) {
@@ -573,21 +492,12 @@ const LeadDetail = () => {
       accountType: lead?.type === 'residential' ? 'residential' : 'commercial',
       billingEmail: lead?.primaryEmail || '',
       billingPhone: lead?.primaryPhone || '',
-      facilityName: lead?.companyName || lead?.contactName || '',
-      street: lead?.address?.street || '',
-      city: lead?.address?.city || '',
-      state: lead?.address?.state || '',
-      postalCode: lead?.address?.postalCode || '',
-      country: lead?.address?.country || '',
       notes: '',
     });
     setScheduleConversionOptions({
       createNewAccount: true,
       existingAccountId: '',
-      facilityOption: 'new',
-      existingFacilityId: '',
     });
-    setConversionFacilities([]);
     setShowScheduleModal(true);
   };
 
@@ -976,9 +886,9 @@ const LeadDetail = () => {
         <div className="space-y-4">
             {!lead.convertedToAccountId && (
               <div className="rounded-lg border border-gold/20 bg-gold/5 p-4">
-                <div className="text-sm font-medium text-gold">Convert lead during booking</div>
+                <div className="text-sm font-medium text-gold">Convert lead before booking</div>
                 <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                  Booking this walkthrough will also create the account and initial facility record.
+                  Conversion creates the account only. Add a service location to the account before booking the walkthrough.
                 </p>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -994,8 +904,6 @@ const LeadDetail = () => {
                         ...current,
                         createNewAccount: value !== 'existing',
                         existingAccountId: value === 'existing' ? current.existingAccountId : '',
-                        facilityOption: 'new',
-                        existingFacilityId: '',
                       }))
                     }
                   />
@@ -1029,8 +937,6 @@ const LeadDetail = () => {
                         setScheduleConversionOptions((current) => ({
                           ...current,
                           existingAccountId: value,
-                          facilityOption: 'new',
-                          existingFacilityId: '',
                         }))
                       }
                     />
@@ -1064,113 +970,24 @@ const LeadDetail = () => {
                       />
                     </>
                   )}
-                  {!scheduleConversionOptions.createNewAccount && scheduleConversionOptions.existingAccountId && (
-                    <Select
-                      label="Facility"
-                      options={[
-                        { value: 'new', label: 'Create New Facility' },
-                        { value: 'existing', label: 'Use Existing Facility' },
-                      ]}
-                      value={scheduleConversionOptions.facilityOption}
-                      onChange={(value) =>
-                        setScheduleConversionOptions((current) => ({
-                          ...current,
-                          facilityOption: (value as 'new' | 'existing') || 'new',
-                          existingFacilityId: '',
-                        }))
-                      }
-                    />
-                  )}
-                  {!scheduleConversionOptions.createNewAccount
-                    && scheduleConversionOptions.facilityOption === 'existing'
-                    && scheduleConversionOptions.existingAccountId && (
-                      <Select
-                        label="Existing Facility"
-                        placeholder="Select facility"
-                        options={conversionFacilities.map((facility) => ({
-                          value: facility.id,
-                          label: facility.name,
-                        }))}
-                        value={scheduleConversionOptions.existingFacilityId}
-                        onChange={(value) =>
-                          setScheduleConversionOptions((current) => ({
-                            ...current,
-                            existingFacilityId: value,
-                          }))
-                        }
-                      />
-                    )}
-                  {(scheduleConversionOptions.createNewAccount
-                    || scheduleConversionOptions.facilityOption === 'new') && (
-                    <>
-                      <Input
-                        label="Facility Name"
-                        value={scheduleConversionForm.facilityName}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, facilityName: e.target.value })
-                        }
-                        maxLength={maxLengths.companyName}
-                      />
-                      <Input
-                        label="Street Address"
-                        value={scheduleConversionForm.street}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, street: e.target.value })
-                        }
-                        maxLength={maxLengths.street}
-                      />
-                      <Input
-                        label="City"
-                        value={scheduleConversionForm.city}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, city: e.target.value })
-                        }
-                        maxLength={maxLengths.city}
-                      />
-                      <Input
-                        label="State"
-                        value={scheduleConversionForm.state}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, state: e.target.value })
-                        }
-                        maxLength={maxLengths.state}
-                      />
-                      <Input
-                        label="Postal Code"
-                        value={scheduleConversionForm.postalCode}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, postalCode: e.target.value })
-                        }
-                        maxLength={maxLengths.postalCode}
-                      />
-                      <Input
-                        label="Country"
-                        value={scheduleConversionForm.country}
-                        onChange={(e) =>
-                          setScheduleConversionForm({ ...scheduleConversionForm, country: e.target.value })
-                        }
-                        maxLength={maxLengths.country}
-                      />
-                    </>
-                  )}
                 </div>
 
                 <Textarea
-                  label="Account / Facility Notes"
-                placeholder="Add any setup context for the new customer record..."
-                value={scheduleConversionForm.notes}
-                onChange={(e) =>
-                  setScheduleConversionForm({ ...scheduleConversionForm, notes: e.target.value })
-                }
-                maxLength={maxLengths.notes}
-              />
+                  label="Account Notes"
+                  placeholder="Add any setup context for the new customer record..."
+                  value={scheduleConversionForm.notes}
+                  onChange={(e) =>
+                    setScheduleConversionForm({ ...scheduleConversionForm, notes: e.target.value })
+                  }
+                  maxLength={maxLengths.notes}
+                />
             </div>
           )}
 
           {lead.convertedToAccountId && (
             <Select
-              label="Facility"
-              placeholder="Select facility"
+              label="Service Location"
+              placeholder="Select service location"
               options={facilities.map((facility) => ({
                 value: facility.id,
                 label: facility.name,
@@ -1180,58 +997,62 @@ const LeadDetail = () => {
             />
           )}
 
-          <Select
-            label="Assigned Rep"
-            placeholder="Select rep"
-            options={leadAssignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
-            value={scheduleForm.assignedToUserId}
-            onChange={(value) => setScheduleForm({ ...scheduleForm, assignedToUserId: value })}
-          />
+          {lead.convertedToAccountId && (
+            <>
+              <Select
+                label="Assigned Rep"
+                placeholder="Select rep"
+                options={leadAssignableUsers.map((u) => ({ value: u.id, label: u.fullName }))}
+                value={scheduleForm.assignedToUserId}
+                onChange={(value) => setScheduleForm({ ...scheduleForm, assignedToUserId: value })}
+              />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <DatePicker
-              label="Date"
-              value={scheduleDate}
-              onChange={(e) => setScheduleDate(e.target.value)}
-            />
-            <TimeSelect
-              label="Start Time"
-              value={scheduleStartTime}
-              onChange={setScheduleStartTime}
-            />
-            <TimeSelect
-              label="End Time"
-              value={scheduleEndTime}
-              onChange={setScheduleEndTime}
-            />
-          </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <DatePicker
+                  label="Date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+                <TimeSelect
+                  label="Start Time"
+                  value={scheduleStartTime}
+                  onChange={setScheduleStartTime}
+                />
+                <TimeSelect
+                  label="End Time"
+                  value={scheduleEndTime}
+                  onChange={setScheduleEndTime}
+                />
+              </div>
 
-          <Input
-            label="Timezone"
-            value={scheduleForm.timezone}
-            onChange={(e) => setScheduleForm({ ...scheduleForm, timezone: e.target.value })}
-          />
+              <Input
+                label="Timezone"
+                value={scheduleForm.timezone}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, timezone: e.target.value })}
+              />
 
-          <Input
-            label="Location"
-            placeholder="On-site"
-            value={scheduleForm.location}
-            onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
-          />
+              <Input
+                label="Location"
+                placeholder="On-site"
+                value={scheduleForm.location}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
+              />
 
-          <Textarea
-            label="Notes"
-            placeholder="Add any instructions for the rep..."
-            value={scheduleForm.notes}
-            onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
-          />
+              <Textarea
+                label="Notes"
+                placeholder="Add any instructions for the rep..."
+                value={scheduleForm.notes}
+                onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+              />
+            </>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setShowScheduleModal(false)}>
               Cancel
             </Button>
             <Button onClick={handleSchedule} isLoading={saving}>
-              Schedule
+              {lead.convertedToAccountId ? 'Schedule' : 'Convert Account'}
             </Button>
           </div>
         </div>
