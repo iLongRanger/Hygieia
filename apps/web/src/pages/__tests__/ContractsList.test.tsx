@@ -198,16 +198,44 @@ describe('ContractsList', () => {
     });
   });
 
-  it('activates draft contract', async () => {
-    const user = userEvent.setup();
+  it('does not show activate action for unsigned draft contracts', async () => {
     render(<ContractsList />);
 
-    // Wait for both listContracts and summary to resolve and stabilise
     await waitFor(() => {
       expect(listContractsMock).toHaveBeenCalledTimes(2);
     });
 
-    const activateButton = await screen.findByRole('button', { name: /activate/i });
+    const contractNumber = await screen.findByText('CONT-202602-0001');
+    const row = contractNumber.closest('tr');
+    expect(row).toBeTruthy();
+
+    expect(within(row as HTMLElement).queryByRole('button', { name: /activate/i })).not.toBeInTheDocument();
+  });
+
+  it('activates a signed contract from row action', async () => {
+    const user = userEvent.setup();
+    listContractsMock.mockResolvedValue({
+      data: [{
+        ...contract,
+        status: 'pending_signature',
+        signedDate: new Date('2026-03-01').toISOString(),
+        signedByName: 'Client Name',
+        signedByEmail: 'client@example.com',
+      }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    render(<ContractsList />);
+
+    await waitFor(() => {
+      expect(listContractsMock).toHaveBeenCalledTimes(2);
+    });
+
+    const contractNumber = await screen.findByText('CONT-202602-0001');
+    const row = contractNumber.closest('tr');
+    expect(row).toBeTruthy();
+
+    const activateButton = within(row as HTMLElement).getByRole('button', { name: /activate/i });
     await user.click(activateButton);
 
     await waitFor(() => {

@@ -102,6 +102,13 @@ const formatDate = (date: string | null | undefined) => {
   return new Date(date).toLocaleDateString();
 };
 
+const canActivateContract = (contract: Contract) => (
+  Boolean(contract.signedDate)
+  && (contract.status === 'sent'
+    || contract.status === 'viewed'
+    || contract.status === 'pending_signature')
+);
+
 const ContractsList = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -413,19 +420,19 @@ const ContractsList = () => {
                   Edit
                 </Button>
               )}
-              {canWriteContracts && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleActivate(contract.id);
-                  }}
-                >
-                  Activate
-                </Button>
-              )}
             </>
+          )}
+          {canActivateContract(contract) && canWriteContracts && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleActivate(contract.id);
+              }}
+            >
+              Activate
+            </Button>
           )}
           {!contract.archivedAt && contract.status !== 'active' && canAdminContracts && (
             <Button
