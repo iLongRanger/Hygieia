@@ -1480,9 +1480,6 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
   }
   content.push({ stack: clientInfo, margin: [0, 0, 0, 20] as [number, number, number, number] });
 
-  // Service Terms Table
-  content.push({ text: 'Service Terms', style: 'sectionHeader' });
-
   const termsBody: TableCell[][] = [
     [
       { text: 'Start Date', style: 'tableHeader' },
@@ -1528,23 +1525,26 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     ]);
   }
 
-  content.push({
-    table: {
-      headerRows: 0,
-      widths: [150, '*'],
-      body: termsBody,
+  content.push(keepTogether([
+    { text: 'Service Terms', style: 'sectionHeader' },
+    {
+      table: {
+        headerRows: 0,
+        widths: [150, '*'],
+        body: termsBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: () => COLORS.border,
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
     },
-    layout: {
-      hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
-      vLineWidth: () => 0,
-      hLineColor: () => COLORS.border,
-      paddingLeft: () => 8,
-      paddingRight: () => 8,
-      paddingTop: () => 6,
-      paddingBottom: () => 6,
-    },
-    margin: [0, 5, 0, 15] as [number, number, number, number],
-  });
+  ]));
 
   const contractServices = contract.proposal?.proposalServices ?? [];
   if (contractServices.length > 0) {
@@ -1612,15 +1612,12 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
         });
       }
 
-      content.push({
+      content.push(keepTogether([{
         stack: serviceStack,
         margin: [0, 6, 0, 8] as [number, number, number, number],
-      });
+      }]));
     }
   }
-
-  // Financial Terms
-  content.push({ text: 'Financial Terms', style: 'sectionHeader' });
 
   const financialBody: TableCell[][] = [
     [
@@ -1644,23 +1641,26 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     ]);
   }
 
-  content.push({
-    table: {
-      headerRows: 0,
-      widths: [150, '*'],
-      body: financialBody,
+  content.push(keepTogether([
+    { text: 'Financial Terms', style: 'sectionHeader' },
+    {
+      table: {
+        headerRows: 0,
+        widths: [150, '*'],
+        body: financialBody,
+      },
+      layout: {
+        hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+        vLineWidth: () => 0,
+        hLineColor: () => COLORS.border,
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: () => 6,
+        paddingBottom: () => 6,
+      },
+      margin: [0, 5, 0, 15] as [number, number, number, number],
     },
-    layout: {
-      hLineWidth: (i: number, node: PdfTableNode) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
-      vLineWidth: () => 0,
-      hLineColor: () => COLORS.border,
-      paddingLeft: () => 8,
-      paddingRight: () => 8,
-      paddingTop: () => 6,
-      paddingBottom: () => 6,
-    },
-    margin: [0, 5, 0, 15] as [number, number, number, number],
-  });
+  ]));
 
   const suppliesBody: TableCell[][] = [
     [
@@ -1746,26 +1746,27 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
         if (headingMatch) {
           const heading = headingMatch[1];
           const body = trimmed.slice(headingMatch[0].length).trim();
-          content.push({
+          const sectionStack: Content[] = [{
             text: heading,
             fontSize: 11,
             bold: true,
             color: COLORS.primary,
             margin: [0, 8, 0, 4] as [number, number, number, number],
-          });
+          }];
           if (body) {
-            content.push({
+            sectionStack.push({
               text: body,
               style: 'bodyText',
               margin: [0, 0, 0, 6] as [number, number, number, number],
             });
           }
+          content.push(keepTogether(sectionStack));
         } else {
-          content.push({
+          content.push(keepTogether([{
             text: trimmed,
             style: 'bodyText',
             margin: [0, 0, 0, 6] as [number, number, number, number],
-          });
+          }]));
         }
       }
       content.push({ text: '', margin: [0, 0, 0, 9] as [number, number, number, number] });
@@ -1781,12 +1782,14 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
 
   // Special Instructions
   if (contract.specialInstructions) {
-    content.push({ text: 'Special Instructions', style: 'sectionHeader' });
-    content.push({
-      text: contract.specialInstructions,
-      style: 'bodyText',
-      margin: [0, 0, 0, 15] as [number, number, number, number],
-    });
+    content.push(keepTogether([
+      { text: 'Special Instructions', style: 'sectionHeader' },
+      {
+        text: contract.specialInstructions,
+        style: 'bodyText',
+        margin: [0, 0, 0, 15] as [number, number, number, number],
+      },
+    ]));
   }
 
   // Signature Block
@@ -1813,7 +1816,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
     );
   }
 
-  content.push({
+  content.push(keepTogether([{
     columns: [
       { stack: clientSigStack, width: '*' },
       {
@@ -1831,7 +1834,7 @@ export async function generateContractPdf(contract: ContractForPdf): Promise<Buf
       },
     ],
     margin: [0, 30, 0, 0] as [number, number, number, number],
-  });
+  }]));
 
   const docDefinition: TDocumentDefinitions = {
     content,

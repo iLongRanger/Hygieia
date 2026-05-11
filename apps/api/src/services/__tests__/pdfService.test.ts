@@ -1,4 +1,4 @@
-import { formatProposalPdfFrequencyLabel, generateProposalPdf } from '../pdfService';
+import { formatProposalPdfFrequencyLabel, generateContractPdf, generateProposalPdf } from '../pdfService';
 import { getGlobalSettings } from '../globalSettingsService';
 
 jest.mock('../globalSettingsService', () => ({
@@ -85,5 +85,51 @@ describe('pdfService', () => {
     expect(formatProposalPdfFrequencyLabel('2x_week')).toBe('2x Week');
     expect(formatProposalPdfFrequencyLabel('weekly')).toBe('Weekly');
     expect(formatProposalPdfFrequencyLabel('custom_frequency')).toBe('Custom Frequency');
+  });
+
+  it('generates contract PDFs with kept-together service and terms blocks', async () => {
+    const pdf = await generateContractPdf({
+      contractNumber: 'CONT-001',
+      title: 'Cleaning Service Contract',
+      status: 'draft',
+      startDate: '2026-05-01',
+      endDate: null,
+      monthlyValue: 1200,
+      totalValue: null,
+      billingCycle: 'monthly',
+      paymentTerms: 'Net 30',
+      serviceFrequency: '2x_week',
+      serviceSchedule: {
+        days: ['monday', 'thursday'],
+        allowedWindowStart: '18:00',
+        allowedWindowEnd: '22:00',
+      },
+      equipmentProvidedBy: 'company',
+      chemicalsProvidedBy: 'company',
+      sdsRequired: true,
+      storageAllowedOnSite: false,
+      termsAndConditions: '## 1. TERMS\nServices will be provided as agreed.',
+      specialInstructions: 'Use fragrance-free products.',
+      createdAt: '2026-05-01',
+      account: { name: 'Acme Corp' },
+      facility: {
+        name: 'Main Office',
+        address: { street: '123 Main St', city: 'Vancouver', state: 'BC' },
+      },
+      proposal: {
+        proposalServices: [
+          {
+            serviceName: 'Lobby',
+            frequency: '2x_week',
+            description: '500 sqft - VCT\nDaily: Empty trash\nWeekly: Dust fixtures',
+            includedTasks: [],
+          },
+        ],
+      },
+      createdByUser: { fullName: 'Admin User', email: 'admin@example.com' },
+    });
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.length).toBeGreaterThan(1000);
   });
 });
