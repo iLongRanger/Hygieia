@@ -904,6 +904,15 @@ const ContractForm = () => {
                               autoRenew: formData.autoRenew,
                               renewalNoticeDays: formData.renewalNoticeDays,
                               title: formData.title,
+                              equipmentProvidedBy: formData.equipmentProvidedBy,
+                              chemicalsProvidedBy: formData.chemicalsProvidedBy,
+                              approvedChemicalNotes: formData.approvedChemicalNotes,
+                              restrictedChemicalNotes: formData.restrictedChemicalNotes,
+                              equipmentNotes: formData.equipmentNotes,
+                              requiresSpecialEquipment: formData.requiresSpecialEquipment,
+                              specialEquipmentNotes: formData.requiresSpecialEquipment ? formData.specialEquipmentNotes : null,
+                              sdsRequired: formData.sdsRequired,
+                              storageAllowedOnSite: formData.storageAllowedOnSite,
                             });
                             handleChange('termsAndConditions', terms);
                             toast.success('Default terms generated');

@@ -746,7 +746,7 @@ export async function createContract(data: ContractCreateInput) {
   let termsAndConditions = data.termsAndConditions;
   if (!termsAndConditions) {
     const [account, facility] = await Promise.all([
-      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true } }),
+      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true, type: true } }),
       data.facilityId
         ? prisma.facility.findUnique({ where: { id: data.facilityId }, select: { name: true, address: true } })
         : null,
@@ -754,6 +754,7 @@ export async function createContract(data: ContractCreateInput) {
     termsAndConditions = await generateContractTerms({
       contractNumber,
       title: data.title,
+      serviceCategory: account?.type ?? null,
       accountName: account?.name ?? 'Client',
       facilityName: facility?.name,
       facilityAddress: facility?.address,
@@ -768,6 +769,15 @@ export async function createContract(data: ContractCreateInput) {
       autoRenew: data.autoRenew,
       renewalNoticeDays: data.renewalNoticeDays,
       facilityTimezone: facility ? extractFacilityTimezone(facility.address) : null,
+      equipmentProvidedBy: data.equipmentProvidedBy,
+      chemicalsProvidedBy: data.chemicalsProvidedBy,
+      approvedChemicalNotes: data.approvedChemicalNotes,
+      restrictedChemicalNotes: data.restrictedChemicalNotes,
+      equipmentNotes: data.equipmentNotes,
+      requiresSpecialEquipment: data.requiresSpecialEquipment,
+      specialEquipmentNotes: data.specialEquipmentNotes,
+      sdsRequired: data.sdsRequired,
+      storageAllowedOnSite: data.storageAllowedOnSite,
     });
   }
 
@@ -922,6 +932,8 @@ export async function createContractFromProposal(
     contractData.termsAndConditions = await generateContractTerms({
       contractNumber,
       title: contractData.title as string,
+      serviceCategory: proposal.account.type,
+      proposalType: proposal.proposalType,
       accountName: proposal.account.name,
       facilityName: proposal.facility?.name,
       facilityAddress: proposal.facility?.address,
@@ -937,6 +949,15 @@ export async function createContractFromProposal(
       facilityTimezone: proposal.facility
         ? extractFacilityTimezone(proposal.facility.address)
         : null,
+      equipmentProvidedBy: overrides?.equipmentProvidedBy,
+      chemicalsProvidedBy: overrides?.chemicalsProvidedBy,
+      approvedChemicalNotes: overrides?.approvedChemicalNotes,
+      restrictedChemicalNotes: overrides?.restrictedChemicalNotes,
+      equipmentNotes: overrides?.equipmentNotes,
+      requiresSpecialEquipment: overrides?.requiresSpecialEquipment,
+      specialEquipmentNotes: overrides?.specialEquipmentNotes,
+      sdsRequired: overrides?.sdsRequired,
+      storageAllowedOnSite: overrides?.storageAllowedOnSite,
     });
   }
 
@@ -1673,7 +1694,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
   let termsAndConditions = data.termsAndConditions;
   if (!termsAndConditions) {
     const [account, facility] = await Promise.all([
-      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true } }),
+      prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true, type: true } }),
       data.facilityId
         ? prisma.facility.findUnique({ where: { id: data.facilityId }, select: { name: true, address: true } })
         : null,
@@ -1681,6 +1702,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     termsAndConditions = await generateContractTerms({
       contractNumber,
       title: data.title,
+      serviceCategory: account?.type ?? null,
       accountName: account?.name ?? 'Client',
       facilityName: facility?.name,
       facilityAddress: facility?.address,
@@ -1695,6 +1717,15 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
       autoRenew: data.autoRenew,
       renewalNoticeDays: data.renewalNoticeDays ?? 30,
       facilityTimezone: facility ? extractFacilityTimezone(facility.address) : null,
+      equipmentProvidedBy: data.equipmentProvidedBy,
+      chemicalsProvidedBy: data.chemicalsProvidedBy,
+      approvedChemicalNotes: data.approvedChemicalNotes,
+      restrictedChemicalNotes: data.restrictedChemicalNotes,
+      equipmentNotes: data.equipmentNotes,
+      requiresSpecialEquipment: data.requiresSpecialEquipment,
+      specialEquipmentNotes: data.specialEquipmentNotes,
+      sdsRequired: data.sdsRequired,
+      storageAllowedOnSite: data.storageAllowedOnSite,
     });
   }
 

@@ -430,7 +430,28 @@ router.post(
   requirePermission(PERMISSIONS.CONTRACTS_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { accountId, facilityId, startDate, endDate, monthlyValue, billingCycle, paymentTerms, serviceFrequency, autoRenew, renewalNoticeDays, title } = req.body;
+      const {
+        accountId,
+        facilityId,
+        startDate,
+        endDate,
+        monthlyValue,
+        billingCycle,
+        paymentTerms,
+        serviceFrequency,
+        autoRenew,
+        renewalNoticeDays,
+        title,
+        equipmentProvidedBy,
+        chemicalsProvidedBy,
+        approvedChemicalNotes,
+        restrictedChemicalNotes,
+        equipmentNotes,
+        requiresSpecialEquipment,
+        specialEquipmentNotes,
+        sdsRequired,
+        storageAllowedOnSite,
+      } = req.body;
 
       if (!accountId) {
         throw new ValidationError('accountId is required');
@@ -440,7 +461,7 @@ router.post(
       }
 
       const [account, facility] = await Promise.all([
-        prisma.account.findUnique({ where: { id: accountId }, select: { name: true } }),
+        prisma.account.findUnique({ where: { id: accountId }, select: { name: true, type: true } }),
         facilityId
           ? prisma.facility.findUnique({ where: { id: facilityId }, select: { name: true, address: true } })
           : null,
@@ -452,6 +473,7 @@ router.post(
 
       const terms = await generateContractTerms({
         title,
+        serviceCategory: account.type,
         accountName: account.name,
         facilityName: facility?.name,
         facilityAddress: facility?.address as string | null | undefined,
@@ -463,6 +485,15 @@ router.post(
         serviceFrequency: serviceFrequency ?? null,
         autoRenew: autoRenew ?? false,
         renewalNoticeDays: renewalNoticeDays ?? 30,
+        equipmentProvidedBy,
+        chemicalsProvidedBy,
+        approvedChemicalNotes,
+        restrictedChemicalNotes,
+        equipmentNotes,
+        requiresSpecialEquipment,
+        specialEquipmentNotes,
+        sdsRequired,
+        storageAllowedOnSite,
       });
 
       res.json({ data: terms });

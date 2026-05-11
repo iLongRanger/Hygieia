@@ -3290,6 +3290,15 @@ const ContractDetail = () => {
                       autoRenew: contract.autoRenew,
                       renewalNoticeDays: contract.renewalNoticeDays,
                       title: contract.title,
+                      equipmentProvidedBy: contract.equipmentProvidedBy,
+                      chemicalsProvidedBy: contract.chemicalsProvidedBy,
+                      approvedChemicalNotes: contract.approvedChemicalNotes,
+                      restrictedChemicalNotes: contract.restrictedChemicalNotes,
+                      equipmentNotes: contract.equipmentNotes,
+                      requiresSpecialEquipment: contract.requiresSpecialEquipment,
+                      specialEquipmentNotes: contract.specialEquipmentNotes,
+                      sdsRequired: contract.sdsRequired,
+                      storageAllowedOnSite: contract.storageAllowedOnSite,
                     });
                     setTermsText(terms);
                     toast.success('Default terms generated');

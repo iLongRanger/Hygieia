@@ -183,6 +183,15 @@ export interface GenerateTermsParams {
   autoRenew?: boolean;
   renewalNoticeDays?: number | null;
   title?: string;
+  equipmentProvidedBy?: string | null;
+  chemicalsProvidedBy?: string | null;
+  approvedChemicalNotes?: string | null;
+  restrictedChemicalNotes?: string | null;
+  equipmentNotes?: string | null;
+  requiresSpecialEquipment?: boolean | null;
+  specialEquipmentNotes?: string | null;
+  sdsRequired?: boolean | null;
+  storageAllowedOnSite?: boolean | null;
 }
 
 export async function generateContractTerms(params: GenerateTermsParams): Promise<string> {
