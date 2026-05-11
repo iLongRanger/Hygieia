@@ -144,6 +144,10 @@ function formatEstimatedTimeOnSite(hours: PdfNumeric | null | undefined): string
   return `${wholeHours} hr${wholeHours === 1 ? '' : 's'} ${minutes} min`;
 }
 
+function formatFrequencyLabel(value: string | null | undefined): string {
+  return (value ?? '').trim() || 'N/A';
+}
+
 function isZeroQuantityTask(task: string): boolean {
   return /\bx\s*0(?:\.0+)?\b/i.test(task.trim());
 }
@@ -440,7 +444,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       { text: 'Service', style: 'tableHeader' },
       { text: 'Frequency', style: 'tableHeader' },
       ...(hasAnyHours ? [{ text: 'Hours', style: 'tableHeader', alignment: 'right' as const }] : []),
-      { text: 'Monthly', style: 'tableHeader', alignment: 'right' as const },
+      { text: 'Amount', style: 'tableHeader', alignment: 'right' as const },
     ]];
 
     let totalHours = 0;
@@ -453,7 +457,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
       areasBody.push([
         { text: service.serviceName, fontSize: 9 },
-        { text: service.frequency.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), fontSize: 9 },
+        { text: formatFrequencyLabel(service.frequency), fontSize: 9 },
         ...(hasAnyHours ? [{ text: hours > 0 ? formatWholeHours(hours) : '-', alignment: 'right' as const, fontSize: 9 }] : []),
         { text: formatCurrency(service.monthlyPrice), alignment: 'right' as const, fontSize: 9 },
       ]);
