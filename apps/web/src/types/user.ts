@@ -43,6 +43,32 @@ export interface User {
   workforceType?: 'internal_employee' | 'subcontractor' | 'office' | null;
   payType?: 'hourly' | 'percentage' | null;
   hourlyPayRate?: number | null;
+  percentagePayRate?: number | null;
+  employeeNumber?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  employmentType?: 'full_time' | 'part_time' | 'casual' | 'contractor' | 'temporary' | null;
+  supervisorUserId?: string | null;
+  supervisor?: { id: string; fullName: string; email: string } | null;
+  startDate?: string | null;
+  terminationDate?: string | null;
+  birthDate?: string | null;
+  emergencyContact?: {
+    name?: string | null;
+    relationship?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+  availability?: Record<string, unknown> | null;
+  skills?: string[] | null;
+  compliance?: Record<string, unknown> | null;
+  onboarding?: Record<string, unknown> | null;
+  hrNotes?: Array<{
+    id?: string;
+    note: string;
+    createdAt?: string;
+    createdBy?: string | null;
+  }> | null;
   createdAt: string;
   updatedAt: string;
   roles: UserRole[];
@@ -58,6 +84,21 @@ export interface CreateUserInput {
   role?: string;
   payType?: 'hourly' | 'percentage' | null;
   hourlyPayRate?: number | null;
+  percentagePayRate?: number | null;
+  employeeNumber?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  employmentType?: User['employmentType'];
+  supervisorUserId?: string | null;
+  startDate?: string | null;
+  terminationDate?: string | null;
+  birthDate?: string | null;
+  emergencyContact?: User['emergencyContact'];
+  availability?: Record<string, unknown> | null;
+  skills?: string[] | null;
+  compliance?: Record<string, unknown> | null;
+  onboarding?: Record<string, unknown> | null;
+  hrNotes?: User['hrNotes'];
 }
 
 export interface UpdateUserInput {
@@ -71,6 +112,21 @@ export interface UpdateUserInput {
   calendarColor?: string | null;
   payType?: 'hourly' | 'percentage' | null;
   hourlyPayRate?: number | null;
+  percentagePayRate?: number | null;
+  employeeNumber?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  employmentType?: User['employmentType'];
+  supervisorUserId?: string | null;
+  startDate?: string | null;
+  terminationDate?: string | null;
+  birthDate?: string | null;
+  emergencyContact?: User['emergencyContact'];
+  availability?: Record<string, unknown> | null;
+  skills?: string[] | null;
+  compliance?: Record<string, unknown> | null;
+  onboarding?: Record<string, unknown> | null;
+  hrNotes?: User['hrNotes'];
 }
 
 export interface Pagination {

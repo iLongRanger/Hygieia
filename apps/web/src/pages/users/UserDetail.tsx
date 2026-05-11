@@ -46,6 +46,23 @@ const PAY_TYPES = [
   { value: 'percentage', label: 'Percentage' },
 ];
 
+const EMPLOYMENT_TYPES = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'contractor', label: 'Contractor' },
+  { value: 'temporary', label: 'Temporary' },
+];
+
+const PEOPLE_TABS = [
+  'Overview',
+  'Access',
+  'Employment',
+  'Availability',
+  'Compliance',
+  'Notes',
+] as const;
+
 const DEFAULT_CALENDAR_COLOR = '#14b8a6';
 
 const formatWorkerType = (user: User) => {
@@ -55,7 +72,9 @@ const formatWorkerType = (user: User) => {
 };
 
 const formatPay = (user: User) => {
-  if (user.payType === 'percentage') return 'Percentage';
+  if (user.payType === 'percentage') {
+    return user.percentagePayRate != null ? `${user.percentagePayRate.toFixed(2)}%` : 'Percentage';
+  }
   if (user.payType === 'hourly') {
     return user.hourlyPayRate != null ? `$${user.hourlyPayRate.toFixed(2)}/hr` : 'Hourly rate not set';
   }
@@ -90,6 +109,26 @@ const formatAddress = (address?: UserAddress | null) => {
   return parts.length > 0 ? parts.join(', ') : 'Not set';
 };
 
+const formatEmploymentType = (value?: string | null) => {
+  if (!value) return 'Not set';
+  return EMPLOYMENT_TYPES.find((type) => type.value === value)?.label || value;
+};
+
+const dateOnly = (value?: string | null) => (value ? value.slice(0, 10) : '');
+
+const formatSimpleJson = (value?: Record<string, unknown> | null) => {
+  if (!value || Object.keys(value).length === 0) return 'Not set';
+  return Object.entries(value)
+    .map(([key, item]) => `${key}: ${Array.isArray(item) ? item.join(', ') : String(item)}`)
+    .join('\n');
+};
+
+const parseCommaList = (value: string) =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -102,6 +141,7 @@ const UserDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<(typeof PEOPLE_TABS)[number]>('Overview');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -125,6 +165,21 @@ const UserDetail = () => {
           calendarColor: data.calendarColor ?? null,
           payType: data.payType ?? null,
           hourlyPayRate: data.hourlyPayRate ?? null,
+          percentagePayRate: data.percentagePayRate ?? null,
+          employeeNumber: data.employeeNumber ?? null,
+          jobTitle: data.jobTitle ?? null,
+          department: data.department ?? null,
+          employmentType: data.employmentType ?? null,
+          supervisorUserId: data.supervisorUserId ?? null,
+          startDate: dateOnly(data.startDate),
+          terminationDate: dateOnly(data.terminationDate),
+          birthDate: dateOnly(data.birthDate),
+          emergencyContact: data.emergencyContact ?? null,
+          availability: data.availability ?? null,
+          skills: data.skills ?? [],
+          compliance: data.compliance ?? null,
+          onboarding: data.onboarding ?? null,
+          hrNotes: data.hrNotes ?? [],
         });
       }
     } catch (error) {
@@ -317,154 +372,121 @@ const UserDetail = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald/10">
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.fullName}
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserIcon className="h-8 w-8 text-emerald" />
-                )}
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-surface-900 dark:text-white">
-                  {user.fullName}
+      <div className="flex flex-wrap gap-2 border-b border-surface-200 dark:border-surface-700">
+        {PEOPLE_TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
+            className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+              activeTab === tab
+                ? 'bg-emerald text-white'
+                : 'text-surface-600 hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'Overview' && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald/10">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.fullName} className="h-16 w-16 rounded-full object-cover" />
+                  ) : (
+                    <UserIcon className="h-8 w-8 text-emerald" />
+                  )}
                 </div>
-                <Badge variant={getStatusVariant(user.status)}>
-                  {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                </Badge>
+                <div>
+                  <div className="text-lg font-semibold text-surface-900 dark:text-white">{user.fullName}</div>
+                  <Badge variant={getStatusVariant(user.status)}>
+                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-3 border-t border-surface-200 pt-4 dark:border-surface-700">
+                <div className="flex items-center gap-3"><Mail className="h-5 w-5 text-surface-500" /><div><div className="text-sm text-surface-500">Email</div><div className="text-surface-900 dark:text-white">{user.email}</div></div></div>
+                <div className="flex items-center gap-3"><Phone className="h-5 w-5 text-surface-500" /><div><div className="text-sm text-surface-500">Phone</div><div className="text-surface-900 dark:text-white">{user.phone || 'Not set'}</div></div></div>
+                <div className="flex items-start gap-3"><MapPin className="mt-0.5 h-5 w-5 text-surface-500" /><div><div className="text-sm text-surface-500">Address</div><div className="text-surface-900 dark:text-white">{formatAddress(user.address)}</div></div></div>
               </div>
             </div>
-
-            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Email</div>
-                  <div className="text-surface-900 dark:text-white">{user.email}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Phone</div>
-                  <div className="text-surface-900 dark:text-white">{user.phone || 'Not set'}</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Address</div>
-                  <div className="text-surface-900 dark:text-white">{formatAddress(user.address)}</div>
-                </div>
-              </div>
+          </Card>
+          <Card>
+            <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Work Summary</h2>
+            <div className="space-y-3 text-sm">
+              <div><span className="text-surface-500">Worker Type</span><div className="font-medium text-surface-900 dark:text-white">{formatWorkerType(user)}</div></div>
+              <div><span className="text-surface-500">Job Title</span><div className="font-medium text-surface-900 dark:text-white">{user.jobTitle || 'Not set'}</div></div>
+              <div><span className="text-surface-500">Department</span><div className="font-medium text-surface-900 dark:text-white">{user.department || 'Not set'}</div></div>
+              <div><span className="text-surface-500">Pay</span><div className="font-medium text-surface-900 dark:text-white">{formatPay(user)}</div></div>
             </div>
-
-            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
-              <div className="flex items-center gap-3">
-                <Briefcase className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Worker Type</div>
-                  <div className="text-surface-900 dark:text-white">{formatWorkerType(user)}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <DollarSign className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Pay</div>
-                  <div className="text-surface-900 dark:text-white">{formatPay(user)}</div>
-                </div>
-              </div>
+          </Card>
+          <Card>
+            <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Timeline</h2>
+            <div className="space-y-3 text-sm">
+              <div><span className="text-surface-500">Start Date</span><div className="font-medium text-surface-900 dark:text-white">{user.startDate ? new Date(user.startDate).toLocaleDateString() : 'Not set'}</div></div>
+              <div><span className="text-surface-500">Created</span><div className="font-medium text-surface-900 dark:text-white">{formatDate(user.createdAt)}</div></div>
+              <div><span className="text-surface-500">Last Login</span><div className="font-medium text-surface-900 dark:text-white">{formatDate(user.lastLoginAt)}</div></div>
             </div>
+          </Card>
+        </div>
+      )}
 
-            <div className="space-y-3 border-t border-surface-200 dark:border-surface-700 pt-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Created</div>
-                  <div className="text-surface-900 dark:text-white">{formatDate(user.createdAt)}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-surface-500 dark:text-surface-400" />
-                <div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">Last Login</div>
-                  <div className="text-surface-900 dark:text-white">
-                    {formatDate(user.lastLoginAt)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 pb-4">
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-white">
-              <Shield className="mr-2 inline h-5 w-5 text-gold" />
-              Assigned Roles
-            </h2>
+      {activeTab === 'Access' && (
+        <Card>
+          <div className="flex items-center justify-between border-b border-surface-200 pb-4 dark:border-surface-700">
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-white"><Shield className="mr-2 inline h-5 w-5 text-gold" />Assigned Roles</h2>
             <Can permission={PERMISSIONS.USERS_WRITE}>
-              {availableRoles.length > 0 && (
-                <Button size="sm" onClick={() => setShowAddRoleModal(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Role
-                </Button>
-              )}
+              {availableRoles.length > 0 && <Button size="sm" onClick={() => setShowAddRoleModal(true)}><Plus className="mr-2 h-4 w-4" />Add Role</Button>}
             </Can>
           </div>
-
           <div className="mt-4 space-y-3">
-            {user.roles && user.roles.length > 0 ? (
-              user.roles.map((userRole) => (
-                <div
-                  key={userRole.id}
-                  className="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
-                      <Shield className="h-5 w-5 text-gold" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-surface-900 dark:text-white">
-                        {userRole.role.label}
-                      </div>
-                      <div className="text-sm text-surface-500 dark:text-surface-400">
-                        {userRole.role.key}
-                      </div>
-                    </div>
-                  </div>
-                  <Can permission={PERMISSIONS.USERS_WRITE}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveRole(userRole.role.key)}
-                      className="text-red-400 hover:text-red-300"
-                      disabled={user.roles.length <= 1}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </Can>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-surface-500 dark:text-surface-400 py-8">
-                No roles assigned
+            {user.roles?.length ? user.roles.map((userRole) => (
+              <div key={userRole.id} className="flex items-center justify-between rounded-lg border border-surface-200 bg-surface-100 p-4 dark:border-surface-700 dark:bg-surface-800/30">
+                <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10"><Shield className="h-5 w-5 text-gold" /></div><div><div className="font-medium text-surface-900 dark:text-white">{userRole.role.label}</div><div className="text-sm text-surface-500">{userRole.role.key}</div></div></div>
+                <Can permission={PERMISSIONS.USERS_WRITE}><Button variant="ghost" size="sm" onClick={() => handleRemoveRole(userRole.role.key)} className="text-red-400 hover:text-red-300" disabled={user.roles.length <= 1}><X className="h-4 w-4" /></Button></Can>
               </div>
-            )}
+            )) : <div className="py-8 text-center text-surface-500">No roles assigned</div>}
           </div>
         </Card>
-      </div>
+      )}
+
+      {activeTab === 'Employment' && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Employment Details</h2><div className="grid gap-3 text-sm sm:grid-cols-2"><div><span className="text-surface-500">Employee Number</span><div className="font-medium text-surface-900 dark:text-white">{user.employeeNumber || 'Not set'}</div></div><div><span className="text-surface-500">Employment Type</span><div className="font-medium text-surface-900 dark:text-white">{formatEmploymentType(user.employmentType)}</div></div><div><span className="text-surface-500">Supervisor</span><div className="font-medium text-surface-900 dark:text-white">{user.supervisor?.fullName || 'Not set'}</div></div><div><span className="text-surface-500">Termination Date</span><div className="font-medium text-surface-900 dark:text-white">{user.terminationDate ? new Date(user.terminationDate).toLocaleDateString() : 'Not set'}</div></div></div></Card>
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Emergency Contact</h2><div className="space-y-3 text-sm"><div><span className="text-surface-500">Name</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.name || 'Not set'}</div></div><div><span className="text-surface-500">Relationship</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.relationship || 'Not set'}</div></div><div><span className="text-surface-500">Phone</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.phone || 'Not set'}</div></div><div><span className="text-surface-500">Email</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.email || 'Not set'}</div></div></div></Card>
+        </div>
+      )}
+
+      {activeTab === 'Availability' && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Skills</h2><div className="flex flex-wrap gap-2">{user.skills?.length ? user.skills.map((skill) => <Badge key={skill} variant="default">{skill}</Badge>) : <span className="text-surface-500">No skills recorded</span>}</div></Card>
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Availability</h2><pre className="whitespace-pre-wrap rounded-lg bg-surface-100 p-3 text-sm text-surface-700 dark:bg-surface-800 dark:text-surface-200">{formatSimpleJson(user.availability)}</pre></Card>
+        </div>
+      )}
+
+      {activeTab === 'Compliance' && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Compliance</h2><pre className="whitespace-pre-wrap rounded-lg bg-surface-100 p-3 text-sm text-surface-700 dark:bg-surface-800 dark:text-surface-200">{formatSimpleJson(user.compliance)}</pre></Card>
+          <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Onboarding</h2><pre className="whitespace-pre-wrap rounded-lg bg-surface-100 p-3 text-sm text-surface-700 dark:bg-surface-800 dark:text-surface-200">{formatSimpleJson(user.onboarding)}</pre></Card>
+        </div>
+      )}
+
+      {activeTab === 'Notes' && (
+        <Card>
+          <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">HR Notes</h2>
+          <div className="space-y-3">
+            {user.hrNotes?.length ? user.hrNotes.map((note, index) => (
+              <div key={note.id || index} className="rounded-lg border border-surface-200 p-4 dark:border-surface-700"><p className="whitespace-pre-wrap text-surface-800 dark:text-surface-100">{note.note}</p><div className="mt-2 text-xs text-surface-500">{note.createdBy || 'HR'}{note.createdAt ? ` • ${new Date(note.createdAt).toLocaleString()}` : ''}</div></div>
+            )) : <div className="text-surface-500">No HR notes recorded</div>}
+          </div>
+        </Card>
+      )}
 
       {/* Edit Person Modal */}
       <Can permission={PERMISSIONS.USERS_WRITE}>
@@ -578,6 +600,7 @@ const UserDetail = () => {
                     ...formData,
                     payType: value as 'hourly' | 'percentage',
                     hourlyPayRate: value === 'percentage' ? null : formData.hourlyPayRate,
+                    percentagePayRate: value === 'hourly' ? null : formData.percentagePayRate,
                   })
                 }
               />
@@ -597,6 +620,99 @@ const UserDetail = () => {
                   }
                 />
               )}
+              {formData.payType === 'percentage' && (
+                <Input
+                  label="Percentage Rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.percentagePayRate ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      percentagePayRate: e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Employment Details
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input label="Employee Number" value={formData.employeeNumber || ''} onChange={(e) => setFormData({ ...formData, employeeNumber: e.target.value || null })} />
+              <Input label="Job Title" value={formData.jobTitle || ''} onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value || null })} />
+              <Input label="Department" value={formData.department || ''} onChange={(e) => setFormData({ ...formData, department: e.target.value || null })} />
+              <Select
+                label="Employment Type"
+                options={EMPLOYMENT_TYPES}
+                value={formData.employmentType || ''}
+                onChange={(value) => setFormData({ ...formData, employmentType: (value || null) as User['employmentType'] })}
+              />
+              <Input label="Start Date" type="date" value={formData.startDate || ''} onChange={(e) => setFormData({ ...formData, startDate: e.target.value || null })} />
+              <Input label="Termination Date" type="date" value={formData.terminationDate || ''} onChange={(e) => setFormData({ ...formData, terminationDate: e.target.value || null })} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Emergency Contact
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input label="Emergency Contact Name" value={formData.emergencyContact?.name || ''} onChange={(e) => setFormData({ ...formData, emergencyContact: { ...(formData.emergencyContact || {}), name: e.target.value || null } })} />
+              <Input label="Relationship" value={formData.emergencyContact?.relationship || ''} onChange={(e) => setFormData({ ...formData, emergencyContact: { ...(formData.emergencyContact || {}), relationship: e.target.value || null } })} />
+              <Input label="Emergency Phone" value={formData.emergencyContact?.phone || ''} onChange={(e) => setFormData({ ...formData, emergencyContact: { ...(formData.emergencyContact || {}), phone: e.target.value || null } })} />
+              <Input label="Emergency Email" type="email" value={formData.emergencyContact?.email || ''} onChange={(e) => setFormData({ ...formData, emergencyContact: { ...(formData.emergencyContact || {}), email: e.target.value || null } })} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              Skills, Availability, Compliance
+            </div>
+            <div className="space-y-4">
+              <Input
+                label="Skills"
+                placeholder="Residential, Commercial, Inspection"
+                value={(formData.skills || []).join(', ')}
+                onChange={(e) => setFormData({ ...formData, skills: parseCommaList(e.target.value) })}
+              />
+              <Input
+                label="Availability Notes"
+                placeholder="Mon-Fri 8am-4pm, no Sundays"
+                value={typeof formData.availability?.notes === 'string' ? formData.availability.notes : ''}
+                onChange={(e) => setFormData({ ...formData, availability: { ...(formData.availability || {}), notes: e.target.value } })}
+              />
+              <Input
+                label="Compliance Notes"
+                placeholder="Background check complete, insurance expires..."
+                value={typeof formData.compliance?.notes === 'string' ? formData.compliance.notes : ''}
+                onChange={(e) => setFormData({ ...formData, compliance: { ...(formData.compliance || {}), notes: e.target.value } })}
+              />
+              <Input
+                label="Onboarding Notes"
+                placeholder="Handbook signed, training complete..."
+                value={typeof formData.onboarding?.notes === 'string' ? formData.onboarding.notes : ''}
+                onChange={(e) => setFormData({ ...formData, onboarding: { ...(formData.onboarding || {}), notes: e.target.value } })}
+              />
+              <Input
+                label="HR Note"
+                placeholder="Private HR note"
+                value={formData.hrNotes?.[0]?.note || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    hrNotes: e.target.value
+                      ? [{ ...(formData.hrNotes?.[0] || {}), note: e.target.value }]
+                      : [],
+                  })
+                }
+              />
             </div>
           </div>
 

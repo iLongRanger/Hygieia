@@ -26,6 +26,14 @@ const PAY_TYPES = [
   { value: 'percentage', label: 'Percentage' },
 ];
 
+const EMPLOYMENT_TYPES = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'contractor', label: 'Contractor' },
+  { value: 'temporary', label: 'Temporary' },
+];
+
 const formatWorkerType = (user: User) => {
   if (user.workforceType === 'subcontractor') return 'Subcontractor';
   if (user.workforceType === 'internal_employee') return 'Internal employee';
@@ -33,7 +41,9 @@ const formatWorkerType = (user: User) => {
 };
 
 const formatPay = (user: User) => {
-  if (user.payType === 'percentage') return 'Percentage';
+  if (user.payType === 'percentage') {
+    return user.percentagePayRate != null ? `${user.percentagePayRate.toFixed(2)}%` : 'Percentage';
+  }
   if (user.payType === 'hourly') {
     return user.hourlyPayRate != null ? `$${user.hourlyPayRate.toFixed(2)}/hr` : 'Hourly rate not set';
   }
@@ -82,6 +92,14 @@ const UsersList = () => {
     role: 'cleaner',
     payType: 'hourly',
     hourlyPayRate: null,
+    percentagePayRate: null,
+    employeeNumber: null,
+    jobTitle: null,
+    department: null,
+    employmentType: null,
+    startDate: null,
+    emergencyContact: null,
+    skills: [],
   });
 
   const fetchUsers = useCallback(
@@ -160,6 +178,14 @@ const UsersList = () => {
       role: 'cleaner',
       payType: 'hourly',
       hourlyPayRate: null,
+      percentagePayRate: null,
+      employeeNumber: null,
+      jobTitle: null,
+      department: null,
+      employmentType: null,
+      startDate: null,
+      emergencyContact: null,
+      skills: [],
     });
   };
 
@@ -203,6 +229,19 @@ const UsersList = () => {
           ) : (
             <span className="text-surface-500 dark:text-surface-400">No roles</span>
           )}
+        </div>
+      ),
+    },
+    {
+      header: 'HR Profile',
+      cell: (item: User) => (
+        <div className="space-y-1 text-sm">
+          <div className="font-medium text-surface-700 dark:text-surface-200">
+            {item.jobTitle || 'Job title not set'}
+          </div>
+          <div className="text-surface-500 dark:text-surface-400">
+            {[item.department, item.employeeNumber].filter(Boolean).join(' • ') || 'Department not set'}
+          </div>
         </div>
       ),
     },
@@ -476,6 +515,7 @@ const UsersList = () => {
                     ...formData,
                     payType: value as 'hourly' | 'percentage',
                     hourlyPayRate: value === 'percentage' ? null : formData.hourlyPayRate,
+                    percentagePayRate: value === 'hourly' ? null : formData.percentagePayRate,
                   })
                 }
               />
@@ -495,6 +535,74 @@ const UsersList = () => {
                   }
                 />
               )}
+              {formData.payType === 'percentage' && (
+                <Input
+                  label="Percentage Rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.percentagePayRate ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      percentagePayRate: e.target.value === '' ? null : Number(e.target.value),
+                    })
+                  }
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/20">
+            <div className="mb-3 text-sm font-semibold text-surface-900 dark:text-white">
+              HR Profile
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Employee Number"
+                value={formData.employeeNumber || ''}
+                onChange={(e) => setFormData({ ...formData, employeeNumber: e.target.value || null })}
+              />
+              <Input
+                label="Job Title"
+                value={formData.jobTitle || ''}
+                onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value || null })}
+              />
+              <Input
+                label="Department"
+                value={formData.department || ''}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value || null })}
+              />
+              <Select
+                label="Employment Type"
+                options={EMPLOYMENT_TYPES}
+                value={formData.employmentType || ''}
+                onChange={(value) =>
+                  setFormData({ ...formData, employmentType: (value || null) as User['employmentType'] })
+                }
+              />
+              <Input
+                label="Start Date"
+                type="date"
+                value={formData.startDate || ''}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value || null })}
+              />
+              <Input
+                label="Skills"
+                placeholder="Residential, Inspection, Deep clean"
+                value={(formData.skills || []).join(', ')}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    skills: e.target.value
+                      .split(',')
+                      .map((skill) => skill.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
             </div>
           </div>
 

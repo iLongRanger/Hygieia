@@ -78,6 +78,17 @@ const userData: User = {
   workforceType: 'internal_employee',
   payType: 'hourly',
   hourlyPayRate: 24,
+  employeeNumber: 'EMP-101',
+  jobTitle: 'Lead Cleaner',
+  department: 'Operations',
+  employmentType: 'full_time',
+  startDate: '2026-05-01',
+  emergencyContact: { name: 'John Emergency', relationship: 'Spouse', phone: '555-2222' },
+  availability: { notes: 'Mon-Fri 8am-4pm' },
+  skills: ['residential', 'inspection'],
+  compliance: { notes: 'Background check complete' },
+  onboarding: { notes: 'Training complete' },
+  hrNotes: [{ note: 'Eligible for supervisor training', createdBy: 'HR' }],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   roles: [
@@ -122,7 +133,21 @@ describe('UserDetail', () => {
     expect(screen.getByText('123 Main St, Toronto, ON, M5V 1A1, Canada')).toBeInTheDocument();
     expect(screen.getByText('Internal employee')).toBeInTheDocument();
     expect(screen.getByText('$24.00/hr')).toBeInTheDocument();
+    expect(screen.getByText('Lead Cleaner')).toBeInTheDocument();
+    expect(screen.getByText('Operations')).toBeInTheDocument();
+  });
+
+  it('shows HR tabs with employment, access, and notes', async () => {
+    const user = userEvent.setup();
+    render(<UserDetail />);
+
+    await user.click(await screen.findByRole('tab', { name: /access/i }));
     expect(screen.getByText('Assigned Roles')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /employment/i }));
+    expect(screen.getByText('EMP-101')).toBeInTheDocument();
+    expect(screen.getByText('John Emergency')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /notes/i }));
+    expect(screen.getByText('Eligible for supervisor training')).toBeInTheDocument();
   });
 
   it('updates user from edit modal', async () => {
@@ -156,6 +181,7 @@ describe('UserDetail', () => {
           calendarColor: '#112233',
           payType: 'hourly',
           hourlyPayRate: 28,
+          jobTitle: 'Lead Cleaner',
         })
       );
     });
@@ -165,6 +191,7 @@ describe('UserDetail', () => {
     const user = userEvent.setup();
     render(<UserDetail />);
 
+    await user.click(await screen.findByRole('tab', { name: /access/i }));
     await user.click(await screen.findByRole('button', { name: /add role/i }));
     await user.selectOptions(await screen.findByLabelText(/select role/i), 'manager');
     await user.click(screen.getByRole('button', { name: /assign role/i }));

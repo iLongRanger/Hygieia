@@ -56,6 +56,9 @@ const user: User = {
   workforceType: 'internal_employee',
   payType: 'hourly',
   hourlyPayRate: 24,
+  employeeNumber: 'EMP-201',
+  jobTitle: 'Route Cleaner',
+  department: 'Field Operations',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   roles: [
@@ -97,6 +100,8 @@ describe('UsersList', () => {
     expect(screen.getByText('cleaner@example.com')).toBeInTheDocument();
     expect(screen.getByText('Internal employee')).toBeInTheDocument();
     expect(screen.getByText('$24.00/hr')).toBeInTheDocument();
+    expect(screen.getByText('Route Cleaner')).toBeInTheDocument();
+    expect(screen.getByText('Field Operations • EMP-201')).toBeInTheDocument();
   });
 
   it('creates a user from modal', async () => {
@@ -110,6 +115,7 @@ describe('UsersList', () => {
     await userEventInstance.type(screen.getByLabelText(/street address/i), '123 Main St');
     await userEventInstance.type(screen.getByLabelText(/^city$/i), 'Toronto');
     await userEventInstance.type(screen.getByLabelText(/hourly rate/i), '25');
+    await userEventInstance.type(screen.getByLabelText(/job title/i), 'Cleaner');
     await userEventInstance.click(screen.getByRole('button', { name: /create person/i }));
 
     expect(createUserMock).toHaveBeenCalledWith(
@@ -122,6 +128,7 @@ describe('UsersList', () => {
         }),
         payType: 'hourly',
         hourlyPayRate: 25,
+        jobTitle: 'Cleaner',
       })
     );
   });
