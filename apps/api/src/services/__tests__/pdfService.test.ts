@@ -1,4 +1,4 @@
-import { generateProposalPdf } from '../pdfService';
+import { formatProposalPdfFrequencyLabel, generateProposalPdf } from '../pdfService';
 import { getGlobalSettings } from '../globalSettingsService';
 
 jest.mock('../globalSettingsService', () => ({
@@ -79,5 +79,11 @@ describe('pdfService', () => {
 
     expect(Buffer.isBuffer(pdf)).toBe(true);
     expect(pdf.length).toBeGreaterThan(1000);
+  });
+
+  it('formats proposal schedule frequencies using proposal engine labels', () => {
+    expect(formatProposalPdfFrequencyLabel('2x_week')).toBe('2x Week');
+    expect(formatProposalPdfFrequencyLabel('weekly')).toBe('Weekly');
+    expect(formatProposalPdfFrequencyLabel('custom_frequency')).toBe('Custom Frequency');
   });
 });

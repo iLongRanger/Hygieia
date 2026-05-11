@@ -144,8 +144,34 @@ function formatEstimatedTimeOnSite(hours: PdfNumeric | null | undefined): string
   return `${wholeHours} hr${wholeHours === 1 ? '' : 's'} ${minutes} min`;
 }
 
-function formatFrequencyLabel(value: string | null | undefined): string {
-  return (value ?? '').trim() || 'N/A';
+const PROPOSAL_FREQUENCY_LABELS: Record<string, string> = {
+  '1x_week': '1x Week',
+  '2x_week': '2x Week',
+  '3x_week': '3x Week',
+  '4x_week': '4x Week',
+  '5x_week': '5x Week',
+  '7x_week': '7x Week',
+  weekly: 'Weekly',
+  biweekly: 'Bi-Weekly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  annual: 'Annual',
+  one_time: 'One-Time',
+};
+
+export function formatProposalPdfFrequencyLabel(value: string | null | undefined): string {
+  const rawValue = (value ?? '').trim();
+  if (!rawValue) return 'N/A';
+
+  const normalized = rawValue.toLowerCase();
+  return PROPOSAL_FREQUENCY_LABELS[normalized] ?? rawValue.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getScheduleFrequency(serviceSchedule: unknown): string | null {
+  if (!serviceSchedule || typeof serviceSchedule !== 'object') return null;
+
+  const frequency = (serviceSchedule as { frequency?: unknown }).frequency;
+  return typeof frequency === 'string' ? frequency : null;
 }
 
 function isZeroQuantityTask(task: string): boolean {
@@ -163,6 +189,8 @@ interface ProposalForPdf {
   totalAmount: PdfNumeric;
   validUntil?: string | Date | null;
   createdAt: string | Date;
+  serviceFrequency?: string | null;
+  serviceSchedule?: unknown;
   account: { name: string };
   facility?: { name: string; address?: unknown } | null;
   createdByUser?: { fullName: string; email: string } | null;
@@ -437,6 +465,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
   // Services summary table
   if (proposal.proposalServices.length > 0) {
+    const proposalFrequency = proposal.serviceFrequency ?? getScheduleFrequency(proposal.serviceSchedule);
     const hasAnyHours = proposal.proposalServices.some(
       (service) => service.estimatedHours != null && Number(service.estimatedHours) > 0
     );
@@ -457,7 +486,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
       areasBody.push([
         { text: service.serviceName, fontSize: 9 },
-        { text: formatFrequencyLabel(service.frequency), fontSize: 9 },
+        { text: formatProposalPdfFrequencyLabel(proposalFrequency ?? service.frequency), fontSize: 9 },
         ...(hasAnyHours ? [{ text: hours > 0 ? formatWholeHours(hours) : '-', alignment: 'right' as const, fontSize: 9 }] : []),
         { text: formatCurrency(service.monthlyPrice), alignment: 'right' as const, fontSize: 9 },
       ]);
