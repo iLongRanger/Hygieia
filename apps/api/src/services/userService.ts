@@ -28,6 +28,21 @@ export interface UserCreateInput {
   role?: UserRole;
   payType?: 'hourly' | 'percentage' | null;
   hourlyPayRate?: number | null;
+  percentagePayRate?: number | null;
+  employeeNumber?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  employmentType?: string | null;
+  supervisorUserId?: string | null;
+  startDate?: string | null;
+  terminationDate?: string | null;
+  birthDate?: string | null;
+  emergencyContact?: Record<string, unknown> | null;
+  availability?: Record<string, unknown> | null;
+  skills?: string[] | null;
+  compliance?: Record<string, unknown> | null;
+  onboarding?: Record<string, unknown> | null;
+  hrNotes?: Record<string, unknown>[] | null;
 }
 
 export interface UserUpdateInput {
@@ -40,6 +55,21 @@ export interface UserUpdateInput {
   calendarColor?: string | null;
   payType?: 'hourly' | 'percentage' | null;
   hourlyPayRate?: number | null;
+  percentagePayRate?: number | null;
+  employeeNumber?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  employmentType?: string | null;
+  supervisorUserId?: string | null;
+  startDate?: string | null;
+  terminationDate?: string | null;
+  birthDate?: string | null;
+  emergencyContact?: Record<string, unknown> | null;
+  availability?: Record<string, unknown> | null;
+  skills?: string[] | null;
+  compliance?: Record<string, unknown> | null;
+  onboarding?: Record<string, unknown> | null;
+  hrNotes?: Record<string, unknown>[] | null;
 }
 
 export interface UserFormatOptions {
@@ -77,8 +107,30 @@ const userSelect = {
   preferences: true,
   payType: true,
   hourlyPayRate: true,
+  percentagePayRate: true,
+  employeeNumber: true,
+  jobTitle: true,
+  department: true,
+  employmentType: true,
+  supervisorUserId: true,
+  startDate: true,
+  terminationDate: true,
+  birthDate: true,
+  emergencyContact: true,
+  availability: true,
+  skills: true,
+  compliance: true,
+  onboarding: true,
+  hrNotes: true,
   createdAt: true,
   updatedAt: true,
+  supervisor: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+    },
+  },
   roles: {
     include: {
       role: {
@@ -123,6 +175,22 @@ function formatUser(user: UserWithRoles, options: UserFormatOptions = { includeC
     roles: { id: string; role: { id: string; key: string; label: string } }[];
     payType?: 'hourly' | 'percentage' | null;
     hourlyPayRate?: number | null;
+    percentagePayRate?: number | null;
+    employeeNumber: string | null;
+    jobTitle: string | null;
+    department: string | null;
+    employmentType: string | null;
+    supervisorUserId: string | null;
+    supervisor: { id: string; fullName: string; email: string } | null;
+    startDate: Date | null;
+    terminationDate: Date | null;
+    birthDate: Date | null;
+    emergencyContact: Prisma.JsonValue;
+    availability: Prisma.JsonValue;
+    skills: Prisma.JsonValue;
+    compliance: Prisma.JsonValue;
+    onboarding: Prisma.JsonValue;
+    hrNotes: Prisma.JsonValue;
   } = {
     id: user.id,
     email: user.email,
@@ -137,6 +205,21 @@ function formatUser(user: UserWithRoles, options: UserFormatOptions = { includeC
     workforceType,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    employeeNumber: user.employeeNumber,
+    jobTitle: user.jobTitle,
+    department: user.department,
+    employmentType: user.employmentType,
+    supervisorUserId: user.supervisorUserId,
+    supervisor: user.supervisor ?? null,
+    startDate: user.startDate,
+    terminationDate: user.terminationDate,
+    birthDate: user.birthDate,
+    emergencyContact: user.emergencyContact,
+    availability: user.availability,
+    skills: user.skills,
+    compliance: user.compliance,
+    onboarding: user.onboarding,
+    hrNotes: user.hrNotes,
     role: primaryRole
       ? { id: primaryRole.id, key: primaryRole.key, label: primaryRole.label }
       : null,
@@ -154,6 +237,8 @@ function formatUser(user: UserWithRoles, options: UserFormatOptions = { includeC
     formatted.payType =
       user.payType === 'hourly' || user.payType === 'percentage' ? user.payType : null;
     formatted.hourlyPayRate = user.hourlyPayRate != null ? Number(user.hourlyPayRate) : null;
+    formatted.percentagePayRate =
+      user.percentagePayRate != null ? Number(user.percentagePayRate) : null;
   }
 
   return formatted;
@@ -304,6 +389,39 @@ export async function createUser(input: UserCreateInput) {
   if (address !== undefined) {
     data.address = address === null ? Prisma.JsonNull : (address as Prisma.InputJsonValue);
   }
+  if (input.percentagePayRate !== undefined) data.percentagePayRate = input.percentagePayRate;
+  if (input.employeeNumber !== undefined) data.employeeNumber = input.employeeNumber;
+  if (input.jobTitle !== undefined) data.jobTitle = input.jobTitle;
+  if (input.department !== undefined) data.department = input.department;
+  if (input.employmentType !== undefined) data.employmentType = input.employmentType;
+  if (input.supervisorUserId) data.supervisor = { connect: { id: input.supervisorUserId } };
+  if (input.startDate !== undefined) data.startDate = input.startDate ? new Date(input.startDate) : null;
+  if (input.terminationDate !== undefined) {
+    data.terminationDate = input.terminationDate ? new Date(input.terminationDate) : null;
+  }
+  if (input.birthDate !== undefined) data.birthDate = input.birthDate ? new Date(input.birthDate) : null;
+  if (input.emergencyContact !== undefined) {
+    data.emergencyContact =
+      input.emergencyContact === null ? Prisma.JsonNull : (input.emergencyContact as Prisma.InputJsonValue);
+  }
+  if (input.availability !== undefined) {
+    data.availability =
+      input.availability === null ? Prisma.JsonNull : (input.availability as Prisma.InputJsonValue);
+  }
+  if (input.skills !== undefined) {
+    data.skills = input.skills === null ? Prisma.JsonNull : (input.skills as Prisma.InputJsonValue);
+  }
+  if (input.compliance !== undefined) {
+    data.compliance =
+      input.compliance === null ? Prisma.JsonNull : (input.compliance as Prisma.InputJsonValue);
+  }
+  if (input.onboarding !== undefined) {
+    data.onboarding =
+      input.onboarding === null ? Prisma.JsonNull : (input.onboarding as Prisma.InputJsonValue);
+  }
+  if (input.hrNotes !== undefined) {
+    data.hrNotes = input.hrNotes === null ? Prisma.JsonNull : (input.hrNotes as Prisma.InputJsonValue);
+  }
 
   const user = await prisma.user.create({
     data,
@@ -326,6 +444,45 @@ export async function updateUser(id: string, input: UserUpdateInput) {
   if (input.status !== undefined) updateData.status = input.status;
   if (input.payType !== undefined) updateData.payType = input.payType;
   if (input.hourlyPayRate !== undefined) updateData.hourlyPayRate = input.hourlyPayRate;
+  if (input.percentagePayRate !== undefined) updateData.percentagePayRate = input.percentagePayRate;
+  if (input.employeeNumber !== undefined) updateData.employeeNumber = input.employeeNumber;
+  if (input.jobTitle !== undefined) updateData.jobTitle = input.jobTitle;
+  if (input.department !== undefined) updateData.department = input.department;
+  if (input.employmentType !== undefined) updateData.employmentType = input.employmentType;
+  if (input.supervisorUserId !== undefined) {
+    if (input.supervisorUserId) {
+      updateData.supervisor = { connect: { id: input.supervisorUserId } };
+    } else {
+      updateData.supervisor = { disconnect: true };
+    }
+  }
+  if (input.startDate !== undefined) updateData.startDate = input.startDate ? new Date(input.startDate) : null;
+  if (input.terminationDate !== undefined) {
+    updateData.terminationDate = input.terminationDate ? new Date(input.terminationDate) : null;
+  }
+  if (input.birthDate !== undefined) updateData.birthDate = input.birthDate ? new Date(input.birthDate) : null;
+  if (input.emergencyContact !== undefined) {
+    updateData.emergencyContact =
+      input.emergencyContact === null ? Prisma.JsonNull : (input.emergencyContact as Prisma.InputJsonValue);
+  }
+  if (input.availability !== undefined) {
+    updateData.availability =
+      input.availability === null ? Prisma.JsonNull : (input.availability as Prisma.InputJsonValue);
+  }
+  if (input.skills !== undefined) {
+    updateData.skills = input.skills === null ? Prisma.JsonNull : (input.skills as Prisma.InputJsonValue);
+  }
+  if (input.compliance !== undefined) {
+    updateData.compliance =
+      input.compliance === null ? Prisma.JsonNull : (input.compliance as Prisma.InputJsonValue);
+  }
+  if (input.onboarding !== undefined) {
+    updateData.onboarding =
+      input.onboarding === null ? Prisma.JsonNull : (input.onboarding as Prisma.InputJsonValue);
+  }
+  if (input.hrNotes !== undefined) {
+    updateData.hrNotes = input.hrNotes === null ? Prisma.JsonNull : (input.hrNotes as Prisma.InputJsonValue);
+  }
   if (input.preferences !== undefined || input.calendarColor !== undefined) {
     const existingUser =
       input.calendarColor !== undefined

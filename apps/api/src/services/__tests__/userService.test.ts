@@ -163,6 +163,18 @@ describe('userService', () => {
           email: 'test@example.com',
           payType: 'hourly',
           hourlyPayRate: 24.5,
+          percentagePayRate: null,
+          employeeNumber: 'EMP-001',
+          jobTitle: 'Operations Manager',
+          department: 'Operations',
+          employmentType: 'full_time',
+          startDate: new Date('2026-05-01'),
+          emergencyContact: { name: 'Emergency Contact', phone: '555-0101' },
+          availability: { monday: true },
+          skills: ['commercial'],
+          compliance: { backgroundCheck: 'complete' },
+          onboarding: { paperwork: true },
+          hrNotes: [{ note: 'Reliable manager' }],
         }),
       ];
 
@@ -180,6 +192,10 @@ describe('userService', () => {
       });
       expect(result.data[0].payType).toBe('hourly');
       expect(result.data[0].hourlyPayRate).toBe(24.5);
+      expect(result.data[0].employeeNumber).toBe('EMP-001');
+      expect(result.data[0].jobTitle).toBe('Operations Manager');
+      expect(result.data[0].emergencyContact).toEqual({ name: 'Emergency Contact', phone: '555-0101' });
+      expect(result.data[0].skills).toEqual(['commercial']);
       expect(result.data[0].workforceType).toBe('office');
     });
 
@@ -199,6 +215,7 @@ describe('userService', () => {
 
       expect(result.data[0]).not.toHaveProperty('payType');
       expect(result.data[0]).not.toHaveProperty('hourlyPayRate');
+      expect(result.data[0]).not.toHaveProperty('percentagePayRate');
     });
   });
 
@@ -292,6 +309,18 @@ describe('userService', () => {
         role: 'owner',
         payType: 'hourly',
         hourlyPayRate: 26,
+        percentagePayRate: null,
+        employeeNumber: 'EMP-100',
+        jobTitle: 'Field Supervisor',
+        department: 'Operations',
+        employmentType: 'full_time',
+        startDate: '2026-05-01',
+        emergencyContact: { name: 'Jane Contact', phone: '555-0199' },
+        availability: { weekdays: ['monday', 'tuesday'] },
+        skills: ['residential', 'inspection'],
+        compliance: { backgroundCheck: 'complete' },
+        onboarding: { handbookSigned: true },
+        hrNotes: [{ note: 'Ready for assignment' }],
       };
 
       const mockRole = createTestRole({ key: 'owner' });
@@ -315,6 +344,18 @@ describe('userService', () => {
           status: 'active',
           payType: 'hourly',
           hourlyPayRate: 26,
+          percentagePayRate: null,
+          employeeNumber: 'EMP-100',
+          jobTitle: 'Field Supervisor',
+          department: 'Operations',
+          employmentType: 'full_time',
+          startDate: new Date('2026-05-01'),
+          emergencyContact: { name: 'Jane Contact', phone: '555-0199' },
+          availability: { weekdays: ['monday', 'tuesday'] },
+          skills: ['residential', 'inspection'],
+          compliance: { backgroundCheck: 'complete' },
+          onboarding: { handbookSigned: true },
+          hrNotes: [{ note: 'Ready for assignment' }],
           roles: {
             create: {
               roleId: mockRole.id,
@@ -418,6 +459,18 @@ describe('userService', () => {
         status: 'inactive',
         payType: 'hourly',
         hourlyPayRate: 27.5,
+        percentagePayRate: null,
+        employeeNumber: 'EMP-200',
+        jobTitle: 'Lead Cleaner',
+        department: 'Field',
+        employmentType: 'part_time',
+        startDate: '2026-05-02',
+        emergencyContact: { name: 'Sam Contact' },
+        availability: { friday: true },
+        skills: ['deep-clean'],
+        compliance: { insuranceExpiry: '2027-01-01' },
+        onboarding: { trainingComplete: true },
+        hrNotes: [{ note: 'Moved to field team' }],
       };
 
       const mockUser = createMockUserWithRoles({ ...input, id: 'user-123' });
@@ -435,6 +488,18 @@ describe('userService', () => {
           status: 'inactive',
           payType: 'hourly',
           hourlyPayRate: 27.5,
+          percentagePayRate: null,
+          employeeNumber: 'EMP-200',
+          jobTitle: 'Lead Cleaner',
+          department: 'Field',
+          employmentType: 'part_time',
+          startDate: new Date('2026-05-02'),
+          emergencyContact: { name: 'Sam Contact' },
+          availability: { friday: true },
+          skills: ['deep-clean'],
+          compliance: { insuranceExpiry: '2027-01-01' },
+          onboarding: { trainingComplete: true },
+          hrNotes: [{ note: 'Moved to field team' }],
         },
         select: expect.any(Object),
       });

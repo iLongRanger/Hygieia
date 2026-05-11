@@ -10,6 +10,46 @@ const hourlyPayRateSchema = z.coerce
   .max(1000, 'Hourly pay rate is too high')
   .nullable()
   .optional();
+const percentagePayRateSchema = z.coerce
+  .number()
+  .min(0, 'Percentage pay rate must be positive')
+  .max(100, 'Percentage pay rate cannot exceed 100')
+  .nullable()
+  .optional();
+const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format')
+  .nullable()
+  .optional();
+const employmentTypeSchema = z
+  .enum(['full_time', 'part_time', 'casual', 'contractor', 'temporary'])
+  .nullable()
+  .optional();
+const emergencyContactSchema = z
+  .object({
+    name: z.string().max(120).optional().nullable(),
+    relationship: z.string().max(80).optional().nullable(),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().max(255).optional().nullable(),
+  })
+  .nullable()
+  .optional();
+const availabilitySchema = z.record(z.unknown()).nullable().optional();
+const complianceSchema = z.record(z.unknown()).nullable().optional();
+const onboardingSchema = z.record(z.unknown()).nullable().optional();
+const skillsSchema = z.array(z.string().min(1).max(80)).max(100).nullable().optional();
+const hrNotesSchema = z
+  .array(
+    z.object({
+      id: z.string().max(80).optional(),
+      note: z.string().min(1).max(2000),
+      createdAt: z.string().optional(),
+      createdBy: z.string().max(120).optional().nullable(),
+    })
+  )
+  .max(200)
+  .nullable()
+  .optional();
 const addressSchema = z
   .object({
     street: z.string().max(200).optional().nullable(),
@@ -42,6 +82,21 @@ export const createUserSchema = z.object({
   role: userRoleSchema.optional().default('cleaner'),
   payType: payTypeSchema,
   hourlyPayRate: hourlyPayRateSchema,
+  percentagePayRate: percentagePayRateSchema,
+  employeeNumber: z.string().max(50).optional().nullable(),
+  jobTitle: z.string().max(120).optional().nullable(),
+  department: z.string().max(120).optional().nullable(),
+  employmentType: employmentTypeSchema,
+  supervisorUserId: z.string().uuid().optional().nullable(),
+  startDate: dateOnlySchema,
+  terminationDate: dateOnlySchema,
+  birthDate: dateOnlySchema,
+  emergencyContact: emergencyContactSchema,
+  availability: availabilitySchema,
+  skills: skillsSchema,
+  compliance: complianceSchema,
+  onboarding: onboardingSchema,
+  hrNotes: hrNotesSchema,
 });
 
 export const updateUserSchema = z.object({
@@ -54,6 +109,21 @@ export const updateUserSchema = z.object({
   calendarColor: hexColorSchema.nullable().optional(),
   payType: payTypeSchema,
   hourlyPayRate: hourlyPayRateSchema,
+  percentagePayRate: percentagePayRateSchema,
+  employeeNumber: z.string().max(50).optional().nullable(),
+  jobTitle: z.string().max(120).optional().nullable(),
+  department: z.string().max(120).optional().nullable(),
+  employmentType: employmentTypeSchema,
+  supervisorUserId: z.string().uuid().optional().nullable(),
+  startDate: dateOnlySchema,
+  terminationDate: dateOnlySchema,
+  birthDate: dateOnlySchema,
+  emergencyContact: emergencyContactSchema,
+  availability: availabilitySchema,
+  skills: skillsSchema,
+  compliance: complianceSchema,
+  onboarding: onboardingSchema,
+  hrNotes: hrNotesSchema,
 });
 
 export const updateCurrentUserProfileSchema = z.object({

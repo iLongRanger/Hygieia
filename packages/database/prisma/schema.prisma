@@ -30,10 +30,27 @@ model User {
   notificationPreferences Json      @default("{}") @map("notification_preferences") @db.JsonB
   payType                 String?   @map("pay_type") @db.VarChar(20)
   hourlyPayRate           Decimal?  @map("hourly_pay_rate") @db.Decimal(10, 2)
+  percentagePayRate       Decimal?  @map("percentage_pay_rate") @db.Decimal(5, 2)
+  employeeNumber          String?   @unique @map("employee_number") @db.VarChar(50)
+  jobTitle                String?   @map("job_title") @db.VarChar(120)
+  department              String?   @db.VarChar(120)
+  employmentType          String?   @map("employment_type") @db.VarChar(40)
+  supervisorUserId        String?   @map("supervisor_user_id") @db.Uuid
+  startDate               DateTime? @map("start_date") @db.Date
+  terminationDate         DateTime? @map("termination_date") @db.Date
+  birthDate               DateTime? @map("birth_date") @db.Date
+  emergencyContact        Json      @default("{}") @map("emergency_contact") @db.JsonB
+  availability            Json      @default("{}") @db.JsonB
+  skills                  Json      @default("[]") @db.JsonB
+  compliance              Json      @default("{}") @db.JsonB
+  onboarding              Json      @default("{}") @db.JsonB
+  hrNotes                 Json      @default("[]") @map("hr_notes") @db.JsonB
   createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   team                                 Team?                        @relation(fields: [teamId], references: [id])
+  supervisor                           User?                        @relation("UserSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  directReports                        User[]                       @relation("UserSupervisor")
   roles                                UserRole[]                   @relation("UserRoles")
   refreshTokens                        RefreshToken[]               @relation("UserRefreshTokens")
   passwordSetTokens                    PasswordSetToken[]

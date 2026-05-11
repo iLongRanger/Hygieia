@@ -107,6 +107,13 @@ describe('Users Routes', () => {
       role: 'manager',
       payType: 'hourly',
       hourlyPayRate: 25,
+      employeeNumber: 'EMP-300',
+      jobTitle: 'Account Manager',
+      department: 'Sales',
+      employmentType: 'full_time',
+      startDate: '2026-05-01',
+      emergencyContact: { name: 'Jane Doe', phone: '5551234567' },
+      skills: ['walkthroughs'],
     };
 
     const response = await request(app).post('/api/v1/users').send(payload).expect(201);
@@ -118,6 +125,13 @@ describe('Users Routes', () => {
       address: { street: '123 Main St', city: 'Toronto' },
       payType: 'hourly',
       hourlyPayRate: 25,
+      employeeNumber: 'EMP-300',
+      jobTitle: 'Account Manager',
+      department: 'Sales',
+      employmentType: 'full_time',
+      startDate: '2026-05-01',
+      emergencyContact: { name: 'Jane Doe', phone: '5551234567' },
+      skills: ['walkthroughs'],
     }));
   });
 
@@ -145,6 +159,9 @@ describe('Users Routes', () => {
         address: { street: '456 Queen St', city: 'Toronto' },
         payType: 'hourly',
         hourlyPayRate: 28,
+        jobTitle: 'Operations Lead',
+        department: 'Operations',
+        availability: { monday: true },
       })
       .expect(200);
 
@@ -153,6 +170,9 @@ describe('Users Routes', () => {
       payType: 'hourly',
       hourlyPayRate: 28,
       address: { street: '456 Queen St', city: 'Toronto' },
+      jobTitle: 'Operations Lead',
+      department: 'Operations',
+      availability: { monday: true },
     }));
   });
 
