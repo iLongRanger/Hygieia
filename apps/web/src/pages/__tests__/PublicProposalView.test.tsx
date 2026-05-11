@@ -198,6 +198,34 @@ describe('PublicProposalView', () => {
     expect(screen.queryByText('Desk x0')).not.toBeInTheDocument();
   });
 
+  it('does not show additional tasks when included tasks duplicate frequency groups', async () => {
+    getPublicProposalMock.mockResolvedValueOnce({
+      ...baseResponse,
+      data: {
+        ...baseResponse.data,
+        proposalServices: [
+          {
+            serviceName: 'Daily Cleaning',
+            serviceType: 'daily',
+            frequency: 'daily',
+            estimatedHours: null,
+            hourlyRate: null,
+            monthlyPrice: 1100,
+            description: 'Main area\nDaily: Empty trash\nWeekly: Mop floors',
+            includedTasks: ['Empty trash', 'Mop floors'],
+            sortOrder: 0,
+          },
+        ],
+      },
+    });
+
+    render(<PublicProposalView />);
+
+    expect((await screen.findAllByText('Daily')).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Weekly' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Additional Tasks' })).not.toBeInTheDocument();
+  });
+
   it('uses proposal-level frequency label in service sections', async () => {
     getPublicProposalMock.mockResolvedValueOnce({
       ...baseResponse,

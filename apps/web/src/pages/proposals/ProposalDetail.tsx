@@ -306,6 +306,9 @@ const normalizeTaskGroupKey = (raw: string): string => {
 const isZeroQuantityTask = (task: string): boolean =>
   /\bx\s*0(?:\.0+)?\b/i.test(task.trim());
 
+const normalizeTaskName = (task: string): string =>
+  task.trim().toLowerCase().replace(/\s+/g, ' ');
+
 const buildTaskGroups = (
   description: string | null | undefined,
   includedTasks: string[]
@@ -328,14 +331,21 @@ const buildTaskGroups = (
     addTask(match[1], match[2].split(','));
   }
 
+  const categorizedTaskNames = new Set(
+    Array.from(grouped.entries())
+      .filter(([key]) => key !== 'manual')
+      .flatMap(([, tasks]) => Array.from(tasks).map(normalizeTaskName))
+  );
+
   const uncategorized: string[] = [];
   for (const taskLine of includedTasks) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
     if (match) {
       addTask(match[1], match[2].split(','));
     } else if (taskLine.trim()) {
-      if (!isZeroQuantityTask(taskLine)) {
-        uncategorized.push(taskLine.trim());
+      const taskName = taskLine.trim();
+      if (!isZeroQuantityTask(taskName) && !categorizedTaskNames.has(normalizeTaskName(taskName))) {
+        uncategorized.push(taskName);
       }
     }
   }
