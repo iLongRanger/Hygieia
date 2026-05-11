@@ -414,7 +414,7 @@ const ResidentialPricingPlansPage = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingPlan ? 'Edit Residential Pricing Plan' : 'New Residential Pricing Plan'}
-        size="3xl"
+        size="7xl"
       >
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">

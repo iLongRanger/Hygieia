@@ -469,7 +469,7 @@ const PricingSettingsPage = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create Commercial Pricing Plan"
-        size="3xl"
+        size="7xl"
       >
         <div className="space-y-6">
           <div className="rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 dark:border-primary-900 dark:bg-primary-950/20 dark:text-primary-200">
