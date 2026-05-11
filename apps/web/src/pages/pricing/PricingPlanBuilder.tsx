@@ -788,14 +788,14 @@ export function PricingPlanBuilder({
                 />
               </div>
 
-              <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900 dark:bg-sky-950/30">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 dark:border-sky-900 dark:bg-sky-950/30">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h4 className="font-semibold text-sky-900 dark:text-sky-100">
+                    <h4 className="text-sm font-semibold text-sky-900 dark:text-sky-100">
                       Labor assumption detail
                     </h4>
-                    <p className="mt-1 text-sm text-sky-800/80 dark:text-sky-200/80">
-                      This translates your wage and burden inputs into the client-facing hourly rate needed to protect margin.
+                    <p className="mt-0.5 text-xs text-sky-800/80 dark:text-sky-200/80">
+                      Shows loaded labor cost and the client hourly rate needed to protect margin.
                     </p>
                   </div>
                   <Badge className="border border-sky-300 bg-white text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200">
@@ -803,29 +803,39 @@ export function PricingPlanBuilder({
                   </Badge>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <MetricCard
-                    label="Base Labor"
-                    value={`${formatCurrencyWithCents(normalized.laborCostPerHour)}/hr`}
-                    note="Manual wage or contractor labor cost before burden."
-                  />
-                  <MetricCard
-                    label="Loaded Labor"
-                    value={`${formatCurrencyWithCents(loadedLaborCostPerHour)}/hr`}
-                    note={`${formatPercent(normalized.laborBurdenPercentage)} burden added to base labor.`}
-                  />
-                  <MetricCard
-                    label="Target Client Rate"
-                    value={`${formatCurrencyWithCents(targetBillableRatePerHour)}/hr`}
-                    note="Billable rate needed to hit the target margin."
-                    tone="positive"
-                  />
-                  <MetricCard
-                    label="Current Hourly Setting"
-                    value={`${formatCurrencyWithCents(normalized.hourlyRate)}/hr`}
-                    note={`${formatCurrencyWithCents(currentHourlyMargin)}/hr margin, ${formatPercent(currentHourlyMarginPercentage)} gross margin.`}
-                    tone={currentHourlyMargin < 0 ? 'warning' : 'default'}
-                  />
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-surface-900/50">
+                    <div className="text-xs uppercase tracking-[0.14em] text-surface-500">Base labor</div>
+                    <div className="font-semibold text-surface-900 dark:text-surface-100">
+                      {formatCurrencyWithCents(normalized.laborCostPerHour)}/hr
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-surface-900/50">
+                    <div className="text-xs uppercase tracking-[0.14em] text-surface-500">Loaded labor</div>
+                    <div className="font-semibold text-surface-900 dark:text-surface-100">
+                      {formatCurrencyWithCents(loadedLaborCostPerHour)}/hr
+                    </div>
+                    <div className="text-xs text-surface-500">
+                      Includes {formatPercent(normalized.laborBurdenPercentage)} burden
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/30">
+                    <div className="text-xs uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+                      Target client rate
+                    </div>
+                    <div className="font-semibold text-emerald-900 dark:text-emerald-100">
+                      {formatCurrencyWithCents(targetBillableRatePerHour)}/hr
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-surface-900/50">
+                    <div className="text-xs uppercase tracking-[0.14em] text-surface-500">Current hourly setting</div>
+                    <div className="font-semibold text-surface-900 dark:text-surface-100">
+                      {formatCurrencyWithCents(normalized.hourlyRate)}/hr
+                    </div>
+                    <div className="text-xs text-surface-500">
+                      {formatCurrencyWithCents(currentHourlyMargin)}/hr margin, {formatPercent(currentHourlyMarginPercentage)} gross margin
+                    </div>
+                  </div>
                 </div>
               </div>
             </FieldShell>
