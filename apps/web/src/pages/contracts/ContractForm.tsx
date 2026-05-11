@@ -60,6 +60,19 @@ const BILLING_CYCLES = [
   { value: 'annual', label: 'Annual' },
 ];
 
+const PAYMENT_TERMS_OPTIONS = [
+  { value: 'Due on receipt', label: 'Due on Receipt' },
+  { value: 'Due before service', label: 'Due Before Service' },
+  { value: 'Due upon completion', label: 'Due Upon Completion' },
+  { value: 'Net 7', label: 'Net 7' },
+  { value: 'Net 15', label: 'Net 15' },
+  { value: 'Net 30', label: 'Net 30' },
+  { value: 'Net 45', label: 'Net 45' },
+  { value: 'Net 60', label: 'Net 60' },
+  { value: '50% deposit, balance on completion', label: '50% Deposit, Balance on Completion' },
+  { value: 'Monthly recurring billing', label: 'Monthly Recurring Billing' },
+];
+
 const SUPPLIES_PROVIDED_BY_OPTIONS = [
   { value: 'company', label: 'Company' },
   { value: 'client', label: 'Client' },
@@ -835,11 +848,11 @@ const ContractForm = () => {
                   options={BILLING_CYCLES}
                 />
 
-                <Input
+                <Select
                   label="Payment Terms"
                   value={formData.paymentTerms}
-                  onChange={(e) => handleChange('paymentTerms', e.target.value)}
-                  placeholder="e.g., Net 30"
+                  onChange={(value) => handleChange('paymentTerms', value)}
+                  options={PAYMENT_TERMS_OPTIONS}
                 />
               </div>
             </Card>

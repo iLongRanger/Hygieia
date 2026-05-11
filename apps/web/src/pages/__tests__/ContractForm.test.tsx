@@ -156,6 +156,28 @@ describe('ContractForm', () => {
     });
   });
 
+  it('uses a payment terms dropdown when creating a contract', async () => {
+    const user = userEvent.setup();
+    render(<ContractForm />);
+
+    await screen.findByText('New Contract');
+    await user.selectOptions(
+      await screen.findByLabelText(/accepted proposal/i),
+      'proposal-1'
+    );
+    await user.selectOptions(await screen.findByLabelText(/payment terms/i), 'Due upon completion');
+    await user.click(screen.getByRole('button', { name: /create contract/i }));
+
+    await waitFor(() => {
+      expect(createContractFromProposalMock).toHaveBeenCalledWith(
+        'proposal-1',
+        expect.objectContaining({
+          paymentTerms: 'Due upon completion',
+        })
+      );
+    });
+  });
+
   it('blocks contract creation when the service location already has an active contract', async () => {
     const user = userEvent.setup();
     listContractsMock.mockResolvedValue({
