@@ -185,7 +185,7 @@ export function FacilityAreaDetail({
               onClick={() => onBulkAddTasks(area)}
             >
               <ListPlus className="mr-1 h-4 w-4" />
-              Add From Templates
+              Manage Tasks
             </Button>
             <Button
               variant="ghost"

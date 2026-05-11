@@ -82,6 +82,7 @@ export function isCleaningFrequency(
 
 export interface AreaTemplateTaskSelection {
   id: string;
+  facilityTaskId?: string | null;
   taskTemplateId: string | null;
   name: string;
   cleaningType: string;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '../../test/test-utils';
+import { fireEvent, render, screen, waitFor, within } from '../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import FacilityDetail from '../facilities/FacilityDetail';
 import type { Facility, Area, AreaType, FixtureType, FacilityTask, TaskTemplate } from '../../types/facility';
@@ -218,6 +218,53 @@ const areaSpecificTemplate: TaskTemplate = {
   _count: {
     facilityTasks: 0,
   },
+};
+
+const assignedTask: FacilityTask = {
+  id: 'facility-task-1',
+  customName: null,
+  customInstructions: null,
+  estimatedMinutes: 10,
+  baseMinutesOverride: null,
+  perSqftMinutesOverride: null,
+  perUnitMinutesOverride: null,
+  perRoomMinutesOverride: null,
+  isRequired: true,
+  cleaningFrequency: 'daily',
+  conditionMultiplier: 1,
+  priority: 3,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  archivedAt: null,
+  facility: {
+    id: 'facility-1',
+    name: 'Main Facility',
+    accountId: 'account-1',
+  },
+  area: {
+    id: 'area-1',
+    name: 'Office A',
+    areaType: {
+      id: 'area-type-1',
+      name: 'Office',
+    },
+  },
+  taskTemplate: {
+    id: 'task-template-1',
+    name: 'Dust desks',
+    cleaningType: 'daily',
+    estimatedMinutes: 10,
+    baseMinutes: '0',
+    perSqftMinutes: '0',
+    perUnitMinutes: '0',
+    perRoomMinutes: '0',
+    difficultyLevel: 3,
+  },
+  createdByUser: {
+    id: 'user-1',
+    fullName: 'Admin User',
+  },
+  fixtureMinutes: [],
 };
 
 const residentialProperty: ResidentialProperty = {
@@ -550,7 +597,8 @@ describe('FacilityDetail', () => {
     );
 
     await user.click(screen.getByText(/areas \(\d+\)/i));
-    await user.click(await screen.findByRole('button', { name: /add task/i }));
+    await user.click(await screen.findByRole('button', { name: /add area/i }));
+    await user.selectOptions(await screen.findByLabelText(/area type/i), 'area-type-1');
 
     expect(await screen.findByText('Wipe nightstands')).toBeInTheDocument();
     expect(screen.getByText('Dust baseboards')).toBeInTheDocument();
@@ -674,10 +722,24 @@ describe('FacilityDetail', () => {
     expect(await screen.findByText('Global Mop')).toBeInTheDocument();
   });
 
-  it('uses the stepped selector UI when adding tasks to an area', async () => {
+  it('opens the custom task editor from the area card add task action', async () => {
     const user = userEvent.setup();
+
+    render(<FacilityDetail />);
+
+    await user.click(await screen.findByText(/areas \(\d+\)/i));
+    await user.click(await screen.findByRole('button', { name: /add task/i }));
+
+    expect(await screen.findByRole('dialog', { name: /add task - office a/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/task name/i)).toBeInTheDocument();
+  });
+
+  it('shows assigned area tasks in the task manager instead of available templates', async () => {
+    const user = userEvent.setup();
+    listFacilityTasksMock.mockResolvedValue({ data: [assignedTask] });
     listTaskTemplatesMock.mockResolvedValue({
       data: [
+        areaSpecificTemplate,
         {
           ...areaSpecificTemplate,
           id: 'task-template-weekly',
@@ -690,56 +752,30 @@ describe('FacilityDetail', () => {
     render(<FacilityDetail />);
 
     await user.click(await screen.findByText(/areas \(\d+\)/i));
-    await user.click(await screen.findByRole('button', { name: /add task/i }));
+    await user.click(await screen.findByText('Office A'));
+    await user.click(await screen.findByRole('button', { name: /manage tasks/i }));
+    const modal = await screen.findByRole('dialog', { name: /manage tasks - office a/i });
 
-    expect(await screen.findByText(/step 1 of 7/i)).toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: /next category/i }));
-    expect(await screen.findByText('Weekly Dusting')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /include/i })).toBeChecked();
+    expect(within(modal).getByText('Dust desks')).toBeInTheDocument();
+    expect(within(modal).queryByText('Weekly Dusting')).not.toBeInTheDocument();
+    expect(within(modal).getByRole('checkbox', { name: /assigned/i })).toBeChecked();
   });
 
-  it('creates selected tasks from the stepped task selector', async () => {
+  it('removes unchecked assigned tasks from the area task manager', async () => {
     const user = userEvent.setup();
-    listTaskTemplatesMock.mockResolvedValue({ data: [areaSpecificTemplate] });
+    listFacilityTasksMock.mockResolvedValue({ data: [assignedTask] });
 
     render(<FacilityDetail />);
 
     await user.click(await screen.findByText(/areas \(\d+\)/i));
-    await user.click(await screen.findByRole('button', { name: /add task/i }));
-    await user.click(await screen.findByRole('button', { name: /^add tasks$/i }));
+    await user.click(await screen.findByText('Office A'));
+    await user.click(await screen.findByRole('button', { name: /manage tasks/i }));
+    await user.click(await screen.findByRole('checkbox', { name: /assigned/i }));
+    await user.click(await screen.findByRole('button', { name: /save tasks/i }));
 
     await waitFor(() => {
-      expect(createFacilityTaskMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          facilityId: 'facility-1',
-          areaId: 'area-1',
-          taskTemplateId: 'task-template-1',
-          cleaningFrequency: 'daily',
-        })
-      );
+      expect(deleteFacilityTaskMock).toHaveBeenCalledWith('facility-task-1');
     });
-  });
-
-  it('deduplicates matching area and global templates by name and frequency', async () => {
-    const user = userEvent.setup();
-    listTaskTemplatesMock.mockResolvedValue({
-      data: [
-        areaSpecificTemplate,
-        {
-          ...areaSpecificTemplate,
-          id: 'task-template-global-duplicate',
-          isGlobal: true,
-          areaType: null,
-        },
-      ],
-    });
-
-    render(<FacilityDetail />);
-
-    await user.click(await screen.findByText(/areas \(\d+\)/i));
-    await user.click(await screen.findByRole('button', { name: /add task/i }));
-
-    expect(await screen.findAllByText('Dust desks')).toHaveLength(1);
   });
 
   it('submits facility for proposal from header action', async () => {

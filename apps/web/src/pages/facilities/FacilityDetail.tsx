@@ -295,7 +295,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
   const allAreaTaskFrequenciesReviewed =
     reviewedAreaTaskFrequencies.size === ORDERED_CLEANING_FREQUENCIES.length;
-  const hasSelectedTaskSelectionTasks = taskSelectionTasks.some((task) => task.include);
+  const hasTaskSelectionTasks = taskSelectionTasks.length > 0;
   const selectedResidentialPricingPlan =
     residentialPricingPlans.find((plan) => plan.isDefault)
     || residentialPricingPlans[0]
@@ -730,12 +730,6 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const normalizeTaskName = (name: string) =>
     name.trim().replace(/\s+/g, ' ').toLowerCase();
 
-  const templateSpecificity = (template: TaskTemplate, areaTypeId: string) => {
-    if (template.areaType?.id === areaTypeId) return 0;
-    if (template.isGlobal) return 1;
-    return 2;
-  };
-
   const findDuplicateTask = (params: {
     areaId?: string | null;
     cleaningFrequency: CleaningFrequency;
@@ -1013,13 +1007,17 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
 
     const selectedAreaId = selectedAreaForTask?.id || null;
     const includedTasks = taskSelectionTasks.filter((task) => task.include);
+    const tasksToDelete = taskSelectionTasks.filter(
+      (task) => task.facilityTaskId && !task.include
+    );
 
-    if (includedTasks.length === 0) {
-      toast.error('Select at least one task to add');
+    if (includedTasks.length === 0 && tasksToDelete.length === 0) {
+      toast.error('No task changes to save');
       return;
     }
 
-    const duplicateTasks = includedTasks.filter((task) =>
+    const tasksToCreateCandidates = includedTasks.filter((task) => !task.facilityTaskId);
+    const duplicateTasks = tasksToCreateCandidates.filter((task) =>
       Boolean(
         findDuplicateTask({
           areaId: selectedAreaId,
@@ -1032,19 +1030,20 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
       )
     );
 
-    const tasksToCreate = includedTasks.filter(
+    const tasksToCreate = tasksToCreateCandidates.filter(
       (task) => !duplicateTasks.some((duplicate) => duplicate.id === task.id)
     );
 
-    if (tasksToCreate.length === 0) {
+    if (tasksToCreate.length === 0 && tasksToDelete.length === 0) {
       toast.error('All selected tasks already exist for this area and frequency');
       return;
     }
 
     try {
       setSaving(true);
-      await Promise.all(
-        tasksToCreate.map((task) =>
+      await Promise.all([
+        ...tasksToDelete.map((task) => deleteFacilityTask(task.facilityTaskId!)),
+        ...tasksToCreate.map((task) =>
           createFacilityTask({
             facilityId: resolvedFacilityId,
             areaId: selectedAreaId,
@@ -1059,12 +1058,12 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
               : 'daily',
             priority: 3,
           } as CreateFacilityTaskInput)
-        )
-      );
+        ),
+      ]);
       if (duplicateTasks.length > 0) {
         toast('Skipped duplicate tasks that already exist');
       }
-      toast.success(`Added ${tasksToCreate.length} task${tasksToCreate.length === 1 ? '' : 's'}`);
+      toast.success('Area tasks updated');
       setShowTaskSelectionModal(false);
       setSelectedAreaForTask(null);
       resetTaskSelectionState();
@@ -1106,62 +1105,26 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     toast.success(`${locationLabel} details saved as draft. Walkthrough remains in progress.`);
   };
 
-  const buildTaskSelectionsForArea = (area: Area) => {
-    const matchingTemplates = taskTemplates
-      .filter(
-        (template) =>
-          template.isActive
-          && (
-            template.areaType?.id === area.areaType.id
-            || template.isGlobal
-            || !template.areaType?.id
-          )
-      )
-      .sort((a, b) => {
-        const aSpecificity = templateSpecificity(a, area.areaType.id);
-        const bSpecificity = templateSpecificity(b, area.areaType.id);
-        if (aSpecificity !== bSpecificity) return aSpecificity - bSpecificity;
-        const aIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
-          isCleaningFrequency(a.cleaningType) ? a.cleaningType : 'daily'
-        );
-        const bIndex = ORDERED_CLEANING_FREQUENCIES.indexOf(
-          isCleaningFrequency(b.cleaningType) ? b.cleaningType : 'daily'
-        );
-        if (aIndex !== bIndex) return aIndex - bIndex;
-        return a.name.localeCompare(b.name);
-      });
-
-    const uniqueTemplates = matchingTemplates.filter((template, index, templates) => {
-      const normalizedKey = `${normalizeTaskName(template.name)}::${template.cleaningType}`;
-      return (
-        templates.findIndex(
-          (candidate) =>
-            `${normalizeTaskName(candidate.name)}::${candidate.cleaningType}` === normalizedKey
-        ) === index
-      );
-    });
-
-    return uniqueTemplates.map((template) => ({
-      id: `task-template-${template.id}`,
-      taskTemplateId: template.id,
-      name: template.name,
-      cleaningType: isCleaningFrequency(template.cleaningType)
-        ? template.cleaningType
-        : 'daily',
-      estimatedMinutes: template.estimatedMinutes ?? null,
-      baseMinutes: Number(template.baseMinutes) || 0,
-      perSqftMinutes: Number(template.perSqftMinutes) || 0,
-      perUnitMinutes: Number(template.perUnitMinutes) || 0,
-      perRoomMinutes: Number(template.perRoomMinutes) || 0,
+  const buildAssignedTaskSelectionsForArea = (area: Area): AreaTemplateTaskSelection[] =>
+    getTasksForArea(area.id).map((task) => ({
+      id: `facility-task-${task.id}`,
+      facilityTaskId: task.id,
+      taskTemplateId: task.taskTemplate?.id ?? null,
+      name: getTaskDisplayName(task) || 'Unnamed Task',
+      cleaningType: task.cleaningFrequency,
+      estimatedMinutes: task.estimatedMinutes ?? task.taskTemplate?.estimatedMinutes ?? null,
+      baseMinutes: Number(task.baseMinutesOverride ?? task.taskTemplate?.baseMinutes ?? 0) || 0,
+      perSqftMinutes: Number(task.perSqftMinutesOverride ?? task.taskTemplate?.perSqftMinutes ?? 0) || 0,
+      perUnitMinutes: Number(task.perUnitMinutesOverride ?? task.taskTemplate?.perUnitMinutes ?? 0) || 0,
+      perRoomMinutes: Number(task.perRoomMinutesOverride ?? task.taskTemplate?.perRoomMinutes ?? 0) || 0,
       include: true,
     }));
-  };
 
   const openTaskSelectionForArea = (area: Area) => {
     setSelectedAreaForTask(area);
     setEditingTask(null);
     resetTaskSelectionState();
-    setTaskSelectionTasks(buildTaskSelectionsForArea(area));
+    setTaskSelectionTasks(buildAssignedTaskSelectionsForArea(area));
     setShowTaskSelectionModal(true);
   };
 
@@ -1170,7 +1133,22 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   };
 
   const openAddTaskForArea = (area: Area) => {
-    openTaskSelectionForArea(area);
+    setSelectedAreaForTask(area);
+    setEditingTask(null);
+    setTaskForm({
+      facilityId: resolvedFacilityId || '',
+      areaId: area.id,
+      taskTemplateId: null,
+      customName: '',
+      cleaningFrequency: 'daily',
+      priority: 3,
+      baseMinutesOverride: null,
+      perSqftMinutesOverride: null,
+      perUnitMinutesOverride: null,
+      perRoomMinutesOverride: null,
+      fixtureMinutes: [],
+    });
+    setShowTaskModal(true);
   };
 
   const openEditTask = (task: FacilityTask) => {
@@ -1899,7 +1877,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
         goToPreviousTaskSelectionStep={goToPreviousTaskSelectionStep}
         onSave={handleSaveSelectedTasks}
         saving={saving}
-        hasSelectedTasks={hasSelectedTaskSelectionTasks}
+        hasSelectedTasks={hasTaskSelectionTasks}
       />
       <SubmitProposalModal
         isOpen={showSubmitProposalModal}

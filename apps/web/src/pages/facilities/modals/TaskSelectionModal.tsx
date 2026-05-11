@@ -58,7 +58,7 @@ export function TaskSelectionModal({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title={`Add Tasks${
+      title={`Manage Tasks${
         selectedAreaForTask
           ? ` - ${selectedAreaForTask.name || selectedAreaForTask.areaType?.name || 'Area'}`
           : ''
@@ -67,7 +67,7 @@ export function TaskSelectionModal({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Default Tasks</div>
+          <div className="text-sm font-medium text-surface-600 dark:text-surface-300">Assigned Tasks</div>
           <div className="space-y-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/20 p-3">
             <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-3">
               <div className="flex items-center justify-between">
@@ -121,7 +121,7 @@ export function TaskSelectionModal({
 
             {filteredTaskSelectionTasks.length === 0 ? (
               <div className="text-sm text-surface-500">
-                No tasks for this category yet. Add one above.
+                No assigned tasks in this category yet. Add a custom task above.
               </div>
             ) : (
               <div className="space-y-2">
@@ -150,7 +150,7 @@ export function TaskSelectionModal({
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {!task.taskTemplateId && (
+                      {!task.taskTemplateId && !task.facilityTaskId && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -169,7 +169,7 @@ export function TaskSelectionModal({
                           }
                           className="rounded border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 text-primary-600 dark:text-primary-500 focus:ring-primary-500"
                         />
-                        Include
+                        Assigned
                       </label>
                     </div>
                   </div>
@@ -198,7 +198,7 @@ export function TaskSelectionModal({
             </div>
           </div>
           <div className="text-xs text-surface-500">
-            Review categories and include the tasks you want to add for this area.
+            Review assigned tasks by frequency. Uncheck a task to remove it from this area, or add a custom task above.
           </div>
         </div>
 
@@ -211,7 +211,7 @@ export function TaskSelectionModal({
             isLoading={saving}
             disabled={!hasSelectedTasks}
           >
-            Add Task{hasSelectedTasks ? 's' : ''}
+            Save Tasks
           </Button>
         </div>
       </div>
