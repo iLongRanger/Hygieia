@@ -52,6 +52,17 @@ interface PdfTableNode {
   };
 }
 
+function keepTogether(
+  stack: Content[],
+  margin?: [number, number, number, number]
+): Content {
+  return {
+    stack,
+    ...(margin ? { margin } : {}),
+    unbreakable: true,
+  } as Content;
+}
+
 interface ProposalOperationalEstimate {
   durationRangePerVisit?: {
     minHours?: PdfNumeric | null;
@@ -277,12 +288,13 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
   // Description
   if (proposal.description) {
-    content.push({ text: 'Description', style: 'sectionHeader' });
-    content.push({
-      text: proposal.description,
-      style: 'bodyText',
-      margin: [0, 0, 0, 15] as [number, number, number, number],
-    });
+    content.push(keepTogether([
+      { text: 'Description', style: 'sectionHeader' },
+      {
+        text: proposal.description,
+        style: 'bodyText',
+      },
+    ], [0, 0, 0, 15] as [number, number, number, number]));
   }
 
   // Services & Areas
@@ -360,16 +372,16 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         areaStack.push(...taskItems);
       }
 
-      content.push({
-        stack: areaStack,
-        margin: [0, 8, 0, 8] as [number, number, number, number],
-      });
-
-      // Divider between areas
-      content.push({
-        canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: COLORS.border }],
-        margin: [0, 0, 0, 0] as [number, number, number, number],
-      });
+      // Keep each area and its assigned task groups together when possible so
+      // a task block does not split awkwardly across pages in the client PDF.
+      content.push(keepTogether([
+        ...areaStack,
+        // Divider between areas
+        {
+          canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: COLORS.border }],
+          margin: [0, 0, 0, 0] as [number, number, number, number],
+        },
+      ], [0, 8, 0, 8] as [number, number, number, number]));
     }
   }
 
@@ -381,38 +393,40 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
   // Estimated Time On Site
   if (proposalPricingSnapshot?.operationalEstimate) {
     const estimate = proposalPricingSnapshot.operationalEstimate;
-    content.push({ text: 'Estimated Time On Site', style: 'sectionHeader' });
-    content.push({
-      columns: [
-        {
-          stack: [
-            { text: 'Duration Per Visit', fontSize: 8, color: COLORS.lightText },
-            {
-              text: `${formatWholeHours(estimate.durationRangePerVisit?.minHours)} - ${formatWholeHours(estimate.durationRangePerVisit?.maxHours)}`,
-              fontSize: 10,
-              bold: true,
-              color: COLORS.text,
-            },
-          ],
-          width: '*',
-        },
-        {
-          stack: [
-            { text: 'Crew Size', fontSize: 8, color: COLORS.lightText },
-            { text: `${estimate.recommendedCrewSize ?? 1} cleaners`, fontSize: 10, bold: true, color: COLORS.text },
-          ],
-          width: '*',
-        },
-        {
-          stack: [
-            { text: 'Labor Hours / Visit', fontSize: 8, color: COLORS.lightText },
-            { text: formatWholeHours(estimate.hoursPerVisit), fontSize: 10, bold: true, color: COLORS.text },
-          ],
-          width: '*',
-        },
-      ],
-      margin: [0, 5, 0, 12] as [number, number, number, number],
-    });
+    content.push(keepTogether([
+      { text: 'Estimated Time On Site', style: 'sectionHeader' },
+      {
+        columns: [
+          {
+            stack: [
+              { text: 'Duration Per Visit', fontSize: 8, color: COLORS.lightText },
+              {
+                text: `${formatWholeHours(estimate.durationRangePerVisit?.minHours)} - ${formatWholeHours(estimate.durationRangePerVisit?.maxHours)}`,
+                fontSize: 10,
+                bold: true,
+                color: COLORS.text,
+              },
+            ],
+            width: '*',
+          },
+          {
+            stack: [
+              { text: 'Crew Size', fontSize: 8, color: COLORS.lightText },
+              { text: `${estimate.recommendedCrewSize ?? 1} cleaners`, fontSize: 10, bold: true, color: COLORS.text },
+            ],
+            width: '*',
+          },
+          {
+            stack: [
+              { text: 'Labor Hours / Visit', fontSize: 8, color: COLORS.lightText },
+              { text: formatWholeHours(estimate.hoursPerVisit), fontSize: 10, bold: true, color: COLORS.text },
+            ],
+            width: '*',
+          },
+        ],
+        margin: [0, 5, 0, 12] as [number, number, number, number],
+      },
+    ]));
   }
 
   // Services summary table
@@ -454,6 +468,8 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     content.push({
         table: {
           headerRows: 1,
+          dontBreakRows: true,
+          keepWithHeaderRows: 1,
           widths: hasAnyHours ? ['*', 100, 60, 90] : ['*', 130, 90],
           body: areasBody,
         },
@@ -499,6 +515,8 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     content.push({
       table: {
         headerRows: 1,
+        dontBreakRows: true,
+        keepWithHeaderRows: 1,
         widths: ['*', 50, 90, 90],
         body: itemsBody,
       },
@@ -517,7 +535,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
   }
 
   // Financial Summary
-  content.push({
+  content.push(keepTogether([{
     columns: [
       { width: '*', text: '' },
       {
@@ -568,20 +586,22 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       },
     ],
     margin: [0, 10, 0, 25] as [number, number, number, number],
-  });
+  }]));
 
   // Terms (aligned with public Review & Sign page)
-  content.push({ text: 'Terms', style: 'sectionHeader' });
-  content.push({
-    ul: [
-      `This proposal is valid until ${formatDate(proposal.validUntil)}.`,
-      'All prices shown are monthly recurring charges unless otherwise noted.',
-      'Acceptance of this proposal constitutes agreement to the services and pricing described herein.',
-    ],
-    margin: [0, 4, 0, 0] as [number, number, number, number],
-    fontSize: 9,
-    color: COLORS.text,
-  });
+  content.push(keepTogether([
+    { text: 'Terms', style: 'sectionHeader' },
+    {
+      ul: [
+        `This proposal is valid until ${formatDate(proposal.validUntil)}.`,
+        'All prices shown are monthly recurring charges unless otherwise noted.',
+        'Acceptance of this proposal constitutes agreement to the services and pricing described herein.',
+      ],
+      margin: [0, 4, 0, 0] as [number, number, number, number],
+      fontSize: 9,
+      color: COLORS.text,
+    },
+  ]));
 
   const docDefinition: TDocumentDefinitions = {
     content,
