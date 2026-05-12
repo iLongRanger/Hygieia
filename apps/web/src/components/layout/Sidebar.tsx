@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -161,6 +161,9 @@ const Sidebar = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set()
   );
@@ -226,6 +229,28 @@ const Sidebar = ({
       items: section.items.filter((item) => canAccessRoute(item.to, user)),
     }))
     .filter((section) => section.items.length > 0);
+
+  const clearHoverCloseTimeout = () => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current);
+      hoverCloseTimeoutRef.current = null;
+    }
+  };
+
+  const openFlyout = (sectionKey: string) => {
+    clearHoverCloseTimeout();
+    setHoveredSection(sectionKey);
+  };
+
+  const closeFlyout = () => {
+    clearHoverCloseTimeout();
+    hoverCloseTimeoutRef.current = setTimeout(() => {
+      setHoveredSection(null);
+      hoverCloseTimeoutRef.current = null;
+    }, 250);
+  };
+
+  useEffect(() => clearHoverCloseTimeout, []);
 
   const isSectionActive = (section: NavSection) => {
     return section.items.some((item) => {
@@ -401,16 +426,16 @@ const Sidebar = ({
             <div
               key={section.key}
               className="relative"
-              onMouseEnter={() => setHoveredSection(section.key)}
-              onMouseLeave={() => setHoveredSection(null)}
-              onFocus={() => setHoveredSection(section.key)}
+              onMouseEnter={() => openFlyout(section.key)}
+              onMouseLeave={closeFlyout}
+              onFocus={() => openFlyout(section.key)}
               onBlur={(event) => {
                 if (
                   !event.currentTarget.contains(
                     event.relatedTarget as Node | null
                   )
                 ) {
-                  setHoveredSection(null);
+                  closeFlyout();
                 }
               }}
             >

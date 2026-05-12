@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '../../../test/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '../../../test/test-utils';
 import Sidebar from '../Sidebar';
 import { useAuthStore } from '../../../stores/authStore';
 
 describe('Sidebar RBAC', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     useAuthStore.setState({
       user: null,
       token: null,
@@ -12,6 +13,10 @@ describe('Sidebar RBAC', () => {
       isAuthenticated: false,
       logout: vi.fn(),
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('hides global settings for manager role', () => {
@@ -131,6 +136,38 @@ describe('Sidebar RBAC', () => {
 
     expect(screen.getAllByRole('link', { name: 'Leads' })).toHaveLength(
       initialLeadLinks + 1
+    );
+  });
+
+  it('keeps collapsed rail flyout open briefly after mouse leave', () => {
+    vi.useFakeTimers();
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: 'admin',
+      },
+      token: 'token',
+      isAuthenticated: true,
+    });
+
+    render(<Sidebar />);
+
+    const crmButton = screen.getAllByRole('button', { name: 'CRM' })[0];
+    fireEvent.mouseEnter(crmButton);
+    const initialLeadLinks = screen.getAllByRole('link', { name: 'Leads' }).length;
+
+    fireEvent.mouseLeave(crmButton.closest('div') as HTMLElement);
+
+    expect(screen.getAllByRole('link', { name: 'Leads' })).toHaveLength(initialLeadLinks);
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(screen.getAllByRole('link', { name: 'Leads' })).toHaveLength(
+      initialLeadLinks - 1
     );
   });
 
