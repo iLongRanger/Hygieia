@@ -89,7 +89,7 @@ export interface PerHourTaskContext {
 
 interface PerHourTaskSource {
   id: string;
-  areaId: string | null;
+  areaId: string;
   cleaningFrequency: string;
   estimatedMinutes?: number | null;
   baseMinutesOverride: number | null;
@@ -180,9 +180,9 @@ export async function calculatePerHourPricing(
   }
 
   const facilityTasks: PerHourTaskSource[] = facilityOverride
-    ? facilityOverride.tasks.map((task) => ({
+    ? facilityOverride.tasks.filter((task) => Boolean(task.areaId)).map((task) => ({
         id: task.id,
-        areaId: task.areaId ?? null,
+        areaId: task.areaId as string,
         cleaningFrequency: task.cleaningFrequency ?? 'daily',
         estimatedMinutes: task.estimatedMinutes ?? null,
         baseMinutesOverride: task.baseMinutesOverride ?? task.estimatedMinutes ?? null,
@@ -214,7 +214,7 @@ export async function calculatePerHourPricing(
             ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
             ...(excludedAreaIds.length > 0
               ? {
-                  OR: [{ areaId: null }, { areaId: { notIn: excludedAreaIds } }],
+                  areaId: { notIn: excludedAreaIds },
                 }
               : {}),
           },
@@ -233,7 +233,7 @@ export async function calculatePerHourPricing(
         })
       ).map((task) => ({
         id: task.id,
-        areaId: task.areaId ?? null,
+        areaId: task.areaId,
         cleaningFrequency: task.cleaningFrequency ?? 'daily',
         estimatedMinutes: task.estimatedMinutes ? Number(task.estimatedMinutes) : null,
         baseMinutesOverride: task.baseMinutesOverride ? Number(task.baseMinutesOverride) : null,
@@ -279,9 +279,9 @@ export async function calculatePerHourPricing(
   const selectedMonthlyVisits = getMonthlyVisits(serviceFrequency);
 
   // Group tasks by area
-  const tasksByArea = new Map<string | null, PerHourTaskSource[]>();
+  const tasksByArea = new Map<string, PerHourTaskSource[]>();
   for (const task of facilityTasks) {
-    const areaId = task.areaId ?? null;
+    const areaId = task.areaId;
     if (!tasksByArea.has(areaId)) {
       tasksByArea.set(areaId, []);
     }
@@ -312,30 +312,6 @@ export async function calculatePerHourPricing(
       tasks,
     };
   });
-
-  // Handle facility-wide tasks (not assigned to any area)
-  const facilityWideTasks = tasksByArea.get(null) ?? [];
-  if (facilityWideTasks.length > 0) {
-    const totalSquareFeet = facility.areas.reduce((sum, area) => {
-      const sqFt = Number(area.squareFeet ?? 0);
-      const qty = area.quantity ?? 1;
-      return sum + sqFt * qty;
-    }, 0);
-
-    areaContexts.push({
-      id: 'facility-wide',
-      name: 'Facility-Wide',
-      squareFeet: totalSquareFeet,
-      quantity: 1,
-      floorType: 'vct',
-      conditionLevel: 'standard',
-      trafficLevel: 'medium',
-      roomCount: 0,
-      unitCount: 0,
-      fixtures: [],
-      tasks: buildPerHourTasks(facilityWideTasks),
-    });
-  }
 
   // Calculate per-area costs with full overhead stack
   const areaBreakdowns: AreaCostBreakdown[] = [];

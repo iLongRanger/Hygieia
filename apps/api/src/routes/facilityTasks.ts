@@ -38,7 +38,7 @@ function handleZodError(error: ZodError): ValidationError {
 
 const bulkCreateSchema = z.object({
   facilityId: z.string().uuid('Invalid facility ID'),
-  areaId: z.string().uuid('Invalid area ID').optional().nullable(),
+  areaId: z.string().uuid('Area is required for facility tasks'),
   taskTemplateIds: z
     .array(z.string().uuid())
     .min(1, 'At least one task template ID required'),
@@ -153,7 +153,7 @@ router.post(
         parsed.data.facilityId,
         parsed.data.taskTemplateIds,
         req.user.id,
-        parsed.data.areaId ?? undefined,
+        parsed.data.areaId,
         parsed.data.cleaningFrequency
       );
 

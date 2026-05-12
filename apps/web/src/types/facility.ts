@@ -410,7 +410,7 @@ export interface FacilityTask {
 
 export interface CreateFacilityTaskInput {
   facilityId: string;
-  areaId?: string | null;
+  areaId: string;
   taskTemplateId?: string | null;
   customName?: string | null;
   customInstructions?: string | null;
@@ -427,7 +427,7 @@ export interface CreateFacilityTaskInput {
 }
 
 export interface UpdateFacilityTaskInput {
-  areaId?: string | null;
+  areaId?: string;
   taskTemplateId?: string | null;
   customName?: string | null;
   customInstructions?: string | null;

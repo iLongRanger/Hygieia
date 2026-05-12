@@ -699,10 +699,10 @@ export async function getTaskTimeBreakdown(
     },
   });
 
-  // Group tasks by area
-  const tasksByArea = new Map<string | null, typeof facilityTasks>();
+  // Group tasks by area. Facility tasks are required to belong to an area.
+  const tasksByArea = new Map<string, typeof facilityTasks>();
   for (const task of facilityTasks) {
-    const areaId = task.areaId ?? null;
+    const areaId = task.areaId;
     if (!tasksByArea.has(areaId)) {
       tasksByArea.set(areaId, []);
     }
@@ -795,48 +795,6 @@ export async function getTaskTimeBreakdown(
     });
 
     grandTotalMinutes += areaTotalMinutes;
-  }
-
-  // Handle facility-wide tasks (tasks not assigned to any specific area)
-  const facilityWideTasks = tasksByArea.get(null) ?? [];
-  if (facilityWideTasks.length > 0) {
-    const totalFacilitySqFt = facility.areas.reduce((sum, area) => {
-      return sum + (Number(area.squareFeet) ?? 0) * (area.quantity ?? 1);
-    }, 0);
-
-    const taskBreakdowns: TaskTimeBreakdownItem[] = [];
-    let facilityWideMinutes = 0;
-
-    for (const task of facilityWideTasks) {
-      const template = task.taskTemplate;
-      const baseMinutes = Number(task.baseMinutesOverride ?? template?.baseMinutes ?? 0);
-      const perSqftMinutes = Number(task.perSqftMinutesOverride ?? template?.perSqftMinutes ?? 0);
-
-      let taskMinutes = baseMinutes;
-      taskMinutes += perSqftMinutes * totalFacilitySqFt;
-
-      const taskName = task.customName ?? template?.name ?? 'Unnamed Task';
-      taskBreakdowns.push({
-        taskId: task.id,
-        taskName,
-        calculatedMinutes: roundToTwo(taskMinutes),
-      });
-
-      facilityWideMinutes += taskMinutes;
-    }
-
-    if (taskBreakdowns.length > 0) {
-      areaBreakdowns.push({
-        id: 'facility-wide',
-        name: 'Facility-Wide',
-        squareFeet: totalFacilitySqFt,
-        floorType: 'mixed',
-        tasks: taskBreakdowns,
-        totalMinutes: roundToTwo(facilityWideMinutes),
-      });
-
-      grandTotalMinutes += facilityWideMinutes;
-    }
   }
 
   return {

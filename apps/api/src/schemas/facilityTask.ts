@@ -13,7 +13,7 @@ export const cleaningFrequencySchema = z.enum([
 export const createFacilityTaskSchema = z
   .object({
     facilityId: z.string().uuid('Invalid facility ID'),
-    areaId: z.string().uuid().optional().nullable(),
+    areaId: z.string().uuid('Area is required for facility tasks'),
     taskTemplateId: z.string().uuid().optional().nullable(),
     customName: z
       .string()
@@ -47,7 +47,7 @@ export const createFacilityTaskSchema = z
   });
 
 export const updateFacilityTaskSchema = z.object({
-  areaId: z.string().uuid().optional().nullable(),
+  areaId: z.string().uuid('Area is required for facility tasks').optional(),
   taskTemplateId: z.string().uuid().optional().nullable(),
   customName: z.string().max(255).optional().nullable(),
   customInstructions: z.string().max(50000).optional().nullable(),

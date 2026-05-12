@@ -90,11 +90,15 @@ export async function createFacilityTask(
 
 export async function bulkCreateFacilityTasks(
   facilityId: string,
-  taskTemplateIds: string[]
+  taskTemplateIds: string[],
+  areaId: string,
+  cleaningFrequency?: CleaningFrequency
 ): Promise<{ count: number }> {
   const response = await api.post('/facility-tasks/bulk', {
     facilityId,
     taskTemplateIds,
+    areaId,
+    cleaningFrequency,
   });
   return response.data.data;
 }

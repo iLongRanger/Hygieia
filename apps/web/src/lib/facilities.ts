@@ -283,7 +283,7 @@ export async function deleteFacilityTask(id: string): Promise<void> {
 export async function bulkCreateFacilityTasks(
   facilityId: string,
   taskTemplateIds: string[],
-  areaId?: string | null,
+  areaId: string,
   cleaningFrequency?: string
 ): Promise<{ count: number }> {
   const response = await api.post('/facility-tasks/bulk', {

@@ -12,6 +12,7 @@ import type {
   RecalculateContractAmendmentInput,
   UpdateContractAmendmentInput,
 } from '../schemas/contract';
+import { ValidationError } from '../middleware/errorHandler';
 
 const OPEN_AMENDMENT_STATUSES = ['draft', 'submitted', 'approved', 'sent', 'viewed', 'signed'] as const;
 
@@ -1124,6 +1125,9 @@ export async function applyContractAmendment(
         task.areaId == null
           ? null
           : areaIdMap.get(String(task.areaId)) ?? String(task.areaId);
+      if (!resolvedAreaId) {
+        throw new ValidationError('Every task in a contract amendment must be assigned to an area');
+      }
       const directTaskId =
         typeof task.id === 'string' && currentTasks.some((currentTask) => currentTask.id === task.id)
           ? task.id

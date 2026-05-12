@@ -1884,9 +1884,7 @@ const ContractDetail = () => {
       return {
         ...current,
         areas: nextAreas,
-        tasks: current.tasks.map((task) =>
-          task.areaId === areaKey ? { ...task, areaId: null } : task
-        ),
+        tasks: current.tasks.filter((task) => task.areaId !== areaKey),
       };
     });
     setAmendmentScopeDirty(true);
@@ -1894,13 +1892,19 @@ const ContractDetail = () => {
 
   const addDraftTask = (areaId?: string | null) => {
     const firstArea = amendmentWorkingScope.areas[0];
+    const targetAreaId = areaId === undefined ? firstArea?.id || firstArea?.tempId || '' : areaId || '';
+    if (!targetAreaId) {
+      toast.error('Add an area before adding tasks');
+      return;
+    }
+
     setAmendmentWorkingScope((current) => ({
       ...current,
       tasks: [
         ...current.tasks,
         {
           tempId: createTempId('task'),
-          areaId: areaId === undefined ? firstArea?.id || firstArea?.tempId || null : areaId,
+          areaId: targetAreaId,
           customName: '',
           cleaningFrequency: 'daily',
           estimatedMinutes: 0,

@@ -251,7 +251,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     CreateFacilityTaskInput | UpdateFacilityTaskInput
   >({
     facilityId: resolvedFacilityId || '',
-    areaId: null,
+    areaId: '',
     taskTemplateId: null,
     customName: '',
     cleaningFrequency: 'daily',
@@ -730,7 +730,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
     name.trim().replace(/\s+/g, ' ').toLowerCase();
 
   const findDuplicateTask = (params: {
-    areaId?: string | null;
+    areaId: string;
     cleaningFrequency: CleaningFrequency;
     taskTemplateId?: string | null;
     customName?: string | null;
@@ -800,7 +800,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const resetTaskForm = () => {
     setTaskForm({
       facilityId: resolvedFacilityId || '',
-      areaId: null,
+      areaId: '',
       taskTemplateId: null,
       customName: '',
       cleaningFrequency: getPreferredTaskFrequency(),
@@ -933,7 +933,12 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const handleSaveTask = async () => {
     if (!resolvedFacilityId) return;
 
-    const selectedAreaId = taskForm.areaId ?? selectedAreaForTask?.id ?? null;
+    const selectedAreaId = taskForm.areaId || selectedAreaForTask?.id || '';
+    if (!selectedAreaId) {
+      toast.error('Select an area before adding tasks');
+      return;
+    }
+
     const duplicateTask = findDuplicateTask({
       areaId: selectedAreaId,
       cleaningFrequency: taskForm.cleaningFrequency || 'daily',
@@ -995,7 +1000,11 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
   const handleSaveSelectedTasks = async () => {
     if (!resolvedFacilityId) return;
 
-    const selectedAreaId = selectedAreaForTask?.id || null;
+    const selectedAreaId = selectedAreaForTask?.id || '';
+    if (!selectedAreaId) {
+      toast.error('Select an area before adding tasks');
+      return;
+    }
     const includedTasks = taskSelectionTasks.filter((task) => task.include);
     const tasksToDelete = taskSelectionTasks.filter(
       (task) => task.facilityTaskId && !task.include
@@ -1147,7 +1156,7 @@ const FacilityDetail = ({ mode = 'facility' }: FacilityDetailProps) => {
       task.area ? areas.find((a) => a.id === task.area?.id) || null : null
     );
     setTaskForm({
-      areaId: task.area?.id || null,
+      areaId: task.area?.id || '',
       taskTemplateId: task.taskTemplate?.id || null,
       customName: task.customName || '',
       customInstructions: task.customInstructions || '',

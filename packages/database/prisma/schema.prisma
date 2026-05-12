@@ -750,7 +750,7 @@ model TaskTemplate {
 model FacilityTask {
   id                     String    @id @default(uuid()) @db.Uuid
   facilityId             String    @map("facility_id") @db.Uuid
-  areaId                 String?   @map("area_id") @db.Uuid
+  areaId                 String    @map("area_id") @db.Uuid
   taskTemplateId         String?   @map("task_template_id") @db.Uuid
   customName             String?   @map("custom_name") @db.VarChar(255)
   customInstructions     String?   @map("custom_instructions") @db.Text
@@ -769,7 +769,7 @@ model FacilityTask {
   archivedAt             DateTime? @map("archived_at") @db.Timestamptz(6)
 
   facility       Facility                     @relation("FacilityTasks", fields: [facilityId], references: [id], onDelete: Cascade)
-  area           Area?                        @relation(fields: [areaId], references: [id])
+  area           Area                         @relation(fields: [areaId], references: [id])
   taskTemplate   TaskTemplate?                @relation(fields: [taskTemplateId], references: [id])
   fixtureMinutes FacilityTaskFixtureMinutes[]
   createdByUser  User                         @relation("CreatedTasks", fields: [createdByUserId], references: [id])

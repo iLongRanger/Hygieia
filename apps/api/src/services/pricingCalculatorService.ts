@@ -486,10 +486,7 @@ export async function getFacilityTasksGrouped(
       ...(excludedTaskIds.length > 0 ? { id: { notIn: excludedTaskIds } } : {}),
       ...(excludedAreaIds.length > 0
         ? {
-            OR: [
-              { areaId: null },
-              { areaId: { notIn: excludedAreaIds } },
-            ],
+            areaId: { notIn: excludedAreaIds },
           }
         : {}),
     },
@@ -522,8 +519,8 @@ export async function getFacilityTasksGrouped(
 
   for (const task of facilityTasks) {
     const taskName = task.customName ?? task.taskTemplate?.name ?? 'Unnamed Task';
-    const areaId = task.area?.id ?? 'facility-wide';
-    const areaName = task.area?.name ?? task.area?.areaType?.name ?? 'Facility-Wide';
+    const areaId = task.area.id;
+    const areaName = task.area.name ?? task.area.areaType?.name ?? 'Unnamed area';
     const frequency = task.cleaningFrequency;
 
     // Group by area

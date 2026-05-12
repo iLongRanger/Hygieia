@@ -25,7 +25,7 @@ export interface FacilityTaskAccessOptions {
 
 export interface FacilityTaskCreateInput {
   facilityId: string;
-  areaId?: string | null;
+  areaId: string;
   taskTemplateId?: string | null;
   customName?: string | null;
   customInstructions?: string | null;
@@ -41,7 +41,7 @@ export interface FacilityTaskCreateInput {
 }
 
 export interface FacilityTaskUpdateInput {
-  areaId?: string | null;
+  areaId?: string;
   taskTemplateId?: string | null;
   customName?: string | null;
   customInstructions?: string | null;
@@ -158,13 +158,13 @@ async function getTaskNameFromTemplate(taskTemplateId: string): Promise<string> 
 
 async function ensureNoDuplicateFacilityTask(params: {
   facilityId: string;
-  areaId?: string | null;
+  areaId: string;
   cleaningFrequency: string;
   taskTemplateId?: string | null;
   customName?: string | null;
   excludeTaskId?: string;
 }) {
-  const areaId = params.areaId ?? null;
+  const areaId = params.areaId;
   const incomingTaskName = params.taskTemplateId
     ? await getTaskNameFromTemplate(params.taskTemplateId)
     : params.customName ?? '';
@@ -391,6 +391,10 @@ export async function getFacilityTaskById(id: string) {
 }
 
 export async function createFacilityTask(input: FacilityTaskCreateInput) {
+  if (!input.areaId) {
+    throw new ValidationError('Area is required for facility tasks');
+  }
+
   await ensureNoDuplicateFacilityTask({
     facilityId: input.facilityId,
     areaId: input.areaId,
@@ -470,9 +474,7 @@ export async function updateFacilityTask(
   const updateData: Prisma.FacilityTaskUpdateInput = {};
 
   if (input.areaId !== undefined) {
-    updateData.area = input.areaId
-      ? { connect: { id: input.areaId } }
-      : { disconnect: true };
+    updateData.area = { connect: { id: input.areaId } };
   }
   if (input.taskTemplateId !== undefined) {
     updateData.taskTemplate = input.taskTemplateId
@@ -538,9 +540,13 @@ export async function bulkCreateFacilityTasks(
   facilityId: string,
   taskTemplateIds: string[],
   createdByUserId: string,
-  areaId?: string,
+  areaId: string,
   cleaningFrequency?: string
 ) {
+  if (!areaId) {
+    throw new ValidationError('Area is required for facility tasks');
+  }
+
   const uniqueTemplateIds = Array.from(new Set(taskTemplateIds));
 
   const templates = await prisma.taskTemplate.findMany({
@@ -557,7 +563,7 @@ export async function bulkCreateFacilityTasks(
   const existingTasks = await prisma.facilityTask.findMany({
     where: {
       facilityId,
-      areaId: areaId ?? null,
+      areaId,
       cleaningFrequency: resolvedFrequency ?? undefined,
       archivedAt: null,
     },
@@ -595,7 +601,7 @@ export async function bulkCreateFacilityTasks(
       seenIncomingKeys.add(nameKey);
       return {
         facilityId,
-        areaId: areaId ?? null,
+        areaId,
         taskTemplateId: template.id,
         estimatedMinutes: template.estimatedMinutes,
         // Use provided frequency, or map cleaningType to frequency, or default to daily

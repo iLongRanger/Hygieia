@@ -49,6 +49,7 @@ describe('facilityTaskService', () => {
     jest.clearAllMocks();
     (prisma.facilityTask.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.taskTemplate.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.taskTemplate.findUnique as jest.Mock).mockResolvedValue({ name: 'Default Task' });
   });
 
   describe('listFacilityTasks', () => {
@@ -272,6 +273,8 @@ describe('facilityTaskService', () => {
     it('should default isRequired to true', async () => {
       const input: facilityTaskService.FacilityTaskCreateInput = {
         facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
         createdByUserId: 'user-123',
       };
 
@@ -293,6 +296,8 @@ describe('facilityTaskService', () => {
     it('should default cleaningFrequency to daily', async () => {
       const input: facilityTaskService.FacilityTaskCreateInput = {
         facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
         createdByUserId: 'user-123',
       };
 
@@ -314,6 +319,8 @@ describe('facilityTaskService', () => {
     it('should default conditionMultiplier to 1.0', async () => {
       const input: facilityTaskService.FacilityTaskCreateInput = {
         facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
         createdByUserId: 'user-123',
       };
 
@@ -335,6 +342,8 @@ describe('facilityTaskService', () => {
     it('should default priority to 3', async () => {
       const input: facilityTaskService.FacilityTaskCreateInput = {
         facilityId: 'facility-123',
+        areaId: 'area-123',
+        taskTemplateId: 'template-123',
         createdByUserId: 'user-123',
       };
 
@@ -477,33 +486,6 @@ describe('facilityTaskService', () => {
       expect(result).toEqual(mockTask);
     });
 
-    it('should disconnect area when set to null', async () => {
-      const mockTask = createTestFacilityTask({ areaId: null });
-
-      (prisma.facilityTask.findUnique as jest.Mock).mockResolvedValue({
-        id: 'task-123',
-        facilityId: 'facility-123',
-        areaId: 'area-123',
-        taskTemplateId: 'template-123',
-        customName: 'Original Task',
-        cleaningFrequency: 'daily',
-      });
-      (prisma.taskTemplate.findUnique as jest.Mock).mockResolvedValue({
-        name: 'Vacuum',
-      });
-      (prisma.facilityTask.update as jest.Mock).mockResolvedValue(mockTask);
-
-      await facilityTaskService.updateFacilityTask('task-123', { areaId: null });
-
-      expect(prisma.facilityTask.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            area: { disconnect: true },
-          }),
-        })
-      );
-    });
-
     it('should disconnect taskTemplate when set to null', async () => {
       const mockTask = createTestFacilityTask({ taskTemplateId: null });
 
@@ -610,7 +592,8 @@ describe('facilityTaskService', () => {
       const result = await facilityTaskService.bulkCreateFacilityTasks(
         'facility-123',
         ['template-1', 'template-2'],
-        'user-123'
+        'user-123',
+        'area-123'
       );
 
       expect(prisma.taskTemplate.findMany).toHaveBeenCalledWith({
@@ -630,7 +613,7 @@ describe('facilityTaskService', () => {
             taskTemplateId: 'template-1',
             estimatedMinutes: 30,
             createdByUserId: 'user-123',
-            areaId: null,
+            areaId: 'area-123',
             cleaningFrequency: 'daily',
           },
           {
@@ -638,7 +621,7 @@ describe('facilityTaskService', () => {
             taskTemplateId: 'template-2',
             estimatedMinutes: 45,
             createdByUserId: 'user-123',
-            areaId: null,
+            areaId: 'area-123',
             cleaningFrequency: 'daily',
           },
         ],
@@ -665,7 +648,8 @@ describe('facilityTaskService', () => {
       const result = await facilityTaskService.bulkCreateFacilityTasks(
         'facility-123',
         ['template-1', 'template-2'],
-        'user-123'
+        'user-123',
+        'area-123'
       );
 
       expect(prisma.facilityTask.createMany).toHaveBeenCalledWith({
@@ -675,7 +659,7 @@ describe('facilityTaskService', () => {
             taskTemplateId: 'template-2',
             estimatedMinutes: 45,
             createdByUserId: 'user-123',
-            areaId: null,
+            areaId: 'area-123',
             cleaningFrequency: 'daily',
           },
         ],

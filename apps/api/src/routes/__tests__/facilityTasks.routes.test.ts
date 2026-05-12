@@ -94,6 +94,7 @@ describe('Facility Task Routes', () => {
       .post('/api/v1/facility-tasks')
       .send({
         facilityId: '11111111-1111-1111-1111-111111111111',
+        areaId: '44444444-4444-4444-4444-444444444444',
         taskTemplateId: '22222222-2222-2222-2222-222222222222',
         cleaningFrequency: 'daily',
       })
@@ -103,6 +104,7 @@ describe('Facility Task Routes', () => {
     expect(facilityTaskService.createFacilityTask).toHaveBeenCalledWith(
       expect.objectContaining({
         facilityId: '11111111-1111-1111-1111-111111111111',
+        areaId: '44444444-4444-4444-4444-444444444444',
         taskTemplateId: '22222222-2222-2222-2222-222222222222',
         createdByUserId: 'user-1',
       })
@@ -114,6 +116,17 @@ describe('Facility Task Routes', () => {
       .post('/api/v1/facility-tasks')
       .send({
         facilityId: '11111111-1111-1111-1111-111111111111',
+        areaId: '44444444-4444-4444-4444-444444444444',
+      })
+      .expect(422);
+  });
+
+  it('POST / should return 422 for missing areaId', async () => {
+    await request(app)
+      .post('/api/v1/facility-tasks')
+      .send({
+        facilityId: '11111111-1111-1111-1111-111111111111',
+        taskTemplateId: '22222222-2222-2222-2222-222222222222',
       })
       .expect(422);
   });
@@ -129,6 +142,7 @@ describe('Facility Task Routes', () => {
           '22222222-2222-2222-2222-222222222222',
           '33333333-3333-3333-3333-333333333333',
         ],
+        areaId: '44444444-4444-4444-4444-444444444444',
         cleaningFrequency: 'weekly',
       })
       .expect(201);
@@ -138,7 +152,7 @@ describe('Facility Task Routes', () => {
       '11111111-1111-1111-1111-111111111111',
       ['22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333'],
       'user-1',
-      undefined,
+      '44444444-4444-4444-4444-444444444444',
       'weekly'
     );
   });
@@ -148,7 +162,18 @@ describe('Facility Task Routes', () => {
       .post('/api/v1/facility-tasks/bulk')
       .send({
         facilityId: '11111111-1111-1111-1111-111111111111',
+        areaId: '44444444-4444-4444-4444-444444444444',
         taskTemplateIds: [],
+      })
+      .expect(422);
+  });
+
+  it('POST /bulk should return 422 for missing areaId', async () => {
+    await request(app)
+      .post('/api/v1/facility-tasks/bulk')
+      .send({
+        facilityId: '11111111-1111-1111-1111-111111111111',
+        taskTemplateIds: ['22222222-2222-2222-2222-222222222222'],
       })
       .expect(422);
   });
