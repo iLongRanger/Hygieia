@@ -16,8 +16,11 @@ import { publicSignContractSchema } from '../schemas/publicContract';
 import type { ZodError } from 'zod';
 import { createBulkNotifications } from '../services/notificationService';
 import { hashPublicToken } from '../services/publicTokenService';
-import { escapeHtml } from '../utils/escapeHtml';
 import { publicTokenRateLimiter } from '../middleware/rateLimiter';
+import {
+  buildContractSignedHtmlWithBranding,
+  buildContractSignedSubject,
+} from '../templates/contractSigned';
 
 const router: Router = Router();
 type PublicContractPayload = NonNullable<Awaited<ReturnType<typeof getContractByPublicToken>>>;
@@ -149,14 +152,38 @@ router.post(
             if (fullContract.createdByUser?.email) {
               emailRecipients.add(fullContract.createdByUser.email);
             }
+            for (const admin of adminUsers) {
+              if (admin.email) emailRecipients.add(admin.email);
+            }
             if (branding.companyEmail) {
               emailRecipients.add(branding.companyEmail);
             }
 
-            const safeName = escapeHtml(parsed.data.signedByName);
-            const safeEmail = escapeHtml(parsed.data.signedByEmail);
-            const subject = `Contract ${fullContract.contractNumber} signed by ${safeName}`;
-            const html = `<p>${safeName} (${safeEmail}) has signed contract <strong>${escapeHtml(fullContract.contractNumber)}: ${escapeHtml(fullContract.title)}</strong> for ${escapeHtml(fullContract.account.name)}.</p>`;
+            const monthlyValue = fullContract.monthlyValue == null
+              ? null
+              : new Intl.NumberFormat('en-CA', {
+                style: 'currency',
+                currency: 'CAD',
+              }).format(Number(fullContract.monthlyValue));
+            const subject = buildContractSignedSubject(
+              fullContract.contractNumber,
+              fullContract.account.name
+            );
+            const html = buildContractSignedHtmlWithBranding(
+              {
+                contractNumber: fullContract.contractNumber,
+                title: fullContract.title,
+                accountName: fullContract.account.name,
+                signedByName: parsed.data.signedByName,
+                signedByEmail: parsed.data.signedByEmail,
+                monthlyValue,
+                signedAt: new Date().toLocaleString('en-CA', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }),
+              },
+              branding
+            );
 
             await Promise.allSettled(
               [...emailRecipients].map((email) => sendNotificationEmail(email, subject, html))

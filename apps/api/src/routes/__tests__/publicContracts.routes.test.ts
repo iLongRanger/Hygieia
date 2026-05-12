@@ -78,6 +78,8 @@ describe('Public Contract Routes', () => {
     (globalSettingsService.getGlobalSettings as jest.Mock).mockResolvedValue({
       companyName: 'Hygieia',
       companyEmail: 'ops@hygieia.test',
+      themePrimaryColor: '#0f172a',
+      themeAccentColor: '#16a34a',
     });
 
     await request(app)
@@ -93,9 +95,19 @@ describe('Public Contract Routes', () => {
     );
 
     expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.stringContaining('CONT-202602-0001 signed'),
-      expect.stringContaining('contract')
+      'owner@acme.test',
+      'Contract signed: CONT-202602-0001 for Acme Corp',
+      expect.stringContaining('Client Signed. Time to Activate.')
+    );
+    expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+      'admin@hygieia.test',
+      'Contract signed: CONT-202602-0001 for Acme Corp',
+      expect.stringContaining('New Signed Contract')
+    );
+    expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+      'ops@hygieia.test',
+      'Contract signed: CONT-202602-0001 for Acme Corp',
+      expect.stringContaining('Next step: review the signed contract')
     );
     expect(logContractActivity).toHaveBeenCalledWith(
       expect.objectContaining({
