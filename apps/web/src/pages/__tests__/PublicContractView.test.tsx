@@ -56,7 +56,7 @@ const response = {
           monthlyPrice: 1200,
           estimatedHours: null,
           hourlyRate: null,
-          includedTasks: ['Weekly: Empty trash'],
+          includedTasks: ['Weekly: Empty trash', 'Clean glass doors'],
         },
       ],
     },
@@ -91,6 +91,7 @@ describe('PublicContractView', () => {
   });
 
   it('loads and renders contract details', async () => {
+    const user = userEvent.setup();
     render(<PublicContractView />);
 
     expect(await screen.findByText('Monthly Janitorial Services')).toBeInTheDocument();
@@ -99,6 +100,10 @@ describe('PublicContractView', () => {
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();
+    expect(screen.getByText('Additional Tasks')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Additional Tasks' }));
+    expect(screen.getByText('Clean glass doors')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scope' })).not.toBeInTheDocument();
     expect(screen.getByText('100 Clean Ave')).toBeInTheDocument();
     expect(screen.getByText('555-0100')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /hello@example.com/i })).toHaveAttribute('href', 'mailto:hello@example.com');

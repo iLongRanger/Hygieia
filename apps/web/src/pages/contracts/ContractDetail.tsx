@@ -232,6 +232,9 @@ const normalizeServiceBullet = (value: string): string =>
 const normalizeServiceTaskText = (value: string): string =>
   value.replace(/^[\s*-]+/, '').replace(/^\u2022+/, '').trim();
 
+const normalizeServiceTaskName = (task: string): string =>
+  normalizeServiceTaskText(task).toLowerCase().replace(/\s+/g, ' ');
+
 interface ServiceTaskGroup {
   label: string;
   tasks: string[];
@@ -321,7 +324,9 @@ const serviceTaskGroupLabel = (value: string): string => {
   if (normalized.includes('biweekly')) return 'Bi-Weekly';
   if (normalized.includes('weekly')) return 'Weekly';
   if (normalized.includes('daily')) return 'Daily';
-  if (normalized.includes('manual') || normalized.includes('scope')) return 'Scope';
+  if (normalized.includes('manual') || normalized.includes('scope') || normalized.includes('asneeded')) {
+    return 'Additional Tasks';
+  }
   return value.trim();
 };
 
@@ -353,14 +358,16 @@ const buildServiceTaskGroups = (
       for (const task of match[2].split(',')) {
         addTask(match[1], task);
       }
-      continue;
     }
-    addTask('Scope', line);
   }
 
   const taskLines = Array.isArray(includedTasks)
     ? includedTasks.filter((taskLine): taskLine is string => typeof taskLine === 'string')
     : [];
+  const categorizedTaskNames = new Set(
+    Array.from(grouped.values()).flatMap((tasks) => Array.from(tasks).map(normalizeServiceTaskName))
+  );
+  const uncategorizedTasks: string[] = [];
 
   for (const taskLine of taskLines) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
@@ -368,9 +375,18 @@ const buildServiceTaskGroups = (
       for (const task of match[2].split(',')) {
         addTask(match[1], task);
       }
-      continue;
+    } else {
+      const taskName = normalizeServiceTaskText(taskLine);
+      if (taskName && !categorizedTaskNames.has(normalizeServiceTaskName(taskName))) {
+        uncategorizedTasks.push(taskName);
+      }
     }
-    addTask('Scope', taskLine);
+  }
+
+  if (uncategorizedTasks.length > 0) {
+    for (const task of uncategorizedTasks) {
+      addTask('Additional Tasks', task);
+    }
   }
 
   return {

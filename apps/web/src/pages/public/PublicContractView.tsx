@@ -99,6 +99,9 @@ const formatTime24h = (value: string): string => {
 const normalizeServiceBullet = (value: string): string =>
   value.replace(/^[\s*-]+/, '').replace(/^\u2022+/, '').trim();
 
+const normalizeTaskName = (task: string): string =>
+  normalizeServiceBullet(task).toLowerCase().replace(/\s+/g, ' ');
+
 interface ServiceTaskGroup {
   label: string;
   tasks: string[];
@@ -191,7 +194,9 @@ const serviceTaskGroupLabel = (value: string): string => {
   if (normalized.includes('biweekly')) return 'Bi-Weekly';
   if (normalized.includes('weekly')) return 'Weekly';
   if (normalized.includes('daily')) return 'Daily';
-  if (normalized.includes('manual') || normalized.includes('scope')) return 'Scope';
+  if (normalized.includes('manual') || normalized.includes('scope') || normalized.includes('asneeded')) {
+    return 'Additional Tasks';
+  }
   return value.trim();
 };
 
@@ -223,14 +228,16 @@ const buildServiceTaskGroups = (
       for (const task of match[2].split(',')) {
         addTask(match[1], task);
       }
-      continue;
     }
-    addTask('Scope', line);
   }
 
   const taskLines = Array.isArray(includedTasks)
     ? includedTasks.filter((taskLine): taskLine is string => typeof taskLine === 'string')
     : [];
+  const categorizedTaskNames = new Set(
+    Array.from(grouped.values()).flatMap((tasks) => Array.from(tasks).map(normalizeTaskName))
+  );
+  const uncategorizedTasks: string[] = [];
 
   for (const taskLine of taskLines) {
     const match = taskLine.match(/^(.+?):\s*(.+)$/);
@@ -240,7 +247,16 @@ const buildServiceTaskGroups = (
       }
       continue;
     }
-    addTask('Scope', taskLine);
+    const taskName = normalizeServiceBullet(taskLine);
+    if (taskName && !categorizedTaskNames.has(normalizeTaskName(taskName))) {
+      uncategorizedTasks.push(taskName);
+    }
+  }
+
+  if (uncategorizedTasks.length > 0) {
+    for (const task of uncategorizedTasks) {
+      addTask('Additional Tasks', task);
+    }
   }
 
   return {

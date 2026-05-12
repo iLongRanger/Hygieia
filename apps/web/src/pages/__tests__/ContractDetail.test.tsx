@@ -218,7 +218,7 @@ const draftContract: Contract = {
         monthlyPrice: 1200,
         estimatedHours: null,
         hourlyRate: null,
-        includedTasks: ['Weekly: Empty trash'],
+        includedTasks: ['Weekly: Empty trash', 'Clean glass doors'],
       },
     ],
   },
@@ -927,6 +927,10 @@ describe('ContractDetail', () => {
     expect(screen.getByText('Dust desks')).toBeInTheDocument();
     expect(screen.getByText('Vacuum mats')).toBeInTheDocument();
     expect(screen.getByText('Empty trash')).toBeInTheDocument();
+    expect(screen.getByText('Additional Tasks')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Additional Tasks' }));
+    expect(screen.getByText('Clean glass doors')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scope' })).not.toBeInTheDocument();
   });
 
   it('requires explicit confirmation to apply a future contract change early', async () => {
