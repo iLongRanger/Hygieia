@@ -869,6 +869,45 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('PATCH /:id/team should ignore null subcontractor percentage for hourly employee assignment', async () => {
+    (contractService.getContractById as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      status: 'active',
+      assignedTeam: null,
+      assignedToUser: null,
+      compensationType: 'hourly',
+    });
+    (contractService.assignContractTeam as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      email: 'employee@example.com',
+      fullName: 'Employee One',
+      status: 'active',
+    });
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/team')
+      .send({
+        teamId: null,
+        assignedToUserId: '22222222-2222-2222-2222-222222222222',
+        compensationType: 'hourly',
+        subcontractorPercentage: null,
+      })
+      .expect(200);
+
+    expect(contractService.assignContractTeam).toHaveBeenCalledWith(
+      'contract-1',
+      null,
+      '22222222-2222-2222-2222-222222222222',
+      undefined,
+      undefined,
+      'hourly'
+    );
+  });
+
   it('POST /:id/send should return 422 for non-sendable statuses', async () => {
     (contractService.getContractById as jest.Mock).mockResolvedValue({
       id: 'contract-1',

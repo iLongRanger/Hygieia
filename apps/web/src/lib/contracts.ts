@@ -140,14 +140,24 @@ export async function assignContractTeam(
   compensationType?: 'hourly' | 'percentage',
   effectivityDate?: string | null
 ): Promise<Contract> {
-  const response = await api.patch(`/contracts/${id}/team`, {
+  const payload: {
+    teamId: string | null;
+    assignedToUserId: string | null;
+    subcontractorTier?: string;
+    subcontractorPercentage?: number;
+    compensationType?: 'hourly' | 'percentage';
+    effectivityDate?: string | null;
+  } = {
     teamId,
     assignedToUserId: assignedToUserId ?? null,
-    subcontractorTier,
-    subcontractorPercentage,
     compensationType,
     effectivityDate: effectivityDate ?? null,
-  });
+  };
+
+  if (subcontractorTier) payload.subcontractorTier = subcontractorTier;
+  if (subcontractorPercentage != null) payload.subcontractorPercentage = subcontractorPercentage;
+
+  const response = await api.patch(`/contracts/${id}/team`, payload);
   return response.data.data;
 }
 

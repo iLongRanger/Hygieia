@@ -281,7 +281,10 @@ export const assignContractTeamSchema = z
     effectivityDate: z.coerce.date().nullable().optional(),
     compensationType: z.enum(['hourly', 'percentage']).optional(),
     subcontractorTier: z.enum(['labor_only', 'standard', 'premium', 'independent']).optional(),
-    subcontractorPercentage: z.coerce.number().min(0.01).max(100).optional(),
+    subcontractorPercentage: z.preprocess(
+      (value) => (value === null || value === '' ? undefined : value),
+      z.coerce.number().min(0.01).max(100).optional()
+    ),
   })
   .refine((data) => !(data.teamId && data.assignedToUserId), {
     message: 'Assign either a subcontractor team or an internal employee, not both',
