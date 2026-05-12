@@ -913,6 +913,31 @@ router.patch(
               residentialGenerationError
             );
           }
+        } else if (
+          contract.facility?.id &&
+          req.user?.id &&
+          (contract.assignedTeam?.id || contract.assignedToUser?.id)
+        ) {
+          try {
+            const generationResult = await autoGenerateRecurringJobsForContract({
+              contractId: contract.id,
+              createdByUserId: req.user.id,
+              assignedTeamId: contract.assignedTeam?.id ?? null,
+              assignedToUserId: contract.assignedToUser?.id ?? null,
+            });
+
+            await logContractActivity({
+              contractId: contract.id,
+              action: 'jobs_auto_generated',
+              performedByUserId: req.user.id,
+              metadata: {
+                created: generationResult.created,
+                source: 'contract_activation',
+              },
+            });
+          } catch (generationError) {
+            logger.error('Failed to auto-generate recurring jobs on contract activation:', generationError);
+          }
         }
       }
 

@@ -624,6 +624,43 @@ describe('Contract Routes', () => {
     );
   });
 
+  it('PATCH /:id/status should generate recurring jobs when activating an assigned commercial contract', async () => {
+    (prisma.contract.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ id: 'contract-1', status: 'pending_signature' })
+      .mockResolvedValueOnce({
+        createdByUserId: 'user-1',
+        createdByUser: { email: 'owner@example.com' },
+        account: {
+          accountManagerId: null,
+          accountManager: null,
+        },
+      });
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-001',
+      title: 'Main Service Agreement',
+      serviceCategory: 'commercial',
+      account: { id: 'account-1', name: 'Acme Corp' },
+      facility: { id: 'facility-1' },
+      monthlyValue: '2500',
+      startDate: '2026-02-01',
+      assignedTeam: { id: 'team-1' },
+      assignedToUser: null,
+    });
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(jobService.autoGenerateRecurringJobsForContract).toHaveBeenCalledWith({
+      contractId: 'contract-1',
+      createdByUserId: 'user-1',
+      assignedTeamId: 'team-1',
+      assignedToUserId: null,
+    });
+  });
+
   it('PATCH /:id/team should assign team', async () => {
     (contractService.getContractById as jest.Mock).mockResolvedValue({
       id: 'contract-1',
