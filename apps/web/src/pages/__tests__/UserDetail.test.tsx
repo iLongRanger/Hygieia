@@ -153,26 +153,15 @@ describe('UserDetail', () => {
     expect(screen.getByText('Eligible for supervisor training')).toBeInTheDocument();
   });
 
-  it('updates pay settings from employment tab', async () => {
+  it('opens pay settings in the edit drawer from employment tab', async () => {
     const user = userEvent.setup();
     render(<UserDetail />);
 
     await user.click(await screen.findByRole('tab', { name: /employment/i }));
-    const hourlyRateInput = await screen.findByLabelText(/hourly rate/i);
-    await user.clear(hourlyRateInput);
-    await user.type(hourlyRateInput, '30');
-    await user.click(screen.getByRole('button', { name: /save pay settings/i }));
+    await user.click(screen.getByRole('button', { name: /edit pay settings/i }));
 
-    await waitFor(() => {
-      expect(updateUserMock).toHaveBeenCalledWith(
-        'user-1',
-        expect.objectContaining({
-          payType: 'hourly',
-          hourlyPayRate: 30,
-          percentagePayRate: null,
-        })
-      );
-    });
+    expect(await screen.findByLabelText(/pay type/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/hourly rate/i)).toHaveValue(24);
   });
 
   it('updates user from edit modal', async () => {

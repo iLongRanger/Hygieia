@@ -230,25 +230,6 @@ const UserDetail = () => {
     }
   };
 
-  const handleUpdatePaySettings = async () => {
-    if (!id) return;
-    try {
-      setSaving(true);
-      await updateUser(id, {
-        payType: formData.payType ?? null,
-        hourlyPayRate: formData.payType === 'hourly' ? formData.hourlyPayRate ?? null : null,
-        percentagePayRate: formData.payType === 'percentage' ? formData.percentagePayRate ?? null : null,
-      });
-      toast.success('Pay settings updated successfully');
-      fetchUser();
-    } catch (error) {
-      console.error('Failed to update pay settings:', error);
-      toast.error('Failed to update pay settings. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!id) return;
     try {
@@ -494,79 +475,25 @@ const UserDetail = () => {
                   Set how this person is paid for payroll and job costing.
                 </p>
               </div>
+              <Can permission={PERMISSIONS.USERS_WRITE}>
+                <Button size="sm" variant="secondary" onClick={() => setShowEditModal(true)}>
+                  Edit Pay Settings
+                </Button>
+              </Can>
             </div>
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <span className="text-surface-500">Worker Type</span>
                 <div className="font-medium text-surface-900 dark:text-white">{formatWorkerType(user)}</div>
               </div>
-              <Can
-                permission={PERMISSIONS.USERS_WRITE}
-                fallback={
-                  <>
-                    <div>
-                      <span className="text-surface-500">Pay Type</span>
-                      <div className="font-medium text-surface-900 dark:text-white">{formatPayType(user)}</div>
-                    </div>
-                    <div>
-                      <span className="text-surface-500">Pay Rate</span>
-                      <div className="font-medium text-surface-900 dark:text-white">{formatPay(user)}</div>
-                    </div>
-                  </>
-                }
-              >
-                <Select
-                  label="Pay Type"
-                  options={PAY_TYPES}
-                  value={formData.payType || ''}
-                  onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      payType: value as 'hourly' | 'percentage',
-                      hourlyPayRate: value === 'percentage' ? null : formData.hourlyPayRate,
-                      percentagePayRate: value === 'hourly' ? null : formData.percentagePayRate,
-                    })
-                  }
-                />
-                {formData.payType === 'hourly' && (
-                  <Input
-                    label="Hourly Rate"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.hourlyPayRate ?? ''}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        hourlyPayRate: event.target.value === '' ? null : Number(event.target.value),
-                      })
-                    }
-                  />
-                )}
-                {formData.payType === 'percentage' && (
-                  <Input
-                    label="Percentage Rate"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.percentagePayRate ?? ''}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        percentagePayRate: event.target.value === '' ? null : Number(event.target.value),
-                      })
-                    }
-                  />
-                )}
-                <div className="sm:col-span-2">
-                  <Button size="sm" onClick={handleUpdatePaySettings} isLoading={saving}>
-                    Save Pay Settings
-                  </Button>
-                </div>
-              </Can>
+              <div>
+                <span className="text-surface-500">Pay Type</span>
+                <div className="font-medium text-surface-900 dark:text-white">{formatPayType(user)}</div>
+              </div>
+              <div>
+                <span className="text-surface-500">Pay Rate</span>
+                <div className="font-medium text-surface-900 dark:text-white">{formatPay(user)}</div>
+              </div>
             </div>
           </Card>
           <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Employment Details</h2><div className="grid gap-3 text-sm sm:grid-cols-2"><div><span className="text-surface-500">Employee Number</span><div className="font-medium text-surface-900 dark:text-white">{user.employeeNumber || 'Not set'}</div></div><div><span className="text-surface-500">Employment Type</span><div className="font-medium text-surface-900 dark:text-white">{formatEmploymentType(user.employmentType)}</div></div><div><span className="text-surface-500">Supervisor</span><div className="font-medium text-surface-900 dark:text-white">{user.supervisor?.fullName || 'Not set'}</div></div><div><span className="text-surface-500">Termination Date</span><div className="font-medium text-surface-900 dark:text-white">{user.terminationDate ? new Date(user.terminationDate).toLocaleDateString() : 'Not set'}</div></div></div></Card>
