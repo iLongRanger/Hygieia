@@ -44,7 +44,10 @@ vi.mock('react-router-dom', async () => {
         specialRequirements: 'Wear PPE in production zone',
         notes: 'Alarm code changes monthly',
         areas: [{ id: 'area-1', name: 'Lobby', areaType: 'Common Area', squareFeet: 1200 }],
-        tasks: [{ name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' }],
+        tasks: [
+          { name: 'Vacuum', areaName: 'Lobby', cleaningFrequency: 'daily' },
+          { name: 'Unassigned cleanup', areaName: null, cleaningFrequency: 'daily' },
+        ],
       },
     });
 
@@ -545,6 +548,8 @@ describe('ContractDetail', () => {
     expect(screen.getByText('Lobby')).toBeInTheDocument();
     expect(screen.getByText('Vacuum')).toBeInTheDocument();
     expect(screen.getByText('Daily')).toBeInTheDocument();
+    expect(screen.queryByText('General Tasks')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unassigned cleanup')).not.toBeInTheDocument();
   });
 
   it('creates amendment draft from contract detail', async () => {

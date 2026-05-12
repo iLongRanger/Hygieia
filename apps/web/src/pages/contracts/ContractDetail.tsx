@@ -2861,30 +2861,6 @@ const ContractDetail = () => {
                 <div className="text-sm text-surface-500">No service location areas configured on this contract.</div>
               )}
 
-              {facilityTasks.some((task) => !task.areaName) && (
-                <div className="rounded-lg border border-surface-200 dark:border-surface-700 p-3">
-                  <div className="mb-2 text-sm font-medium text-surface-600 dark:text-surface-400">General Tasks</div>
-                  <div className="space-y-2">
-                    {groupTasksByFrequency(facilityTasks.filter((task) => !task.areaName)).map(
-                      ([frequency, tasks]) => (
-                        <div key={`general-${frequency}`} className="space-y-1.5">
-                          <div className="text-[11px] uppercase tracking-wide text-emerald-300">
-                            {frequency}
-                          </div>
-                          {tasks.map((task, idx) => (
-                            <div
-                              key={`general-task-${frequency}-${task.name}-${idx}`}
-                              className="rounded-md border border-surface-200 dark:border-surface-700 bg-black/10 px-2.5 py-1.5 text-sm text-surface-600 dark:text-surface-300"
-                            >
-                              {task.name}
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </Card>
         )}
