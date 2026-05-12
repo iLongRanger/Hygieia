@@ -440,7 +440,19 @@ const jobDetailSelect = {
         select: { id: true, fullName: true },
       },
       facilityTask: {
-        select: { id: true, customName: true },
+        select: {
+          id: true,
+          customName: true,
+          area: {
+            select: {
+              id: true,
+              name: true,
+              areaType: {
+                select: { name: true },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'asc' as const },

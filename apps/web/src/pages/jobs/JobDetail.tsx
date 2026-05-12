@@ -400,6 +400,34 @@ const JobDetail = () => {
 
   const tasksDone = job.tasks.filter((t) => t.status === 'completed').length;
   const tasksTotal = job.tasks.length;
+  const taskGroups = (() => {
+    const groups = new Map<
+      string,
+      {
+        id: string;
+        label: string;
+        tasks: JobTask[];
+      }
+    >();
+
+    for (const task of job.tasks) {
+      const area = task.facilityTask?.area ?? null;
+      const groupId = area?.id ?? 'no-area';
+      const groupLabel = area?.name || area?.areaType?.name || 'No Area Assigned';
+      const existing = groups.get(groupId);
+      if (existing) {
+        existing.tasks.push(task);
+      } else {
+        groups.set(groupId, {
+          id: groupId,
+          label: groupLabel,
+          tasks: [task],
+        });
+      }
+    }
+
+    return Array.from(groups.values());
+  })();
   const workforce = getWorkforceIndicator(job);
   const accountType = getAccountTypeBadge(job.account.type);
   const primaryContact = job.account.contacts?.[0] ?? null;
@@ -830,54 +858,77 @@ const JobDetail = () => {
               </div>
             )}
 
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 space-y-4">
               {job.tasks.length === 0 ? (
                 <p className="py-4 text-center text-sm text-surface-400">
                   No tasks yet
                 </p>
               ) : (
-                job.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
-                  >
-                    <button
-                      aria-label={`${task.status === 'completed' ? 'Mark task pending' : 'Mark task done'}: ${task.taskName}`}
-                      onClick={() => handleToggleTask(task)}
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                        task.status === 'completed'
-                          ? 'border-success-500 bg-success-500 text-white'
-                          : 'border-surface-300 dark:border-surface-600'
-                      }`}
+                taskGroups.map((group) => {
+                  const completedInGroup = group.tasks.filter(
+                    (task) => task.status === 'completed'
+                  ).length;
+
+                  return (
+                    <section
+                      key={group.id}
+                      className="rounded-xl border border-surface-200 bg-surface-50/60 p-3 dark:border-surface-700 dark:bg-surface-800/30"
                     >
-                      {task.status === 'completed' && (
-                        <CheckCircle className="h-3 w-3" />
-                      )}
-                    </button>
-                    <span
-                      className={`flex-1 text-sm ${
-                        task.status === 'completed'
-                          ? 'text-surface-400 line-through'
-                          : 'text-surface-900 dark:text-surface-100'
-                      }`}
-                    >
-                      {task.taskName}
-                    </span>
-                    {task.estimatedMinutes && (
-                      <span className="text-xs text-surface-400">
-                        {task.estimatedMinutes}min
-                      </span>
-                    )}
-                    {!isFieldWorker && (
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="text-surface-400 hover:text-danger-500"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                          {group.label}
+                        </h4>
+                        <span className="text-xs text-surface-400">
+                          {completedInGroup}/{group.tasks.length}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {group.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
+                          >
+                            <button
+                              aria-label={`${task.status === 'completed' ? 'Mark task pending' : 'Mark task done'}: ${task.taskName}`}
+                              onClick={() => handleToggleTask(task)}
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                                task.status === 'completed'
+                                  ? 'border-success-500 bg-success-500 text-white'
+                                  : 'border-surface-300 dark:border-surface-600'
+                              }`}
+                            >
+                              {task.status === 'completed' && (
+                                <CheckCircle className="h-3 w-3" />
+                              )}
+                            </button>
+                            <span
+                              className={`flex-1 text-sm ${
+                                task.status === 'completed'
+                                  ? 'text-surface-400 line-through'
+                                  : 'text-surface-900 dark:text-surface-100'
+                              }`}
+                            >
+                              {task.taskName}
+                            </span>
+                            {task.estimatedMinutes && (
+                              <span className="text-xs text-surface-400">
+                                {task.estimatedMinutes}min
+                              </span>
+                            )}
+                            {!isFieldWorker && (
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="text-surface-400 hover:text-danger-500"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })
               )}
             </div>
           </Card>

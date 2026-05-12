@@ -123,6 +123,49 @@ describe('JobDetail', () => {
     expect(screen.getByText('Test note')).toBeInTheDocument();
   });
 
+  it('groups job tasks by service location area', async () => {
+    getJobMock.mockResolvedValue(
+      mockJobDetail({
+        ...scheduledJob,
+        tasks: [
+          mockJobTask({
+            id: 'task-kitchen-1',
+            taskName: 'Wipe counters',
+            facilityTask: {
+              id: 'facility-task-1',
+              customName: null,
+              area: {
+                id: 'area-kitchen',
+                name: 'Kitchen',
+                areaType: { name: 'Kitchen' },
+              },
+            },
+          }),
+          mockJobTask({
+            id: 'task-office-1',
+            taskName: 'Vacuum carpet',
+            facilityTask: {
+              id: 'facility-task-2',
+              customName: null,
+              area: {
+                id: 'area-office',
+                name: 'Main Office',
+                areaType: { name: 'Office' },
+              },
+            },
+          }),
+        ],
+      })
+    );
+
+    render(<JobDetail />);
+
+    expect(await screen.findByText('Kitchen')).toBeInTheDocument();
+    expect(screen.getByText('Wipe counters')).toBeInTheDocument();
+    expect(screen.getByText('Main Office')).toBeInTheDocument();
+    expect(screen.getByText('Vacuum carpet')).toBeInTheDocument();
+  });
+
   it('shows Edit button for scheduled jobs', async () => {
     render(<JobDetail />);
 

@@ -11,6 +11,7 @@ import {
   completeJob,
   createJob,
   generateJobsFromContract,
+  getJobById,
   listJobs,
   reassignScheduledJobsForContract,
   runRecurringJobsAutoRegenerationCycle,
@@ -230,6 +231,44 @@ describe('jobService', () => {
         where: expect.objectContaining({
           assignedTeamId: null,
           assignedToUserId: null,
+        }),
+      })
+    );
+  });
+
+  it('getJobById includes service location area details for job tasks', async () => {
+    (prisma.job.findUnique as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      status: 'scheduled',
+      settlementReview: null,
+      contract: null,
+      tasks: [],
+      notes_: [],
+      activities: [],
+    });
+
+    await getJobById('job-1');
+
+    expect(prisma.job.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          tasks: expect.objectContaining({
+            select: expect.objectContaining({
+              facilityTask: expect.objectContaining({
+                select: expect.objectContaining({
+                  area: expect.objectContaining({
+                    select: expect.objectContaining({
+                      id: true,
+                      name: true,
+                      areaType: expect.objectContaining({
+                        select: { name: true },
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
         }),
       })
     );

@@ -144,6 +144,13 @@ export interface JobTask {
   facilityTask: {
     id: string;
     customName: string | null;
+    area?: {
+      id: string;
+      name: string | null;
+      areaType?: {
+        name: string;
+      } | null;
+    } | null;
   } | null;
 }
 
