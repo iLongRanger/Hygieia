@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '../../../test/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '../../../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import { AppointmentBlock } from '../AppointmentBlock';
 import type { Appointment } from '../../../types/crm';
@@ -56,6 +56,10 @@ const createMockAppointment = (overrides: Partial<Appointment> = {}): Appointmen
 };
 
 describe('AppointmentBlock', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe('Rendering', () => {
     it('should display appointment time', () => {
       const appointment = createMockAppointment();
@@ -240,6 +244,39 @@ describe('AppointmentBlock', () => {
       await user.hover(trigger);
       expect(screen.getByText('Open job')).toBeInTheDocument();
       expect(screen.getByText('Big Company Inc')).toBeInTheDocument();
+    });
+
+    it('keeps the bubble detail card open briefly after mouse leave', async () => {
+      vi.useFakeTimers();
+      const appointment = createMockAppointment({
+        type: 'visit',
+        lead: null,
+        account: { id: 'a', name: 'Big Company Inc', type: 'commercial' },
+      });
+
+      render(
+        <AppointmentBlock
+          appointment={appointment}
+          onEdit={vi.fn()}
+          onCustomerClick={vi.fn()}
+          displayVariant="bubble"
+        />
+      );
+
+      const trigger = screen.getByRole('button', {
+        name: /show job details for big company inc/i,
+      });
+      fireEvent.mouseEnter(trigger);
+      expect(screen.getByText('Open job')).toBeInTheDocument();
+
+      fireEvent.mouseLeave(trigger.closest('div') as HTMLElement);
+      expect(screen.getByText('Open job')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+
+      expect(screen.queryByText('Open job')).not.toBeInTheDocument();
     });
   });
 

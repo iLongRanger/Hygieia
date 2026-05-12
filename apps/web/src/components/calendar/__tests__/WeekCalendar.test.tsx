@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '../../../test/test-utils';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { act, render, screen, fireEvent } from '../../../test/test-utils';
 import { WeekCalendar } from '../WeekCalendar';
 import { formatWeekRangeLabel } from '../../../lib/calendar-utils';
 import type { Appointment } from '../../../types/crm';
@@ -43,6 +43,10 @@ const createMockAppointment = (id: string, date: string): Appointment => ({
 });
 
 describe('WeekCalendar', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const baseDate = new Date(2026, 1, 2, 12, 0);
   const defaultProps = {
     date: baseDate,
@@ -72,6 +76,36 @@ describe('WeekCalendar', () => {
 
     render(<WeekCalendar {...defaultProps} appointments={appointments} layout="list" />);
     expect(screen.getByText('Company 1')).toBeInTheDocument();
+  });
+
+  it('keeps grid bubble details open briefly after mouse leave', () => {
+    vi.useFakeTimers();
+    const appointments = [
+      createMockAppointment('1', '2026-02-03T10:00:00'),
+    ];
+
+    render(
+      <WeekCalendar
+        {...defaultProps}
+        appointments={appointments}
+        appointmentDisplayVariant="bubble"
+      />
+    );
+
+    const trigger = screen.getByRole('button', {
+      name: /show job details for company 1/i,
+    });
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByText('Open job')).toBeInTheDocument();
+
+    fireEvent.mouseLeave(trigger.closest('div') as HTMLElement);
+    expect(screen.getByText('Open job')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(screen.queryByText('Open job')).not.toBeInTheDocument();
   });
 
   it('calls onDateChange when navigation buttons are clicked', () => {

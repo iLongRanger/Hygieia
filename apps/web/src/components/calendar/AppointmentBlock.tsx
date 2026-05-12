@@ -29,10 +29,34 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   const customerName = getAppointmentCustomerName(appointment);
   const bubbleStyle = colors.style ? { ...colors.style, color: undefined } : undefined;
   const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const hoverCloseTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
   const showBubbleVariant = displayVariant === 'bubble' && !compact;
   const showDetails = showBubbleVariant && (isHovered || isPinned);
+
+  const clearHoverCloseTimeout = React.useCallback(() => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current);
+      hoverCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  const openDetails = React.useCallback(() => {
+    clearHoverCloseTimeout();
+    setIsHovered(true);
+  }, [clearHoverCloseTimeout]);
+
+  const closeDetails = React.useCallback(() => {
+    clearHoverCloseTimeout();
+    hoverCloseTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+      setIsPinned(false);
+      hoverCloseTimeoutRef.current = null;
+    }, 250);
+  }, [clearHoverCloseTimeout]);
+
+  React.useEffect(() => clearHoverCloseTimeout, [clearHoverCloseTimeout]);
 
   const handleBlockClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,20 +89,17 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
       <div
         ref={wrapperRef}
         className="relative inline-flex"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setIsPinned(false);
-        }}
+        onMouseEnter={openDetails}
+        onMouseLeave={closeDetails}
       >
         <button
           type="button"
           onClick={handleBlockClick}
-          onFocus={() => setIsHovered(true)}
+          onFocus={openDetails}
           onBlur={(event) => {
             const nextTarget = event.relatedTarget as Node | null;
             if (nextTarget && wrapperRef.current?.contains(nextTarget)) return;
-            if (!isPinned) setIsHovered(false);
+            if (!isPinned) closeDetails();
           }}
           style={bubbleStyle}
           aria-label={`Show job details for ${customerName}`}
