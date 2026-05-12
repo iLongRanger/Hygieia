@@ -661,6 +661,104 @@ describe('Contract Routes', () => {
     });
   });
 
+  it('PATCH /:id/status should create one specialized job when activating an assigned specialized contract', async () => {
+    const scheduledDate = new Date('2026-06-01T00:00:00.000Z');
+    const scheduledStartTime = new Date('2026-06-01T17:00:00.000Z');
+    const scheduledEndTime = new Date('2026-06-01T20:00:00.000Z');
+    (prisma.contract.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ id: 'contract-1', status: 'pending_signature' })
+      .mockResolvedValueOnce({
+        createdByUserId: 'user-1',
+        createdByUser: { email: 'owner@example.com' },
+        account: {
+          accountManagerId: null,
+          accountManager: null,
+        },
+      });
+    (prisma.job.findFirst as jest.Mock).mockResolvedValue(null);
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-002',
+      title: 'Specialized Service Agreement',
+      serviceCategory: 'commercial',
+      account: { id: 'account-1', name: 'Acme Corp' },
+      facility: { id: 'facility-1' },
+      proposal: {
+        proposalNumber: 'PROP-002',
+        proposalType: 'specialized',
+        scheduledDate,
+        scheduledStartTime,
+        scheduledEndTime,
+      },
+      monthlyValue: '900',
+      startDate: '2026-06-01',
+      assignedTeam: null,
+      assignedToUser: { id: 'employee-1' },
+      specialInstructions: 'Bring floor buffer',
+    });
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(jobService.createJob).toHaveBeenCalledWith({
+      contractId: 'contract-1',
+      facilityId: 'facility-1',
+      accountId: 'account-1',
+      jobType: 'special_job',
+      jobCategory: 'one_time',
+      assignedTeamId: null,
+      assignedToUserId: 'employee-1',
+      scheduledDate,
+      scheduledStartTime,
+      scheduledEndTime,
+      notes: 'Bring floor buffer',
+      createdByUserId: 'user-1',
+    });
+    expect(jobService.autoGenerateRecurringJobsForContract).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id/status should not create specialized job when no assignee exists', async () => {
+    (prisma.contract.findUnique as jest.Mock)
+      .mockResolvedValueOnce({ id: 'contract-1', status: 'pending_signature' })
+      .mockResolvedValueOnce({
+        createdByUserId: 'user-1',
+        createdByUser: { email: 'owner@example.com' },
+        account: {
+          accountManagerId: null,
+          accountManager: null,
+        },
+      });
+    (contractService.updateContractStatus as jest.Mock).mockResolvedValue({
+      id: 'contract-1',
+      contractNumber: 'CONT-003',
+      title: 'Specialized Service Agreement',
+      serviceCategory: 'commercial',
+      account: { id: 'account-1', name: 'Acme Corp' },
+      facility: { id: 'facility-1' },
+      proposal: {
+        proposalNumber: 'PROP-003',
+        proposalType: 'specialized',
+        scheduledDate: new Date('2026-06-01T00:00:00.000Z'),
+        scheduledStartTime: new Date('2026-06-01T17:00:00.000Z'),
+        scheduledEndTime: new Date('2026-06-01T20:00:00.000Z'),
+      },
+      monthlyValue: '900',
+      startDate: '2026-06-01',
+      assignedTeam: null,
+      assignedToUser: null,
+    });
+
+    await request(app)
+      .patch('/api/v1/contracts/contract-1/status')
+      .send({ status: 'active' })
+      .expect(200);
+
+    expect(jobService.createJob).not.toHaveBeenCalled();
+    expect(jobService.autoGenerateRecurringJobsForContract).not.toHaveBeenCalled();
+  });
+
   it('PATCH /:id/team should assign team', async () => {
     (contractService.getContractById as jest.Mock).mockResolvedValue({
       id: 'contract-1',

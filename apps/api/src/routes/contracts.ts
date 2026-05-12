@@ -836,7 +836,72 @@ router.patch(
           logger.error('Failed to auto-create inspection template:', templateError);
         }
 
-        if (contract.serviceCategory === 'residential' && contract.facility?.id && req.user?.id) {
+        const sourceProposalType = contract.proposal?.proposalType?.toLowerCase() ?? null;
+        const isSpecializedContract =
+          sourceProposalType === 'one_time' || sourceProposalType === 'specialized';
+
+        if (
+          isSpecializedContract &&
+          contract.facility?.id &&
+          req.user?.id &&
+          (contract.assignedTeam?.id || contract.assignedToUser?.id)
+        ) {
+          try {
+            const existingSpecializedJob = await prisma.job.findFirst({
+              where: {
+                contractId: contract.id,
+                status: { not: 'canceled' },
+              },
+              select: { id: true },
+            });
+
+            if (!existingSpecializedJob) {
+              if (
+                !contract.proposal?.scheduledDate ||
+                !contract.proposal.scheduledStartTime ||
+                !contract.proposal.scheduledEndTime
+              ) {
+                logger.warn(
+                  `Specialized contract ${contract.contractNumber} activated without scheduled proposal date/time; job was not created`
+                );
+              } else {
+                const firstJob = await createJob({
+                  contractId: contract.id,
+                  facilityId: contract.facility.id,
+                  accountId: contract.account.id,
+                  jobType: 'special_job',
+                  jobCategory: 'one_time',
+                  assignedTeamId: contract.assignedTeam?.id ?? null,
+                  assignedToUserId: contract.assignedToUser?.id ?? null,
+                  scheduledDate: new Date(contract.proposal.scheduledDate),
+                  scheduledStartTime: new Date(contract.proposal.scheduledStartTime),
+                  scheduledEndTime: new Date(contract.proposal.scheduledEndTime),
+                  notes:
+                    typeof contract.specialInstructions === 'string' && contract.specialInstructions.trim()
+                      ? contract.specialInstructions
+                      : `Specialized job from ${contract.proposal.proposalNumber}`,
+                  createdByUserId: req.user.id,
+                });
+
+                await logContractActivity({
+                  contractId: contract.id,
+                  action: 'job_created',
+                  performedByUserId: req.user.id,
+                  metadata: {
+                    jobId: firstJob.id,
+                    jobNumber: firstJob.jobNumber,
+                    source: 'specialized_contract_activation',
+                  },
+                });
+              }
+            }
+          } catch (specializedGenerationError) {
+            logger.error(
+              'Failed to create specialized job on contract activation:',
+              specializedGenerationError
+            );
+          }
+        } else if (contract.serviceCategory === 'residential' && contract.facility?.id && req.user?.id) {
           try {
             const existingResidentialJob = await prisma.job.findFirst({
               where: {
