@@ -177,6 +177,7 @@ const JobDetail = () => {
   // Task form
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
+  const [activeTaskGroupIndex, setActiveTaskGroupIndex] = useState(0);
 
   // Note form
   const [showAddNote, setShowAddNote] = useState(false);
@@ -428,6 +429,11 @@ const JobDetail = () => {
 
     return Array.from(groups.values());
   })();
+  const safeTaskGroupIndex =
+    taskGroups.length > 0
+      ? Math.min(activeTaskGroupIndex, taskGroups.length - 1)
+      : 0;
+  const activeTaskGroup = taskGroups[safeTaskGroupIndex] ?? null;
   const workforce = getWorkforceIndicator(job);
   const accountType = getAccountTypeBadge(job.account.type);
   const primaryContact = job.account.contacts?.[0] ?? null;
@@ -858,78 +864,136 @@ const JobDetail = () => {
               </div>
             )}
 
-            <div className="mt-3 space-y-4">
+            <div className="mt-3">
               {job.tasks.length === 0 ? (
                 <p className="py-4 text-center text-sm text-surface-400">
                   No tasks yet
                 </p>
-              ) : (
-                taskGroups.map((group) => {
-                  const completedInGroup = group.tasks.filter(
-                    (task) => task.status === 'completed'
-                  ).length;
+              ) : activeTaskGroup ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Task areas">
+                    {taskGroups.map((group, index) => {
+                      const completedInGroup = group.tasks.filter(
+                        (task) => task.status === 'completed'
+                      ).length;
+                      const isActive = index === safeTaskGroupIndex;
 
-                  return (
-                    <section
-                      key={group.id}
-                      className="rounded-xl border border-surface-200 bg-surface-50/60 p-3 dark:border-surface-700 dark:bg-surface-800/30"
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => setActiveTaskGroupIndex(index)}
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                            isActive
+                              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/30 dark:text-primary-300'
+                              : 'border-surface-200 text-surface-500 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:text-surface-400 dark:hover:bg-surface-800'
+                          }`}
+                        >
                           {group.label}
+                          <span className="ml-1 text-surface-400">
+                            {completedInGroup}/{group.tasks.length}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <section
+                    className="rounded-xl border border-surface-200 bg-surface-50/60 p-3 dark:border-surface-700 dark:bg-surface-800/30"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">
+                          {activeTaskGroup.label}
                         </h4>
-                        <span className="text-xs text-surface-400">
-                          {completedInGroup}/{group.tasks.length}
-                        </span>
+                        <p className="mt-0.5 text-xs text-surface-400">
+                          Area {safeTaskGroupIndex + 1} of {taskGroups.length}
+                        </p>
                       </div>
-                      <div className="space-y-1">
-                        {group.tasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
+                      <span className="text-xs text-surface-400">
+                        {
+                          activeTaskGroup.tasks.filter(
+                            (task) => task.status === 'completed'
+                          ).length
+                        }/{activeTaskGroup.tasks.length}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {activeTaskGroup.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-100 dark:hover:bg-surface-800/50"
+                        >
+                          <button
+                            aria-label={`${task.status === 'completed' ? 'Mark task pending' : 'Mark task done'}: ${task.taskName}`}
+                            onClick={() => handleToggleTask(task)}
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                              task.status === 'completed'
+                                ? 'border-success-500 bg-success-500 text-white'
+                                : 'border-surface-300 dark:border-surface-600'
+                            }`}
                           >
-                            <button
-                              aria-label={`${task.status === 'completed' ? 'Mark task pending' : 'Mark task done'}: ${task.taskName}`}
-                              onClick={() => handleToggleTask(task)}
-                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                task.status === 'completed'
-                                  ? 'border-success-500 bg-success-500 text-white'
-                                  : 'border-surface-300 dark:border-surface-600'
-                              }`}
-                            >
-                              {task.status === 'completed' && (
-                                <CheckCircle className="h-3 w-3" />
-                              )}
-                            </button>
-                            <span
-                              className={`flex-1 text-sm ${
-                                task.status === 'completed'
-                                  ? 'text-surface-400 line-through'
-                                  : 'text-surface-900 dark:text-surface-100'
-                              }`}
-                            >
-                              {task.taskName}
+                            {task.status === 'completed' && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </button>
+                          <span
+                            className={`flex-1 text-sm ${
+                              task.status === 'completed'
+                                ? 'text-surface-400 line-through'
+                                : 'text-surface-900 dark:text-surface-100'
+                            }`}
+                          >
+                            {task.taskName}
+                          </span>
+                          {task.estimatedMinutes && (
+                            <span className="text-xs text-surface-400">
+                              {task.estimatedMinutes}min
                             </span>
-                            {task.estimatedMinutes && (
-                              <span className="text-xs text-surface-400">
-                                {task.estimatedMinutes}min
-                              </span>
-                            )}
-                            {!isFieldWorker && (
-                              <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="text-surface-400 hover:text-danger-500"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })
-              )}
+                          )}
+                          {!isFieldWorker && (
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="text-surface-400 hover:text-danger-500"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {taskGroups.length > 1 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={safeTaskGroupIndex === 0}
+                        onClick={() =>
+                          setActiveTaskGroupIndex((current) => Math.max(current - 1, 0))
+                        }
+                      >
+                        Previous Area
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={safeTaskGroupIndex >= taskGroups.length - 1}
+                        onClick={() =>
+                          setActiveTaskGroupIndex((current) =>
+                            Math.min(current + 1, taskGroups.length - 1)
+                          )
+                        }
+                      >
+                        Next Area
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </Card>
 

@@ -123,7 +123,8 @@ describe('JobDetail', () => {
     expect(screen.getByText('Test note')).toBeInTheDocument();
   });
 
-  it('groups job tasks by service location area', async () => {
+  it('shows job tasks in area tabs with previous and next navigation', async () => {
+    const user = userEvent.setup();
     getJobMock.mockResolvedValue(
       mockJobDetail({
         ...scheduledJob,
@@ -160,10 +161,20 @@ describe('JobDetail', () => {
 
     render(<JobDetail />);
 
-    expect(await screen.findByText('Kitchen')).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /Kitchen/ })).toBeInTheDocument();
     expect(screen.getByText('Wipe counters')).toBeInTheDocument();
-    expect(screen.getByText('Main Office')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Main Office/ })).toBeInTheDocument();
+    expect(screen.queryByText('Vacuum carpet')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /next area/i }));
+
+    expect(screen.getByRole('tab', { name: /Main Office/ })).toBeInTheDocument();
     expect(screen.getByText('Vacuum carpet')).toBeInTheDocument();
+    expect(screen.queryByText('Wipe counters')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /previous area/i }));
+
+    expect(screen.getByText('Wipe counters')).toBeInTheDocument();
   });
 
   it('shows Edit button for scheduled jobs', async () => {
