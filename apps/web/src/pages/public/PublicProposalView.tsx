@@ -760,7 +760,7 @@ const PublicProposalView: React.FC = () => {
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                 placeholder="Enter your full name"
                 value={signatureName}
                 onChange={(e) => setSignatureName(e.target.value)}
@@ -796,7 +796,7 @@ const PublicProposalView: React.FC = () => {
                 Reason for declining
               </label>
               <textarea
-                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                className="w-full resize-none rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                 rows={4}
                 placeholder="Please let us know why you're declining..."
                 value={rejectionReason}

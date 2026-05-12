@@ -104,7 +104,9 @@ describe('PublicProposalView', () => {
 
     await screen.findByText('Commercial Cleaning');
     await user.click(screen.getByRole('button', { name: /accept proposal/i }));
-    await user.type(screen.getByPlaceholderText(/enter your full name/i), 'Jane Client');
+    const signatureInput = screen.getByPlaceholderText(/enter your full name/i);
+    expect(signatureInput).toHaveClass('bg-white', 'text-surface-900');
+    await user.type(signatureInput, 'Jane Client');
     await user.click(screen.getByRole('button', { name: /confirm accept/i }));
 
     await waitFor(() => {

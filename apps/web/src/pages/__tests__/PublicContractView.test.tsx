@@ -116,8 +116,12 @@ describe('PublicContractView', () => {
 
     await screen.findByText('Monthly Janitorial Services');
     await user.click(screen.getByRole('button', { name: /sign contract/i }));
-    await user.type(screen.getByPlaceholderText(/enter your full name/i), 'Jane Client');
-    await user.type(screen.getByPlaceholderText(/enter your email address/i), 'jane@example.com');
+    const nameInput = screen.getByPlaceholderText(/enter your full name/i);
+    const emailInput = screen.getByPlaceholderText(/enter your email address/i);
+    expect(nameInput).toHaveClass('bg-white', 'text-surface-900');
+    expect(emailInput).toHaveClass('bg-white', 'text-surface-900');
+    await user.type(nameInput, 'Jane Client');
+    await user.type(emailInput, 'jane@example.com');
     await user.click(screen.getByRole('button', { name: /confirm & sign/i }));
 
     await waitFor(() => {

@@ -719,7 +719,7 @@ const PublicContractView: React.FC = () => {
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                 placeholder="Enter your full name"
                 value={signedByName}
                 onChange={(e) => setSignedByName(e.target.value)}
@@ -731,7 +731,7 @@ const PublicContractView: React.FC = () => {
               </label>
               <input
                 type="email"
-                className="w-full px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                 placeholder="Enter your email address"
                 value={signedByEmail}
                 onChange={(e) => setSignedByEmail(e.target.value)}
