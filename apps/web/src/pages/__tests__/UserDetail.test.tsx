@@ -144,10 +144,24 @@ describe('UserDetail', () => {
     await user.click(await screen.findByRole('tab', { name: /access/i }));
     expect(screen.getByText('Assigned Roles')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /employment/i }));
+    expect(screen.getByText('Pay & Compensation')).toBeInTheDocument();
+    expect(screen.getByText('Pay Type')).toBeInTheDocument();
+    expect(screen.getByText('Hourly')).toBeInTheDocument();
     expect(screen.getByText('EMP-101')).toBeInTheDocument();
     expect(screen.getByText('John Emergency')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /notes/i }));
     expect(screen.getByText('Eligible for supervisor training')).toBeInTheDocument();
+  });
+
+  it('opens pay settings from employment tab', async () => {
+    const user = userEvent.setup();
+    render(<UserDetail />);
+
+    await user.click(await screen.findByRole('tab', { name: /employment/i }));
+    await user.click(screen.getByRole('button', { name: /edit pay settings/i }));
+
+    expect(await screen.findByLabelText(/pay type/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/hourly rate/i)).toHaveValue(24);
   });
 
   it('updates user from edit modal', async () => {

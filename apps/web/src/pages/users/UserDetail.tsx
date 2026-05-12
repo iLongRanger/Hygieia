@@ -81,6 +81,12 @@ const formatPay = (user: User) => {
   return 'Pay not set';
 };
 
+const formatPayType = (user: User) => {
+  if (user.payType === 'hourly') return 'Hourly';
+  if (user.payType === 'percentage') return 'Percentage';
+  return 'Not set';
+};
+
 const emptyAddress = (): UserAddress => ({
   street: '',
   city: '',
@@ -458,6 +464,38 @@ const UserDetail = () => {
 
       {activeTab === 'Employment' && (
         <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-surface-900 dark:text-white">
+                  <DollarSign className="h-5 w-5 text-emerald" />
+                  Pay & Compensation
+                </h2>
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                  Set how this person is paid for payroll and job costing.
+                </p>
+              </div>
+              <Can permission={PERMISSIONS.USERS_WRITE}>
+                <Button size="sm" variant="secondary" onClick={() => setShowEditModal(true)}>
+                  Edit Pay Settings
+                </Button>
+              </Can>
+            </div>
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <span className="text-surface-500">Worker Type</span>
+                <div className="font-medium text-surface-900 dark:text-white">{formatWorkerType(user)}</div>
+              </div>
+              <div>
+                <span className="text-surface-500">Pay Type</span>
+                <div className="font-medium text-surface-900 dark:text-white">{formatPayType(user)}</div>
+              </div>
+              <div>
+                <span className="text-surface-500">Pay Rate</span>
+                <div className="font-medium text-surface-900 dark:text-white">{formatPay(user)}</div>
+              </div>
+            </div>
+          </Card>
           <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Employment Details</h2><div className="grid gap-3 text-sm sm:grid-cols-2"><div><span className="text-surface-500">Employee Number</span><div className="font-medium text-surface-900 dark:text-white">{user.employeeNumber || 'Not set'}</div></div><div><span className="text-surface-500">Employment Type</span><div className="font-medium text-surface-900 dark:text-white">{formatEmploymentType(user.employmentType)}</div></div><div><span className="text-surface-500">Supervisor</span><div className="font-medium text-surface-900 dark:text-white">{user.supervisor?.fullName || 'Not set'}</div></div><div><span className="text-surface-500">Termination Date</span><div className="font-medium text-surface-900 dark:text-white">{user.terminationDate ? new Date(user.terminationDate).toLocaleDateString() : 'Not set'}</div></div></div></Card>
           <Card><h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Emergency Contact</h2><div className="space-y-3 text-sm"><div><span className="text-surface-500">Name</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.name || 'Not set'}</div></div><div><span className="text-surface-500">Relationship</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.relationship || 'Not set'}</div></div><div><span className="text-surface-500">Phone</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.phone || 'Not set'}</div></div><div><span className="text-surface-500">Email</span><div className="font-medium text-surface-900 dark:text-white">{user.emergencyContact?.email || 'Not set'}</div></div></div></Card>
         </div>
@@ -584,7 +622,7 @@ const UserDetail = () => {
           <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/10 p-3">
             <div className="mb-3">
               <div className="text-sm font-semibold text-surface-900 dark:text-white">
-                Payroll Settings
+                Pay & Compensation
               </div>
               <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">
                 Roles control permissions. These fields control worker pay and reporting.
