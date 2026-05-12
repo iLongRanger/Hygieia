@@ -172,7 +172,14 @@ describe('JobDetail', () => {
     expect(screen.getByText('Vacuum carpet')).toBeInTheDocument();
     expect(screen.queryByText('Wipe counters')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /previous area/i }));
+    const previousButton = screen.getByRole('button', { name: /previous area/i });
+    expect(previousButton).toHaveClass('w-full', 'sm:w-auto');
+    expect(screen.getByRole('button', { name: /next area/i })).toHaveClass(
+      'w-full',
+      'sm:w-auto'
+    );
+
+    await user.click(previousButton);
 
     expect(screen.getByText('Wipe counters')).toBeInTheDocument();
   });
@@ -212,6 +219,7 @@ describe('JobDetail', () => {
     render(<JobDetail />);
 
     const startBtn = await screen.findByRole('button', { name: /start job/i });
+    expect(startBtn).toHaveClass('w-full', 'sm:w-auto');
     await user.click(startBtn);
 
     await waitFor(() => {

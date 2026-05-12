@@ -489,14 +489,14 @@ const JobDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="shrink-0 rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
             <Briefcase className="h-5 w-5 text-primary-700 dark:text-primary-400" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="min-w-0 break-words text-xl font-bold text-surface-900 dark:text-surface-50">
                 {job.jobNumber}
               </h1>
               <Badge variant={job.jobType === 'special_job' ? 'warning' : 'default'}>
@@ -511,14 +511,14 @@ const JobDetail = () => {
               </Badge>
               <Badge variant={workforce.badgeVariant}>{workforce.label}</Badge>
             </div>
-            <p className="text-sm text-surface-500 dark:text-surface-400">
+            <p className="mt-1 break-words text-sm text-surface-500 dark:text-surface-400">
               {job.facility.name} - {job.account.name}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:items-center sm:justify-end">
           {job.status === 'scheduled' && (
-            <Button size="sm" onClick={handleStart} disabled={gettingLocation}>
+            <Button size="sm" onClick={handleStart} disabled={gettingLocation} className="w-full sm:w-auto">
               {gettingLocation ? (
                 <>
                   <MapPin className="mr-1.5 h-4 w-4 animate-pulse" />
@@ -535,6 +535,7 @@ const JobDetail = () => {
           {job.status === 'in_progress' && (
             <Button
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setShowCompleteForm(!showCompleteForm)}
             >
               <CheckCircle className="mr-1.5 h-4 w-4" />
@@ -542,19 +543,19 @@ const JobDetail = () => {
             </Button>
           )}
           {!isFieldWorker && ['scheduled', 'in_progress'].includes(job.status) && (
-            <Button variant="secondary" size="sm" onClick={() => navigate(`/jobs/${id}/edit`)}>
+            <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={() => navigate(`/jobs/${id}/edit`)}>
               <Edit2 className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
           )}
           {job.initialClean.canCompleteOnThisJob && !isFieldWorker && (
-            <Button variant="secondary" size="sm" onClick={handleCompleteInitialClean}>
+            <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={handleCompleteInitialClean}>
               <CheckCircle className="mr-1.5 h-4 w-4" />
               Mark Initial Clean Complete
             </Button>
           )}
           {!isFieldWorker && ['scheduled', 'in_progress'].includes(job.status) && (
-            <Button variant="secondary" size="sm" onClick={handleCancel}>
+            <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={handleCancel}>
               <XCircle className="mr-1.5 h-4 w-4" />
               Cancel
             </Button>
@@ -575,13 +576,14 @@ const JobDetail = () => {
             className="w-full rounded-md border border-surface-300 bg-surface-50 px-3 py-2 text-sm dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
             rows={3}
           />
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" onClick={handleComplete}>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:flex">
+            <Button size="sm" className="w-full sm:w-auto" onClick={handleComplete}>
               Confirm Complete
             </Button>
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setShowCompleteForm(false)}
             >
               Cancel
@@ -967,10 +969,11 @@ const JobDetail = () => {
                   </section>
 
                   {taskGroups.length > 1 && (
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="w-full sm:w-auto"
                         disabled={safeTaskGroupIndex === 0}
                         onClick={() =>
                           setActiveTaskGroupIndex((current) => Math.max(current - 1, 0))
@@ -981,6 +984,7 @@ const JobDetail = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="w-full sm:w-auto"
                         disabled={safeTaskGroupIndex >= taskGroups.length - 1}
                         onClick={() =>
                           setActiveTaskGroupIndex((current) =>
