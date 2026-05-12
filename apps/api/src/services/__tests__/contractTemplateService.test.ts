@@ -1,4 +1,4 @@
-import { generateContractTerms } from '../contractTemplateService';
+import { applyContractReference, generateContractTerms } from '../contractTemplateService';
 import { getGlobalSettings } from '../globalSettingsService';
 
 jest.mock('../globalSettingsService', () => ({
@@ -53,6 +53,23 @@ describe('contractTemplateService', () => {
     expect(terms).toContain('Residential Cleaning Services Agreement');
     expect(terms).toContain('are due on receipt of the invoice ("Due on receipt")');
     expect(terms).not.toContain('within due on receipt days');
+  });
+
+  it('uses a draft reference before save and can replace it with the contract number', async () => {
+    const terms = await generateContractTerms({
+      accountName: 'Smith Family',
+      facilityName: 'Smith Home',
+      facilityAddress: '123 Home St',
+      startDate: '2026-05-01',
+      monthlyValue: 400,
+    });
+
+    expect(terms).toContain('Contract Reference: Draft contract - number assigned on save');
+
+    const finalizedTerms = applyContractReference(terms, 'CONT-202605-0001');
+
+    expect(finalizedTerms).toContain('Contract Reference: CONT-202605-0001');
+    expect(finalizedTerms).not.toContain('Draft contract - number assigned on save');
   });
 
   it('adds hardened worker safety, scope, privacy, and supplies clauses', async () => {

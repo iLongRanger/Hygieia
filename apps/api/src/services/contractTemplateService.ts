@@ -6,6 +6,8 @@ import {
   normalizeServiceSchedule,
 } from './serviceScheduleService';
 
+const DRAFT_CONTRACT_REFERENCE = 'Draft contract - number assigned on save';
+
 export interface ContractTemplateData {
   contractNumber?: string;
   title?: string;
@@ -136,6 +138,18 @@ function formatProvider(value: string | null | undefined): string {
   }
 }
 
+export function applyContractReference(
+  termsAndConditions: string | null | undefined,
+  contractNumber: string
+): string | null | undefined {
+  if (!termsAndConditions) return termsAndConditions;
+
+  return termsAndConditions.replace(
+    /Contract Reference:\s*(?:\[To Be Assigned\]|Draft contract - number assigned on save)/gi,
+    `Contract Reference: ${contractNumber}`
+  );
+}
+
 /**
  * Generate default contract terms and conditions for a Canadian commercial cleaning agreement.
  * Uses `## N. TITLE` heading format for PDF section parsing.
@@ -171,7 +185,7 @@ export async function generateContractTerms(data: ContractTemplateData): Promise
     data.facilityTimezone ?? extractFacilityTimezone(data.facilityAddress) ?? '[Facility timezone]';
   const billingCycle = formatBillingCycle(data.billingCycle);
   const paymentTerms = data.paymentTerms ?? 'Net 30';
-  const contractNumber = data.contractNumber ?? '[To Be Assigned]';
+  const contractNumber = data.contractNumber ?? DRAFT_CONTRACT_REFERENCE;
   const autoRenew = data.autoRenew ?? false;
   const renewalNoticeDays = data.renewalNoticeDays ?? 30;
   const hasEndDate = !!data.endDate;

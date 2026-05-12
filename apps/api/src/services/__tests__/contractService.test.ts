@@ -191,6 +191,31 @@ describe('contractService', () => {
     );
   });
 
+  it('createContract should replace draft contract reference in supplied terms', async () => {
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({ status: 'accepted' });
+    (prisma.contract.findFirst as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    (prisma.contract.create as jest.Mock).mockResolvedValue({ id: 'contract-1' });
+
+    await contractService.createContract({
+      title: 'Contract A',
+      accountId: 'account-1',
+      facilityId: 'facility-1',
+      proposalId: 'proposal-1',
+      startDate: new Date('2026-02-01'),
+      monthlyValue: 1000,
+      termsAndConditions: '## 1. PARTIES\n\nContract Reference: Draft contract - number assigned on save',
+      createdByUserId: 'user-1',
+    });
+
+    expect(prisma.contract.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          termsAndConditions: expect.stringMatching(/Contract Reference: CONT-\d{6}-0001/),
+        }),
+      })
+    );
+  });
+
   it('createContractFromProposal should create a draft contract', async () => {
     (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
       id: 'proposal-1',

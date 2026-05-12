@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../middleware/errorHandler';
-import { generateContractTerms } from './contractTemplateService';
+import { applyContractReference, generateContractTerms } from './contractTemplateService';
 import { normalizeSubcontractorPercentage, percentageToTier, tierToPercentage } from '../lib/subcontractorTiers';
 import {
   extractFacilityTimezone,
@@ -743,7 +743,7 @@ export async function createContract(data: ContractCreateInput) {
   );
 
   // Auto-generate terms if not provided
-  let termsAndConditions = data.termsAndConditions;
+  let termsAndConditions = applyContractReference(data.termsAndConditions, contractNumber);
   if (!termsAndConditions) {
     const [account, facility] = await Promise.all([
       prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true, type: true } }),
@@ -906,7 +906,10 @@ export async function createContractFromProposal(
     totalValue: overrides?.totalValue ?? null,
     billingCycle: overrides?.billingCycle ?? 'monthly',
     paymentTerms: overrides?.paymentTerms ?? proposal.account.paymentTerms ?? 'Net 30',
-    termsAndConditions: overrides?.termsAndConditions ?? proposal.termsAndConditions ?? null,
+    termsAndConditions: applyContractReference(
+      overrides?.termsAndConditions ?? proposal.termsAndConditions ?? null,
+      contractNumber
+    ),
     termsDocumentName: overrides?.termsDocumentName ?? null,
     termsDocumentMimeType: overrides?.termsDocumentMimeType ?? null,
     termsDocumentDataUrl: overrides?.termsDocumentDataUrl ?? null,
@@ -1691,7 +1694,7 @@ export async function createStandaloneContract(data: StandaloneContractCreateInp
     data.totalValue ?? Math.round((data.monthlyValue + taxAmount) * 100) / 100;
 
   // Auto-generate terms if not provided
-  let termsAndConditions = data.termsAndConditions;
+  let termsAndConditions = applyContractReference(data.termsAndConditions, contractNumber);
   if (!termsAndConditions) {
     const [account, facility] = await Promise.all([
       prisma.account.findUnique({ where: { id: data.accountId }, select: { name: true, type: true } }),
