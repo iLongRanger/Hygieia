@@ -201,10 +201,28 @@ const JOB_STATUS_TO_APPOINTMENT_TYPE: Record<JobStatus, AppointmentType> = {
   missed: 'inspection',
 };
 
+const toDateOnlyParam = (value: string): string => value.slice(0, 10);
+
+const toJobCalendarTime = (value: string | null | undefined, fallback: string): string => {
+  if (!value) return fallback;
+
+  const isoTime = /T(\d{2}:\d{2})(?::(\d{2}))?/.exec(value);
+  if (isoTime) {
+    return `${isoTime[1]}:${isoTime[2] ?? '00'}`;
+  }
+
+  const timeOnly = /^(\d{2}:\d{2})(?::(\d{2}))?/.exec(value);
+  if (timeOnly) {
+    return `${timeOnly[1]}:${timeOnly[2] ?? '00'}`;
+  }
+
+  return fallback;
+};
+
 const jobToAppointment = (job: Job): Appointment => {
   const dateBase = job.scheduledDate.slice(0, 10);
-  const startTime = job.scheduledStartTime || '08:00:00';
-  let endTime = job.scheduledEndTime;
+  const startTime = toJobCalendarTime(job.scheduledStartTime, '08:00:00');
+  let endTime = toJobCalendarTime(job.scheduledEndTime, '');
   if (!endTime) {
     const hours = job.estimatedHours ? parseFloat(job.estimatedHours) : 2;
     const [h, m] = startTime.split(':').map(Number);
@@ -338,7 +356,11 @@ const JobsList = () => {
           : calendarView === 'week'
             ? getWeekRange(calendarDate)
             : getDayRange(calendarDate);
-      const params: Record<string, string | number> = { dateFrom: df, dateTo: dt, limit: 500 };
+      const params: Record<string, string | number> = {
+        dateFrom: toDateOnlyParam(df),
+        dateTo: toDateOnlyParam(dt),
+        limit: 500,
+      };
       if (jobTypeFilter) params.jobType = jobTypeFilter;
       if (statusFilter) params.status = statusFilter;
       if (settlementStatusFilter) params.settlementStatus = settlementStatusFilter;

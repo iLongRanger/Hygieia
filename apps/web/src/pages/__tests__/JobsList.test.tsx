@@ -319,6 +319,56 @@ describe('JobsList', () => {
     expect(screen.getByText('Team assignment')).toBeInTheDocument();
   });
 
+  it('renders subcontractor jobs in calendar view when API returns ISO job times', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'sub-1',
+        email: 'sub@example.com',
+        fullName: 'Sub User',
+        role: 'subcontractor',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    const today = new Date();
+    const scheduledDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+    const jobs = [
+      mockJob({
+        id: 'job-calendar-team',
+        jobNumber: 'JOB-CALENDAR-TEAM',
+        scheduledDate,
+        scheduledStartTime: `${scheduledDate}T14:30:00.000Z`,
+        scheduledEndTime: `${scheduledDate}T16:30:00.000Z`,
+        assignedTeam: { id: 'team-1', name: 'Sub Team A' },
+        assignedToUser: null,
+        workforceAssignmentType: 'subcontractor_team',
+      }),
+    ];
+    listJobsMock.mockResolvedValue(mockPaginatedResponse(jobs));
+
+    render(<JobsList />, { initialRoute: '/jobs?view=calendar' });
+
+    await waitFor(() => {
+      expect(listJobsMock).toHaveBeenCalledTimes(2);
+    });
+    expect(listJobsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dateFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dateTo: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      })
+    );
+    expect(
+      await screen.findByRole('button', { name: /show job details for acme corporation/i })
+    ).toBeInTheDocument();
+  });
+
   it('filters the table to unassigned jobs', async () => {
     const user = userEvent.setup();
     listJobsMock.mockResolvedValue(
