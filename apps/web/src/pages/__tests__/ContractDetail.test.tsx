@@ -53,8 +53,8 @@ vi.mock('react-router-dom', async () => {
 
     render(<ContractDetail />);
 
-    await userEvent.setup().click(await screen.findByRole('button', { name: /^services$/i }));
-    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
+    await userEvent.setup().click(await screen.findByRole('button', { name: /^schedule$/i }));
+    expect(await screen.findByText('Service Location Tasks')).toBeInTheDocument();
     expect(screen.getByText('Team-scoped contract view for your subcontractor assignment.')).toBeInTheDocument();
     expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
     expect(screen.getByText('Your Payout')).toBeInTheDocument();
@@ -93,8 +93,8 @@ vi.mock('react-router-dom', async () => {
 
     render(<ContractDetail />);
 
-    await userEvent.setup().click(await screen.findByRole('button', { name: /^services$/i }));
-    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
+    await userEvent.setup().click(await screen.findByRole('button', { name: /^schedule$/i }));
+    expect(await screen.findByText('Service Location Tasks')).toBeInTheDocument();
     expect(screen.queryByText('Financial Terms')).not.toBeInTheDocument();
     expect(screen.queryByText('Your Payout')).not.toBeInTheDocument();
   });
@@ -510,7 +510,7 @@ describe('ContractDetail', () => {
     });
   });
 
-  it('shows facility areas and tasks for subcontractor view', async () => {
+  it('routes field workers to service location tasks instead of duplicating them on the contract', async () => {
     const user = userEvent.setup();
     useAuthStore.setState({
       user: {
@@ -543,11 +543,14 @@ describe('ContractDetail', () => {
 
     render(<ContractDetail />);
 
-    await user.click(await screen.findByRole('button', { name: /^services$/i }));
-    expect(await screen.findByText('Service Location Areas & Tasks')).toBeInTheDocument();
-    expect(screen.getByText('Lobby')).toBeInTheDocument();
-    expect(screen.getByText('Vacuum')).toBeInTheDocument();
-    expect(screen.getByText('Daily')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /^schedule$/i }));
+    expect(await screen.findByText('Service Location Tasks')).toBeInTheDocument();
+    expect(screen.getByText(/Tasks are managed from the service location/i)).toBeInTheDocument();
+    expect(screen.queryByText('Vacuum')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /open service location tasks/i }));
+    expect(navigateMock).toHaveBeenCalledWith('/service-locations/facility-1', {
+      state: { backLabel: 'CONT-202602-0001', backPath: '/contracts/contract-1' },
+    });
     expect(screen.queryByText('General Tasks')).not.toBeInTheDocument();
     expect(screen.queryByText('Unassigned cleanup')).not.toBeInTheDocument();
   });

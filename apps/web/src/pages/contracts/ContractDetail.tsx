@@ -2359,7 +2359,7 @@ const ContractDetail = () => {
   const shouldScheduleOverride = hasCurrentAssignment && hasNextAssignment && assignmentWillChange;
   const tabs = [
     { id: 'overview' as const, label: 'Overview' },
-    { id: 'services' as const, label: 'Services' },
+    { id: 'services' as const, label: isLimitedContractViewer ? 'Schedule' : 'Services' },
     ...(!isLimitedContractViewer
       ? [
           { id: 'assignment' as const, label: 'Assignment' },
@@ -2802,12 +2802,16 @@ const ContractDetail = () => {
           <Card className="h-full">
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="h-5 w-5 text-emerald-400" />
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Location Areas & Tasks</h2>
+              <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Service Location Tasks</h2>
             </div>
-            <div className="space-y-5">
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <div className="text-xs uppercase tracking-wide text-emerald-300">Scope Summary</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="space-y-4">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="text-xs uppercase tracking-wide text-emerald-300">Source of truth</div>
+                <p className="mt-2 text-sm text-surface-600 dark:text-surface-300">
+                  Tasks are managed from the service location so workers use one operational checklist.
+                  Open the service location to view areas and assigned tasks.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant="success" size="sm">
                     {facilityAreas.length} area{facilityAreas.length !== 1 ? 's' : ''}
                   </Badge>
@@ -2817,59 +2821,19 @@ const ContractDetail = () => {
                 </div>
               </div>
 
-              {facilityAreas.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {facilityAreas.map((area) => {
-                    const areaName = area.name || '';
-                    const areaTasks = facilityTasks.filter((task) => (task.areaName || '') === areaName);
-                    const tasksByFrequency = groupTasksByFrequency(areaTasks);
-
-                    return (
-                      <div key={area.id} className="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50/[0.02] p-3">
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <div className="font-medium text-surface-900 dark:text-white">{area.name || 'Unnamed area'}</div>
-                          <Badge variant="default" size="sm">
-                            {areaTasks.length} task{areaTasks.length !== 1 ? 's' : ''}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-surface-500 dark:text-surface-400">
-                          {area.areaType || 'General area'}
-                          {area.squareFeet ? ` - ${area.squareFeet.toLocaleString()} sq ft` : ''}
-                        </div>
-                        {areaTasks.length > 0 ? (
-                          <div className="mt-3 space-y-2">
-                            {tasksByFrequency.map(([frequency, tasks]) => (
-                              <div key={`${area.id}-${frequency}`} className="space-y-1.5">
-                                <div className="text-[11px] uppercase tracking-wide text-emerald-300">
-                                  {frequency}
-                                </div>
-                                {tasks.map((task, idx) => (
-                                  <div
-                                    key={`${area.id}-${frequency}-${task.name}-${idx}`}
-                                    className="rounded-md border border-surface-200 dark:border-surface-700 bg-black/10 px-2.5 py-1.5 text-sm text-surface-600 dark:text-surface-300"
-                                  >
-                                    {task.name}
-                                  </div>
-                                ))}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="mt-2 text-sm text-surface-500">No tasks assigned for this area</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-sm text-surface-500">No service location areas configured on this contract.</div>
-              )}
-
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => navigate(`/service-locations/${contract.facility?.id}`, {
+                  state: { backLabel: contract.contractNumber, backPath: `/contracts/${contract.id}` },
+                })}
+              >
+                Open Service Location Tasks
+              </Button>
             </div>
           </Card>
         )}
 
-        {activeTab === 'services' && proposalServices.length > 0 && (
+        {activeTab === 'services' && !isLimitedContractViewer && proposalServices.length > 0 && (
           <Card className="h-full lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5 text-gold" />
