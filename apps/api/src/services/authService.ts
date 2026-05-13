@@ -186,7 +186,7 @@ export interface AuthenticatedUser {
   phone?: string | null;
 }
 
-export type EmailChallengePurpose = 'login' | 'password_setup';
+export type EmailChallengePurpose = 'login' | 'password_setup' | 'password_reset';
 export type SmsChallengePurpose = 'password_setup' | 'password_change';
 
 export interface EmailChallengeResult {
@@ -787,19 +787,7 @@ export async function issuePasswordSetTokenForEmail(
   };
 }
 
-export async function consumePasswordSetToken(
-  token: string,
-  password: string,
-  options?: {
-    emailChallengeId?: string;
-    emailCode?: string;
-  }
-): Promise<void> {
-  const passwordValidation = validatePassword(password);
-  if (!passwordValidation.isValid) {
-    throw new UnauthorizedError(passwordValidation.error ?? 'Invalid password');
-  }
-
+async function loadValidPasswordSetToken(token: string) {
   const passwordToken = await prisma.passwordSetToken.findFirst({
     where: {
       OR: [
@@ -823,20 +811,16 @@ export async function consumePasswordSetToken(
     throw new UnauthorizedError('Invalid or expired token');
   }
 
-  if (!options?.emailChallengeId || !options?.emailCode) {
-    throw new UnauthorizedError('Email verification is required before setting this password.');
+  return passwordToken;
+}
+
+async function applyPasswordSetToken(token: string, password: string): Promise<void> {
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.isValid) {
+    throw new UnauthorizedError(passwordValidation.error ?? 'Invalid password');
   }
 
-  const verifiedChallenge = await verifyEmailVerificationChallenge(
-    options.emailChallengeId,
-    options.emailCode,
-    'password_setup'
-  );
-
-  if (verifiedChallenge.userId !== passwordToken.userId) {
-    throw new UnauthorizedError('Verification code does not match this password setup link.');
-  }
-
+  const passwordToken = await loadValidPasswordSetToken(token);
   const passwordHash = await hashPassword(password);
 
   await prisma.$transaction([
@@ -853,11 +837,43 @@ export async function consumePasswordSetToken(
   await revokeAllUserTokens(passwordToken.userId, 'password_change');
 }
 
+export async function consumePasswordSetToken(
+  token: string,
+  password: string
+): Promise<void> {
+  await applyPasswordSetToken(token, password);
+}
+
+export async function consumePasswordResetToken(
+  token: string,
+  password: string,
+  options?: {
+    emailChallengeId?: string;
+    emailCode?: string;
+  }
+): Promise<void> {
+  const passwordToken = await loadValidPasswordSetToken(token);
+
+  if (!options?.emailChallengeId || !options?.emailCode) {
+    throw new UnauthorizedError('Email verification is required before resetting this password.');
+  }
+
+  const verifiedChallenge = await verifyEmailVerificationChallenge(
+    options.emailChallengeId,
+    options.emailCode,
+    'password_reset'
+  );
+
+  if (verifiedChallenge.userId !== passwordToken.userId) {
+    throw new UnauthorizedError('Verification code does not match this password reset link.');
+  }
+
+  await applyPasswordSetToken(token, password);
+}
+
 export async function beginPasswordSetVerification(
   token: string
-): Promise<
-  { required: true } & EmailChallengeResult
-> {
+): Promise<{ valid: true }> {
   const passwordToken = await prisma.passwordSetToken.findFirst({
     where: {
       OR: [
@@ -896,7 +912,14 @@ export async function beginPasswordSetVerification(
     throw new UnauthorizedError('Invalid or expired token');
   }
 
-  const challenge = await issueEmailVerificationChallenge(passwordToken.userId, 'password_setup');
+  return { valid: true };
+}
+
+export async function beginPasswordResetVerification(
+  token: string
+): Promise<{ required: true } & EmailChallengeResult> {
+  const passwordToken = await loadValidPasswordSetToken(token);
+  const challenge = await issueEmailVerificationChallenge(passwordToken.userId, 'password_reset');
   return {
     required: true,
     ...challenge,

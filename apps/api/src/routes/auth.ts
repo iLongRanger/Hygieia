@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   authenticateCredentials,
   beginPasswordChangeVerification,
+  beginPasswordResetVerification,
   beginPasswordSetVerification,
   completeLogin,
   issueEmailVerificationChallenge,
@@ -13,6 +14,7 @@ import {
   issuePasswordSetTokenForEmail,
   buildPasswordResetUrl,
   consumePasswordSetToken,
+  consumePasswordResetToken,
   changeOwnPassword,
   verifyEmailVerificationChallenge,
 } from '../services/authService';
@@ -217,11 +219,30 @@ router.post(
 );
 
 router.post(
+  '/reset-password/challenge',
+  authRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { token } = req.body;
+
+      if (!token || typeof token !== 'string') {
+        throw new ValidationError('Token is required', { field: 'token' });
+      }
+
+      const result = await beginPasswordResetVerification(token);
+      return res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
   '/set-password',
   authRateLimiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { token, password, challengeId, code } = req.body;
+      const { token, password } = req.body;
 
       if (!token || !password) {
         return res.status(400).json({ error: 'Token and password are required' });
@@ -234,10 +255,7 @@ router.post(
         });
       }
 
-      await consumePasswordSetToken(token, password, {
-        emailChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
-        emailCode: typeof code === 'string' ? code : undefined,
-      });
+      await consumePasswordSetToken(token, password);
 
       return res.json({ message: 'Password set successfully. You can now log in.' });
     } catch (err) {
@@ -264,7 +282,7 @@ router.post(
         });
       }
 
-      await consumePasswordSetToken(token, password, {
+      await consumePasswordResetToken(token, password, {
         emailChallengeId: typeof challengeId === 'string' ? challengeId : undefined,
         emailCode: typeof code === 'string' ? code : undefined,
       });

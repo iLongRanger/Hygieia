@@ -18,6 +18,7 @@ const PUBLIC_AUTH_PATHS = [
   '/auth/login/verify',
   '/auth/forgot-password',
   '/auth/set-password/challenge',
+  '/auth/reset-password/challenge',
   '/auth/set-password',
   '/auth/reset-password',
 ];

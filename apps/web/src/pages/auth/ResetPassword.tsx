@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { requestPasswordTokenChallenge, resetPassword } from '../../lib/profile';
+import { requestPasswordResetChallenge, resetPassword } from '../../lib/profile';
 import { extractApiErrorMessage } from '../../lib/api';
 import { Shield } from 'lucide-react';
 
@@ -29,7 +29,7 @@ const ResetPassword = () => {
     setError('');
 
     try {
-      const result = await requestPasswordTokenChallenge(token);
+      const result = await requestPasswordResetChallenge(token);
       setChallengeId(result.challengeId);
       setMaskedEmail(result.maskedEmail);
       setVerificationCode('');

@@ -119,7 +119,22 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /set-password/challenge', () => {
-    it('should return email verification requirements for password setup', async () => {
+    it('should validate password setup links without sending an email challenge', async () => {
+      const mockChallenge = { valid: true };
+
+      (authService.beginPasswordSetVerification as jest.Mock).mockResolvedValue(mockChallenge);
+
+      const response = await request(app)
+        .post('/api/v1/auth/set-password/challenge')
+        .send({ token: 'password-token' })
+        .expect(200);
+
+      expect(response.body.data).toEqual(mockChallenge);
+    });
+  });
+
+  describe('POST /reset-password/challenge', () => {
+    it('should return email verification requirements for password reset', async () => {
       const mockChallenge = {
         required: true,
         challengeId: 'challenge-2',
@@ -127,10 +142,10 @@ describe('Auth Routes', () => {
         expiresInSeconds: 600,
       };
 
-      (authService.beginPasswordSetVerification as jest.Mock).mockResolvedValue(mockChallenge);
+      (authService.beginPasswordResetVerification as jest.Mock).mockResolvedValue(mockChallenge);
 
       const response = await request(app)
-        .post('/api/v1/auth/set-password/challenge')
+        .post('/api/v1/auth/reset-password/challenge')
         .send({ token: 'password-token' })
         .expect(200);
 
@@ -291,11 +306,31 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /set-password', () => {
-    it('should forward the email challenge and code to the password setup service', async () => {
+    it('should set password directly with a valid setup token', async () => {
       (authService.consumePasswordSetToken as jest.Mock).mockResolvedValue(undefined);
 
       const response = await request(app)
         .post('/api/v1/auth/set-password')
+        .send({
+          token: 'password-token',
+          password: 'Updated123',
+        })
+        .expect(200);
+
+      expect(response.body.message).toContain('Password set successfully');
+      expect(authService.consumePasswordSetToken).toHaveBeenCalledWith(
+        'password-token',
+        'Updated123'
+      );
+    });
+  });
+
+  describe('POST /reset-password', () => {
+    it('should forward the email challenge and code to the password reset service', async () => {
+      (authService.consumePasswordResetToken as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/v1/auth/reset-password')
         .send({
           token: 'password-token',
           password: 'Updated123',
@@ -304,8 +339,8 @@ describe('Auth Routes', () => {
         })
         .expect(200);
 
-      expect(response.body.message).toContain('Password set successfully');
-      expect(authService.consumePasswordSetToken).toHaveBeenCalledWith(
+      expect(response.body.message).toContain('Password reset successfully');
+      expect(authService.consumePasswordResetToken).toHaveBeenCalledWith(
         'password-token',
         'Updated123',
         {

@@ -48,13 +48,18 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
   return response.data.data;
 }
 
-export async function requestPasswordTokenChallenge(token: string): Promise<{
+export async function validatePasswordSetupToken(token: string): Promise<{ valid: true }> {
+  const response = await api.post('/auth/set-password/challenge', { token });
+  return response.data.data;
+}
+
+export async function requestPasswordResetChallenge(token: string): Promise<{
   required: true;
   challengeId: string;
   maskedEmail: string;
   expiresInSeconds: number;
 }> {
-  const response = await api.post('/auth/set-password/challenge', { token });
+  const response = await api.post('/auth/reset-password/challenge', { token });
   return response.data.data;
 }
 
