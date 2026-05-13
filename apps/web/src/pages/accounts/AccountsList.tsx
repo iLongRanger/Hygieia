@@ -78,23 +78,6 @@ const RESIDENTIAL_HOME_TYPES = [
   { value: 'single_family', label: 'Single Family' },
 ];
 
-const DEFAULT_RESIDENTIAL_PROFILE = {
-  homeType: 'single_family' as const,
-  squareFeet: null,
-  bedrooms: 0,
-  fullBathrooms: 1,
-  halfBathrooms: 0,
-  levels: 1,
-  occupiedStatus: 'occupied' as const,
-  condition: 'standard' as const,
-  hasPets: false,
-  lastProfessionalCleaning: null,
-  parkingAccess: null,
-  entryNotes: null,
-  specialInstructions: null,
-  isFirstVisit: false,
-};
-
 const AccountsList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -515,10 +498,7 @@ const AccountsList = () => {
                   industry: value === 'residential' ? null : formData.industry,
                   website: value === 'residential' ? null : formData.website,
                   creditLimit: value === 'residential' ? null : formData.creditLimit,
-                  residentialProfile:
-                    value === 'residential'
-                      ? formData.residentialProfile ?? DEFAULT_RESIDENTIAL_PROFILE
-                      : null,
+                  residentialProfile: value === 'residential' ? formData.residentialProfile ?? {} : null,
                 })}
             />
             {formData.type === 'residential' ? (
@@ -531,9 +511,8 @@ const AccountsList = () => {
                   setFormData({
                     ...formData,
                     residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
                       ...(formData.residentialProfile ?? {}),
-                      homeType: value as typeof DEFAULT_RESIDENTIAL_PROFILE.homeType,
+                      homeType: value as NonNullable<typeof formData.residentialProfile>['homeType'],
                     },
                   })}
               />
@@ -657,7 +636,6 @@ const AccountsList = () => {
                     setFormData({
                       ...formData,
                       residentialProfile: {
-                        ...DEFAULT_RESIDENTIAL_PROFILE,
                         ...(formData.residentialProfile ?? {}),
                         squareFeet: e.target.value ? Number(e.target.value) : null,
                       },
@@ -666,42 +644,39 @@ const AccountsList = () => {
                 <Input
                   label="Bedrooms"
                   type="number"
-                  value={formData.residentialProfile?.bedrooms ?? 0}
+                  value={formData.residentialProfile?.bedrooms ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
                       residentialProfile: {
-                        ...DEFAULT_RESIDENTIAL_PROFILE,
                         ...(formData.residentialProfile ?? {}),
-                        bedrooms: e.target.value ? Number(e.target.value) : 0,
+                        bedrooms: e.target.value ? Number(e.target.value) : null,
                       },
                     })}
                 />
                 <Input
                   label="Full Baths"
                   type="number"
-                  value={formData.residentialProfile?.fullBathrooms ?? 1}
+                  value={formData.residentialProfile?.fullBathrooms ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
                       residentialProfile: {
-                        ...DEFAULT_RESIDENTIAL_PROFILE,
                         ...(formData.residentialProfile ?? {}),
-                        fullBathrooms: e.target.value ? Number(e.target.value) : 0,
+                        fullBathrooms: e.target.value ? Number(e.target.value) : null,
                       },
                     })}
                 />
                 <Input
                   label="Levels"
                   type="number"
-                  value={formData.residentialProfile?.levels ?? 1}
+                  value={formData.residentialProfile?.levels ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
                       residentialProfile: {
-                        ...DEFAULT_RESIDENTIAL_PROFILE,
                         ...(formData.residentialProfile ?? {}),
-                        levels: e.target.value ? Number(e.target.value) : 1,
+                        levels: e.target.value ? Number(e.target.value) : null,
                       },
                     })}
                 />
@@ -714,7 +689,6 @@ const AccountsList = () => {
                   setFormData({
                     ...formData,
                     residentialProfile: {
-                      ...DEFAULT_RESIDENTIAL_PROFILE,
                       ...(formData.residentialProfile ?? {}),
                       entryNotes: e.target.value || null,
                     },

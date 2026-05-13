@@ -134,20 +134,20 @@ export interface ResidentialQuoteAddOnInput {
 }
 
 export interface ResidentialHomeProfile {
-  homeType: ResidentialHomeType;
-  squareFeet: number;
-  bedrooms: number;
-  fullBathrooms: number;
-  halfBathrooms: number;
-  levels: number;
-  occupiedStatus: ResidentialOccupiedStatus;
-  condition: ResidentialCondition;
-  hasPets?: boolean;
+  homeType?: ResidentialHomeType | null;
+  squareFeet?: number | null;
+  bedrooms?: number | null;
+  fullBathrooms?: number | null;
+  halfBathrooms?: number | null;
+  levels?: number | null;
+  occupiedStatus?: ResidentialOccupiedStatus | null;
+  condition?: ResidentialCondition | null;
+  hasPets?: boolean | null;
   lastProfessionalCleaning?: string | null;
   parkingAccess?: string | null;
   entryNotes?: string | null;
   specialInstructions?: string | null;
-  isFirstVisit?: boolean;
+  isFirstVisit?: boolean | null;
 }
 
 export interface ResidentialQuoteFormInput {
@@ -160,7 +160,7 @@ export interface ResidentialQuoteFormInput {
   customerEmail?: string | null;
   customerPhone?: string | null;
   homeAddress?: ResidentialAddress | null;
-  homeProfile: ResidentialHomeProfile;
+  homeProfile: ResidentialHomeProfile | Partial<ResidentialHomeProfile>;
   includedTasks?: string[];
   pricingPlanId?: string | null;
   addOns?: ResidentialQuoteAddOnInput[];
@@ -276,7 +276,7 @@ export interface ResidentialQuote {
       id: string;
     } | null;
     serviceAddress: ResidentialAddress | null;
-    homeProfile: ResidentialHomeProfile;
+    homeProfile: ResidentialHomeProfile | Partial<ResidentialHomeProfile>;
     defaultTasks?: string[];
     accessNotes?: string | null;
     parkingAccess?: string | null;
@@ -310,7 +310,7 @@ export interface ResidentialProperty {
     id: string;
   } | null;
   serviceAddress: ResidentialAddress;
-  homeProfile: ResidentialHomeProfile;
+  homeProfile: ResidentialHomeProfile | Partial<ResidentialHomeProfile>;
   defaultTasks?: string[];
   defaultAddOns?: ResidentialQuoteAddOnInput[];
   accessNotes?: string | null;

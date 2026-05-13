@@ -81,7 +81,7 @@ const RESIDENTIAL_SERVICE_LOCATION_TYPES = RESIDENTIAL_BUILDING_TYPES.filter(
 const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   name: string;
   serviceAddress: NonNullable<UpdateAccountInput['serviceAddress']>;
-  homeProfile: ResidentialHomeProfile;
+  homeProfile: Partial<ResidentialHomeProfile>;
   defaultTasks: string[];
   accessNotes: string;
   parkingAccess: string;
@@ -91,39 +91,8 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
   status: ResidentialPropertySummary['status'];
 } = {
   name: '',
-  serviceAddress: {
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'USA',
-    serviceSchedule: {
-      frequency: '1x_week',
-      days: ['monday'],
-      allowedWindowStart: '18:00',
-      allowedWindowEnd: '06:00',
-    },
-    serviceFrequency: '1x_week',
-    serviceDays: ['monday'],
-    allowedWindowStart: '18:00',
-    allowedWindowEnd: '06:00',
-  },
-  homeProfile: {
-    homeType: 'single_family',
-    squareFeet: 1800,
-    bedrooms: 3,
-    fullBathrooms: 2,
-    halfBathrooms: 0,
-    levels: 1,
-    occupiedStatus: 'occupied',
-    condition: 'standard',
-    hasPets: false,
-    lastProfessionalCleaning: '',
-    parkingAccess: '',
-    entryNotes: '',
-    specialInstructions: '',
-    isFirstVisit: false,
-  },
+  serviceAddress: {},
+  homeProfile: {},
   defaultTasks: [],
   accessNotes: '',
   parkingAccess: '',
@@ -142,6 +111,12 @@ function normalizeResidentialTaskList(tasks: string[] | null | undefined) {
         task.length > 0 &&
         list.findIndex((entry) => entry.toLowerCase() === task.toLowerCase()) === index
     );
+}
+
+function removeEmptyValues<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined && entry !== null && entry !== '')
+  ) as Partial<T>;
 }
 
 interface CommercialJourneyResult {
@@ -610,23 +585,7 @@ const AccountDetail = () => {
         ...(property.serviceAddress ?? {}),
       },
       homeProfile: {
-        ...DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile,
-        homeType: property.homeProfile?.homeType ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.homeType,
-        squareFeet: property.homeProfile?.squareFeet ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.squareFeet,
-        bedrooms: property.homeProfile?.bedrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.bedrooms,
-        fullBathrooms: property.homeProfile?.fullBathrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.fullBathrooms,
-        halfBathrooms: property.homeProfile?.halfBathrooms ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.halfBathrooms,
-        levels: property.homeProfile?.levels ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.levels,
-        occupiedStatus: property.homeProfile?.occupiedStatus ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.occupiedStatus,
-        condition: property.homeProfile?.condition ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.condition,
-        hasPets: property.homeProfile?.hasPets ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.hasPets,
-        lastProfessionalCleaning:
-          property.homeProfile?.lastProfessionalCleaning ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.lastProfessionalCleaning,
-        parkingAccess: property.homeProfile?.parkingAccess ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.parkingAccess,
-        entryNotes: property.homeProfile?.entryNotes ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.entryNotes,
-        specialInstructions:
-          property.homeProfile?.specialInstructions ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.specialInstructions,
-        isFirstVisit: property.homeProfile?.isFirstVisit ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.isFirstVisit,
+        ...(property.homeProfile ?? {}),
       },
       accessNotes: property.accessNotes ?? '',
       parkingAccess: property.parkingAccess ?? '',
@@ -646,11 +605,13 @@ const AccountDetail = () => {
     }
     try {
       setSavingProperty(true);
+      const serviceAddress = removeEmptyValues(propertyFormData.serviceAddress);
+      const homeProfile = removeEmptyValues(propertyFormData.homeProfile);
       if (editingProperty) {
         await updateResidentialProperty(editingProperty.id, {
           name: propertyFormData.name,
-          serviceAddress: propertyFormData.serviceAddress,
-          homeProfile: propertyFormData.homeProfile,
+          serviceAddress,
+          homeProfile: homeProfile as Partial<ResidentialHomeProfile>,
           defaultTasks: propertyFormData.defaultTasks,
           accessNotes: propertyFormData.accessNotes,
           parkingAccess: propertyFormData.parkingAccess,
@@ -664,8 +625,8 @@ const AccountDetail = () => {
         await createResidentialProperty({
           accountId: id,
           name: propertyFormData.name,
-          serviceAddress: propertyFormData.serviceAddress,
-          homeProfile: propertyFormData.homeProfile,
+          serviceAddress,
+          homeProfile: homeProfile as Partial<ResidentialHomeProfile>,
           defaultTasks: propertyFormData.defaultTasks,
           accessNotes: propertyFormData.accessNotes,
           parkingAccess: propertyFormData.parkingAccess,
@@ -1329,6 +1290,9 @@ const AccountDetail = () => {
               }))
             }
           />
+          <p className="text-xs text-surface-500 dark:text-surface-400">
+            Leave schedule blank until the walkthrough confirms the client frequency and service days.
+          </p>
           <Textarea
             label="Access Instructions"
             placeholder="Enter through the side door, gate code, lockbox details..."

@@ -10,23 +10,6 @@ import type { User } from '../../../types/user';
 import type { Contract } from '../../../types/contract';
 
 const ACCOUNT_MANAGER_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
-const DEFAULT_RESIDENTIAL_PROFILE = {
-  homeType: 'single_family' as const,
-  squareFeet: null,
-  bedrooms: 0,
-  fullBathrooms: 1,
-  halfBathrooms: 0,
-  levels: 1,
-  occupiedStatus: 'occupied' as const,
-  condition: 'standard' as const,
-  hasPets: false,
-  lastProfessionalCleaning: null,
-  parkingAccess: null,
-  entryNotes: null,
-  specialInstructions: null,
-  isFirstVisit: false,
-};
-
 function canBeAccountManager(user: User): boolean {
   const primaryRoleKey =
     typeof user.role === 'string'
@@ -83,10 +66,7 @@ export function EditAccountModal({
                 industry: value === 'residential' ? null : formData.industry,
                 website: value === 'residential' ? null : formData.website,
                 creditLimit: value === 'residential' ? null : formData.creditLimit,
-                residentialProfile:
-                  value === 'residential'
-                    ? formData.residentialProfile ?? DEFAULT_RESIDENTIAL_PROFILE
-                    : null,
+                residentialProfile: value === 'residential' ? formData.residentialProfile ?? {} : null,
               })}
           />
           {formData.type === 'commercial' ? (

@@ -575,7 +575,8 @@ function buildManualReviewReasons(
 ) {
   const reasons: string[] = [];
 
-  if (input.homeProfile.squareFeet > settings.manualReviewRules.maxAutoSqft) {
+  const squareFeet = toNumber(input.homeProfile.squareFeet);
+  if (squareFeet > settings.manualReviewRules.maxAutoSqft) {
     reasons.push(`Home exceeds auto-quote size threshold of ${settings.manualReviewRules.maxAutoSqft} sqft`);
   }
 
@@ -1263,24 +1264,31 @@ export function calculateResidentialQuotePreview(
 ) {
   const settings = pricingPlan.settings as ResidentialPricingPlanSettings;
   const { homeProfile } = input;
+  const homeType = homeProfile.homeType ?? 'single_family';
+  const squareFeet = toNumber(homeProfile.squareFeet);
+  const bedrooms = toNumber(homeProfile.bedrooms);
+  const fullBathrooms = toNumber(homeProfile.fullBathrooms);
+  const halfBathrooms = toNumber(homeProfile.halfBathrooms);
+  const levels = toNumber(homeProfile.levels, 1);
+  const condition = homeProfile.condition ?? 'standard';
 
-  const baseHomePrice = settings.homeTypeBasePrices[homeProfile.homeType];
-  const sqftAdjustment = getBracketAdjustment(settings.sqftBrackets, homeProfile.squareFeet);
+  const baseHomePrice = settings.homeTypeBasePrices[homeType];
+  const sqftAdjustment = getBracketAdjustment(settings.sqftBrackets, squareFeet);
   const bedroomAdjustment = getSteppedRecordValue(
     settings.bedroomAdjustments,
-    homeProfile.bedrooms
+    bedrooms
   );
   const bathroomAdjustment =
-    homeProfile.fullBathrooms * settings.bathroomAdjustments.fullBath +
-    homeProfile.halfBathrooms * settings.bathroomAdjustments.halfBath;
+    fullBathrooms * settings.bathroomAdjustments.fullBath +
+    halfBathrooms * settings.bathroomAdjustments.halfBath;
   const levelAdjustment = getSteppedRecordValue(
     settings.levelAdjustments,
-    homeProfile.levels
+    levels
   );
 
   const baseSubtotal =
     baseHomePrice + sqftAdjustment + bedroomAdjustment + bathroomAdjustment + levelAdjustment;
-  const conditionMultiplier = settings.conditionMultipliers[homeProfile.condition];
+  const conditionMultiplier = settings.conditionMultipliers[condition];
   const serviceMultiplier = settings.serviceTypeMultipliers[input.serviceType];
   const serviceSubtotal = baseSubtotal * conditionMultiplier * serviceMultiplier;
   const frequencyDiscountRate = getResidentialFrequencyDiscount(settings, input.frequency);
@@ -1291,7 +1299,7 @@ export function calculateResidentialQuotePreview(
 
   const firstCleanSurchargeEnabled =
     settings.firstCleanSurcharge.enabled &&
-    homeProfile.isFirstVisit &&
+    Boolean(homeProfile.isFirstVisit) &&
     settings.firstCleanSurcharge.appliesTo.includes(input.serviceType);
   const firstCleanSurcharge = firstCleanSurchargeEnabled
     ? settings.firstCleanSurcharge.type === 'flat'
@@ -1308,23 +1316,23 @@ export function calculateResidentialQuotePreview(
   const finalTotal = Math.max(totalBeforeMinimum, settings.minimumPrice);
 
   const estimatedMinutes =
-    settings.estimatedHours.baseHoursByHomeType[homeProfile.homeType] * 60 +
-    (homeProfile.squareFeet / 1000) * settings.estimatedHours.minutesPer1000SqFt +
-    homeProfile.bedrooms * settings.estimatedHours.minutesPerBedroom +
-    homeProfile.fullBathrooms * settings.estimatedHours.minutesPerFullBath +
-    homeProfile.halfBathrooms * settings.estimatedHours.minutesPerHalfBath +
+    settings.estimatedHours.baseHoursByHomeType[homeType] * 60 +
+    (squareFeet / 1000) * settings.estimatedHours.minutesPer1000SqFt +
+    bedrooms * settings.estimatedHours.minutesPerBedroom +
+    fullBathrooms * settings.estimatedHours.minutesPerFullBath +
+    halfBathrooms * settings.estimatedHours.minutesPerHalfBath +
     addOns.reduce((sum, addOn) => sum + addOn.estimatedMinutes, 0);
 
   const estimatedHours =
     (estimatedMinutes / 60) *
-    settings.estimatedHours.conditionMultipliers[homeProfile.condition] *
+    settings.estimatedHours.conditionMultipliers[condition] *
     settings.estimatedHours.serviceTypeMultipliers[input.serviceType] *
     (frequencyEfficiencyFactors[input.frequency] ?? 1);
 
   const manualReviewReasons = buildManualReviewReasons(input, settings, addOns);
   const confidenceLevel = getConfidenceLevel(
     manualReviewReasons,
-    homeProfile.squareFeet,
+    squareFeet,
     settings.manualReviewRules.maxAutoSqft
   );
 
@@ -1366,7 +1374,7 @@ export function calculateResidentialQuotePreview(
         lineTotal: addOn.lineTotal,
       })),
       guidance: [
-        `${homeProfile.fullBathrooms} full bath${homeProfile.fullBathrooms === 1 ? '' : 's'} drives a ${bathroomAdjustment.toFixed(0)} price adjustment.`,
+        `${fullBathrooms} full bath${fullBathrooms === 1 ? '' : 's'} drives a ${bathroomAdjustment.toFixed(0)} price adjustment.`,
         input.frequency === 'one_time'
           ? 'One-time service keeps the full per-visit rate.'
           : `${input.frequency.replace(/_/g, ' ')} frequency applies a ${Math.round(
