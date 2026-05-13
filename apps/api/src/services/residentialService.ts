@@ -375,11 +375,44 @@ type ResidentialPropertyRecord = Prisma.ResidentialPropertyGetPayload<{
 }>;
 
 const frequencyEfficiencyFactors: Record<string, number> = {
+  '1x_week': 0.92,
+  '2x_week': 0.9,
+  '3x_week': 0.88,
+  '4x_week': 0.86,
+  '5x_week': 0.84,
+  '7x_week': 0.82,
   weekly: 0.92,
   biweekly: 0.96,
   every_4_weeks: 0.99,
   one_time: 1,
 };
+
+const defaultFrequencyDiscounts: Record<string, number> = {
+  '1x_week': 0.12,
+  '2x_week': 0.14,
+  '3x_week': 0.16,
+  '4x_week': 0.18,
+  '5x_week': 0.2,
+  '7x_week': 0.22,
+  weekly: 0.12,
+  biweekly: 0.08,
+  every_4_weeks: 0.03,
+  one_time: 0,
+};
+
+function getResidentialFrequencyDiscount(
+  settings: ResidentialPricingPlanSettings,
+  frequency: string
+): number {
+  const discounts = settings.frequencyDiscounts as Record<string, number | undefined>;
+  if (typeof discounts[frequency] === 'number') {
+    return discounts[frequency]!;
+  }
+  if (frequency === '1x_week' && typeof discounts.weekly === 'number') {
+    return discounts.weekly;
+  }
+  return defaultFrequencyDiscounts[frequency] ?? 0;
+}
 
 function toNumber(value: unknown, fallback = 0): number {
   if (value === null || value === undefined) {
@@ -443,6 +476,18 @@ function getWeekdayFromDate(date: Date): ServiceWeekday {
 
 function mapResidentialFrequencyToContractFrequency(frequency: string): string {
   switch (frequency) {
+    case '1x_week':
+      return '1x_week';
+    case '2x_week':
+      return '2x_week';
+    case '3x_week':
+      return '3x_week';
+    case '4x_week':
+      return '4x_week';
+    case '5x_week':
+      return '5x_week';
+    case '7x_week':
+      return '7x_week';
     case 'weekly':
       return 'weekly';
     case 'biweekly':
@@ -463,8 +508,30 @@ function buildResidentialServiceSchedule(
     return Prisma.JsonNull;
   }
 
+  const orderedDays: ServiceWeekday[] = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
+  const defaultDaysByFrequency: Record<string, ServiceWeekday[]> = {
+    '1x_week': ['monday'],
+    weekly: ['monday'],
+    bi_weekly: ['monday'],
+    every_4_weeks: ['monday'],
+    monthly: ['monday'],
+    '2x_week': ['monday', 'thursday'],
+    '3x_week': ['monday', 'wednesday', 'friday'],
+    '4x_week': ['monday', 'tuesday', 'thursday', 'friday'],
+    '5x_week': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    '7x_week': orderedDays,
+  };
+
   return {
-    days: [getWeekdayFromDate(startDate)],
+    days: defaultDaysByFrequency[frequency] ?? [getWeekdayFromDate(startDate)],
     allowedWindowStart: '08:00',
     allowedWindowEnd: '17:00',
     windowAnchor: 'start_day',
@@ -1216,10 +1283,11 @@ export function calculateResidentialQuotePreview(
   const conditionMultiplier = settings.conditionMultipliers[homeProfile.condition];
   const serviceMultiplier = settings.serviceTypeMultipliers[input.serviceType];
   const serviceSubtotal = baseSubtotal * conditionMultiplier * serviceMultiplier;
+  const frequencyDiscountRate = getResidentialFrequencyDiscount(settings, input.frequency);
   const recurringDiscount =
     input.frequency === 'one_time'
       ? 0
-      : serviceSubtotal * settings.frequencyDiscounts[input.frequency];
+      : serviceSubtotal * frequencyDiscountRate;
 
   const firstCleanSurchargeEnabled =
     settings.firstCleanSurcharge.enabled &&
@@ -1302,7 +1370,7 @@ export function calculateResidentialQuotePreview(
         input.frequency === 'one_time'
           ? 'One-time service keeps the full per-visit rate.'
           : `${input.frequency.replace(/_/g, ' ')} frequency applies a ${Math.round(
-              settings.frequencyDiscounts[input.frequency] * 100
+              frequencyDiscountRate * 100
             )}% recurring discount.`,
         minimumApplied
           ? `Minimum price floor of ${settings.minimumPrice.toFixed(0)} applied to protect margin.`

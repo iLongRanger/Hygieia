@@ -412,11 +412,20 @@ const RESIDENTIAL_SERVICE_OPTIONS: { value: ResidentialServiceType; label: strin
 ];
 
 const RESIDENTIAL_FREQUENCY_OPTIONS: { value: ResidentialFrequency; label: string }[] = [
-  { value: 'weekly', label: 'Weekly' },
+  { value: '1x_week', label: '1x per Week' },
+  { value: '2x_week', label: '2x per Week' },
+  { value: '3x_week', label: '3x per Week' },
+  { value: '4x_week', label: '4x per Week' },
+  { value: '5x_week', label: '5x per Week' },
+  { value: '7x_week', label: '7x per Week (Daily)' },
   { value: 'biweekly', label: 'Biweekly' },
   { value: 'every_4_weeks', label: 'Every 4 Weeks' },
   { value: 'one_time', label: 'One Time' },
 ];
+
+const LEGACY_RESIDENTIAL_FREQUENCY_LABELS: Partial<Record<ResidentialFrequency, string>> = {
+  weekly: '1x per Week',
+};
 
 const normalizeOptionalString = (value: string | null | undefined) => {
   if (value == null) return null;
@@ -433,8 +442,15 @@ const mapResidentialFrequencyToProposalSchedule = (
   frequency: ResidentialFrequency
 ): ProposalScheduleFrequency => {
   switch (frequency) {
+    case '1x_week':
     case 'weekly':
-      return 'weekly';
+      return '1x_week';
+    case '2x_week':
+    case '3x_week':
+    case '4x_week':
+    case '5x_week':
+    case '7x_week':
+      return frequency;
     case 'biweekly':
       return 'biweekly';
     case 'every_4_weeks':
@@ -449,8 +465,15 @@ const mapResidentialFrequencyToProposalServiceFrequency = (
   frequency: ResidentialFrequency
 ): ServiceFrequency => {
   switch (frequency) {
+    case '1x_week':
+    case '2x_week':
+    case '3x_week':
+    case '4x_week':
+    case '5x_week':
     case 'weekly':
       return 'weekly';
+    case '7x_week':
+      return 'daily';
     case 'biweekly':
       return 'biweekly';
     case 'every_4_weeks':
@@ -496,7 +519,9 @@ const defaultSpecializedProposalTitle = (
 ) => (locationName ? `${jobName} - ${locationName}` : `${jobName} Proposal`);
 
 const getResidentialFrequencyLabel = (frequency: ResidentialFrequency) =>
-  RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label || frequency;
+  RESIDENTIAL_FREQUENCY_OPTIONS.find((option) => option.value === frequency)?.label ||
+  LEGACY_RESIDENTIAL_FREQUENCY_LABELS[frequency] ||
+  frequency;
 
 interface ResidentialScopeGroup {
   label: string;
@@ -835,7 +860,7 @@ const ProposalForm = () => {
   const [selectedPricingPlanId, setSelectedPricingPlanId] = useState<string>('');
   const [selectedResidentialPricingPlanId, setSelectedResidentialPricingPlanId] = useState<string>('');
   const [residentialServiceType, setResidentialServiceType] = useState<ResidentialServiceType | ''>('');
-  const [residentialFrequency, setResidentialFrequency] = useState<ResidentialFrequency>('weekly');
+  const [residentialFrequency, setResidentialFrequency] = useState<ResidentialFrequency>('1x_week');
   const [residentialAddOns, setResidentialAddOns] = useState<ResidentialQuoteAddOnInput[]>([]);
   const [selectedSpecializedCatalogItemId, setSelectedSpecializedCatalogItemId] = useState('');
   const [workerCount, setWorkerCount] = useState<number>(1);

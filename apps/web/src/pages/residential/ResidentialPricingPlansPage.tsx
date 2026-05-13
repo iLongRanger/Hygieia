@@ -39,7 +39,12 @@ const SERVICE_TYPE_OPTIONS = [
 ] as const;
 
 const FREQUENCY_OPTIONS = [
-  { value: 'weekly', label: 'Weekly' },
+  { value: '1x_week', label: '1x per Week' },
+  { value: '2x_week', label: '2x per Week' },
+  { value: '3x_week', label: '3x per Week' },
+  { value: '4x_week', label: '4x per Week' },
+  { value: '5x_week', label: '5x per Week' },
+  { value: '7x_week', label: '7x per Week (Daily)' },
   { value: 'biweekly', label: 'Biweekly' },
   { value: 'every_4_weeks', label: 'Every 4 Weeks' },
   { value: 'one_time', label: 'One Time' },
@@ -73,6 +78,12 @@ const DEFAULT_SETTINGS: ResidentialPricingPlanSettings = {
     post_construction: 1.75,
   },
   frequencyDiscounts: {
+    '1x_week': 0.12,
+    '2x_week': 0.14,
+    '3x_week': 0.16,
+    '4x_week': 0.18,
+    '5x_week': 0.2,
+    '7x_week': 0.22,
     weekly: 0.12,
     biweekly: 0.08,
     every_4_weeks: 0.03,
@@ -370,7 +381,10 @@ const ResidentialPricingPlansPage = () => {
               </div>
 
               <div className="space-y-2 text-sm text-surface-600 dark:text-surface-300">
-                <p>Weekly discount: {(plan.settings.frequencyDiscounts.weekly * 100).toFixed(0)}%</p>
+                <p>
+                  1x/week discount:{' '}
+                  {((plan.settings.frequencyDiscounts['1x_week'] ?? plan.settings.frequencyDiscounts.weekly) * 100).toFixed(0)}%
+                </p>
                 <p>Deep clean multiplier: {plan.settings.serviceTypeMultipliers.deep_clean.toFixed(2)}x</p>
                 <p>Heavy condition multiplier: {plan.settings.conditionMultipliers.heavy.toFixed(2)}x</p>
               </div>

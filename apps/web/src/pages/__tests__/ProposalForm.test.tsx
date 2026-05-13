@@ -483,7 +483,18 @@ describe('ProposalForm', () => {
               turnover: 1.1,
               post_construction: 1.4,
             },
-            frequencyDiscounts: { weekly: 0, biweekly: 0.05, every_4_weeks: 0.1, one_time: 0 },
+            frequencyDiscounts: {
+              '1x_week': 0,
+              '2x_week': 0.08,
+              '3x_week': 0.1,
+              '4x_week': 0.12,
+              '5x_week': 0.15,
+              '7x_week': 0.18,
+              weekly: 0,
+              biweekly: 0.05,
+              every_4_weeks: 0.1,
+              one_time: 0,
+            },
             firstCleanSurcharge: { enabled: true, type: 'flat', value: 25, appliesTo: ['recurring_standard'] },
             addOnPrices: {
               inside_fridge: {
@@ -904,7 +915,7 @@ describe('ProposalForm', () => {
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
-    await user.selectOptions(await screen.findByLabelText(/residential frequency/i), 'every_4_weeks');
+    await user.selectOptions(await screen.findByLabelText(/residential frequency/i), '2x_week');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
@@ -914,7 +925,6 @@ describe('ProposalForm', () => {
     const calculateButton = screen.getByRole('button', { name: /calculate & populate/i });
     expect(calculateButton).toBeEnabled();
 
-    await user.click(screen.getByRole('button', { name: /^thu$/i }));
     await user.click(calculateButton);
     await waitFor(() => {
       expect(screen.getAllByText('Recurring Standard').length).toBeGreaterThan(1);
@@ -934,7 +944,7 @@ describe('ProposalForm', () => {
         expect.objectContaining({
           propertyId: 'property-1',
           serviceType: 'recurring_standard',
-          frequency: 'every_4_weeks',
+          frequency: '2x_week',
           pricingPlanId: 'res-plan-1',
         })
       );
@@ -943,9 +953,9 @@ describe('ProposalForm', () => {
           accountId: 'account-res-1',
           facilityId: 'facility-res-1',
           pricingPlanId: null,
-          serviceFrequency: 'monthly',
+          serviceFrequency: '2x_week',
           serviceSchedule: expect.objectContaining({
-            days: ['thursday'],
+            days: ['monday', 'thursday'],
           }),
           proposalServices: expect.arrayContaining([
             expect.objectContaining({
@@ -956,7 +966,7 @@ describe('ProposalForm', () => {
             engine: 'residential_quote_preview_v1',
             residentialPricingPlanId: 'res-plan-1',
             residentialServiceType: 'recurring_standard',
-            residentialFrequency: 'every_4_weeks',
+            residentialFrequency: '2x_week',
           }),
         })
       );

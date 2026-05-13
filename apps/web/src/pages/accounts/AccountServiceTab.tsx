@@ -170,7 +170,13 @@ const residentialServiceTypeLabels: Record<string, string> = {
 };
 
 const residentialFrequencyLabels: Record<string, string> = {
-  weekly: 'Weekly',
+  '1x_week': '1x / Week',
+  '2x_week': '2x / Week',
+  '3x_week': '3x / Week',
+  '4x_week': '4x / Week',
+  '5x_week': '5x / Week',
+  '7x_week': '7x / Week',
+  weekly: '1x / Week',
   biweekly: 'Biweekly',
   every_4_weeks: 'Every 4 Weeks',
   one_time: 'One-Time',

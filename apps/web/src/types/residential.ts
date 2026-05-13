@@ -6,7 +6,17 @@ export type ResidentialServiceType =
   | 'move_in_out'
   | 'turnover'
   | 'post_construction';
-export type ResidentialFrequency = 'weekly' | 'biweekly' | 'every_4_weeks' | 'one_time';
+export type ResidentialFrequency =
+  | '1x_week'
+  | '2x_week'
+  | '3x_week'
+  | '4x_week'
+  | '5x_week'
+  | '7x_week'
+  | 'weekly'
+  | 'biweekly'
+  | 'every_4_weeks'
+  | 'one_time';
 export type ResidentialHomeType = 'apartment' | 'condo' | 'townhouse' | 'single_family';
 export type ResidentialCondition = 'light' | 'standard' | 'heavy';
 export type ResidentialOccupiedStatus = 'occupied' | 'vacant' | 'move_in' | 'move_out';

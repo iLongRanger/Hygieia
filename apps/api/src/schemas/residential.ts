@@ -15,6 +15,12 @@ export const residentialServiceTypeSchema = z.enum([
 ]);
 
 export const residentialFrequencySchema = z.enum([
+  '1x_week',
+  '2x_week',
+  '3x_week',
+  '4x_week',
+  '5x_week',
+  '7x_week',
   'weekly',
   'biweekly',
   'every_4_weeks',
@@ -147,11 +153,23 @@ export const residentialPricingPlanSettingsSchema = z.object({
     post_construction: 1.75,
   }),
   frequencyDiscounts: z.object({
+    '1x_week': percentageSchema.default(0.12),
+    '2x_week': percentageSchema.default(0.14),
+    '3x_week': percentageSchema.default(0.16),
+    '4x_week': percentageSchema.default(0.18),
+    '5x_week': percentageSchema.default(0.2),
+    '7x_week': percentageSchema.default(0.22),
     weekly: percentageSchema.default(0.12),
     biweekly: percentageSchema.default(0.08),
     every_4_weeks: percentageSchema.default(0.03),
     one_time: percentageSchema.default(0),
   }).default({
+    '1x_week': 0.12,
+    '2x_week': 0.14,
+    '3x_week': 0.16,
+    '4x_week': 0.18,
+    '5x_week': 0.2,
+    '7x_week': 0.22,
     weekly: 0.12,
     biweekly: 0.08,
     every_4_weeks: 0.03,

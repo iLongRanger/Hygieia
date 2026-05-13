@@ -346,6 +346,12 @@ const residentialPricingPlan: ResidentialPricingPlan = {
       post_construction: 1.75,
     },
     frequencyDiscounts: {
+      '1x_week': 0.15,
+      '2x_week': 0.18,
+      '3x_week': 0.2,
+      '4x_week': 0.22,
+      '5x_week': 0.24,
+      '7x_week': 0.26,
       weekly: 0.15,
       biweekly: 0.1,
       every_4_weeks: 0.05,

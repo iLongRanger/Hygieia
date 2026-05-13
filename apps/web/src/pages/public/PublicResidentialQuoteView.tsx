@@ -33,7 +33,13 @@ const serviceLabelMap: Record<string, string> = {
 };
 
 const frequencyLabelMap: Record<string, string> = {
-  weekly: 'Weekly',
+  '1x_week': '1x per Week',
+  '2x_week': '2x per Week',
+  '3x_week': '3x per Week',
+  '4x_week': '4x per Week',
+  '5x_week': '5x per Week',
+  '7x_week': '7x per Week',
+  weekly: '1x per Week',
   biweekly: 'Biweekly',
   every_4_weeks: 'Every 4 Weeks',
   one_time: 'One Time',
