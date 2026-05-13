@@ -13,6 +13,29 @@ function getApiBaseUrl(): string {
 
 const apiBaseUrl = getApiBaseUrl();
 
+const PUBLIC_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/login/verify',
+  '/auth/forgot-password',
+  '/auth/set-password/challenge',
+  '/auth/set-password',
+  '/auth/reset-password',
+];
+
+export function shouldBypassAuthRedirect(url: string | undefined): boolean {
+  if (!url) return false;
+
+  const path = (() => {
+    try {
+      return new URL(url, window.location.origin).pathname;
+    } catch {
+      return url.split('?')[0] ?? url;
+    }
+  })();
+
+  return PUBLIC_AUTH_PATHS.some((publicPath) => path.endsWith(publicPath));
+}
+
 export function extractApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorPayload>(error)) {
     const apiError = error.response?.data?.error;
@@ -108,6 +131,10 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      if (shouldBypassAuthRedirect(originalRequest.url)) {
+        return Promise.reject(error);
+      }
+
       // Check if this is a refresh token request that failed
       if (originalRequest.url?.includes('/auth/refresh')) {
         clearAuth();
