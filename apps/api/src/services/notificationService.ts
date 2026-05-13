@@ -97,7 +97,7 @@ export async function createNotification(input: CreateNotificationInput) {
     emailHtml,
   } = input;
 
-  let shouldEmail = sendEmailInput ?? false;
+  let shouldEmail = sendEmailInput ?? true;
   if (shouldEmail) {
     const user = await prisma.user.findUnique({
       where: { id: userId },

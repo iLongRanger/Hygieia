@@ -5,7 +5,6 @@ import {
   createNotification,
 } from './notificationService';
 import { sendProposalEmail, sendEmail } from './emailService';
-import { sendSms } from './smsService';
 import { isEmailConfigured } from '../config/email';
 import {
   buildAppointmentReminderHtml,
@@ -93,32 +92,6 @@ function humanizeLabel(value: string | null | undefined): string {
   return value.replace(/_/g, ' ');
 }
 
-function resolveClientPhone(input: {
-  leadPrimaryPhone?: string | null;
-  accountBillingPhone?: string | null;
-  contacts?: { phone?: string | null; isPrimary?: boolean }[];
-}): string | null {
-  if (input.leadPrimaryPhone) {
-    return input.leadPrimaryPhone;
-  }
-
-  const primaryContactPhone = input.contacts?.find(
-    (contact) => contact.isPrimary && contact.phone
-  )?.phone;
-  if (primaryContactPhone) {
-    return primaryContactPhone;
-  }
-
-  const anyContactPhone = input.contacts?.find(
-    (contact) => contact.phone
-  )?.phone;
-  if (anyContactPhone) {
-    return anyContactPhone;
-  }
-
-  return input.accountBillingPhone ?? null;
-}
-
 async function getAdminUserIds(): Promise<string[]> {
   const roles = await prisma.userRole.findMany({
     where: {
@@ -165,19 +138,19 @@ export async function sendAppointmentReminders(): Promise<number> {
         select: {
           contactName: true,
           companyName: true,
-          primaryPhone: true,
+          primaryEmail: true,
         },
       },
       account: {
         select: {
           name: true,
-          billingPhone: true,
+          billingEmail: true,
           contacts: {
             where: {
               archivedAt: null,
             },
             select: {
-              phone: true,
+              email: true,
               isPrimary: true,
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
@@ -239,15 +212,20 @@ export async function sendAppointmentReminders(): Promise<number> {
         emailHtml,
       });
 
-      const clientPhone = resolveClientPhone({
-        leadPrimaryPhone: appt.lead?.primaryPhone ?? null,
-        accountBillingPhone: appt.account?.billingPhone ?? null,
-        contacts: appt.account?.contacts ?? [],
-      });
+      const clientRecipients = appt.lead?.primaryEmail
+        ? { to: appt.lead.primaryEmail, cc: [] }
+        : resolveContactRecipients([
+            ...(appt.account?.contacts ?? []),
+            { email: appt.account?.billingEmail ?? null, isPrimary: false },
+          ]);
 
-      if (clientPhone) {
-        const smsMessage = `Reminder: your ${humanizeLabel(appt.type)} with Hygieia is scheduled for ${formatShortDateTime(appt.scheduledStart)} at ${appt.location ?? 'your service location'}.`;
-        await sendSms(clientPhone, smsMessage);
+      if (clientRecipients.to) {
+        await sendEmail({
+          to: clientRecipients.to,
+          cc: clientRecipients.cc,
+          subject: emailSubject,
+          html: emailHtml,
+        });
       }
 
       await prisma.appointment.update({
@@ -294,13 +272,13 @@ export async function sendUpcomingJobReminders(): Promise<number> {
       account: {
         select: {
           name: true,
-          billingPhone: true,
+          billingEmail: true,
           contacts: {
             where: {
               archivedAt: null,
             },
             select: {
-              phone: true,
+              email: true,
               isPrimary: true,
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
@@ -328,28 +306,37 @@ export async function sendUpcomingJobReminders(): Promise<number> {
   for (const job of jobs) {
     if (remindedJobIds.has(job.id) || !job.scheduledStartTime) continue;
 
-    const clientPhone = resolveClientPhone({
-      accountBillingPhone: job.account?.billingPhone ?? null,
-      contacts: job.account?.contacts ?? [],
-    });
-
-    if (!clientPhone) continue;
-
     const serviceLabel =
       job.facility?.name || job.account?.name || humanizeLabel(job.jobType);
-    const smsMessage = `Reminder: your Hygieia cleaning service for ${serviceLabel} is scheduled for ${formatShortDateTime(job.scheduledStartTime)}. Reply to your coordinator if you need to make a change.`;
+    const clientRecipients = resolveContactRecipients([
+      ...(job.account?.contacts ?? []),
+      { email: job.account?.billingEmail ?? null, isPrimary: false },
+    ]);
+
+    if (!clientRecipients.to) continue;
+
+    const emailSubject = `Upcoming cleaning service reminder: ${serviceLabel}`;
+    const emailHtml = `
+      <p>This is a reminder that your Hygieia cleaning service for <strong>${serviceLabel}</strong> is scheduled for <strong>${formatShortDateTime(job.scheduledStartTime)}</strong>.</p>
+      <p>Please reply to your coordinator if you need to make a change.</p>
+    `;
 
     try {
-      const smsSent = await sendSms(clientPhone, smsMessage);
-      if (!smsSent) continue;
+      const emailSent = await sendEmail({
+        to: clientRecipients.to,
+        cc: clientRecipients.cc,
+        subject: emailSubject,
+        html: emailHtml,
+      });
+      if (!emailSent) continue;
 
       await prisma.jobActivity.create({
         data: {
           jobId: job.id,
           action: 'client_reminder_sent',
           metadata: {
-            channel: 'sms',
-            phone: clientPhone,
+            channel: 'email',
+            email: clientRecipients.to,
             scheduledStartTime: job.scheduledStartTime.toISOString(),
           },
         },

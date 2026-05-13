@@ -5,8 +5,8 @@ import {
   sendProposalFollowUpReminders,
   sendUpcomingJobReminders,
 } from '../reminderService';
-import { sendSms } from '../smsService';
 import { createNotification } from '../notificationService';
+import { sendEmail } from '../emailService';
 
 jest.mock('../../lib/prisma', () => ({
   prisma: {
@@ -29,10 +29,6 @@ jest.mock('../globalSettingsService', () => ({
 jest.mock('../notificationService', () => ({
   createBulkNotifications: jest.fn().mockResolvedValue([]),
   createNotification: jest.fn().mockResolvedValue({}),
-}));
-
-jest.mock('../smsService', () => ({
-  sendSms: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('../emailService', () => ({
@@ -106,7 +102,7 @@ describe('reminderService', () => {
     await expect(sendContractFollowUpReminders()).resolves.toBe(0);
   });
 
-  it('sends appointment reminder SMS to the client phone when available', async () => {
+  it('sends appointment reminders by email, not SMS', async () => {
     const { prisma } = await import('../../lib/prisma');
 
     (prisma.appointment.findMany as jest.Mock).mockResolvedValue([
@@ -118,7 +114,7 @@ describe('reminderService', () => {
         location: '123 Main St',
         assignedToUserId: 'user-1',
         assignedToUser: { fullName: 'Rep One' },
-        lead: { contactName: 'Jane Client', companyName: 'Acme', primaryPhone: '+15550001111' },
+        lead: { contactName: 'Jane Client', companyName: 'Acme', primaryEmail: 'jane@example.com' },
         account: null,
       },
     ]);
@@ -126,16 +122,17 @@ describe('reminderService', () => {
 
     await expect(sendAppointmentReminders()).resolves.toBe(1);
     expect(createNotification).toHaveBeenCalled();
-    expect(sendSms).toHaveBeenCalledWith(
-      '+15550001111',
-      expect.stringContaining('walk through')
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jane@example.com',
+      })
     );
   });
 
-  it('sends upcoming job reminder SMS once per job', async () => {
+  it('sends upcoming job reminder email once per job', async () => {
     const { prisma } = await import('../../lib/prisma');
 
-    (sendSms as jest.Mock).mockResolvedValue(true);
+    (sendEmail as jest.Mock).mockResolvedValue(true);
     (prisma.job.findMany as jest.Mock).mockResolvedValue([
       {
         id: 'job-1',
@@ -146,8 +143,8 @@ describe('reminderService', () => {
         facility: { name: 'Maple Street Home' },
         account: {
           name: 'Jane Client',
-          billingPhone: null,
-          contacts: [{ phone: '+15550002222', isPrimary: true }],
+          billingEmail: null,
+          contacts: [{ email: 'jane@example.com', isPrimary: true }],
         },
       },
     ]);
@@ -155,15 +152,21 @@ describe('reminderService', () => {
     (prisma.jobActivity.create as jest.Mock).mockResolvedValue({});
 
     await expect(sendUpcomingJobReminders()).resolves.toBe(1);
-    expect(sendSms).toHaveBeenCalledWith(
-      '+15550002222',
-      expect.stringContaining('Maple Street Home')
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jane@example.com',
+        subject: expect.stringContaining('Maple Street Home'),
+      })
     );
     expect(prisma.jobActivity.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           jobId: 'job-1',
           action: 'client_reminder_sent',
+          metadata: expect.objectContaining({
+            channel: 'email',
+            email: 'jane@example.com',
+          }),
         }),
       })
     );

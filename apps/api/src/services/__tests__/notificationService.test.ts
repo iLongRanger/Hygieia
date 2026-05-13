@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import * as notificationService from '../notificationService';
 import { prisma } from '../../lib/prisma';
 
@@ -7,16 +7,44 @@ jest.mock('../../lib/prisma', () => ({
     notification: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
   },
 }));
 
+jest.mock('../emailService', () => ({
+  sendNotificationEmail: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../config/email', () => ({
+  isEmailConfigured: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../lib/realtime', () => ({
+  REALTIME_EVENTS: {
+    notificationCreated: 'notificationCreated',
+    notificationUpdated: 'notificationUpdated',
+    notificationAllRead: 'notificationAllRead',
+  },
+  emitToUser: jest.fn(),
+}));
+
 describe('notificationService', () => {
+  const originalResendApiKey = process.env.RESEND_API_KEY;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.RESEND_API_KEY = 'test-key';
     (prisma.notification.count as jest.Mock).mockResolvedValue(0);
+  });
+
+  afterEach(() => {
+    process.env.RESEND_API_KEY = originalResendApiKey;
   });
 
   it('listNotifications should filter unread by default', async () => {
@@ -55,5 +83,61 @@ describe('notificationService', () => {
         data: { readAt: null },
       })
     );
+  });
+
+  it('createNotification enables email delivery by default', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      email: 'admin@example.com',
+      notificationPreferences: null,
+    });
+    (prisma.notification.create as jest.Mock).mockResolvedValue({
+      id: 'notification-1',
+      userId: 'user-1',
+      type: 'job_missed',
+      title: 'Job missed',
+      body: 'Review required',
+      metadata: {},
+      readAt: null,
+      emailSent: false,
+      createdAt: new Date('2026-05-13T12:00:00.000Z'),
+    });
+    (prisma.notification.update as jest.Mock).mockResolvedValue({});
+
+    await notificationService.createNotification({
+      userId: 'user-1',
+      type: 'job_missed',
+      title: 'Job missed',
+      body: 'Review required',
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      select: { email: true, notificationPreferences: true },
+    });
+  });
+
+  it('createNotification respects explicit email opt-out', async () => {
+    const { sendNotificationEmail } = await import('../emailService');
+    (prisma.notification.create as jest.Mock).mockResolvedValue({
+      id: 'notification-2',
+      userId: 'user-1',
+      type: 'job_missed',
+      title: 'Job missed',
+      body: 'Review required',
+      metadata: {},
+      readAt: null,
+      emailSent: false,
+      createdAt: new Date('2026-05-13T12:00:00.000Z'),
+    });
+
+    await notificationService.createNotification({
+      userId: 'user-1',
+      type: 'job_missed',
+      title: 'Job missed',
+      body: 'Review required',
+      sendEmail: false,
+    });
+
+    expect(sendNotificationEmail).not.toHaveBeenCalled();
   });
 });

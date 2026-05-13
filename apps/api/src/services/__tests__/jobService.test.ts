@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { prisma } from '../../lib/prisma';
 import { createBulkNotifications, createNotification } from '../notificationService';
-import { sendSms } from '../smsService';
 import { completeInitialClean as completeContractInitialClean } from '../contractService';
 import { flagJobForSettlementReview } from '../jobSettlementService';
 import {
@@ -78,10 +77,6 @@ jest.mock('../notificationService', () => ({
   createNotification: jest.fn(),
 }));
 
-jest.mock('../smsService', () => ({
-  sendSms: jest.fn(),
-}));
-
 jest.mock('../contractService', () => ({
   completeInitialClean: jest.fn(),
 }));
@@ -119,7 +114,6 @@ describe('jobService', () => {
     (prisma.jobTask.findFirst as jest.Mock).mockResolvedValue({ id: 'task-1' });
     (prisma.job.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
     (prisma.jobActivity.createMany as jest.Mock).mockResolvedValue({ count: 0 });
-    (sendSms as jest.Mock).mockResolvedValue(true);
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notification-1' });
     (createBulkNotifications as jest.Mock).mockResolvedValue([]);
     (flagJobForSettlementReview as jest.Mock).mockResolvedValue(undefined);
@@ -1526,6 +1520,9 @@ describe('jobService', () => {
         data: expect.objectContaining({
           jobId: 'job-1',
           action: 'no_checkin_alert_sent',
+          metadata: expect.objectContaining({
+            notificationChannel: 'email',
+          }),
         }),
       })
     );
@@ -1535,10 +1532,6 @@ describe('jobService', () => {
       notifications: 3,
       settlementReviewsTriggered: 0,
     });
-    expect(sendSms).toHaveBeenCalledTimes(3);
-    expect(sendSms).toHaveBeenCalledWith('+15550001111', expect.stringContaining('WO-2026-0100'));
-    expect(sendSms).toHaveBeenCalledWith('+15550002222', expect.stringContaining('WO-2026-0100'));
-    expect(sendSms).toHaveBeenCalledWith('+15550003333', expect.stringContaining('WO-2026-0100'));
   });
 
   it('runJobNearingEndNoCheckInAlertCycle skips jobs with time entries or prior alert', async () => {
@@ -1652,9 +1645,16 @@ describe('jobService', () => {
         }),
       })
     );
-    expect(sendSms).toHaveBeenCalledWith(
-      '+15550009999',
-      expect.stringContaining('WO-2026-0199')
+    expect(prisma.jobActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          jobId: 'job-9',
+          action: 'job_marked_missed_no_checkin',
+          metadata: expect.objectContaining({
+            notificationChannel: 'email',
+          }),
+        }),
+      })
     );
     expect(result).toEqual({
       checked: 0,
