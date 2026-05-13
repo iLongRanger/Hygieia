@@ -17,6 +17,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     area: {
       count: jest.fn(),
+      findMany: jest.fn(),
     },
     facilityTask: {
       count: jest.fn(),
@@ -50,6 +51,7 @@ describe('facilityService', () => {
     (prisma.opportunity.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.contact.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.lead.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.area.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   describe('listFacilities', () => {
@@ -579,6 +581,26 @@ describe('facilityService', () => {
   });
 
   describe('submitFacilityForProposal', () => {
+    it('should reject when an active area has no active tasks', async () => {
+      (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
+        id: 'facility-123',
+        accountId: 'account-123',
+        archivedAt: null,
+      });
+      (prisma.area.count as jest.Mock).mockResolvedValue(2);
+      (prisma.facilityTask.count as jest.Mock).mockResolvedValue(1);
+      (prisma.area.findMany as jest.Mock).mockResolvedValue([{ id: 'area-2', name: 'Kitchen' }]);
+
+      await expect(
+        facilityService.submitFacilityForProposal('facility-123', {
+          userId: 'user-1',
+          notes: null,
+        })
+      ).rejects.toThrow(
+        'Add at least one task to every area before submitting this service location. Missing: Kitchen'
+      );
+    });
+
     it('should use the latest active opportunity when submitting a facility', async () => {
       (prisma.facility.findUnique as jest.Mock).mockResolvedValue({
         id: 'facility-123',

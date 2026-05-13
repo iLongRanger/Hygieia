@@ -22,13 +22,12 @@ import { DatePicker } from '../../components/ui/DatePicker';
 import { Textarea } from '../../components/ui/Textarea';
 import { convertLead, getLead, listLeadSources, updateLead } from '../../lib/leads';
 import { listUsers } from '../../lib/users';
-import { listFacilities } from '../../lib/facilities';
+import { listFacilities, submitFacilityForProposal } from '../../lib/facilities';
 import { listAccounts } from '../../lib/accounts';
 import {
   createAppointment,
   listAppointments,
   rescheduleAppointment,
-  completeAppointment,
 } from '../../lib/appointments';
 import type { Account, Appointment, Lead, LeadSource, UpdateLeadInput } from '../../types/crm';
 import type { User } from '../../types/user';
@@ -532,17 +531,14 @@ const LeadDetail = () => {
   const handleComplete = async () => {
     if (!selectedAppointment) return;
     if (!completeForm.facilityId) {
-      toast.error('Select a facility before completing');
+      toast.error('Select a service location before submitting');
       return;
     }
 
     try {
       setSaving(true);
-      await completeAppointment(selectedAppointment.id, {
-        facilityId: completeForm.facilityId,
-        notes: completeForm.notes || null,
-      });
-      toast.success('Walkthrough completed');
+      await submitFacilityForProposal(completeForm.facilityId, completeForm.notes || null);
+      toast.success('Service location submitted for proposal');
       setShowCompleteModal(false);
       setSelectedAppointment(null);
       setCompleteForm({ facilityId: '', notes: '' });
@@ -550,7 +546,7 @@ const LeadDetail = () => {
       fetchLead();
     } catch (error) {
       console.error('Failed to complete appointment:', error);
-      toast.error('Failed to complete walkthrough');
+      toast.error('Failed to submit service location for proposal');
     } finally {
       setSaving(false);
     }
@@ -558,16 +554,16 @@ const LeadDetail = () => {
 
   const handleProceedToReview = () => {
     if (!completeForm.facilityId) {
-      toast.error('Select a facility before continuing');
+      toast.error('Select a service location before continuing');
       return;
     }
     const facility = facilities.find((item) => item.id === completeForm.facilityId);
     if ((facility?._count.areas ?? 0) === 0) {
-      toast.error('Add at least one area before completing walkthrough');
+      toast.error('Add at least one area before submitting for proposal');
       return;
     }
     if ((facility?._count.facilityTasks ?? 0) === 0) {
-      toast.error('Add at least one task before completing walkthrough');
+      toast.error('Add at least one task before submitting for proposal');
       return;
     }
     setCompleteStep('review');
@@ -854,7 +850,7 @@ const LeadDetail = () => {
                               }}
                             >
                               <CheckCircle className="mr-2 h-4 w-4" />
-                              Complete Walkthrough
+                              Submit for Proposal
                             </Button>
                           )}
                         </div>
@@ -1112,7 +1108,7 @@ const LeadDetail = () => {
       <Drawer
         isOpen={showCompleteModal}
         onClose={() => setShowCompleteModal(false)}
-        title="Complete Walkthrough"
+        title="Submit Service Location for Proposal"
         size="lg"
       >
         <div className="space-y-4">
@@ -1122,7 +1118,7 @@ const LeadDetail = () => {
                 Step {completeStep === 'details' ? '1' : '2'} of 2
               </div>
               <div className="mt-1 text-sm text-surface-900 dark:text-white">
-                {completeStep === 'details' ? 'Facility Details' : 'Review and Submit'}
+                {completeStep === 'details' ? 'Service Location Details' : 'Review and Submit'}
               </div>
             </div>
           )}
@@ -1131,8 +1127,8 @@ const LeadDetail = () => {
               {completeStep === 'details' ? (
                 <>
                   <Select
-                    label="Facility"
-                    placeholder="Select facility"
+                    label="Service Location"
+                    placeholder="Select service location"
                     options={facilities.map((f) => ({
                       value: f.id,
                       label: `${f.name} (${f._count.areas} areas, ${f._count.facilityTasks} tasks)`,
@@ -1144,8 +1140,8 @@ const LeadDetail = () => {
                     <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-300">
                       <p>
                         {selectedFacilityAreaCount === 0
-                          ? 'Add at least one area to this facility before completing the walkthrough.'
-                          : 'Add at least one task to this facility before completing the walkthrough.'}
+                          ? 'Add at least one area to this service location before submitting it for proposal.'
+                          : 'Add at least one task to this service location before submitting it for proposal.'}
                       </p>
                       <div className="mt-3">
                         <Button
@@ -1156,7 +1152,7 @@ const LeadDetail = () => {
                             navigate(`/service-locations/${selectedFacility.id}`, { state: { backLabel: lead.contactName, backPath: `/leads/${lead.id}` } });
                           }}
                         >
-                          Open Facility
+                          Open Service Location
                         </Button>
                       </div>
                     </div>
@@ -1174,8 +1170,8 @@ const LeadDetail = () => {
                     return (
                       <>
                         <div>
-                          <div className="text-sm text-surface-500 dark:text-surface-400">Facility</div>
-                          <div className="text-surface-900 dark:text-white">{selectedFacility?.name || 'Unknown facility'}</div>
+                          <div className="text-sm text-surface-500 dark:text-surface-400">Service Location</div>
+                          <div className="text-surface-900 dark:text-white">{selectedFacility?.name || 'Unknown service location'}</div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
@@ -1201,7 +1197,7 @@ const LeadDetail = () => {
             </>
           ) : (
             <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-300">
-              Convert this lead to an account and add a facility before completing the walkthrough.
+              Convert this lead to an account and add a service location before submitting for proposal.
             </div>
           )}
 
@@ -1231,7 +1227,7 @@ const LeadDetail = () => {
                 isLoading={saving}
                 disabled={!lead.convertedToAccount}
               >
-                Submit & Complete
+                Submit for Proposal
               </Button>
             )}
           </div>

@@ -44,6 +44,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     area: {
       count: jest.fn(),
+      findMany: jest.fn(),
     },
     facilityTask: {
       count: jest.fn(),
@@ -89,6 +90,7 @@ describe('appointmentService', () => {
     (prisma.accountActivity.create as jest.Mock).mockResolvedValue({ id: 'activity-1' });
     (createNotification as jest.Mock).mockResolvedValue({ id: 'notif-1' });
     (prisma.account.findFirst as jest.Mock).mockResolvedValue({ id: 'account-1' });
+    (prisma.area.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('listAppointments should default to future appointments when includePast is false', async () => {
@@ -472,6 +474,24 @@ describe('appointmentService', () => {
     ).rejects.toThrow('You do not have access to this appointment');
   });
 
+  it('completeAppointment should reject direct completion before service location submission', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'walk_through',
+      status: 'scheduled',
+      leadId: 'lead-1',
+      facilityId: 'facility-1',
+      assignedToUserId: 'user-1',
+    });
+
+    await expect(
+      appointmentService.completeAppointment('appt-1', {
+        facilityId: 'facility-1',
+        userId: 'user-1',
+      })
+    ).rejects.toThrow('Submit the service location for proposal before completing the walkthrough');
+  });
+
   it('completeAppointment should reject when no tasks exist for facility', async () => {
     (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
       id: 'appt-1',
@@ -493,8 +513,36 @@ describe('appointmentService', () => {
       appointmentService.completeAppointment('appt-1', {
         facilityId: 'facility-1',
         userId: 'user-1',
+        submittedForProposal: true,
       })
     ).rejects.toThrow('Add at least one task before completing walkthrough');
+  });
+
+  it('completeAppointment should reject when an active area has no active tasks', async () => {
+    (prisma.appointment.findUnique as jest.Mock).mockResolvedValue({
+      id: 'appt-1',
+      type: 'walk_through',
+      status: 'scheduled',
+      leadId: 'lead-1',
+      facilityId: 'facility-1',
+      assignedToUserId: 'user-1',
+    });
+    (prisma.lead.findUnique as jest.Mock).mockResolvedValue({
+      id: 'lead-1',
+      convertedToAccountId: 'account-1',
+    });
+    (prisma.facility.findFirst as jest.Mock).mockResolvedValue({ id: 'facility-1' });
+    (prisma.area.count as jest.Mock).mockResolvedValue(2);
+    (prisma.facilityTask.count as jest.Mock).mockResolvedValue(1);
+    (prisma.area.findMany as jest.Mock).mockResolvedValue([{ id: 'area-2', name: 'Kitchen' }]);
+
+    await expect(
+      appointmentService.completeAppointment('appt-1', {
+        facilityId: 'facility-1',
+        userId: 'user-1',
+        submittedForProposal: true,
+      })
+    ).rejects.toThrow('Add at least one task to every area before completing walkthrough. Missing: Kitchen');
   });
 
   it('updateAppointment should notify assigned user with serialized schedule metadata', async () => {

@@ -66,6 +66,7 @@ export interface AppointmentCompleteInput {
   facilityId: string;
   notes?: string | null;
   userId: string;
+  submittedForProposal?: boolean;
 }
 
 const APPOINTMENT_ASSIGNEE_ROLE_KEYS = new Set(['owner', 'admin', 'manager']);
@@ -1277,6 +1278,12 @@ export async function completeAppointment(
     throw new BadRequestError('Only walkthrough appointments can be completed here');
   }
 
+  if (!input.submittedForProposal) {
+    throw new BadRequestError(
+      'Submit the service location for proposal before completing the walkthrough'
+    );
+  }
+
   const lead = await prisma.lead.findUnique({
     where: { id: appointment.leadId },
     select: { id: true, convertedToAccountId: true },
@@ -1307,12 +1314,22 @@ export async function completeAppointment(
     throw new BadRequestError('Walkthrough must be completed for the same facility it was scheduled for');
   }
 
-  const [areaCount, taskCount] = await Promise.all([
+  const [areaCount, taskCount, emptyAreas] = await Promise.all([
     prisma.area.count({
       where: { facilityId: facility.id, archivedAt: null },
     }),
     prisma.facilityTask.count({
       where: { facilityId: facility.id, archivedAt: null },
+    }),
+    prisma.area.findMany({
+      where: {
+        facilityId: facility.id,
+        archivedAt: null,
+        facilityTasks: {
+          none: { archivedAt: null },
+        },
+      },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -1322,6 +1339,14 @@ export async function completeAppointment(
 
   if (taskCount === 0) {
     throw new BadRequestError('Add at least one task before completing walkthrough');
+  }
+
+  if (emptyAreas.length > 0) {
+    throw new BadRequestError(
+      `Add at least one task to every area before completing walkthrough. Missing: ${emptyAreas
+        .map((area) => area.name)
+        .join(', ')}`
+    );
   }
 
   const completed = await prisma.$transaction(async (tx) => {

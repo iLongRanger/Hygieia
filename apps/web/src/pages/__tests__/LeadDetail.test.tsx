@@ -26,10 +26,10 @@ const convertLeadMock = vi.fn();
 const listAccountsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listFacilitiesMock = vi.fn();
+const submitFacilityForProposalMock = vi.fn();
 const createAppointmentMock = vi.fn();
 const listAppointmentsMock = vi.fn();
 const rescheduleAppointmentMock = vi.fn();
-const completeAppointmentMock = vi.fn();
 
 vi.mock('../../lib/leads', () => ({
   getLead: (...args: unknown[]) => getLeadMock(...args),
@@ -48,13 +48,13 @@ vi.mock('../../lib/users', () => ({
 
 vi.mock('../../lib/facilities', () => ({
   listFacilities: (...args: unknown[]) => listFacilitiesMock(...args),
+  submitFacilityForProposal: (...args: unknown[]) => submitFacilityForProposalMock(...args),
 }));
 
 vi.mock('../../lib/appointments', () => ({
   createAppointment: (...args: unknown[]) => createAppointmentMock(...args),
   listAppointments: (...args: unknown[]) => listAppointmentsMock(...args),
   rescheduleAppointment: (...args: unknown[]) => rescheduleAppointmentMock(...args),
-  completeAppointment: (...args: unknown[]) => completeAppointmentMock(...args),
 }));
 
 vi.mock('../../stores/authStore', () => ({
@@ -219,7 +219,14 @@ describe('LeadDetail', () => {
     listFacilitiesMock.mockResolvedValue({ data: [facility], pagination: { page: 1, limit: 100, total: 1, totalPages: 1 } });
     createAppointmentMock.mockResolvedValue({ id: 'appt-2' });
     rescheduleAppointmentMock.mockResolvedValue({ id: 'appt-3' });
-    completeAppointmentMock.mockResolvedValue({ id: 'appt-1', status: 'completed' });
+    submitFacilityForProposalMock.mockResolvedValue({
+      facilityId: 'facility-1',
+      leadId: 'lead-1',
+      appointmentId: 'appt-1',
+      appointmentStatus: 'completed',
+      leadStatus: 'walk_through_completed',
+      alreadyCompleted: false,
+    });
     updateLeadMock.mockResolvedValue(lead);
     convertLeadMock.mockResolvedValue({
       lead: {
@@ -443,10 +450,10 @@ describe('LeadDetail', () => {
 
     render(<LeadDetail />);
 
-    await userEventInstance.click(await screen.findByRole('button', { name: /complete walkthrough/i }));
-    const modal = await screen.findByRole('dialog', { name: /complete walkthrough/i });
+    await userEventInstance.click(await screen.findByRole('button', { name: /submit for proposal/i }));
+    const modal = await screen.findByRole('dialog', { name: /submit service location for proposal/i });
 
-    await userEventInstance.selectOptions(within(modal).getByLabelText(/facility/i), 'facility-1');
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/service location/i), 'facility-1');
     await userEventInstance.type(within(modal).getByLabelText(/completion notes/i), 'Reviewed facility details');
 
     await userEventInstance.click(within(modal).getByRole('button', { name: /^review$/i }));
@@ -454,15 +461,12 @@ describe('LeadDetail', () => {
     expect(within(modal).getByText(/step 2 of 2/i)).toBeInTheDocument();
     expect(within(modal).getByText(/hq/i)).toBeInTheDocument();
 
-    await userEventInstance.click(within(modal).getByRole('button', { name: /submit & complete/i }));
+    await userEventInstance.click(within(modal).getByRole('button', { name: /submit for proposal/i }));
 
     await waitFor(() => {
-      expect(completeAppointmentMock).toHaveBeenCalledWith(
-        'appt-1',
-        expect.objectContaining({
-          facilityId: 'facility-1',
-          notes: 'Reviewed facility details',
-        })
+      expect(submitFacilityForProposalMock).toHaveBeenCalledWith(
+        'facility-1',
+        'Reviewed facility details'
       );
     });
   });
@@ -483,13 +487,13 @@ describe('LeadDetail', () => {
 
     render(<LeadDetail />);
 
-    await userEventInstance.click(await screen.findByRole('button', { name: /complete walkthrough/i }));
-    const modal = await screen.findByRole('dialog', { name: /complete walkthrough/i });
+    await userEventInstance.click(await screen.findByRole('button', { name: /submit for proposal/i }));
+    const modal = await screen.findByRole('dialog', { name: /submit service location for proposal/i });
 
-    await userEventInstance.selectOptions(within(modal).getByLabelText(/facility/i), 'facility-2');
+    await userEventInstance.selectOptions(within(modal).getByLabelText(/service location/i), 'facility-2');
 
-    expect(within(modal).getByText(/add at least one area to this facility/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/add at least one area to this service location/i)).toBeInTheDocument();
     expect(within(modal).getByRole('button', { name: /^review$/i })).toBeDisabled();
-    expect(completeAppointmentMock).not.toHaveBeenCalled();
+    expect(submitFacilityForProposalMock).not.toHaveBeenCalled();
   });
 });

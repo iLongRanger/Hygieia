@@ -554,12 +554,22 @@ export async function submitFacilityForProposal(
     throw new BadRequestError('Cannot submit an archived facility');
   }
 
-  const [areaCount, taskCount] = await Promise.all([
+  const [areaCount, taskCount, emptyAreas] = await Promise.all([
     prisma.area.count({
       where: { facilityId: facility.id, archivedAt: null },
     }),
     prisma.facilityTask.count({
       where: { facilityId: facility.id, archivedAt: null },
+    }),
+    prisma.area.findMany({
+      where: {
+        facilityId: facility.id,
+        archivedAt: null,
+        facilityTasks: {
+          none: { archivedAt: null },
+        },
+      },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -569,6 +579,14 @@ export async function submitFacilityForProposal(
 
   if (taskCount === 0) {
     throw new BadRequestError('Add at least one task before submitting this facility');
+  }
+
+  if (emptyAreas.length > 0) {
+    throw new BadRequestError(
+      `Add at least one task to every area before submitting this service location. Missing: ${emptyAreas
+        .map((area) => area.name)
+        .join(', ')}`
+    );
   }
 
   const opportunity = await findPreferredOpportunityForAccount(prisma, facility.accountId, {
@@ -616,6 +634,7 @@ export async function submitFacilityForProposal(
     facilityId: facility.id,
     notes: input.notes ?? null,
     userId: input.userId,
+    submittedForProposal: true,
   });
 
   return {
