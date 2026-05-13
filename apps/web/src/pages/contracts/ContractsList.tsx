@@ -132,6 +132,7 @@ const ContractsList = () => {
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
   const isSubcontractor = userRole === 'subcontractor';
+  const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
   const canViewContractPricing = userRole === 'owner' || userRole === 'admin';
   const canViewPipelines = userRole === 'owner' || userRole === 'admin';
   const canUseNeedsAttention = userRole === 'owner' || userRole === 'admin';
@@ -605,7 +606,7 @@ const ContractsList = () => {
             </div>
             <Button
               variant={hasActiveFilters ? 'primary' : 'secondary'}
-              className="px-3"
+              className="w-full px-3 sm:w-auto"
               onClick={() => setShowFilterPanel(!showFilterPanel)}
             >
               <Filter className="h-4 w-4" />
@@ -614,7 +615,7 @@ const ContractsList = () => {
             {canUseNeedsAttention && (
               <Button
                 variant={needsAttention ? 'primary' : 'secondary'}
-                className="px-3"
+                className="w-full px-3 sm:w-auto"
                 onClick={() => {
                   setNeedsAttention((prev) => !prev);
                   setPage(1);
@@ -705,22 +706,103 @@ const ContractsList = () => {
           )}
         </div>
 
-        <Table
-          data={contracts}
-          columns={columns}
-          isLoading={loading}
-          onRowClick={(contract) => navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } })}
-        />
+        {isFieldWorker && (
+          <div data-testid="field-worker-contract-cards" className="space-y-3 p-3 md:hidden">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-40 rounded-xl skeleton" />
+              ))
+            ) : contracts.length === 0 ? (
+              <div className="rounded-xl border-2 border-dashed border-surface-200 p-8 text-center dark:border-surface-700">
+                <FileText className="mx-auto h-8 w-8 text-surface-400" />
+                <p className="mt-3 text-sm font-medium text-surface-600 dark:text-surface-400">
+                  No assigned contracts
+                </p>
+              </div>
+            ) : (
+              contracts.map((contract) => {
+                const StatusIcon = getStatusIcon(contract.status);
+                const rawValue = isSubcontractor ? contract.subcontractorPayout : contract.monthlyValue;
+                const numericValue = Number(rawValue);
+                const valueLabel = Number.isFinite(numericValue) ? formatCurrency(numericValue) : '-';
+                return (
+                  <button
+                    key={contract.id}
+                    type="button"
+                    onClick={() => navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } })}
+                    className="w-full rounded-xl border border-surface-200 bg-surface-50 p-4 text-left shadow-soft transition hover:border-primary-200 hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-700 dark:hover:bg-surface-700/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-surface-900 dark:text-surface-100">
+                          {contract.contractNumber}
+                        </p>
+                        <p className="mt-1 break-words text-sm text-surface-600 dark:text-surface-300">
+                          {contract.title}
+                        </p>
+                      </div>
+                      <Badge variant={getStatusVariant(contract.status)} size="sm">
+                        <StatusIcon className="mr-1 h-3 w-3" />
+                        {STATUS_LABELS[contract.status] || contract.status.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm text-surface-600 dark:text-surface-300">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-surface-500">Account</span>
+                        <span className="text-right font-medium">{contract.account.name}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-surface-500">Service Location</span>
+                        <span className="text-right font-medium">{contract.facility?.name || '-'}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-surface-500">Start</span>
+                        <span className="text-right">{formatDate(contract.startDate)}</span>
+                      </div>
+                      {(isSubcontractor || canViewContractPricing) && (
+                        <div className="flex justify-between gap-3">
+                          <span className="text-surface-500">
+                            {isSubcontractor ? 'Monthly Payout' : 'Monthly Value'}
+                          </span>
+                          <span className="text-right font-semibold text-success-700 dark:text-success-300">
+                            {valueLabel}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <span className="inline-flex w-full items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white">
+                        Open Contract
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        <div className={isFieldWorker ? 'hidden md:block' : undefined}>
+          <Table
+            data={contracts}
+            columns={columns}
+            isLoading={loading}
+            onRowClick={(contract) => navigate(`/contracts/${contract.id}`, { state: { backLabel: 'Contracts', backPath: '/contracts' } })}
+          />
+        </div>
 
         <div className="border-t border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/30 p-4">
-          <div className="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
+          <div className="flex flex-col gap-3 text-sm text-surface-500 dark:text-surface-400 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Showing {contracts.length} of {total} contracts
             </span>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <Button
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
@@ -729,6 +811,7 @@ const ContractsList = () => {
               <Button
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

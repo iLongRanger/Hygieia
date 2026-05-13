@@ -109,6 +109,8 @@ describe('ContractsList', () => {
       token: 'token',
       refreshToken: null,
       isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
     });
     listContractsMock.mockResolvedValue({
       data: [contract],
@@ -165,6 +167,25 @@ describe('ContractsList', () => {
       expect(screen.getByText('accepted and contract-ready')).toBeInTheDocument();
       expect(getProposalsAvailableForContractMock).toHaveBeenCalled();
     });
+  });
+
+  it('renders mobile contract cards for field workers', async () => {
+    useAuthStore.setState({
+      user: { id: 'cleaner-1', email: 'cleaner@example.com', fullName: 'Cleaner User', role: 'cleaner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => false,
+      canAny: () => false,
+    });
+
+    render(<ContractsList />);
+
+    const mobileCards = await screen.findByTestId('field-worker-contract-cards');
+    expect(mobileCards).toHaveClass('md:hidden');
+    expect(within(mobileCards).getByText('CONT-202602-0001')).toBeInTheDocument();
+    expect(within(mobileCards).getByText('Service Location')).toBeInTheDocument();
+    expect(within(mobileCards).getByText('Open Contract')).toBeInTheDocument();
   });
 
   it('renders the contract number and title in the contract column', async () => {

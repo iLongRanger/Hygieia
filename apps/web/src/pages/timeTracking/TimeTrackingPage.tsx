@@ -147,6 +147,7 @@ const TimeTrackingPage = () => {
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const userRole = useAuthStore((state) => state.user?.role);
   const requiresGeofence = userRole === 'cleaner' || userRole === 'subcontractor';
+  const isFieldWorker = userRole === 'cleaner' || userRole === 'subcontractor';
 
   const page = Number(searchParams.get('page') || '1');
   const status = searchParams.get('status') || '';
@@ -667,7 +668,7 @@ const TimeTrackingPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-primary-100 p-2.5 dark:bg-primary-900/30">
             <Clock className="h-5 w-5 text-primary-700 dark:text-primary-400" />
@@ -681,10 +682,11 @@ const TimeTrackingPage = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
           <Button
             variant="secondary"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => navigate('/timesheets')}
           >
             Timesheets
@@ -692,6 +694,7 @@ const TimeTrackingPage = () => {
           <Button
             variant="secondary"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="mr-1.5 h-4 w-4" />
@@ -703,8 +706,8 @@ const TimeTrackingPage = () => {
       {/* Clock In/Out Card */}
       <Card>
         <div className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">
                 {activeEntry ? 'Currently Clocked In' : 'Not Clocked In'}
               </h3>
@@ -715,27 +718,27 @@ const TimeTrackingPage = () => {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:items-center">
               {activeEntry ? (
                 <>
                   {isOnBreak ? (
-                    <Button variant="secondary" size="sm" onClick={handleEndBreak}>
+                    <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={handleEndBreak}>
                       <Coffee className="mr-1.5 h-4 w-4" />
                       End Break
                     </Button>
                   ) : (
-                    <Button variant="secondary" size="sm" onClick={handleStartBreak}>
+                    <Button variant="secondary" size="sm" className="w-full sm:w-auto" onClick={handleStartBreak}>
                       <Coffee className="mr-1.5 h-4 w-4" />
                       Break
                     </Button>
                   )}
-                  <Button variant="danger" onClick={handleClockOut}>
+                  <Button variant="danger" className="w-full sm:w-auto" onClick={handleClockOut}>
                     <Square className="mr-1.5 h-4 w-4" />
                     Clock Out
                   </Button>
                 </>
               ) : (
-                <Button onClick={openClockInModal} disabled={clockingIn || loadingClockInJobs}>
+                <Button className="w-full sm:w-auto" onClick={openClockInModal} disabled={clockingIn || loadingClockInJobs}>
                   <Play className="mr-1.5 h-4 w-4" />
                   Clock In
                 </Button>
@@ -789,25 +792,86 @@ const TimeTrackingPage = () => {
       )}
 
       {/* Entries Table */}
-      <Card>
-        <Table
-          columns={columns}
-          data={entries}
-          isLoading={loading}
-          onRowClick={(row) => handleViewEntry(row.id)}
-        />
+      <Card className={isFieldWorker ? 'p-3 md:p-6' : undefined}>
+        {isFieldWorker && (
+          <div data-testid="field-worker-time-entry-cards" className="space-y-3 md:hidden">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-36 rounded-xl skeleton" />
+              ))
+            ) : entries.length === 0 ? (
+              <div className="rounded-xl border-2 border-dashed border-surface-200 p-8 text-center dark:border-surface-700">
+                <Clock className="mx-auto h-8 w-8 text-surface-400" />
+                <p className="mt-3 text-sm font-medium text-surface-600 dark:text-surface-400">
+                  No time entries found
+                </p>
+              </div>
+            ) : (
+              entries.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => handleViewEntry(entry.id)}
+                  className="w-full rounded-xl border border-surface-200 bg-surface-50 p-4 text-left shadow-soft transition hover:border-primary-200 hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-700 dark:hover:bg-surface-700/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-surface-900 dark:text-surface-100">
+                        {formatDate(entry.clockIn)}
+                      </p>
+                      <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                        {formatTime(entry.clockIn)} - {entry.clockOut ? formatTime(entry.clockOut) : 'In Progress'}
+                      </p>
+                    </div>
+                    <Badge variant={getStatusVariant(entry.status)} size="sm">
+                      {entry.status}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm text-surface-600 dark:text-surface-300">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-surface-500">Location</span>
+                      <span className="text-right font-medium">{entry.facility?.name || entry.job?.jobNumber || '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-surface-500">Total</span>
+                      <span className="font-semibold">{formatDuration(entry.totalHours)}</span>
+                    </div>
+                    {entry.job?.settlement && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-surface-500">Settlement</span>
+                        <Badge variant={getSettlementVariant(entry.job.settlement.status)} size="sm">
+                          {formatSettlementLabel(entry.job.settlement.status)}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+        <div className={isFieldWorker ? 'hidden md:block' : undefined}>
+          <Table
+            columns={columns}
+            data={entries}
+            isLoading={loading}
+            onRowClick={(row) => handleViewEntry(row.id)}
+          />
+        </div>
       </Card>
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-surface-500">
             Page {pagination.page} of {pagination.totalPages}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={pagination.page <= 1}
               onClick={() => updateParam('page', String(pagination.page - 1))}
             >
@@ -816,6 +880,7 @@ const TimeTrackingPage = () => {
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => updateParam('page', String(pagination.page + 1))}
             >

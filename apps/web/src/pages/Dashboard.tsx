@@ -270,13 +270,14 @@ const FieldWorkerDashboard = ({
 
       {/* Upcoming Jobs */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             Upcoming Jobs
           </h2>
           <Button
             variant="ghost"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => navigate('/jobs', dashboardBackState)}
           >
             View all
@@ -297,13 +298,13 @@ const FieldWorkerDashboard = ({
               <button
                 key={job.id}
                 onClick={() => navigate(`/jobs/${job.id}`, dashboardBackState)}
-                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                className="flex w-full flex-col gap-3 rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
-                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                <div className="min-w-0 flex-1">
+                  <div className="break-words font-medium text-surface-900 dark:text-surface-100">
                     {job.facility.name}
                   </div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">
+                  <div className="break-words text-sm text-surface-500 dark:text-surface-400">
                     {job.jobNumber} &middot;{' '}
                     {new Date(job.scheduledDate).toLocaleDateString()}
                     {job.scheduledStartTime && ` at ${job.scheduledStartTime}`}
@@ -324,13 +325,14 @@ const FieldWorkerDashboard = ({
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
             {isSubcontractor ? 'Assigned Contracts' : 'Active Contracts'}
           </h2>
           <Button
             variant="ghost"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => navigate('/contracts', dashboardBackState)}
           >
             View all
@@ -350,13 +352,13 @@ const FieldWorkerDashboard = ({
                 onClick={() =>
                   navigate(`/contracts/${contract.id}`, dashboardBackState)
                 }
-                className="flex w-full items-center justify-between rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50"
+                className="flex w-full flex-col gap-3 rounded-lg border border-surface-200 px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:border-surface-700 dark:hover:bg-surface-800/50 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
-                  <div className="font-medium text-surface-900 dark:text-surface-100">
+                <div className="min-w-0 flex-1">
+                  <div className="break-words font-medium text-surface-900 dark:text-surface-100">
                     {contract.title}
                   </div>
-                  <div className="text-sm text-surface-500 dark:text-surface-400">
+                  <div className="break-words text-sm text-surface-500 dark:text-surface-400">
                     {contract.contractNumber} &middot;{' '}
                     {contract.facility?.name || 'No facility'} &middot;{' '}
                     {contract.status.replace('_', ' ')}

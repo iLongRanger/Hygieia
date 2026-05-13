@@ -319,6 +319,38 @@ describe('JobsList', () => {
     expect(screen.getByText('Team assignment')).toBeInTheDocument();
   });
 
+  it('uses full text job actions for field workers on the schedule view', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'cleaner-1',
+        email: 'cleaner@example.com',
+        fullName: 'Cleaner User',
+        role: 'cleaner',
+      },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    listJobsMock.mockResolvedValue(
+      mockPaginatedResponse([
+        mockJob({
+          id: 'job-mobile',
+          jobNumber: 'JOB-MOBILE',
+          status: 'scheduled',
+        }),
+      ])
+    );
+
+    render(<JobsList />);
+
+    expect(await screen.findByRole('heading', { name: 'Assigned Jobs' })).toBeInTheDocument();
+    expect(await screen.findByText('JOB-MOBILE')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start job/i })).toHaveClass('w-full');
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveClass('w-full');
+  });
+
   it('renders subcontractor jobs in calendar view when API returns ISO job times', async () => {
     useAuthStore.setState({
       user: {

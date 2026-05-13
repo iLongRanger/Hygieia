@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '../../test/test-utils';
 import TimeTrackingPage from '../timeTracking/TimeTrackingPage';
+import { useAuthStore } from '../../stores/authStore';
 
 const navigateMock = vi.fn();
 
@@ -72,6 +73,14 @@ describe('TimeTrackingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
+    useAuthStore.setState({
+      user: { id: 'admin-1', email: 'admin@example.com', fullName: 'Admin User', role: 'admin' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
     listTimeEntriesMock.mockResolvedValue({
       data: [entry],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
@@ -125,6 +134,24 @@ describe('TimeTrackingPage', () => {
     expect(listTimeEntriesMock).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, limit: 20 })
     );
+  });
+
+  it('renders mobile time-entry cards for field workers', async () => {
+    useAuthStore.setState({
+      user: { id: 'cleaner-1', email: 'cleaner@example.com', fullName: 'Cleaner User', role: 'cleaner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => false,
+      canAny: () => false,
+    });
+
+    render(<TimeTrackingPage />);
+
+    const mobileCards = await screen.findByTestId('field-worker-time-entry-cards');
+    expect(mobileCards).toHaveClass('md:hidden');
+    expect(mobileCards).toHaveTextContent('HQ');
+    expect(mobileCards).toHaveTextContent('3h 0m');
   });
 
   it('clocks in when no active entry exists', async () => {

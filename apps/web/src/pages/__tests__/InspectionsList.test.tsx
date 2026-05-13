@@ -38,6 +38,8 @@ describe('InspectionsList', () => {
       token: 'token',
       refreshToken: null,
       isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
     });
   });
 
@@ -72,6 +74,25 @@ describe('InspectionsList', () => {
 
     // Table should render with no data rows - the header and empty state will be present
     expect(await screen.findByText('Inspections')).toBeInTheDocument();
+  });
+
+  it('renders mobile inspection cards for field workers', async () => {
+    useAuthStore.setState({
+      user: { id: 'cleaner-1', email: 'cleaner@example.com', fullName: 'Cleaner User', role: 'cleaner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => false,
+      canAny: () => false,
+    });
+    listInspectionsMock.mockResolvedValue(mockPaginatedResponse([mockInspection()]));
+
+    render(<InspectionsList />);
+
+    const mobileCards = await screen.findByTestId('field-worker-inspection-cards');
+    expect(mobileCards).toHaveClass('md:hidden');
+    expect(mobileCards).toHaveTextContent('INSP-202602-0001');
+    expect(mobileCards).toHaveTextContent('Inspector');
   });
 
   it('navigates to /inspections/new on New Inspection click', async () => {

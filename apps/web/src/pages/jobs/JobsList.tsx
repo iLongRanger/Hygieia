@@ -274,6 +274,7 @@ const JobsList = () => {
   const navigate = useNavigate();
   const userRole = useAuthStore((state) => state.user?.role);
   const isSubcontractor = userRole === 'subcontractor';
+  const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
   const canCreateJob = userRole !== 'subcontractor' && userRole !== 'cleaner';
   const canGenerateRecurring = userRole === 'owner' || userRole === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
@@ -784,20 +785,21 @@ const JobsList = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
-              {isSubcontractor ? 'Assigned Jobs' : 'Jobs'}
+              {isFieldWorker ? 'Assigned Jobs' : 'Jobs'}
             </h1>
             <p className="text-sm text-surface-500 dark:text-surface-400">
               {pagination
-                ? `${pagination.total} total ${isSubcontractor ? 'assigned ' : ''}jobs`
+                ? `${pagination.total} total ${isFieldWorker ? 'assigned ' : ''}jobs`
                 : 'Loading...'}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="grid w-full grid-cols-3 items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700 sm:inline-flex sm:w-auto">
             <Button
               variant={viewMode === 'schedule' ? 'primary' : 'ghost'}
               size="sm"
+              className="w-full px-2 sm:w-auto sm:px-3"
               onClick={() => setViewMode('schedule')}
             >
               <CalendarDays className="mr-1.5 h-4 w-4" />
@@ -806,6 +808,7 @@ const JobsList = () => {
             <Button
               variant={viewMode === 'table' ? 'primary' : 'ghost'}
               size="sm"
+              className="w-full px-2 sm:w-auto sm:px-3"
               onClick={() => setViewMode('table')}
             >
               <ListOrdered className="mr-1.5 h-4 w-4" />
@@ -814,6 +817,7 @@ const JobsList = () => {
             <Button
               variant={viewMode === 'calendar' ? 'primary' : 'ghost'}
               size="sm"
+              className="w-full px-2 sm:w-auto sm:px-3"
               onClick={() => setViewMode('calendar')}
             >
               <Calendar className="mr-1.5 h-4 w-4" />
@@ -823,6 +827,7 @@ const JobsList = () => {
           <Button
             variant="secondary"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="mr-1.5 h-4 w-4" />
@@ -1173,20 +1178,38 @@ const JobsList = () => {
                                 </span>
                               </div>
 
-                              <div className="mt-3 flex items-center gap-1">
+                              <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:items-center">
                                 {job.status === 'scheduled' && (
-                                  <Button variant="ghost" size="sm" onClick={() => handleStart(job.id)}>
+                                  <Button
+                                    variant={isFieldWorker ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    className={isFieldWorker ? 'w-full' : undefined}
+                                    onClick={() => handleStart(job.id)}
+                                  >
                                     <Play className="h-3.5 w-3.5" />
+                                    {isFieldWorker && <span>Start Job</span>}
                                   </Button>
                                 )}
                                 {job.status === 'in_progress' && (
-                                  <Button variant="ghost" size="sm" onClick={() => handleComplete(job.id)}>
+                                  <Button
+                                    variant={isFieldWorker ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    className={isFieldWorker ? 'w-full' : undefined}
+                                    onClick={() => handleComplete(job.id)}
+                                  >
                                     <CheckCircle className="h-3.5 w-3.5" />
+                                    {isFieldWorker && <span>Complete Job</span>}
                                   </Button>
                                 )}
                                 {['scheduled', 'in_progress'].includes(job.status) && (
-                                  <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={isFieldWorker ? 'w-full' : undefined}
+                                    onClick={() => handleCancel(job.id)}
+                                  >
                                     <XCircle className="h-3.5 w-3.5 text-danger-500" />
+                                    {isFieldWorker && <span>Cancel</span>}
                                   </Button>
                                 )}
                               </div>
@@ -1204,11 +1227,12 @@ const JobsList = () => {
       ) : viewMode === 'calendar' ? (
         <div className="space-y-3">
           {/* Calendar sub-view toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid w-full grid-cols-3 items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700 sm:inline-flex sm:w-auto">
               <Button
                 variant={calendarView === 'month' ? 'primary' : 'ghost'}
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => handleCalendarViewChange('month')}
               >
                 Month
@@ -1216,6 +1240,7 @@ const JobsList = () => {
               <Button
                 variant={calendarView === 'week' ? 'primary' : 'ghost'}
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => handleCalendarViewChange('week')}
               >
                 Week
@@ -1223,6 +1248,7 @@ const JobsList = () => {
               <Button
                 variant={calendarView === 'day' ? 'primary' : 'ghost'}
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => handleCalendarViewChange('day')}
               >
                 Day
@@ -1230,10 +1256,11 @@ const JobsList = () => {
             </div>
 
             {calendarView !== 'month' && (
-              <div className="inline-flex items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700">
+              <div className="grid w-full grid-cols-2 items-center rounded-lg border border-surface-200 p-1 dark:border-surface-700 sm:inline-flex sm:w-auto">
                 <Button
                   variant={calendarLayout === 'grid' ? 'primary' : 'ghost'}
                   size="sm"
+                  className="w-full sm:w-auto"
                   onClick={() => setCalendarLayout('grid')}
                 >
                   <LayoutGrid className="mr-1 h-3.5 w-3.5" />
@@ -1242,6 +1269,7 @@ const JobsList = () => {
                 <Button
                   variant={calendarLayout === 'list' ? 'primary' : 'ghost'}
                   size="sm"
+                  className="w-full sm:w-auto"
                   onClick={() => setCalendarLayout('list')}
                 >
                   <List className="mr-1 h-3.5 w-3.5" />

@@ -48,6 +48,7 @@ const InspectionsList = () => {
   const navigate = useNavigate();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const userRole = useAuthStore((state) => state.user?.role);
+  const isFieldWorker = userRole === 'subcontractor' || userRole === 'cleaner';
   const canManageTemplates =
     hasPermission(PERMISSIONS.INSPECTIONS_ADMIN) &&
     userRole !== 'subcontractor' &&
@@ -206,11 +207,12 @@ const InspectionsList = () => {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {canManageTemplates && (
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => navigate('/inspection-templates')}
             >
               Templates
@@ -219,13 +221,18 @@ const InspectionsList = () => {
           <Button
             variant="secondary"
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="mr-1.5 h-4 w-4" />
             Filters
           </Button>
           {canCreateInspection && (
-            <Button size="sm" onClick={() => navigate('/inspections/new', { state: { backLabel: 'Inspections', backPath: '/inspections' } })}>
+            <Button
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => navigate('/inspections/new', { state: { backLabel: 'Inspections', backPath: '/inspections' } })}
+            >
               <Plus className="mr-1.5 h-4 w-4" />
               New Inspection
             </Button>
@@ -270,25 +277,84 @@ const InspectionsList = () => {
       )}
 
       {/* Table */}
-      <Card>
-        <Table
-          columns={columns}
-          data={inspections}
-          isLoading={loading}
-          onRowClick={(row) => navigate(`/inspections/${row.id}`, { state: { backLabel: 'Inspections', backPath: '/inspections' } })}
-        />
+      <Card className={isFieldWorker ? 'p-3 md:p-6' : undefined}>
+        {isFieldWorker && (
+          <div data-testid="field-worker-inspection-cards" className="space-y-3 md:hidden">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-36 rounded-xl skeleton" />
+              ))
+            ) : inspections.length === 0 ? (
+              <div className="rounded-xl border-2 border-dashed border-surface-200 p-8 text-center dark:border-surface-700">
+                <ClipboardCheck className="mx-auto h-8 w-8 text-surface-400" />
+                <p className="mt-3 text-sm font-medium text-surface-600 dark:text-surface-400">
+                  No inspections found
+                </p>
+              </div>
+            ) : (
+              inspections.map((inspection) => (
+                <button
+                  key={inspection.id}
+                  type="button"
+                  onClick={() => navigate(`/inspections/${inspection.id}`, { state: { backLabel: 'Inspections', backPath: '/inspections' } })}
+                  className="w-full rounded-xl border border-surface-200 bg-surface-50 p-4 text-left shadow-soft transition hover:border-primary-200 hover:bg-surface-100 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-700 dark:hover:bg-surface-700/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">
+                        {inspection.inspectionNumber}
+                      </p>
+                      <p className="mt-1 break-words text-sm font-medium text-surface-900 dark:text-surface-100">
+                        {inspection.facility.name}
+                      </p>
+                    </div>
+                    <Badge variant={getStatusVariant(inspection.status)} size="sm">
+                      {inspection.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm text-surface-600 dark:text-surface-300">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-surface-500">Date</span>
+                      <span>{new Date(inspection.scheduledDate.split('T')[0] + 'T00:00:00').toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-surface-500">Inspector</span>
+                      <span className="text-right">{inspection.inspectorUser.fullName}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-surface-500">Score</span>
+                      <span className="font-medium">
+                        {inspection.overallScore ? `${parseFloat(inspection.overallScore).toFixed(0)}%` : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+        <div className={isFieldWorker ? 'hidden md:block' : undefined}>
+          <Table
+            columns={columns}
+            data={inspections}
+            isLoading={loading}
+            onRowClick={(row) => navigate(`/inspections/${row.id}`, { state: { backLabel: 'Inspections', backPath: '/inspections' } })}
+          />
+        </div>
       </Card>
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-surface-500">
             Page {pagination.page} of {pagination.totalPages}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={pagination.page <= 1}
               onClick={() => updateParam('page', String(pagination.page - 1))}
             >
@@ -297,6 +363,7 @@ const InspectionsList = () => {
             <Button
               variant="secondary"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => updateParam('page', String(pagination.page + 1))}
             >
