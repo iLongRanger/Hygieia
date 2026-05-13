@@ -21,6 +21,12 @@ jest.mock('../../lib/prisma', () => ({
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    emailVerificationChallenge: {
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -120,6 +126,15 @@ describe('authService', () => {
         },
         data: { usedAt: expect.any(Date) },
       });
+    });
+
+    it('allows pending users only for password setup email verification', () => {
+      expect(
+        authService.canIssueEmailVerificationForUserStatus('pending', 'password_setup')
+      ).toBe(true);
+      expect(authService.canIssueEmailVerificationForUserStatus('pending', 'login')).toBe(false);
+      expect(authService.canIssueEmailVerificationForUserStatus('active', 'login')).toBe(true);
+      expect(authService.canIssueEmailVerificationForUserStatus('disabled', 'password_setup')).toBe(false);
     });
   });
 

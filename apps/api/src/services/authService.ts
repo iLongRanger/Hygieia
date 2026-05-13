@@ -195,6 +195,13 @@ export interface EmailChallengeResult {
   expiresInSeconds: number;
 }
 
+export function canIssueEmailVerificationForUserStatus(
+  status: string | null | undefined,
+  purpose: EmailChallengePurpose
+): boolean {
+  return status === 'active' || (purpose === 'password_setup' && status === 'pending');
+}
+
 export interface SmsChallengeResult {
   challengeId: string;
   maskedPhone: string;
@@ -476,7 +483,7 @@ export async function issueEmailVerificationChallenge(
     },
   });
 
-  if (!user || user.status !== 'active') {
+  if (!user || !canIssueEmailVerificationForUserStatus(user.status, purpose)) {
     throw new UnauthorizedError('Unable to send a verification code for this account.');
   }
 
