@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { proposalScheduleFrequencySchema, scheduleWeekdaySchema } from './serviceSchedule';
 
 export const residentialStrategyKeySchema = z.enum([
   'residential_flat_v1',
@@ -68,6 +69,16 @@ const addressSchema = z.object({
   state: z.string().max(100).optional().nullable(),
   postalCode: z.string().max(20).optional().nullable(),
   country: z.string().max(100).optional().nullable(),
+  serviceSchedule: z.object({
+    frequency: proposalScheduleFrequencySchema,
+    days: z.array(scheduleWeekdaySchema).min(1).max(7),
+    allowedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+    allowedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  }).optional(),
+  serviceFrequency: proposalScheduleFrequencySchema.optional(),
+  serviceDays: z.array(scheduleWeekdaySchema).optional(),
+  allowedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  allowedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
 });
 
 const numericRecordSchema = z.record(z.string(), z.number().min(0));

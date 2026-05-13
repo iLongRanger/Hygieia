@@ -40,6 +40,23 @@ export interface ResidentialAddress {
   state?: string | null;
   postalCode?: string | null;
   country?: string | null;
+  serviceSchedule?: {
+    frequency?: string;
+    days?: string[];
+    allowedWindowStart?: string;
+    allowedWindowEnd?: string;
+  };
+  clientServiceSchedule?: {
+    frequency?: string;
+    days?: string[];
+    allowedWindowStart?: string;
+    allowedWindowEnd?: string;
+  };
+  serviceFrequency?: string;
+  serviceDays?: string[];
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  [key: string]: unknown;
 }
 
 export interface ResidentialAddOnDefinition {

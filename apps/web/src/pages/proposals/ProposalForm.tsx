@@ -312,15 +312,14 @@ const parseTimeValue = (value: unknown, fallback: string): string => {
   return TIME_24H_REGEX.test(trimmed) ? trimmed : fallback;
 };
 
-const extractFacilityAddressSchedule = (
-  facility: Facility | undefined
+const extractAddressSchedule = (
+  address: Record<string, unknown> | undefined
 ): {
   frequency?: ProposalScheduleFrequency;
   days?: ServiceScheduleDay[];
   allowedWindowStart?: string;
   allowedWindowEnd?: string;
 } | null => {
-  const address = facility?.address as Record<string, unknown> | undefined;
   if (!address) return null;
 
   const scheduleObj =
@@ -380,6 +379,9 @@ const extractFacilityAddressSchedule = (
     allowedWindowEnd,
   };
 };
+
+const extractFacilityAddressSchedule = (facility: Facility | undefined) =>
+  extractAddressSchedule(facility?.address as Record<string, unknown> | undefined);
 
 const normalizeScheduleDays = (
   days: ServiceScheduleDay[],
@@ -481,6 +483,29 @@ const mapResidentialFrequencyToProposalServiceFrequency = (
     case 'one_time':
     default:
       return 'monthly';
+  }
+};
+
+const mapProposalScheduleToResidentialFrequency = (
+  frequency: ProposalScheduleFrequency
+): ResidentialFrequency => {
+  switch (frequency) {
+    case '1x_week':
+    case '2x_week':
+    case '3x_week':
+    case '4x_week':
+    case '5x_week':
+    case '7x_week':
+      return frequency;
+    case 'daily':
+      return '5x_week';
+    case 'weekly':
+      return '1x_week';
+    case 'biweekly':
+      return 'biweekly';
+    case 'monthly':
+    case 'quarterly':
+      return 'every_4_weeks';
   }
 };
 
@@ -958,10 +983,6 @@ const ProposalForm = () => {
   const residentialScheduleFrequency = useMemo(
     () => mapResidentialFrequencyToProposalSchedule(residentialFrequency),
     [residentialFrequency]
-  );
-  const residentialScheduleOptions = useMemo(
-    () => [{ value: residentialScheduleFrequency, label: getResidentialFrequencyLabel(residentialFrequency) }],
-    [residentialFrequency, residentialScheduleFrequency]
   );
   const residentialScopeGroups = useMemo(
     () => buildResidentialScopeGroups(facilityAreas, facilityTasks),
@@ -1478,7 +1499,14 @@ const ProposalForm = () => {
     };
 
     loadFacilityReviewData();
-  }, [formData.facilityId, isEditMode, isSpecializedProposal, scheduleTouchedByUser, selectedFacility]);
+  }, [
+    formData.facilityId,
+    isEditMode,
+    isSpecializedProposal,
+    scheduleTouchedByUser,
+    selectedFacility,
+    selectedResidentialProperty,
+  ]);
 
   const facilityReview = useMemo(() => {
     const activeAreas = facilityAreas.filter((area) => !area.archivedAt);
@@ -1546,7 +1574,17 @@ const ProposalForm = () => {
     (_tasks: FacilityTask[]) => {
       if (isEditMode || scheduleTouchedByUser || !formData.facilityId) return;
 
-      const addressDefaults = extractFacilityAddressSchedule(selectedFacility);
+      const addressDefaults = isResidentialAccount
+        ? (
+            extractAddressSchedule(selectedResidentialProperty?.serviceAddress as Record<string, unknown> | undefined) ||
+            extractFacilityAddressSchedule(selectedFacility)
+          )
+        : extractFacilityAddressSchedule(selectedFacility);
+
+      if (isResidentialAccount && addressDefaults?.frequency) {
+        setResidentialFrequency(mapProposalScheduleToResidentialFrequency(addressDefaults.frequency));
+      }
+
       setFormData((prev) => {
         const currentFrequency = (prev.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
         const nextFrequency =
@@ -1575,7 +1613,14 @@ const ProposalForm = () => {
         };
       });
     },
-    [formData.facilityId, isEditMode, scheduleTouchedByUser, selectedFacility]
+    [
+      formData.facilityId,
+      isEditMode,
+      isResidentialAccount,
+      scheduleTouchedByUser,
+      selectedFacility,
+      selectedResidentialProperty,
+    ]
   );
 
   const toggleResidentialAddOn = (code: string) => {
@@ -1846,6 +1891,12 @@ const ProposalForm = () => {
         },
       };
     });
+  };
+
+  const handleResidentialScheduleFrequencyChange = (value: string) => {
+    const frequency = value as ProposalScheduleFrequency;
+    setResidentialFrequency(mapProposalScheduleToResidentialFrequency(frequency));
+    handleScheduleFrequencyChange(value);
   };
 
   const toggleScheduleDay = (day: ServiceScheduleDay) => {
@@ -2302,13 +2353,7 @@ const ProposalForm = () => {
                     value={residentialServiceType}
                     onChange={(value) => setResidentialServiceType(value as ResidentialServiceType)}
                     options={RESIDENTIAL_SERVICE_OPTIONS}
-                  />
-                  <Select
-                    label="Residential Frequency"
-                    placeholder="Select frequency"
-                    value={residentialFrequency}
-                    onChange={(value) => setResidentialFrequency(value as ResidentialFrequency)}
-                    options={RESIDENTIAL_FREQUENCY_OPTIONS}
+                    hint="Service frequency is pulled from the selected service location schedule below. Change that schedule only if the client changed their mind."
                   />
                 </>
               ) : (
@@ -2397,7 +2442,7 @@ const ProposalForm = () => {
                 <div className="md:col-span-2">
                   <ClientServiceScheduleCard
                     frequencyValue={residentialScheduleFrequency}
-                    frequencyOptions={residentialScheduleOptions}
+                    frequencyOptions={SCHEDULE_FREQUENCIES}
                     allowedWindowStart={formData.serviceSchedule?.allowedWindowStart || '18:00'}
                     allowedWindowEnd={formData.serviceSchedule?.allowedWindowEnd || '06:00'}
                     dayOptions={SCHEDULE_DAY_OPTIONS}
@@ -2406,7 +2451,7 @@ const ProposalForm = () => {
                       defaultDaysForFrequency(residentialScheduleFrequency)
                     }
                     requiredDays={expectedDaysForFrequency(residentialScheduleFrequency)}
-                    onFrequencyChange={() => {}}
+                    onFrequencyChange={handleResidentialScheduleFrequencyChange}
                     onAllowedWindowStartChange={(value) =>
                       updateServiceSchedule({ allowedWindowStart: value || '00:00' })
                     }

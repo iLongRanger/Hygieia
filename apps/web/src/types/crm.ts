@@ -4,6 +4,23 @@ export interface Address {
   state?: string;
   postalCode?: string;
   country?: string;
+  serviceSchedule?: {
+    frequency?: string;
+    days?: string[];
+    allowedWindowStart?: string;
+    allowedWindowEnd?: string;
+  };
+  clientServiceSchedule?: {
+    frequency?: string;
+    days?: string[];
+    allowedWindowStart?: string;
+    allowedWindowEnd?: string;
+  };
+  serviceFrequency?: string;
+  serviceDays?: string[];
+  allowedWindowStart?: string;
+  allowedWindowEnd?: string;
+  [key: string]: unknown;
 }
 
 export interface ResidentialAccountProfile {

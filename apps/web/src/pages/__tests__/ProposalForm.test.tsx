@@ -137,7 +137,20 @@ const residentialAccount: Account = {
       accountId: 'account-res-1',
       name: 'Willow Main Home',
       facility: { id: 'facility-res-1' },
-      serviceAddress: { city: 'Seattle', state: 'WA' },
+      serviceAddress: {
+        city: 'Seattle',
+        state: 'WA',
+        serviceSchedule: {
+          frequency: '2x_week',
+          days: ['monday', 'thursday'],
+          allowedWindowStart: '18:00',
+          allowedWindowEnd: '06:00',
+        },
+        serviceFrequency: '2x_week',
+        serviceDays: ['monday', 'thursday'],
+        allowedWindowStart: '18:00',
+        allowedWindowEnd: '06:00',
+      },
       homeProfile: {
         homeType: 'single_family',
         squareFeet: 1800,
@@ -915,13 +928,13 @@ describe('ProposalForm', () => {
     await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
     await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
     await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'recurring_standard');
-    await user.selectOptions(await screen.findByLabelText(/residential frequency/i), '2x_week');
     const taxRateInput = screen.getAllByRole('spinbutton', { name: /tax rate/i })[0];
     await user.clear(taxRateInput);
     await user.type(taxRateInput, '5');
 
     expect(await screen.findByLabelText(/residential pricing plan/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/residential frequency/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/cleaning frequency/i)).toHaveValue('2x_week');
+    await user.selectOptions(screen.getByLabelText(/cleaning frequency/i), '3x_week');
     const calculateButton = screen.getByRole('button', { name: /calculate & populate/i });
     expect(calculateButton).toBeEnabled();
 
@@ -944,7 +957,7 @@ describe('ProposalForm', () => {
         expect.objectContaining({
           propertyId: 'property-1',
           serviceType: 'recurring_standard',
-          frequency: '2x_week',
+          frequency: '3x_week',
           pricingPlanId: 'res-plan-1',
         })
       );
@@ -953,9 +966,9 @@ describe('ProposalForm', () => {
           accountId: 'account-res-1',
           facilityId: 'facility-res-1',
           pricingPlanId: null,
-          serviceFrequency: '2x_week',
+          serviceFrequency: '3x_week',
           serviceSchedule: expect.objectContaining({
-            days: ['monday', 'thursday'],
+            days: ['monday', 'wednesday', 'thursday'],
           }),
           proposalServices: expect.arrayContaining([
             expect.objectContaining({
@@ -966,7 +979,7 @@ describe('ProposalForm', () => {
             engine: 'residential_quote_preview_v1',
             residentialPricingPlanId: 'res-plan-1',
             residentialServiceType: 'recurring_standard',
-            residentialFrequency: '2x_week',
+            residentialFrequency: '3x_week',
           }),
         })
       );

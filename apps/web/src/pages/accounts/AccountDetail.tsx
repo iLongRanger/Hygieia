@@ -97,6 +97,16 @@ const DEFAULT_RESIDENTIAL_PROPERTY_FORM: {
     state: '',
     postalCode: '',
     country: 'USA',
+    serviceSchedule: {
+      frequency: '1x_week',
+      days: ['monday'],
+      allowedWindowStart: '18:00',
+      allowedWindowEnd: '06:00',
+    },
+    serviceFrequency: '1x_week',
+    serviceDays: ['monday'],
+    allowedWindowStart: '18:00',
+    allowedWindowEnd: '06:00',
   },
   homeProfile: {
     homeType: 'single_family',
@@ -595,7 +605,10 @@ const AccountDetail = () => {
     setEditingProperty(property);
     setPropertyFormData({
       name: property.name,
-      serviceAddress: property.serviceAddress ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.serviceAddress,
+      serviceAddress: {
+        ...DEFAULT_RESIDENTIAL_PROPERTY_FORM.serviceAddress,
+        ...(property.serviceAddress ?? {}),
+      },
       homeProfile: {
         ...DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile,
         homeType: property.homeProfile?.homeType ?? DEFAULT_RESIDENTIAL_PROPERTY_FORM.homeProfile.homeType,
