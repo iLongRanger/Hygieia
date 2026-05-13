@@ -53,6 +53,7 @@ export interface UserInfo {
 type CreatedSubcontractorUser = Awaited<ReturnType<typeof prisma.user.create>>;
 
 const SALT_ROUNDS = 10;
+const PASSWORD_SET_TOKEN_BYTES = 32;
 
 function resolvePrimaryUserRole(
   roles: { role: { key: string } | null }[]
@@ -68,6 +69,34 @@ export interface PasswordTokenResult {
     email: string;
     fullName: string;
     status: string;
+  };
+}
+
+export function generatePasswordSetToken(): string {
+  return crypto.randomBytes(PASSWORD_SET_TOKEN_BYTES).toString('base64url');
+}
+
+export function hashPasswordSetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export async function createPasswordSetTokenForUser(
+  userId: string,
+  expiresAt: Date
+): Promise<{ token: string; expiresAt: Date }> {
+  const token = generatePasswordSetToken();
+  const tokenHash = hashPasswordSetToken(token);
+  const passwordToken = await prisma.passwordSetToken.create({
+    data: {
+      userId,
+      tokenHash,
+      expiresAt,
+    },
+  });
+
+  return {
+    token,
+    expiresAt: passwordToken.expiresAt,
   };
 }
 
@@ -723,12 +752,10 @@ export async function issuePasswordSetTokenForEmail(
     data: { usedAt: new Date() },
   });
 
-  const passwordToken = await prisma.passwordSetToken.create({
-    data: {
-      userId: user.id,
-      expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
-    },
-  });
+  const passwordToken = await createPasswordSetTokenForUser(
+    user.id,
+    new Date(Date.now() + expiresInHours * 60 * 60 * 1000)
+  );
 
   return {
     token: passwordToken.token,
@@ -749,8 +776,13 @@ export async function consumePasswordSetToken(
     throw new UnauthorizedError(passwordValidation.error ?? 'Invalid password');
   }
 
-  const passwordToken = await prisma.passwordSetToken.findUnique({
-    where: { token },
+  const passwordToken = await prisma.passwordSetToken.findFirst({
+    where: {
+      OR: [
+        { tokenHash: hashPasswordSetToken(token) },
+        { token },
+      ],
+    },
     include: { user: true },
   });
 
@@ -802,8 +834,13 @@ export async function beginPasswordSetVerification(
 ): Promise<
   { required: true } & EmailChallengeResult
 > {
-  const passwordToken = await prisma.passwordSetToken.findUnique({
-    where: { token },
+  const passwordToken = await prisma.passwordSetToken.findFirst({
+    where: {
+      OR: [
+        { tokenHash: hashPasswordSetToken(token) },
+        { token },
+      ],
+    },
     include: {
       user: {
         include: {
@@ -955,12 +992,10 @@ export async function createSubcontractorUser(
     },
   });
 
-  const passwordToken = await prisma.passwordSetToken.create({
-    data: {
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
-    },
-  });
+  const passwordToken = await createPasswordSetTokenForUser(
+    user.id,
+    new Date(Date.now() + 72 * 60 * 60 * 1000)
+  );
 
   return { user, token: passwordToken.token };
 }

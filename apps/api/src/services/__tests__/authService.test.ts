@@ -15,6 +15,12 @@ jest.mock('../../lib/prisma', () => ({
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    passwordSetToken: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -53,6 +59,42 @@ describe('authService', () => {
 
       expect(bcrypt.hash).toHaveBeenCalledWith(password, 10);
       expect(result).toBe(hashedPassword);
+    });
+  });
+
+  describe('password setup tokens', () => {
+    it('hashes setup tokens deterministically', () => {
+      const hash = authService.hashPasswordSetToken('raw-token');
+
+      expect(hash).toHaveLength(64);
+      expect(hash).toBe(authService.hashPasswordSetToken('raw-token'));
+      expect(hash).not.toBe('raw-token');
+    });
+
+    it('stores only the setup token hash when creating a token', async () => {
+      const expiresAt = new Date('2026-05-13T12:00:00.000Z');
+      (prisma.passwordSetToken.create as jest.Mock).mockResolvedValue({
+        id: 'token-record-1',
+        userId: 'user-1',
+        token: 'database-placeholder-token',
+        tokenHash: 'stored-hash',
+        expiresAt,
+      });
+
+      const result = await authService.createPasswordSetTokenForUser('user-1', expiresAt);
+
+      expect(result.token).not.toBe('database-placeholder-token');
+      expect(result.token.length).toBeGreaterThan(30);
+      expect(prisma.passwordSetToken.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-1',
+          tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          expiresAt,
+        },
+      });
+      expect(
+        (prisma.passwordSetToken.create as jest.Mock).mock.calls[0][0].data
+      ).not.toHaveProperty('token');
     });
   });
 

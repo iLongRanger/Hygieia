@@ -6,6 +6,7 @@ import { isEmailConfigured } from '../config/email';
 import { sendNotificationEmail } from './emailService';
 import { requireWebAppBaseUrl } from '../lib/appUrl';
 import { ConflictError } from '../middleware/errorHandler';
+import { createPasswordSetTokenForUser } from './authService';
 
 export interface TeamListParams {
   page?: number;
@@ -480,12 +481,10 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
   }
 
   const baseUrl = requireWebAppBaseUrl();
-  const tokenRecord = await prisma.passwordSetToken.create({
-    data: {
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
-    },
-  });
+  const tokenRecord = await createPasswordSetTokenForUser(
+    user.id,
+    new Date(Date.now() + 72 * 60 * 60 * 1000)
+  );
 
   const setPasswordUrl = `${baseUrl}/auth/set-password?token=${tokenRecord.token}`;
 

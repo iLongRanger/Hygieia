@@ -153,4 +153,51 @@ describe('teamService', () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
+
+  it('resendSubcontractorInvite should create a hashed password setup token', async () => {
+    process.env.WEB_APP_URL = 'https://portal.example.com';
+    delete process.env.FRONTEND_URL;
+    const expiresAt = new Date('2026-05-13T12:00:00.000Z');
+
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({
+      id: 'team-1',
+      name: 'Alpha Team',
+      contactName: 'Alex Alpha',
+      contactEmail: 'alpha@example.com',
+      users: [],
+    });
+    (prisma.role.findUnique as jest.Mock).mockResolvedValue({
+      id: 'role-1',
+      key: 'subcontractor',
+    });
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.create as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'alpha@example.com',
+      teamId: 'team-1',
+      fullName: 'Alex Alpha',
+      status: 'pending',
+      roles: [{ role: { key: 'subcontractor' } }],
+    });
+    (prisma.passwordSetToken.create as jest.Mock).mockResolvedValue({
+      id: 'token-record-1',
+      token: 'database-placeholder-token',
+      expiresAt,
+    });
+
+    const result = await teamService.resendSubcontractorInvite('team-1');
+
+    expect(result.setPasswordUrl).toMatch(/^https:\/\/portal\.example\.com\/auth\/set-password\?token=.+/);
+    expect(result.setPasswordUrl).not.toContain('database-placeholder-token');
+    expect(prisma.passwordSetToken.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-1',
+        tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: expect.any(Date),
+      },
+    });
+    expect(
+      (prisma.passwordSetToken.create as jest.Mock).mock.calls[0][0].data
+    ).not.toHaveProperty('token');
+  });
 });
