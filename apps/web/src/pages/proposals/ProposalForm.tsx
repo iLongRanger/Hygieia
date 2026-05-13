@@ -583,6 +583,49 @@ const buildResidentialScopeGroups = (
     .filter((group) => group.tasks.length > 0);
 };
 
+const buildResidentialHomeProfileForPricing = (
+  profile: ResidentialHomeProfile | null,
+  areas: Area[]
+): ResidentialHomeProfile => {
+  const activeAreas = areas.filter((area) => !area.archivedAt);
+  const bathroomCounts = activeAreas.reduce(
+    (counts, area) => {
+      const label = `${area.name || ''} ${area.areaType?.name || ''}`.toLowerCase();
+      if (!/\b(bath|bathroom|restroom|powder)\b/.test(label)) {
+        return counts;
+      }
+
+      const quantity = Math.max(1, Number(area.quantity) || 1);
+      if (/\b(half|powder)\b/.test(label)) {
+        counts.halfBathrooms += quantity;
+      } else {
+        counts.fullBathrooms += quantity;
+      }
+      return counts;
+    },
+    { fullBathrooms: 0, halfBathrooms: 0 }
+  );
+
+  const hasBathroomAreas = bathroomCounts.fullBathrooms + bathroomCounts.halfBathrooms > 0;
+
+  return {
+    homeType: profile?.homeType || 'single_family',
+    squareFeet: profile?.squareFeet || 0,
+    bedrooms: profile?.bedrooms || 0,
+    fullBathrooms: hasBathroomAreas ? bathroomCounts.fullBathrooms : profile?.fullBathrooms || 0,
+    halfBathrooms: hasBathroomAreas ? bathroomCounts.halfBathrooms : profile?.halfBathrooms || 0,
+    levels: profile?.levels || 1,
+    occupiedStatus: profile?.occupiedStatus || 'occupied',
+    condition: profile?.condition || 'standard',
+    hasPets: profile?.hasPets || false,
+    lastProfessionalCleaning: profile?.lastProfessionalCleaning || '',
+    parkingAccess: profile?.parkingAccess || '',
+    entryNotes: profile?.entryNotes || '',
+    specialInstructions: profile?.specialInstructions || '',
+    isFirstVisit: profile?.isFirstVisit || false,
+  };
+};
+
 const buildResidentialProposalServices = ({
   preview,
   propertyName,
@@ -1356,22 +1399,10 @@ const ProposalForm = () => {
           serviceType: definedResidentialServiceType,
           frequency: residentialFrequency,
           homeAddress: residentialPreviewContext.homeAddress,
-          homeProfile: {
-            homeType: residentialPreviewContext.homeProfile?.homeType || 'single_family',
-            squareFeet: residentialPreviewContext.homeProfile?.squareFeet || 0,
-            bedrooms: residentialPreviewContext.homeProfile?.bedrooms || 0,
-            fullBathrooms: residentialPreviewContext.homeProfile?.fullBathrooms || 0,
-            halfBathrooms: residentialPreviewContext.homeProfile?.halfBathrooms || 0,
-            levels: residentialPreviewContext.homeProfile?.levels || 1,
-            occupiedStatus: residentialPreviewContext.homeProfile?.occupiedStatus || 'occupied',
-            condition: residentialPreviewContext.homeProfile?.condition || 'standard',
-            hasPets: residentialPreviewContext.homeProfile?.hasPets || false,
-            lastProfessionalCleaning: residentialPreviewContext.homeProfile?.lastProfessionalCleaning || '',
-            parkingAccess: residentialPreviewContext.homeProfile?.parkingAccess || '',
-            entryNotes: residentialPreviewContext.homeProfile?.entryNotes || '',
-            specialInstructions: residentialPreviewContext.homeProfile?.specialInstructions || '',
-            isFirstVisit: residentialPreviewContext.homeProfile?.isFirstVisit || false,
-          },
+          homeProfile: buildResidentialHomeProfileForPricing(
+            residentialPreviewContext.homeProfile,
+            facilityAreas
+          ),
           pricingPlanId: selectedResidentialPricingPlanId,
           addOns: residentialAddOns,
         });
@@ -1394,6 +1425,7 @@ const ProposalForm = () => {
     residentialFrequency,
     residentialServiceType,
     residentialPreviewContext,
+    facilityAreas,
     selectedResidentialPricingPlanId,
   ]);
 
@@ -1713,22 +1745,7 @@ const ProposalForm = () => {
           serviceType: definedResidentialServiceType,
           frequency: residentialFrequency,
           homeAddress: context.homeAddress,
-          homeProfile: {
-            homeType: context.homeProfile?.homeType || 'single_family',
-            squareFeet: context.homeProfile?.squareFeet || 0,
-            bedrooms: context.homeProfile?.bedrooms || 0,
-            fullBathrooms: context.homeProfile?.fullBathrooms || 0,
-            halfBathrooms: context.homeProfile?.halfBathrooms || 0,
-            levels: context.homeProfile?.levels || 1,
-            occupiedStatus: context.homeProfile?.occupiedStatus || 'occupied',
-            condition: context.homeProfile?.condition || 'standard',
-            hasPets: context.homeProfile?.hasPets || false,
-            lastProfessionalCleaning: context.homeProfile?.lastProfessionalCleaning || '',
-            parkingAccess: context.homeProfile?.parkingAccess || '',
-            entryNotes: context.homeProfile?.entryNotes || '',
-            specialInstructions: context.homeProfile?.specialInstructions || '',
-            isFirstVisit: context.homeProfile?.isFirstVisit || false,
-          },
+          homeProfile: buildResidentialHomeProfileForPricing(context.homeProfile, facilityAreas),
           pricingPlanId: selectedResidentialPricingPlanId,
           addOns: residentialAddOns,
         });
