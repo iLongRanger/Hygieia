@@ -11,6 +11,7 @@ import {
   logout,
   logoutAll,
   issuePasswordSetTokenForEmail,
+  buildPasswordResetUrl,
   consumePasswordSetToken,
   changeOwnPassword,
   verifyEmailVerificationChallenge,
@@ -170,7 +171,7 @@ router.post(
       if (tokenResult && isEmailConfigured()) {
         try {
           const baseUrl = requireWebAppBaseUrl();
-          const resetUrl = `${baseUrl}/auth/reset-password?token=${tokenResult.token}`;
+          const resetUrl = buildPasswordResetUrl(baseUrl, tokenResult.token);
           await sendNotificationEmail(
             tokenResult.user.email,
             buildPasswordResetSubject(),

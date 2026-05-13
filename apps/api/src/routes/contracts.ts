@@ -67,7 +67,7 @@ import {
   buildContractAmendmentSentSubject,
 } from '../templates/contractAmendmentSent';
 import { buildSubcontractorWelcomeSubject, buildSubcontractorWelcomeHtml } from '../templates/subcontractorWelcome';
-import { createSubcontractorUser } from '../services/authService';
+import { buildPasswordSetUrl, createSubcontractorUser } from '../services/authService';
 import { prisma } from '../lib/prisma';
 import logger from '../lib/logger';
 import type { ZodError } from 'zod';
@@ -1405,7 +1405,7 @@ router.patch(
               if (!webAppUrl) {
                 logger.warn('Skipping subcontractor welcome email because WEB_APP_URL/FRONTEND_URL is not configured');
               } else if (isEmailConfigured()) {
-                const setPasswordUrl = `${webAppUrl}/auth/set-password?token=${provisioned.token}`;
+                const setPasswordUrl = buildPasswordSetUrl(webAppUrl, provisioned.token);
                 await sendNotificationEmail(
                   team.contactEmail,
                   buildSubcontractorWelcomeSubject(),

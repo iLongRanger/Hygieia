@@ -73,7 +73,7 @@ export interface PasswordTokenResult {
 }
 
 export function generatePasswordSetToken(): string {
-  return crypto.randomBytes(PASSWORD_SET_TOKEN_BYTES).toString('base64url');
+  return crypto.randomBytes(PASSWORD_SET_TOKEN_BYTES).toString('hex');
 }
 
 export function hashPasswordSetToken(token: string): string {
@@ -98,6 +98,30 @@ export async function createPasswordSetTokenForUser(
     token,
     expiresAt: passwordToken.expiresAt,
   };
+}
+
+export async function revokeActivePasswordSetTokensForUser(userId: string): Promise<void> {
+  const now = new Date();
+  await prisma.passwordSetToken.updateMany({
+    where: {
+      userId,
+      usedAt: null,
+      expiresAt: { gt: now },
+    },
+    data: { usedAt: now },
+  });
+}
+
+export function buildPasswordSetUrl(baseUrl: string, token: string): string {
+  const url = new URL('/auth/set-password', baseUrl);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
+export function buildPasswordResetUrl(baseUrl: string, token: string): string {
+  const url = new URL('/auth/reset-password', baseUrl);
+  url.searchParams.set('token', token);
+  return url.toString();
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -743,14 +767,7 @@ export async function issuePasswordSetTokenForEmail(
     return null;
   }
 
-  await prisma.passwordSetToken.updateMany({
-    where: {
-      userId: user.id,
-      usedAt: null,
-      expiresAt: { gt: new Date() },
-    },
-    data: { usedAt: new Date() },
-  });
+  await revokeActivePasswordSetTokensForUser(user.id);
 
   const passwordToken = await createPasswordSetTokenForUser(
     user.id,

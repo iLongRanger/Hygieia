@@ -6,7 +6,11 @@ import { isEmailConfigured } from '../config/email';
 import { sendNotificationEmail } from './emailService';
 import { requireWebAppBaseUrl } from '../lib/appUrl';
 import { ConflictError } from '../middleware/errorHandler';
-import { createPasswordSetTokenForUser } from './authService';
+import {
+  buildPasswordSetUrl,
+  createPasswordSetTokenForUser,
+  revokeActivePasswordSetTokensForUser,
+} from './authService';
 
 export interface TeamListParams {
   page?: number;
@@ -481,12 +485,14 @@ export async function resendSubcontractorInvite(teamId: string): Promise<{
   }
 
   const baseUrl = requireWebAppBaseUrl();
+  await revokeActivePasswordSetTokensForUser(user.id);
+
   const tokenRecord = await createPasswordSetTokenForUser(
     user.id,
     new Date(Date.now() + 72 * 60 * 60 * 1000)
   );
 
-  const setPasswordUrl = `${baseUrl}/auth/set-password?token=${tokenRecord.token}`;
+  const setPasswordUrl = buildPasswordSetUrl(baseUrl, tokenRecord.token);
 
   let emailSent = false;
   if (isEmailConfigured()) {

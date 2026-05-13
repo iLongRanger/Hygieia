@@ -19,6 +19,7 @@ jest.mock('../../lib/prisma', () => ({
       create: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
   },
@@ -84,7 +85,7 @@ describe('authService', () => {
       const result = await authService.createPasswordSetTokenForUser('user-1', expiresAt);
 
       expect(result.token).not.toBe('database-placeholder-token');
-      expect(result.token.length).toBeGreaterThan(30);
+      expect(result.token).toMatch(/^[a-f0-9]{64}$/);
       expect(prisma.passwordSetToken.create).toHaveBeenCalledWith({
         data: {
           userId: 'user-1',
@@ -95,6 +96,30 @@ describe('authService', () => {
       expect(
         (prisma.passwordSetToken.create as jest.Mock).mock.calls[0][0].data
       ).not.toHaveProperty('token');
+    });
+
+    it('builds encoded setup and reset URLs', () => {
+      expect(authService.buildPasswordSetUrl('https://portal.example.com/app', 'abc+123/==')).toBe(
+        'https://portal.example.com/auth/set-password?token=abc%2B123%2F%3D%3D'
+      );
+      expect(authService.buildPasswordResetUrl('https://portal.example.com', 'abc+123/==')).toBe(
+        'https://portal.example.com/auth/reset-password?token=abc%2B123%2F%3D%3D'
+      );
+    });
+
+    it('revokes active password setup tokens for a user', async () => {
+      (prisma.passwordSetToken.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+      await authService.revokeActivePasswordSetTokensForUser('user-1');
+
+      expect(prisma.passwordSetToken.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          usedAt: null,
+          expiresAt: { gt: expect.any(Date) },
+        },
+        data: { usedAt: expect.any(Date) },
+      });
     });
   });
 

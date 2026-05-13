@@ -36,6 +36,7 @@ jest.mock('../../lib/prisma', () => ({
     },
     passwordSetToken: {
       create: jest.fn(),
+      updateMany: jest.fn(),
     },
   },
 }));
@@ -189,6 +190,16 @@ describe('teamService', () => {
 
     expect(result.setPasswordUrl).toMatch(/^https:\/\/portal\.example\.com\/auth\/set-password\?token=.+/);
     expect(result.setPasswordUrl).not.toContain('database-placeholder-token');
+    const setupToken = new URL(result.setPasswordUrl).searchParams.get('token');
+    expect(setupToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(prisma.passwordSetToken.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        usedAt: null,
+        expiresAt: { gt: expect.any(Date) },
+      },
+      data: { usedAt: expect.any(Date) },
+    });
     expect(prisma.passwordSetToken.create).toHaveBeenCalledWith({
       data: {
         userId: 'user-1',
