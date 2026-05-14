@@ -32,6 +32,7 @@ import { listTeams } from '../../lib/teams';
 import { listUsers } from '../../lib/users';
 import { getDateRange, getWeekRange, getDayRange } from '../../lib/calendar-utils';
 import { extractApiErrorMessage } from '../../lib/api';
+import { requestGeolocation } from '../../lib/geolocation';
 import type { Job, JobSettlementStatus, JobStatus, WorkforceAssignmentType } from '../../types/job';
 import type { Contract } from '../../types/contract';
 import type { Team } from '../../types/team';
@@ -545,11 +546,33 @@ const JobsList = () => {
 
   const handleStart = async (id: string) => {
     try {
-      await startJob(id);
+      let geoLocation = null;
+      if (isFieldWorker) {
+        try {
+          geoLocation = await requestGeolocation();
+        } catch (geoError) {
+          toast.error(extractApiErrorMessage(geoError, 'Failed to get location'));
+          return;
+        }
+      }
+
+      await startJob(id, { geoLocation });
       toast.success('Job started');
       fetchJobs();
     } catch (error) {
       const details = getJobListErrorDetails(error);
+      if (details?.code === 'OUTSIDE_FACILITY_GEOFENCE') {
+        toast.error('You must be at the service location to start this job');
+        return;
+      }
+      if (details?.code === 'CLOCK_IN_LOCATION_REQUIRED') {
+        toast.error('Location is required to start this job');
+        return;
+      }
+      if (details?.code === 'ACTIVE_CLOCK_IN_EXISTS') {
+        toast.error('You already have an active clock-in. Clock out first.');
+        return;
+      }
       const canManagerOverride = ['owner', 'admin', 'manager'].includes(userRole || '');
       if (details?.code === 'OUTSIDE_SERVICE_WINDOW' && canManagerOverride) {
         const confirmed = confirm(

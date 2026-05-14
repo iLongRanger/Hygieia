@@ -51,6 +51,11 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
+const requestGeolocationMock = vi.fn();
+vi.mock('../../lib/geolocation', () => ({
+  requestGeolocation: (...args: unknown[]) => requestGeolocationMock(...args),
+}));
+
 describe('JobsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -178,10 +183,50 @@ describe('JobsList', () => {
       await user.click(startButton);
 
       await waitFor(() => {
-        expect(startJobMock).toHaveBeenCalledWith('job-1');
+        expect(startJobMock).toHaveBeenCalledWith('job-1', { geoLocation: null });
       });
+      expect(requestGeolocationMock).not.toHaveBeenCalled();
       expect(navigateMock).not.toHaveBeenCalledWith('/jobs/job-1', expect.anything());
     }
+  });
+
+  it('start action requests geolocation and passes it for cleaners', async () => {
+    useAuthStore.setState({
+      user: { id: 'cleaner-1', email: 'c@example.com', fullName: 'Christine', role: 'cleaner' },
+      token: 'token',
+      refreshToken: null,
+      isAuthenticated: true,
+      hasPermission: () => true,
+      canAny: () => true,
+    });
+    const geo = { latitude: 37.7749, longitude: -122.4194, accuracy: 10 };
+    requestGeolocationMock.mockResolvedValue(geo);
+
+    const jobs = [
+      mockJob({
+        id: 'job-1',
+        jobNumber: 'JOB-001',
+        status: 'scheduled',
+        assignedToUser: { id: 'cleaner-1', fullName: 'Christine', email: 'c@example.com' },
+      }),
+    ];
+    listJobsMock.mockResolvedValue(mockPaginatedResponse(jobs));
+
+    render(<JobsList />, { initialRoute: '/jobs?view=table' });
+    await screen.findByText('JOB-001');
+
+    const startButton = screen
+      .getAllByRole('button')
+      .find((btn) => btn.querySelector('svg.lucide-play') !== null);
+    expect(startButton).toBeDefined();
+
+    const user = userEvent.setup();
+    await user.click(startButton!);
+
+    await waitFor(() => {
+      expect(requestGeolocationMock).toHaveBeenCalled();
+      expect(startJobMock).toHaveBeenCalledWith('job-1', { geoLocation: geo });
+    });
   });
 
   it('generates recurring jobs from selected contract', async () => {
