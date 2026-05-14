@@ -161,6 +161,15 @@ const formatFrequencyLabel = (frequency: string | null | undefined): string => {
   return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
+const getResidentialVisitPrice = (pricingMeta: unknown) => {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return null;
+  }
+  const value = (pricingMeta as { visitPrice?: unknown }).visitPrice;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+};
+
 const getFrequencyCandidates = (frequency: string | null | undefined): string[] => {
   if (!frequency) return [];
   const normalized = frequency.trim().toLowerCase();
@@ -1032,6 +1041,7 @@ const ProposalDetail = () => {
                   const lines = service.description?.split('\n') || [];
                   const areaInfo = lines[0] || '';
                   const taskGroups = buildTaskGroups(service.description, includedTasks);
+                  const visitPrice = getResidentialVisitPrice(service.pricingMeta);
 
                   return (
                     <div
@@ -1063,6 +1073,11 @@ const ProposalDetail = () => {
                           <div className="text-lg font-semibold text-emerald">
                             {formatCurrency(Number(service.monthlyPrice) || 0)}/month
                           </div>
+                          {visitPrice != null && (
+                            <div className="text-xs text-surface-500 dark:text-surface-400">
+                              {formatCurrency(visitPrice)} per visit
+                            </div>
+                          )}
                           {service.estimatedHours && service.hourlyRate && (
                             <div className="text-sm text-surface-500 dark:text-surface-400">
                               {service.estimatedHours} hrs x{' '}
@@ -1415,6 +1430,9 @@ const ProposalDetail = () => {
                 const showHoursColumn = proposal.proposalServices.some(
                   (service) => service.estimatedHours != null && Number(service.estimatedHours) > 0
                 );
+                const showVisitRateColumn = proposal.proposalServices.some(
+                  (service) => getResidentialVisitPrice(service.pricingMeta) != null
+                );
                 return (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -1425,28 +1443,39 @@ const ProposalDetail = () => {
                             <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Hours</th>
                           )}
                           <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Frequency</th>
+                          {showVisitRateColumn && (
+                            <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Visit Rate</th>
+                          )}
                           <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Monthly</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-surface-200 dark:divide-surface-700">
-                        {proposal.proposalServices.map((svc, idx) => (
-                          <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
-                            <td className="py-2 text-surface-600 dark:text-surface-400">{svc.serviceName}</td>
-                            {showHoursColumn && (
-                              <td className="py-2 text-right text-surface-600 dark:text-surface-400">
-                                {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
+                        {proposal.proposalServices.map((svc, idx) => {
+                          const visitPrice = getResidentialVisitPrice(svc.pricingMeta);
+                          return (
+                            <tr key={idx} className="hover:bg-surface-100 dark:bg-surface-800/10">
+                              <td className="py-2 text-surface-600 dark:text-surface-400">{svc.serviceName}</td>
+                              {showHoursColumn && (
+                                <td className="py-2 text-right text-surface-600 dark:text-surface-400">
+                                  {svc.estimatedHours != null ? `${svc.estimatedHours} hrs` : '-'}
+                                </td>
+                              )}
+                              <td className="py-2 text-right">
+                                <span className="text-surface-600 dark:text-surface-400">
+                                  {formatFrequencyLabel(proposal.serviceFrequency || svc.frequency || svc.serviceType)}
+                                </span>
                               </td>
-                            )}
-                            <td className="py-2 text-right">
-                              <span className="text-surface-600 dark:text-surface-400">
-                                {formatFrequencyLabel(proposal.serviceFrequency || svc.frequency || svc.serviceType)}
-                              </span>
-                            </td>
-                            <td className="py-2 text-right font-medium text-surface-900 dark:text-white">
-                              {formatCurrency(Number(svc.monthlyPrice) || 0)}
-                            </td>
-                          </tr>
-                        ))}
+                              {showVisitRateColumn && (
+                                <td className="py-2 text-right text-surface-600 dark:text-surface-400">
+                                  {visitPrice != null ? `${formatCurrency(visitPrice)}/visit` : '-'}
+                                </td>
+                              )}
+                              <td className="py-2 text-right font-medium text-surface-900 dark:text-white">
+                                {formatCurrency(Number(svc.monthlyPrice) || 0)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-surface-200 dark:border-surface-700">
@@ -1457,6 +1486,7 @@ const ProposalDetail = () => {
                             </td>
                           )}
                           <td />
+                          {showVisitRateColumn && <td />}
                           <td className="pt-2 text-right font-semibold text-emerald">
                             {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.monthlyPrice) || 0), 0))}
                           </td>

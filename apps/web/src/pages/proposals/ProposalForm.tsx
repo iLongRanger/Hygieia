@@ -702,6 +702,7 @@ const buildResidentialProposalServices = ({
   const billingSummary = isRecurringResidentialServiceType(serviceType) && frequency !== 'one_time'
     ? `Monthly bill: ${formatCurrency(billAmount)} (${formatCurrency(billableVisitPrice)} per visit x ${visitsPerMonth.toFixed(2)} visits/month).`
     : `One-time bill: ${formatCurrency(billAmount)}.`;
+  const isRecurringResidential = isRecurringResidentialServiceType(serviceType) && frequency !== 'one_time';
 
   return [{
     serviceName: serviceLabel,
@@ -720,6 +721,13 @@ const buildResidentialProposalServices = ({
         : null,
     ].filter(Boolean).join('\n'),
     includedTasks: [...includedTasks, ...addOnTasks],
+    pricingMeta: {
+      engine: 'residential_quote_preview_v1',
+      billingMode: isRecurringResidential ? 'monthly_recurring' : 'one_time',
+      visitPrice: billableVisitPrice,
+      visitsPerMonth: isRecurringResidential ? visitsPerMonth : 1,
+      monthlyBill: billAmount,
+    },
     sortOrder: 0,
   }];
 };

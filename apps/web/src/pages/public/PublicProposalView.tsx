@@ -66,6 +66,15 @@ const formatHours = (hours: number | null | undefined): string => {
   return `${Math.round(Number(hours))} hrs`;
 };
 
+const getResidentialVisitPrice = (pricingMeta: unknown) => {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return null;
+  }
+  const value = (pricingMeta as { visitPrice?: unknown }).visitPrice;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+};
+
 const formatAddress = (
   address: NonNullable<PublicProposal['facility']>['address']
 ): string => {
@@ -535,6 +544,7 @@ const PublicProposalView: React.FC = () => {
                 const lines = service.description?.split('\n') || [];
                 const areaInfo = lines[0] || '';
                 const taskGroups = buildTaskGroups(service.description, includedTasks);
+                const visitPrice = getResidentialVisitPrice(service.pricingMeta);
 
                 return (
                   <div
@@ -554,6 +564,11 @@ const PublicProposalView: React.FC = () => {
                           {formatCurrency(Number(service.monthlyPrice) || 0)}
                           <span className="text-sm font-normal text-surface-500">/mo</span>
                         </div>
+                        {visitPrice != null && (
+                          <div className="text-sm text-surface-500 mt-0.5">
+                            {formatCurrency(visitPrice)} per visit
+                          </div>
+                        )}
                         {service.estimatedHours != null && Number(service.estimatedHours) > 0 && service.hourlyRate != null && Number(service.hourlyRate) > 0 && (
                           <div className="text-sm text-surface-500 dark:text-surface-400 flex items-center justify-end gap-1 mt-0.5">
                             <Clock className="h-3.5 w-3.5" />
@@ -589,54 +604,72 @@ const PublicProposalView: React.FC = () => {
 
             {/* Services summary table */}
             <div className="bg-surface-50 rounded-lg border border-surface-200 overflow-x-auto">
+              {(() => {
+                const showHoursColumn = proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0);
+                const showVisitRateColumn = proposal.proposalServices.some((s) => getResidentialVisitPrice(s.pricingMeta) != null);
+                return (
               <table className="w-full">
                 <thead style={{ backgroundColor: `${primaryColor}08` }}>
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Service</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Frequency</th>
-                    {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
+                    {showHoursColumn && (
                       <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Hours</th>
+                    )}
+                    {showVisitRateColumn && (
+                      <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Visit Rate</th>
                     )}
                     <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Monthly</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
-                  {proposal.proposalServices.map((service, idx) => (
-                    <tr key={idx}>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-surface-900">{service.serviceName}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-surface-600">
-                        {formatFrequencyLabel(proposal.serviceFrequency || service.frequency)}
-                      </td>
-                      {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
-                        <td className="px-4 py-3 text-right text-sm text-surface-600">
-                          {service.estimatedHours != null && Number(service.estimatedHours) > 0
-                            ? formatHours(Number(service.estimatedHours) || 0)
-                            : '-'}
+                  {proposal.proposalServices.map((service, idx) => {
+                    const visitPrice = getResidentialVisitPrice(service.pricingMeta);
+                    return (
+                      <tr key={idx}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-surface-900">{service.serviceName}</div>
                         </td>
-                      )}
-                      <td className="px-4 py-3 text-right font-medium text-surface-900">
-                        {formatCurrency(Number(service.monthlyPrice) || 0)}
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-4 py-3 text-sm text-surface-600">
+                          {formatFrequencyLabel(proposal.serviceFrequency || service.frequency)}
+                        </td>
+                        {showHoursColumn && (
+                          <td className="px-4 py-3 text-right text-sm text-surface-600">
+                            {service.estimatedHours != null && Number(service.estimatedHours) > 0
+                              ? formatHours(Number(service.estimatedHours) || 0)
+                              : '-'}
+                          </td>
+                        )}
+                        {showVisitRateColumn && (
+                          <td className="px-4 py-3 text-right text-sm text-surface-600">
+                            {visitPrice != null ? `${formatCurrency(visitPrice)}/visit` : '-'}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-right font-medium text-surface-900">
+                          {formatCurrency(Number(service.monthlyPrice) || 0)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-surface-200" style={{ backgroundColor: `${primaryColor}05` }}>
                     <td className="px-4 py-3 font-semibold text-surface-900">Total</td>
                     <td className="px-4 py-3" />
-                    {proposal.proposalServices.some((s) => s.estimatedHours != null && Number(s.estimatedHours) > 0) && (
+                    {showHoursColumn && (
                       <td className="px-4 py-3 text-right text-sm font-medium text-surface-700">
                         {formatHours(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.estimatedHours) || 0), 0))}
                       </td>
                     )}
+                    {showVisitRateColumn && <td className="px-4 py-3" />}
                     <td className="px-4 py-3 text-right font-bold" style={{ color: primaryColor }}>
                       {formatCurrency(proposal.proposalServices.reduce((sum, s) => sum + (Number(s.monthlyPrice) || 0), 0))}
                     </td>
                   </tr>
                 </tfoot>
               </table>
+                );
+              })()}
             </div>
           </div>
         )}

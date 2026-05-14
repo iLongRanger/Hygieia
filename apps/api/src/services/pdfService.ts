@@ -103,6 +103,15 @@ interface QuotationPricingMeta {
   }[];
 }
 
+function getResidentialVisitPrice(pricingMeta: unknown): number | null {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return null;
+  }
+  const value = (pricingMeta as { visitPrice?: unknown }).visitPrice;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
+
 function formatCurrency(amount: PdfNumeric): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -210,6 +219,7 @@ interface ProposalForPdf {
     monthlyPrice: PdfNumeric;
     description?: string | null;
     includedTasks?: unknown;
+    pricingMeta?: unknown;
   }[];
   pricingSnapshot?: unknown;
 }
@@ -356,10 +366,18 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       const areaStack: Content[] = [];
 
       // Area header row: name + price
+      const visitPrice = getResidentialVisitPrice(service.pricingMeta);
       areaStack.push({
         columns: [
           { text: service.serviceName, bold: true, fontSize: 11, color: COLORS.primary },
-          { text: formatCurrency(service.monthlyPrice) + '/month', alignment: 'right' as const, bold: true, fontSize: 11, color: COLORS.primary },
+          {
+            stack: [
+              { text: formatCurrency(service.monthlyPrice) + '/month', alignment: 'right' as const, bold: true, fontSize: 11, color: COLORS.primary },
+              ...(visitPrice != null
+                ? [{ text: `${formatCurrency(visitPrice)} per visit`, alignment: 'right' as const, fontSize: 8, color: COLORS.lightText }]
+                : []),
+            ],
+          },
         ],
         margin: [0, 0, 0, 2] as [number, number, number, number],
       });
@@ -469,11 +487,13 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     const hasAnyHours = proposal.proposalServices.some(
       (service) => service.estimatedHours != null && Number(service.estimatedHours) > 0
     );
+    const hasVisitRates = proposal.proposalServices.some((service) => getResidentialVisitPrice(service.pricingMeta) != null);
     const areasBody: TableCell[][] = [[
       { text: 'Service', style: 'tableHeader' },
       { text: 'Frequency', style: 'tableHeader' },
       ...(hasAnyHours ? [{ text: 'Hours', style: 'tableHeader', alignment: 'right' as const }] : []),
-      { text: 'Amount', style: 'tableHeader', alignment: 'right' as const },
+      ...(hasVisitRates ? [{ text: 'Visit Rate', style: 'tableHeader', alignment: 'right' as const }] : []),
+      { text: 'Monthly', style: 'tableHeader', alignment: 'right' as const },
     ]];
 
     let totalHours = 0;
@@ -481,6 +501,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
 
     for (const service of proposal.proposalServices) {
       const hours = service.estimatedHours ? Number(service.estimatedHours) : 0;
+      const visitPrice = getResidentialVisitPrice(service.pricingMeta);
       totalHours += hours;
       totalMonthly += Number(service.monthlyPrice);
 
@@ -488,6 +509,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         { text: service.serviceName, fontSize: 9 },
         { text: formatProposalPdfFrequencyLabel(proposalFrequency ?? service.frequency), fontSize: 9 },
         ...(hasAnyHours ? [{ text: hours > 0 ? formatWholeHours(hours) : '-', alignment: 'right' as const, fontSize: 9 }] : []),
+        ...(hasVisitRates ? [{ text: visitPrice != null ? `${formatCurrency(visitPrice)}/visit` : '-', alignment: 'right' as const, fontSize: 9 }] : []),
         { text: formatCurrency(service.monthlyPrice), alignment: 'right' as const, fontSize: 9 },
       ]);
     }
@@ -497,6 +519,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       { text: 'Total', bold: true, fontSize: 9 },
       { text: '', fontSize: 9 },
       ...(hasAnyHours ? [{ text: totalHours > 0 ? formatWholeHours(totalHours) : '', alignment: 'right' as const, bold: true, fontSize: 9 }] : []),
+      ...(hasVisitRates ? [{ text: '', fontSize: 9 }] : []),
       { text: formatCurrency(totalMonthly), alignment: 'right' as const, bold: true, fontSize: 9 },
     ]);
 
@@ -505,7 +528,9 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         headerRows: 1,
         dontBreakRows: true,
         keepWithHeaderRows: 1,
-        widths: hasAnyHours ? ['*', 100, 60, 90] : ['*', 130, 90],
+        widths: hasAnyHours
+          ? (hasVisitRates ? ['*', 90, 50, 75, 80] : ['*', 100, 60, 90])
+          : (hasVisitRates ? ['*', 100, 75, 80] : ['*', 130, 90]),
         body: areasBody,
       },
       layout: {
