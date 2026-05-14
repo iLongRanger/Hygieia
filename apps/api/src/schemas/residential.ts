@@ -370,7 +370,7 @@ export const residentialHomeProfileSchema = z.object({
   parkingAccess: z.string().max(255).optional().nullable(),
   entryNotes: z.string().max(1000).optional().nullable(),
   specialInstructions: z.string().max(2000).optional().nullable(),
-  isFirstVisit: z.boolean().optional().default(false),
+  isFirstVisit: z.boolean().optional().nullable(),
 });
 
 export const createResidentialQuoteSchema = z.object({

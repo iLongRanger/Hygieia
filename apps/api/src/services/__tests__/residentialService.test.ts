@@ -366,3 +366,160 @@ describe('residentialService pipeline updates', () => {
     expect(autoSetLeadStatusForAccount).toHaveBeenCalledWith('account-1', 'lost');
   });
 });
+
+describe('calculateResidentialQuotePreview', () => {
+  const pricingPlan = {
+    id: 'plan-1',
+    name: 'Residential Standard',
+    strategyKey: 'residential_flat_v1',
+    settings: {
+      strategyKey: 'residential_flat_v1',
+      homeTypeBasePrices: {
+        apartment: 140,
+        condo: 160,
+        townhouse: 175,
+        single_family: 190,
+      },
+      sqftBrackets: [
+        { upTo: 1000, adjustment: 0 },
+        { upTo: 1500, adjustment: 30 },
+        { upTo: null, adjustment: 80 },
+      ],
+      bedroomAdjustments: {
+        '0': 0,
+        '1': 0,
+        '2': 20,
+        '3': 35,
+      },
+      bathroomAdjustments: {
+        fullBath: 28,
+        halfBath: 16,
+      },
+      levelAdjustments: {
+        '1': 0,
+        '2': 20,
+      },
+      conditionMultipliers: {
+        light: 0.92,
+        standard: 1,
+        heavy: 1.28,
+      },
+      serviceTypeMultipliers: {
+        recurring_standard: 1,
+        one_time_standard: 1.12,
+        deep_clean: 1.38,
+        move_in_out: 1.48,
+        turnover: 1.16,
+        post_construction: 1.75,
+      },
+      frequencyDiscounts: {
+        '1x_week': 0.12,
+        '2x_week': 0.14,
+        '3x_week': 0.16,
+        '4x_week': 0.18,
+        '5x_week': 0.2,
+        '7x_week': 0.22,
+        weekly: 0.12,
+        biweekly: 0.08,
+        every_4_weeks: 0.03,
+        one_time: 0,
+      },
+      firstCleanSurcharge: {
+        enabled: true,
+        type: 'percent',
+        value: 0.15,
+        appliesTo: ['recurring_standard', 'deep_clean'],
+      },
+      addOnPrices: {},
+      minimumPrice: 160,
+      estimatedHours: {
+        baseHoursByHomeType: {
+          apartment: 1.6,
+          condo: 1.9,
+          townhouse: 2.2,
+          single_family: 2.5,
+        },
+        minutesPerBedroom: 12,
+        minutesPerFullBath: 18,
+        minutesPerHalfBath: 10,
+        minutesPer1000SqFt: 42,
+        conditionMultipliers: {
+          light: 0.9,
+          standard: 1,
+          heavy: 1.35,
+        },
+        serviceTypeMultipliers: {
+          recurring_standard: 1,
+          one_time_standard: 1.1,
+          deep_clean: 1.45,
+          move_in_out: 1.55,
+          turnover: 1.12,
+          post_construction: 1.8,
+        },
+        addOnMinutes: {},
+      },
+      manualReviewRules: {
+        maxAutoSqft: 3500,
+        heavyConditionRequiresReview: true,
+        postConstructionRequiresReview: true,
+        maxAddOnsBeforeReview: 5,
+      },
+    },
+  } as any;
+
+  const input = {
+    propertyId: 'property-1',
+    serviceType: 'recurring_standard',
+    frequency: '1x_week',
+    homeAddress: null,
+    homeProfile: {
+      homeType: 'single_family',
+      squareFeet: 1200,
+      bedrooms: 2,
+      fullBathrooms: 1,
+      halfBathrooms: 0,
+      levels: 1,
+      condition: 'standard',
+      isFirstVisit: false,
+    },
+    pricingPlanId: null,
+    addOns: [],
+  } as any;
+
+  it('calculates when all pricing inputs are explicit', () => {
+    const preview = residentialService.calculateResidentialQuotePreview(input, pricingPlan);
+
+    expect(preview.breakdown.finalTotal).toBeGreaterThanOrEqual(160);
+    expect(preview.breakdown.firstCleanSurcharge).toBe(0);
+  });
+
+  it('rejects missing required residential pricing inputs instead of assuming values', () => {
+    expect(() =>
+      residentialService.calculateResidentialQuotePreview(
+        {
+          ...input,
+          homeProfile: {
+            ...input.homeProfile,
+            squareFeet: null,
+          },
+        },
+        pricingPlan
+      )
+    ).toThrow('Square feet is required before residential pricing can be calculated');
+  });
+
+  it('rejects missing first-visit selection instead of assuming no surcharge', () => {
+    expect(() =>
+      residentialService.calculateResidentialQuotePreview(
+        {
+          ...input,
+          homeProfile: {
+            ...input.homeProfile,
+            isFirstVisit: null,
+          },
+        },
+        pricingPlan
+      )
+    ).toThrow('First visit selection is required before residential pricing can be calculated');
+  });
+});

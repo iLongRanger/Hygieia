@@ -602,6 +602,24 @@ function buildManualReviewReasons(
   return reasons;
 }
 
+function requireNumber(value: unknown, fieldName: string): number {
+  if (value === null || value === undefined || value === '') {
+    throw new BadRequestError(`${fieldName} is required before residential pricing can be calculated`);
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    throw new BadRequestError(`${fieldName} must be a valid number before residential pricing can be calculated`);
+  }
+  return numeric;
+}
+
+function requireString<T extends string>(value: T | null | undefined, fieldName: string): T {
+  if (!value) {
+    throw new BadRequestError(`${fieldName} is required before residential pricing can be calculated`);
+  }
+  return value;
+}
+
 function getConfidenceLevel(manualReviewReasons: string[], squareFeet: number, maxAutoSqft: number) {
   if (manualReviewReasons.length > 0) {
     return 'low';
@@ -1264,13 +1282,17 @@ export function calculateResidentialQuotePreview(
 ) {
   const settings = pricingPlan.settings as ResidentialPricingPlanSettings;
   const { homeProfile } = input;
-  const homeType = homeProfile.homeType ?? 'single_family';
-  const squareFeet = toNumber(homeProfile.squareFeet);
-  const bedrooms = toNumber(homeProfile.bedrooms);
-  const fullBathrooms = toNumber(homeProfile.fullBathrooms);
-  const halfBathrooms = toNumber(homeProfile.halfBathrooms);
-  const levels = toNumber(homeProfile.levels, 1);
-  const condition = homeProfile.condition ?? 'standard';
+  const homeType = requireString(homeProfile.homeType, 'Home type');
+  const squareFeet = requireNumber(homeProfile.squareFeet, 'Square feet');
+  const bedrooms = requireNumber(homeProfile.bedrooms, 'Bedroom count');
+  const fullBathrooms = requireNumber(homeProfile.fullBathrooms, 'Full bathroom count');
+  const halfBathrooms = requireNumber(homeProfile.halfBathrooms, 'Half bathroom count');
+  const levels = requireNumber(homeProfile.levels, 'Level count');
+  const condition = requireString(homeProfile.condition, 'Home condition');
+  const isFirstVisit = homeProfile.isFirstVisit;
+  if (typeof isFirstVisit !== 'boolean') {
+    throw new BadRequestError('First visit selection is required before residential pricing can be calculated');
+  }
 
   const baseHomePrice = settings.homeTypeBasePrices[homeType];
   const sqftAdjustment = getBracketAdjustment(settings.sqftBrackets, squareFeet);
@@ -1299,7 +1321,7 @@ export function calculateResidentialQuotePreview(
 
   const firstCleanSurchargeEnabled =
     settings.firstCleanSurcharge.enabled &&
-    Boolean(homeProfile.isFirstVisit) &&
+    isFirstVisit &&
     settings.firstCleanSurcharge.appliesTo.includes(input.serviceType);
   const firstCleanSurcharge = firstCleanSurchargeEnabled
     ? settings.firstCleanSurcharge.type === 'flat'

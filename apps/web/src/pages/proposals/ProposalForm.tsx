@@ -609,20 +609,20 @@ const buildResidentialHomeProfileForPricing = (
   const hasBathroomAreas = bathroomCounts.fullBathrooms + bathroomCounts.halfBathrooms > 0;
 
   return {
-    homeType: profile?.homeType || 'single_family',
-    squareFeet: profile?.squareFeet || 0,
-    bedrooms: profile?.bedrooms || 0,
-    fullBathrooms: hasBathroomAreas ? bathroomCounts.fullBathrooms : profile?.fullBathrooms || 0,
-    halfBathrooms: hasBathroomAreas ? bathroomCounts.halfBathrooms : profile?.halfBathrooms || 0,
-    levels: profile?.levels || 1,
-    occupiedStatus: profile?.occupiedStatus || 'occupied',
-    condition: profile?.condition || 'standard',
-    hasPets: profile?.hasPets || false,
-    lastProfessionalCleaning: profile?.lastProfessionalCleaning || '',
-    parkingAccess: profile?.parkingAccess || '',
-    entryNotes: profile?.entryNotes || '',
-    specialInstructions: profile?.specialInstructions || '',
-    isFirstVisit: profile?.isFirstVisit || false,
+    homeType: profile?.homeType ?? null,
+    squareFeet: profile?.squareFeet ?? null,
+    bedrooms: profile?.bedrooms ?? null,
+    fullBathrooms: hasBathroomAreas ? bathroomCounts.fullBathrooms : profile?.fullBathrooms ?? null,
+    halfBathrooms: hasBathroomAreas ? bathroomCounts.halfBathrooms : profile?.halfBathrooms ?? null,
+    levels: profile?.levels ?? null,
+    occupiedStatus: profile?.occupiedStatus ?? null,
+    condition: profile?.condition ?? null,
+    hasPets: profile?.hasPets ?? null,
+    lastProfessionalCleaning: profile?.lastProfessionalCleaning ?? null,
+    parkingAccess: profile?.parkingAccess ?? null,
+    entryNotes: profile?.entryNotes ?? null,
+    specialInstructions: profile?.specialInstructions ?? null,
+    isFirstVisit: profile?.isFirstVisit ?? null,
   };
 };
 
