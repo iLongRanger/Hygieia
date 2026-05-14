@@ -8,7 +8,7 @@ import {
   validateGeofence,
 } from '../lib/geofence';
 import {
-  extractFacilityTimezone,
+  resolveFacilityTimezone,
   normalizeServiceSchedule,
   validateServiceWindow,
 } from './serviceScheduleService';
@@ -484,12 +484,9 @@ export async function clockIn(input: ClockInInput) {
       : null;
 
     if (schedule) {
-      const timezone = extractFacilityTimezone(
+      const timezone = resolveFacilityTimezone(
         scheduleSource?.facility?.address ?? linkedJob?.facility?.address
       );
-      if (!timezone) {
-        throw new BadRequestError('Facility timezone is required for schedule enforcement');
-      }
 
       const scheduleCheck = validateServiceWindow(schedule, timezone, new Date());
       if (!scheduleCheck.allowed) {

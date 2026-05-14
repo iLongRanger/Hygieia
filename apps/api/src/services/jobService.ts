@@ -13,6 +13,7 @@ import {
 } from './jobSettlementService';
 import {
   extractFacilityTimezone,
+  resolveFacilityTimezone,
   normalizeServiceSchedule,
   type NormalizedServiceSchedule,
   type ServiceWeekday,
@@ -1359,14 +1360,9 @@ export async function startJob(id: string, userId: string, options: StartJobOpti
       )
     : null;
   if (normalizedSchedule) {
-    const timezone = extractFacilityTimezone(
+    const timezone = resolveFacilityTimezone(
       existing.contract?.facility?.address ?? existing.facility?.address
     );
-    if (!timezone) {
-      throw new BadRequestError(
-        'Facility timezone is required for schedule enforcement'
-      );
-    }
 
     const scheduleCheck = validateServiceWindow(normalizedSchedule, timezone, new Date());
     if (!scheduleCheck.allowed) {

@@ -342,6 +342,18 @@ export function extractFacilityTimezone(address: unknown): string | null {
   return null;
 }
 
+export function resolveFacilityTimezone(address: unknown): string {
+  const extracted = extractFacilityTimezone(address);
+  if (extracted) return extracted;
+  try {
+    const serverTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (serverTz && isValidTimezone(serverTz)) return serverTz;
+  } catch {
+    // fall through
+  }
+  return 'UTC';
+}
+
 function isValidTimezone(value: string): boolean {
   try {
     // Throws RangeError for invalid timezone names.

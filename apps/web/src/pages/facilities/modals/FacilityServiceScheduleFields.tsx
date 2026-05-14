@@ -2,6 +2,39 @@ import { Select } from '../../../components/ui/Select';
 import { TimeSelect } from '../../../components/ui/TimeSelect';
 import type { Address } from '../../../types/facility';
 
+const COMMON_TIMEZONES: { value: string; label: string }[] = [
+  { value: 'America/New_York', label: 'Eastern (America/New_York)' },
+  { value: 'America/Chicago', label: 'Central (America/Chicago)' },
+  { value: 'America/Denver', label: 'Mountain (America/Denver)' },
+  { value: 'America/Phoenix', label: 'Mountain - no DST (America/Phoenix)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (America/Los_Angeles)' },
+  { value: 'America/Anchorage', label: 'Alaska (America/Anchorage)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii (Pacific/Honolulu)' },
+  { value: 'America/Toronto', label: 'Canada Eastern (America/Toronto)' },
+  { value: 'America/Vancouver', label: 'Canada Pacific (America/Vancouver)' },
+  { value: 'America/Mexico_City', label: 'Mexico City (America/Mexico_City)' },
+  { value: 'UTC', label: 'UTC' },
+];
+
+function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+function buildTimezoneOptions(currentValue: string): { value: string; label: string }[] {
+  const browserTz = getBrowserTimezone();
+  const options = [...COMMON_TIMEZONES];
+  for (const tz of [browserTz, currentValue]) {
+    if (tz && !options.some((opt) => opt.value === tz)) {
+      options.unshift({ value: tz, label: tz });
+    }
+  }
+  return options;
+}
+
 type ServiceScheduleDay =
   | 'monday'
   | 'tuesday'
@@ -113,6 +146,11 @@ export function FacilityServiceScheduleFields({
 }: FacilityServiceScheduleFieldsProps): React.JSX.Element {
   const schedule = readSchedule(address);
   const requiredDays = getRequiredDaysForFrequency(schedule.frequency);
+  const currentTimezone =
+    (address?.timezone as string | undefined) ||
+    (address?.timeZone as string | undefined) ||
+    getBrowserTimezone();
+  const timezoneOptions = buildTimezoneOptions(currentTimezone);
 
   const updateSchedule = (patch: Partial<FacilitySchedule>) => {
     const nextSchedule = { ...schedule, ...patch };
@@ -150,6 +188,18 @@ export function FacilityServiceScheduleFields({
             days: getDefaultDaysForFrequency(value),
           })
         }
+      />
+      <Select
+        label="Facility Timezone"
+        options={timezoneOptions}
+        value={currentTimezone}
+        onChange={(value) =>
+          onChange({
+            ...(address || {}),
+            timezone: value,
+          })
+        }
+        hint="Used to enforce the service window when starting or clocking in to a job."
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <TimeSelect
