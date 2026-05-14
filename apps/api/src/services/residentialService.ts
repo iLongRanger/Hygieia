@@ -620,6 +620,10 @@ function requireString<T extends string>(value: T | null | undefined, fieldName:
   return value;
 }
 
+function shouldApplyRecurringDiscount(input: ResidentialQuotePreviewInput) {
+  return input.serviceType === 'recurring_standard' && input.frequency !== 'one_time';
+}
+
 function getConfidenceLevel(manualReviewReasons: string[], squareFeet: number, maxAutoSqft: number) {
   if (manualReviewReasons.length > 0) {
     return 'low';
@@ -1314,10 +1318,9 @@ export function calculateResidentialQuotePreview(
   const serviceMultiplier = settings.serviceTypeMultipliers[input.serviceType];
   const serviceSubtotal = baseSubtotal * conditionMultiplier * serviceMultiplier;
   const frequencyDiscountRate = getResidentialFrequencyDiscount(settings, input.frequency);
-  const recurringDiscount =
-    input.frequency === 'one_time'
-      ? 0
-      : serviceSubtotal * frequencyDiscountRate;
+  const recurringDiscount = shouldApplyRecurringDiscount(input)
+    ? serviceSubtotal * frequencyDiscountRate
+    : 0;
 
   const firstCleanSurchargeEnabled =
     settings.firstCleanSurcharge.enabled &&
@@ -1397,8 +1400,8 @@ export function calculateResidentialQuotePreview(
       })),
       guidance: [
         `${fullBathrooms} full bath${fullBathrooms === 1 ? '' : 's'} drives a ${bathroomAdjustment.toFixed(0)} price adjustment.`,
-        input.frequency === 'one_time'
-          ? 'One-time service keeps the full per-visit rate.'
+        !shouldApplyRecurringDiscount(input)
+          ? 'One-time or non-recurring service keeps the full per-visit rate.'
           : `${input.frequency.replace(/_/g, ' ')} frequency applies a ${Math.round(
               frequencyDiscountRate * 100
             )}% recurring discount.`,

@@ -522,4 +522,17 @@ describe('calculateResidentialQuotePreview', () => {
       )
     ).toThrow('First visit selection is required before residential pricing can be calculated');
   });
+
+  it('does not apply recurring discounts to one-time residential service types', () => {
+    const preview = residentialService.calculateResidentialQuotePreview(
+      {
+        ...input,
+        serviceType: 'one_time_standard',
+        frequency: '1x_week',
+      },
+      pricingPlan
+    );
+
+    expect(preview.breakdown.recurringDiscount).toBe(0);
+  });
 });

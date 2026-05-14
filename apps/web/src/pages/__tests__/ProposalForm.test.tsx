@@ -1034,6 +1034,25 @@ describe('ProposalForm', () => {
     });
   });
 
+  it('uses one-time frequency when one-time residential service is selected', async () => {
+    const user = userEvent.setup();
+    render(<ProposalForm />);
+
+    await user.selectOptions(await screen.findByLabelText(/proposal type/i), 'residential');
+    await user.selectOptions(await screen.findByLabelText(/account/i), 'account-res-1');
+    await user.selectOptions(await screen.findByLabelText(/service location/i), 'facility-res-1');
+    await user.selectOptions(await screen.findByLabelText(/residential service type/i), 'one_time_standard');
+
+    await waitFor(() => {
+      expect(previewResidentialQuoteMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serviceType: 'one_time_standard',
+          frequency: 'one_time',
+        })
+      );
+    });
+  });
+
   it('resolves residential service location from live facility data when preload data is incomplete', async () => {
     const user = userEvent.setup();
     listAccountsMock.mockResolvedValue({

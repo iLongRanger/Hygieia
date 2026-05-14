@@ -525,6 +525,9 @@ const mapResidentialServiceTypeToProposalServiceType = (
   }
 };
 
+const isRecurringResidentialServiceType = (serviceType: ResidentialServiceType) =>
+  serviceType === 'recurring_standard';
+
 const defaultResidentialProposalTitle = (
   serviceType: ResidentialServiceType,
   locationName: string | null | undefined
@@ -1916,6 +1919,53 @@ const ProposalForm = () => {
     handleScheduleFrequencyChange(value);
   };
 
+  const handleResidentialServiceTypeChange = (value: string) => {
+    const serviceType = value as ResidentialServiceType;
+    setResidentialServiceType(serviceType);
+
+    if (!isRecurringResidentialServiceType(serviceType)) {
+      setResidentialFrequency('one_time');
+      setFormData((prev) => ({
+        ...prev,
+        serviceFrequency: 'monthly',
+        serviceSchedule: {
+          ...(prev.serviceSchedule || createDefaultSchedule('monthly')),
+          days: [],
+          windowAnchor: 'start_day',
+          timezoneSource: 'facility',
+        },
+      }));
+      return;
+    }
+
+    if (residentialFrequency !== 'one_time') {
+      return;
+    }
+
+    const addressDefaults =
+      extractAddressSchedule(selectedResidentialProperty?.serviceAddress as Record<string, unknown> | undefined) ||
+      extractFacilityAddressSchedule(selectedFacility);
+    const nextFrequency = addressDefaults?.frequency || '1x_week';
+    const nextDays = normalizeScheduleDays(
+      addressDefaults?.days || defaultDaysForFrequency(nextFrequency),
+      nextFrequency
+    );
+
+    setResidentialFrequency(mapProposalScheduleToResidentialFrequency(nextFrequency));
+    setFormData((prev) => ({
+      ...prev,
+      serviceFrequency: nextFrequency,
+      serviceSchedule: {
+        ...(prev.serviceSchedule || createDefaultSchedule(nextFrequency)),
+        days: nextDays,
+        allowedWindowStart: addressDefaults?.allowedWindowStart || prev.serviceSchedule?.allowedWindowStart || '18:00',
+        allowedWindowEnd: addressDefaults?.allowedWindowEnd || prev.serviceSchedule?.allowedWindowEnd || '06:00',
+        windowAnchor: 'start_day',
+        timezoneSource: 'facility',
+      },
+    }));
+  };
+
   const toggleScheduleDay = (day: ServiceScheduleDay) => {
     setScheduleTouchedByUser(true);
     const frequency = (formData.serviceFrequency || '5x_week') as ProposalScheduleFrequency;
@@ -2368,7 +2418,7 @@ const ProposalForm = () => {
                     label="Residential Service Type"
                     placeholder="Select service type"
                     value={residentialServiceType}
-                    onChange={(value) => setResidentialServiceType(value as ResidentialServiceType)}
+                    onChange={handleResidentialServiceTypeChange}
                     options={RESIDENTIAL_SERVICE_OPTIONS}
                     hint="Service frequency is pulled from the selected service location schedule below. Change that schedule only if the client changed their mind."
                   />
