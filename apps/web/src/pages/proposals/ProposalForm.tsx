@@ -2573,12 +2573,16 @@ const ProposalForm = () => {
                               <span className="font-mono">{formatCurrency(residentialPreview.breakdown.bathroomAdjustment)}</span>
                             </div>
                             <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                              <span>Condition Multiplier:</span>
-                              <span className="font-mono">{formatPercent(residentialPreview.breakdown.conditionMultiplier - 1)}</span>
+                              <span>Condition Impact:</span>
+                              <span className="font-mono">
+                                {residentialPreview.breakdown.conditionMultiplier.toFixed(2)}x ({formatPercent(residentialPreview.breakdown.conditionMultiplier - 1)})
+                              </span>
                             </div>
                             <div className="flex justify-between text-surface-600 dark:text-surface-400">
-                              <span>Service Multiplier:</span>
-                              <span className="font-mono">{formatPercent(residentialPreview.breakdown.serviceMultiplier - 1)}</span>
+                              <span>Service Impact:</span>
+                              <span className="font-mono">
+                                {residentialPreview.breakdown.serviceMultiplier.toFixed(2)}x ({formatPercent(residentialPreview.breakdown.serviceMultiplier - 1)})
+                              </span>
                             </div>
                             <div className="flex justify-between text-surface-600 dark:text-surface-400">
                               <span>Recurring Discount:</span>
