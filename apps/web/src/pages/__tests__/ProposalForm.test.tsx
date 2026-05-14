@@ -1021,6 +1021,13 @@ describe('ProposalForm', () => {
           proposalServices: expect.arrayContaining([
             expect.objectContaining({
               serviceName: 'Recurring Standard',
+              monthlyPrice: 2080,
+            }),
+          ]),
+          proposalItems: expect.arrayContaining([
+            expect.objectContaining({
+              description: 'First Clean Surcharge',
+              totalPrice: 25,
             }),
           ]),
           pricingSnapshot: expect.objectContaining({

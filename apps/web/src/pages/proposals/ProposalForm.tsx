@@ -528,6 +528,48 @@ const mapResidentialServiceTypeToProposalServiceType = (
 const isRecurringResidentialServiceType = (serviceType: ResidentialServiceType) =>
   serviceType === 'recurring_standard';
 
+const getResidentialVisitsPerMonth = (frequency: ResidentialFrequency) => {
+  switch (frequency) {
+    case '1x_week':
+    case 'weekly':
+      return 52 / 12;
+    case '2x_week':
+      return 104 / 12;
+    case '3x_week':
+      return 156 / 12;
+    case '4x_week':
+      return 208 / 12;
+    case '5x_week':
+      return 260 / 12;
+    case '7x_week':
+      return 365 / 12;
+    case 'biweekly':
+      return 26 / 12;
+    case 'every_4_weeks':
+      return 13 / 12;
+    case 'one_time':
+    default:
+      return 1;
+  }
+};
+
+const roundCurrency = (amount: number) => Number(amount.toFixed(2));
+
+const getResidentialBillableVisitPrice = (preview: ResidentialQuotePreview) =>
+  roundCurrency(Math.max(0, preview.breakdown.finalTotal - preview.breakdown.firstCleanSurcharge));
+
+const getResidentialClientBillAmount = (
+  preview: ResidentialQuotePreview,
+  serviceType: ResidentialServiceType,
+  frequency: ResidentialFrequency
+) => {
+  const visitPrice = getResidentialBillableVisitPrice(preview);
+  if (!isRecurringResidentialServiceType(serviceType) || frequency === 'one_time') {
+    return visitPrice;
+  }
+  return roundCurrency(visitPrice * getResidentialVisitsPerMonth(frequency));
+};
+
 const defaultResidentialProposalTitle = (
   serviceType: ResidentialServiceType,
   locationName: string | null | undefined
@@ -650,9 +692,16 @@ const buildResidentialProposalServices = ({
   const includedTasks = scopeGroups.flatMap((group) =>
     group.tasks.map((task) => `${group.label}: ${task}`)
   );
+  const addOnTasks = preview.breakdown.addOns.map((addOn) => `Add-on: ${addOn.label}`);
   const areaSummary = scopeGroups.length > 0
     ? `${scopeGroups.length} area${scopeGroups.length === 1 ? '' : 's'} scoped`
     : propertyName;
+  const billAmount = getResidentialClientBillAmount(preview, serviceType, frequency);
+  const billableVisitPrice = getResidentialBillableVisitPrice(preview);
+  const visitsPerMonth = getResidentialVisitsPerMonth(frequency);
+  const billingSummary = isRecurringResidentialServiceType(serviceType) && frequency !== 'one_time'
+    ? `Monthly bill: ${formatCurrency(billAmount)} (${formatCurrency(billableVisitPrice)} per visit x ${visitsPerMonth.toFixed(2)} visits/month).`
+    : `One-time bill: ${formatCurrency(billAmount)}.`;
 
   return [{
     serviceName: serviceLabel,
@@ -660,15 +709,17 @@ const buildResidentialProposalServices = ({
     frequency: mappedFrequency,
     estimatedHours: preview.breakdown.estimatedHours,
     hourlyRate: null,
-    monthlyPrice: preview.breakdown.finalTotal,
+    monthlyPrice: billAmount,
     description: [
       areaSummary,
+      billingSummary,
+      addOnTasks.length > 0 ? addOnTasks.join(', ') : null,
       ...scopeGroups.map((group) => `${group.label}: ${group.tasks.join(', ')}`),
       preview.breakdown.guidance.length > 0
         ? `Guidance: ${preview.breakdown.guidance.join(' | ')}`
         : null,
     ].filter(Boolean).join('\n'),
-    includedTasks,
+    includedTasks: [...includedTasks, ...addOnTasks],
     sortOrder: 0,
   }];
 };
@@ -688,17 +739,6 @@ const buildResidentialProposalItems = (
       sortOrder: items.length,
     });
   }
-
-  preview.breakdown.addOns.forEach((addOn) => {
-    items.push({
-      itemType: 'other',
-      description: addOn.label,
-      quantity: addOn.quantity,
-      unitPrice: addOn.unitPrice,
-      totalPrice: addOn.lineTotal,
-      sortOrder: items.length,
-    });
-  });
 
   return items;
 };
@@ -2646,9 +2686,19 @@ const ProposalForm = () => {
                               <span>Add-Ons:</span>
                               <span className="font-mono">{formatCurrency(residentialPreview.breakdown.addOnTotal)}</span>
                             </div>
+                            <div className="flex justify-between text-surface-600 dark:text-surface-400">
+                              <span>Billable Visit Price:</span>
+                              <span className="font-mono">{formatCurrency(getResidentialBillableVisitPrice(residentialPreview))}</span>
+                            </div>
                             <div className="flex justify-between text-surface-900 dark:text-white font-medium pt-1 border-t border-surface-700">
-                              <span>Final Total:</span>
-                              <span className="font-mono">{formatCurrency(residentialPreview.breakdown.finalTotal)}</span>
+                              <span>{definedResidentialServiceType && isRecurringResidentialServiceType(definedResidentialServiceType) && residentialFrequency !== 'one_time' ? 'Estimated Monthly Bill:' : 'Client Bill:'}</span>
+                              <span className="font-mono">
+                                {formatCurrency(
+                                  definedResidentialServiceType
+                                    ? getResidentialClientBillAmount(residentialPreview, definedResidentialServiceType, residentialFrequency)
+                                    : residentialPreview.breakdown.finalTotal
+                                )}
+                              </span>
                             </div>
                           </div>
                         </div>
