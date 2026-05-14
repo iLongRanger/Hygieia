@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Archive, Calculator, Home, Plus, RotateCcw, Sparkles, Star, Timer } from 'lucide-react';
+import { Archive, Calculator, Home, Plus, RotateCcw, Sparkles, Star, Timer, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -48,6 +48,14 @@ const FREQUENCY_OPTIONS = [
   { value: 'biweekly', label: 'Biweekly' },
   { value: 'every_4_weeks', label: 'Every 4 Weeks' },
   { value: 'one_time', label: 'One Time' },
+] as const;
+
+const BEDROOM_TIERS = ['0', '1', '2', '3', '4', '5', '6'] as const;
+const LEVEL_TIERS = ['1', '2', '3', '4'] as const;
+const CONDITION_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'heavy', label: 'Heavy' },
 ] as const;
 
 const DEFAULT_SETTINGS: ResidentialPricingPlanSettings = {
@@ -197,6 +205,33 @@ const ResidentialPricingPlansPage = () => {
   const [editingPlan, setEditingPlan] = useState<ResidentialPricingPlan | null>(null);
   const [name, setName] = useState('');
   const [settings, setSettings] = useState<ResidentialPricingPlanSettings>(cloneDefaultSettings());
+
+  const updateSqftBracket = (
+    index: number,
+    field: 'upTo' | 'adjustment',
+    value: number | null
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      sqftBrackets: current.sqftBrackets.map((bracket, bracketIndex) =>
+        bracketIndex === index ? { ...bracket, [field]: value } : bracket
+      ),
+    }));
+  };
+
+  const addSqftBracket = () => {
+    setSettings((current) => ({
+      ...current,
+      sqftBrackets: [...current.sqftBrackets, { upTo: null, adjustment: 0 }],
+    }));
+  };
+
+  const removeSqftBracket = (index: number) => {
+    setSettings((current) => ({
+      ...current,
+      sqftBrackets: current.sqftBrackets.filter((_, bracketIndex) => bracketIndex !== index),
+    }));
+  };
 
   const loadPlans = useCallback(async () => {
     try {
@@ -528,6 +563,133 @@ const ResidentialPricingPlansPage = () => {
                   }))
                 }
               />
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-4">
+            <div>
+              <h3 className="font-semibold text-surface-900 dark:text-surface-100">Home Detail Adjustments</h3>
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                Admin-managed price adjustments for square footage, bedroom count, bathroom count, levels, and condition.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-surface-900 dark:text-surface-100">Square Footage Brackets</h4>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">
+                    The first bracket where home sqft is less than or equal to "Up to sqft" is applied. Leave blank for the final open-ended tier.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addSqftBracket}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Bracket
+                </Button>
+              </div>
+              <div className="grid gap-3">
+                {settings.sqftBrackets.map((bracket, index) => (
+                  <div
+                    key={`${index}-${bracket.upTo ?? 'open'}`}
+                    className="grid gap-3 rounded-lg border border-surface-200 p-3 md:grid-cols-[1fr,1fr,auto] dark:border-surface-700"
+                  >
+                    <Input
+                      type="number"
+                      label="Up to sqft"
+                      placeholder="No max"
+                      value={bracket.upTo ?? ''}
+                      onChange={(event) =>
+                        updateSqftBracket(
+                          index,
+                          'upTo',
+                          event.target.value ? Number(event.target.value) : null
+                        )
+                      }
+                    />
+                    <Input
+                      type="number"
+                      label="Price Adjustment"
+                      value={bracket.adjustment}
+                      onChange={(event) =>
+                        updateSqftBracket(index, 'adjustment', Number(event.target.value))
+                      }
+                    />
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSqftBracket(index)}
+                        disabled={settings.sqftBrackets.length <= 1}
+                        aria-label="Remove square footage bracket"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {BEDROOM_TIERS.map((bedroomCount) => (
+                <Input
+                  key={bedroomCount}
+                  type="number"
+                  label={`${bedroomCount} Bedroom Add`}
+                  value={settings.bedroomAdjustments[bedroomCount] ?? 0}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      bedroomAdjustments: {
+                        ...current.bedroomAdjustments,
+                        [bedroomCount]: Number(event.target.value),
+                      },
+                    }))
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {LEVEL_TIERS.map((levelCount) => (
+                <Input
+                  key={levelCount}
+                  type="number"
+                  label={`${levelCount} Level Add`}
+                  value={settings.levelAdjustments[levelCount] ?? 0}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      levelAdjustments: {
+                        ...current.levelAdjustments,
+                        [levelCount]: Number(event.target.value),
+                      },
+                    }))
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {CONDITION_OPTIONS.map((option) => (
+                <Input
+                  key={option.value}
+                  type="number"
+                  step="0.01"
+                  label={`${option.label} Condition Multiplier`}
+                  value={settings.conditionMultipliers[option.value]}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      conditionMultipliers: {
+                        ...current.conditionMultipliers,
+                        [option.value]: Number(event.target.value),
+                      },
+                    }))
+                  }
+                />
+              ))}
             </div>
           </Card>
 

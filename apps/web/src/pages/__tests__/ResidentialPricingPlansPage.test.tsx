@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '../../test/test-utils';
+import userEvent from '@testing-library/user-event';
 import ResidentialPricingPlansPage from '../residential/ResidentialPricingPlansPage';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -41,5 +42,18 @@ describe('ResidentialPricingPlansPage', () => {
     expect(screen.getByText('Home Profile')).toBeInTheDocument();
     expect(screen.getByText('Price Logic')).toBeInTheDocument();
     expect(screen.getByText('Time Estimate')).toBeInTheDocument();
+  });
+
+  it('exposes admin-managed home detail pricing adjustments', async () => {
+    const user = userEvent.setup();
+    render(<ResidentialPricingPlansPage />);
+
+    await user.click(await screen.findByRole('button', { name: /new residential plan/i }));
+
+    expect(screen.getByText('Home Detail Adjustments')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Up to sqft').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('2 Bedroom Add')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 Level Add')).toBeInTheDocument();
+    expect(screen.getByLabelText('Heavy Condition Multiplier')).toBeInTheDocument();
   });
 });
