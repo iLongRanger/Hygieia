@@ -3,7 +3,8 @@ export type BackgroundServiceKey =
   | 'recurring_jobs_autogen'
   | 'job_alerts'
   | 'contract_assignment_overrides'
-  | 'contract_amendment_auto_apply';
+  | 'contract_amendment_auto_apply'
+  | 'invoice_autogen';
 
 export interface BackgroundServiceSetting {
   serviceKey: BackgroundServiceKey;

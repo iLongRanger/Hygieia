@@ -91,6 +91,12 @@ const BACKGROUND_SERVICE_GUIDANCE: Record<
       'Applies approved contract amendments automatically on their effective date once daily.',
     recommendedValueLabel: '02:00',
   },
+  invoice_autogen: {
+    label: 'Invoice Auto-Generation',
+    description:
+      'Generates pending-review invoices for active contracts whose billing cycle has closed. Each contract is evaluated independently based on its billingCycle and last invoice period.',
+    recommendedValueLabel: '02:00',
+  },
 };
 
 const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
@@ -99,6 +105,7 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'job_alerts',
   'contract_assignment_overrides',
   'contract_amendment_auto_apply',
+  'invoice_autogen',
 ];
 
 const LOGS_PAGE_LIMIT = 9;
@@ -160,6 +167,14 @@ const GlobalSettingsPage: React.FC = () => {
     },
     contract_amendment_auto_apply: {
       serviceKey: 'contract_amendment_auto_apply',
+      page: 1,
+      limit: LOGS_PAGE_LIMIT,
+      totalCount: 0,
+      totalPages: 1,
+      items: [],
+    },
+    invoice_autogen: {
+      serviceKey: 'invoice_autogen',
       page: 1,
       limit: LOGS_PAGE_LIMIT,
       totalCount: 0,
