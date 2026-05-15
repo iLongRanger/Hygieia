@@ -38,6 +38,7 @@ import {
   createJobNote,
   deleteJobNote,
   listJobActivities,
+  scheduleMakeupForMissedJob,
 } from '../services/jobService';
 import {
   reviewJobSettlement,
@@ -194,6 +195,34 @@ router.post(
 
       const settlement = await submitJobSettlementExplanation(req.params.id, user.id, parsed.data);
       res.json({ data: settlement });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/schedule-makeup',
+  authenticate,
+  requirePermission(PERMISSIONS.JOBS_WRITE),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = requireAuthenticatedUser(req);
+      if (!['owner', 'admin', 'manager'].includes(user.role)) {
+        throw new ValidationError('Insufficient permissions');
+      }
+      const existing = await getJobById(req.params.id);
+      if (!existing) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      await assertManagerJobScope(req, existing.account?.id);
+
+      const result = await scheduleMakeupForMissedJob({
+        missedJobId: req.params.id,
+        createdByUserId: user.id,
+      });
+      res.status(201).json({ data: result });
     } catch (error) {
       next(error);
     }

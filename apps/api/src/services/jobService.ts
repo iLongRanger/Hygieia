@@ -2352,6 +2352,137 @@ export async function runRecurringJobsAutoRegenerationCycle(): Promise<{
   return { checked: activeContracts.length, generatedFor, created };
 }
 
+const WEEKDAY_INDEX_BY_NAME: Record<ServiceWeekday, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+export async function scheduleMakeupForMissedJob(input: {
+  missedJobId: string;
+  createdByUserId: string;
+}): Promise<{ id: string; jobNumber: string; scheduledDate: Date }> {
+  const missed = await prisma.job.findUnique({
+    where: { id: input.missedJobId },
+    select: {
+      id: true,
+      jobNumber: true,
+      status: true,
+      scheduledDate: true,
+      accountId: true,
+      facilityId: true,
+      contractId: true,
+      assignedTeamId: true,
+      assignedToUserId: true,
+      contract: {
+        select: {
+          id: true,
+          serviceSchedule: true,
+          assignedTeamId: true,
+          assignedToUserId: true,
+          facility: { select: { address: true } },
+        },
+      },
+    },
+  });
+  if (!missed) throw new NotFoundError('Job not found');
+  if (missed.status !== 'missed') {
+    throw new BadRequestError('Only missed jobs can be rescheduled as make-ups');
+  }
+  if (!missed.contractId || !missed.contract) {
+    throw new BadRequestError('Make-up scheduling requires a contract');
+  }
+
+  const facilityTimezone = resolveFacilityTimezone(missed.contract.facility?.address);
+  const normalizedSchedule = normalizeServiceSchedule(missed.contract.serviceSchedule);
+  const scheduleDays: ServiceWeekday[] = normalizedSchedule?.days ?? [];
+  const allowedWeekdays = new Set(scheduleDays.map((d) => WEEKDAY_INDEX_BY_NAME[d]));
+
+  const startSearch = new Date(missed.scheduledDate);
+  startSearch.setUTCDate(startSearch.getUTCDate() + 1);
+
+  let candidate: Date | null = null;
+  for (let i = 0; i < 14; i++) {
+    const probe = new Date(startSearch);
+    probe.setUTCDate(probe.getUTCDate() + i);
+    if (allowedWeekdays.size > 0 && !allowedWeekdays.has(probe.getUTCDay())) {
+      continue;
+    }
+    const existing = await prisma.job.findFirst({
+      where: {
+        contractId: missed.contractId,
+        scheduledDate: probe,
+        status: { notIn: ['canceled'] },
+      },
+      select: { id: true },
+    });
+    if (!existing) {
+      candidate = probe;
+      break;
+    }
+  }
+
+  if (!candidate) {
+    throw new BadRequestError(
+      'No valid make-up date found within 14 days. Consider applying an invoice credit instead.'
+    );
+  }
+
+  const jobNumber = await generateJobNumber();
+  const dateIso = candidate.toISOString().slice(0, 10);
+  const scheduledWindow = normalizedSchedule
+    ? buildScheduledWindow(dateIso, normalizedSchedule, facilityTimezone)
+    : null;
+
+  const newJob = await prisma.job.create({
+    data: {
+      jobNumber,
+      contractId: missed.contractId,
+      facilityId: missed.facilityId,
+      accountId: missed.accountId,
+      jobType: 'scheduled_service',
+      jobCategory: 'recurring',
+      assignedTeamId: missed.contract.assignedTeamId ?? missed.assignedTeamId ?? null,
+      assignedToUserId: missed.contract.assignedToUserId ?? missed.assignedToUserId ?? null,
+      status: 'scheduled',
+      scheduledDate: candidate,
+      scheduledStartTime: scheduledWindow?.scheduledStartTime ?? null,
+      scheduledEndTime: scheduledWindow?.scheduledEndTime ?? null,
+      createdByUserId: input.createdByUserId,
+      notes: `Make-up for missed job ${missed.jobNumber} (originally ${missed.scheduledDate.toISOString().slice(0, 10)})`,
+      activities: {
+        create: {
+          action: 'make_up_scheduled',
+          metadata: {
+            makeUpForJobId: missed.id,
+            originalScheduledDate: missed.scheduledDate.toISOString(),
+          },
+        },
+      },
+    },
+    select: { id: true, jobNumber: true, scheduledDate: true },
+  });
+
+  await prisma.jobActivity.create({
+    data: {
+      jobId: missed.id,
+      action: 'make_up_created',
+      performedByUserId: input.createdByUserId,
+      metadata: {
+        makeUpJobId: newJob.id,
+        makeUpJobNumber: newJob.jobNumber,
+        makeUpScheduledDate: newJob.scheduledDate.toISOString(),
+      },
+    },
+  });
+
+  return newJob;
+}
+
 export async function runJobNearingEndNoCheckInAlertCycle(input?: {
   now?: Date;
   leadHours?: number;
