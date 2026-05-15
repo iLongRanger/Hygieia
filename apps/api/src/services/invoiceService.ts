@@ -418,6 +418,16 @@ function splitAmountAcrossJobs(totalAmount: number, jobCount: number): number[] 
   return Array.from({ length: jobCount }, (_, index) => (baseCents + (index < remainder ? 1 : 0)) / 100);
 }
 
+const CUSTOMER_VISIBLE_INVOICE_STATUSES = new Set([
+  'sent',
+  'partial',
+  'paid',
+  'overdue',
+  'written_off',
+]);
+
+const EDITABLE_INVOICE_STATUSES = new Set(['draft', 'pending_review']);
+
 async function createInvoiceFromJobs(input: {
   jobs: JobInvoiceCandidate[];
   createdByUserId: string;
@@ -426,6 +436,7 @@ async function createInvoiceFromJobs(input: {
   periodStart: Date;
   periodEnd: Date;
   prorate: boolean;
+  status?: string;
 }) {
   if (input.jobs.length === 0) {
     throw new BadRequestError('No eligible completed jobs found to invoice');
@@ -513,6 +524,7 @@ async function createInvoiceFromJobs(input: {
         createdByUserId: input.createdByUserId,
         publicToken: hashedToken,
         publicTokenExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        ...(input.status ? { status: input.status } : {}),
       },
       select: { id: true },
     });
@@ -635,6 +647,11 @@ export async function getInvoiceByPublicToken(token: string) {
     select: invoiceDetailSelect,
   });
   if (!invoice) throw new NotFoundError('Invoice not found');
+  if (!CUSTOMER_VISIBLE_INVOICE_STATUSES.has(invoice.status)) {
+    // Hide pre-send statuses (draft, pending_review, void) behind a generic
+    // not-found to avoid leaking that an invoice exists.
+    throw new NotFoundError('Invoice not found');
+  }
   if (invoice.publicTokenExpiresAt && new Date() > new Date(invoice.publicTokenExpiresAt)) {
     throw new BadRequestError('Invoice link has expired');
   }
@@ -719,7 +736,9 @@ export async function createInvoice(input: InvoiceCreateInput) {
 export async function updateInvoice(id: string, input: InvoiceUpdateInput) {
   const existing = await prisma.invoice.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Invoice not found');
-  if (existing.status !== 'draft') throw new BadRequestError('Only draft invoices can be edited');
+  if (!EDITABLE_INVOICE_STATUSES.has(existing.status)) {
+    throw new BadRequestError('Only draft or pending-review invoices can be edited');
+  }
 
   return prisma.$transaction(async (tx) => {
     if (input.items !== undefined) {
@@ -786,6 +805,9 @@ export async function sendInvoice(id: string, userId: string) {
   const existing = await prisma.invoice.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError('Invoice not found');
   if (existing.status === 'void') throw new BadRequestError('Cannot send a voided invoice');
+  if (!EDITABLE_INVOICE_STATUSES.has(existing.status)) {
+    throw new BadRequestError('Invoice has already been sent');
+  }
 
   const invoice = await prisma.invoice.update({
     where: { id },
@@ -931,7 +953,8 @@ export async function batchGenerateInvoices(
   periodStart: Date,
   periodEnd: Date,
   createdByUserId: string,
-  prorate = true
+  prorate = true,
+  options: { status?: string } = {}
 ) {
   const normalizedWindow = normalizePeriodWindow(periodStart, periodEnd, 'UTC');
   const batchKey = `invoice_batch:${toIsoDate(normalizedWindow.start)}:${toIsoDate(normalizedWindow.end)}:${normalizedWindow.timezone}:${prorate ? 'prorate' : 'full'}`;
@@ -994,6 +1017,7 @@ export async function batchGenerateInvoices(
           periodStart: normalizedWindow.start,
           periodEnd: normalizedWindow.end,
           prorate,
+          status: options.status,
         });
 
         results.push({

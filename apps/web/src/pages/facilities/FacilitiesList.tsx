@@ -110,7 +110,7 @@ const FacilitiesList = () => {
         }
       } catch (error) {
         console.error('Failed to fetch facilities:', error);
-        toast.error('Failed to load facilities');
+        toast.error('Failed to load service locations');
         setFacilities([]);
       } finally {
         setLoading(false);
@@ -150,7 +150,7 @@ const FacilitiesList = () => {
     try {
       setCreating(true);
       await createFacility(formData);
-      toast.success('Facility created successfully');
+      toast.success('Service Location created successfully');
       setShowCreateModal(false);
       setFormData({
         accountId: '',
@@ -167,7 +167,7 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to create facility:', error);
-      toast.error('Failed to create facility');
+      toast.error('Failed to create service location');
     } finally {
       setCreating(false);
     }
@@ -186,7 +186,7 @@ const FacilitiesList = () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveFacility(id);
-      toast.success('Facility archived successfully');
+      toast.success('Service Location archived successfully');
       fetchFacilities(page, search, {
         accountId: accountFilter,
         status: statusFilter,
@@ -195,14 +195,14 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to archive facility:', error);
-      toast.error('Failed to archive facility');
+      toast.error('Failed to archive service location');
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await restoreFacility(id);
-      toast.success('Facility restored successfully');
+      toast.success('Service Location restored successfully');
       fetchFacilities(page, search, {
         accountId: accountFilter,
         status: statusFilter,
@@ -211,7 +211,7 @@ const FacilitiesList = () => {
       });
     } catch (error) {
       console.error('Failed to restore facility:', error);
-      toast.error('Failed to restore facility');
+      toast.error('Failed to restore service location');
     }
   };
 
@@ -223,7 +223,7 @@ const FacilitiesList = () => {
 
   const columns = [
     {
-      header: 'Facility',
+      header: 'Service Location',
       cell: (item: Facility) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald/10">
@@ -560,7 +560,7 @@ const FacilitiesList = () => {
             }
           />
           <p className="text-xs text-surface-500 dark:text-surface-400 -mt-2">
-            Total square feet will be auto-calculated from areas you add to this facility.
+            Total square feet will be auto-calculated from areas you add to this service location.
           </p>
 
           <FacilityServiceScheduleFields
