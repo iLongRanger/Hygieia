@@ -47,6 +47,7 @@ const DEFAULT_INTERVALS_MS: Record<BackgroundServiceKey, number> = {
   job_alerts: 15 * 60 * 1000,
   contract_assignment_overrides: 0,
   contract_amendment_auto_apply: 2 * 60 * 60 * 1000,
+  invoice_autogen: 2 * 60 * 60 * 1000, // 02:00 local
 };
 
 const DEFAULT_LOG_RETENTION_DAYS = 60;
@@ -75,6 +76,9 @@ function getDefaultEnabled(serviceKey: BackgroundServiceKey): boolean {
   if (serviceKey === 'contract_amendment_auto_apply') {
     return process.env.CONTRACT_AMENDMENT_AUTO_APPLY_ENABLED !== 'false';
   }
+  if (serviceKey === 'invoice_autogen') {
+    return process.env.INVOICE_AUTOGEN_ENABLED !== 'false';
+  }
   return process.env.JOB_ALERTS_ENABLED !== 'false';
 }
 
@@ -98,6 +102,12 @@ function getDefaultIntervalMs(serviceKey: BackgroundServiceKey): number {
     return parseIntervalMs(
       process.env.CONTRACT_AMENDMENT_AUTO_APPLY_INTERVAL_MS,
       DEFAULT_INTERVALS_MS.contract_amendment_auto_apply
+    );
+  }
+  if (serviceKey === 'invoice_autogen') {
+    return parseIntervalMs(
+      process.env.INVOICE_AUTOGEN_INTERVAL_MS,
+      DEFAULT_INTERVALS_MS.invoice_autogen
     );
   }
   return parseIntervalMs(process.env.JOB_ALERTS_INTERVAL_MS, DEFAULT_INTERVALS_MS.job_alerts);
@@ -155,6 +165,7 @@ const BACKGROUND_SERVICE_KEYS: BackgroundServiceKey[] = [
   'job_alerts',
   'contract_assignment_overrides',
   'contract_amendment_auto_apply',
+  'invoice_autogen',
 ];
 
 function hasBackgroundServiceDelegate(): boolean {
@@ -396,6 +407,7 @@ export async function getBackgroundServiceRunLogs(limitPerService = 20): Promise
     job_alerts: [],
     contract_assignment_overrides: [],
     contract_amendment_auto_apply: [],
+    invoice_autogen: [],
   };
 
   if (!hasBackgroundServiceLogDelegate()) {

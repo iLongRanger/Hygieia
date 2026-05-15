@@ -345,6 +345,171 @@ function calculateProratedAmount(monthlyValue: number, periodStart: Date, period
   return Math.round(total * 100) / 100;
 }
 
+function nextBillingWindow(
+  billingCycle: string | null | undefined,
+  contractStartDate: Date,
+  lastPeriodEnd: Date | null
+): { start: Date; end: Date } {
+  const start = lastPeriodEnd
+    ? addUtcDays(atUtcStartOfDay(lastPeriodEnd), 1)
+    : atUtcStartOfDay(contractStartDate);
+  const cycle = (billingCycle ?? 'monthly').toLowerCase();
+  let end: Date;
+  switch (cycle) {
+    case 'weekly':
+      end = addUtcDays(start, 6);
+      break;
+    case 'biweekly':
+      end = addUtcDays(start, 13);
+      break;
+    case 'quarterly': {
+      const next = new Date(start);
+      next.setUTCMonth(next.getUTCMonth() + 3);
+      end = addUtcDays(next, -1);
+      break;
+    }
+    case 'annually':
+    case 'yearly': {
+      const next = new Date(start);
+      next.setUTCFullYear(next.getUTCFullYear() + 1);
+      end = addUtcDays(next, -1);
+      break;
+    }
+    case 'monthly':
+    default: {
+      const next = new Date(start);
+      next.setUTCMonth(next.getUTCMonth() + 1);
+      end = addUtcDays(next, -1);
+      break;
+    }
+  }
+  return { start, end };
+}
+
+export async function runInvoiceAutoGenerationCycle(input?: {
+  now?: Date;
+  createdByUserId?: string;
+}): Promise<{
+  checked: number;
+  generated: number;
+  skipped: number;
+  errors: number;
+  results: Array<{
+    contractId: string;
+    status: 'generated' | 'skipped_no_eligible_jobs' | 'skipped_window_open' | 'error';
+    invoiceId?: string;
+    reason?: string;
+  }>;
+}> {
+  const now = input?.now ?? new Date();
+  const createdByUserId = input?.createdByUserId ?? (await getSystemUserId());
+
+  const contracts = await prisma.contract.findMany({
+    where: {
+      status: 'active',
+      startDate: { lte: now },
+    },
+    select: {
+      id: true,
+      startDate: true,
+      billingCycle: true,
+      paymentTerms: true,
+      invoices: {
+        where: { status: { notIn: ['void'] } },
+        orderBy: { periodEnd: 'desc' },
+        take: 1,
+        select: { periodEnd: true },
+      },
+    },
+  });
+
+  const results: Array<{
+    contractId: string;
+    status: 'generated' | 'skipped_no_eligible_jobs' | 'skipped_window_open' | 'error';
+    invoiceId?: string;
+    reason?: string;
+  }> = [];
+
+  for (const contract of contracts) {
+    try {
+      const lastPeriodEnd = contract.invoices[0]?.periodEnd ?? null;
+      const window = nextBillingWindow(contract.billingCycle, contract.startDate, lastPeriodEnd);
+      const windowEndUtc = atUtcStartOfDay(window.end);
+      if (windowEndUtc.getTime() >= atUtcStartOfDay(now).getTime()) {
+        results.push({ contractId: contract.id, status: 'skipped_window_open' });
+        continue;
+      }
+
+      const jobs = await prisma.job.findMany({
+        where: {
+          ...getJobBasedInvoiceEligibilityFilter(),
+          contractId: contract.id,
+          scheduledDate: {
+            gte: atUtcStartOfDay(window.start),
+            lte: windowEndUtc,
+          },
+        },
+        select: jobInvoiceCandidateSelect,
+        orderBy: [{ scheduledDate: 'asc' }, { createdAt: 'asc' }],
+      });
+
+      if (jobs.length === 0) {
+        results.push({ contractId: contract.id, status: 'skipped_no_eligible_jobs' });
+        continue;
+      }
+
+      const issueDate = windowEndUtc;
+      const dueDate = atUtcStartOfDay(
+        addUtcDays(issueDate, parsePaymentTermsDays(contract.paymentTerms))
+      );
+      const invoice = await createInvoiceFromJobs({
+        jobs,
+        createdByUserId,
+        issueDate,
+        dueDate,
+        periodStart: window.start,
+        periodEnd: windowEndUtc,
+        prorate: true,
+        status: 'pending_review',
+      });
+
+      results.push({
+        contractId: contract.id,
+        status: 'generated',
+        invoiceId: invoice.id,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      results.push({ contractId: contract.id, status: 'error', reason: message });
+    }
+  }
+
+  return {
+    checked: contracts.length,
+    generated: results.filter((r) => r.status === 'generated').length,
+    skipped: results.filter((r) => r.status.startsWith('skipped')).length,
+    errors: results.filter((r) => r.status === 'error').length,
+    results,
+  };
+}
+
+async function getSystemUserId(): Promise<string> {
+  const user = await prisma.user.findFirst({
+    where: {
+      status: 'active',
+      roles: { some: { role: { key: { in: ['owner', 'admin'] } } } },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  if (!user) {
+    throw new BadRequestError(
+      'Cannot run invoice auto-generation: no active owner/admin user found to attribute invoices to'
+    );
+  }
+  return user.id;
+}
+
 function runWithBatchIdempotency<T>(key: string, action: () => Promise<T>): Promise<T> {
   const now = Date.now();
   for (const [existingKey, expiresAt] of batchIdempotencyLocks.entries()) {

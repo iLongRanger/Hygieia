@@ -61,6 +61,7 @@ import { startRecurringJobScheduler } from './services/recurringJobScheduler';
 import { startJobAlertScheduler } from './services/jobAlertScheduler';
 import { startContractAssignmentOverrideScheduler } from './services/contractAssignmentOverrideScheduler';
 import { startContractAmendmentAutoApplyScheduler } from './services/contractAmendmentAutoApplyScheduler';
+import { startInvoiceScheduler } from './services/invoiceScheduler';
 
 const app: Application = express();
 const PORT = process.env.PORT ?? 3101;
@@ -188,6 +189,7 @@ startRecurringJobScheduler();
 startJobAlertScheduler();
 startContractAssignmentOverrideScheduler();
 startContractAmendmentAutoApplyScheduler();
+startInvoiceScheduler();
 
 httpServer.listen(PORT, () => {
   logger.info(`API server running on port ${PORT}`);
