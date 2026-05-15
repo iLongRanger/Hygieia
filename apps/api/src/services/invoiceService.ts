@@ -4,6 +4,9 @@ import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { extractFacilityTimezone } from './serviceScheduleService';
 import { createPublicTokenPair, hashPublicToken } from './publicTokenService';
 import { getGlobalSettings } from './globalSettingsService';
+import { generateInvoicePdf } from './invoicePdf';
+import { sendInvoiceEmail } from './emailService';
+import logger from '../lib/logger';
 
 // ==================== Interfaces ====================
 
@@ -967,11 +970,82 @@ export async function updateInvoice(id: string, input: InvoiceUpdateInput) {
 }
 
 export async function sendInvoice(id: string, userId: string) {
-  const existing = await prisma.invoice.findUnique({ where: { id } });
+  const existing = await prisma.invoice.findUnique({
+    where: { id },
+    select: {
+      ...invoiceDetailSelect,
+      account: { select: { id: true, name: true, billingEmail: true, billingAddress: true } },
+      facility: { select: { id: true, name: true, address: true } },
+    },
+  });
   if (!existing) throw new NotFoundError('Invoice not found');
   if (existing.status === 'void') throw new BadRequestError('Cannot send a voided invoice');
   if (!EDITABLE_INVOICE_STATUSES.has(existing.status)) {
     throw new BadRequestError('Invoice has already been sent');
+  }
+  if (!existing.account?.billingEmail) {
+    throw new BadRequestError('Account is missing a billing email; cannot send invoice');
+  }
+
+  const rawToken = await generateInvoicePublicToken(id);
+  const baseUrl = (process.env.PUBLIC_APP_URL ?? process.env.APP_BASE_URL ?? '').replace(/\/$/, '');
+  const publicUrl = baseUrl ? `${baseUrl}/invoices/public/${rawToken}` : null;
+
+  const pdfBuffer = await generateInvoicePdf({
+    invoiceNumber: existing.invoiceNumber,
+    issueDate: existing.issueDate,
+    dueDate: existing.dueDate,
+    periodStart: existing.periodStart,
+    periodEnd: existing.periodEnd,
+    notes: existing.notes,
+    paymentInstructions: existing.paymentInstructions,
+    subtotal: existing.subtotal.toString(),
+    taxRate: existing.taxRate.toString(),
+    taxAmount: existing.taxAmount.toString(),
+    totalAmount: existing.totalAmount.toString(),
+    amountPaid: existing.amountPaid.toString(),
+    balanceDue: existing.balanceDue.toString(),
+    account: {
+      name: existing.account.name,
+      billingAddress: existing.account.billingAddress,
+    },
+    facility: existing.facility
+      ? { name: existing.facility.name, address: existing.facility.address }
+      : null,
+    items: existing.items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity.toString(),
+      unitPrice: item.unitPrice.toString(),
+      totalPrice: item.totalPrice.toString(),
+    })),
+  });
+
+  const subject = `Invoice ${existing.invoiceNumber} from ${existing.account.name}`;
+  const linkBlock = publicUrl
+    ? `<p>You can view this invoice online: <a href="${publicUrl}">${publicUrl}</a></p>`
+    : '';
+  const html = `
+    <p>Hello,</p>
+    <p>Please find your invoice <strong>${existing.invoiceNumber}</strong> attached.</p>
+    <p><strong>Total Due:</strong> ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(existing.balanceDue))}</p>
+    <p><strong>Due Date:</strong> ${new Date(existing.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    ${linkBlock}
+    <p>Thank you for your business.</p>
+  `;
+
+  let emailDelivered = false;
+  try {
+    emailDelivered = await sendInvoiceEmail(
+      existing.account.billingEmail,
+      undefined,
+      subject,
+      html,
+      pdfBuffer,
+      existing.invoiceNumber,
+    );
+  } catch (error) {
+    logger.error('Failed to send invoice email', { invoiceId: id, error });
+    throw new BadRequestError('Invoice email failed to send. Please verify the billing email and try again.');
   }
 
   const invoice = await prisma.invoice.update({
@@ -983,7 +1057,11 @@ export async function sendInvoice(id: string, userId: string) {
         create: {
           action: 'sent',
           performedByUserId: userId,
-          metadata: {},
+          metadata: {
+            recipient: existing.account.billingEmail,
+            emailDelivered,
+            invoiceNumber: existing.invoiceNumber,
+          },
         },
       },
     },

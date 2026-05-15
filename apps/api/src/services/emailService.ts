@@ -179,6 +179,29 @@ export async function sendNotificationEmail(
   return sendEmail({ to, subject, html });
 }
 
+export async function sendInvoiceEmail(
+  to: string,
+  cc: string[] | undefined,
+  subject: string,
+  html: string,
+  pdfBuffer: Buffer,
+  invoiceNumber: string
+): Promise<boolean> {
+  return sendEmail({
+    to,
+    cc,
+    subject,
+    html,
+    attachments: [
+      {
+        filename: `${invoiceNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  });
+}
+
 export async function sendResidentialQuoteEmail(
   to: string,
   subject: string,
