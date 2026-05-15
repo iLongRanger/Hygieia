@@ -11,6 +11,7 @@ import {
   Trash2,
   AlertTriangle,
   Edit2,
+  CalendarPlus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +23,7 @@ import {
   getJob,
   startJob,
   completeJob,
+  scheduleMakeupJob,
   completeInitialCleanForJob,
   cancelJob,
   createJobTask,
@@ -321,6 +323,20 @@ const JobDetail = () => {
     }
   };
 
+  const handleScheduleMakeup = async () => {
+    if (!id) return;
+    if (!confirm('Schedule a make-up visit for this missed job? The next valid date from the service schedule will be chosen and a new job created.')) {
+      return;
+    }
+    try {
+      const result = await scheduleMakeupJob(id);
+      toast.success(`Make-up job ${result.jobNumber} scheduled for ${new Date(result.scheduledDate).toLocaleDateString()}`);
+      fetchJob();
+    } catch (error) {
+      toast.error(extractApiErrorMessage(error, 'Failed to schedule make-up'));
+    }
+  };
+
   const handleCompleteInitialClean = async () => {
     if (!id) return;
     try {
@@ -560,8 +576,30 @@ const JobDetail = () => {
               Cancel
             </Button>
           )}
+          {!isFieldWorker && job.status === 'missed' && (
+            <Button size="sm" className="w-full sm:w-auto" onClick={handleScheduleMakeup}>
+              <CalendarPlus className="mr-1.5 h-4 w-4" />
+              Schedule Make-Up
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Missed job alert */}
+      {job.status === 'missed' && (
+        <Card>
+          <div className="flex items-start gap-3 p-4 border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+            <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="text-sm text-surface-800 dark:text-surface-200">
+              <p className="font-semibold">This job was marked as missed.</p>
+              <p className="mt-1 text-surface-600 dark:text-surface-400">
+                Schedule a make-up visit to keep the customer's billing whole, or leave as-is to let the
+                next invoice include a credit for the missed visit.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Complete form */}
       {showCompleteForm && (

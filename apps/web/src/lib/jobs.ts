@@ -165,6 +165,13 @@ export async function submitJobSettlementExplanation(
   return response.data.data;
 }
 
+export async function scheduleMakeupJob(
+  jobId: string
+): Promise<{ id: string; jobNumber: string; scheduledDate: string }> {
+  const response = await api.post(`/jobs/${jobId}/schedule-makeup`);
+  return response.data.data;
+}
+
 export async function reviewJobSettlement(
   jobId: string,
   input: ReviewJobSettlementInput
