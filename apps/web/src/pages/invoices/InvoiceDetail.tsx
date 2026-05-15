@@ -26,6 +26,7 @@ import type { InvoiceDetail as InvoiceDetailType, InvoiceStatus, PaymentMethod }
 const getStatusVariant = (status: InvoiceStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<InvoiceStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
+    pending_review: 'warning',
     sent: 'info',
     viewed: 'info',
     paid: 'success',
@@ -172,23 +173,23 @@ const InvoiceDetail = () => {
                 {invoice.invoiceNumber}
               </h1>
               <Badge variant={getStatusVariant(invoice.status)}>
-                {invoice.status}
+                {invoice.status === 'pending_review' ? 'Pending Review' : invoice.status}
               </Badge>
             </div>
             <p className="text-sm text-surface-500">{invoice.account.name}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {!['draft', 'void', 'written_off'].includes(invoice.status) && (
+          {!['draft', 'pending_review', 'void', 'written_off'].includes(invoice.status) && (
             <Button variant="secondary" size="sm" onClick={copyPublicLink}>
               <Copy className="mr-1.5 h-4 w-4" />
               Copy Link
             </Button>
           )}
-          {invoice.status !== 'void' && invoice.status !== 'paid' && (
-            <Button variant="secondary" size="sm" onClick={handleSend}>
+          {(invoice.status === 'draft' || invoice.status === 'pending_review') && (
+            <Button size="sm" onClick={handleSend}>
               <Send className="mr-1.5 h-4 w-4" />
-              Send
+              {invoice.status === 'pending_review' ? 'Approve & Send' : 'Send'}
             </Button>
           )}
           {invoice.status !== 'void' && invoice.status !== 'paid' && (

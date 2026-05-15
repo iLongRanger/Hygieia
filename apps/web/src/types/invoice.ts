@@ -1,4 +1,13 @@
-export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'partial' | 'overdue' | 'void' | 'written_off';
+export type InvoiceStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'sent'
+  | 'viewed'
+  | 'paid'
+  | 'partial'
+  | 'overdue'
+  | 'void'
+  | 'written_off';
 export type PaymentMethod = 'check' | 'ach' | 'credit_card' | 'cash' | 'other';
 export type InvoiceItemType = 'service' | 'additional' | 'adjustment' | 'credit';
 

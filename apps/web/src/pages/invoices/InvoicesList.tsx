@@ -7,6 +7,9 @@ import {
   Zap,
   X,
   AlertTriangle,
+  Send,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/Button';
@@ -15,13 +18,14 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { listInvoices, batchGenerateInvoices } from '../../lib/invoices';
+import { listInvoices, batchGenerateInvoices, sendInvoice } from '../../lib/invoices';
 import type { Invoice, InvoiceStatus } from '../../types/invoice';
 import type { Pagination } from '../../types/crm';
 
 const STATUSES = [
   { value: '', label: 'All Statuses' },
   { value: 'draft', label: 'Draft' },
+  { value: 'pending_review', label: 'Pending Review' },
   { value: 'sent', label: 'Sent' },
   { value: 'viewed', label: 'Viewed' },
   { value: 'partial', label: 'Partial' },
@@ -29,9 +33,22 @@ const STATUSES = [
   { value: 'void', label: 'Void' },
 ];
 
+const STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: 'Draft',
+  pending_review: 'Pending Review',
+  sent: 'Sent',
+  viewed: 'Viewed',
+  paid: 'Paid',
+  partial: 'Partial',
+  overdue: 'Overdue',
+  void: 'Void',
+  written_off: 'Written Off',
+};
+
 const getStatusVariant = (status: InvoiceStatus): 'default' | 'success' | 'warning' | 'error' | 'info' => {
   const map: Record<InvoiceStatus, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     draft: 'default',
+    pending_review: 'warning',
     sent: 'info',
     viewed: 'info',
     paid: 'success',
@@ -47,6 +64,14 @@ const formatCurrency = (value: string) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(value));
 };
 
+const TABS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'All' },
+  { value: 'pending_review', label: 'Pending Review' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'partial', label: 'Partially Paid' },
+  { value: 'paid', label: 'Paid' },
+];
+
 const InvoicesList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,9 +82,13 @@ const InvoicesList = () => {
   const [showBatch, setShowBatch] = useState(false);
   const [batchStart, setBatchStart] = useState('');
   const [batchEnd, setBatchEnd] = useState('');
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSending, setBulkSending] = useState(false);
 
   const page = Number(searchParams.get('page') || '1');
   const status = searchParams.get('status') || '';
+  const isReviewQueue = status === 'pending_review';
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -81,6 +110,73 @@ const InvoicesList = () => {
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
+
+  // Always show pending-review count badge in the tab strip
+  useEffect(() => {
+    let canceled = false;
+    listInvoices({ status: 'pending_review', limit: 1 })
+      .then((res) => {
+        if (!canceled) setPendingCount(res.pagination?.total ?? 0);
+      })
+      .catch(() => {
+        if (!canceled) setPendingCount(0);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [invoices]);
+
+  // Reset selection when the underlying rows change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, status]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === invoices.length && invoices.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(invoices.map((i) => i.id)));
+    }
+  };
+
+  const handleBulkApproveSend = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('Select at least one invoice');
+      return;
+    }
+    if (!confirm(`Approve and send ${selectedIds.size} invoice${selectedIds.size === 1 ? '' : 's'} to customers? Each will be emailed with a PDF attached.`)) {
+      return;
+    }
+    setBulkSending(true);
+    let ok = 0;
+    let failed: string[] = [];
+    for (const id of selectedIds) {
+      try {
+        await sendInvoice(id);
+        ok += 1;
+      } catch (err) {
+        const inv = invoices.find((i) => i.id === id);
+        failed.push(inv?.invoiceNumber ?? id);
+      }
+    }
+    setBulkSending(false);
+    setSelectedIds(new Set());
+    fetchInvoices();
+    if (failed.length === 0) {
+      toast.success(`Sent ${ok} invoice${ok === 1 ? '' : 's'}`);
+    } else {
+      toast.error(`Sent ${ok}, failed: ${failed.join(', ')}`);
+    }
+  };
 
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -113,7 +209,49 @@ const InvoicesList = () => {
     );
   };
 
+  const selectionColumn = isReviewQueue
+    ? [
+        {
+          header: (
+            <button
+              type="button"
+              className="flex items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSelectAll();
+              }}
+              aria-label="Select all"
+            >
+              {selectedIds.size > 0 && selectedIds.size === invoices.length ? (
+                <CheckSquare className="h-4 w-4 text-primary-600" />
+              ) : (
+                <Square className="h-4 w-4 text-surface-400" />
+              )}
+            </button>
+          ) as unknown as string,
+          cell: (row: Invoice) => (
+            <button
+              type="button"
+              className="flex items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSelected(row.id);
+              }}
+              aria-label={`Select ${row.invoiceNumber}`}
+            >
+              {selectedIds.has(row.id) ? (
+                <CheckSquare className="h-4 w-4 text-primary-600" />
+              ) : (
+                <Square className="h-4 w-4 text-surface-400" />
+              )}
+            </button>
+          ),
+        },
+      ]
+    : [];
+
   const columns = [
+    ...selectionColumn,
     {
       header: 'Invoice',
       cell: (row: Invoice) => (
@@ -135,7 +273,7 @@ const InvoicesList = () => {
       cell: (row: Invoice) => (
         <div className="flex items-center gap-1">
           <Badge variant={isOverdue(row) ? 'error' : getStatusVariant(row.status)} size="sm">
-            {isOverdue(row) ? 'overdue' : row.status}
+            {isOverdue(row) ? 'Overdue' : STATUS_LABELS[row.status] ?? row.status}
           </Badge>
           {isOverdue(row) && <AlertTriangle className="h-3.5 w-3.5 text-red-500" />}
         </div>
@@ -207,6 +345,66 @@ const InvoicesList = () => {
           </Button>
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap items-center gap-1 border-b border-surface-200 dark:border-surface-700">
+        {TABS.map((tab) => {
+          const active = tab.value === status;
+          const showCount = tab.value === 'pending_review' && pendingCount > 0;
+          return (
+            <button
+              key={tab.value || 'all'}
+              type="button"
+              onClick={() => updateParam('status', tab.value)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                active
+                  ? 'border-primary-600 text-primary-700 dark:text-primary-400'
+                  : 'border-transparent text-surface-600 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100'
+              }`}
+            >
+              {tab.label}
+              {showCount && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 dark:bg-amber-900/40 dark:text-amber-300">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bulk approve/send bar (only on Pending Review tab) */}
+      {isReviewQueue && (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <div className="text-sm text-surface-700 dark:text-surface-300">
+              {selectedIds.size === 0
+                ? 'Select invoices to approve and email customers.'
+                : `${selectedIds.size} invoice${selectedIds.size === 1 ? '' : 's'} selected.`}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={toggleSelectAll}
+                disabled={invoices.length === 0}
+              >
+                {selectedIds.size === invoices.length && invoices.length > 0
+                  ? 'Clear selection'
+                  : 'Select all on page'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkApproveSend}
+                disabled={selectedIds.size === 0 || bulkSending}
+              >
+                <Send className="mr-1.5 h-4 w-4" />
+                {bulkSending ? 'Sending...' : 'Approve & Send Selected'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Filters */}
       {showFilters && (
