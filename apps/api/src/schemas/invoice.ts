@@ -5,7 +5,7 @@ export const listInvoicesSchema = z.object({
     accountId: z.string().uuid().optional(),
     contractId: z.string().uuid().optional(),
     facilityId: z.string().uuid().optional(),
-    status: z.enum(['draft', 'sent', 'viewed', 'paid', 'partial', 'overdue', 'void', 'written_off']).optional(),
+    status: z.enum(['draft', 'pending_review', 'sent', 'viewed', 'paid', 'partial', 'overdue', 'void', 'written_off']).optional(),
     overdue: z.enum(['true']).optional(),
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
