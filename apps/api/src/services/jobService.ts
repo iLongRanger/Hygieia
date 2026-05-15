@@ -2579,6 +2579,15 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
         data: { status: 'missed' },
       });
 
+      await flagJobForSettlementReview({
+        jobId: job.id,
+        issueCode: 'missed_no_checkin',
+        issueSummary: `${job.jobNumber} at ${job.facility.name} was auto-marked missed because no check-in occurred before the scheduled end time.`,
+        notifyWorker: false,
+        notifyManagers: false,
+      });
+      settlementReviewsTriggered += 1;
+
       const assigneeLabel = job.assignedToUser?.fullName
         ? `Assigned cleaner: ${job.assignedToUser.fullName}`
         : job.assignedTeam?.name
@@ -2646,6 +2655,50 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
     }
   }
 
+  const staleByDateCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const staleByDateJobs = await prisma.job.findMany({
+    where: {
+      status: { in: ['scheduled', 'in_progress'] },
+      scheduledEndTime: null,
+      scheduledDate: { lt: staleByDateCutoff },
+      timeEntries: { none: {} },
+    },
+    select: {
+      id: true,
+      jobNumber: true,
+      scheduledDate: true,
+      facility: { select: { id: true, name: true } },
+      contract: { select: { id: true, contractNumber: true } },
+    },
+  });
+
+  for (const job of staleByDateJobs) {
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { status: 'missed' },
+    });
+    await prisma.jobActivity.create({
+      data: {
+        jobId: job.id,
+        action: JOB_MISSED_NO_CHECKIN_ACTION,
+        metadata: {
+          reason: 'stale_no_end_time',
+          scheduledDate: job.scheduledDate.toISOString(),
+          graceHours: 24,
+        },
+      },
+    });
+    await flagJobForSettlementReview({
+      jobId: job.id,
+      issueCode: 'missed_no_checkin',
+      issueSummary: `${job.jobNumber} at ${job.facility.name} was auto-marked missed (no end time set and scheduled date is more than 24h in the past).`,
+      notifyWorker: false,
+      notifyManagers: true,
+    });
+    alerted += 1;
+    settlementReviewsTriggered += 1;
+  }
+
   const unresolvedJobs = await prisma.job.findMany({
     where: {
       status: { in: ['scheduled', 'in_progress'] },
@@ -2687,7 +2740,7 @@ export async function runJobNearingEndNoCheckInAlertCycle(input?: {
   }
 
   return {
-    checked: candidateJobs.length + unresolvedJobs.length,
+    checked: candidateJobs.length + unresolvedJobs.length + staleByDateJobs.length,
     alerted,
     notifications,
     settlementReviewsTriggered,
