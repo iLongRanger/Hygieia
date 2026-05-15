@@ -474,6 +474,7 @@ export async function runInvoiceAutoGenerationCycle(input?: {
         periodEnd: windowEndUtc,
         prorate: true,
         status: 'pending_review',
+        applyMissedJobCredit: true,
       });
 
       results.push({
@@ -605,6 +606,7 @@ async function createInvoiceFromJobs(input: {
   periodEnd: Date;
   prorate: boolean;
   status?: string;
+  applyMissedJobCredit?: boolean;
 }) {
   if (input.jobs.length === 0) {
     throw new BadRequestError('No eligible completed jobs found to invoice');
@@ -657,7 +659,58 @@ async function createInvoiceFromJobs(input: {
     };
   });
 
-  const taxBreakdown = invoiceLineItems.reduce(
+  // Optional: derive credit lines for missed jobs in this window that
+  // do not have a make-up scheduled. Only the auto-generation path opts
+  // in. Each missed job becomes a per-visit credit applied to its
+  // contract line.
+  const creditLineItems: Array<{
+    sortOrder: number;
+    description: string;
+    grossAmount: number;
+    netAmount: number;
+    taxAmount: number;
+    taxRate: number;
+    missedJobIds: string[];
+  }> = [];
+
+  if (input.applyMissedJobCredit) {
+    let creditIndex = invoiceLineItems.length;
+    for (const [contractKey, contractJobs] of jobsByContract.entries()) {
+      const missed = await prisma.job.findMany({
+        where: {
+          contractId: contractKey,
+          status: 'missed',
+          scheduledDate: { gte: input.periodStart, lte: input.periodEnd },
+          // Exclude missed jobs that already have an associated make-up
+          activities: { none: { action: 'make_up_created' } },
+        },
+        select: { id: true, jobNumber: true, scheduledDate: true },
+      });
+      if (missed.length === 0) continue;
+
+      const contractLine = invoiceLineItems.find((item) =>
+        item.jobs.some((j) => j.contractId === contractKey)
+      );
+      if (!contractLine) continue;
+
+      const perVisitGross = contractLine.grossAmount / (contractJobs.length + missed.length);
+      const creditGross = -Math.round(perVisitGross * missed.length * 100) / 100;
+      const taxRate = contractLine.taxRate;
+      const split = splitInclusiveTax(creditGross, taxRate);
+
+      creditLineItems.push({
+        sortOrder: creditIndex++,
+        description: `Credit for ${missed.length} missed visit${missed.length === 1 ? '' : 's'} (${missed.map((m) => m.jobNumber).join(', ')})`,
+        grossAmount: split.totalAmount,
+        netAmount: split.subtotal,
+        taxAmount: split.taxAmount,
+        taxRate,
+        missedJobIds: missed.map((m) => m.id),
+      });
+    }
+  }
+
+  const taxBreakdown = [...invoiceLineItems, ...creditLineItems].reduce(
     (acc, item) => {
       acc.subtotal += item.netAmount;
       acc.taxAmount += item.taxAmount;
@@ -721,6 +774,20 @@ async function createInvoiceFromJobs(input: {
           },
         });
       }
+    }
+
+    for (const credit of creditLineItems) {
+      await tx.invoiceItem.create({
+        data: {
+          invoiceId: invoice.id,
+          itemType: 'credit',
+          description: credit.description,
+          quantity: new Prisma.Decimal(1),
+          unitPrice: new Prisma.Decimal(credit.netAmount),
+          totalPrice: new Prisma.Decimal(credit.netAmount),
+          sortOrder: credit.sortOrder,
+        },
+      });
     }
 
     await tx.invoiceActivity.create({
