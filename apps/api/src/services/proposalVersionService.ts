@@ -67,6 +67,7 @@ export async function buildSnapshotFromProposal(proposalId: string) {
       quantity: item.quantity.toString(),
       unitPrice: item.unitPrice.toString(),
       totalPrice: item.totalPrice.toString(),
+      billingFrequency: item.billingFrequency,
       sortOrder: item.sortOrder,
     })),
     proposalServices: proposal.proposalServices.map((service) => ({

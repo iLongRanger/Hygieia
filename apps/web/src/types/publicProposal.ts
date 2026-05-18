@@ -49,6 +49,7 @@ export interface PublicProposal {
     quantity: number;
     unitPrice: number;
     totalPrice: number;
+    billingFrequency?: string | null;
     sortOrder: number;
   }[];
   proposalServices: {

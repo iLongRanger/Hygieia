@@ -216,6 +216,7 @@ interface ProposalForPdf {
     quantity: PdfNumeric;
     unitPrice: PdfNumeric;
     totalPrice: PdfNumeric;
+    billingFrequency?: string | null;
   }[];
   proposalServices: {
     serviceName: string;
@@ -564,6 +565,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     const itemsBody: TableCell[][] = [
       [
         { text: 'Description', style: 'tableHeader' },
+        { text: 'Billing', style: 'tableHeader' },
         { text: 'Qty', style: 'tableHeader', alignment: 'right' as const },
         { text: 'Unit Price', style: 'tableHeader', alignment: 'right' as const },
         { text: 'Total', style: 'tableHeader', alignment: 'right' as const },
@@ -573,6 +575,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
     for (const item of visibleProposalItems) {
       itemsBody.push([
         { text: item.description },
+        { text: item.billingFrequency === 'monthly' ? 'Monthly' : 'One-time' },
         { text: String(item.quantity), alignment: 'right' as const },
         { text: formatCurrency(item.unitPrice), alignment: 'right' as const },
         { text: formatCurrency(item.totalPrice), alignment: 'right' as const, bold: true },
@@ -584,7 +587,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
         headerRows: 1,
         dontBreakRows: true,
         keepWithHeaderRows: 1,
-        widths: ['*', 50, 90, 90],
+        widths: ['*', 70, 50, 85, 85],
         body: itemsBody,
       },
       layout: {

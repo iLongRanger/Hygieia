@@ -41,6 +41,7 @@ export interface ProposalItemInput {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  billingFrequency?: string;
   sortOrder?: number;
 }
 
@@ -200,6 +201,7 @@ const proposalSelect = {
       quantity: true,
       unitPrice: true,
       totalPrice: true,
+      billingFrequency: true,
       sortOrder: true,
     },
     orderBy: {
@@ -804,6 +806,7 @@ export async function createProposal(input: ProposalCreateInput) {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
+          billingFrequency: item.billingFrequency ?? 'one_time',
           sortOrder: item.sortOrder ?? index,
         })),
       },
@@ -971,6 +974,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
       totalPrice: Number(item.totalPrice),
+      billingFrequency: item.billingFrequency ?? 'one_time',
       sortOrder: item.sortOrder,
     }));
     const items = removeZeroValueItems(rawItems);
@@ -1025,6 +1029,7 @@ export async function updateProposal(id: string, input: ProposalUpdateInput) {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
+          billingFrequency: item.billingFrequency ?? 'one_time',
           sortOrder: item.sortOrder ?? index,
         })),
       };

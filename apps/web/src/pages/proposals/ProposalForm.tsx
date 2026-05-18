@@ -116,6 +116,11 @@ const ITEM_TYPES: { value: ProposalItemType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+const ITEM_BILLING_OPTIONS = [
+  { value: 'one_time', label: 'One-time' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
 const SERVICE_TYPES: { value: ServiceType; label: string }[] = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
@@ -745,6 +750,7 @@ const buildResidentialProposalItems = (
       quantity: 1,
       unitPrice: preview.breakdown.firstCleanSurcharge,
       totalPrice: preview.breakdown.firstCleanSurcharge,
+      billingFrequency: 'one_time',
       sortOrder: items.length,
     });
   }
@@ -756,6 +762,7 @@ const buildResidentialProposalItems = (
       quantity: addOn.quantity,
       unitPrice: addOn.unitPrice,
       totalPrice: addOn.lineTotal,
+      billingFrequency: 'one_time',
       sortOrder: items.length,
     });
   });
@@ -837,6 +844,7 @@ const createEmptyItem = (sortOrder: number): ProposalItem => ({
   quantity: 1,
   unitPrice: 0,
   totalPrice: 0,
+  billingFrequency: 'one_time',
   sortOrder,
 });
 
@@ -857,6 +865,7 @@ const createSpecializedCatalogItem = (
     quantity,
     unitPrice,
     totalPrice: Math.max(calculatedTotal, minimumCharge),
+    billingFrequency: 'one_time',
     sortOrder,
   };
 };
@@ -1129,6 +1138,12 @@ const ProposalForm = () => {
       (sum, item) => sum + Number(item.totalPrice || 0),
       0
     );
+    const monthlyItemsTotal = (formData.proposalItems || [])
+      .filter((item) => item.billingFrequency === 'monthly')
+      .reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
+    const oneTimeItemsTotal = (formData.proposalItems || [])
+      .filter((item) => item.billingFrequency !== 'monthly')
+      .reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
 
     const oneTimeServicesTotal = (formData.proposalServices || [])
       .filter((service) => service.serviceType === 'one_time')
@@ -1159,9 +1174,9 @@ const ProposalForm = () => {
       return sum + Number(service.monthlyPrice || 0) / divisor;
     }, 0);
 
-    const monthlyTotal = recurringServicesTotal;
+    const monthlyTotal = recurringServicesTotal + monthlyItemsTotal;
     const annualTotal = recurringServicesTotal * 12;
-    const oneTimeChargesTotal = itemsTotal + oneTimeServicesTotal;
+    const oneTimeChargesTotal = oneTimeItemsTotal + oneTimeServicesTotal;
 
     const subtotal = itemsTotal + servicesTotal;
     const taxRate = formData.taxRate || 0;
@@ -1867,7 +1882,7 @@ const ProposalForm = () => {
       }));
 
       // Convert suggested items to proposal items
-      const newItems: ProposalItem[] = template.suggestedItems.map((raw, index) => {
+        const newItems: ProposalItem[] = template.suggestedItems.map((raw, index) => {
         const item = raw as SuggestedProposalItem;
         return {
           itemType: (item.itemType as ProposalItemType) || 'other',
@@ -1875,6 +1890,7 @@ const ProposalForm = () => {
           quantity: item.quantity || 1,
           unitPrice: item.unitPrice || 0,
           totalPrice: item.totalPrice || 0,
+          billingFrequency: 'one_time',
           sortOrder: index,
         };
       });
@@ -2956,10 +2972,11 @@ const ProposalForm = () => {
                 {/* Table Header */}
                 <div className="hidden md:grid md:grid-cols-12 gap-2 text-xs font-medium text-surface-500 dark:text-surface-400 uppercase px-2">
                   <div className="col-span-2">Type</div>
-                  <div className="col-span-4">Description</div>
+                  <div className="col-span-3">Description</div>
+                  <div className="col-span-2">Billing</div>
                   <div className="col-span-1 text-right">Qty</div>
                   <div className="col-span-2 text-right">Unit Price</div>
-                  <div className="col-span-2 text-right">Total</div>
+                  <div className="col-span-1 text-right">Total</div>
                   <div className="col-span-1"></div>
                 </div>
 
@@ -2977,11 +2994,19 @@ const ProposalForm = () => {
                         options={ITEM_TYPES}
                       />
                     </div>
-                    <div className="md:col-span-4">
+                    <div className="md:col-span-3">
                       <Input
                         placeholder="Description"
                         value={item.description}
                         onChange={(e) => updateItem(index, 'description', e.target.value)}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Select
+                        placeholder="Billing"
+                        value={item.billingFrequency || 'one_time'}
+                        onChange={(value) => updateItem(index, 'billingFrequency', value)}
+                        options={ITEM_BILLING_OPTIONS}
                       />
                     </div>
                     <div className="md:col-span-1">
@@ -3004,7 +3029,7 @@ const ProposalForm = () => {
                         onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                       />
                     </div>
-                    <div className="md:col-span-2 flex items-center justify-end">
+                    <div className="md:col-span-1 flex items-center justify-end">
                       <span className="text-xs text-surface-500 dark:text-surface-400 mr-2 md:hidden">Total:</span>
                       <span className="text-surface-900 dark:text-white font-medium">
                         {formatCurrency(item.totalPrice)}
@@ -3027,10 +3052,13 @@ const ProposalForm = () => {
                 {/* Items Subtotal */}
                 <div className="flex justify-end pt-2 border-t border-surface-200 dark:border-surface-700">
                   <div className="text-right">
-                    <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Items Subtotal:</span>
+                    <span className="text-surface-500 dark:text-surface-400 text-sm mr-4">Line Items Total:</span>
                     <span className="text-surface-900 dark:text-white font-semibold">
                       {formatCurrency(totals.itemsTotal)}
                     </span>
+                    <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">
+                      Monthly: {formatCurrency(totals.monthlyTotal - totals.recurringServicesTotal)} · One-time: {formatCurrency(totals.oneTimeChargesTotal - totals.oneTimeServicesTotal)}
+                    </div>
                   </div>
                 </div>
               </div>

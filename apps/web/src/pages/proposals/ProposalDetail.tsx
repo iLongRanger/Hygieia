@@ -1118,6 +1118,7 @@ const ProposalDetail = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Billing</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Qty</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Unit Price</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Total</th>
@@ -1132,6 +1133,9 @@ const ProposalDetail = () => {
                           </Badge>
                         </td>
                         <td className="px-6 py-4 text-surface-600 dark:text-surface-400">{item.description}</td>
+                        <td className="px-6 py-4 text-surface-600 dark:text-surface-400">
+                          {item.billingFrequency === 'monthly' ? 'Monthly' : 'One-time'}
+                        </td>
                         <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">{item.quantity}</td>
                         <td className="px-6 py-4 text-right text-surface-600 dark:text-surface-400">{formatCurrency(item.unitPrice)}</td>
                         <td className="px-6 py-4 text-right font-medium text-surface-900 dark:text-white">{formatCurrency(item.totalPrice)}</td>

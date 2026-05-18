@@ -20,6 +20,10 @@ export type ProposalItemType =
   | 'supplies'
   | 'other';
 
+export type ProposalItemBillingFrequency =
+  | 'one_time'
+  | 'monthly';
+
 export type ServiceType =
   | 'daily'
   | 'weekly'
@@ -73,6 +77,7 @@ export interface ProposalItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  billingFrequency?: ProposalItemBillingFrequency;
   sortOrder?: number;
 }
 

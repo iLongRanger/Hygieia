@@ -690,6 +690,7 @@ const PublicProposalView: React.FC = () => {
                 <thead className="bg-surface-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Description</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Billing</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Qty</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Unit Price</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Total</th>
@@ -699,6 +700,7 @@ const PublicProposalView: React.FC = () => {
                   {visibleProposalItems.map((item, idx) => (
                     <tr key={idx}>
                       <td className="px-4 py-3 text-surface-900">{item.description}</td>
+                      <td className="px-4 py-3 text-surface-600">{item.billingFrequency === 'monthly' ? 'Monthly' : 'One-time'}</td>
                       <td className="px-4 py-3 text-right text-surface-600">{item.quantity}</td>
                       <td className="px-4 py-3 text-right text-surface-600">{formatCurrency(Number(item.unitPrice) || 0)}</td>
                       <td className="px-4 py-3 text-right font-medium text-surface-900">{formatCurrency(Number(item.totalPrice) || 0)}</td>

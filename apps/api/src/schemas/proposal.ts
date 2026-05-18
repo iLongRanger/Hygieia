@@ -28,6 +28,11 @@ export const proposalItemTypeSchema = z.enum([
   'other',
 ]);
 
+export const proposalItemBillingFrequencySchema = z.enum([
+  'one_time',
+  'monthly',
+]);
+
 export const serviceTypeSchema = z.enum([
   'daily',
   'weekly',
@@ -53,6 +58,7 @@ export const proposalItemSchema = z.object({
   quantity: z.coerce.number().positive('Quantity must be positive'),
   unitPrice: z.coerce.number().nonnegative('Unit price must be non-negative'),
   totalPrice: z.coerce.number().nonnegative('Total price must be non-negative'),
+  billingFrequency: proposalItemBillingFrequencySchema.optional().default('one_time'),
   sortOrder: z.coerce.number().int().nonnegative().optional().default(0),
 });
 

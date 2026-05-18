@@ -46,6 +46,7 @@ const publicProposalSelect = {
       quantity: true,
       unitPrice: true,
       totalPrice: true,
+      billingFrequency: true,
       sortOrder: true,
     },
     orderBy: { sortOrder: 'asc' as const },
