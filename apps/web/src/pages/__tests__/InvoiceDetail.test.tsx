@@ -37,7 +37,7 @@ vi.mock('react-hot-toast', () => ({
 const invoice = {
   id: 'inv-1',
   invoiceNumber: 'INV-2026-0001',
-  status: 'sent',
+  status: 'draft',
   account: { id: 'account-1', name: 'Acme Corp' },
   publicToken: 'public-invoice-token',
   totalAmount: '1200',

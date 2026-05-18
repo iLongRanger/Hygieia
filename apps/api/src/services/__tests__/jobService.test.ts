@@ -1483,6 +1483,7 @@ describe('jobService', () => {
         },
       ])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     (prisma.timeEntry.findMany as jest.Mock)
       .mockResolvedValueOnce([])
@@ -1561,6 +1562,7 @@ describe('jobService', () => {
         },
       ])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     (prisma.timeEntry.findMany as jest.Mock)
       .mockResolvedValueOnce([{ jobId: 'job-1' }])
@@ -1605,6 +1607,7 @@ describe('jobService', () => {
           assignedTeam: null,
         },
       ])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     (prisma.timeEntry.findMany as jest.Mock)
       .mockResolvedValueOnce([])
@@ -1660,12 +1663,13 @@ describe('jobService', () => {
       checked: 0,
       alerted: 1,
       notifications: 3,
-      settlementReviewsTriggered: 0,
+      settlementReviewsTriggered: 1,
     });
   });
 
   it('runJobNearingEndNoCheckInAlertCycle flags unresolved completed-work jobs for settlement review', async () => {
     (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -1705,6 +1709,7 @@ describe('jobService', () => {
 
   it('runJobNearingEndNoCheckInAlertCycle skips unresolved jobs already waiting on settlement review', async () => {
     (prisma.job.findMany as jest.Mock)
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
