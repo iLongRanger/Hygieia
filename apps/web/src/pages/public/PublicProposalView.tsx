@@ -75,6 +75,13 @@ const getResidentialVisitPrice = (pricingMeta: unknown) => {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 };
 
+const getBillingUnitLabel = (pricingMeta: unknown) => {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return '/mo';
+  }
+  return (pricingMeta as { billingMode?: unknown }).billingMode === 'one_time' ? ' one-time' : '/mo';
+};
+
 const formatAddress = (
   address: NonNullable<PublicProposal['facility']>['address']
 ): string => {
@@ -562,7 +569,7 @@ const PublicProposalView: React.FC = () => {
                       <div className="text-right shrink-0 ml-4">
                         <div className="text-lg font-semibold" style={{ color: primaryColor }}>
                           {formatCurrency(Number(service.monthlyPrice) || 0)}
-                          <span className="text-sm font-normal text-surface-500">/mo</span>
+                          <span className="text-sm font-normal text-surface-500">{getBillingUnitLabel(service.pricingMeta)}</span>
                         </div>
                         {visitPrice != null && (
                           <div className="text-sm text-surface-500 mt-0.5">
@@ -619,7 +626,7 @@ const PublicProposalView: React.FC = () => {
                     {showVisitRateColumn && (
                       <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Visit Rate</th>
                     )}
-                    <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Monthly</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-100 dark:divide-surface-700">

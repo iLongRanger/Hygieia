@@ -112,6 +112,13 @@ function getResidentialVisitPrice(pricingMeta: unknown): number | null {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 }
 
+function getBillingUnitLabel(pricingMeta: unknown): string {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return '/month';
+  }
+  return (pricingMeta as { billingMode?: unknown }).billingMode === 'one_time' ? ' one-time' : '/month';
+}
+
 function formatCurrency(amount: PdfNumeric): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -372,7 +379,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
           { text: service.serviceName, bold: true, fontSize: 11, color: COLORS.primary },
           {
             stack: [
-              { text: formatCurrency(service.monthlyPrice) + '/month', alignment: 'right' as const, bold: true, fontSize: 11, color: COLORS.primary },
+              { text: formatCurrency(service.monthlyPrice) + getBillingUnitLabel(service.pricingMeta), alignment: 'right' as const, bold: true, fontSize: 11, color: COLORS.primary },
               ...(visitPrice != null
                 ? [{ text: `${formatCurrency(visitPrice)} per visit`, alignment: 'right' as const, fontSize: 8, color: COLORS.lightText }]
                 : []),
@@ -493,7 +500,7 @@ export async function generateProposalPdf(proposal: ProposalForPdf): Promise<Buf
       { text: 'Frequency', style: 'tableHeader' },
       ...(hasAnyHours ? [{ text: 'Hours', style: 'tableHeader', alignment: 'right' as const }] : []),
       ...(hasVisitRates ? [{ text: 'Visit Rate', style: 'tableHeader', alignment: 'right' as const }] : []),
-      { text: 'Monthly', style: 'tableHeader', alignment: 'right' as const },
+      { text: 'Amount', style: 'tableHeader', alignment: 'right' as const },
     ]];
 
     let totalHours = 0;

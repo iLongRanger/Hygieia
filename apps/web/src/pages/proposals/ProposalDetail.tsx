@@ -170,6 +170,13 @@ const getResidentialVisitPrice = (pricingMeta: unknown) => {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 };
 
+const getBillingUnitLabel = (pricingMeta: unknown) => {
+  if (!pricingMeta || typeof pricingMeta !== 'object' || Array.isArray(pricingMeta)) {
+    return '/month';
+  }
+  return (pricingMeta as { billingMode?: unknown }).billingMode === 'one_time' ? ' one-time' : '/month';
+};
+
 const getFrequencyCandidates = (frequency: string | null | undefined): string[] => {
   if (!frequency) return [];
   const normalized = frequency.trim().toLowerCase();
@@ -1071,7 +1078,7 @@ const ProposalDetail = () => {
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-emerald">
-                            {formatCurrency(Number(service.monthlyPrice) || 0)}/month
+                            {formatCurrency(Number(service.monthlyPrice) || 0)}{getBillingUnitLabel(service.pricingMeta)}
                           </div>
                           {visitPrice != null && (
                             <div className="text-xs text-surface-500 dark:text-surface-400">
@@ -1446,7 +1453,7 @@ const ProposalDetail = () => {
                           {showVisitRateColumn && (
                             <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Visit Rate</th>
                           )}
-                          <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Monthly</th>
+                          <th className="pb-2 text-right text-xs font-medium text-surface-500 dark:text-surface-400 uppercase">Amount</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-surface-200 dark:divide-surface-700">

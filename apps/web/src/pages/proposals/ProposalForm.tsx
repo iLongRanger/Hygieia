@@ -555,8 +555,11 @@ const getResidentialVisitsPerMonth = (frequency: ResidentialFrequency) => {
 
 const roundCurrency = (amount: number) => Number(amount.toFixed(2));
 
+const getResidentialOneTimeFees = (preview: ResidentialQuotePreview) =>
+  preview.breakdown.firstCleanSurcharge + preview.breakdown.addOnTotal;
+
 const getResidentialBillableVisitPrice = (preview: ResidentialQuotePreview) =>
-  roundCurrency(Math.max(0, preview.breakdown.finalTotal - preview.breakdown.firstCleanSurcharge));
+  roundCurrency(Math.max(0, preview.breakdown.finalTotal - getResidentialOneTimeFees(preview)));
 
 const getResidentialClientBillAmount = (
   preview: ResidentialQuotePreview,
@@ -692,17 +695,16 @@ const buildResidentialProposalServices = ({
   const includedTasks = scopeGroups.flatMap((group) =>
     group.tasks.map((task) => `${group.label}: ${task}`)
   );
-  const addOnTasks = preview.breakdown.addOns.map((addOn) => `Add-on: ${addOn.label}`);
   const areaSummary = scopeGroups.length > 0
     ? `${scopeGroups.length} area${scopeGroups.length === 1 ? '' : 's'} scoped`
     : propertyName;
   const billAmount = getResidentialClientBillAmount(preview, serviceType, frequency);
   const billableVisitPrice = getResidentialBillableVisitPrice(preview);
   const visitsPerMonth = getResidentialVisitsPerMonth(frequency);
-  const billingSummary = isRecurringResidentialServiceType(serviceType) && frequency !== 'one_time'
-    ? `Monthly bill: ${formatCurrency(billAmount)} (${formatCurrency(billableVisitPrice)} per visit x ${visitsPerMonth.toFixed(2)} visits/month).`
-    : `One-time bill: ${formatCurrency(billAmount)}.`;
   const isRecurringResidential = isRecurringResidentialServiceType(serviceType) && frequency !== 'one_time';
+  const billingSummary = isRecurringResidential
+    ? `Monthly bill: ${formatCurrency(billAmount)} (${formatCurrency(billableVisitPrice)} per visit x ${visitsPerMonth.toFixed(2)} visits/month).`
+    : `One-time service amount: ${formatCurrency(billAmount)}.`;
 
   return [{
     serviceName: serviceLabel,
@@ -714,13 +716,12 @@ const buildResidentialProposalServices = ({
     description: [
       areaSummary,
       billingSummary,
-      addOnTasks.length > 0 ? addOnTasks.join(', ') : null,
       ...scopeGroups.map((group) => `${group.label}: ${group.tasks.join(', ')}`),
       preview.breakdown.guidance.length > 0
         ? `Guidance: ${preview.breakdown.guidance.join(' | ')}`
         : null,
     ].filter(Boolean).join('\n'),
-    includedTasks: [...includedTasks, ...addOnTasks],
+    includedTasks,
     pricingMeta: {
       engine: 'residential_quote_preview_v1',
       billingMode: isRecurringResidential ? 'monthly_recurring' : 'one_time',
@@ -747,6 +748,17 @@ const buildResidentialProposalItems = (
       sortOrder: items.length,
     });
   }
+
+  preview.breakdown.addOns.forEach((addOn) => {
+    items.push({
+      itemType: 'other',
+      description: addOn.label,
+      quantity: addOn.quantity,
+      unitPrice: addOn.unitPrice,
+      totalPrice: addOn.lineTotal,
+      sortOrder: items.length,
+    });
+  });
 
   return items;
 };
